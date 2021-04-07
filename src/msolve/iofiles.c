@@ -1,0 +1,949 @@
+/* This file is part of msolve.
+ *
+ * msolve is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * msolve is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with msolve.  If not, see <https://www.gnu.org/licenses/>
+ *
+ * Authors:
+ * Jérémy Berthomieu
+ * Christian Eder
+ * Mohab Safey El Din */
+
+static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
+{
+  nvars_t k;
+  /* /\** first we have to fill the buffers with zeroes *\/ */
+  /* memset(ht->exp + (ht->load * ht->nv), 0, ht->nv * sizeof(exp_t)); */
+  const char mult_splicer = '*';
+  const char exp_splicer  = '^';
+  exp_t exp = 0;
+  //  deg_t deg = 0;
+
+  for (k=0; k<gens->nvars; ++k) {
+    exp = 0;
+    char *var = strstr(term, gens->vnames[k]);
+    //    char *var = gens->vnames[k];
+    if (var != NULL) {
+      var   = strtok(var, "\n");
+      var   = strtok(var, ",");
+      /** if the next variable follows directly => exp = 1 */
+      if (strncmp(&mult_splicer, var+strlen(gens->vnames[k]), 1) == 0) {
+        exp = 1;
+      } else {
+        /** if there follows an exp symbol "^" */
+        if (strncmp(&exp_splicer, var+strlen(gens->vnames[k]), 1) == 0) {
+          char exp_str[1000];
+          char *mult_pos;
+          mult_pos  = strchr(var, mult_splicer);
+          if (mult_pos != NULL) {
+            size_t exp_len = (size_t)(mult_pos - (var+strlen(gens->vnames[k])) - 1);
+            memcpy(exp_str, var+strlen(gens->vnames[k])+1, exp_len);
+            exp_str[exp_len] = '\0';
+            //            exp = (exp_s)strtol(exp_str, NULL, 10);
+            exp = strtol(exp_str, NULL, 10);
+          } else { /** no further variables in this term */
+            size_t exp_len = (size_t)((var+strlen(var)) + 1 - (var+strlen(gens->vnames[k])) - 1);
+            memcpy(exp_str, var+strlen(gens->vnames[k])+1, exp_len);
+            //            exp = (exp_s)strtol(exp_str, NULL, 10);
+            exp = strtol(exp_str, NULL, 10);
+            exp_str[exp_len] = '\0';
+          }
+        }
+        else { /** we are at the last variable with exp = 1 */
+          if (strcmp(gens->vnames[k], var) == 0)
+            exp = 1;
+          else
+            continue;
+        }
+      }
+    }
+
+    /* /\** if we use graded reverse lexicographical order (basis->ord = 0) or */
+    /*   * lexicographic order (basis->ord = 1)  we store */
+    /*   * the exponents in reverse order so that we can use memcmp to sort the terms */
+    /*   * efficiently later on *\/ */
+    /* if (basis->ord == 0) */
+    /*   deg +=  ht->exp[(ht->load * ht->nv) + ht->nv-1-k] = exp; */
+    /* else */
+    /*   deg +=  ht->exp[(ht->load * ht->nv) + k] = exp; */
+
+    //    ((gens->exps) + pos)[gens->nvars-k-1] = exp;
+    ((gens->exps) + pos)[k] = exp;
+    /* ht->deg[ht->load] = deg; */
+  }
+}
+
+
+
+static inline void display_monomial(FILE *file, data_gens_ff_t *gens, int64_t pos,
+                                    int32_t **bexp){
+  int32_t exp;
+  for(int k = 0; k < gens->nvars; k++){
+    exp = (*bexp)[(pos)*gens->nvars + k];
+    if(exp > 0){
+      fprintf(file, "*");
+      if(exp==1){
+        fprintf(file, "%s", gens->vnames[k]);
+      }
+      else{
+        fprintf(file, "%s^%d",gens->vnames[k], exp);
+      }
+    }
+  }
+}
+
+static inline int32_t display_monomial_single(FILE *file, data_gens_ff_t *gens,
+                                              int64_t pos, int32_t **bexp){
+  int32_t exp, b = 0;
+  for(int k = 0; k < gens->nvars; k++){
+    exp = (*bexp)[(pos)*(gens->nvars) + k];
+    if(exp > 0){
+      if(exp==1){
+        if(b){
+          fprintf(file, "*%s", gens->vnames[k]);
+        }
+        else{
+          fprintf(file, "%s", gens->vnames[k]);
+        }
+      }
+      else{
+        if(b){
+          fprintf(file, "*%s^%d",gens->vnames[k], exp);
+        }
+        else{
+          fprintf(file, "%s^%d",gens->vnames[k], exp);
+        }
+      }
+      b = 1;
+    }
+  }
+  return b;
+}
+
+
+static inline int32_t display_monomial_full(FILE *file, const int nv,
+                                            char **vnames,
+                                            int64_t pos, int32_t *bexp){
+  int32_t exp, b = 0;
+  for(int k = 0; k < nv; k++){
+    exp = (bexp)[(pos)*nv + k];
+    if(exp > 0){
+      if(exp==1){
+        if(b){
+          //          fprintf(file, "*%s", vnames[k]);
+          fprintf(file, "*x%d", k+1);
+        }
+        else{
+          //          fprintf(file, "%s", vnames[k]);
+          fprintf(file, "x%d", k+1);
+        }
+      }
+      else{
+        if(b){
+          fprintf(file, "*x%d^%d",k+1, exp);
+        }
+        else{
+          fprintf(file, "x%d^%d",k+1, exp);
+        }
+      }
+      b = 1;
+    }
+  }
+  if(b==0){
+    fprintf(file, "1");
+  }
+  return b;
+}
+static void print_msolve_polynomials_ff_32(
+        FILE *file,
+        const bi_t from,
+        const bi_t to,
+        const bs_t * const bs,
+        const ht_t * const ht,
+        const stat_t *st,
+        char **vnames,
+        const int lead_ideal_only
+        )
+{
+    len_t i, j, k, idx;
+
+    len_t len   = 0;
+    hm_t *hm    = NULL;
+    cf32_t *cf  = NULL;
+
+    const len_t nv  = ht->nv;
+
+    /* state context if full basis is printed */
+    if (from == 0 && to == bs->lml) {
+        if (lead_ideal_only != 0) {
+            fprintf(file, "Lead ideal for input in characteristic ");
+        } else {
+            fprintf(file, "Reduced Groebner basis for input in characteristic ");
+        }
+        fprintf(file, "%u\n", st->fc);
+        fprintf(file, "for variable order ");
+        for (i = 0; i < nv-1; ++i) {
+            fprintf(file, "%s, ", vnames[i]);
+        }
+        fprintf(file, "%s\n", vnames[nv-1]);
+        fprintf(file, "w.r.t. grevlex monomial ordering\n");
+        fprintf(file, "consisting of %u elements:\n", bs->lml);
+    }
+
+
+    if (lead_ideal_only != 0) {
+        int ctr = 0;
+        for (i = from; i < to; ++i) {
+            idx = bs->lmps[i];
+            if (bs->hm[idx] == NULL) {
+                fprintf(file, "0,\n");
+            } else {
+                hm  = bs->hm[idx]+OFFSET;
+                len = bs->hm[idx][LENGTH];
+                cf  = bs->cf_32[bs->hm[idx][COEFFS]];
+                ctr = 0;
+                k = 0;
+                while (ctr == 0 && k < nv) {
+                    if (ht->ev[hm[0]][k] > 0) {
+                        fprintf(file, "%s^%u",vnames[k], ht->ev[hm[0]][k]);
+                        ctr++;
+                    }
+                    k++;
+                }
+                for (;k < nv; ++k) {
+                    if (ht->ev[hm[0]][k] > 0) {
+                        fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[0]][k]);
+                    }
+                }
+                if (i < to-1) {
+                    fprintf(file, ",\n");
+                } else {
+                    fprintf(file, "\n");
+                }
+            }
+        }
+    } else {
+        for (i = from; i < to; ++i) {
+            idx = bs->lmps[i];
+            if (bs->hm[idx] == NULL) {
+                fprintf(file, "0,\n");
+            } else {
+                hm  = bs->hm[idx]+OFFSET;
+                len = bs->hm[idx][LENGTH];
+                cf  = bs->cf_32[bs->hm[idx][COEFFS]];
+                fprintf(file, "%u", cf[0]);
+                for (k = 0; k < nv; ++k) {
+                    if (ht->ev[hm[0]][k] > 0) {
+                        fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[0]][k]);
+                    }
+                }
+                for (j = 1; j < len; ++j) {
+                    fprintf(file, "+%u", cf[j]);
+                    for (k = 0; k < nv; ++k) {
+                        if (ht->ev[hm[j]][k] > 0) {
+                            fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[j]][k]);
+                        }
+                    }
+                }
+                if (i < to-1) {
+                    fprintf(file, ",\n");
+                } else {
+                    fprintf(file, "\n");
+                }
+            }
+        }
+    }
+}
+
+static void print_ff_basis_data(
+        const char *fn,
+        const char *mode,
+        const bs_t *bs,
+        const ht_t *ht,
+        const stat_t *st,
+        const data_gens_ff_t *gens,
+        const int32_t print_gb)
+{
+    if (print_gb > 0) {
+        if(fn != NULL){
+            FILE *ofile = fopen(fn, mode);
+            print_msolve_polynomials_ff_32(ofile, 0, bs->lml, bs, ht,
+                    st, gens->vnames, 2-print_gb);
+            fclose(ofile);
+        }
+        else{
+            print_msolve_polynomials_ff_32(stdout, 0, bs->lml, bs, ht,
+                    st, gens->vnames, 2-print_gb);
+        }
+    }
+}
+
+static int32_t get_nvars(const char *fn)
+{
+  FILE *fh  = fopen(fn,"r");
+  /** load lines and store data */
+  const int max_line_size  = 5000;
+  char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));
+
+  /** get first line (variables) */
+  const char comma_splicer  = ',';
+
+  /** get number of variables */
+  nvars_t nvars = 1; /** number of variables is number of commata + 1 in first line */
+  if (fgets(line, max_line_size, fh) != NULL) {
+    char *tmp = strchr(line, comma_splicer);
+    while (tmp != NULL) {
+      /** if there is a comma at the end of the line, i.e. strlen(line)-2 (since
+       * we have "\0" at the end of the string line, then we do not get another
+       * variable */
+      if ((uint32_t)(tmp-line) < strlen(line)-2) {
+        nvars++;
+        tmp = strchr(tmp+1, comma_splicer);
+      } else {
+        break;
+      }
+    }
+  } else {
+    printf("Bad file format.\n");
+    nvars = 0;
+  }
+  free(line);
+  fclose(fh);
+
+  return nvars;
+}
+
+/**
+ * Checks is a line of the input file is just empty resp. consists only
+ * of whitespaces
+ *
+ * \param line line
+ *
+ * \return 1 if the line is empty, else 0
+ */
+static inline int is_line_empty(const char *line)
+{
+  while (*line != '\0') {
+    if (!isspace(*line))
+      return 0;
+    line++;
+  }
+  return 1;
+}
+
+static int32_t get_ngenerators(char *fn){
+  int32_t nlines = 0;
+  char *line = malloc(sizeof(char)*50000);
+  size_t len = 0;
+  FILE *fh  = fopen(fn,"r");
+  /* first line are the variables */
+  if (getline(&line, &len, fh) == -1) {
+    return -1;
+  }
+  /* second line is the characteristic */
+  if (getline(&line, &len, fh) == -1) {
+    return -1;
+  }
+  while(getdelim(&line, &len, ',', fh) != -1) {
+    /* check if there are empty lines in the input file */
+    if (is_line_empty(line) == 0)
+      nlines++;
+  }
+  free(line);
+  fclose(fh);
+  return nlines;
+}
+
+
+static inline char *get_variable_name(const char *line, char **prev_pos)
+{
+  const char comma_splicer  = ',';
+
+  char *tmp_var   = (char *)malloc(50 * sizeof(char));
+  char *curr_pos  = strchr(*prev_pos, comma_splicer);
+  if (curr_pos != NULL) {
+    size_t var_diff   = (size_t)(curr_pos - *prev_pos);
+    memcpy(tmp_var, *prev_pos, var_diff);
+    tmp_var[var_diff] = '\0';
+    *prev_pos = curr_pos+1;
+  } else { /** we are at the last variable */
+    int prev_idx    = (int)(*prev_pos - line);
+    int curr_idx    = (int)(strlen(line)+1);
+    size_t var_diff = (size_t)(curr_idx - prev_idx);
+    memcpy(tmp_var, *prev_pos, var_diff);
+    tmp_var[var_diff] = '\0';
+  }
+
+  /** trim variable, remove blank spaces */
+  char *tmp_var_begin, *tmp_var_end;
+  tmp_var_begin = tmp_var_end =  tmp_var;
+  while (isspace(*tmp_var_begin))
+    tmp_var_begin++;
+  if (*tmp_var_begin != 0) {
+    while (*tmp_var_end)
+      tmp_var_end++;
+    do {
+      tmp_var_end--;
+    } while (isspace(*tmp_var_end));
+  }
+  int fin_len  = (int)(tmp_var_end - tmp_var_begin + 1);
+  size_t final_length = 0;
+  if (fin_len > 0)
+    final_length  = (size_t)fin_len;
+  char *final_var   = (char *)malloc((final_length+1) * sizeof(char));
+  memcpy(final_var, tmp_var_begin, final_length);
+  final_var[final_length] = '\0';
+  
+  free(tmp_var);
+  return final_var;
+}
+
+static inline nelts_t get_number_of_terms(const char *line)
+{
+  const char add_splicer        = '+';
+  const char minus_splicer      = '-';
+  const char whitespace_splicer = ' ';
+  char *tmp = NULL;
+  nelts_t nterms  = 1;
+  /** remove useless whitespaces at the beginning */
+  int i = 0;
+  while (strncmp(&whitespace_splicer, line+i, 1) == 0)
+    i++;
+  /** check if first non-whitespace char is "-", set term counter -1 in this case */
+  if (strncmp(&minus_splicer, line+i, 1) == 0)
+    nterms--;
+  /** now count terms */
+  tmp = strchr(line, add_splicer);
+  while (tmp != NULL) {
+    nterms++;
+    tmp = strchr(tmp+1, add_splicer);
+  }
+  tmp = strchr(line, minus_splicer);
+  while (tmp != NULL) {
+    nterms++;
+    tmp = strchr(tmp+1, minus_splicer);
+  }
+  //MS que faire si dans la ligne on a 0*x+0*y ?
+  return nterms;
+}
+
+
+static void get_variables(FILE *fh, char * line, int max_line_size,
+                          int32_t *nr_vars, data_gens_ff_t *gens, char **vnames){
+  long i;
+  char *tmp = NULL;
+  if (fgets(line, max_line_size, fh) != NULL) {
+    tmp = line;
+  } else {
+    printf("Bad file format (variable names).\n");
+    free(vnames);
+    free(line);
+    fclose(fh);
+    exit(1);
+  }
+  for (i=0; i<(*nr_vars); ++i) {
+    vnames[i]  = get_variable_name(line, &tmp);
+  }
+  gens->vnames = vnames;
+
+}
+
+static void get_characteristic(FILE *fh, char * line, int max_line_size,
+                               int32_t *field_char, char **vnames){
+  *field_char = 0;
+
+  if(fgets(line, max_line_size, fh) != NULL){
+    int64_t tmp_mod = atol(line);
+    if(tmp_mod >= 0){
+      *field_char = (int32_t) tmp_mod;
+      if(tmp_mod > 2147483647){
+        fprintf(stderr, "Warning: characteristic must be 0 or < 2^31\n");
+        free(vnames);
+        free(line);
+        fclose(fh);
+        exit(1);
+      }
+    }
+    else{
+      fprintf(stderr, "Bad file format (characteristic)\n");
+      free(vnames);
+      free(line);
+      fclose(fh);
+      exit(1);
+    }
+  }
+
+}
+
+static void get_nterms_and_all_nterms(FILE *fh, char *line, 
+                                      int max_line_size, data_gens_ff_t *gens,
+                                      int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
+
+  long i = 0, j = 0, k = 0;
+  line[0] = '\0';
+  size_t len = 0;
+  while(getdelim(&line, &len, ',', fh) != -1) {
+    for (k = 0, j = 0; j < len; ++j) { 
+      if (line[j] != '\n') {
+        line[k++] = line[j];
+      }
+    }
+    *nterms  = get_number_of_terms(line);
+    gens->lens[i] = *nterms;
+    *all_nterms += *nterms;
+    len = 0;
+    i++;
+  }
+}
+
+
+static inline void get_term(const char *line, char **prev_pos,
+                            char **term, size_t *term_size)
+{
+  /** note that maximal term length we handle */
+  const char add_splicer    = '+';
+  const char minus_splicer  = '-';
+
+  char *start_pos;
+  char *curr_pos_add    = strchr(*prev_pos, add_splicer);
+  char *curr_pos_minus  = strchr(*prev_pos, minus_splicer);
+  if (curr_pos_minus == line)
+    curr_pos_minus  = strchr(*prev_pos+1, minus_splicer);
+
+  if (*prev_pos != line)
+    start_pos = *prev_pos - 1;
+  else
+    start_pos = *prev_pos;
+
+  if (curr_pos_add != NULL && curr_pos_minus != NULL) {
+    size_t term_diff_add   = (size_t)(curr_pos_add - start_pos);
+    size_t term_diff_minus = (size_t)(curr_pos_minus - start_pos);
+    /** if "-" is the first char in the line, we have to adjust the
+      * if minus is nearer */
+    if (term_diff_add > term_diff_minus) {
+      if( term_diff_minus > *term_size){
+        fprintf(stderr, "Too large input integers, exit...\n");
+        exit(1);
+      }
+      memcpy(*term, start_pos, term_diff_minus);
+      (*term)[term_diff_minus]  = '\0';
+      *prev_pos                 = curr_pos_minus+1;
+      return;
+    /** if plus is nearer */
+    } else {
+      if(term_diff_add > *term_size){
+        fprintf(stderr, "Too large input integers, exit...\n");
+        exit(1);
+      }
+      memcpy(*term, start_pos, term_diff_add);
+      (*term)[term_diff_add]  = '\0';
+      *prev_pos               = curr_pos_add+1;
+      return;
+    }
+  } else {
+    if (curr_pos_add != NULL) {
+      size_t term_diff_add   = (size_t)(curr_pos_add - start_pos);
+      if(term_diff_add > *term_size){
+        fprintf(stderr, "Too large input integers, exit...\n");
+        exit(1);
+      }
+      memcpy(*term, start_pos, term_diff_add);
+      (*term)[term_diff_add]  = '\0';
+      *prev_pos               = curr_pos_add+1;
+      return;
+    }
+    if (curr_pos_minus != NULL) {
+      size_t term_diff_minus = (size_t)(curr_pos_minus - start_pos);
+      if(term_diff_minus > *term_size){
+        fprintf(stderr, "Too large input integers, exit...\n");
+        exit(1);
+      }
+      memcpy(*term, start_pos, term_diff_minus);
+      (*term)[term_diff_minus]  = '\0';
+      *prev_pos                 = curr_pos_minus+1;
+      return;
+    }
+    if (curr_pos_add == NULL && curr_pos_minus == NULL) {
+      size_t prev_idx  = (size_t)(start_pos - line);
+      size_t term_diff = strlen(line) + 1 - prev_idx;
+      if(term_diff > *term_size){
+        fprintf(stderr, "Too large input integers, exit...\n");
+        exit(1);
+      }
+      memcpy(*term, start_pos, term_diff);
+      (*term)[term_diff]  = '\0';
+      return;
+    }
+  }
+}
+
+
+static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
+                                          int32_t field_char,
+                                          data_gens_ff_t *gens, int32_t pos){
+  char *prev_pos;
+  size_t term_size = 50000;
+  char *term  = (char *)malloc(term_size * sizeof(char));
+  long int cf_tmp  = 0; /** temp for coefficient value, possibly coeff is negative. */
+
+  prev_pos = line;
+  get_term(line, &prev_pos, &term, &term_size);
+  if(term != NULL){
+    int32_t iv_tmp  = (int32_t)strtol(term, NULL, 10);
+    if (iv_tmp == 0) {
+      if (term[0] == '-') {
+        iv_tmp = -1;
+      } else {
+        iv_tmp = 1;
+      }
+    }
+    while (iv_tmp < 0) {
+      iv_tmp  +=  (int32_t)field_char; //MS change int -> long int
+    }
+    gens->cfs[pos]  = (int32_t)iv_tmp;
+    store_exponent(term, gens, pos*gens->nvars);
+    for(int j = 1; j < nterms; j++){
+      get_term(line, &prev_pos, &term, &term_size);
+      if (term != NULL) {
+        cf_tmp  = (int)strtol(term, NULL, 10);
+
+        if (cf_tmp == 0) {
+          if (term[0] == '-') {
+            cf_tmp = -1;
+          } else {
+            cf_tmp = 1;
+          }
+        }
+        while (cf_tmp < 0) {
+          cf_tmp  += (int)field_char;
+        }
+        gens->cfs[pos+j] = cf_tmp;
+        store_exponent(term, gens, (pos+j)*gens->nvars);
+      }
+      //      store_exponent(term, basis, ht);
+    }
+    free(term);
+    return 0;
+  }
+  free(term);
+
+  return 1;
+}
+
+static void beginning_strterm_to_mpz(char *str, mpz_t *num, mpz_t *den){
+  /* fprintf(stderr, "TERM = %s\n", str); */
+  mpq_t tmp;
+  mpq_init(tmp);
+  mpz_set_ui(*num, 1);
+  mpz_set_ui(*den, 1);
+  size_t m = 0;
+  size_t len = strlen(str);
+  for(m = 0; m < len; m++){
+    if(str[m]=='*' || str[m]==',') break;
+  }
+  const size_t sz = m;
+  char *buf = (char *)malloc((sz+1) * sizeof(char));
+  for(long i = 0; i < sz; i++){
+    buf[i]=str[i];
+  }
+  buf[sz]='\0';
+
+  int b = mpq_set_str(tmp, buf, 10);
+  mpq_get_num(*num, tmp);
+  mpq_get_den(*den, tmp);
+  if(b!=0) {
+    if (buf[0] == '-') {
+      mpz_set_si(*num, -1);
+      mpz_set_si(*den, 1);
+    } else {
+      mpz_set_si(*num, 1);
+      mpz_set_si(*den, 1);
+    }
+  }
+  free(buf);
+  mpq_clear(tmp);
+}
+
+static void inner_strterm_to_mpz(char *str, mpz_t *num, mpz_t *den){
+  mpq_t tmp;
+  mpq_init(tmp);
+  mpz_set_ui(*num, 1);
+  mpz_set_ui(*den, 1);
+  size_t m = 0;
+  size_t len = strlen(str);
+  for(m = 0; m < len; m++){
+    if(str[m]=='*' || str[m]==',') break;
+  }
+  const size_t sz = m;
+  char *buf = (char *)malloc((sz+1) * sizeof(char));
+  for(long i = 1; i < sz; i++){
+    buf[i-1]=str[i];
+  }
+  buf[sz-1]='\0';
+
+  int b = mpq_set_str(tmp, buf, 10);
+  mpq_get_num(*num, tmp);
+  mpq_get_den(*den, tmp);
+  if(b!=0) {
+    mpz_set_si(*num, 1);
+    mpz_set_si(*den, 1);
+  }
+  if(str[0]=='-'){
+    mpz_neg(*num, *num);
+  }
+  free(buf);
+  mpq_clear(tmp);
+}
+
+static int get_coefficient_mpz_and_term_from_line(char *line, int32_t nterms,
+                                          int32_t field_char,
+                                          data_gens_ff_t *gens, int32_t pos){
+  char *prev_pos = NULL;
+  size_t term_size = 50000;
+  char *term  = (char *)malloc(term_size * sizeof(char));
+
+  prev_pos = line;
+  get_term(line, &prev_pos, &term, &term_size);
+  if(term != NULL){
+
+    beginning_strterm_to_mpz(term, gens->mpz_cfs[pos], gens->mpz_cfs[pos+1]);
+    store_exponent(term, gens, pos/2*gens->nvars);
+    for(int j = 2; j < 2*nterms; j+=2){
+      get_term(line, &prev_pos, &term, &term_size);
+      inner_strterm_to_mpz(term, gens->mpz_cfs[pos+j], gens->mpz_cfs[pos+j+1]);
+      store_exponent(term, gens, ((pos+j)/2)*gens->nvars);
+    }
+    free(term);
+    return 0;
+  }
+  free(term);
+
+  return 1;
+}
+
+static void get_coeffs_and_exponents_ff32(FILE *fh, char *line, nelts_t all_nterms,
+                                          int32_t *nr_gens, data_gens_ff_t *gens){
+  int32_t pos = 0;
+  size_t len = 0;
+  if(getline(&line, &len, fh) !=-1){
+  }
+  if(getline(&line, &len, fh) !=-1){
+  }
+
+  gens->cfs = (int32_t *)(malloc(sizeof(int32_t) * all_nterms));
+  gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
+  long i, j, k;
+  for(i = 0; i < *nr_gens; i++){
+    if (getdelim(&line, &len, ',', fh) != -1) {
+      for (k = 0, j = 0; j < len; ++j) { 
+        if (line[j] != '\n') {
+          line[k++] = line[j];
+        }
+      }
+      if (line[k-1] == ',') {
+        line[k-1] = '\0';
+      }
+    }
+    if(get_coefficient_ff_and_term_from_line(line, gens->lens[i], gens->field_char,
+                                             gens, pos)){
+      fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
+      free(line);
+      fclose(fh);
+      exit(1);
+    }
+    pos += gens->lens[i];
+  }
+}
+
+
+static void get_coeffs_and_exponents_mpz(FILE *fh, char *line, nelts_t all_nterms,
+                                          int32_t *nr_gens, data_gens_ff_t *gens){
+  int32_t pos = 0;
+  size_t len = 0;
+  if(getline(&line, &len, fh) !=-1){
+  }
+  if(getline(&line, &len, fh) !=-1){
+  }
+
+  gens->cfs = (int32_t*)(malloc(sizeof(int32_t) * all_nterms));
+  if(gens->field_char==0){
+    gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms));
+    for(long i = 0; i < 2 * all_nterms; i++){
+      gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));
+      mpz_init(*(gens->mpz_cfs[i]));
+    }
+  }
+  gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
+  long i, j, k;
+  for(i = 0; i < *nr_gens; i++){
+    if (getdelim(&line, &len, ',', fh) != -1) {
+      for (k = 0, j = 0; j < len; ++j) { 
+        if (line[j] != '\n') {
+          line[k++] = line[j];
+        }
+      }
+      if (line[k-1] == ',') {
+        line[k-1] = '\0';
+      }
+    }
+    if(get_coefficient_mpz_and_term_from_line(line, gens->lens[i], gens->field_char,
+                                             gens, pos)){
+      fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
+      free(line);
+      fclose(fh);
+      exit(1);
+    }
+    pos += 2 * gens->lens[i];
+  }
+}
+
+
+
+static inline void initialize_data_gens(int32_t nvars, int32_t ngens, int32_t field_char, data_gens_ff_t *gens){
+  gens->nvars = nvars;
+  gens->ngens = ngens;
+  gens->field_char = field_char;
+  gens->change_var_order  = 0;
+  gens->linear_form_base_coef = 0;
+  gens->lens = (int32_t *)malloc(sizeof(int32_t) * ngens);
+}
+
+static int duplicate_vnames(char **vnames, int32_t nvars) {
+  int32_t i, j;
+
+  for (i = 1; i < nvars; ++i) {
+    for (j = 0; j < i; ++j) {
+      if (strcmp(vnames[i], vnames[j]) == 0) {
+        fprintf(stderr, "Duplicate variable name %s in input file.\n", vnames[i]);
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}
+
+//nr_gens is a pointer to the number of generators
+static void get_data_from_file(char *fn, int32_t *nr_vars, int32_t *field_char,
+                               int32_t *nr_gens, data_gens_ff_t *gens){
+  *nr_vars = get_nvars(fn);
+  *nr_gens = get_ngenerators(fn);
+
+  const int max_line_size  = 1073741824; 
+  char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));
+
+  FILE *fh  = fopen(fn,"r");
+
+  /** allocate memory for storing variable names */
+  char **vnames = (char **)malloc((*nr_vars) * sizeof(char *));
+  get_variables(fh, line, max_line_size, nr_vars, gens, vnames);
+  if (duplicate_vnames(vnames, *nr_vars) == 1) {
+      exit(1);
+  }
+  get_characteristic(fh, line, max_line_size, field_char, vnames);
+
+  initialize_data_gens(*nr_vars, *nr_gens, *field_char, gens);
+
+  nelts_t nterms, all_nterms = 0;
+  get_nterms_and_all_nterms(fh, line, max_line_size, gens, nr_gens,
+                            &nterms, &all_nterms);
+  fclose(fh);
+
+  fh = fopen(fn, "r");
+  if(gens->field_char>0){
+    get_coeffs_and_exponents_ff32(fh, line, all_nterms, nr_gens, gens);
+  }
+  else{
+    get_coeffs_and_exponents_mpz(fh, line, all_nterms, nr_gens, gens);
+  }
+  free(line);
+  fclose(fh);
+
+  return;
+}
+
+static inline void display_gens_ff(FILE *fh, data_gens_ff_t *gens){
+  long pos = 0;
+  int c;
+  for(long i = 0; i < gens->ngens; i++){
+    for(long j = 0; j < gens->lens[i]-1; j++){
+      c = gens->cfs[pos+j];
+      if(c != 1){
+        fprintf(fh, "%d", c);
+        display_monomial(fh, gens, pos+j, &gens->exps);
+      }
+      else{
+        display_monomial_single(fh, gens, pos+j, &gens->exps);
+      }
+      fprintf(fh, "+");
+    }
+    c = gens->cfs[pos+gens->lens[i]-1];
+    if(c!= 1){
+      fprintf(fh, "%d", c);
+      display_monomial(fh, gens, pos+gens->lens[i]-1, &gens->exps);
+    }
+    else{
+      int b = display_monomial_single(fh, gens, pos+gens->lens[i]-1, &gens->exps);
+      if(b==0){
+        fprintf(fh, "1");
+      }
+    }
+    pos+=gens->lens[i];
+    fprintf(fh,"\n");
+  }
+}
+
+static void display_gens_mpz(FILE *fh, data_gens_ff_t *gens){
+  long pos = 0;
+  for(long i = 0; i < gens->ngens; i++){
+    for(long j = 0; j < gens->lens[i]-1; j++){
+      if(mpz_cmp_ui(*(gens->mpz_cfs[pos+j]), 1) != 0){
+        mpz_out_str(fh, 10, *(gens->mpz_cfs[pos+j]));
+        display_monomial(fh, gens, pos+j, &gens->exps);
+      }
+      else{
+        display_monomial_single(fh, gens, pos+j, &gens->exps);
+      }
+      if(mpz_cmp_ui(*(gens->mpz_cfs[pos+j+1]), 0) > 0){
+        fprintf(fh, "+");
+      }
+    }
+    if(mpz_cmp_ui(*(gens->mpz_cfs[pos+ (gens->lens[i]) -1]), 1) != 0){
+      mpz_out_str(fh, 10, *(gens->mpz_cfs[pos+gens->lens[i]-1]));
+      display_monomial(fh, gens, pos+gens->lens[i]-1, &gens->exps);
+    }
+    else{
+      int b = display_monomial_single(fh, gens, pos+gens->lens[i]-1, &gens->exps);
+      if(b==0){
+        fprintf(fh, "1");
+      }
+    }
+    pos+=gens->lens[i];
+    fprintf(fh,"\n");
+  }
+}
+
+static inline void display_gens(char *file, data_gens_ff_t *gens){
+  FILE *fh = fopen(file, "w");
+  for(int i = 0; i < gens->nvars-1; i++){
+    fprintf(fh, "%s, ", gens->vnames[i]);
+  }
+  fprintf(fh, "%s\n", gens->vnames[gens->nvars-1]);
+  fprintf(fh, "%d\n", gens->field_char);
+  if(gens->field_char > 0){
+    display_gens_ff(fh, gens);
+  }
+  else{
+    display_gens_mpz(fh, gens);
+  }
+  fclose(fh);
+}

@@ -1,0 +1,578 @@
+\documentclass[a4paper,english,11pt]{scrartcl}
+
+\usepackage{ifpdf}
+\ifpdf
+  \pdfoutput=1
+\fi
+
+%\usepackage[DIV=9]{typearea}
+\KOMAoptions{DIV=12,abstract=true}
+
+%%%%% PAQUETS
+
+% Base
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage[usenames,dvipsnames,svgnames,table,hyperef]{xcolor}
+\usepackage{eurosym}
+
+% Typographies
+\usepackage{microtype}
+\usepackage{mathtools}  % Pour mathrlap et compagnie
+\usepackage{booktabs}   % De beaux tableaux
+\usepackage{array}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}p{#1}}
+
+\usepackage[]{csquotes}
+\usepackage{xspace}
+%\usepackage{fontawesome}
+
+% Graphiques
+%\usepackage{tikz}
+%\usepackage{tikz-cd}
+%\usetikzlibrary{calc,intersections,angles,quotes}
+
+\usepackage{float}
+
+\usepackage[]{graphicx}
+
+% Divers
+\usepackage[]{url}
+\usepackage[backgroundcolor=white,linecolor=red]{todonotes}
+
+\usepackage[shortlabels,inline]{enumitem}
+\setlist[description]{labelindent=!,labelsep=1em,font=\normalfont\bfseries}
+
+\usepackage{bm}
+
+\usepackage{libertine}  % NOARXIV
+\usepackage[libertine,vvarbb]{newtxmath}  % NOARXIV
+\setkomafont{sectioning}{\bfseries\rmfamily}
+\setkomafont{title}{}
+
+\usepackage[ruled]{caption}      % La légende des boites flottantes
+\captionsetup{format=hang,justification=raggedright,font=small,width=.95\textwidth,labelfont=it,labelsep=period}
+\usepackage[titles]{tocloft}
+\usepackage{setspace}
+\setstretch{1.07}
+\setdisplayskipstretch{.6}
+
+
+% Algorithms
+\usepackage[]{algpseudocode}
+\floatstyle{ruled}
+\newfloat{algo}{tp}{lop}
+\floatname{algo}{Algorithm}
+\setcounter{topnumber}{1}     % Pas plus d'une boite flottante en haut d'une page.
+\setcounter{bottomnumber}{1}  % idem mais en bas
+
+% scale texttt
+\usepackage[scaled=.75]{beramono}
+% PL : Chez moi, \tt, \sf, \bf, etc ne fonctionnent pas.
+\def\sf{}    % Il faudrait remplacer par \mathsf mais la syntaxe n'est pas la même
+\def\tt{\ttfamily}
+
+\definecolor{darkgoldenrod}{rgb}{0.72, 0.53, 0.04}
+\definecolor{amber}{rgb}{1.0, 0.75, 0.0}
+\definecolor{mred}{rgb}{.886,.239,.157}
+\definecolor{darkblue}{RGB}{63,101,134}
+% \usepackage[]{tocstyle}
+% \usetocstyle{nopagecolumn}
+% \settocstylefeature{pagenumberhook}{\normalfont\itshape\color{darkgoldenrod}}
+% \setkomafont{sectionentrypagenumber}{\itshape\color{darkgoldenrod}}
+
+\typearea{10}
+
+\setkomafont{title}{\raggedright\sffamily\bfseries\color{darkblue}}
+\setkomafont{title}{\raggedright\sffamily\bfseries\color{darkgoldenrod}}
+\addtokomafont{subtitle}{\normalfont\sffamily\raggedright\Large\itshape}
+\setkomafont{subject}{\raggedright\Large\sffamily\medls}
+\addtokomafont{author}{\raggedright\sffamily\setlength{\tabcolsep}{0pt}}
+\setkomafont{pageheadfoot}{\sffamily}
+\setkomafont{pagenumber}{\sffamily}
+
+\setkomafont{titlehead}{\sffamily}
+
+%\addtokomafont{section}{\color{darkblue}}
+\addtokomafont{section}{\color{darkgoldenrod}}
+%\addtokomafont{subsection}{\color{darkblue}}
+\addtokomafont{subsection}{\color{darkgoldenrod}}
+%\addtokomafont{subsubsection}{\normalfont\itshape\color{darkblue}}
+\addtokomafont{subsubsection}{\normalfont\itshape\color{darkgoldenrod}}
+%\addtokomafont{paragraph}{\normalfont\itshape\color{darkblue}}
+\addtokomafont{paragraph}{\normalfont\itshape\color{darkgoldenrod}}
+
+\ifpdf
+  \usepackage[
+      linktocpage=true,
+      hyperfootnotes=false,
+      pdftex,                %
+      bookmarks         = true,%     % Signets
+      bookmarksnumbered = true,%     % Signets numerotes
+      pdfpagemode       = None,%     % Signets/vignettes fermes a l'ouverture
+      pdfstartview      = FitH,%     % La page prend toute la largeur
+      pdfpagelayout     = SinglePage,% Vue par page
+      colorlinks        = true,%     % Liens en couleur
+      linkcolor= red, %    % couleur des liens internes
+      citecolor         =blue,
+      urlcolor          = magenta,%  % Couleur des liens externes
+      pdfborder         = {0 0 0}%   % Style de bordure : ici, pas de bordure
+      ]{hyperref}%                   % Utilisation de HyperTeX
+\else
+  \usepackage[
+      linktocpage=true,
+      hyperfootnotes=false,
+      bookmarks         = true,%     % Signets
+      bookmarksnumbered = true,%     % Signets numerotes
+      pdfpagemode       = None,%     % Signets/vignettes fermes a l'ouverture
+      pdfstartview      = FitH,%     % La page prend toute la largeur
+      pdfpagelayout     = SinglePage,% Vue par page
+      colorlinks        = true,%     % Liens en couleur
+      linkcolor= red, %    % couleur des liens internes
+      citecolor         =blue,
+      urlcolor          = magenta,%  % Couleur des liens externes
+      pdfborder         = {0 0 0}%   % Style de bordure : ici, pas de bordure
+      ]{hyperref}%                   % Utilisation de HyperTeX
+\fi
+    
+\hypersetup{
+linkcolor=blue!60!black,
+citecolor=red, %OrangeRed, %Emerald, %OliveGreen,
+urlcolor=blue, %BlueViolet %NavyBlue
+}
+\hypersetup{colorlinks=true}
+\usepackage{framed}
+%\usepackage{bm}
+
+\graphicspath{{../fwf_anr_2017/etc/}}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins}
+
+\usepackage{pgfgantt}
+\usepackage{pgfplots}
+\usetikzlibrary{positioning}
+\usetikzlibrary{fit}
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{calc}
+%%SG\usetikzlibrary{shapes,fpu,arrows,arrows.meta,calc,matrix,shapes.geometric,decorations.pathmorphing,intersections,fit,external,backgrounds,spy}
+%\usetikzlibrary{mindmap}
+%\usetikzlibrary{decorations.text}
+
+%\tikzset{box1/.style={draw=black, thick, rectangle,rounded corners, minimum height=2cm, minimum width=2cm}}
+\tikzset{box1/.style={draw=black, thick, rectangle,rounded corners, fill=black!7!white}}
+\tikzset{box2/.style={draw=black, thick, rectangle,rounded corners, fill=black!7!white, minimum height=3cm}}
+\tikzset{annot/.style={draw=black,thick,rounded corners,anchor=base, fill=red!10!white}}
+
+\newtcolorbox[auto counter]{challenge}[2][]{
+colframe=white!40!black,coltext=white!25!black,colback=white
+,fonttitle=\bfseries, title=Exercise~\thetcbcounter}
+
+\usepackage{fancyhdr}
+
+\allowdisplaybreaks[4]
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}[proposition]{Lemma}
+\newtheorem{theorem}[proposition]{Theorem}
+\newtheorem{corollary}[proposition]{Corollary}
+\newtheorem{definition}[proposition]{Definition}
+\newtheorem{conjecture}[proposition]{Conjecture}
+\newtheorem*{question}{Problem}
+
+
+% \def\mbbone{\mathbf{1}} % ONLYARXIV
+\def\mbbone{\mathbb{1}} % NOARXIV
+
+\theoremstyle{definition}
+\newtheorem{example}[proposition]{Example}
+
+\theoremstyle{remark}
+%\newtheorem{example}[proposition]{Example}
+\newtheorem*{remark}{Remark}
+
+\newcommand{\cmment}[1]{}
+\newcommand{\mop}[1]{\operatorname{#1}}
+\newcommand{\ud}{\mathrm{d}}
+\newcommand{\st}{\ \middle|\ }
+%\newcommand{\eqdef}{\smash{\ \stackrel{\text{def}}{=}\ }}
+\newcommand{\eqdef}{\triangleq}
+\newcommand{\abs}[1]{\left|#1\right|}
+\newcommand{\bA}{{\mathbb{A}}}
+\newcommand{\bE}{{\mathbb{E}}}
+\newcommand{\bP}{{\mathbb{P}}}
+\newcommand{\bN}{{\mathbb{N}}}
+\newcommand{\bC}{{\mathbb{C}}}
+\newcommand{\bQ}{{\mathbb{Q}}}
+\newcommand{\bR}{{\mathbb{R}}}
+\newcommand{\bF}{{\mathbb{F}}}
+\newcommand{\bK}{{\mathbb{K}}}
+\newcommand{\bS}{{\mathbb{S}}}
+\newcommand{\bZ}{{\mathbb{Z}}}
+\newcommand{\cL}{{\mathcal{L}}}
+\newcommand{\cB}{{\mathcal{B}}}
+\newcommand{\cD}{{\mathcal{D}}}
+\newcommand{\cY}{{\mathcal{Y}}}
+\newcommand{\cT}{{\mathcal{T}}}
+\newcommand{\cS}{{\mathcal{S}}}
+\newcommand{\cN}{{\mathcal{N}}}
+\newcommand{\cO}{{\mathcal{O}}}
+\newcommand{\cH}{{\mathcal{H}}}
+\newcommand{\cU}{{\mathcal{U}}}
+
+\newcommand{\vol}{\mop{vol}}
+
+\newcommand{\Sqrt}{\mop{Sqrt}}
+\newcommand{\Sin}{\mop{Sin}}
+\newcommand{\Cos}{\mop{Cos}}
+
+\newcommand{\NJ}{\mop{NJ}}
+
+\newcommand{\Proj}{\ensuremath{\bP^n}}
+\newcommand{\intx}[1]{\int_{\mathrlap{#1}}}
+\newcommand{\muav}{\mu_{\textrm{av}}}
+
+\def\geq{\geqslant}
+\def\leq{\leqslant}
+
+\makeatletter
+\def\cqlt{c.ql.t\@ifnextchar{.}{}{.\xspace}}
+
+%\bf and KOMA do not work in jcapco TeX distribution it complains that \bf is an old command if KOMA is active
+\DeclareOldFontCommand{\rm}{\normalfont\rmfamily}{\mathrm}
+\DeclareOldFontCommand{\sf}{\normalfont\sffamily}{\mathsf}
+\DeclareOldFontCommand{\tt}{\normalfont\ttfamily}{\mathtt}
+\DeclareOldFontCommand{\bf}{\normalfont\bfseries}{\mathbf}
+\DeclareOldFontCommand{\it}{\normalfont\itshape}{\mathit}
+\DeclareOldFontCommand{\sl}{\normalfont\slshape}{\@nomath\sl}
+\DeclareOldFontCommand{\sc}{\normalfont\scshape}{\@nomath\sc}
+
+\makeatother
+
+%\usepackage[pdftex,hypertexnames=false,hidelinks]{hyperref}
+
+
+\input{macros.tex}
+
+% \newtheorem{pbm}{Problem}
+% \newtheorem{definition}{Definition}
+% \newtheorem{theorem}[definition]{Theorem}
+% \newtheorem{corollary}[definition]{Corollary}
+% \newtheorem{proposition}[definition]{Proposition}
+% \newtheorem{lemma}[definition]{Lemma}
+% \newtheorem{remark}[definition]{Remark}
+
+
+\titlehead{\ACRONYM}
+\title{How to solve multivariate polynomial systems with {\msolve}?}
+\date{}
+
+\usepackage[
+%  citestyle=authoryear,
+  bibstyle=authoryear,
+  citestyle=numeric,
+  bibstyle=numeric,
+%  dashed=false,
+  backend=biber,
+  isbn=false,
+  doi=false,url=false,
+  maxcitenames=50,
+  hyperref=true,
+  maxbibnames=20,
+  firstinits=true
+  ]{biblatex}
+  \bibliography{biblio}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+
+\section{Introduction}
+
+\msolve~is a C library for solving multivariate polynomial systems of equations. 
+It relies on computer algebra, a.k.a. symbolic computation, algorithms to
+compute \emph{algebraic} representations of the solution set from which
+many, if not all, informations can be extracted.
+
+Solving polynomial systems with \msolve~is \emph{global} by contrast to
+\emph{local} numerical routines. The use of computer algebra methods allow also
+the user to bypass classical numerical issues encountered by numerical methods
+for polynomial system solving.
+
+\msolve~relies mainly on Gr\"obner bases algorithms (see below for a some basic
+definitions and properties). It is highly optimized, uses \texttt{AVX2}
+vectorization instructions and multi-threading.
+
+It uses the \texttt{GMP} library (handling multi-precision integers) and the
+\texttt{FLINT} library (handling arithmetics of univariate polynomials).
+
+\msolve~can be downloaded from
+\begin{center}
+  \url{https://msolve.lip6.fr}
+\end{center}
+where binaries (for \texttt{x86} processors runing Linux operating systems) and
+the source files are provided.
+
+\msolve~is designed for $64$ bit architectures, with \texttt{AVX2} instructions. 
+
+\section{Preliminaries}
+
+Polynomial systems arise in a wide range of applications in engineering and
+computing sciences. What it means to ``solve'' a polynomial system mainly
+depends on the application, the \emph{domain} where the coefficients lie and the
+properties of the solution set.
+
+For instance, in many applications of engineering sciences, the coefficients lie
+in the \emph{field} of rational numbers $\Q$. Sometimes, these coefficients
+appear as \emph{floating point} numbers but since floating point arithmetics is
+not fully convenient to handle reliably non-linear systems, the end-user may
+coerce these coefficients into rational numbers. There, using continued
+fractions is quite useful as it allows one to obtain reliable approximations
+with integers of small \emph{height} (hence small length when represented with
+bits). 
+
+All in all, one ends up with polynomial equations in the polynomial ring
+$\Q[x_1, \ldots, x_n]$, i.e. the set of polynomials with coefficients in $\Q$
+and involving indeterminates $x_1, \ldots, x_n$.
+
+In such applications, the end-user will most of the time expect informations on
+the solutions with coordinates in the field of real numbers $\R$ (for instance
+in robotics or biology) or in the field of complex numbers $\C$ (for instance in
+signal theory).
+
+When the number of solutions such systems in $\C^n$ is finite (one says that
+such systems have dimension at most zero), then it is well-known that the
+coordinates of the solutions can be parametrized by an \emph{algebraic number}
+at which one evaluates a rational fraction. In other words, there exist
+univariate polynomials $(w, v_1, \ldots, v_n)$ in $\Q[t]$ such that $w$ is
+square-free and the solution set in $\C^n$ can be written as
+\[
+  \left \{
+  \left (\frac{v_1(\vartheta)}{w'(\vartheta)}, \ldots,
+  \frac{v_n(\vartheta)}{w'(\vartheta)}\right ) \quad \mid \quad w(\vartheta) = 0
+\right \}
+\]
+where $w'=\frac{\partial w}{\partial t}$. Note that, with such an encoding
+(which is called a rational parametrization of the solution set), one can
+approximate at arbitrary precision the solutions of the input system (by isolate
+the ones of the univariate polynomial $w$).
+Note also that, since $w$ is square-free, $w$ and $w'$ are co-prime and the
+denominator in the above parametrization can be replaced by a constant.
+
+Remark that the total number of solutions in $\C^n$ equals the degree of $w$.
+Hence, when the input system has no complex solution, $w$ is a non-zero
+constant. Also, the number of real roots to the input system is the number of
+real roots of $w$.
+
+Note also that this encoding loses the number of solutions counted with
+\emph{multiplicities} ; this number is called the \emph{degree} of the input
+system (which always dominates the number of complex solutions). 
+
+For systems in $\Q[x_1, \ldots, x_n]$, \msolve~is able to decide if they have
+finitely many complex solutions and, in that case, returns a rational
+parametrization of the solution set in $\C^n$. It also counts and isolates the
+real roots of the polynomial $w$. We refer to Section~\ref{sec:zerodim} for
+details on how \msolve~encodes such outputs.
+
+When the input system has infinitely many complex solutions, \msolve~can output
+a \emph{Gr\"obner basis} of the \emph{ideal} generated by all input polynomials
+; this is a family of polynomials which is obtained by taking appropriate
+algebraic combinations of the input polynomials and from which one can extract
+several properties of the solution set, in particular its \emph{dimension} and
+its \emph{degree} (see Section~\ref{sec:posdim}). 
+
+For applications in cryptology and/or coding theory, polynomial systems lie in
+some polynomial ring $\F[x_1, \ldots, x_n]$ where $\F$ is some finite field. In
+that situation, \msolve~only supports prime field $\frac{\Z}{p\Z}$ with $p <
+2^{31}$. Denoting by $\overline{\F}$ an algebraic closure of $\F$, such systems
+have dimension at most $0$ when they have finitely many solutions in
+$\overline{\F}^n$, else they have positive dimension. For systems of dimension
+at most zero, an above rational parametrization can be computed when the
+characteristic of the field is large enough. 
+
+\section{Input file format}
+
+Consider the following polynomial system of equations
+\begin{center}
+$
+\begin{array}{rcl}
+x+2y+2z-1 &= &0\\
+x^2+2y^2+2z^2-x &= &0\\
+2xy+2yz-y &= &0
+\end{array}
+$
+\end{center}
+in $\Q[x,y,z]$.
+
+In order to solve it with \msolve~one simply produces a file with the following content
+\begin{tcolorbox}
+\begin{verbatim}
+x,y,z
+0
+x+2*y+2*z-1,
+x^2+2*y^2+2*z^2-x,
+2*x*y+2*y*z-y
+\end{verbatim}  
+\end{tcolorbox}
+Hence the structure of input files to \msolve is as follows:
+\begin{enumerate}
+\item the first line contains the variables of the input system, separated with
+  a comma ; 
+\item the second line contains the characteristic of the field over which
+  computations are performed ; 
+\item the next lines contain polynomials, in expanded form, separated by a comma
+  (except the last one) and with a line break. 
+\end{enumerate}
+
+
+
+When one wants to solve this system over $\frac{\Z}{65521\Z}$ one just replaces
+$0$ by $65521$ in the second line. Note that in the positive characteristic case
+the coefficients used should be smaller or equal to $2^{31}-1$.
+\section{Solving polynomial systems of dimension at most zero}\label{sec:zerodim}
+
+Let $\K$ be a field and $\overline{\K}$ be an algebraic closure of $\K$. We
+consider polynomials $(f_1, \ldots, f_s)$  in $\K[x_1, \ldots,
+x_n]$ and $V$ be the set of solutions to the system
+\[
+f_1=\cdots=f_s=0
+\]
+in $\overline{\K}^n$.
+
+When $V$ is empty in $\overline{\K}[x_1, \ldots, x_n]$, the
+output of \msolve~is
+\begin{verbatim}
+[1, []]
+\end{verbatim}
+
+When $V$ is finite, say $V$ is the union of the $\ell$ points $\balpha_1,
+\ldots, \balpha_\ell$ in $\overline{\K}^n$ with $\balpha_i = (\alpha_{i,1},
+\ldots, \alpha_{i,n})$. 
+
+When the input system has finitely many solutions in $\overline{\K}^n$, the
+output is encoded as follows:
+\begin{verbatim}
+[dim, [deg, nbsols, form, vars, [lw, lwp, param]]]
+\end{verbatim}
+where
+\begin{itemize}
+\item \texttt{dim} is $0$ (which indicates that the input system has finitely
+  many solutions);
+\item \texttt{deg} is the number of solutions counted with multiplicities in
+  $\overline{\K}^n$;
+\item \texttt{nbsols} is the number of solutions in $\overline{\K}^n$; 
+\item \texttt{form} is the linear form $\lambda$
+\item \texttt{vars} is the list of the variables which are parametrized;
+\item \texttt{lw} is the encoding of the eliminating polynomial $w$;
+\item \texttt{lwp} is the encoding of the denominator used in the rational
+  parametrization;
+\item \texttt{param} is the list of the output parametrizations as described
+  above ; the $i$-th one corresponds to the $i$-th element of \texttt{vars}.
+  % \textcolor{magenta}{I am not sure this is still the case, maybe I used a reverse
+  %   ordering.} 
+\end{itemize}
+
+
+%\textcolor{magenta}{Here we should give (small) examples.}
+\section{Solving polynomial systems of positive dimension}\label{sec:posdim}
+
+\section{Julia interface to \msolve}
+The Julia interface to \msolve is part of the official Julia package
+\texttt{GroebnerBasis.jl}. You can install the package via the following
+commands inside a Julia session:\\[1em]
+\texttt{using Pkg\\
+Pkg.add(“GroebnerBasis”)}\\[1em]
+Once the package is loaded via \texttt{using GroebnerBasis} one can call the function
+\texttt{msolve()} which returns, if any, the solutions of the given input
+system of multivariate polynomials. The most common calling convention is as follows:\\[1em]
+\texttt{solutions = msolve(I)}.\\[1em]
+where
+\begin{itemize}
+    \item \texttt{I} is of type \texttt{Singular.sideal} and
+    \item \texttt{solutions} is of type \texttt{Array\{Array\{Rational\{Int64\},1\},1\}}.
+\end{itemize}
+The most common options for calling \texttt{msolve()} in Julia are:
+\begin{itemize}
+    \item \texttt{info\_level} with values \texttt{0} (no information printing;
+        default), \texttt{1} (slight information printing on comptutational
+        status) or \texttt{2} (full information printing also on intermediate
+        steps),
+    \item \texttt{la\_option} for the linear algebra variant to be chosen inside
+        F4: \texttt{2} for exact linear algebra and tracing multi modular
+        computations (default) or \texttt{44} for probabilistic linear algebra
+        with independent modular computations;
+    \item \texttt{precision} for the bit precision with which the solutions are
+        computed from the rational parametrization. Default is \texttt{64}.
+    \item \texttt{get\_param} for returning, besides the solutions, also the
+        rational parametrization for the solution set. Default is
+        \texttt{false}.
+\end{itemize}
+So using \texttt{msolve()} with probabilistic linear algebra, the most verbose
+information printout and a precision of $80$ one would call\\[1em]
+\texttt{solutions = msolve(I, la\_option=44, info\_level=2,
+precision=80)}.\\[1em]
+Returning also the rational parametrization of the solution set one would
+call\\[1em]
+\texttt{param, solutions = msolve(I, get\_param=true)}.\\[1em]
+Having the rational parametrization \texttt{param} one can further solve trying,
+for example, higher precision:\\[1em]
+\texttt{newly\_computed\_solutions = solve\_rational\_parametrization(param)}\\[1em]
+You can get a full list of options for \texttt{msolve()} in Julia by typing
+inside Julia\\[1em]
+\texttt{? msolve()}
+\section{Maple interface to \msolve}
+The Maple interface to \msolve can be found on the \msolve homepage or in the
+\msolve binary package.
+Having loaded the interface one can call the function
+\texttt{MSolveRealRoots()} in the following way:\\[1em]
+\texttt{results = MSolveRealRoots(F, vars, msolve\_binary, in\_file, out\_file, get\_parametrization)}\\[1em]
+    where \texttt{F} denotes a polynomial system in variables \texttt{vars},
+    \texttt{msolve\_binary} gives the path to the binary (default is
+    \texttt{“../binary/msolve”}), 
+\texttt{in\_file} is the name of the input file for \msolve (default is
+\texttt{“/tmp/in.ms”}), 
+\texttt{out\_file} is the name of the output file for \msolve (default is
+\texttt{“/tmp/out.ms”}), and 
+\texttt{get\_parametrization} defines if the rational parametrization of the
+solution set is also returned (default is
+\texttt{0}, i.e. the parametrization is not returned). 
+ Depending on parameter \texttt{get\_parametrization}
+\texttt{results} consists only of the solutions or it is an array consisting of
+the rational parametrization as first entry and the solutions as second entry.
+
+\section{Sage interface to \msolve}
+The Sage interface to \msolve can be found on the \msolve homepage or in the
+\msolve binary package. Starting
+Sage we load the interface:\\[1em]
+\texttt{load(“msolve-to-sage-file-interface.sage”)}.\\[1em]
+Defining a multivariate polynomial ring \texttt{R} and a list \texttt{F} of
+polynomials in \texttt{R} one can solve the multivariate polynomial system
+defined by \texttt{F} via calling\\[1em]
+\texttt{results = MSolveRealRoots(}\\
+\texttt{F, mspath=“/path/to/msolve/binary”,
+v=verbosity, p=get\_parametrization)}\\[1em]
+Parameter \texttt{mspath} states the path to the msolve binary (default is
+\texttt{“../binary/msolve”}).
+The verbosity level can be set to \texttt{0} (no information printing; default),
+\texttt{1} (slight information printing on computational status) or \texttt{2}
+(full information printing also on intermediate steps).
+The \texttt{p} parameter can be set to \texttt{0} (rational parametrization of
+solution set is not returned) or \texttt{1} (returns also the rational
+parametrization of the solution set). Depending on parameter \texttt{p}
+\texttt{results} consists only of the solutions or it is an array consisting of
+the rational parametrization as first entry and the solutions as second entry.
+\section{Credits}
+
+The main developers of \msolve~are J\'er\'emy Berthomieu, Christian Eder and
+Mohab Safey El Din. It relies on original implementations of Faug\`ere's $F_4$
+algorithm \cite{F4} as well as Faug\`ere and Mou's Sparse-FGLM algorithm
+\cite{SparseFGLM}. We are grateful to Huu Phuoc Le and Jorge Garcia Fontan for a
+preliminary version of the Maple interface as well as Rémi Prébet for a
+preliminary version of the Sage interface.  
+
+\renewcommand*{\bibfont}{\small}
+  \printbibliography
+\end{document}

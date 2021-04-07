@@ -1,0 +1,4 @@
+Inside Julia apply the following steps:
+
+using Pkg
+Pkg.add("GroebnerBasis")

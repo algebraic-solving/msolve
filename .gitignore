@@ -1,0 +1,4 @@
+*.a
+*.o
+*.so
+src/msolve/msolve

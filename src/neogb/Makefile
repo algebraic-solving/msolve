@@ -26,6 +26,8 @@ all: libneogb.o neogb
 
 libneogb.o: libneogb.h gb.c
 		$(CC) $(local_CFLAGS) -c -static gb.c $(LDFLAGS) -o libneogb.o
+
+libneogb.a: libneogb.o
 		ar rcsv libneogb.a /usr/local/lib/libmpfr.a /usr/local/lib/libgmp.a $(LIBGOMP)/libgomp.a libneogb.o
 		ranlib libneogb.a
 

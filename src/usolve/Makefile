@@ -31,8 +31,10 @@ usolve : main.c usolve.c utils.c taylor_shift.c descartes.c evaluate.c print_uso
 
 libusolve.o : usolve.c utils.c taylor_shift.c descartes.c evaluate.c print_usolve.c debug.c refine.c
 	$(CC) -c -static usolve.c $(LOCAL_CFLAGS) $(LDFLAGS_F) $(LIB_PATHS) $(INC_PATHS) -o libusolve.o
-		ar rcsv libusolve.a /usr/local/lib/libmpfr.a /usr/local/lib/libgmp.a /usr/local/lib/libflint.a libusolve.o
-		ranlib libusolve.a
+
+libusolve.a: libusolve.o
+	ar rcsv libusolve.a /usr/local/lib/libmpfr.a /usr/local/lib/libgmp.a /usr/local/lib/libflint.a libusolve.o
+	ranlib libusolve.a
 
 tomaple : tomaple.o
 	$(CC) -static -o tomaple tomaple.o   $(LDFLAGS)

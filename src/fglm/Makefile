@@ -16,6 +16,8 @@ fglm: main.c linalg-fglm.c berlekamp_massey.c data_fglm.c fglm_core.c fglm_core.
 
 libfglm.o: linalg-fglm.c berlekamp_massey.c data_fglm.c fglm_core.c
 		$(CC) -c -static fglm_core.c $(LDFLAGS)  -o libfglm.o
+
+libfglm.a: libfglm.o
 		ar rcsv libfglm.a /usr/local/lib/libmpfr.a /usr/local/lib/libgmp.a /usr/local/lib/libflint.a  libfglm.o
 		ranlib libfglm.a
 

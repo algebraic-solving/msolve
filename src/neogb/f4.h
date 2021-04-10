@@ -20,7 +20,7 @@
 
 
 #ifndef GB_F4_H
-#define GB_f4_H
+#define GB_F4_H
 
 #include "data.h"
 

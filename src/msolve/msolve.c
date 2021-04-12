@@ -3639,33 +3639,47 @@ void single_exact_real_root_param(mpz_param_t param, interval *rt, long nb,
                                   mpz_t c, mpz_t tmp, mpz_t val_do, mpz_t val_up,
                                   mpz_t *tab, real_point_t pt, long prec,
                                   int info_level){
+
   mpz_poly_eval_2exp_naive(param->denom->coeffs, param->denom->length - 1,
                            &rt->numer, rt->k, tab, tab + 1);
 
   mpz_set(den_up, tab[0]);
   mpz_set(den_do, tab[0]);
+
   for(long nv = 0; nv < param->nvars - 1; nv++){
     mpz_poly_eval_2exp_naive(param->coords[nv]->coeffs,
                              param->coords[nv]->length - 1,
                              &rt->numer, rt->k, tab, tab + 1);
     mpz_set(val_up, tab[0]);
     mpz_set(val_do, tab[0]);
+
+    mpz_neg(val_do, val_do);
+    mpz_neg(val_up, val_up);
+    mpz_swap(val_up, val_do);
+
+
     long exp = (rt->k) * ((param->denom->length - 1) -
                           (param->coords[nv]->length - 1));
 
     mpz_mul_2exp(val_up, val_up, exp + prec);
-    mpz_fdiv_q(val_up, val_up, param->cfs[nv]);
-    mpz_fdiv_q(val_up, val_up, den_up);
-    mpz_set(val_do, val_up);
+    mpz_mul_2exp(val_do, val_do, exp + prec);
+    mpz_mul(tab[1], den_up, param->cfs[nv]);
+    mpz_cdiv_q(val_up, val_up, tab[1]);
+    mpz_fdiv_q(val_do, val_do, tab[1]);
 
     mpz_set(pt->coords[nv]->val_up, val_up);
     mpz_set(pt->coords[nv]->val_do, val_do);
-    mpz_neg(pt->coords[nv]->val_up, pt->coords[nv]->val_up);
-    mpz_neg(pt->coords[nv]->val_do, pt->coords[nv]->val_do);
     pt->coords[nv]->k_up = prec;
     pt->coords[nv]->k_do = prec;
     pt->coords[nv]->isexact = 1;
   }
+
+  mpz_set(pt->coords[param->nvars - 1]->val_do, rt->numer);
+  mpz_set(pt->coords[param->nvars - 1]->val_up, rt->numer);
+  pt->coords[param->nvars - 1]->k_up = rt->k;
+  pt->coords[param->nvars - 1]->k_do = rt->k;
+  pt->coords[param->nvars - 1]->isexact = 1;
+
 }
 
 void single_real_root_param(mpz_param_t param, mpz_t *polelim,
@@ -4095,7 +4109,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
              pt->coords[param->nvars - 1]->val_up, 1);
   pt->coords[param->nvars - 1]->k_up = rt->k;
   pt->coords[param->nvars - 1]->k_do = rt->k;
-
+  pt->coords[param->nvars - 1]->isexact = 0;
 
   mpz_clear(v1);
   mpz_clear(v2);

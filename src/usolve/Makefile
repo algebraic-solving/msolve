@@ -50,10 +50,6 @@ tomathematica : tomathematica.o
 tomathematica.o : tomathematica.c
 	$(CC) -c tomathematica.c $(LDFLAGS)
 
-# taylor_test : utils.o univmultiply.o mpz_upoly_multiply.o taylor_shift.o tests.c
-# 	$(CC) -static $(LOCAL_CFLAGS) -o taylor_test tests.c utils.o univmultiply.o mpz_upoly_multiply.o taylor_shift.o $(LDFLAGS) 
-
-
 clean:
 	rm usolve libusolve.o
 

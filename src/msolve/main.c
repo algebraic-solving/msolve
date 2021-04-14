@@ -95,7 +95,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "\t\t   p[1], ..., p[n-1] are univariate polynomials and \n");
   fprintf(stdout, "\t\t   c[1], ..., c[n-1] are coefficients.\n");
   fprintf(stdout, "\t\t   For each solution a = (a[1], ..., a[n]), one has\n");
-  fprintf(stdout, "\t\t   a[i] = (p[i]/(c[i] * den)) and elim(a[n]) = 0.\n");
+  fprintf(stdout, "\t\t   a[i] = -(p[i]/(c[i] * den)) and elim(a[n]) = 0.\n");
 
   fprintf(stdout, "\t - characteristic zero case: \n");
 
@@ -127,7 +127,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "\t\t   p[1], ..., p[n-1] are univariate polynomials and \n");
   fprintf(stdout, "\t\t   c[1], ..., c[n-1] are coefficients.\n");
   fprintf(stdout, "\t\t   For each solution a = (a[1], ..., a[n]), one has\n");
-  fprintf(stdout, "\t\t   a[i] = (p[i]/(c[i] * den)) and elim(a[n]) = 0.\n");
+  fprintf(stdout, "\t\t   a[i] = -(p[i]/(c[i] * den)) and elim(a[n]) = 0.\n");
 
 
   fprintf(stdout, "\nAdvanced options:\n\n");

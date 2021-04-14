@@ -1278,7 +1278,11 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
 
   interval *roots = bisection_Uspensky(upoly, deg, nb_pos_roots, nb_neg_roots,
                                        flags);
+
   unsigned long int nbroots = *nb_pos_roots + *nb_neg_roots;
+
+  /* display_roots_system(stderr, roots, nbroots); */
+
   e_time = omp_get_wtime ( ) - e_time;
 
   if(flags->verbose>=1){

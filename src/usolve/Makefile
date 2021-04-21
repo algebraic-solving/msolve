@@ -1,10 +1,9 @@
-MPFRDIR = /usr/local/lib/libmpfr.a
-GMPDIR = /usr/local/lib/libgmp.a
-FLINTDIR = /usr/local/lib/libflint.a
+# MPFRDIR = /usr/local/lib/libmpfr.a
+# GMPDIR = /usr/local/lib/libgmp.a
+# FLINTDIR = /usr/local/lib/libflint.a
 
-CC = gcc
 
-CFLAGS = -O3 -Wall -funroll-loops -Wshadow -Wpointer-arith -Wwrite-strings -Winline -static-libgcc -fopenmp
+CFLAGS = -O3 -Wall -funroll-loops -Wshadow -Wpointer-arith -Wwrite-strings -Winline -static-libgcc -fopenmp -fPIC
 
 LDFLAGS = -L$(MPFRDIR) -L$(GMPDIR) -L$(FLINTDIR)
 LDLIBS = -lpthread -lflint -lmpfr -lgmp  -lm

@@ -1,8 +1,6 @@
 CC = gcc
 
-CFLAGS = -O3 -Wall -funroll-loops -march=native -Wshadow -Wpointer-arith -Wwrite-strings -Winline -static-libgcc -fopenmp
-
-LDLIBS = -lpthread
+CFLAGS = -O3 -Wall -funroll-loops -march=native -Wshadow -Wpointer-arith -Wwrite-strings -Winline -static-libgcc -fopenmp -fPIC
 
 all : libfglm.o
 

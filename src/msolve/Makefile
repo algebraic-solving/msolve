@@ -1,18 +1,19 @@
-CC = gcc
-local_CFLAGS = -std=c99 -O2 -Wall -pedantic -funroll-loops -fomit-frame-pointer -fexpensive-optimizations -march=native -fPIC -static-libgcc $(CFLAGS)
-
+MPFRDIR = /usr/local/lib/libmpfr.a
+GMPDIR = /usr/local/lib/libgmp.a
+FLINTDIR = /usr/local/lib/libflint.a
 LIBGOMP = /usr/lib/gcc/x86_64-linux-gnu/9/libgomp.a
 #LIBGOMP = /usr/local/lib64/libgomp.a
 
-LIBS = -I/usr/local/include -L/usr/local/lib/ -I$(CURDIR) 
+CC = gcc
+LDLIBS = -lpthread -lgomp -lflint -lmpfr -lgmp  -lm
+
+local_CFLAGS = -std=c99 -O2 -Wall -pedantic -funroll-loops -fomit-frame-pointer -march=native -fopenmp -fPIC -static-libgcc $(CFLAGS)
 
 ALLSOURCES := $(wildcard *.c)
 
-LDFLAGS = $(LIBS) -lmpfr -lgmp -lpthread -fopenmp -lm
-
 $(eval GIT_COMMIT_SHA ="$(shell git rev-parse HEAD)")
 
-all: msolve
+all: msolve libmsolve.so
 
 .c.o:
 		@echo [Compile] $<
@@ -22,7 +23,7 @@ msolve: $(ALLSOURCES)
 		$(MAKE) libusolve.o -C ../usolve
 		$(MAKE) libfglm.o -C ../fglm
 		$(MAKE) libneogb.o -C ../neogb
-		$(CC) -D'GIT_COMMIT_HASH=$(GIT_COMMIT_SHA)' $(local_CFLAGS) -static main.c -o msolve $(LDFLAGS) -I/usr/local/include/ -I../usolve/ ../usolve/libusolve.o -I../fglm/ ../fglm/libfglm.o -I../neogb/ ../neogb/libneogb.o -lpthread -fopenmp -lgomp -lflint -lmpfr -lgmp -lm
+		$(CC) -D'GIT_COMMIT_HASH=$(GIT_COMMIT_SHA)' $(local_CFLAGS) -static main.c -o msolve -I/usr/local/include/ -I../usolve/ ../usolve/libusolve.o -I../fglm/ ../fglm/libfglm.o -I../neogb/ ../neogb/libneogb.o $(LDLIBS) 
 
 deps:
 		$(MAKE) libusolve.o -C ../usolve
@@ -30,13 +31,13 @@ deps:
 		$(MAKE) libneogb.o -C ../neogb
 
 libmsolve.so: deps $(ALLSOURCES)
-		$(CC) -D'GIT_COMMIT_HASH=$(GIT_COMMIT_SHA)' $(local_CFLAGS) -shared -Wl,-soname,libmsolve.so.0 $(LDFLAGS) -o libmsolve.so.0.1.0 ../usolve/libusolve.o ../fglm/libfglm.o ../neogb/libneogb.o libmsolve.c
+		$(CC) -D'GIT_COMMIT_HASH=$(GIT_COMMIT_SHA)' $(local_CFLAGS) -shared -Wl,-soname,libmsolve.so.1 $(LDFLAGS) -o libmsolve.so.0.1.1 ../usolve/libusolve.o ../fglm/libfglm.o ../neogb/libneogb.o libmsolve.c
 
 clean:
-		rm -f *.o	
-		rm -f ../usolve/*.o	
-		rm -f ../fglm/*.o	
-		rm -f ../neogb/*.o	
+		rm -f *.o
+		rm -f ../usolve/*.o
+		rm -f ../fglm/*.o
+		rm -f ../neogb/*.o
 		rm -f libmsolve.a
 		rm -f libmsolve.so*
 		rm -f msolve

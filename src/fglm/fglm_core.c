@@ -569,7 +569,7 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
 
 }
 
-static inline void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
+static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
 					   szmat_t block_size, long dimquot,
 					   uint64_t* squvars,
 					   uint64_t* linvars,
@@ -728,16 +728,16 @@ static inline void compute_minpoly(param_t *param,
 
 }
 
-static inline int compute_parametrizations(param_t *param,
-                                           fglm_data_t *data,
-                                           fglm_bms_data_t *data_bms,
-                                           long dim,
-                                           long dimquot,
-                                           long block_size,
-                                           long nlins,
-                                           uint64_t *linvars,
-                                           uint32_t *lineqs,
-                                           long nvars){
+static int compute_parametrizations(param_t *param,
+                                    fglm_data_t *data,
+                                    fglm_bms_data_t *data_bms,
+                                    long dim,
+                                    long dimquot,
+                                    long block_size,
+                                    long nlins,
+                                    uint64_t *linvars,
+                                    uint32_t *lineqs,
+                                    long nvars){
   nmod_poly_one(param->denom);
 
   if(invert_hankel_matrix(data_bms, dim)){
@@ -893,19 +893,19 @@ static inline void divide_table_polynomials (param_t *param,
 }
 
 
-static inline
+static 
 int compute_parametrizations_non_shape_position_case(param_t *param,
-						     fglm_data_t *data,
-						     fglm_bms_data_t *data_bms,
-						     ulong dimquot,
-						     szmat_t block_size,
-						     long nlins,
-						     uint64_t *linvars,
-						     uint32_t *lineqs,
-						     uint64_t *squvars,
-						     long nvars,
-						     mod_t prime,
-						     int verif){
+                                                     fglm_data_t *data,
+                                                     fglm_bms_data_t *data_bms,
+                                                     ulong dimquot,
+                                                     szmat_t block_size,
+                                                     long nlins,
+                                                     uint64_t *linvars,
+                                                     uint32_t *lineqs,
+                                                     uint64_t *squvars,
+                                                     long nvars,
+                                                     mod_t prime,
+                                                     int verif){
   int nr_fail_param=-1;
   if (invert_table_polynomial (param, data, data_bms, dimquot, block_size,
 				prime, 0, 0)) {

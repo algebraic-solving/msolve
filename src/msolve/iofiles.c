@@ -833,8 +833,9 @@ static int duplicate_vnames(char **vnames, int32_t nvars) {
 }
 
 //nr_gens is a pointer to the number of generators
-static void get_data_from_file(char *fn, int32_t *nr_vars, int32_t *field_char,
-                               int32_t *nr_gens, data_gens_ff_t *gens){
+static inline void get_data_from_file(char *fn, int32_t *nr_vars,
+                                      int32_t *field_char,
+                                      int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
   *nr_gens = get_ngenerators(fn);
 

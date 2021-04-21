@@ -524,9 +524,8 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
 
 static inline void reduce_generators(mpz_t **tmp, long nterms,
                                      int32_t * cfs, int32_t prime){
-  for(int32_t i = 0; i < 2*nterms; i++){
+  for(int32_t i = 0; i < 2*nterms; i += 2){
     cfs[i/2] = (int32_t)mpz_fdiv_ui(tmp[i][0], prime);
-    i++;
   }
 }
 
@@ -4155,7 +4154,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
 
     if(info_level){
       if(omp_get_wtime() - et >= step){
-        fprintf(stderr, "{%.2f%%}", 100*nc/((double) nc));
+        fprintf(stderr, "{%.2f%%}", 100*nc/((double) nb));
         et = omp_get_wtime();
       }
     }

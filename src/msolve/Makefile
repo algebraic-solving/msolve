@@ -4,6 +4,8 @@ FLINTDIR = /usr/local/lib/libflint.a
 LIBGOMP = /usr/lib/gcc/x86_64-linux-gnu/9/libgomp.a
 #LIBGOMP = /usr/local/lib64/libgomp.a
 
+RELEASE = 0.1.1
+
 CC = gcc
 LDLIBS = -lpthread -lgomp -lflint -lmpfr -lgmp  -lm
 
@@ -31,7 +33,7 @@ deps:
 		$(MAKE) libneogb.o -C ../neogb
 
 libmsolve.so: deps $(ALLSOURCES)
-		$(CC) -D'GIT_COMMIT_HASH=$(GIT_COMMIT_SHA)' $(local_CFLAGS) -shared -Wl,-soname,libmsolve.so.1 $(LDFLAGS) -o libmsolve.so.0.1.1 ../usolve/libusolve.o ../fglm/libfglm.o ../neogb/libneogb.o libmsolve.c
+		$(CC) -D'GIT_COMMIT_HASH=$(GIT_COMMIT_SHA)' $(local_CFLAGS) -shared -Wl,-soname,libmsolve.so.1 $(LDFLAGS) -o libmsolve.so.$(RELEASE) ../usolve/libusolve.o ../fglm/libfglm.o ../neogb/libneogb.o libmsolve.c
 
 clean:
 		rm -f *.o

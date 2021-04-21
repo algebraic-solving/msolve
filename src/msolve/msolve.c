@@ -4140,7 +4140,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
 
     if(info_level){
       if(omp_get_wtime() - et >= step){
-        fprintf(stderr, "{%.2f%%}", 100*nc/((double) nc));
+        fprintf(stderr, "{%.2f%%}", 100*nc/((double) nb));
         et = omp_get_wtime();
       }
     }

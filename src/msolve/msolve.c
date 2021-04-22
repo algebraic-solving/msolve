@@ -4205,7 +4205,6 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int32_t pbm_file,
                    int32_t precision,
                    files_gb *files){
-
     if(la_option == 2 || la_option == 1){
         int b = msolve_trace_qq(mp_param,
                 nmod_param,
@@ -4454,7 +4453,11 @@ restart:
                     info_level);
 
             st->fc  = gens->field_char;
-            printf("NOTE: Field characteristic is now corrected to %u\n", st->fc);
+            if(info_level){
+              fprintf(stderr,
+                      "NOTE: Field characteristic is now corrected to %u\n",
+                      st->fc);
+            }
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
                 exit(1);
@@ -4597,6 +4600,7 @@ restart:
                 initial_hts, nr_threads, max_pairs, update_ht,
                 la_option, info_level, print_gb,
                 generate_pbm, precision, files);
+
         if(b == 0){
             if(dim == 0 && dquot > 0){
                 (*mpz_paramp)->nvars  = gens->nvars;

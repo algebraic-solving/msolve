@@ -116,7 +116,7 @@ local i, results, get_param, param, b, sols, str, F, vars, fname1, fname2;
     fname1:=args[4]:
     fname2:=args[5]:
     get_param:=0:
-  elif margs=3 then
+  elif nargs=3 then
     F:=args[1]:
     vars:=args[2]:
     mspath:=args[3]:

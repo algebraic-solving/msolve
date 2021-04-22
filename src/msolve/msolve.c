@@ -4275,7 +4275,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                         gens->change_var_order != mp_param->nvars-1) {
                     coord_t *tmp = malloc(sizeof(coord_t));
                     int32_t lidx  = pts[0]->nvars-1;
-                    int32_t cvo   = gens->change_var_order;
+                    int32_t cvo   = gens->change_var_order-1;
                     for (long i = 0; i < nb; ++i) {
                         memcpy(tmp,pts[i]->coords[cvo], sizeof(coord_t));
                         memcpy(pts[i]->coords[cvo], pts[i]->coords[lidx], sizeof(coord_t));

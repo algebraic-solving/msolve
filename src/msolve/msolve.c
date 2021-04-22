@@ -4625,11 +4625,19 @@ restart:
 
                 if(files->out_file != NULL){
                     FILE *ofile2 = fopen(files->out_file, "a+");
-                    fprintf(ofile2, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
+                    if(get_param == 1){
+                      fprintf(ofile2, "[0, %d, 0, [0, [1]]],", gens->nvars);
+                    }
+                    display_real_points_middle(
+                                   stdout, *real_pts_ptr, *nb_real_roots_ptr);
                     fclose(ofile2);
                 }
                 else{
+                  if(get_param == 1){
                     fprintf(stdout, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
+                  }
+                  display_real_points_middle(
+                                   stdout, *real_pts_ptr, *nb_real_roots_ptr);
                 }
             }
             if(dim > 0){

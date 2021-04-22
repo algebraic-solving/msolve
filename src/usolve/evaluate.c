@@ -337,6 +337,13 @@ int lazy_mpz_poly_eval_interval(mpz_t *up, const unsigned long int deg,
                                 const long b,
                                 mpz_t tmp,
                                 mpz_t val_do, mpz_t val_up){
+
+  if(deg==0){
+    mpz_set(val_up, up[0]);
+    mpz_set(val_do, up[0]);
+    return 0;
+  }
+
   mpz_set_ui(val_up, 0);
   mpz_set_ui(val_do, 0);
   const long t = (deg) / b;

@@ -1233,9 +1233,12 @@ static inline void normalize_nmod_param(param_t *nmod_param){
     inv = inv2 % prime;
     nmod_poly_fit_length(nmod_param->denom, nmod_param->elim->length - 1);
     nmod_param->denom->length = nmod_param->elim->length - 1;
+
+    fprintf(stderr, "Degree = %ld\n", nmod_param->elim->length - 1);
     for(long i = 1; i < nmod_param->elim->length; i++){
       nmod_param->denom->coeffs[i-1] = (i * nmod_param->elim->coeffs[i]) % prime;
     }
+    fprintf(stderr, "coeff 0 in denom = %ld\n", nmod_param->denom->coeffs[0]);
 
     for(long i = 0; i < nmod_param->elim->length-1; i++){
       nmod_param->denom->coeffs[i] = (inv * nmod_param->denom->coeffs[i]) % prime;

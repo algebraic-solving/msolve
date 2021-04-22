@@ -2176,7 +2176,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                                bstart_cf_gb_xn,
                                                lmb, dquot, bs, bht,
                                                bexp_lm, bht->nv,
-                                               fc);
+                                               fc,
+                                               info_level);
 
         if(*bmatrix == NULL){
             *success = 0;
@@ -2280,7 +2281,8 @@ static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
                                                bstart_cf_gb_xn,
                                                lmb, dquot, bs, bht,
                                                bexp_lm, bht->nv,
-                                               fc);
+                                               fc,
+                                               info_level);
 
         if(*bmatrix == NULL){
           *success = 0;
@@ -2717,6 +2719,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   mpz_param->dim    = *dim_ptr;
   mpz_param->dquot  = *dquot_ptr;
+
   if(lmb_ori == NULL || success == 0){
     if(*dim_ptr==1){
       if(info_level){
@@ -4046,7 +4049,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
       fprintf(stderr, "BUG in real root extractor(2)\n");
       exit(1);
     }
-
 
     if(mpz_sgn(den_do) >=0 && mpz_sgn(den_up) >= 0){
       if(mpz_sgn(val_do)>=0 && mpz_sgn(val_up) >= 0){

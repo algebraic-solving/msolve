@@ -669,6 +669,7 @@ static inline void compute_elim_poly(fglm_data_t *data,
     nmod_poly_make_monic(data_bms->BMS->V1, data_bms->BMS->V1);
 }
 
+
 static inline long make_square_free_elim_poly(param_t *param,
                                               fglm_bms_data_t *data_bms,
                                               long dimquot,
@@ -701,7 +702,7 @@ static inline long make_square_free_elim_poly(param_t *param,
   }
 
   data_bms->sqf->num=0;
-  return dim;
+  return param->elim->length - 1;
 }
 
 static inline void compute_minpoly(param_t *param,

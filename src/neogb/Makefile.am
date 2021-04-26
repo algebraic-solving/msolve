@@ -1,2 +1,3 @@
-lib_LTLIBRARIES = libneogb.la
+lib_LTLIBRARIES 		= libneogb.la
 libneogb_la_SOURCES = libneogb.h gb.c
+libneogb_la_CFLAGS	= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS)

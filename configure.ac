@@ -25,7 +25,7 @@ AC_CHECK_LIB([flint], [fmpz_add_ui], , [AC_MSG_ERROR([FLINT not found])])
 AC_CHECK_LIB([m], [main], , [AC_MSG_ERROR([Math library not found])])
 AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
 AC_CHECK_LIB([pthread], [posix_spawn])
-AC_CHECK_LIB([gomp], [omp_get_thread_num])
+# AC_CHECK_LIB([gomp], [omp_get_thread_num])
 AC_CHECK_LIB(gmp, __gmpz_init, , [AC_MSG_ERROR([GNU MP not found, see https://gmplib.org/])])
 
 # Checks for header files.
@@ -42,6 +42,8 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
+
+AC_OPENMP
 
 AX_COUNT_CPUS
 AX_EXT

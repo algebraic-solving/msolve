@@ -23,7 +23,7 @@ AC_CHECK_LIB([m], [main], , [AC_MSG_ERROR([Math library not found])])
 AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
 AC_CHECK_LIB([pthread], [posix_spawn])
 AC_CHECK_LIB([gomp], [omp_get_thread_num])
-AC_CHECK_LIB([gmp], [___gmp_init_primesieve])
+AC_CHECK_LIB(gmp, __gmpz_init, , [AC_MSG_ERROR([GNU MP not found, see https://gmplib.org/])])
 
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stdint.h sys/time.h unistd.h])

@@ -9,6 +9,9 @@ AC_CONFIG_MACRO_DIR([m4])
 
 AM_MAINTAINER_MODE
 
+AM_PROG_AR
+LT_INIT
+
 # Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC

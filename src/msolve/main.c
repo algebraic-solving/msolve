@@ -27,7 +27,8 @@
 static inline void display_help(char *str){
   fprintf(stdout, "\nmsolve library for polynomial system solving\n");
   fprintf(stdout, "implemented by J. Berthomieu, C. Eder, M. Safey El Din\n");
-  fprintf(stdout, "commit hash: %s\n\n", GIT_COMMIT_HASH);
+  fprintf(stdout, "\n");
+  /* fprintf(stdout, "commit hash: %s\n\n", GIT_COMMIT_HASH); */
 
   fprintf(stdout, "Basic call:\n");
   fprintf(stdout, "\t ./msolve -f [FILE1] -o [FILE2]\n\n");

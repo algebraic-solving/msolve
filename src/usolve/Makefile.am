@@ -1,4 +1,23 @@
-lib_LTLIBRARIES 			= libusolve.la
+noinst_LTLIBRARIES 		= libusolve.la
 libusolve_la_SOURCES 	= usolve.c
-libusolve_la_LDFLAGS	= -release $(PACKAGE_VERSION)
 libusolve_la_CFLAGS		= $(SIMD_FLAGS) $(CPUEXT_FLAGS)
+
+EXTRA_DIST = 		bisection.h \
+								debug.h \
+								descartes.h \
+								evaluate.h \
+								libusolve.h \
+								print_usolve.h \
+								refine.h \
+								taylor_shift.h \
+								univmultiply.h \
+								data_usolve.c \
+								debug.c \
+								descartes.c \
+								evaluate.c \
+								print_usolve.c \
+								refine.c \
+								taylor_shift.c \
+								tests.c \
+								univmultiply.c \
+								utils.c

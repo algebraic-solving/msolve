@@ -234,7 +234,7 @@ static _SORT_R_INLINE void sort_r_simple(void *base, size_t nel, size_t w,
 
 #if defined NESTED_QSORT
 
-  _SORT_R_INLINE void sort_r(void *base, size_t nel, size_t width,
+  static _SORT_R_INLINE void sort_r(void *base, size_t nel, size_t width,
                                     int (*compar)(const void *_a,
                                                   const void *_b,
                                                   void *aarg),
@@ -291,7 +291,7 @@ static _SORT_R_INLINE void sort_r_simple(void *base, size_t nel, size_t w,
 
   /* implementation */
 
-  _SORT_R_INLINE void sort_r(void *base, size_t nel, size_t width,
+  static _SORT_R_INLINE void sort_r(void *base, size_t nel, size_t width,
                                     int (*compar)(const void *_a,
                                                   const void *_b, void *_arg),
                                     void *arg)

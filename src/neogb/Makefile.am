@@ -10,7 +10,6 @@ EXTRA_DIST	=		basis.h \
 								f4.h \
 								hash.h \
 								io.h \
-								la.h \
 								modular.h \
 								nf.h \
 								sort_r.h \

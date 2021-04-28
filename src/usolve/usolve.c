@@ -25,7 +25,9 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<gmp.h>
+#ifdef HAVE_OPENMP
 #include<omp.h>
+#endif
 
 #include "flint/flint.h"
 #include "flint/fmpz.h"

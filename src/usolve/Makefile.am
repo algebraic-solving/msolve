@@ -1,6 +1,6 @@
 noinst_LTLIBRARIES 		= libusolve.la
 libusolve_la_SOURCES 	= usolve.c
-libusolve_la_CFLAGS		= $(SIMD_FLAGS) $(CPUEXT_FLAGS)
+libusolve_la_CFLAGS		= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS)
 
 EXTRA_DIST = 		bisection.h \
 								debug.h \

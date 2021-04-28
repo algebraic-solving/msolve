@@ -19,7 +19,6 @@
  * Mohab Safey El Din */
 
 #include "univmultiply.c"
-#include<omp.h>
 
 #ifndef USOLVE
 #define USOLVE

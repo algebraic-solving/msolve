@@ -20,7 +20,6 @@
 
 #include<stdio.h>
 #include<stdlib.h>
-#include<gmp.h>
 
 static void display_left(FILE * stream, interval *root){
 

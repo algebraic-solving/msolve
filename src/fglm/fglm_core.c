@@ -27,7 +27,9 @@
 #include<string.h>
 #include<unistd.h>
 #include<time.h>
+#ifdef HAVE_OPENMP
 #include<omp.h>
+#endif
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 

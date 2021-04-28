@@ -18,8 +18,6 @@
  * Christian Eder
  * Mohab Safey El Din */
 
-#include <gmp.h>
-
 /* val / 2^(deg) is up(1/2) */
 static inline void mpz_upoly_eval_onehalf(mpz_t *up, unsigned long int deg,
                                              mpz_t *val){

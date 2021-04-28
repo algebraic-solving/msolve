@@ -18,9 +18,6 @@
  * Christian Eder
  * Mohab Safey El Din */
 
-#include <gmp.h>
-#include <omp.h>
-
 #ifndef USOLVE
 #define USOLVE
 #endif

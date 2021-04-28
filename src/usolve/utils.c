@@ -22,8 +22,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-#include <gmp.h>
-#include <omp.h>
 #include <math.h>
 
 #define bit_one_index(x) mpz_scan1((x), 0)

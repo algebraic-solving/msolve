@@ -848,7 +848,7 @@ int msolve_ff(param_t **bparam,
   }
 #endif
 
-  double st_lm = omp_get_wtime();
+  double st_lm = realtime();
   int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
   check_and_set_linear_poly_non_hashed(&nlins, linvars, lineqs_ptr,
                                        bld, bexp_lm,
@@ -901,7 +901,7 @@ int msolve_ff(param_t **bparam,
       return 0;
     }
     if(info_level > 1){
-      fprintf(stderr, "Build monomial basis: %.2f sec.\n", omp_get_wtime()-st_lm);
+      fprintf(stderr, "Build monomial basis: %.2f sec.\n", realtime()-st_lm);
     }
     sp_matfglm_t *matrix = build_matrixn(lmb, dquot, bld[0], blen, bexp, bcf_ff,
                                          bexp_lm, gens->nvars, gens->field_char);
@@ -937,7 +937,7 @@ int msolve_ff(param_t **bparam,
     /* timings */
     double ct0, ct1, rt0, rt1;
     ct0 = cputime();
-    rt0 = omp_get_wtime();
+    rt0 = realtime();
 
     if(info_level > 1){
       fprintf(stderr, "Starts FGLM\n");
@@ -980,7 +980,7 @@ int msolve_ff(param_t **bparam,
 
     /* timings */
     ct1 = cputime();
-    rt1 = omp_get_wtime();
+    rt1 = realtime();
     if (info_level) {
       fprintf(stderr, "-------------------------------------------------\
 ----------------------------------------\n");
@@ -1157,7 +1157,7 @@ int msolve_ff_alloc(param_t **bparam,
     }
 #endif
 
-    double st_lm = omp_get_wtime();
+    double st_lm = realtime();
     int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
     check_and_set_linear_poly_non_hashed(&nlins, linvars, lineqs_ptr,
             bld, bexp_lm,
@@ -1213,7 +1213,7 @@ int msolve_ff_alloc(param_t **bparam,
             return -1;
         }
         if(info_level > 1){
-            fprintf(stderr, "Build monomial basis: %.2f sec.\n", omp_get_wtime()-st_lm);
+            fprintf(stderr, "Build monomial basis: %.2f sec.\n", realtime()-st_lm);
         }
         sp_matfglm_t *matrix = build_matrixn(lmb, dquot, bld[0], blen, bexp, bcf_ff,
                 bexp_lm, gens->nvars, gens->field_char);
@@ -1237,7 +1237,7 @@ int msolve_ff_alloc(param_t **bparam,
 
         /* timings */
         double rt0, rt1;
-        rt0 = omp_get_wtime();
+        rt0 = realtime();
 
         if(info_level > 1){
             fprintf(stderr, "Starts FGLM\n");
@@ -1270,7 +1270,7 @@ int msolve_ff_alloc(param_t **bparam,
         free(squvars);
 
         /* timings */
-        rt1 = omp_get_wtime();
+        rt1 = realtime();
         if (info_level > 0) {
             fprintf(stderr, "FGLM time (elapsed) %.2f sec\n",
                     rt1-rt0);
@@ -1986,7 +1986,7 @@ int msolve_prob_linalg_qq(mpz_param_t mp_param,
     normalize_nmod_param(*bparam);
     if(degree == (*bparam)->elim->length-1 && b == 0){
       double cr0 = cputime();
-      double tr0 = omp_get_wtime();
+      double tr0 = realtime();
       if(rerun == 0){
         mcheck = check_unit_mpz_nmod_poly(mp_param->nsols + 1, numer,
                                           (*bparam)->elim,
@@ -2001,7 +2001,7 @@ int msolve_prob_linalg_qq(mpz_param_t mp_param,
         rerun = 0;
       }
       double cr1 = cputime();
-      double tr1 = omp_get_wtime();
+      double tr1 = realtime();
       rr += (cr1-cr0);
       tr += (tr1-tr0);
 
@@ -2244,9 +2244,9 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         int *success)
 {
     double ca0, rt;
-    ca0 = omp_get_wtime(); 
+    ca0 = realtime(); 
     bs_t *bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
-    rt = omp_get_wtime()-ca0;
+    rt = realtime()-ca0;
 
     if(info_level > 1){
         fprintf(stderr, "Learning phase %.2f Gops/sec\n",
@@ -2363,7 +2363,7 @@ static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
                                              int *success)
 {
     double ca0;
-    ca0 = omp_get_wtime();
+    ca0 = realtime();
     bs_t *bs = modular_f4(bs_qq, bht, st, fc);
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
     leadmons[0] = bexp_lm;
@@ -2425,7 +2425,7 @@ static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
 
         if (info_level) {
             fprintf(stderr, "First probabilistic F4 + FGLM time (elapsed): %.2f sec\n",
-                    omp_get_wtime() - ca0);
+                    realtime() - ca0);
         }
         return lmb;
     }
@@ -2498,9 +2498,9 @@ memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
 /* #pragma omp parallel for num_threads(st->nthrds)  \ */
 /*   private(i) schedule(dynamic) */
 for (i = 0; i < st->nprimes; ++i){
-  ca0 = omp_get_wtime();
+  ca0 = realtime();
   bs[i] = modular_f4(bs_qq, bht, st, lp->p[i]);
-  *stf4 = omp_get_wtime()-ca0;
+  *stf4 = realtime()-ca0;
 
   if(bs[i]->lml != num_gb[i]){
     /* nmod_params[i] = NULL; */
@@ -2586,10 +2586,10 @@ memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
 /* #pragma omp parallel for num_threads(st->nthrds)  \ */
 /*   private(i) schedule(dynamic) */
 for (i = 0; i < st->nprimes; ++i){
-  ca0 = omp_get_wtime();
+  ca0 = realtime();
   bs[i] = f4_trace_application_phase(
                                       trace, tht, bs_qq, bht, st, lp->p[i]);
-  *stf4 = omp_get_wtime()-ca0;
+  *stf4 = realtime()-ca0;
   /* printf("F4 trace timing %13.2f\n", *stf4); */
 
   if(bs[i]->lml != num_gb[i]){
@@ -3084,7 +3084,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     prime = lp->p[st->nprimes - 1];
 
     double ca0;
-    ca0 = omp_get_wtime();
+    ca0 = realtime();
 
     double stf4 = 0;
     modular_trace_application(bmatrix,
@@ -3109,7 +3109,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                               field_char, 0, /* info_level, */
                               bs, lmb_ori, *dquot_ptr, lp,
                               gens, &stf4, nsols, bad_primes);
-    double ca1 = omp_get_wtime() - ca0;
+    double ca1 = realtime() - ca0;
 
     if(nprimes==1){
       if(info_level>2){
@@ -3123,7 +3123,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
         fprintf(stderr, "Application phase %.2f Gops/sec\n",
                 (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
         fprintf(stderr, "Tracer + fglm time (elapsed): %.2f sec\n",
-                (omp_get_wtime() - ca0) / (st->nprimes));
+                (realtime() - ca0) / (st->nprimes));
       }
     }
 
@@ -3140,7 +3140,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
           mcheck = check_param_modular(mpz_param, nmod_params[i], lp->p[i],
                                        is_lifted, info_level);
         }
-        crr = omp_get_wtime();
+        crr = realtime();
         if(mcheck==1){
           br = new_rational_reconstruction(mpz_param,
                                            tmp_mpz_param,
@@ -3572,7 +3572,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
 
       double ca0 = 0;
       if (nprimes==1) {
-        ca0 = omp_get_wtime();
+        ca0 = realtime();
       }
 
       modular_probabilistic_apply(bmatrix,
@@ -3607,7 +3607,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
       if(info_level){
         if(nprimes==1) {
           fprintf(stderr, "Probabilistic F4 + FGLM time (elapsed): %.2f sec\n",
-                  omp_get_wtime() - ca0);
+                  realtime() - ca0);
         }
       }
 
@@ -4281,8 +4281,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   }
   interval *pos_root = malloc(sizeof(interval));
   mpz_init(pos_root->numer);
-  double et = omp_get_wtime();
-
+  double et = realtime();
   for(long nc = 0; nc < nb; nc++){
     interval *rt = roots+nc;
 
@@ -4293,9 +4292,9 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
                                 info_level);
 
     if(info_level){
-      if(omp_get_wtime() - et >= step){
+      if(realtime() - et >= step){
         fprintf(stderr, "{%.2f%%}", 100*nc/((double) nb));
-        et = omp_get_wtime();
+        et = realtime();
       }
     }
 
@@ -4382,11 +4381,11 @@ int real_msolve_qq(mpz_param_t mp_param,
               prec += (maxnbits - minnbits) / 2;
             }
 
-            double st = omp_get_wtime();
+            double st = realtime();
             roots = real_roots(pol, mp_param->elim->length - 1,
                     &nbpos, &nbneg, prec, info_level );
             long nb = nbpos + nbneg;
-            double step = (omp_get_wtime() - st) / (nb) * 10 * LOG2(precision);
+            double step = (realtime() - st) / (nb) * 10 * LOG2(precision);
 
             /* if(info_level){ */
             /*   display_roots_system(stderr, roots, nb); */
@@ -4399,7 +4398,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                 if(info_level){
                   fprintf(stderr, "Starts real root extraction.\n");
                 }
-                double st = omp_get_wtime();
+                double st = realtime();
                 pts = malloc(sizeof(real_point_t) * nb);
                 for(long i = 0; i < nb; i++){
                     real_point_init(pts[i], mp_param->nvars);
@@ -4409,7 +4408,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                                  step, info_level);
                 if(info_level){
                     fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
-                            omp_get_wtime() - st);
+                            realtime() - st);
                 }
 
                 /* If we added a linear form for genericity reasons remove do not
@@ -4995,7 +4994,7 @@ void msolve_julia(
 {
     /* timinigs */
     double st0 = cputime();
-    double rt0 = omp_get_wtime();
+    double rt0 = realtime();
 
     files_gb *files = calloc(1, sizeof(files_gb));
 
@@ -5062,7 +5061,7 @@ void msolve_julia(
     /* timings */
     if (info_level > 0) {
         double st1 = cputime();
-        double rt1 = omp_get_wtime();
+        double rt1 = realtime();
         fprintf(stderr, "-------------------------------------------------\
 -----------------------------------\n");
         fprintf(stderr, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",

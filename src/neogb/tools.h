@@ -35,7 +35,7 @@ double realtime(
     void
     );
 
-inline uint8_t mod_p_inverse_8(
+static inline uint8_t mod_p_inverse_8(
         const int16_t val,
         const int16_t p
         )
@@ -64,7 +64,7 @@ inline uint8_t mod_p_inverse_8(
     return d;
 }
 
-inline uint16_t mod_p_inverse_16(
+static inline uint16_t mod_p_inverse_16(
         const int32_t val,
         const int32_t p
         )
@@ -93,7 +93,7 @@ inline uint16_t mod_p_inverse_16(
     return (uint16_t)d;
 }
 
-inline uint32_t mod_p_inverse_32(
+static inline uint32_t mod_p_inverse_32(
         const int64_t val,
         const int64_t p
         )

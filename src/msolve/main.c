@@ -307,7 +307,7 @@ int main(int argc, char **argv){
 
     /* timinigs */
     double st0 = cputime();
-    double rt0 = omp_get_wtime();
+    double rt0 = realtime();
 
     /**
       We get values from the command line.
@@ -387,7 +387,7 @@ int main(int argc, char **argv){
     /* timings */
     if (info_level > 0) {
         double st1 = cputime();
-        double rt1 = omp_get_wtime();
+        double rt1 = realtime();
         fprintf(stderr, "-------------------------------------------------\
 -----------------------------------\n");
         fprintf(stderr, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",

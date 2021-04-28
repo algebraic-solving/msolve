@@ -37,7 +37,7 @@ void free_lucky_primes(
         primes_t **lpp
         );
 
-inline int is_lucky_prime_ui(
+static inline int is_lucky_prime_ui(
                           const uint32_t prime,
                           const bs_t * const bs
                           )
@@ -59,7 +59,7 @@ inline int is_lucky_prime_ui(
 }
 
 
-inline int is_lucky_prime(
+static inline int is_lucky_prime(
         const mpz_t prime,
         const bs_t * const bs
         )
@@ -89,7 +89,7 @@ void reduce_basis_no_hash_table_switching(
         stat_t *st
         );
 
-inline void generate_lucky_primes(
+static inline void generate_lucky_primes(
         primes_t *lp,
         const bs_t * const bs,
         const uint32_t start,

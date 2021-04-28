@@ -24,7 +24,7 @@
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <string.h>
-#include <immintrin.h>
+/* #include <immintrin.h> */
 #include <getopt.h>
 #include <ctype.h>
 #include <gmp.h>

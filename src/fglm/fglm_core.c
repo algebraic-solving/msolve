@@ -25,7 +25,6 @@
 #include<time.h>
 #include<omp.h>
 
-#define USEAVX2 1
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 
 #define DEBUGFGLM 0
@@ -433,7 +432,7 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
     res[mat->triv_idx[i]] = vec[mat->triv_pos[i]];
   }
   /* printf("ncols %u\n", ncols); */
-#ifdef USEAVX2
+#ifdef HAVE_AVX2
   /* matrix_vector_product(vres, mat->dense_mat, vec, ncols, nrows, prime, RED_32, RED_64); */
   _8mul_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
                               ncols, nrows, prime, RED_32, RED_64);

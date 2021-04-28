@@ -1166,16 +1166,16 @@ int msolve_ff_alloc(param_t **bparam,
         if(nlins==1){
             fprintf(stderr, "This Grobner basis contains %ld linear form\n", nlins);
             for(int i = 0 ; i < gens->nvars - 1; i++){
-                fprintf(stderr, "%ld, ", linvars[i]);
+                fprintf(stderr, "%llu, ", linvars[i]);
             }
-            fprintf(stderr, "%ld\n", linvars[gens->nvars-1]);
+            fprintf(stderr, "%llu\n", linvars[gens->nvars-1]);
         }
         if(nlins>1){
             fprintf(stderr, "This Grobner basis contains %ld linear forms\n", nlins);
             for(int i = 0 ; i < gens->nvars - 1; i++){
-                fprintf(stderr, "%ld, ", linvars[i]);
+                fprintf(stderr, "%llu, ", linvars[i]);
             }
-            fprintf(stderr, "%ld\n", linvars[gens->nvars-1]);
+            fprintf(stderr, "%llu\n", linvars[gens->nvars-1]);
         }
     }
     if(has_dimension_zero(bld[0], gens->nvars, bexp_lm)){
@@ -2252,9 +2252,9 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         fprintf(stderr, "Learning phase %.2f Gops/sec\n",
                 (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/rt);
         fprintf(stderr, "------------------------------------------\n");
-        fprintf(stderr, "#ADDITIONS       %13lu\n", (uint64_t)st->trace_nr_add * 1000);
-        fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (uint64_t)st->trace_nr_mult * 1000);
-        fprintf(stderr, "#REDUCTIONS      %13lu\n", st->trace_nr_red);
+        fprintf(stderr, "#ADDITIONS       %13llu\n", (uint64_t)st->trace_nr_add * 1000);
+        fprintf(stderr, "#MULTIPLICATIONS %13llu\n", (uint64_t)st->trace_nr_mult * 1000);
+        fprintf(stderr, "#REDUCTIONS      %13llu\n", st->trace_nr_red);
         fprintf(stderr, "------------------------------------------\n");
     }
 
@@ -3114,9 +3114,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     if(nprimes==1){
       if(info_level>2){
         fprintf(stderr, "------------------------------------------\n");
-        fprintf(stderr, "#ADDITIONS       %13lu\n", (uint64_t)st->application_nr_add * 1000);
-        fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (uint64_t)st->application_nr_mult * 1000);
-        fprintf(stderr, "#REDUCTIONS      %13lu\n", st->application_nr_red);
+        fprintf(stderr, "#ADDITIONS       %13llu\n", (uint64_t)st->application_nr_add * 1000);
+        fprintf(stderr, "#MULTIPLICATIONS %13llu\n", (uint64_t)st->application_nr_mult * 1000);
+        fprintf(stderr, "#REDUCTIONS      %13llu\n", st->application_nr_red);
         fprintf(stderr, "------------------------------------------\n");
       }
       if(info_level>1){

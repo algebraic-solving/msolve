@@ -20,7 +20,10 @@
 
 
 #include "data.h"
+
+#ifdef HAVE_AVX2
 #include <immintrin.h>
+#endif
 
 static void select_spairs_by_minimal_degree(
         mat_t *mat,

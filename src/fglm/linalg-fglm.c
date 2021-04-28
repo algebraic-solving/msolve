@@ -21,8 +21,21 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+
+#ifdef HAVE_AVX2
 #include <immintrin.h>
 
+#define AVX2LOAD(A) _mm256_load_si256((__m256i*)(A))
+#define AVX2LOADU(A) _mm256_loadu_si256((__m256i*)(A))
+#define AVX2STORE(res,A) _mm256_store_si256((__m256i*)(res),A);
+#define AVX2STOREU(res,A) _mm256_storeu_si256((__m256i*)(res),A);
+#define AVX2SETZERO() _mm256_setzero_si256()
+#define AVX2SET1_64(A0) _mm256_set1_epi64x(A0)
+#define AVX2AND_(A,B) _mm256_and_si256(A,B)
+#define AVX2ADD_64(A,B) _mm256_add_epi64(A,B)
+#define AVX2MUL(A,B) _mm256_mul_epu32(A,B)
+#define AVX2SRLI_64(A,i) _mm256_srli_epi64(A,i)
+#endif
 
 /* Matrix-vector product in GF(p), with p on 32 bits. */
 
@@ -40,17 +53,6 @@
 
 //-1 sur 32 bits
 #define MONE32 ((uint32_t)0xFFFFFFFF)
-
-#define AVX2LOAD(A) _mm256_load_si256((__m256i*)(A))
-#define AVX2LOADU(A) _mm256_loadu_si256((__m256i*)(A))
-#define AVX2STORE(res,A) _mm256_store_si256((__m256i*)(res),A);
-#define AVX2STOREU(res,A) _mm256_storeu_si256((__m256i*)(res),A);
-#define AVX2SETZERO() _mm256_setzero_si256()
-#define AVX2SET1_64(A0) _mm256_set1_epi64x(A0)
-#define AVX2AND_(A,B) _mm256_and_si256(A,B)
-#define AVX2ADD_64(A,B) _mm256_add_epi64(A,B)
-#define AVX2MUL(A,B) _mm256_mul_epu32(A,B)
-#define AVX2SRLI_64(A,i) _mm256_srli_epi64(A,i)
 
 #define ALIGNED32_MALLOC(p,type,nmemb,size) p=(type)_mm_malloc(nmemb*size,32);
 #define ALIGNED32_CALLOC(p,type,nmemb,size)     \
@@ -248,6 +250,7 @@ static inline void non_avx_matrix_vector_product(uint32_t* vec_res, const uint32
     }
 }
 
+#ifdef HAVE_AVX2
 static inline void matrix_vector_product(uint32_t* vec_res, const uint32_t* mat,
                                          const uint32_t* vec, const uint32_t ncols,
                                          const uint32_t nrows, const uint32_t PRIME,
@@ -789,4 +792,4 @@ static inline void _8mul_matrix_vector_product(uint32_t* vec_res,
       ++vec_res;
     }
 }
-
+#endif

@@ -30,7 +30,6 @@
 #include <limits.h>
 #include <math.h>
 #include <gmp.h>
-/* #include <threads.h> */
 
 /* check if OpenMP is available */
 #if defined(_OPENMP)

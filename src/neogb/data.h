@@ -26,10 +26,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <gmp.h>
 #include <string.h> /* for memset et al. */
 #include <limits.h>
 #include <math.h>
-#include <gmp.h>
 
 /* check if OpenMP is available */
 #if defined(_OPENMP)

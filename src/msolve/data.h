@@ -22,13 +22,11 @@
 #define MSOLVE_DATA_H
 
 #define _GNU_SOURCE
+#include "../neogb/data.h"
 #include <unistd.h>
 #include <string.h>
-/* #include <immintrin.h> */
 #include <getopt.h>
 #include <ctype.h>
-#include <gmp.h>
-#include "../neogb/data.h"
 #include "../neogb/libneogb.h"
 
 #define MODP(a,b)                               \

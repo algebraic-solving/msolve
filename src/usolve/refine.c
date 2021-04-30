@@ -734,7 +734,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
     mpz_init(tab[i]);
   }
 
-  double e_time = 0, refine_time = omp_get_wtime();
+  double e_time = 0, refine_time = realtime();
   int nb = nbneg + nbpos;
 
   remove_exact_roots_by_division(upol, deg, roots, nb, nthreads);
@@ -803,9 +803,9 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
         mpz_neg(rt->numer, rt->numer);
       }
     }
-    e_time += omp_get_wtime() - refine_time;
+    e_time += realtime() - refine_time;
     if(e_time>=step){
-      refine_time = omp_get_wtime();
+      refine_time = realtime();
       e_time = 0;
       if(verbose>=1){
         fprintf(stderr, "{%.2f%s}", ((double)i / nb) * 100, "%");
@@ -840,9 +840,9 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
       }
     }
 
-    e_time += omp_get_wtime() - refine_time;
+    e_time += realtime() - refine_time;
     if(e_time>=step){
-      refine_time = omp_get_wtime();
+      refine_time = realtime();
       e_time = 0;
       if(verbose>=1){
         fprintf(stderr, "{%.2f%s}", ((double)(i) / nb) * 100, "%");

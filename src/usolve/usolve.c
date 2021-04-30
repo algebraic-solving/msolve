@@ -29,6 +29,9 @@
 #include<omp.h>
 #endif
 
+/* for timing functions */
+#include "../neogb/tools.h"
+
 #include "flint/flint.h"
 #include "flint/fmpz.h"
 #include "flint/fmpz_poly.h"
@@ -721,7 +724,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
     return -1;
   }
 
-  e_time =  omp_get_wtime();
+  e_time =  realtime();
   if(flags->verbose>=1){
     fprintf(stderr,"*");
   }
@@ -733,7 +736,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
                      flags->tmpol, flags->shift_pwx, flags->pwx,
                      flags->nthreads);
   }
-  flags->time_shift += (omp_get_wtime()-e_time);
+  flags->time_shift += (realtime()-e_time);
   (flags->transl)++;
 
   if (oldk > k + 1){
@@ -860,14 +863,14 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
     fprintf(stderr,"c");
   }
 
-  e_time = omp_get_wtime();
+  e_time = realtime();
   if(flags->classical_algo==1){
     nb = descartes_classical(upol, flags->tmpol_desc, *deg, shalf, &bsgn);
   }
   else{
     nb = descartes(upol, flags->tmpol_desc, *deg, shalf, &bsgn, flags);
   }
-  flags->time_desc += (omp_get_wtime()-e_time);
+  flags->time_desc += (realtime()-e_time);
 
   if(flags->verbose>=3){
     fprintf(stderr,"[nb=%lu]",nb);
@@ -1281,7 +1284,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
             mpz_poly_min_bsize_coeffs(upoly, deg));
     fprintf(stderr, "nthreads = %d\n", flags->nthreads);
   }
-  double e_time = omp_get_wtime ( );
+  double e_time = realtime ( );
 
   interval *roots = bisection_Uspensky(upoly, deg, nb_pos_roots, nb_neg_roots,
                                        flags);
@@ -1290,7 +1293,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
 
   /* display_roots_system(stderr, roots, nbroots); */
 
-  e_time = omp_get_wtime ( ) - e_time;
+  e_time = realtime ( ) - e_time;
 
   if(flags->verbose>=1){
     fprintf(stderr, "\n");
@@ -1300,7 +1303,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
     fprintf(stderr,"Time for isolation (elapsed): %.2f sec\n", e_time);
   }
 
-  double refine_time = omp_get_wtime();
+  double refine_time = realtime();
   double step = (e_time+1) / (deg) * 1000 * LOG2(flags->prec_isole) * 2;
 
   if(nbroots > 0 && flags->prec_isole >= 0){
@@ -1313,7 +1316,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
                        flags->prec_isole, flags->verbose, step, flags->nthreads);
     }
   }
-  refine_time = omp_get_wtime() - refine_time;
+  refine_time = realtime() - refine_time;
 
   if(flags->print_stats>=1){
     display_stats(flags);

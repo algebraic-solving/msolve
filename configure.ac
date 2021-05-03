@@ -21,13 +21,20 @@ AC_PROG_MAKE_SET
 AC_PROG_RANLIB
 
 # Checks for libraries.
-AC_CHECK_LIB([flint], [fmpz_add_ui], , [AC_MSG_ERROR([FLINT not found])])
+# CAUTION: Order matters for static binary building.
 AC_CHECK_LIB([m], [main], , [AC_MSG_ERROR([Math library not found])])
-AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
-AC_CHECK_LIB([pthread], [posix_spawn])
-# AC_CHECK_LIB([gomp], [omp_get_thread_num])
 AC_CHECK_LIB(gmp, __gmpz_init, , [AC_MSG_ERROR([GNU MP not found, see https://gmplib.org/])])
+AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
+AC_CHECK_LIB([flint], [fmpz_add_ui], , [AC_MSG_ERROR([FLINT not found])])
+AC_OPENMP
+AC_CHECK_LIB([pthread], [posix_spawn])
 
+AX_OPENMP([
+    HAVE_OPENMP=yes
+    AC_DEFINE(HAVE_OPENMP, 1, [Enable OpenMP support])
+],[
+    HAVE_OPENMP=no
+])
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stdint.h sys/time.h unistd.h])
 
@@ -43,13 +50,6 @@ AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
 AC_TYPE_UINT8_T
 
-AC_OPENMP
-AX_OPENMP([
-    HAVE_OPENMP=yes
-    AC_DEFINE(HAVE_OPENMP, 1, [Enable OpenMP support])
-],[
-    HAVE_OPENMP=no
-])
 
 AX_COUNT_CPUS
 AX_EXT

@@ -812,7 +812,7 @@ static inline void initialize_data_gens(int32_t nvars, int32_t ngens, int32_t fi
   gens->nvars = nvars;
   gens->ngens = ngens;
   gens->field_char = field_char;
-  gens->change_var_order  = 0;
+  gens->change_var_order  = -1;
   gens->linear_form_base_coef = 0;
   gens->rand_linear = 0;
   gens->lens = (int32_t *)malloc(sizeof(int32_t) * ngens);

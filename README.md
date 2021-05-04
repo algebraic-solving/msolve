@@ -4,10 +4,7 @@
 
 # Install Instructions
 
-For building `msolve` change directory to the `src/msolve` folder and run `make`.
-This will automatically also run make in `src/usolve` (generating `libusolve.o`), `src/fglm` (generating `libfglm.o`) and `src/neogb` (generating `libneogb.o`), you do not need to do this by hand.
-
-**Note:** If you do not want the AVX2 version of `neogb`'s 32-bit F4 linear algebra you should run `make` with setting the corresponding `CFLAGS`, i.e.<br/>`make CFLAGS="-DNO_AVX2_IN_F4"`.
+See INSTALL.
 
 # Input File Format
 

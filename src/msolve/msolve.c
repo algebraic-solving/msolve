@@ -2655,32 +2655,6 @@ static inline void duplicate_data_mthread(int nthreads,
 }
 
 
-/* int msolve_trace_qq( */
-/*                     /\* /\\* return values *\\/ *\/ */
-/*                     /\* int32_t *bld,   /\\* basis load *\\/ *\/ */
-/*                     /\* int32_t **blen, /\\* length of each poly in basis *\\/ *\/ */
-/*                     /\* int32_t **bexp, /\\* basis exponent vectors *\\/ *\/ */
-/*                     /\* void **bcf,     /\\* coefficients of basis elements *\\/ *\/ */
-/*                     /\* input values *\/ */
-/*                     const int32_t *lens, */
-/*                     const int32_t *exps, */
-/*                     const void *cfs, */
-/*                     const uint32_t field_char, */
-/*                     const int32_t mon_order, */
-/*                     const int32_t nr_vars, */
-/*                     const int32_t nr_gens, */
-/*                     const int32_t ht_size, */
-/*                     const int32_t nr_threads, */
-/*                     const int32_t max_nr_pairs, */
-/*                     const int32_t reset_ht, */
-/*                     const int32_t la_option, */
-/*                     const int32_t reduce_gb, */
-/*                     const uint32_t prime_start, */
-/*                     const int32_t nr_primes, */
-/*                     const int32_t pbm_file, */
-/*                     const int32_t info_level, */
-/*                     data_gens_ff_t *gens){ */
-
 /*
 
   - renvoie 0 si le calcul est ok.
@@ -2843,7 +2817,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                             files,
                                             &success);
 
-  if(*dim_ptr == 0 && success){
+
+  if(*dim_ptr == 0 && success && *dquot_ptr > 0){
     if(nmod_params[0]->elim->length - 1 != *dquot_ptr){
       for(int i = 0; i < nr_vars - 1; i++){
         if((squvars[i] == 0) && round ){

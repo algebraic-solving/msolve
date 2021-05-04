@@ -304,17 +304,17 @@ static int change_variable_order_in_input_system(
     if (gens->linear_form_base_coef > 0) {
         return 0;
     }
-    if (cvo > 0) {
+    if (cvo > -1) {
         /* undo last variable change */
-        tmp_char = gens->vnames[nvars-1-cvo+1];
-        gens->vnames[nvars-1-cvo+1] = gens->vnames[0];
+        tmp_char = gens->vnames[nvars-1-cvo];
+        gens->vnames[nvars-1-cvo] = gens->vnames[0];
         gens->vnames[0]  = tmp_char;
         len = 0;
         tmp = 0;
         for (i = 0; i < ngens; ++i) {
             for (j = 0; j < gens->lens[i]; ++j) {
-                tmp = gens->exps[len + j * nvars + nvars-1-cvo+1];
-                gens->exps[len + j * nvars + nvars-1-cvo+1] =
+                tmp = gens->exps[len + j * nvars + nvars-1-cvo];
+                gens->exps[len + j * nvars + nvars-1-cvo] =
                     gens->exps[len + j * nvars + 0];
                 gens->exps[len + j * nvars + 0] = tmp;
             }
@@ -328,25 +328,25 @@ static int change_variable_order_in_input_system(
      * fprintf(stdout, "%s\n", gens->vnames[nvars-1]); */
     /* all cyclic changes already done, stop here, try to add
      * a linear form with additional variable afterwards */
-    if (cvo == nvars-1) {
+    gens->change_var_order++;
+    if (gens->change_var_order == nvars-1) {
         return 0;
     }
     /* do the current variable change */
-    tmp_char = gens->vnames[nvars-1-cvo];
-    gens->vnames[nvars-1-cvo]  = gens->vnames[0];
+    tmp_char = gens->vnames[nvars-1-cvo-1];
+    gens->vnames[nvars-1-cvo-1]  = gens->vnames[0];
     gens->vnames[0]  = tmp_char;
     len = 0;
     tmp = 0;
     for (i = 0; i < gens->ngens; ++i) {
         for (j = 0; j < gens->lens[i]; ++j) {
-            tmp = gens->exps[len + j * nvars + nvars-1-cvo];
-            gens->exps[len + j * nvars + nvars-1-cvo] =
+            tmp = gens->exps[len + j * nvars + nvars-1-cvo-1];
+            gens->exps[len + j * nvars + nvars-1-cvo-1] =
                 gens->exps[len + j * nvars + 0];
             gens->exps[len + j * nvars + 0] = tmp;
         }
         len +=  gens->lens[i]*nvars;
     }
-    gens->change_var_order++;
     if (info_level > 0) {
         printf("\nChanging variable order for possibly more generic staircase:\n");
         for(int i = 0; i < nvars-1; i++){
@@ -4327,14 +4327,13 @@ int real_msolve_qq(mpz_param_t mp_param,
                 }
                 /* If we changed the variable order for genericity reasons we have
                  * to rechange the entries in the solution points. */
-                if (gens->change_var_order != 0 &&
+                if (gens->change_var_order != -1 &&
                         gens->change_var_order != mp_param->nvars-1) {
                     coord_t *tmp = malloc(sizeof(coord_t));
-                    int32_t lidx  = pts[0]->nvars-1;
-                    int32_t cvo   = gens->change_var_order-1;
+                    int32_t lidx  = pts[0]->nvars - 1 - gens->change_var_order;
                     for (long i = 0; i < nb; ++i) {
-                        memcpy(tmp,pts[i]->coords[cvo], sizeof(coord_t));
-                        memcpy(pts[i]->coords[cvo], pts[i]->coords[lidx], sizeof(coord_t));
+                        memcpy(tmp,pts[i]->coords[0], sizeof(coord_t));
+                        memcpy(pts[i]->coords[0], pts[i]->coords[lidx], sizeof(coord_t));
                         memcpy(pts[i]->coords[lidx], tmp, sizeof(coord_t));
                     }
                     free(tmp);
@@ -4915,7 +4914,7 @@ void msolve_julia(
     gens->nvars                 = nr_vars;
     gens->ngens                 = nr_gens;
     gens->field_char            = field_char;
-    gens->change_var_order      = 0;
+    gens->change_var_order      = -1;
     gens->linear_form_base_coef = 0;
     gens->vnames                = var_names;
     gens->lens                  = lens;

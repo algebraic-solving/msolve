@@ -50,6 +50,9 @@ typedef struct{
    * sum(i^k*x[k]) k = 1, ..., nvars
    * It is zero if no linear form is active, otherwise != zero. */
   int32_t linear_form_base_coef;
+  /* set to 1 if a linear form is chosen randomly */
+  int32_t rand_linear;
+  int32_t *random_linear_form;
   char **vnames;
   int32_t *lens;
   int32_t *exps;

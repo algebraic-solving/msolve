@@ -209,12 +209,13 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
   return mpz_poly_remove_binary_content(upol, deg);
 }
 
-static unsigned long int mpz_poly_min_bsize_coeffs(mpz_t *upol,
-                                                   unsigned long int deg){
-  unsigned long int min = ilog2_mpz(upol[0]), bs;
-  for(long i = 1 ; i <= deg; i++){
+unsigned long int mpz_poly_min_bsize_coeffs(mpz_t *upol,
+                                            unsigned long int deg){
+
+  unsigned long int min = ilog2_mpz(upol[deg]), bs;
+  for(long i = deg ; i >= 0; i--){
     bs = ilog2_mpz(upol[i]);
-    if(bs<min){
+    if(bs<min && mpz_cmp_ui(upol[i], 0) != 0){
       min = bs;
     }
   }

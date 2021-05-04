@@ -669,6 +669,7 @@ static inline void compute_elim_poly(fglm_data_t *data,
     nmod_poly_make_monic(data_bms->BMS->V1, data_bms->BMS->V1);
 }
 
+
 static inline long make_square_free_elim_poly(param_t *param,
                                               fglm_bms_data_t *data_bms,
                                               long dimquot,
@@ -701,7 +702,7 @@ static inline long make_square_free_elim_poly(param_t *param,
   }
 
   data_bms->sqf->num=0;
-  return dim;
+  return param->elim->length - 1;
 }
 
 static inline void compute_minpoly(param_t *param,
@@ -726,6 +727,84 @@ static inline void compute_minpoly(param_t *param,
     *dim = 1;
   }
 
+}
+static void set_param_linear_vars(param_t *param,
+                                  long nlins,
+                                  uint64_t *linvars,
+                                  uint32_t *lineqs,
+                                  long nvars){
+
+
+  int cnt = 1;
+  const uint32_t fc = param->charac;
+  /* fprintf(stderr, "\n"); */
+  /* fprintf(stderr, "nvars = %ld\n", nvars); */
+  /* fprintf(stderr, "nlins = %ld\n", nlins); */
+  /* for(int i = 0; i < nlins; i++){ */
+  /*   for(int j = 0; j < nvars + 1; j++){ */
+  /*     fprintf(stderr, "%d, ", lineqs[j + i*(nvars+1)]); */
+  /*   } */
+  /*   fprintf(stderr, "\n"); */
+  /* } */
+
+  int nr = 0;
+  if(nlins==nvars){
+    nr = nvars - 1;
+    param->elim->length = 2;
+    param->elim->coeffs[1] = 1;
+    param->elim->coeffs[0] = lineqs[nlins*(nvars + 1) - 1];
+  }
+  else{
+    nr = nlins;
+  }
+  /* for(int nc = 0; nc <= nvars-2; nc++){ */
+  for(int nc = nvars - 2; nc >= 0; nc--){
+    int ind = nvars - 2 - nc;
+    ind = nc;
+    if(linvars[nc] != 0){
+      int64_t lc = lineqs[nc +(nvars+1)*(nr-1 - (cnt-1))];
+      if(lc != 1){
+        fprintf(stderr, "There should be a bug\n");
+        exit(1);
+      }
+      for(int k = nc + 1; k < nvars - 1; k++){
+        int32_t c = lineqs[k+(nvars+1)*(nr-(cnt-1)-1)];
+        if(c){
+          for(int i = 0; i < param->coords[k]->length; i++){
+            int64_t tmp = (fc-c) * param->coords[k]->coeffs[i];
+            tmp = tmp % fc;
+            tmp += param->coords[ind]->coeffs[i];
+            tmp = tmp % fc;
+            param->coords[ind]->coeffs[i] = tmp;
+          }
+        }
+      }
+
+      int32_t c1 = lineqs[nvars-1+(nvars+1)*(nr-(cnt-1)-1)];
+      param->coords[ind]->coeffs[1] = ((int64_t)(param->coords[ind]->coeffs[1] + c1)) % fc;
+
+      int32_t c0 = lineqs[nvars+(nvars+1)*(nr-(cnt-1)-1)];
+      param->coords[ind]->coeffs[0] = ((int64_t)(param->coords[ind]->coeffs[0] + c0)) % fc;
+
+      for(long k = param->coords[ind]->length - 1; k >= 0; k--){
+        if(param->coords[ind]->coeffs[k] == 0){
+          param->coords[ind]->length--;
+        }
+        else{
+          break;
+        }
+      }
+
+      nmod_poly_rem(param->coords[ind], param->coords[ind],
+                    param->elim);
+
+      cnt++;
+    }
+  }
+
+#if DEBUGFGLM >0
+  display_fglm_param(stderr, param);
+#endif
 }
 
 static int compute_parametrizations(param_t *param,
@@ -763,53 +842,25 @@ static int compute_parametrizations(param_t *param,
 #endif
       }
       else{
+        if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
+          nmod_poly_fit_length(param->coords[nvars-2-nc],
+                               param->elim->alloc );
+        }
+        param->coords[nvars-2-nc]->length = param->elim->length ;
+        for(long i = 0; i < param->elim->length ; i++){
+          param->coords[nvars-2-nc]->coeffs[i] = 0;
+        }
         dec++;
       }
     }
 
-    int cnt = 1;
-    const uint32_t fc = param->charac;
+    set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
 
-    for(long nc = nvars-2 ; nc >= 0; nc--){
-      if(linvars[nvars -2 - nc] != 0){
-
-        if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
-          nmod_poly_fit_length(param->coords[nvars-2-nc], param->elim->alloc - 1);
-        }
-        param->coords[nvars-2-nc]->length = param->elim->length - 1;
-        for(long i = 0; i < param->elim->length - 1; i++){
-          param->coords[nvars-2-nc]->coeffs[i] = 0;
-        }
-        for(long i = nc - 1; i >= 0; i--){
-          /* we'll do lineqs[i] *(the param) */
-          int64_t c = lineqs[nvars - 2 - i + (cnt-1)*(nvars + 1)];
-
-          if(c){
-            for(long j = 0; j < param->coords[nvars - 2 - i]->length ; j++){
-              int64_t coef = (fc - param->coords[nvars -2 - i]->coeffs[j]) * c;
-              coef = coef % fc;
-              coef = coef + param->coords[nvars-2-nc]->coeffs[j];
-              coef = coef % fc;
-              param->coords[nvars-2-nc]->coeffs[j] = coef;
-            }
-          }
-        }
-        /* takes coeff of x_n + the constant one */
-        int64_t c = lineqs[nvars - 1 + (cnt-1)*(nvars + 1)];
-
-        int64_t coef = (param->coords[nvars-2-nc]->coeffs[1]) + c;
-        coef = (coef) % param->charac;
-        param->coords[nvars-2-nc]->coeffs[1] = coef;
-
-        c = lineqs[nvars + (cnt-1)*(nvars + 1)];
-
-        coef = (param->coords[nvars-2-nc]->coeffs[0]) + c ;
-        coef = (coef) % fc;
-        param->coords[nvars-2-nc]->coeffs[0] = coef;
-
-        cnt++;
-      }
-    }
+#if DEBUGFGLM > 0
+    fprintf(stderr, "PARAM = ");
+    display_fglm_param_maple(stderr, param);
+    fprintf(stderr, "\n");
+#endif
     return 1;
   }
   else{
@@ -893,7 +944,8 @@ static inline void divide_table_polynomials (param_t *param,
 }
 
 
-static 
+
+static
 int compute_parametrizations_non_shape_position_case(param_t *param,
                                                      fglm_data_t *data,
                                                      fglm_bms_data_t *data_bms,
@@ -908,7 +960,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
                                                      int verif){
   int nr_fail_param=-1;
   if (invert_table_polynomial (param, data, data_bms, dimquot, block_size,
-				prime, 0, 0)) {
+                               prime, 0, 0)) {
 #if DEBUGFGLM > 0
     fprintf (stdout,"C1=");
     nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
@@ -918,96 +970,66 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
     long dec = 0;
     for(long nc = 0; nc < nvars - 1 ; nc++){
       if(linvars[nvars - 2 - nc] == 0){
-	divide_table_polynomials(param,data,data_bms, dimquot, block_size, prime,
-				 nc + 1-dec,0);
-	nmod_poly_neg(param->coords[nvars-2-nc], data_bms->BMS->R1);
+        divide_table_polynomials(param,data,data_bms, dimquot, block_size, prime,
+                                 nc + 1-dec,0);
+        nmod_poly_neg(param->coords[nvars-2-nc], data_bms->BMS->R1);
 #if DEBUGFGLM > 0
-	nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
-	fprintf(stdout, "\n");
+        nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
+        fprintf(stdout, "\n");
 #endif
       }
       else{
-	dec++;
+        dec++;
       }
     }
     /* parametrizations verification */
-    if (verif) { 
+    if (verif) {
       dec = 0;
       for(long nc = 0; nc < nvars - 1 ; nc++){
-	if(linvars[nvars - 2 - nc] == 0
-	   && squvars[nvars - 2 - nc] != 0){
-	  uint64_t lambda= 1 + ((uint64_t) rand() % (prime-1));
-    /* needed for verification */
+        if(linvars[nvars - 2 - nc] == 0
+           && squvars[nvars - 2 - nc] != 0){
+          uint64_t lambda= 1 + ((uint64_t) rand() % (prime-1));
+          /* needed for verification */
 
-	  invert_table_polynomial (param, data, data_bms, dimquot, block_size,
-				   prime, nc+1-dec, lambda);
+          invert_table_polynomial (param, data, data_bms, dimquot, block_size,
+                                   prime, nc+1-dec, lambda);
 #if DEBUGFGLM > 1
-	  fprintf (stdout,"C2=");
-	  nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
-	  fprintf(stdout, "invC2=");
-	  nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+          fprintf (stdout,"C2=");
+          nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
+          fprintf(stdout, "invC2=");
+          nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
 #endif
-	  divide_table_polynomials(param,data,data_bms, dimquot, block_size,
-				   prime, nc+1-dec,lambda);
-	  nmod_poly_neg(data_bms->BMS->R1, data_bms->BMS->R1);
+
+          divide_table_polynomials(param,data,data_bms, dimquot, block_size,
+                                   prime, nc+1-dec,lambda);
+          nmod_poly_neg(data_bms->BMS->R1, data_bms->BMS->R1);
+
 #if DEBUGFGLM > 1
-	  nmod_poly_fprint_pretty(stdout, data_bms->BMS->R1, "X");
-	  fprintf(stdout, "\n");
+          nmod_poly_fprint_pretty(stdout, data_bms->BMS->R1, "X");
+          fprintf(stdout, "\n");
 #endif
-	  if (! nmod_poly_equal (param->coords[nvars-2-nc],data_bms->BMS->R1)) {
-
-	    if (nr_fail_param == -1) {
-	      nr_fail_param= nvars-2-nc;
-	    }
-
-	  }
-	} else{
-	  dec++;
-	}
-      }
-    }
-
-    int cnt = 1;
-    const uint32_t fc = param->charac;
-    for(long nc = nvars-2/*3-nr_fail_param*/; nc >= 0; nc--){
-      if(linvars[nvars -2 - nc] != 0){
-	if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
-          nmod_poly_fit_length(param->coords[nvars-2-nc], param->elim->alloc - 1);
-        }
-        param->coords[nvars-2-nc]->length = param->elim->length - 1;
-        for(long i = 0; i < param->elim->length - 1; i++){
-          param->coords[nvars-2-nc]->coeffs[i] = 0;
-        }
-        for(long i = nc - 1; i >= 0; i--){
-          /* we'll do lineqs[i] * (the param) */
-          int64_t c = lineqs[nvars - 2 - i + (cnt-1)*(nvars + 1)];
-
-          if(c){
-            for(long j = 0; j < param->coords[nvars - 2 - i]->length ; j++){
-              int64_t coef = (fc - param->coords[nvars -2 - i]->coeffs[j]) * c;
-              coef = coef % fc;
-              coef = coef + param->coords[nvars-2-nc]->coeffs[j];
-              coef = coef % fc;
-              param->coords[nvars-2-nc]->coeffs[j] = coef;
+          if (! nmod_poly_equal (param->coords[nvars-2-nc],data_bms->BMS->R1)) {
+            if (nr_fail_param == -1) {
+              nr_fail_param= nvars-2-nc;
             }
           }
         }
-        //recuperer le coeff en x_n + le coeff constant
-        int64_t c = lineqs[nvars - 1 + (cnt-1)*(nvars + 1)];
-
-        int64_t coef = (param->coords[nvars-2-nc]->coeffs[1]) + c;
-        coef = (coef) % param->charac;
-        param->coords[nvars-2-nc]->coeffs[1] = coef;
-
-        c = lineqs[nvars + (cnt-1)*(nvars + 1)];
-
-        coef = (param->coords[nvars-2-nc]->coeffs[0]) + c ;
-        coef = (coef) % fc;
-        param->coords[nvars-2-nc]->coeffs[0] = coef;
-
-        cnt++;
+        else{
+          if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
+            nmod_poly_fit_length(param->coords[nvars-2-nc],
+                                 param->elim->alloc );
+          }
+          param->coords[nvars-2-nc]->length = param->elim->length ;
+          for(long i = 0; i < param->elim->length ; i++){
+            param->coords[nvars-2-nc]->coeffs[i] = 0;
+          }
+          dec++;
+        }
       }
     }
+
+    set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
+
     /* display_fglm_param_maple(stderr, param); */
     return nvars-1-nr_fail_param;
   } else {
@@ -1095,7 +1117,7 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
   generate_sequence_verif(matrix, data, block_size, dimquot,
 			  squvars, linvars, nvars, prime);
 
-  if(info_level){
+  if(info_level > 1){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
     double rt = omp_get_wtime()-st;
     fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt, nops / rt);
@@ -1105,9 +1127,6 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
 
   /* Berlekamp-Massey data */
   fglm_bms_data_t *data_bms = allocate_fglm_bms_data(dimquot, prime);
-
-
-
 
   long dim = 0;
   compute_minpoly(param, data, data_bms, dimquot, linvars, lineqs, nvars, &dim,
@@ -1160,9 +1179,6 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
       return NULL;
     } else if (right_param == 1) {
       fprintf(stderr, "Radical ideal might have no correct parametrization\n");
-    } else if (right_param == 2) {
-      fprintf(stderr, "Only the first parametrization of ");
-      fprintf (stderr,"the radical ideal seems correct\n");
     } else if (right_param < nvars) {
       fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
       fprintf(stderr, "the radical ideal seem correct\n");
@@ -1290,32 +1306,39 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 								      squvars,
 								      nvars, prime,
 								      1); /* verif */
+
     if (right_param == 0) {
       if(info_level){
         fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
       }
       *success = 0;
       return NULL;
-    } else if (right_param == 1) {
-      if(info_level){
-        fprintf(stderr,
-                "Parametrizations of the radical of the input ideal are not correct\n");
+    }
+    else
+      if (right_param == 1) {
+        if(info_level){
+          fprintf(stderr,
+                  "Parametrizations of the radical of the input ideal are not correct\n");
+        }
+        *success = 0;
       }
-      *success = 0;
-    } else if (right_param == 2) {
-      if(info_level){
-        fprintf(stderr,
-                "Parametrizations of the radical of the input ideal is not correct\n");
-        fprintf (stderr,"(except the first one)\n");
-      }
-      *success = 0;
-    } else if (right_param < nvars) {
-      if(info_level){
-        fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-        fprintf(stderr, "the radical ideal seem correct\n");
-      }
-      *success = 0;
-    } 
+      else
+        /* if (right_param == 2) { */
+        /*   if(info_level){ */
+        /*     fprintf(stderr, */
+        /*             "Parametrizations of the radical of the input ideal is not correct\n"); */
+        /*     fprintf (stderr,"(except the first one)\n"); */
+        /*   } */
+        /*   *success = 0; */
+        /* } */
+        /* else */
+          if (right_param < nvars) {
+            if(info_level){
+              fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
+              fprintf(stderr, "the radical ideal seem correct\n");
+            }
+            *success = 0;
+          }
   }
   return param;
 }
@@ -1390,7 +1413,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   /* generate_sequence(matrix, data_fglm, block_size, dimquot, prime); */
   generate_sequence_verif(matrix, data_fglm, block_size, dimquot,
                           squvars, linvars, nvars, prime);
-  /* fprintf(stderr, "The matrix: \n"); */
+  /* fprintf(stderr, "Matrix: \n"); */
   /* display_fglm_matrix(stderr, matrix); */
   /* fprintf(stderr, "\n"); */
 

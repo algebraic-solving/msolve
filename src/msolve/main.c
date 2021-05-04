@@ -351,6 +351,8 @@ int main(int argc, char **argv){
     data_gens_ff_t *gens = allocate_data_gens();
 
     get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens); 
+    gens->rand_linear           = 0;
+    gens->random_linear_form = malloc(sizeof(int32_t *)*(nr_vars));
 
     /* data structures for parametrization */
     param_t *param  = NULL;
@@ -399,6 +401,7 @@ int main(int argc, char **argv){
     free(gens->lens);
     free(gens->cfs);
     free(gens->exps);
+    free(gens->random_linear_form);
     free(gens);
     free(files);
     return ret;

@@ -65,7 +65,8 @@ int msolve_trace_qq(
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
-        files_gb *files
+        files_gb *files,
+        int
         );
 
 int msolve_probabilistic_qq(
@@ -82,7 +83,8 @@ int msolve_probabilistic_qq(
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
-        files_gb *files
+        files_gb *files,
+        int round
         );
 
 int msolve_qq(
@@ -99,7 +101,8 @@ int msolve_qq(
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
-        files_gb *files
+        files_gb *files,
+        int
         );
 
 int real_msolve_qq(
@@ -120,7 +123,8 @@ int real_msolve_qq(
         int32_t print_gb,
         int32_t pbm_file,
         int32_t precision,
-        files_gb *files
+        files_gb *files,
+        int
         );
 
 int core_msolve(

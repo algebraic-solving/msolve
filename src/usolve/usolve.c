@@ -1095,8 +1095,9 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
 
   if(mpz_sgn(upol0[0]) == 0){
     merge_root(pos_roots, e, 0, 1, 0, *nb_pos_roots,
-               flags->bound_pos, flags->bound_neg, flags->sign);
+               0, 0, 1);
     (*nb_pos_roots) ++;
+    nb_positive_roots++;
     zero_root = 1;
   }
 

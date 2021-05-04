@@ -480,14 +480,14 @@ int64_t f4_julia(
         printf("Bad input data, stopped computation.\n");
         exit(1);
     }
-    
+
     success = core_f4(&bs, &bht, &st);
 
     if (!success) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
     }
-    
+
     int64_t nterms  = export_results_from_f4(bld, blen, bexp,
             bcf, &bs, &bht, &st);
 
@@ -497,7 +497,7 @@ int64_t f4_julia(
     st->overall_ctime = ct1 - ct0;
     st->overall_rtime = rt1 - rt0;
 
-    if (st->info_level > 0) {
+    if (st->info_level > 1) {
       print_final_statistics(stderr, st);
     }
 

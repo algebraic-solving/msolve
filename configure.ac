@@ -30,7 +30,7 @@ AC_CHECK_LIB([pthread], [posix_spawn])
 
 # check if we want OpenMP support
 AC_ARG_ENABLE([openmp],
-	[  --enable-openmp    Enable OpenMP support],
+	[  --enable-openmp         Enable OpenMP support],
 	[case "${enableval}" in
 		yes) 	openmp=true ;;
 		no)		openmp=false ;;

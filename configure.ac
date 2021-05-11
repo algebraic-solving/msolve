@@ -26,15 +26,27 @@ AC_CHECK_LIB([m], [main], , [AC_MSG_ERROR([Math library not found])])
 AC_CHECK_LIB(gmp, __gmpz_init, , [AC_MSG_ERROR([GNU MP not found, see https://gmplib.org/])])
 AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
 AC_CHECK_LIB([flint], [fmpz_add_ui], , [AC_MSG_ERROR([FLINT not found])])
-AC_OPENMP
 AC_CHECK_LIB([pthread], [posix_spawn])
 
-AX_OPENMP([
-    HAVE_OPENMP=yes
-    AC_DEFINE(HAVE_OPENMP, 1, [Enable OpenMP support])
-],[
-    HAVE_OPENMP=no
-])
+# check if we want OpenMP support
+AC_ARG_ENABLE([openmp],
+	[  --enable-openmp    Enable OpenMP support],
+	[case "${enableval}" in
+		yes) 	openmp=true ;;
+		no)		openmp=false ;;
+		*)		AC_MSG_ERROR([bad value ${enableval} for --enable-openmp]) ;;
+	esac],[openmp=true])
+
+if test x$openmp = xtrue ; then
+		AC_OPENMP
+		AX_OPENMP([
+				HAVE_OPENMP=yes
+				AC_DEFINE(HAVE_OPENMP, 1, [Enable OpenMP support])
+		],[
+				HAVE_OPENMP=no
+		])
+fi
+
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stdint.h sys/time.h unistd.h])
 

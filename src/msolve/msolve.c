@@ -2258,7 +2258,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         fprintf(stderr, "------------------------------------------\n");
     }
 
-    //Les monomes dominants dans la BG
+    /* Leading monomials from Grobner basis */
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
     leadmons[0] = bexp_lm;
     num_gb[0] = bs->lml;
@@ -2611,7 +2611,6 @@ for (i = 0; i < st->nprimes; ++i){
                                             lmb_ori, dquot_ori, bs[i], bht,
                                             leadmons_ori[i], bht->nv,
                                             lp->p[i]);
-
     if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
                                           nmod_params[i],
                                           bht->nv,
@@ -2641,17 +2640,110 @@ static inline void duplicate_data_mthread(int nthreads,
                                         int32_t **bstart_cf_gb_xn,
                                         int32_t **blen_gb_xn,
                                         int32_t **bdiv_xn,
-                                        sp_matfglm_t **bmatrix){
-  if(nthreads > 1){
-    fprintf(stderr, "Duplication of data to be implemented\n");
-    exit(1);
-  }
+                                          sp_matfglm_t **bmatrix,
+                                          param_t **nmod_params){
+  const long len_xn = bmatrix[0]->nrows;
+  const long dquot = bmatrix[0]->ncols;
+  const long len = num_gb[0] * nv;
+
   for(int i = 0; i < nthreads; i++){
-    leadmons_current[i] = (int32_t *)calloc(num_gb[0] * nv, sizeof(int32_t));
+    leadmons_current[i] = (int32_t *)calloc(len, sizeof(int32_t));
+  }
+  /* leadmons_ori[0] has already been allocated*/
+  for(int i = 1; i < nthreads; i++){
+    leadmons_ori[i] = (int32_t *)calloc(len, sizeof(int32_t));
+    for(long j = 0; j < len; j++){
+      leadmons_ori[i][j] = leadmons_ori[0][j];
+    }
+  }
+  for(long i = 1; i < nthreads; i++){
+    bstart_cf_gb_xn[i] = malloc(sizeof(int32_t) * len_xn);
+    blen_gb_xn[i] = malloc(sizeof(int32_t) * len_xn);
+    bdiv_xn[i] = malloc(sizeof(int32_t) * num_gb[0]/* bs->lml */);
+    for(long j = 0; j < len_xn; j++){
+      bstart_cf_gb_xn[i][j] = bstart_cf_gb_xn[0][j];
+      blen_gb_xn[i][j] = blen_gb_xn[0][j];
+    }
+    for(long j = 0; j < num_gb[0]; j++){
+      bdiv_xn[i][j] = bdiv_xn[0][j];
+    }
   }
   for(int i=1; i < nthreads; i++){
     num_gb[i] = num_gb[0];
   }
+  /* need to duplicate bmatrix */
+  for(int i = 1; i < nthreads; i++){
+
+    bmatrix[i] = calloc(1, sizeof(sp_matfglm_t));
+    bmatrix[i]->ncols = dquot;
+    bmatrix[i]->nrows = len_xn;
+    long len1 = dquot * len_xn;
+    long len2 = dquot - len_xn;
+
+    sp_matfglm_t *matrix = bmatrix[i];
+    if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
+      fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+      exit(1);
+    }
+    else{
+      for(long j = 0; j < len1; j++){
+        matrix->dense_mat[j] = 0;
+      }
+    }
+    if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*(dquot - len_xn))){
+      fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+      exit(1);
+    }
+    else{
+      for(long j = 0; j < (dquot-len_xn); j++){
+        matrix->triv_idx[j] = 0;
+      }
+    }
+    if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
+      fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+      exit(1);
+    }
+    else{
+      for(long j = 0; j < len2; j++){
+        matrix->triv_pos[j] = 0;
+      }
+    }
+    if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len_xn)){
+      fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+      exit(1);
+    }
+    else{
+      for(long j = 0; j < len_xn; j++){
+        matrix->dense_idx[j] = 0;
+      }
+    }
+    if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len_xn)){
+      fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+      exit(1);
+    }
+    else{
+      for(long j = 0; j < len_xn; j++){
+        matrix->dst[j] = 0;
+      }
+    }
+  }
+
+  for(int i = 1; i < nthreads; i++){
+    bdata_fglm[i] = allocate_fglm_data(len_xn, dquot, nv);
+    bdata_bms[i] = allocate_fglm_bms_data(dquot, 65521);
+    nmod_params[i] = allocate_fglm_param(nmod_params[0]->charac, nv);
+    nmod_poly_set(nmod_params[i]->elim, nmod_params[0]->elim);
+    nmod_poly_set(nmod_params[i]->denom, nmod_params[0]->denom);
+    for(long j = 0; j < nv - 2; j++){
+      nmod_poly_set(nmod_params[i]->coords[j], nmod_params[0]->coords[j]);
+    }
+  }
+
+  if(nthreads > 1){
+    fprintf(stderr, "Duplication of data to be implemented\n");
+    /* exit(1); */
+  }
+
 }
 
 
@@ -2902,14 +2994,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   }
 
   duplicate_data_mthread(st->nprimes, nr_vars, num_gb,
-                          leadmons_ori, leadmons_current,
-                          bdata_bms, bdata_fglm,
-                          bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix);
+                         leadmons_ori, leadmons_current,
+                         bdata_bms, bdata_fglm,
+                         bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix,
+                         nmod_params);
 
-
-  for(int i = 0; i < st->nprimes; i++){
-    normalize_nmod_param(nmod_params[i]);
-  }
+  normalize_nmod_param(nmod_params[0]);
 
   if(info_level){
     fprintf(stderr, "\nStarts trace based multi-modular computations\n");
@@ -2963,6 +3053,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int doit = 1;
   int prdone = 0;
   int lpow2 = 0;
+  int clog = 0;
   int br = 0;
   prime = next_prime(1<<30);
 
@@ -2996,31 +3087,30 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     ca0 = omp_get_wtime();
 
     double stf4 = 0;
-
     modular_trace_application(bmatrix,
-                                  bdiv_xn,
-                                  blen_gb_xn,
-                                  bstart_cf_gb_xn,
+                              bdiv_xn,
+                              blen_gb_xn,
+                              bstart_cf_gb_xn,
 
-                                  nlins,
-                                  linvars,
-                                  lineqs_ptr[0],
-                                  squvars,
+                              nlins,
+                              linvars,
+                              lineqs_ptr[0],
+                              squvars,
 
-                                  bdata_fglm,
-                                  bdata_bms,
-                                  num_gb,
-                                  leadmons_ori,
-                                  leadmons_current,
+                              bdata_fglm,
+                              bdata_bms,
+                              num_gb,
+                              leadmons_ori,
+                              leadmons_current,
 
-                                  bsz,
-                                  nmod_params, trace,
-                                  tht, bs_qq, lht, st,
-                                  field_char, 0, //info_level,
-                                  bs, lmb_ori, *dquot_ptr, lp,
-                                  gens, &stf4, nsols, bad_primes);
-
+                              bsz,
+                              nmod_params, trace,
+                              tht, bs_qq, lht, st,
+                              field_char, 0, /* info_level, */
+                              bs, lmb_ori, *dquot_ptr, lp,
+                              gens, &stf4, nsols, bad_primes);
     double ca1 = omp_get_wtime() - ca0;
+
     if(nprimes==1){
       if(info_level>2){
         fprintf(stderr, "------------------------------------------\n");
@@ -3033,7 +3123,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
         fprintf(stderr, "Application phase %.2f Gops/sec\n",
                 (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
         fprintf(stderr, "Tracer + fglm time (elapsed): %.2f sec\n",
-                omp_get_wtime() - ca0);
+                (omp_get_wtime() - ca0) / (st->nprimes));
       }
     }
 
@@ -3043,13 +3133,14 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       }
     }
 
+    double crr = 0, scrr = 0;
     for(len_t i = 0; i < st->nprimes; i++){
       if(bad_primes[i] == 0){
         if(rerun == 0){
           mcheck = check_param_modular(mpz_param, nmod_params[i], lp->p[i],
                                        is_lifted, info_level);
         }
-        double crr = omp_get_wtime();
+        crr = omp_get_wtime();
         if(mcheck==1){
           br = new_rational_reconstruction(mpz_param,
                                            tmp_mpz_param,
@@ -3063,28 +3154,14 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            is_lifted,
                                            doit,
                                            info_level);
-        }
-        double sccr = omp_get_wtime()-crr;
-        double t = ((double)nbdoit)*ca1;
-        if(sccr >= 0.2*t && br == 0){
-          nbdoit=2*nbdoit;
-          doit = 0;
-          if(info_level){
-            fprintf(stderr, "\n<Step:%d/%.2f/%.2f>",nbdoit,sccr,t);
+          if(br == 1){
+            rerun = 0;
           }
-          prdone = 0;
+          else{
+            rerun = 1;
+          }
         }
-        else{
-          prdone++;
-        }
-
-        if(br == 1){
-          rerun = 0;
-        }
-        else{
-          rerun = 1;
-        }
-        nprimes++;
+        scrr += omp_get_wtime()-crr;
       }
       else{
         if(info_level){
@@ -3099,21 +3176,37 @@ int msolve_trace_qq(mpz_param_t mpz_param,
           return -4;
         }
       }
-      if( (nprimes&(nprimes-1)) == 0 || (nbdoit != 1 && (nprimes%(lpow2/2) == 0) )){
+      nprimes++;
+    }
+    double t = ((double)nbdoit)*ca1;
+    if(scrr >= 0.2*t && br == 0){
+      nbdoit=2*nbdoit;
+      lpow2 = nprimes - lpow2;
+      doit = 0;
+      if(info_level){
+        fprintf(stderr, "\n<Step:%d/%.2f/%.2f>",nbdoit,scrr,t);
+      }
+      prdone = 0;
+    }
+    else{
+      prdone++;
+    }
+
+    if( (LOG2(nprimes) > clog) || (nbdoit != 1 && (nprimes % lpow2 == 0) ) ){
         if(info_level){
           fprintf(stderr, "{%d}", nprimes);
         }
-        if( (nprimes&(nprimes-1)) == 0){
-          lpow2 = nprimes;
-        }
-      }
+        clog++;
     }
+
   }
+
   mpz_param->denom->length = mpz_param->nsols;
   for(long i = 1; i <= mpz_param->nsols; i++){
     mpz_set(mpz_param->denom->coeffs[i-1], mpz_param->elim->coeffs[i]);
     mpz_mul_ui(mpz_param->denom->coeffs[i-1], mpz_param->denom->coeffs[i-1], i);
   }
+
 
   if(info_level){
     fprintf(stderr, "\n%d primes used\n", nprimes);
@@ -3401,9 +3494,10 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     }
 
     duplicate_data_mthread(st->nprimes, nr_vars, num_gb,
-            leadmons_ori, leadmons_current,
-            bdata_bms, bdata_fglm,
-            bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix);
+                           leadmons_ori, leadmons_current,
+                           bdata_bms, bdata_fglm,
+                           bstart_cf_gb_xn, blen_gb_xn, bdiv_xn,
+                           bmatrix, nmod_params);
 
 
     if(info_level){
@@ -4290,7 +4384,7 @@ int real_msolve_qq(mpz_param_t mp_param,
 
             double st = omp_get_wtime();
             roots = real_roots(pol, mp_param->elim->length - 1,
-                    &nbpos, &nbneg, prec, info_level + 1);
+                    &nbpos, &nbneg, prec, info_level );
             long nb = nbpos + nbneg;
             double step = (omp_get_wtime() - st) / (nb) * 10 * LOG2(precision);
 

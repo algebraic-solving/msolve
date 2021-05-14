@@ -3161,7 +3161,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
             rerun = 1;
           }
         }
-        scrr += omp_get_wtime()-crr;
+        scrr += realtime()-crr;
       }
       else{
         if(info_level){

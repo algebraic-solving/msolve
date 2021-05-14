@@ -83,13 +83,13 @@ ht_t *initialize_basis_hash_table(
     if (ht->ev == NULL) {
         fprintf(stderr, "Computation needs too much memory on this machine,\n");
         fprintf(stderr, "could not initialize exponent vector for hash table,\n");
-        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", ht->esz);
+        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
             (unsigned long)ht->nv * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
-        fprintf(stderr, "initialization failed, esz = %lu,\n", ht->esz);
+        fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
         fprintf(stderr, "segmentation fault will follow.\n");
     }
     const hl_t esz  = ht->esz;
@@ -131,13 +131,13 @@ ht_t *copy_hash_table(
     if (ht->ev == NULL) {
         fprintf(stderr, "Computation needs too much memory on this machine,\n");
         fprintf(stderr, "could not initialize exponent vector for hash table,\n");
-        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", ht->esz);
+        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
             (unsigned long)nv * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
-        fprintf(stderr, "initialization failed, esz = %lu,\n", ht->esz);
+        fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
         fprintf(stderr, "segmentation fault will follow.\n");
     }
     memcpy(tmp, bht->ev[0], (unsigned long)nv * ht->esz * sizeof(exp_t));
@@ -180,13 +180,13 @@ ht_t *initialize_secondary_hash_table(
     if (ht->ev == NULL) {
         fprintf(stderr, "Computation needs too much memory on this machine,\n");
         fprintf(stderr, "could not initialize exponent vector for hash table,\n");
-        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", ht->esz);
+        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
             (unsigned long)nv * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
-        fprintf(stderr, "initialization failed, esz = %lu,\n", ht->esz);
+        fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
         fprintf(stderr, "segmentation fault will follow.\n");
     }
     const hl_t esz  = ht->esz;
@@ -254,7 +254,7 @@ static void enlarge_hash_table(
     memset(ht->hd+eld, 0, (esz-eld) * sizeof(hd_t));
     ht->ev    = realloc(ht->ev, esz * sizeof(exp_t *));
     if (ht->ev == NULL) {
-        fprintf(stderr, "Enlarging hash table failed for esz = %ld,\n", esz);
+        fprintf(stderr, "Enlarging hash table failed for esz = %lu,\n", (unsigned long)esz);
         fprintf(stderr, "segmentation fault will follow.\n");
     }
     /* note: memory is allocated as one big block, so reallocating
@@ -263,7 +263,7 @@ static void enlarge_hash_table(
             esz * (unsigned long)nv * sizeof(exp_t));
     if (ht->ev[0] == NULL) {
         fprintf(stderr, "Enlarging exponent vector for hash table failed\n");
-        fprintf(stderr, "for esz = %ld, segmentation fault will follow.\n", esz);
+        fprintf(stderr, "for esz = %lu, segmentation fault will follow.\n", (unsigned long)esz);
     }
     /* due to realloc we have to reset ALL ev entries,
      * memory might have been moved */
@@ -281,7 +281,7 @@ static void enlarge_hash_table(
         const hl_t hsz  = ht->hsz;
         ht->hmap  = realloc(ht->hmap, hsz * sizeof(hi_t));
         if (ht->hmap == NULL) {
-            fprintf(stderr, "Enlarging hash table failed for hsz = %ld,\n", hsz);
+            fprintf(stderr, "Enlarging hash table failed for hsz = %lu,\n", (unsigned long)hsz);
             fprintf(stderr, "segmentation fault will follow.\n");
         }
         memset(ht->hmap, 0, hsz * sizeof(hi_t));
@@ -550,7 +550,7 @@ static inline void reinitialize_hash_table(
         if (ht->ev == NULL) {
             fprintf(stderr, "Computation needs too much memory on this machine,\n");
             fprintf(stderr, "could not reinitialize exponent vector for hash table,\n");
-            fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", esz);
+            fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)esz);
         }
         /* note: memory is allocated as one big block, so reallocating
          *       memory from evl[0] is enough    */
@@ -558,7 +558,7 @@ static inline void reinitialize_hash_table(
                 esz * (unsigned long)nv * sizeof(exp_t));
         if (ht->ev[0] == NULL) {
             fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
-            fprintf(stderr, "reinitialization failed, esz = %lu\n", esz);
+            fprintf(stderr, "reinitialization failed, esz = %lu\n", (unsigned long)esz);
             fprintf(stderr, "segmentation fault will follow.\n");
         }
         /* due to realloc we have to reset ALL evl entries, memory might be moved */
@@ -936,14 +936,14 @@ static void reset_hash_table(
     ht->ev  = calloc(esz, sizeof(exp_t *));
     if (ht->ev == NULL) {
         fprintf(stderr, "Computation needs too much memory on this machine,\n");
-        fprintf(stderr, "cannot reset ht->ev, esz = %lu\n", esz);
+        fprintf(stderr, "cannot reset ht->ev, esz = %lu\n", (unsigned long)esz);
         fprintf(stderr, "segmentation fault will follow.\n");
     }
     exp_t *tmp  = (exp_t *)malloc(
             (unsigned long)nv * esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Computation needs too much memory on this machine,\n");
-        fprintf(stderr, "resetting table failed, esz = %lu\n", esz);
+        fprintf(stderr, "resetting table failed, esz = %lu\n", (unsigned long)esz);
         fprintf(stderr, "segmentation fault will follow.\n");
     }
     for (k = 0; k < esz; ++k) {

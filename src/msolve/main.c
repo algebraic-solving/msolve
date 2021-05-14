@@ -27,7 +27,8 @@
 static inline void display_help(char *str){
   fprintf(stdout, "\nmsolve library for polynomial system solving\n");
   fprintf(stdout, "implemented by J. Berthomieu, C. Eder, M. Safey El Din\n");
-  fprintf(stdout, "commit hash: %s\n\n", GIT_COMMIT_HASH);
+  fprintf(stdout, "\n");
+  /* fprintf(stdout, "commit hash: %s\n\n", GIT_COMMIT_HASH); */
 
   fprintf(stdout, "Basic call:\n");
   fprintf(stdout, "\t ./msolve -f [FILE1] -o [FILE2]\n\n");
@@ -306,7 +307,7 @@ int main(int argc, char **argv){
 
     /* timinigs */
     double st0 = cputime();
-    double rt0 = omp_get_wtime();
+    double rt0 = realtime();
 
     /**
       We get values from the command line.
@@ -386,7 +387,7 @@ int main(int argc, char **argv){
     /* timings */
     if (info_level > 0) {
         double st1 = cputime();
-        double rt1 = omp_get_wtime();
+        double rt1 = realtime();
         fprintf(stderr, "-------------------------------------------------\
 -----------------------------------\n");
         fprintf(stderr, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",

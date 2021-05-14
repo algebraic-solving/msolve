@@ -22,8 +22,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-#include <gmp.h>
-#include <omp.h>
 #include <math.h>
 
 #define bit_one_index(x) mpz_scan1((x), 0)
@@ -159,14 +157,18 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th(mpz_t *upol, long int
   long int i;
   if (b > 0) {
     //    j = b;
+#ifdef HAVE_OPENMP
     omp_set_num_threads(nthreads);
+#endif
 #pragma omp parallel for num_threads(nthreads)
     for(i = 1; i <= deg; i++){
       mpz_mul_2exp(upol[i], upol[i], i*b);
     }
   }
   else{
+#ifdef HAVE_OPENMP
     omp_set_num_threads(nthreads);
+#endif
 #pragma omp parallel for num_threads(nthreads)
       for(i=0; i<deg; i++){
         mpz_mul_2exp(upol[i], upol[i], (i-deg)*b);
@@ -188,7 +190,9 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
   long int i;
   mpz_t coef;mpz_init(coef);mpz_set_si(coef, c);
   if (b > 0) {
+#ifdef HAVE_OPENMP
     omp_set_num_threads(nthreads);
+#endif
 #pragma omp parallel for num_threads(nthreads)
     for(i = 1; i <= deg; i++){
       mpz_mul(upol[i], upol[i], coef);
@@ -197,7 +201,9 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
     }
   }
   else{
+#ifdef HAVE_OPENMP
     omp_set_num_threads(nthreads);
+#endif
 #pragma omp parallel for num_threads(nthreads)
     for(i=0; i<deg; i++){
       mpz_mul(upol[i], upol[i], coef);

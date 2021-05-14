@@ -402,7 +402,7 @@ static inline char *get_variable_name(const char *line, char **prev_pos)
   char *final_var   = (char *)malloc((final_length+1) * sizeof(char));
   memcpy(final_var, tmp_var_begin, final_length);
   final_var[final_length] = '\0';
-  
+
   free(tmp_var);
   return final_var;
 }
@@ -484,25 +484,26 @@ static void get_characteristic(FILE *fh, char * line, int max_line_size,
 
 }
 
-static void get_nterms_and_all_nterms(FILE *fh, char *line, 
+static void get_nterms_and_all_nterms(FILE *fh, char **linep,
                                       int max_line_size, data_gens_ff_t *gens,
                                       int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
 
-  long i = 0, j = 0, k = 0;
-  line[0] = '\0';
-  size_t len = 0;
-  while(getdelim(&line, &len, ',', fh) != -1) {
-    for (k = 0, j = 0; j < len; ++j) { 
-      if (line[j] != '\n') {
-        line[k++] = line[j];
-      }
+    char *line  = *linep;
+    long i = 0, j = 0, k = 0;
+    size_t len = 0;
+    while(getdelim(&line, &len, ',', fh) != -1) {
+        for (k = 0, j = 0; j < len; ++j) {
+            if (line[j] != '\n') {
+                line[k++] = line[j];
+            }
+        }
+        *nterms  = get_number_of_terms(line);
+        gens->lens[i] = *nterms;
+        *all_nterms += *nterms;
+        len = 0;
+        i++;
     }
-    *nterms  = get_number_of_terms(line);
-    gens->lens[i] = *nterms;
-    *all_nterms += *nterms;
-    len = 0;
-    i++;
-  }
+    *linep  = line;
 }
 
 
@@ -730,80 +731,86 @@ static int get_coefficient_mpz_and_term_from_line(char *line, int32_t nterms,
   return 1;
 }
 
-static void get_coeffs_and_exponents_ff32(FILE *fh, char *line, nelts_t all_nterms,
-                                          int32_t *nr_gens, data_gens_ff_t *gens){
-  int32_t pos = 0;
-  size_t len = 0;
-  if(getline(&line, &len, fh) !=-1){
-  }
-  if(getline(&line, &len, fh) !=-1){
-  }
+static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep, nelts_t all_nterms,
+        int32_t *nr_gens, data_gens_ff_t *gens){
+    int32_t pos = 0;
+    size_t len = 0;
 
-  gens->cfs = (int32_t *)(malloc(sizeof(int32_t) * all_nterms));
-  gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
-  long i, j, k;
-  for(i = 0; i < *nr_gens; i++){
-    if (getdelim(&line, &len, ',', fh) != -1) {
-      for (k = 0, j = 0; j < len; ++j) { 
-        if (line[j] != '\n') {
-          line[k++] = line[j];
+    char *line  = *linep;
+    if(getline(&line, &len, fh) !=-1){
+    }
+    if(getline(&line, &len, fh) !=-1){
+    }
+
+    gens->cfs = (int32_t *)(malloc(sizeof(int32_t) * all_nterms));
+    gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
+    long i, j, k;
+    for(i = 0; i < *nr_gens; i++){
+        if (getdelim(&line, &len, ',', fh) != -1) {
+            for (k = 0, j = 0; j < len; ++j) {
+                if (line[j] != '\n') {
+                    line[k++] = line[j];
+                }
+            }
+            if (line[k-1] == ',') {
+                line[k-1] = '\0';
+            }
         }
-      }
-      if (line[k-1] == ',') {
-        line[k-1] = '\0';
-      }
+        if(get_coefficient_ff_and_term_from_line(line, gens->lens[i], gens->field_char,
+                    gens, pos)){
+            fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
+            free(line);
+            fclose(fh);
+            exit(1);
+        }
+        pos += gens->lens[i];
     }
-    if(get_coefficient_ff_and_term_from_line(line, gens->lens[i], gens->field_char,
-                                             gens, pos)){
-      fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
-      free(line);
-      fclose(fh);
-      exit(1);
-    }
-    pos += gens->lens[i];
-  }
+    *linep  = line;
 }
 
 
-static void get_coeffs_and_exponents_mpz(FILE *fh, char *line, nelts_t all_nterms,
-                                          int32_t *nr_gens, data_gens_ff_t *gens){
-  int32_t pos = 0;
-  size_t len = 0;
-  if(getline(&line, &len, fh) !=-1){
-  }
-  if(getline(&line, &len, fh) !=-1){
-  }
+static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nterms,
+        int32_t *nr_gens, data_gens_ff_t *gens){
+    int32_t pos = 0;
+    size_t len = 0;
 
-  gens->cfs = (int32_t*)(malloc(sizeof(int32_t) * all_nterms));
-  if(gens->field_char==0){
-    gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms));
-    for(long i = 0; i < 2 * all_nterms; i++){
-      gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));
-      mpz_init(*(gens->mpz_cfs[i]));
+    char *line  = *linep;
+    if(getline(&line, &len, fh) !=-1){
     }
-  }
-  gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
-  long i, j, k;
-  for(i = 0; i < *nr_gens; i++){
-    if (getdelim(&line, &len, ',', fh) != -1) {
-      for (k = 0, j = 0; j < len; ++j) { 
-        if (line[j] != '\n') {
-          line[k++] = line[j];
+    if(getline(&line, &len, fh) !=-1){
+    }
+
+    gens->cfs = (int32_t*)(malloc(sizeof(int32_t) * all_nterms));
+    if(gens->field_char==0){
+        gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms));
+        for(long i = 0; i < 2 * all_nterms; i++){
+            gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));
+            mpz_init(*(gens->mpz_cfs[i]));
         }
-      }
-      if (line[k-1] == ',') {
-        line[k-1] = '\0';
-      }
     }
-    if(get_coefficient_mpz_and_term_from_line(line, gens->lens[i], gens->field_char,
-                                             gens, pos)){
-      fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
-      free(line);
-      fclose(fh);
-      exit(1);
+    gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
+    long i, j, k;
+    for(i = 0; i < *nr_gens; i++){
+        if (getdelim(&line, &len, ',', fh) != -1) {
+            for (k = 0, j = 0; j < len; ++j) {
+                if (line[j] != '\n') {
+                    line[k++] = line[j];
+                }
+            }
+            if (line[k-1] == ',') {
+                line[k-1] = '\0';
+            }
+        }
+        if(get_coefficient_mpz_and_term_from_line(line, gens->lens[i], gens->field_char,
+                    gens, pos)){
+            fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
+            free(line);
+            fclose(fh);
+            exit(1);
+        }
+        pos += 2 * gens->lens[i];
     }
-    pos += 2 * gens->lens[i];
-  }
+    *linep  = line;
 }
 
 
@@ -840,8 +847,8 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   *nr_vars = get_nvars(fn);
   *nr_gens = get_ngenerators(fn);
 
-  const int max_line_size  = 1073741824; 
-  char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));
+  const int max_line_size  = 1073741824;
+  char *line  = (char *)calloc((nelts_t)max_line_size, sizeof(char));
 
   FILE *fh  = fopen(fn,"r");
 
@@ -856,16 +863,17 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   initialize_data_gens(*nr_vars, *nr_gens, *field_char, gens);
 
   nelts_t nterms, all_nterms = 0;
-  get_nterms_and_all_nterms(fh, line, max_line_size, gens, nr_gens,
+  get_nterms_and_all_nterms(fh, &line, max_line_size, gens, nr_gens,
                             &nterms, &all_nterms);
+
   fclose(fh);
 
   fh = fopen(fn, "r");
   if(gens->field_char>0){
-    get_coeffs_and_exponents_ff32(fh, line, all_nterms, nr_gens, gens);
+    get_coeffs_and_exponents_ff32(fh, &line, all_nterms, nr_gens, gens);
   }
   else{
-    get_coeffs_and_exponents_mpz(fh, line, all_nterms, nr_gens, gens);
+    get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens);
   }
   free(line);
   fclose(fh);

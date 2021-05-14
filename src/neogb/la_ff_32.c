@@ -20,13 +20,7 @@
 
 #include "data.h"
 
-#if NO_AVX2_IN_F4
-#define F4_USE_AVX2 0
-#else
-#define F4_USE_AVX2  1
-#endif
-
-#if F4_USE_AVX2
+#ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
 
@@ -126,7 +120,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
     const len_t ncl             = mat->ncl;
     cf32_t * const * const mcf  = mat->cf_32;
 
-#if F4_USE_AVX2
+#ifdef HAVE_AVX2
     int64_t res[4];
     __m256i redv, mulv, prodv, drv, resv;
 #endif
@@ -155,7 +149,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
         } else {
             cfs   = mcf[dts[COEFFS]];
         }
-#if F4_USE_AVX2
+#ifdef HAVE_AVX2
         const len_t len = dts[LENGTH];
         const len_t os  = len % 8;
         const hm_t * const ds  = dts + OFFSET;
@@ -344,7 +338,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf32_t * const * const mcf  = mat->cf_32;
-#if F4_USE_AVX2
+#ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
     __m256i cmpv, redv, drv, mulv, prodv, resv, rresv;
     __m256i zerov= _mm256_set1_epi64x(0);
@@ -375,7 +369,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
         } else {
             cfs   = mcf[dts[COEFFS]];
         }
-#if F4_USE_AVX2
+#ifdef HAVE_AVX2
         const len_t len = dts[LENGTH];
         const len_t os  = len % 8;
         const hm_t * const ds  = dts + OFFSET;
@@ -488,7 +482,7 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf32_t * const * const mcf  = mat->cf_32;
-#if F4_USE_AVX2
+#ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
     __m256i cmpv, redv, drv, mulv, prodv, resv, rresv;
     __m256i zerov = _mm256_set1_epi64x(0);
@@ -522,7 +516,7 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
             cfs   = mcf[dts[COEFFS]];
         }
 
-#if F4_USE_AVX2
+#ifdef HAVE_AVX2
         const len_t len = dts[LENGTH];
         const len_t os  = len % 8;
         const hm_t * const ds  = dts + OFFSET;

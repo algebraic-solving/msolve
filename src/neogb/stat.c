@@ -83,7 +83,7 @@ void print_initial_statistics(
     }
     fprintf(file, "linear algebra option  %11d\n", st->laopt);
     fprintf(file, "intial hash table size %11lu (2^%d)\n",
-            (uint64_t)pow(2,st->init_hts), st->init_hts);
+            (unsigned long)pow(2,st->init_hts), st->init_hts);
     if (st->mnsel == 2147483647) {
         fprintf(file, "max pair selection             ALL\n");
     } else {
@@ -138,14 +138,14 @@ void print_final_statistics(
     }
     fprintf(file, "-----------------------------------------\n");
     fprintf(file, "\n---------- COMPUTATIONAL DATA -----------\n");
-    fprintf(file, "size of basis      %16d\n", st->size_basis);
-    fprintf(file, "#terms in basis    %16ld\n", st->nterms_basis);
-    fprintf(file, "#pairs reduced     %16ld\n", st->num_pairsred);
-    fprintf(file, "#GM criterion      %16ld\n", st->num_gb_crit);
-    fprintf(file, "#redundant elements      %10ld\n", st->num_redundant);
-    fprintf(file, "#reset basis hash table    %8ld\n", st->num_rht);
-    fprintf(file, "#rows reduced      %16ld\n", st->num_rowsred);
-    fprintf(file, "#zero reductions   %16ld\n", st->num_zerored);
+    fprintf(file, "size of basis      %16lu\n", (unsigned long)st->size_basis);
+    fprintf(file, "#terms in basis    %16lu\n", (unsigned long)st->nterms_basis);
+    fprintf(file, "#pairs reduced     %16lu\n", (unsigned long)st->num_pairsred);
+    fprintf(file, "#GM criterion      %16lu\n", (unsigned long)st->num_gb_crit);
+    fprintf(file, "#redundant elements      %10lu\n", (unsigned long)st->num_redundant);
+    fprintf(file, "#reset basis hash table    %8lu\n", (unsigned long)st->num_rht);
+    fprintf(file, "#rows reduced      %16lu\n", (unsigned long)st->num_rowsred);
+    fprintf(file, "#zero reductions   %16lu\n", (unsigned long)st->num_zerored);
     fprintf(file, "max. update hash table size    2^%d\n",
             (uint32_t)(ceil(log((double)st->max_uht_size)/log(2))));
     fprintf(file, "max. symbolic hash table size  2^%d\n",

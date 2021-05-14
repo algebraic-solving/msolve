@@ -18,6 +18,10 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#if HAVE_CONFIG_H
+#include "../../config.h"
+#endif
+
 #include "data.h"
 #include "iofiles.c"
 #include "hilbert.c"
@@ -26,4 +30,5 @@
 #include "../crt/mpq_reconstruct.c"
 #include "../usolve/data_usolve.c"
 #include "../usolve/libusolve.h"
+#include "../neogb/libneogb.h"
 #include "msolve.c"

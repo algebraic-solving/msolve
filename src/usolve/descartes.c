@@ -20,8 +20,6 @@
 
 #include<stdio.h>
 #include<stdlib.h>
-#include<omp.h>
-#include<gmp.h>
 
 #ifndef USOLVE
 #define USOLVE

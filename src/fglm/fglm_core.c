@@ -18,14 +18,22 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#if HAVE_CONFIG_H
+#include "../../config.h"
+#endif
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
 #include<unistd.h>
 #include<time.h>
-#include<omp.h>
+/* for timing functions */
+#include "../neogb/tools.h"
 
-#define USEAVX2 1
+#ifdef HAVE_OPENMP
+#include<omp.h>
+#endif
+
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 
 #define DEBUGFGLM 0
@@ -433,7 +441,7 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
     res[mat->triv_idx[i]] = vec[mat->triv_pos[i]];
   }
   /* printf("ncols %u\n", ncols); */
-#ifdef USEAVX2
+#ifdef HAVE_AVX2
   /* matrix_vector_product(vres, mat->dense_mat, vec, ncols, nrows, prime, RED_32, RED_64); */
   _8mul_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
                               ncols, nrows, prime, RED_32, RED_64);
@@ -1110,7 +1118,7 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
   fprintf(stderr, "\n");
 #endif
 
-  double st = omp_get_wtime();
+  double st = realtime();
 
 
   /* generate_sequence(matrix, data, block_size, dimquot, prime); */
@@ -1119,11 +1127,11 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
 
   if(info_level > 1){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
-    double rt = omp_get_wtime()-st;
+    double rt = realtime()-st;
     fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt, nops / rt);
   }
 
-  st = omp_get_wtime();
+  st = realtime();
 
   /* Berlekamp-Massey data */
   fglm_bms_data_t *data_bms = allocate_fglm_bms_data(dimquot, prime);
@@ -1135,7 +1143,7 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
 
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed: %.2f sec\n",
-            omp_get_wtime()-st);
+            realtime()-st);
     fprintf(stderr, "Elimination done.\n");
   }
 
@@ -1146,7 +1154,7 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
       fprintf(stderr, "Elimination polynomial is squarefree.\n");
     }
 
-    st = omp_get_wtime();
+    st = realtime();
     if(compute_parametrizations(param, data, data_bms,
                                 dim, dimquot, block_size,
                                 nlins, linvars, lineqs,
@@ -1189,7 +1197,7 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
   }
   if(info_level){
     fprintf(stderr, "Time spent to compute parametrizations (elapsed): %.2f sec\n",
-            omp_get_wtime()-st);
+            realtime()-st);
     fprintf(stderr, "Parametrizations done.\n");
   }
   free_fglm_bms_data(data_bms);
@@ -1244,7 +1252,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   ulong dimquot = (matrix->ncols);
 
-  double st = omp_get_wtime();
+  double st = realtime();
 
   //////////////////////////////////////////////////////////////////
 
@@ -1254,11 +1262,11 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   if(info_level){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
-    double rt = omp_get_wtime()-st;
+    double rt = realtime()-st;
     fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt, nops / rt);
   }
 
-  st = omp_get_wtime();
+  st = realtime();
 
   /* Berlekamp-Massey data */
   *bdata_bms = allocate_fglm_bms_data(dimquot, prime);
@@ -1268,7 +1276,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                   info_level);
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
-            omp_get_wtime()-st);
+            realtime()-st);
     fprintf(stderr, "Elimination done.\n");
   }
 
@@ -1406,7 +1414,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   fprintf(stderr, "\n");
 #endif
 
-  double st = omp_get_wtime();
+  double st = realtime();
 
   //////////////////////////////////////////////////////////////////
 
@@ -1421,11 +1429,11 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
   if(info_level){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
-    double rt = omp_get_wtime()-st;
+    double rt = realtime()-st;
     fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt, nops / rt);
   }
 
-  st = omp_get_wtime();
+  st = realtime();
 
   fglm_bms_data_set_prime(data_bms, prime);
 
@@ -1435,7 +1443,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
-            omp_get_wtime()-st);
+            realtime()-st);
     fprintf(stderr, "Elimination done.\n");
   }
   if(param->elim->length-1 != deg_init){

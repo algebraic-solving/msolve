@@ -19,7 +19,6 @@
  * Mohab Safey El Din */
 
 #include "univmultiply.c"
-#include<omp.h>
 
 #ifndef USOLVE
 #define USOLVE
@@ -56,7 +55,9 @@ static void taylorshift1_naive(mpz_t *upol, const unsigned long int deg){
 static inline void mpz_poly_swap_th(mpz_t *res, mpz_t *pol,
                                     const unsigned long int deg,
                                     const unsigned int nthreads){
+#ifdef HAVE_OPENMP
   omp_set_num_threads(nthreads);
+#endif
 
 #pragma omp parallel for num_threads(nthreads)
   for(unsigned long int i = 0; i <= deg; i++){
@@ -73,7 +74,9 @@ static inline void mpz_poly_add_th(mpz_t *res, mpz_t *upol1,
     return;
   }
   unsigned long int i;
+#ifdef HAVE_OPENMP
   omp_set_num_threads(nthreads);
+#endif
 #pragma omp parallel for num_threads(nthreads) //schedule(static)
   for(i = 0; i <= deg1; i++){
     mpz_add(res[i], upol1[i], upol2[i]);
@@ -155,7 +158,9 @@ static void taylorshift1_dac(mpz_t *upol,
   unsigned long int fdeg = deg - (nblocks - 1)*sz;
   unsigned long int cont2 = 0;
 
+#ifdef HAVE_OPENMP
   omp_set_num_threads(nthreads);
+#endif
 #pragma omp parallel for num_threads(nthreads) //schedule(static)
   for(unsigned long int i = 0; i <= nblocks - 1; i++){
     if(i < nblocks-1){
@@ -331,7 +336,9 @@ static long taylorshift1_dac_wsgnvar(mpz_t *pol,
   long nb;
   taylorshift1_naive(pol+(nblocks-1)*(pwx), fdeg );
 
+#ifdef HAVE_OPENMP
   omp_set_num_threads(nthreads);
+#endif
 #pragma omp parallel for num_threads(nthreads) //schedule(static)
   for(unsigned long int block = 0; block < nblocks-1; block++){
     taylorshift1_naive(&pol[block*(pwx)], pwx - 1);

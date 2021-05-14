@@ -168,24 +168,24 @@ static void add_lms_to_trace(
     trace->td[ld].nlm = np;
 }
 
-
-static inline val_t compare_and_swap(
-        long *ptr,
-        long old,
-        long new
-        )
-{
-    val_t prev;
-
-#if 0
-    __asm__ __volatile__(
-            "lock; cmpxchgl %2, %1" : "=a"(prev),
-            "+m"(*ptr) : "r"(new), "0"(old) : "memory");
-    /* on which systems do we need "cmpxchgq" instead of "cmpxchgl" ? */
-#else
-    __asm__ __volatile__(
-            "lock; cmpxchgq %2, %1" : "=a"(prev),
-            "+m"(*ptr) : "r"(new), "0"(old) : "memory");
-#endif
-    return prev;
-}
+/* 
+ * static inline val_t compare_and_swap(
+ *         long *ptr,
+ *         long old,
+ *         long new
+ *         )
+ * {
+ *     val_t prev;
+ *
+ * #if 0
+ *     __asm__ __volatile__(
+ *             "lock; cmpxchgl %2, %1" : "=a"(prev),
+ *             "+m"(*ptr) : "r"(new), "0"(old) : "memory");
+ *     [> on which systems do we need "cmpxchgq" instead of "cmpxchgl" ? <]
+ * #else
+ *     __asm__ __volatile__(
+ *             "lock; cmpxchgq %2, %1" : "=a"(prev),
+ *             "+m"(*ptr) : "r"(new), "0"(old) : "memory");
+ * #endif
+ *     return prev;
+ * } */

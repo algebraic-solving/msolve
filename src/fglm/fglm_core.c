@@ -854,8 +854,8 @@ static int compute_parametrizations(param_t *param,
           nmod_poly_fit_length(param->coords[nvars-2-nc],
                                param->elim->alloc );
         }
-        param->coords[nvars-2-nc]->length = param->elim->length ;
-        for(long i = 0; i < param->elim->length ; i++){
+        param->coords[nvars-2-nc]->length = param->elim->length-1 ;
+        for(long i = 0; i < param->elim->length-1 ; i++){
           param->coords[nvars-2-nc]->coeffs[i] = 0;
         }
         dec++;

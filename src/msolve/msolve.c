@@ -2952,6 +2952,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       free_trace(&trace);
       free_shared_hash_data(bht);
       free_hash_table(&bht);
+      free_hash_table(&tht);
 
       for (i = 0; i < st->nprimes; ++i) {
         //      free_basis(&(bs[i]));
@@ -2972,6 +2973,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       free_trace(&trace);
       free_shared_hash_data(bht);
       free_hash_table(&bht);
+      free_hash_table(&tht);
 
       for (i = 0; i < st->nprimes; ++i) {
         //      free_basis(&(bs[i]));
@@ -3227,6 +3229,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   free_shared_hash_data(bht);
   free_hash_table(&lht);
   free_hash_table(&bht);
+  free_hash_table(&tht);
 
   for (i = 0; i < st->nprimes; ++i) {
     //      free_basis(&(bs[i]));

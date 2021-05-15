@@ -2299,6 +2299,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                                fc,
                                                info_level);
 
+        free(bs);
         if(*bmatrix == NULL){
             *success = 0;
             *dim = 0;

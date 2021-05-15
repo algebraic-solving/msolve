@@ -3233,22 +3233,29 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   }
   free(bs);
   //here we should clean nmod_params
-  free_lucky_primes(&lp);
-  free(st);
-  free(bad_primes);
 
   for(i = 0; i < st->nprimes; ++i){
     free_fglm_bms_data(bdata_bms[i]);
     free_fglm_data(bdata_fglm[i]);
+    free(blen_gb_xn[i]);
+    free(bstart_cf_gb_xn[i]);
+    free(bdiv_xn[i]);
   }
   free(bdata_fglm);
   free(bdata_bms);
 
+  free_lucky_primes(&lp);
+  free(st);
+  free(bad_primes);
   free(linvars);
   free(lineqs_ptr[0]);
   free(lineqs_ptr);
   free(squvars);
   free(is_lifted);
+  free(num_gb);
+  free(blen_gb_xn);
+  free(bstart_cf_gb_xn);
+  free(bdiv_xn);
 
   return 0;
 }

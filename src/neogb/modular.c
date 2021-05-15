@@ -51,6 +51,7 @@ void free_trace(
     }
     free(tr->lm);
     free(tr->lmps);
+    free(tr->td);
     free(tr);
     tr    = NULL;
     *trp  = tr;

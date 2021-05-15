@@ -149,6 +149,7 @@ static void construct_trace(
             ctr++;
         }
     }
+    free(reds);
 }
 
 static void add_lms_to_trace(

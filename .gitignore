@@ -31,4 +31,4 @@ libtool
 ltmain.sh
 missing
 stamp-h1
-msolve
+/msolve

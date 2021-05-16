@@ -432,10 +432,12 @@ static void generate_matrix_from_trace(
         b     = bs->hm[td.tri[i++]];
         emul  = tht->ev[td.tri[i]];
         h     = tht->hd[td.tri[i]].val;
-        d     = tht->hd[td.tri[i++]].deg;
+        d     = tht->hd[td.tri[i]].deg;
 
         trows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, d, emul, b);
-        rba[nr]   = td.rba[i];
+        /* At the moment rba is unused */
+        rba[nr]   = td.rba[i/2];
+        i++;
         nr++;
     }
     /* meta data for matrix */

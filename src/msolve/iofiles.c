@@ -342,7 +342,7 @@ static inline int is_line_empty(const char *line)
 
 static int32_t get_ngenerators(char *fn){
   int32_t nlines = 0;
-  char *line = malloc(sizeof(char)*50000);
+  char *line  = NULL;
   size_t len = 0;
   FILE *fh  = fopen(fn,"r");
   /* first line are the variables */
@@ -445,8 +445,8 @@ static void get_variables(FILE *fh, char * line, int max_line_size,
     tmp = line;
   } else {
     printf("Bad file format (variable names).\n");
-    free(vnames);
-    free(line);
+    /* free(vnames);
+     * free(line); */
     fclose(fh);
     exit(1);
   }
@@ -856,6 +856,8 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   char **vnames = (char **)malloc((*nr_vars) * sizeof(char *));
   get_variables(fh, line, max_line_size, nr_vars, gens, vnames);
   if (duplicate_vnames(vnames, *nr_vars) == 1) {
+      free(vnames);
+      free(line);
       exit(1);
   }
   get_characteristic(fh, line, max_line_size, field_char, vnames);

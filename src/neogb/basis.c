@@ -472,20 +472,21 @@ static inline bs_t *copy_basis_mod_p_16(
     unsigned long prime = (unsigned long)st->fc;
 
     /* initialize basis */
-    bs_t *bs    = (bs_t *)malloc(sizeof(bs_t));
-    bs->lo      = gbs->lo;
-    bs->ld      = gbs->ld;
-    bs->lml     = gbs->lml;
-    bs->sz      = gbs->sz;
-    bs->mltdeg  = 0;
-    bs->cf_8    = NULL;
-    bs->cf_16   = (cf16_t **)malloc((unsigned long)bs->sz * sizeof(cf16_t *));
-    bs->cf_32   = NULL;
-    bs->cf_qq   = NULL;
-    bs->hm      = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
-    bs->lm      = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
-    bs->lmps    = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
-    bs->red     = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs_t *bs        = (bs_t *)malloc(sizeof(bs_t));
+    bs->lo          = gbs->lo;
+    bs->ld          = gbs->ld;
+    bs->lml         = gbs->lml;
+    bs->sz          = gbs->sz;
+    bs->constant    = gbs->constant;
+    bs->mltdeg      = 0;
+    bs->cf_8        = NULL;
+    bs->cf_16       = (cf16_t **)malloc((unsigned long)bs->sz * sizeof(cf16_t *));
+    bs->cf_32       = NULL;
+    bs->cf_qq       = NULL;
+    bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
+    bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
+    bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
+    bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
 
     /* copy data */
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
@@ -517,20 +518,21 @@ static inline bs_t *copy_basis_mod_p_32(
     unsigned long prime = (unsigned long)st->fc;
 
     /* initialize basis */
-    bs_t *bs    = (bs_t *)malloc(sizeof(bs_t));
-    bs->lo      = gbs->lo;
-    bs->ld      = gbs->ld;
-    bs->lml     = gbs->lml;
-    bs->sz      = gbs->sz;
-    bs->mltdeg  = 0;
-    bs->cf_8    = NULL;
-    bs->cf_16   = NULL;
-    bs->cf_32   = (cf32_t **)malloc((unsigned long)bs->sz * sizeof(cf32_t *));
-    bs->cf_qq   = NULL;
-    bs->hm      = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
-    bs->lm      = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
-    bs->lmps    = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
-    bs->red     = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs_t *bs        = (bs_t *)malloc(sizeof(bs_t));
+    bs->lo          = gbs->lo;
+    bs->ld          = gbs->ld;
+    bs->lml         = gbs->lml;
+    bs->sz          = gbs->sz;
+    bs->constant    = gbs->constant;
+    bs->mltdeg      = 0;
+    bs->cf_8        = NULL;
+    bs->cf_16       = NULL;
+    bs->cf_32       = (cf32_t **)malloc((unsigned long)bs->sz * sizeof(cf32_t *));
+    bs->cf_qq       = NULL;
+    bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
+    bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
+    bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
+    bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
 
     /* copy data */
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));

@@ -1327,6 +1327,8 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
     fprintf(stderr,"Time for refinement (elapsed): %.2f sec\n", refine_time);
   }
 
+  free(flags->tmp_threads);
+  free(flags->pols_threads);
   free(flags);
   return roots;
 }

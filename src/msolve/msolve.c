@@ -2576,60 +2576,65 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
                                    const long nbsols,
                                    int *bad_primes){
 
-st->info_level = 0;
+                                       st->info_level = 0;
 
-/* tracing phase */
-len_t i;
-double ca0;
+                                       /* tracing phase */
+                                       len_t i;
+                                       double ca0;
 
 
-memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
-/* #pragma omp parallel for num_threads(st->nthrds)  \ */
-/*   private(i) schedule(dynamic) */
-for (i = 0; i < st->nprimes; ++i){
-  ca0 = realtime();
-  bs[i] = f4_trace_application_phase(
-                                      trace, tht, bs_qq, bht, st, lp->p[i]);
-  *stf4 = realtime()-ca0;
-  /* printf("F4 trace timing %13.2f\n", *stf4); */
+                                       memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
+                                       /* #pragma omp parallel for num_threads(st->nthrds)  \ */
+                                       /*   private(i) schedule(dynamic) */
+                                       for (i = 0; i < st->nprimes; ++i){
+                                           ca0 = realtime();
+                                           bs[i] = f4_trace_application_phase(
+                                                   trace, tht, bs_qq, bht, st, lp->p[i]);
+                                           *stf4 = realtime()-ca0;
+                                           /* printf("F4 trace timing %13.2f\n", *stf4); */
 
-  if(bs[i]->lml != num_gb[i]){
-    /* nmod_params[i] = NULL; */
-    bad_primes[i] = 1;
-    return;
-  }
-  get_lm_from_bs_trace(bs[i], bht, leadmons_current[i]);
+                                           if(bs[i]->lml != num_gb[i]){
+                                             if (bs[i] != NULL) {
+                                                 free_basis(&(bs[i]));
+                                             }
+                                               /* nmod_params[i] = NULL; */
+                                               bad_primes[i] = 1;
+                                               return;
+                                           }
+                                           get_lm_from_bs_trace(bs[i], bht, leadmons_current[i]);
 
-  if(equal_staircase(leadmons_current[i], leadmons_ori[i],
-                      num_gb[i], num_gb[i], bht->nv)){
-    //Il faudra dupliquer nlins, lineqs, linvars
-    set_linear_poly(nlins, lineqs, linvars, bht, leadmons_current[i], bs[i]);
+                                           if(equal_staircase(leadmons_current[i], leadmons_ori[i],
+                                                       num_gb[i], num_gb[i], bht->nv)){
+                                               //Il faudra dupliquer nlins, lineqs, linvars
+                                               set_linear_poly(nlins, lineqs, linvars, bht, leadmons_current[i], bs[i]);
 
-    build_matrixn_from_bs_trace_application(bmatrix[i],
-                                            div_xn[i],
-                                            len_gb_xn[i],
-                                            start_cf_gb_xn[i],
-                                            lmb_ori, dquot_ori, bs[i], bht,
-                                            leadmons_ori[i], bht->nv,
-                                            lp->p[i]);
-    if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
-                                          nmod_params[i],
-                                          bht->nv,
-                                          bsz,
-                                          nlins, linvars, lineqs, squvars,
-                                          bdata_fglm[i],
-                                          bdata_bms[i],
-                                          nbsols,
-                                          info_level)){
-      bad_primes[i] = 1;
-    }
-    free_basis(&(bs[i]));
-    }
-    else{
-      bad_primes[i] = 1;
-    }
- }
-}
+                                               build_matrixn_from_bs_trace_application(bmatrix[i],
+                                                       div_xn[i],
+                                                       len_gb_xn[i],
+                                                       start_cf_gb_xn[i],
+                                                       lmb_ori, dquot_ori, bs[i], bht,
+                                                       leadmons_ori[i], bht->nv,
+                                                       lp->p[i]);
+                                               if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
+                                                           nmod_params[i],
+                                                           bht->nv,
+                                                           bsz,
+                                                           nlins, linvars, lineqs, squvars,
+                                                           bdata_fglm[i],
+                                                           bdata_bms[i],
+                                                           nbsols,
+                                                           info_level)){
+                                                   bad_primes[i] = 1;
+                                               }
+                                           }
+                                           else{
+                                               bad_primes[i] = 1;
+                                           }
+                                         if (bs[i] != NULL) {
+                                           free_basis(&(bs[i]));
+                                         }
+                                       }
+                                   }
 
 static inline void duplicate_data_mthread(int nthreads,
                                         int nv,
@@ -3199,13 +3204,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   free_hash_table(&bht);
   free_hash_table(&tht);
 
-  for (i = 0; i < st->nprimes; ++i) {
-    //      free_basis(&(bs[i]));
-  }
-  free(bs);
   //here we should clean nmod_params
 
   for(i = 0; i < st->nprimes; ++i){
+    if (bs[i] != NULL) {
+      free_basis(&(bs[i]));
+    }
     free_fglm_bms_data(bdata_bms[i]);
     free_fglm_data(bdata_fglm[i]);
     free(blen_gb_xn[i]);
@@ -3217,11 +3221,16 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(bmatrix[i]->triv_pos);
     free(bmatrix[i]->dst);
     free(bmatrix[i]);
+    free(leadmons_ori[i]);
+    free(leadmons_current[i]);
     free(nmod_params[i]);
   }
+  free(bs);
   free(bdata_fglm);
   free(bdata_bms);
   free(bmatrix);
+  free(leadmons_ori);
+  free(leadmons_current);
   free(nmod_params);
 
   free_lucky_primes(&lp);

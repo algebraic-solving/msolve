@@ -2925,51 +2925,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpz_param->dim    = *dim_ptr;
   mpz_param->dquot  = *dquot_ptr;
 
-  if(lmb_ori == NULL || success == 0){
-    if(*dim_ptr==1){
-      if(info_level){
-        fprintf(stderr, "Positive dimensional Grobner basis\n");
-      }
-      free_trace(&trace);
-      free_shared_hash_data(bht);
-      free_hash_table(&bht);
-
-      for (i = 0; i < st->nprimes; ++i) {
-        //      free_basis(&(bs[i]));
-      }
-      free(bs);
-      //here we should clean nmod_params
-      free_lucky_primes(&lp);
-      free(st);
-      free(linvars);
-      if(nlins){
-        free(lineqs_ptr[0]);
-      }
-      free(lineqs_ptr);
-      free(squvars);
-      return 0;
-    }
-    if(*dquot_ptr==0){
-      free_trace(&trace);
-      free_shared_hash_data(bht);
-      free_hash_table(&bht);
-      free_hash_table(&tht);
-
-      for (i = 0; i < st->nprimes; ++i) {
-        //      free_basis(&(bs[i]));
-      }
-      //      free(bs);
-      //here we should clean nmod_params
-      free_lucky_primes(&lp);
-      free(st);
-
-      free(linvars);
-      /* free(lineqs_ptr[0]); */
-      free(lineqs_ptr);
-      free(squvars);
-      return 0;
-    }
-    if(*dquot_ptr>0){
+  if(lmb_ori == NULL || success == 0) {
       /* print_msolve_message(stderr, 1); */
       free_trace(&trace);
       free_shared_hash_data(bht);
@@ -2977,23 +2933,34 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       free_hash_table(&tht);
 
       for (i = 0; i < st->nprimes; ++i) {
-        //      free_basis(&(bs[i]));
+          //      free_basis(&(bs[i]));
       }
       free(bs);
       //here we should clean nmod_params
       free_lucky_primes(&lp);
       free(st);
       free(linvars);
+      free(nmod_params);
       if(nlins){
-        free(lineqs_ptr[0]);
+          free(lineqs_ptr[0]);
       }
       free(lineqs_ptr);
       free(squvars);
-      if(squares == 0){
-        return 2;
+      if(*dim_ptr==1){
+          if(info_level){
+              fprintf(stderr, "Positive dimensional Grobner basis\n");
+          }
+          return 0;
       }
-      return 1;
-    }
+      if(*dquot_ptr==0){
+          return 0;
+      }
+      if(*dquot_ptr>0){
+          if(squares == 0){
+              return 2;
+          }
+          return 1;
+      }
   }
 
   duplicate_data_mthread(st->nprimes, nr_vars, num_gb,
@@ -3250,10 +3217,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(bmatrix[i]->triv_pos);
     free(bmatrix[i]->dst);
     free(bmatrix[i]);
+    free(nmod_params[i]);
   }
   free(bdata_fglm);
   free(bdata_bms);
   free(bmatrix);
+  free(nmod_params);
 
   free_lucky_primes(&lp);
   free(st);

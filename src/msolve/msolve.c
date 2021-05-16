@@ -3225,6 +3225,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(leadmons_current[i]);
     free(nmod_params[i]);
   }
+  free_basis(&(bs_qq));
   free(bs);
   free(bdata_fglm);
   free(bdata_bms);

@@ -273,10 +273,12 @@ bs_t *f4_trace_application_phase(
     /* apply non-redundant basis data from trace to basis
      * before interreduction */
     bs->lml  = trace->lml;
+    free(bs->lmps);
     bs->lmps = (bl_t *)calloc((unsigned long)bs->lml,
             sizeof(bl_t));
     memcpy(bs->lmps, trace->lmps,
             (unsigned long)bs->lml * sizeof(bl_t));
+    free(bs->lm);
     bs->lm   = (sdm_t *)calloc((unsigned long)bs->lml,
             sizeof(sdm_t));
     memcpy(bs->lm, trace->lm,

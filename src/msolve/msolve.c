@@ -2299,7 +2299,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                                fc,
                                                info_level);
 
-        free(bs);
+        free_basis(&(bs));
         if(*bmatrix == NULL){
             *success = 0;
             *dim = 0;
@@ -3244,9 +3244,16 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(blen_gb_xn[i]);
     free(bstart_cf_gb_xn[i]);
     free(bdiv_xn[i]);
+    free(bmatrix[i]->dense_mat);
+    free(bmatrix[i]->dense_idx);
+    free(bmatrix[i]->triv_idx);
+    free(bmatrix[i]->triv_pos);
+    free(bmatrix[i]->dst);
+    free(bmatrix[i]);
   }
   free(bdata_fglm);
   free(bdata_bms);
+  free(bmatrix);
 
   free_lucky_primes(&lp);
   free(st);

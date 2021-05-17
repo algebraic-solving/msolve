@@ -45,4 +45,5 @@
 #include "io.c"       /* input and output data handling */
 #include "f4.c"       /* implemenation of f4 algorithm */
 #include "nf.c"       /* implemenation of normal form algorithm */
+#include "f4sat.c"    /* implemenation of saturation algorithm */
 #include "modular.c"  /* implemenation of modular Groebner for F4 */

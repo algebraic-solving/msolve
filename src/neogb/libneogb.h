@@ -29,6 +29,7 @@
 #include "io.h"
 #include "modular.h"
 #include "nf.h"
+#include "f4sat.h"
 #include "stat.h"
 #include "sort_r.h"
 #include "tools.h"

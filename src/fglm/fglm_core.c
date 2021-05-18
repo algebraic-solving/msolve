@@ -990,6 +990,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
         dec++;
       }
     }
+
     /* parametrizations verification */
     if (verif) {
       dec = 0;
@@ -1023,13 +1024,15 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           }
         }
         else{
-          if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
-            nmod_poly_fit_length(param->coords[nvars-2-nc],
-                                 param->elim->alloc );
-          }
-          param->coords[nvars-2-nc]->length = param->elim->length ;
-          for(long i = 0; i < param->elim->length ; i++){
-            param->coords[nvars-2-nc]->coeffs[i] = 0;
+          if(linvars[nvars -2 - nc] != 0){
+            if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
+              nmod_poly_fit_length(param->coords[nvars-2-nc],
+                                   param->elim->alloc );
+            }
+            param->coords[nvars-2-nc]->length = param->elim->length-1 ;
+            for(long i = 0; i < param->elim->length-1 ; i++){
+              param->coords[nvars-2-nc]->coeffs[i] = 0;
+            }
           }
           dec++;
         }
@@ -1038,7 +1041,10 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
 
     set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
 
-    /* display_fglm_param_maple(stderr, param); */
+#if DEBUGFGLM>0
+    display_fglm_param_maple(stderr, param);
+#endif
+
     return nvars-1-nr_fail_param;
   } else {
     return 0;

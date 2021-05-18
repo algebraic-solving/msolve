@@ -2279,8 +2279,12 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
             return NULL;
         }
     }
+    /* set st->fc to finite characteristic for printing */
+    st->fc  = fc;
     print_ff_basis_data(
                         files->out_file, "a", bs, bht, st, gens, print_gb);
+
+    st->fc  = 0;
 
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm, bs);
 
@@ -4553,28 +4557,16 @@ restart:
                 fprintf(stderr, "\"-g2\" which is the default.\n");
             }
             if (b == 2) {
-                free(bld);
-                bld = NULL;
-                free(blen);
-                blen  = NULL;
-                free(bexp);
-                bexp  = NULL;
-                free(bcf);
-                bcf = NULL;
-                free(param);
-                param = NULL;
-                round++;
-                if (add_random_linear_form_to_input_system(gens, info_level)) {
-                  goto restart;
+                fprintf(stderr, "The ideal has positive dimension\n");
+                if(files->out_file != NULL){
+                    FILE *ofile2 = fopen(files->out_file, "a+");
+                    //1 because dim is >0
+                    fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
+                    fclose(ofile2);
                 }
-
-                fprintf(stderr, "\n=====> Computation failed <=====\n");
-                fprintf(stderr, "Try to add a random linear form with ");
-                fprintf(stderr, "a new variable\n");
-                fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
-                fprintf(stderr, "This will\n");
-                fprintf(stderr, "be done automatically if you run msolve with option\n");
-                fprintf(stderr, "\"-g2\" which is the default.\n");
+                else{
+                    fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
+                }
             }
             if(b == 3){
                 if(files->out_file != NULL){

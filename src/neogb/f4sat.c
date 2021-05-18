@@ -21,84 +21,15 @@
 
 #include "f4sat.h"
 
-int initialize_f4sat_input_data(
-        bs_t **bsp,
-        ht_t **bhtp,
-        stat_t **stp,
-        /* input values */
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *cfs,
-        const uint32_t field_char,
-        const int32_t mon_order,
-        const int32_t nr_vars,
-        const int32_t nr_gens,
-        const int32_t ht_size,
-        const int32_t nr_threads,
-        const int32_t max_nr_pairs,
-        const int32_t reset_ht,
-        const int32_t la_option,
-        const int32_t reduce_gb,
-        const int32_t pbm_file,
-        const int32_t info_level
-        )
-{
-    bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
-
-    /* initialize stuff */
-    st  = initialize_statistics();
-
-    /* checks and set all meta data. if a nonzero value is returned then
-     * some of the input data is corrupted. */
-    if (check_and_set_meta_data(st, lens, exps, cfs, field_char, mon_order,
-                nr_vars, nr_gens, ht_size, nr_threads, max_nr_pairs,
-                reset_ht, la_option, reduce_gb, pbm_file, info_level)) {
-        return 0;
-    }
-
-    /* initialize basis */
-    bs  = initialize_basis(st->ngens);
-    /* initialize basis hash table */
-    bht = initialize_basis_hash_table(st);
-
-    import_julia_data(bs, bht, st, lens, exps, cfs);
-
-    if (st->info_level > 0) {
-      print_initial_statistics(stderr, st);
-    }
-
-    /* for faster divisibility checks, needs to be done after we have
-     * read some input data for applying heuristics */
-    calculate_divmask(bht);
-
-    /* sort initial elements, smallest lead term first */
-    sort_r(bs->hm, (unsigned long)bs->ld, sizeof(hm_t *),
-            initial_input_cmp, bht);
-    /* normalize input generators */
-    if (st->fc > 0) {
-        normalize_initial_basis(bs, st->fc);
-    } else {
-        if (st->fc == 0) {
-            remove_content_of_initial_basis(bs);
-        }
-    }
-
-    *bsp  = bs;
-    *bhtp = bht;
-    *stp  = st;
-
-    return 1;
-}
-
 int core_f4sat(
         bs_t **bsp,
+        bs_t **satp,
         ht_t **bhtp,
         stat_t **stp
         )
 {
     bs_t *bs    = *bsp;
+    bs_t *sat   = *satp;
     ht_t *bht   = *bhtp;
     stat_t *st  = *stp;
 
@@ -132,57 +63,59 @@ int core_f4sat(
      * are left in the pairset */
     if (st->info_level > 1) {
         printf("\ndeg     sel   pairs        mat          density \
-          new data             time(rd)\n");
+                new data             time(rd)\n");
         printf("-------------------------------------------------\
-----------------------------------------\n");
+                ----------------------------------------\n");
     }
     for (round = 1; ps->ld > 0; ++round) {
-      if (round % st->reset_ht == 0) {
-        reset_hash_table(bht, bs, ps, st);
-        st->num_rht++;
-      }
-      rrt0  = realtime();
-      st->max_bht_size  = st->max_bht_size > bht->esz ?
-        st->max_bht_size : bht->esz;
-      st->current_rd  = round;
+        if (round % st->reset_ht == 0) {
+            reset_hash_table(bht, bs, ps, st);
+            st->num_rht++;
+        }
+        rrt0  = realtime();
+        st->max_bht_size  = st->max_bht_size > bht->esz ?
+            st->max_bht_size : bht->esz;
+        st->current_rd  = round;
 
-      /* preprocess data for next reduction round */
-      select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
-      symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
-      convert_hashes_to_columns(&hcm, mat, st, sht);
-      sort_matrix_rows_decreasing(mat->rr, mat->nru);
-      sort_matrix_rows_increasing(mat->tr, mat->nrl);
-      /* print pbm files of the matrices */
-      if (st->gen_pbm_file != 0) {
-        write_pbm_file(mat, st);
-      }
-      /* linear algebra, depending on choice, see set_function_pointers() */
-      linear_algebra(mat, bs, st);
-      /* columns indices are mapped back to exponent hashes */
-      if (mat->np > 0) {
-        convert_sparse_matrix_rows_to_basis_elements(
-            mat, bs, bht, sht, hcm, st);
-      }
-      clean_hash_table(sht);
-      /* all rows in mat are now polynomials in the basis,
-       * so we do not need the rows anymore */
-      clear_matrix(mat);
+        /* preprocess data for next reduction round */
+        select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
+        symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+        convert_hashes_to_columns(&hcm, mat, st, sht);
+        sort_matrix_rows_decreasing(mat->rr, mat->nru);
+        sort_matrix_rows_increasing(mat->tr, mat->nrl);
+        /* print pbm files of the matrices */
+        if (st->gen_pbm_file != 0) {
+            write_pbm_file(mat, st);
+        }
+        /* linear algebra, depending on choice, see set_function_pointers() */
+        linear_algebra(mat, bs, st);
+        /* columns indices are mapped back to exponent hashes */
+        if (mat->np > 0) {
+            convert_sparse_matrix_rows_to_basis_elements(
+                    mat, bs, bht, sht, hcm, st);
+        }
+        clean_hash_table(sht);
+        /* all rows in mat are now polynomials in the basis,
+         * so we do not need the rows anymore */
+        clear_matrix(mat);
 
-      /* check redundancy only if input is not homogeneous */
-      update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        /* check redundancy only if input is not homogeneous */
+        update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
 
-      /* if we found a constant we are done, so remove all remaining pairs */
-      if (bs->constant  == 1) {
-          ps->ld  = 0;
-      }
-      rrt1 = realtime();
-      if (st->info_level > 1) {
-        printf("%13.2f sec\n", rrt1-rrt0);
-      }
+        /* if we found a constant we are done, so remove all remaining pairs */
+        if (bs->constant  == 1) {
+            ps->ld  = 0;
+        }
+        rrt1 = realtime();
+        if (st->info_level > 1) {
+            printf("%13.2f sec\n", rrt1-rrt0);
+        }
+        /* check for monomial multiples of elements from saturation list */
+
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\
-----------------------------------------\n");
+                ----------------------------------------\n");
     }
     /* remove possible redudant elements */
     j = 0;
@@ -203,6 +136,7 @@ int core_f4sat(
     }
 
     *bsp  = bs;
+    *satp = sat;
     *bhtp = bht;
     *stp  = st;
 

@@ -25,32 +25,9 @@
 #include "data.h"
 #include "f4.h"
 
-
-int initialize_f4sat_input_data(
-        bs_t **bsp,
-        ht_t **bhtp,
-        stat_t **stp,
-        /* input values */
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *cfs,
-        const uint32_t field_char,
-        const int32_t mon_order,
-        const int32_t nr_vars,
-        const int32_t nr_gens,
-        const int32_t ht_size,
-        const int32_t nr_threads,
-        const int32_t max_nr_pairs,
-        const int32_t reset_ht,
-        const int32_t la_option,
-        const int32_t reduce_gb,
-        const int32_t pbm_file,
-        const int32_t info_level
-        );
-
-
 int core_f4sat(
         bs_t **bsp,
+        bs_t **satp,
         ht_t **bhtp,
         stat_t **stp
         );

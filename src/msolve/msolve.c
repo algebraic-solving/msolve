@@ -2279,8 +2279,12 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
             return NULL;
         }
     }
+    /* set st->fc to finite characteristic for printing */
+    st->fc  = fc;
     print_ff_basis_data(
                         files->out_file, "a", bs, bht, st, gens, print_gb);
+
+    st->fc  = 0;
 
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm, bs);
 

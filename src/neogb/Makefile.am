@@ -1,7 +1,7 @@
 lib_LTLIBRARIES 		= libneogb.la
 libneogb_la_SOURCES = libneogb.h gb.c
-libneogb_ladir			=	$(includedir)/neogb
-libneogb_la_HEADERS	=	data.h f4.h
+libneogb_ladir			=	$(includedir)/msolve/neogb
+libneogb_la_HEADERS	=	*.h
 libneogb_la_LDFLAGS	= -release $(PACKAGE_VERSION)
 libneogb_la_CFLAGS	= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS)
 

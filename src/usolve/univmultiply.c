@@ -20,13 +20,12 @@
 
 
 
-#include<omp.h>
-#define USEFLINT 1
-
-#ifdef USEFLINT
 #ifdef HAVE_OPENMP
 #include<omp.h>
 #endif
+#define USEFLINT 1
+
+#ifdef USEFLINT
 #include "flint/flint.h"
 #include "flint/fmpz.h"
 #include "flint/fft.h"

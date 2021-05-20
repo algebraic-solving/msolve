@@ -1270,7 +1270,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   matrix->nrows = len_xn;
   long len1 = dquot * len_xn;
   long len2 = dquot - len_xn;
-  fprintf(stderr, "len1 = %ld, len2 = %ld\n", len1, len2);
+
   if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
     fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
     exit(1);

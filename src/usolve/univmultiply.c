@@ -24,7 +24,9 @@
 #define USEFLINT 1
 
 #ifdef USEFLINT
+#ifdef HAVE_OPENMP
 #include<omp.h>
+#endif
 #include "flint/flint.h"
 #include "flint/fmpz.h"
 #include "flint/fft.h"

@@ -23,8 +23,10 @@
 #include <unistd.h>
 #include<gmp.h>
 #include<math.h>
-#include<omp.h>
 #include<time.h>
+#ifdef HAVE_OPENMP
+#include<omp.h>
+#endif
 
 
 #include"taylor_shift.h"

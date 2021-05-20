@@ -187,7 +187,6 @@ static inline void display_fglm_matrix(FILE *file, sp_matfglm_t *matrix){
     fprintf(file, "%d ", matrix->dense_idx[i]);
   }
   fprintf(file, "\n");
-
 }
 
 static inline param_t *allocate_fglm_param(mp_limb_t prime, long nvars){

@@ -163,8 +163,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t deg){
   mirror_points(data_bms->BMS, data_bms->BMS->points->length);
 
   nmod_em_gcd(data_bms->BMS, 0);
-
-  if(data_bms->BMS->R1->length-1 < dim-1){
+  if(data_bms->BMS->R1->length-1 < dim-1 && dim > 1){
     fprintf(stderr, "Singular matrix\n");
     return 0;
   }
@@ -966,6 +965,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
                                                      long nvars,
                                                      mod_t prime,
                                                      int verif){
+
   int nr_fail_param=-1;
   if (invert_table_polynomial (param, data, data_bms, dimquot, block_size,
                                prime, 0, 0)) {
@@ -1146,7 +1146,6 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
   compute_minpoly(param, data, data_bms, dimquot, linvars, lineqs, nvars, &dim,
                   info_level);
 
-
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed: %.2f sec\n",
             realtime()-st);
@@ -1280,6 +1279,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   long dim = 0;
   compute_minpoly(param, *bdata, *bdata_bms, dimquot, linvars, lineqs, nvars, &dim,
                   info_level);
+
+
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
             realtime()-st);

@@ -550,7 +550,7 @@ static int add_random_linear_form_to_input_system(
     if (gens->field_char > 0) {
       int j = 0;
       for (i = len_old; i < len_new; ++i) {
-        gens->random_linear_form[j] = ((int32_t)(rand()/* pow(k, bcf) */) % gens->field_char);
+        gens->random_linear_form[j] = ((int16_t)(rand()) % gens->field_char);
         gens->cfs[i]  = gens->random_linear_form[j];
         k++;
         j++;
@@ -558,8 +558,9 @@ static int add_random_linear_form_to_input_system(
     }
     else {
       int j = 0;
+
       for (i = 2*len_old; i < 2*len_new; i += 2) {
-        gens->random_linear_form[j] = ((int32_t)(rand()));
+        gens->random_linear_form[j] = ((int16_t)(rand()));
         mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
         k++;
         j++;
@@ -738,7 +739,7 @@ check_and_set_vars_squared_in_monomial_basis(uint64_t *squvars,
     la i-ieme entree de squvars est a 0 si le monome vars[i]^2 n'est
     pas dans la base monomiale.
     Sinon, on met l'indice du monome. De toute facon, en 0, on aurait
-    le monome 1. 
+    le monome 1.
   */
   for (long i = 0; i < dquot; i++) {
     long deg = 0;
@@ -1162,22 +1163,7 @@ int msolve_ff_alloc(param_t **bparam,
     check_and_set_linear_poly_non_hashed(&nlins, linvars, lineqs_ptr,
             bld, bexp_lm,
             blen, bexp, bcf_ff, gens->nvars);
-    if(info_level){
-        if(nlins==1){
-            fprintf(stderr, "This Grobner basis contains %ld linear form\n", nlins);
-            for(int i = 0 ; i < gens->nvars - 1; i++){
-                fprintf(stderr, "%lu, ", (unsigned long)linvars[i]);
-            }
-            fprintf(stderr, "%lu\n", (unsigned long)linvars[gens->nvars-1]);
-        }
-        if(nlins>1){
-            fprintf(stderr, "This Grobner basis contains %ld linear forms\n", nlins);
-            for(int i = 0 ; i < gens->nvars - 1; i++){
-                fprintf(stderr, "%lu, ", (unsigned long)linvars[i]);
-            }
-            fprintf(stderr, "%lu\n", (unsigned long)linvars[gens->nvars-1]);
-        }
-    }
+
     if(has_dimension_zero(bld[0], gens->nvars, bexp_lm)){
         if(info_level > 1){
             fprintf(stderr, "The ideal has dimension zero\n");
@@ -2874,6 +2860,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   while(is_lucky_prime_ui(prime, bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
+
   uint32_t primeinit = prime;
   lp->p[0] = primeinit;
 
@@ -4345,7 +4332,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int32_t pbm_file,
                    int32_t precision,
                    files_gb *files,
-                   int round){
+                   int round){o
     if(la_option == 2 || la_option == 1){
         int b = msolve_trace_qq(mp_param,
                                 nmod_param,

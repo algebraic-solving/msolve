@@ -363,6 +363,7 @@ static inline void copy_poly_in_matrix(sp_matfglm_t* matrix,
 #endif
 
   long N = nrows * (matrix->ncols) - (start + 1);
+
   if((end-start) == matrix->ncols + 1){
     for(j = start + 1; j < end; j++){
       matrix->dense_mat[N + j] = fc - bcf[(end + start) - j];
@@ -437,7 +438,6 @@ static inline void copy_poly_in_matrix_from_bs(sp_matfglm_t* matrix,
     }
     else{
       long i;
-
       long N = nrows * matrix->ncols ;
       long k = 0;
 
@@ -1323,7 +1323,6 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   long count = 0;
 
   for(long i = 0; i < dquot; i++){
-
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
@@ -1341,14 +1340,13 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
       l_triv++;
     }
     else{
-
 #if DEBUGBUILDMATRIX > 0
       fprintf(stderr, " => does NOT remain in monomial basis\n");
 #endif
       matrix->dense_idx[l_dens] = i;
       l_dens++;
       if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
-        copy_poly_in_matrix_from_bs(matrix, nrows, bs, ht, //bcf, bexp, blen,
+        copy_poly_in_matrix_from_bs(matrix, nrows, bs, ht, 
                                     div_xn[count], len_gb_xn[count],
                                     start_cf_gb_xn[count], len_gb_xn[count], lmb,
                                     nv, fc);

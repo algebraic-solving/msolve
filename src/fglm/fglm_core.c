@@ -163,8 +163,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t deg){
   mirror_points(data_bms->BMS, data_bms->BMS->points->length);
 
   nmod_em_gcd(data_bms->BMS, 0);
-
-  if(data_bms->BMS->R1->length-1 < dim-1){
+  if(data_bms->BMS->R1->length-1 < dim-1 && dim > 1){
     fprintf(stderr, "Singular matrix\n");
     return 0;
   }
@@ -966,6 +965,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
                                                      long nvars,
                                                      mod_t prime,
                                                      int verif){
+
   int nr_fail_param=-1;
   if (invert_table_polynomial (param, data, data_bms, dimquot, block_size,
                                prime, 0, 0)) {
@@ -990,6 +990,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
         dec++;
       }
     }
+
     /* parametrizations verification */
     if (verif) {
       dec = 0;
@@ -1023,13 +1024,15 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           }
         }
         else{
-          if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
-            nmod_poly_fit_length(param->coords[nvars-2-nc],
-                                 param->elim->alloc );
-          }
-          param->coords[nvars-2-nc]->length = param->elim->length ;
-          for(long i = 0; i < param->elim->length ; i++){
-            param->coords[nvars-2-nc]->coeffs[i] = 0;
+          if(linvars[nvars -2 - nc] != 0){
+            if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
+              nmod_poly_fit_length(param->coords[nvars-2-nc],
+                                   param->elim->alloc );
+            }
+            param->coords[nvars-2-nc]->length = param->elim->length-1 ;
+            for(long i = 0; i < param->elim->length-1 ; i++){
+              param->coords[nvars-2-nc]->coeffs[i] = 0;
+            }
           }
           dec++;
         }
@@ -1038,7 +1041,10 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
 
     set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
 
-    /* display_fglm_param_maple(stderr, param); */
+#if DEBUGFGLM>0
+    display_fglm_param_maple(stderr, param);
+#endif
+
     return nvars-1-nr_fail_param;
   } else {
     return 0;
@@ -1139,7 +1145,6 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
   long dim = 0;
   compute_minpoly(param, data, data_bms, dimquot, linvars, lineqs, nvars, &dim,
                   info_level);
-
 
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed: %.2f sec\n",
@@ -1274,6 +1279,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   long dim = 0;
   compute_minpoly(param, *bdata, *bdata_bms, dimquot, linvars, lineqs, nvars, &dim,
                   info_level);
+
+
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
             realtime()-st);

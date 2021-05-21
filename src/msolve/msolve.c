@@ -1163,22 +1163,7 @@ int msolve_ff_alloc(param_t **bparam,
     check_and_set_linear_poly_non_hashed(&nlins, linvars, lineqs_ptr,
             bld, bexp_lm,
             blen, bexp, bcf_ff, gens->nvars);
-    if(info_level){
-        if(nlins==1){
-            fprintf(stderr, "This Grobner basis contains %ld linear form\n", nlins);
-            for(int i = 0 ; i < gens->nvars - 1; i++){
-                fprintf(stderr, "%lu, ", (unsigned long)linvars[i]);
-            }
-            fprintf(stderr, "%lu\n", (unsigned long)linvars[gens->nvars-1]);
-        }
-        if(nlins>1){
-            fprintf(stderr, "This Grobner basis contains %ld linear forms\n", nlins);
-            for(int i = 0 ; i < gens->nvars - 1; i++){
-                fprintf(stderr, "%lu, ", (unsigned long)linvars[i]);
-            }
-            fprintf(stderr, "%lu\n", (unsigned long)linvars[gens->nvars-1]);
-        }
-    }
+
     if(has_dimension_zero(bld[0], gens->nvars, bexp_lm)){
         if(info_level > 1){
             fprintf(stderr, "The ideal has dimension zero\n");
@@ -4347,7 +4332,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int32_t pbm_file,
                    int32_t precision,
                    files_gb *files,
-                   int round){
+                   int round){o
     if(la_option == 2 || la_option == 1){
         int b = msolve_trace_qq(mp_param,
                                 nmod_param,

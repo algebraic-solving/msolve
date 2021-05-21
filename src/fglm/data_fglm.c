@@ -28,7 +28,7 @@ typedef unsigned int szmat_t;
 typedef uint32_t CF_t;
 typedef uint64_t CF_l_t;
 typedef uint32_t mod_t;
-typedef __uint128_t CF_L_t;
+/* typedef __uint128_t CF_L_t; */
 
 /**
 

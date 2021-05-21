@@ -4332,7 +4332,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int32_t pbm_file,
                    int32_t precision,
                    files_gb *files,
-                   int round){o
+                   int round){
     if(la_option == 2 || la_option == 1){
         int b = msolve_trace_qq(mp_param,
                                 nmod_param,

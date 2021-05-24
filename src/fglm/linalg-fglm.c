@@ -162,7 +162,6 @@ static inline void non_avx_matrix_vector_product(uint32_t* vec_res, const uint32
                     prod1 -=  (int64_t)mat[j*ncols+i+4] * vec[i+4];
                     prod2 -=  (int64_t)mat[(j+1)*ncols+i+4] * vec[i+4];
                     prod3 -=  (int64_t)mat[(j+2)*ncols+i+4] * vec[i+4];
-                    printf("j %u | i %u | ncols %u\n", j, i, ncols);
                     prod4 -=  (int64_t)mat[(j+3)*ncols+i+4] * vec[i+4];
                     prod1 +=  ((prod1 >> 63)) & modsquare;
                     prod2 +=  ((prod2 >> 63)) & modsquare;

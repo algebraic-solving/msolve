@@ -20,6 +20,75 @@
 
 
 #include "f4sat.h"
+static inline int32_t *quotient_monomials(long length, long nvars, 
+                                      int32_t *bexp_lm, long *dquot){
+  int32_t *basis = calloc(nvars, sizeof(int32_t)); 
+  (*dquot) = 0;
+
+  if(is_divisible_lexp(nvars, length, (basis), bexp_lm)){
+    fprintf(stderr, "Stop\n");
+    free(basis);
+    return NULL;
+  }
+  else{
+    (*dquot)++;
+  }
+  long *ind = calloc(nvars, sizeof(long) * nvars);
+
+#ifdef DEBUGHILBERT
+  fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+#endif
+
+  int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars)); 
+  long new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
+                                            basis, new_basis, bexp_lm);
+#ifdef DEBUGHILBERT
+  //  display_monomials_from_array(stderr, new_length, new_basis, gens);
+  fprintf(stderr, "%ld new elements.\n", new_length);
+#endif
+  while(new_length>0){
+    int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t *));
+    if(basis2==NULL){
+      fprintf(stderr, "Issue with realloc\n");
+      exit(1);
+    }
+
+    basis = basis2;
+    for(long i = 0; i < new_length; i++){
+      for(long k = 0; k < nvars; k++){
+        (basis)[((*dquot) + i)*nvars+k] = (new_basis)[i*nvars+k];
+      }
+    }
+
+    update_indices(ind, basis, *dquot, new_length, nvars);
+    (*dquot) += new_length;
+
+#ifdef DEBUGHILBERT
+    fprintf(stderr, "Update indices\n");
+    for(long i = 0; i < nvars; i++) fprintf(stderr, "%ld ", ind[i]);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+#endif
+
+    int32_t *new_basis2 = realloc(new_basis,
+                                 sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
+    if(new_basis==NULL){
+      fprintf(stderr, "Issue with realloc\n");
+      exit(1);
+    }
+    new_basis=new_basis2;
+    new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
+                                         basis, new_basis, bexp_lm);
+#ifdef DEBUGHILBERT
+    fprintf(stderr, "%ld new elements.\n", new_length);
+#endif
+  }
+
+  free(new_basis);
+  free(ind);
+  return basis;
+}
+static void get_monomials_of
 
 int core_f4sat(
         bs_t **bsp,
@@ -94,7 +163,6 @@ int core_f4sat(
             convert_sparse_matrix_rows_to_basis_elements(
                     mat, bs, bht, sht, hcm, st);
         }
-        clean_hash_table(sht);
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
         clear_matrix(mat);
@@ -111,6 +179,25 @@ int core_f4sat(
             printf("%13.2f sec\n", rrt1-rrt0);
         }
         /* check for monomial multiples of elements from saturation list */
+        select_tbr(tbr, mul, 0, mat, st, sht, bht, NULL);
+
+        symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+        if (st->info_level > 1) {
+            printf("nf computation data");
+        }
+        convert_hashes_to_columns(&hcm, mat, st, sht);
+        sort_matrix_rows_decreasing(mat->rr, mat->nru);
+
+        /* linear algebra, depending on choice, see set_function_pointers() */
+        exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, st);
+        /* columns indices are mapped back to exponent hashes */
+        return_normal_forms_to_basis(
+                mat, tbr, bht, sht, hcm, st);
+
+        /* all rows in mat are now polynomials in the basis,
+        * so we do not need the rows anymore */
+        clear_matrix(mat);
+        clean_hash_table(sht);
 
     }
     if (st->info_level > 1) {

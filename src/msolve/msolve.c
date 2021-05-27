@@ -3145,7 +3145,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       nprimes++;
     }
     double t = ((double)nbdoit)*ca1;
-    if(scrr >= 0.2*t && br == 0){
+    if((t == 0) || (scrr >= 0.2*t && br == 0)){
       nbdoit=2*nbdoit;
       lpow2 = nprimes - lpow2;
       doit = 0;

@@ -997,6 +997,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
       for(long nc = 0; nc < nvars - 1 ; nc++){
         if(linvars[nvars - 2 - nc] == 0
            && squvars[nvars - 2 - nc] != 0){
+
           uint64_t lambda= 1 + ((uint64_t) rand() % (prime-1));
           /* needed for verification */
 
@@ -1034,6 +1035,8 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
               param->coords[nvars-2-nc]->coeffs[i] = 0;
             }
           }
+        }
+        if(linvars[nvars - 2 - nc] != 0){
           dec++;
         }
       }

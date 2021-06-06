@@ -4607,6 +4607,7 @@ int core_msolve(
   int32_t print_gb,
   int32_t get_param,
   int32_t genericity_handling,
+  int32_t saturate,
   int32_t normal_form,
   int32_t normal_form_matrix,
   int32_t is_gb,
@@ -4640,6 +4641,75 @@ restart:
     b     = 0;
 
     if(gens->field_char > 0){
+        if (saturate == 1) {
+            /* data structures for basis, hash table and statistics */
+            bs_t *bs    = NULL;
+            bs_t *sat   = NULL;
+            ht_t *bht   = NULL;
+            stat_t *st  = NULL;
+
+            /* for (int ii = 0; ii<gens->nvars; ++ii) {
+             *     mul[ii] = 1;
+             * } */
+
+            int success = 0;
+
+/*             initialize generators of ideal, note the "gens->ngens-normal_form" which
+ *             means that we only take the first nr_gens-normal_form generators from
+ *             the input file, the last normal_form polynomial in the file will
+ *             be reduced w.r.t. the basis
+ *
+ *             NOTE: There is a little hack here, instead of gens->field_char we
+ *             give 1073741827 as parameter, which ensures that all F4 internal
+ *             routines are the 32-bit implementations (since nf is at the moment
+ *             only implemented for 32-bit elements). Later on we set st-fc by hand
+ *             to the correct field characteristic. */
+            success = initialize_f4_input_data(&bs, &bht, &st,
+                    gens->lens, gens->exps, (void *)gens->cfs,
+                    1073741827, 0 /* DRL order */, gens->nvars,
+                    /* gens->field_char, 0 [> DRL order <], gens->nvars, */
+                    gens->ngens-normal_form, initial_hts, nr_threads, max_pairs,
+                    update_ht, la_option, 1 /* reduce_gb */, 0,
+                    info_level);
+
+            st->fc  = gens->field_char;
+            if(info_level){
+              fprintf(stderr,
+                      "NOTE: Field characteristic is now corrected to %u\n",
+                      st->fc);
+            }
+            if (!success) {
+                printf("Bad input data, stopped computation.\n");
+                exit(1);
+            }
+
+            if (is_gb == 1) {
+                for (len_t k = 0; k < bs->ld; ++k) {
+                    bs->lmps[k] = k;
+                    bs->lm[k]   = bht->hd[bs->hm[k][OFFSET]].sdm;
+                    bs->lml     = bs->ld;
+                }
+            } else {
+                sat = initialize_basis(2*saturate);
+                import_julia_data_nf_ff_32(
+                        sat, bht, st, gens->ngens-saturate, gens->ngens,
+                        gens->lens, gens->exps, (void *)gens->cfs);
+                sat->ld = sat->lml  =  saturate;
+                /* normalize_initial_basis(tbr, st->fc); */
+                for (int k = 0; k < saturate; ++k) {
+                    sat->lmps[k]  = k; /* fix input element in tbr */
+                }
+
+                /* compute a gb for initial generators */
+                success = core_f4sat(&bs, &sat, &bht, &st);
+
+                if (!success) {
+                    printf("Problem with f4sat, stopped computation.\n");
+                    exit(1);
+                }
+            }
+            return 0;
+        }
         if (normal_form == 0) {
             b = msolve_ff_alloc(&param, bld, blen, bexp, bcf,
                     gens, initial_hts, nr_threads, max_pairs,
@@ -5215,9 +5285,9 @@ void msolve_julia(
     /* main msolve functionality */
     int ret = core_msolve(la_option, nr_threads, info_level, initial_hts,
             max_nr_pairs, reset_ht, 0 /* generate pbm */, 1 /* reduce_gb */,
-            print_gb, get_param, genericity_handling, 0 /* normal_form */,
-            0 /* normal_form_matrix */, 0 /* is_gb */, precision,
-            files, gens, &param, &mpz_param, &nb_real_roots,
+            print_gb, get_param, genericity_handling, 0 /* saturate */,
+            0 /* normal_form */, 0 /* normal_form_matrix */, 0 /* is_gb */,
+            precision, files, gens, &param, &mpz_param, &nb_real_roots,
             &real_roots, &real_pts);
 
     /* clean up data storage, but do not free data handled by julia */

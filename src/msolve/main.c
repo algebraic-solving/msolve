@@ -180,6 +180,7 @@ static void getoptions(
         int32_t *reduce_gb,
         int32_t *print_gb,
         int32_t *genericity_handling,
+        int32_t *saturate,
         int32_t *normal_form,
         int32_t *normal_form_matrix,
         int32_t *is_gb,
@@ -192,7 +193,7 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:v:l:t:o:u:i:p:P:g:c:s:r:m:M:n:";
+  char options[] = "hf:v:l:t:o:u:i:p:P:g:c:s:S:r:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'h':
@@ -221,6 +222,15 @@ static void getoptions(
       break;
     case 's':
       *initial_hts = strtol(optarg, NULL, 10);
+      break;
+    case 'S':
+      *saturate = strtol(optarg, NULL, 10);
+      if (*saturate < 0) {
+          *saturate = 0;
+      }
+      if (*saturate > 1) {
+          *saturate = 1;
+      }
       break;
     case 'r':
       *reduce_gb = strtol(optarg, NULL, 10);
@@ -322,6 +332,7 @@ int main(int argc, char **argv){
     int32_t reduce_gb             = 1;
     int32_t print_gb              = 0;
     int32_t genericity_handling   = 2;
+    int32_t saturate              = 0;
     int32_t normal_form           = 0;
     int32_t normal_form_matrix    = 0;
     int32_t is_gb                 = 0;
@@ -333,7 +344,7 @@ int main(int argc, char **argv){
     files->out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
             &la_option, &update_ht, &reduce_gb, &print_gb,
-            &genericity_handling, &normal_form, &normal_form_matrix,
+            &genericity_handling, &saturate, &normal_form, &normal_form_matrix,
             &is_gb, &get_param, &precision, &generate_pbm, &info_level,
             files);
 
@@ -367,7 +378,7 @@ int main(int argc, char **argv){
     /* main msolve functionality */
     int ret = core_msolve(la_option, nr_threads, info_level, initial_hts,
             max_pairs, update_ht, generate_pbm, reduce_gb, print_gb, get_param,
-            genericity_handling, normal_form, normal_form_matrix, is_gb,
+            genericity_handling, saturate, normal_form, normal_form_matrix, is_gb,
             precision, files, gens, &param, &mpz_param, &nb_real_roots,
             &real_roots, &real_pts);
 

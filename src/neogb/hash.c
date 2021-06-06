@@ -464,6 +464,100 @@ restart:
     }
 }
 
+static inline hi_t check_lm_divisibility_and_insert_in_hash_table(
+    const exp_t *a,
+    ht_t *ht,
+    const bs_t * const bs
+    )
+{
+    hl_t i;
+    hi_t k, pos;
+    len_t j;
+    deg_t deg;
+    exp_t *e;
+    hd_t *d;
+    const len_t lml   = bs->lml;
+
+    const sdm_t * const lms = bs->lm;
+    const bl_t * const lmps = bs->lmps;
+
+    const sdm_t nsdm  = ~generate_short_divmask(a, ht);
+
+    val_t h = 0;
+    const len_t nv = ht->nv;
+    const hl_t hsz = ht->hsz;
+    /* ht->hsz <= 2^32 => mod is always uint32_t */
+    const hi_t mod = (hi_t)(ht->hsz - 1);
+
+    /* check divisibility w.r.t. current lead monomials */
+    i = 0;
+start:
+    while (i < lml && lms[i] & nsdm) {
+        i++;
+    }
+    if (i < lml) {
+        e = ht->ev[bs->hm[lmps[i]][OFFSET]];
+        for (j = 0; j < nv; ++j) {
+            if (e[j] > a[j]) {
+                i++;
+                goto start;
+            }
+        }
+        /* divisible by lm */
+        return 0;
+    }
+    /* if we are here then a is not divisible by a current
+     * lead monomial and we can add it to the hash table */
+
+    /* generate hash value */
+    for (j = 0; j < nv; ++j) {
+        h +=  ht->rn[j] * a[j];
+    }
+    /* probing */
+    k = h;
+    i = 0;
+restart:
+    for (; i < hsz; ++i) {
+        k = (hi_t)((k+i) & mod);
+        const hi_t hm = ht->hmap[k];
+        if (!hm) {
+            break;
+        }
+        if (ht->hd[hm].val != h) {
+            continue;
+        }
+        const exp_t * const ehm = ht->ev[hm];
+        for (j = 0; j < nv-1; j += 2) {
+            if (a[j] != ehm[j] || a[j+1] != ehm[j+1]) {
+                i++;
+                goto restart;
+            }
+        }
+        if (a[nv-1] != ehm[nv-1]) {
+            i++;
+            goto restart;
+        }
+        return hm;
+    }
+
+    /* add element to hash table */
+    ht->hmap[k]  = pos = (hi_t)ht->eld;
+    e   = ht->ev[pos];
+    d   = ht->hd + pos;
+    deg = 0;
+    for (j = 0; j < nv; ++j) {
+        e[j]  =   a[j];
+        deg   +=  a[j];
+    }
+    d->deg  = deg;
+    d->sdm  = generate_short_divmask(e, ht);
+    d->val  = h;
+
+    ht->eld++;
+
+    return pos;
+}
+
 static inline hi_t insert_in_hash_table(
     const exp_t *a,
     ht_t *ht

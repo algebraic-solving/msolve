@@ -55,7 +55,7 @@ static void free_basis_elements(
             free(bs->hm[i]);
         }
     }
-    bs->ld  = 0;
+    bs->ld  = bs->lo  = 0;
 }
 
 void free_basis(

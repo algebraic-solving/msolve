@@ -280,6 +280,9 @@ struct stat_t
     double application_nr_mult;
     double application_nr_add;
     uint64_t application_nr_red;
+
+    /* for f4sat */
+    uint32_t new_multipliers;
 };
 
 /* function pointers */

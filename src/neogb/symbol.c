@@ -196,6 +196,49 @@ static void select_spairs_by_minimal_degree(
     st->select_rtime  +=  rt1 - rt0;
 }
 
+static void select_saturation(
+        const bs_t * const sat,
+        const bs_t * const mul,
+        mat_t *mat,
+        stat_t *st,
+        ht_t *sht,
+        ht_t *bht
+        )
+{
+    len_t i;
+
+    len_t ntr = 0;
+
+    /* preset matrix meta data */
+    mat->rr       = (hm_t **)malloc(100 * sizeof(hm_t *));
+    mat->tr       = (hm_t **)malloc((unsigned long)mul->ld * sizeof(hm_t *));
+    hm_t **trows  = mat->tr;
+
+    mat->sz = 100;
+    mat->nc = mat->ncl = mat->ncr = 0;
+    mat->nr = 0;
+
+    for (i = 0; i < mul->lo; ++i) {
+        /* todo: reconsider old data */
+    }
+    for (i = mul->lo; i < mul->ld; ++i) {
+        const hm_t *b   = sat->hm[0];
+        const hm_t m    = mul->hm[i][OFFSET];
+        /* remove the multiplier business for the moment, no need
+         * and it corrupts a bit the sht size for efficient matrix
+         * generation */
+        /* const hi_t mulh = insert_in_hash_table(mul, sht);
+         * const hi_t h    = sht->hd[mulh].val;
+         * const deg_t d   = sht->hd[mulh].deg; */
+        const hi_t h    = bht->hd[m].val;
+        const deg_t d   = bht->hd[m].deg;
+        trows[ntr++]    = multiplied_poly_to_matrix_row(
+                sht, bht, h, d, bht->ev[m], b);
+        mat->nr++;
+    }
+}
+
+
 static void select_tbr(
         const bs_t * const tbr,
         const exp_t * const mul,

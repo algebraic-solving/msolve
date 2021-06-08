@@ -25,6 +25,57 @@
  * hashes in the polynomials resp. rows. moreover, we have sorted each row
  * by pivots / non-pivots. thus we get already an A|B splicing of the
  * initial matrix. this is a first step for receiving a full GBLA matrix. */
+static void convert_multipliers_to_columns(
+        hi_t **hcmp,
+        bs_t *mul,
+        stat_t *st,
+        ht_t *ht
+        )
+{
+    hl_t i;
+    hi_t j, k;
+    hm_t *row;
+    int64_t nterms = 0;
+
+    hi_t *hcm = *hcmp;
+
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    len_t hi;
+
+    /* all elements in the sht hash table represent
+     * exactly one column of the matrix */
+    hcm = realloc(hcm, (unsigned long)mul->ld * sizeof(hi_t));
+    for (i = 0; i < mul->ld; ++i) {
+        hcm[i]  = mul->hm[i][OFFSET];
+    }
+    sort_r(hcm, (unsigned long)mul->ld, sizeof(hi_t), hcm_cmp, ht);
+
+    /* printf("hcm\n");
+     * for (int ii=0; ii<j; ++ii) {
+     *     printf("hcm[%d] = %d | ", ii, hcm[ii]);
+     *     for (int jj = 0; jj < sht->nv; ++jj) {
+     *         printf("%d ", sht->ev[hcm[ii]][jj]);
+     *     }
+     *     printf("\n");
+     * } */
+
+
+    /* store the other direction (hash -> column) */
+    for (i = 0; i < mul->ld; ++i) {
+        ht->hd[hcm[i]].idx  = (hi_t)i;
+    }
+
+    /* map column positions to mul entries*/
+    for (i = 0; i < mul->ld; ++i) {
+        mul->hm[i][OFFSET]  =  ht->hd[mul->hm[i][OFFSET]].idx;
+    }
+    *hcmp = hcm;
+}
+
 static void convert_hashes_to_columns(
         hi_t **hcmp,
         mat_t *mat,

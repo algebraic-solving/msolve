@@ -53,7 +53,7 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 #define LENGTH  OFFSET-1  /* length of the row */
 #define PRELOOP OFFSET-2  /* length of not unrolled loop part */
 #define COEFFS  OFFSET-3  /* index of corresponding coefficient vector */
-#define MULT    OFFSET-4  /* hash of multiplier (for tracing) */
+#define MULT    OFFSET-4  /* hash of multiplier (for tracing and saturation) */
 #define BINDEX  OFFSET-5  /* basis index of element (for tracing) */
 
 

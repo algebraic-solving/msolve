@@ -215,10 +215,13 @@ static void update_multipliers(
 
     /* quotient monomials */
     for (i = 0; i < qdim; ++i) {
-       mul->hm[ctr]         = realloc(mul->hm[ctr], (1+OFFSET)*sizeof(hm_t));
-       mul->hm[ctr][OFFSET] = qb[i];
-       mul->cf_32[ctr]      = realloc(mul->cf_32[ctr], sizeof(cf32_t));
-       mul->cf_32[ctr][0]   = 1;
+       mul->hm[ctr]           = realloc(mul->hm[ctr], (1+OFFSET)*sizeof(hm_t));
+       mul->hm[ctr][LENGTH]   = 1;
+       mul->hm[ctr][PRELOOP]  = 0;
+       mul->hm[ctr][MULT]     = ctr;
+       mul->hm[ctr][OFFSET]   = qb[i];
+       mul->cf_32[ctr]        = realloc(mul->cf_32[ctr], sizeof(cf32_t));
+       mul->cf_32[ctr][0]     = 1;
        ctr++;
     }
     mul->ld = ctr;
@@ -265,7 +268,9 @@ int core_f4sat(
 
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
-    hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
+    hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
+    /* hashes-to-columns maps for multipliers in saturation step */
+    hi_t *hcmm  = (hi_t *)malloc(sizeof(hi_t));
     /* matrix holding sparse information generated
      * during symbolic preprocessing */
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
@@ -343,10 +348,11 @@ int core_f4sat(
             printf("nf computation data");
         }
         convert_hashes_to_columns(&hcm, mat, st, sht);
+        convert_multipliers_to_columns(&hcmm, mul, st, bht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
         /* linear algebra, depending on choice, see set_function_pointers() */
-        exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, st);
+        exact_sparse_linear_algebra_sat_ff_32(mat, mul, sat, bs, st);
         /* columns indices are mapped back to exponent hashes */
         return_normal_forms_to_basis(
                 mat, tbr, bht, sht, hcm, st);

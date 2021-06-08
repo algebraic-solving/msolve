@@ -460,6 +460,232 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     return row;
 }
 
+
+static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
+        int64_t *dr,
+        int64_t *drm,
+        mat_t *mat,
+        bs_t *mulb,
+        const bs_t * const bs,
+        hm_t *const *pivs,
+        const hi_t dpiv,    /* pivot of dense row at the beginning */
+        const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
+        const hm_t mul_idx, /* index of corresponding multiplierdd */
+        stat_t *st
+        )
+{
+    hi_t i, j, k;
+    cf32_t *cfs, *cfsm;
+    hm_t *dts, *dtsm;
+    int64_t np = -1;
+    const int64_t mod           = (int64_t)st->fc;
+    const int64_t mod2          = (int64_t)st->fc * st->fc;
+    const len_t ncols           = mat->nc;
+    const len_t ncl             = mat->ncl;
+    cf32_t * const * const mcf  = mat->cf_32;
+#ifdef HAVE_AVX2
+    int64_t res[4] __attribute__((aligned(32)));
+    __m256i cmpv, redv, drv, mulv, prodv, resv, rresv;
+    __m256i zerov= _mm256_set1_epi64x(0);
+    __m256i mod2v = _mm256_set1_epi64x(mod2);
+#endif
+
+    k = 0;
+    for (i = dpiv; i < ncols; ++i) {
+        if (dr[i] != 0) {
+            dr[i] = dr[i] % mod;
+        }
+        if (dr[i] == 0) {
+            continue;
+        }
+        if (pivs[i] == NULL) {
+            if (np == -1) {
+                np  = i;
+            }
+            k++;
+            continue;
+        }
+
+        /* found reducer row, get multiplier */
+        const int64_t mul = (int64_t)dr[i];
+        dts   = pivs[i];
+        dtsm  = mulb->hm[dts[MULT]];
+        cfsm  = mulb->cf_32[dtsm[COEFFS]];
+        if (i < ncl) {
+            cfs   = bs->cf_32[dts[COEFFS]];
+        } else {
+            cfs   = mcf[dts[COEFFS]];
+        }
+#ifdef HAVE_AVX2
+        const len_t len = dts[LENGTH];
+        const len_t os  = len % 8;
+        const hm_t * const ds  = dts + OFFSET;
+        const uint32_t mul32 = (uint32_t)(dr[i]);
+        mulv  = _mm256_set1_epi32(mul32);
+        for (j = 0; j < os; ++j) {
+            dr[ds[j]] -=  mul * cfs[j];
+            dr[ds[j]] +=  (dr[ds[j]] >> 63) & mod2;
+        }
+        for (; j < len; j += 8) {
+            redv  = _mm256_loadu_si256((__m256i*)(cfs+j));
+            drv   = _mm256_setr_epi64x(
+                dr[ds[j+1]],
+                dr[ds[j+3]],
+                dr[ds[j+5]],
+                dr[ds[j+7]]);
+            /* first four mult-adds -- lower */
+            prodv = _mm256_mul_epu32(mulv, _mm256_srli_epi64(redv, 32));
+            resv  = _mm256_sub_epi64(drv, prodv);
+            cmpv  = _mm256_cmpgt_epi64(zerov, resv);
+            rresv = _mm256_add_epi64(resv, _mm256_and_si256(cmpv, mod2v));
+            _mm256_store_si256((__m256i*)(res), rresv);
+            dr[ds[j+1]] = res[0];
+            dr[ds[j+3]] = res[1];
+            dr[ds[j+5]] = res[2];
+            dr[ds[j+7]] = res[3];
+            /* second four mult-adds -- higher */
+            prodv = _mm256_mul_epu32(mulv, redv);
+            drv   = _mm256_setr_epi64x(
+                dr[ds[j]],
+                dr[ds[j+2]],
+                dr[ds[j+4]],
+                dr[ds[j+6]]);
+            resv  = _mm256_sub_epi64(drv, prodv);
+            cmpv  = _mm256_cmpgt_epi64(zerov, resv);
+            rresv = _mm256_add_epi64(resv, _mm256_and_si256(cmpv, mod2v));
+            _mm256_store_si256((__m256i*)(res), rresv);
+            dr[ds[j]]   = res[0];
+            dr[ds[j+2]] = res[1];
+            dr[ds[j+4]] = res[2];
+            dr[ds[j+6]] = res[3];
+        }
+        const len_t lenm = dtsm[LENGTH];
+        const len_t osm  = lenm % 8;
+        const hm_t * const dsm  = dtsm + OFFSET;
+        const uint32_t mulm32 = (uint32_t)(drm[i]);
+        mulv  = _mm256_set1_epi32(mul32);
+        for (j = 0; j < osm; ++j) {
+            drm[dsm[j]] -=  mul * cfsm[j];
+            drm[dsm[j]] +=  (drm[dsm[j]] >> 63) & mod2;
+        }
+        for (; j < lenm; j += 8) {
+            redv  = _mm256_loadu_si256((__m256i*)(cfsm+j));
+            drv   = _mm256_setr_epi64x(
+                drm[dsm[j+1]],
+                drm[dsm[j+3]],
+                drm[dsm[j+5]],
+                drm[dsm[j+7]]);
+            /* first four mult-adds -- lower */
+            prodv = _mm256_mul_epu32(mulv, _mm256_srli_epi64(redv, 32));
+            resv  = _mm256_sub_epi64(drv, prodv);
+            cmpv  = _mm256_cmpgt_epi64(zerov, resv);
+            rresv = _mm256_add_epi64(resv, _mm256_and_si256(cmpv, mod2v));
+            _mm256_store_si256((__m256i*)(res), rresv);
+            drm[dsm[j+1]] = res[0];
+            drm[dsm[j+3]] = res[1];
+            drm[dsm[j+5]] = res[2];
+            drm[dsm[j+7]] = res[3];
+            /* second four mult-adds -- higher */
+            prodv = _mm256_mul_epu32(mulv, redv);
+            drv   = _mm256_setr_epi64x(
+                drm[dsm[j]],
+                drm[dsm[j+2]],
+                drm[dsm[j+4]],
+                drm[dsm[j+6]]);
+            resv  = _mm256_sub_epi64(drv, prodv);
+            cmpv  = _mm256_cmpgt_epi64(zerov, resv);
+            rresv = _mm256_add_epi64(resv, _mm256_and_si256(cmpv, mod2v));
+            _mm256_store_si256((__m256i*)(res), rresv);
+            drm[dsm[j]]   = res[0];
+            drm[dsm[j+2]] = res[1];
+            drm[dsm[j+4]] = res[2];
+            drm[dsm[j+6]] = res[3];
+        }
+#else
+        const len_t os  = dts[PRELOOP];
+        const len_t len = dts[LENGTH];
+        const hm_t * const ds = dts + OFFSET;
+        for (j = 0; j < os; ++j) {
+            dr[ds[j]]   -=  mul * cfs[j];
+            dr[ds[j]]   +=  (dr[ds[j]] >> 63) & mod2;
+        }
+        for (; j < len; j += UNROLL) {
+            dr[ds[j]]   -=  mul * cfs[j];
+            dr[ds[j+1]] -=  mul * cfs[j+1];
+            dr[ds[j+2]] -=  mul * cfs[j+2];
+            dr[ds[j+3]] -=  mul * cfs[j+3];
+            dr[ds[j]]   +=  (dr[ds[j]] >> 63) & mod2;
+            dr[ds[j+1]] +=  (dr[ds[j+1]] >> 63) & mod2;
+            dr[ds[j+2]] +=  (dr[ds[j+2]] >> 63) & mod2;
+            dr[ds[j+3]] +=  (dr[ds[j+3]] >> 63) & mod2;
+        }
+        const len_t osm   = dtsm[PRELOOP];
+        const len_t lenm  = dtsm[LENGTH];
+        const hm_t * const dsm = dtsm + OFFSET;
+        for (j = 0; j < osm; ++j) {
+            drm[dsm[j]] -=  mul * cfsm[j];
+            drm[dsm[j]] +=  (drm[dsm[j]] >> 63) & mod2;
+        }
+        for (; j < lenm; j += UNROLL) {
+            drm[dsm[j]]   -=  mul * cfsm[j];
+            drm[dsm[j+1]] -=  mul * cfsm[j+1];
+            drm[dsm[j+2]] -=  mul * cfsm[j+2];
+            drm[dsm[j+3]] -=  mul * cfsm[j+3];
+            drm[dsm[j]]   +=  (drm[dsm[j]] >> 63) & mod2;
+            drm[dsm[j+1]] +=  (drm[dsm[j+1]] >> 63) & mod2;
+            drm[dsm[j+2]] +=  (drm[dsm[j+2]] >> 63) & mod2;
+            drm[dsm[j+3]] +=  (drm[dsm[j+3]] >> 63) & mod2;
+        }
+#endif
+        dr[i] = 0;
+        st->application_nr_mult +=  len / 1000.0;
+        st->application_nr_add  +=  len / 1000.0;
+        st->application_nr_red++;
+    }
+
+    if (k == 0) {
+        return NULL;
+    }
+
+    hm_t *row   = (hm_t *)malloc((unsigned long)(k+OFFSET) * sizeof(hm_t));
+    cf32_t *cf  = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
+    j = 0;
+    hm_t *rs  = row + OFFSET;
+    for (i = ncl; i < ncols; ++i) {
+        if (dr[i] != 0) {
+            rs[j] = (hm_t)i;
+            cf[j] = (cf32_t)dr[i];
+            j++;
+        }
+    }
+    row[COEFFS]   = tmp_pos;
+    row[PRELOOP]  = j % UNROLL;
+    row[LENGTH]   = j;
+    mat->cf_32[tmp_pos]  = cf;
+
+    mulb->hm[mul_idx]  =
+        (hm_t *)malloc((unsigned long)mulb->ld * sizeof(hm_t));
+    mulb->cf_32[mul_idx] =
+        (cf32_t *)malloc((unsigned long)mulb->ld * sizeof(cf32_t));
+    j = 0;
+    hm_t *rsm   = mulb->hm[mul_idx] + OFFSET;
+    cf32_t*cfm  = mulb->cf_32[mul_idx];
+    for (i = 0; i < mulb->ld; ++i) {
+        if (drm[i] != 0) {
+            drm[i]  = drm[i] % mod;
+            if (drm[i] != 0) {
+                rsm[j]  = (hm_t)i;
+                cfm[j] = (cf32_t)drm[i];
+                j++;
+            }
+        }
+    }
+    rsm[PRELOOP]  = j % UNROLL;
+    rsm[LENGTH]   = j;
+
+    return row;
+}
+
 static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
         rba_t *rba,
         int64_t *dr,
@@ -1578,6 +1804,169 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     mat->np = mat->nr = mat->sz = npivs;
 }
 
+static void exact_sparse_reduced_echelon_form_sat_ff_32(
+        mat_t *mat,
+        bs_t *mul,
+        const bs_t * const sat,
+        const bs_t * const bs,
+        stat_t *st
+        )
+{
+    len_t i = 0, j, k;
+    hi_t sc = 0;    /* starting column */
+
+    const len_t ncols = mat->nc;
+    const len_t nrl   = mat->nrl;
+    const len_t ncl   = mat->ncl;
+
+    /* we fill in all known lead terms in pivs */
+    hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
+    memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
+
+    /* unkown pivot rows we have to reduce with the known pivots first */
+    hm_t **upivs  = mat->tr;
+
+    int64_t *dr  = (int64_t *)malloc(
+            (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));
+    /* mo need to have any sharing dependencies on parallel computation,
+     * no data to be synchronized at this step of the linear algebra */
+#pragma omp parallel for num_threads(st->nthrds) \
+    private(i, j, sc) \
+    schedule(dynamic)
+    printf("nrl %un", nrl);
+    for (i = 0; i < nrl; ++i) {
+        int64_t *drl  = dr + (omp_get_thread_num() * ncols);
+        hm_t *npiv      = upivs[i];
+        len_t mult      = upivs[i][MULT];
+        /* we only saturate w.r.t. one element at the moment */
+        cf32_t *cfs     = sat->cf_32[0];
+        const len_t os  = npiv[PRELOOP];
+        const len_t len = npiv[LENGTH];
+        const hm_t * const ds = npiv + OFFSET;
+        memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
+        for (j = 0; j < os; ++j) {
+            drl[ds[j]]  = (int64_t)cfs[j];
+        }
+        for (; j < len; j += UNROLL) {
+            drl[ds[j]]    = (int64_t)cfs[j];
+            drl[ds[j+1]]  = (int64_t)cfs[j+1];
+            drl[ds[j+2]]  = (int64_t)cfs[j+2];
+            drl[ds[j+3]]  = (int64_t)cfs[j+3];
+        }
+        cfs = NULL;
+        sc  = npiv[OFFSET];
+        free(npiv);
+        free(cfs);
+        npiv  = reduce_dense_row_by_known_pivots_sparse_ff_32(
+                drl, mat, bs, pivs, sc, i, st);
+        printf("i %u -- npiv %p .. OFFSET %u\n", i, npiv, npiv[OFFSET]);
+        if (!npiv) {
+            mat->tr[i]  = NULL;
+            continue;
+        }
+        npiv[MULT]  = mult;
+        mat->tr[i]  = npiv;
+        /* k   = __sync_bool_c#csompare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv); */
+        cfs = mat->cf_32[npiv[COEFFS]];
+    }
+
+    mat->np = mat->nr = mat->sz = nrl;
+    /* we do not need the old pivots anymore */
+    for (i = 0; i < ncl; ++i) {
+        free(pivs[i]);
+        pivs[i] = NULL;
+    }
+
+    len_t npivs = 0; /* number of new pivots */
+
+    dr      = realloc(dr, (unsigned long)ncols * sizeof(int64_t));
+    /* mat->tr = realloc(mat->tr, (unsigned long)ncr * sizeof(hm_t *)); */
+
+    upivs = NULL;
+    upivs = (hm_t **)calloc((unsigned long)mat->nrl, sizeof(hm_t *));
+    len_t ctr = 0;
+
+
+
+    /* compute kernel */
+    for (i = nrl; i > 0; --i) {
+        if (mat->tr[i-1] != NULL) {
+            printf("%p || i %u --> offset %u, ncl %u, ncols %u\n", mat->tr[i-1],i, mat->tr[i-1][OFFSET], ncl, ncols);
+            if (pivs[mat->tr[i-1][OFFSET]] == NULL) {
+                pivs[mat->tr[i-1][OFFSET]] = mat->tr[i-1];
+            } else {
+                upivs[ctr++]  = mat->tr[i-1];
+                }
+        }
+    }
+    upivs = realloc(upivs, (unsigned long)ctr * sizeof(hm_t *));
+
+    /* dense row for multipliers */
+    int64_t *drm  = calloc((unsigned long)mul->ld, sizeof(int64_t));
+    /* now we do a ususal F4 reduction with updated pivs, but we have
+     * to track the reduction steps when reducing each row from upivs */
+    for (i = 0; i < ctr; ++i) {
+        int64_t *drl  = dr;
+        hm_t *npiv      = upivs[i];
+        hm_t mult       = upivs[i][MULT];
+        cf32_t *cfs     = mat->cf_32[npiv[COEFFS]];
+        const len_t os  = npiv[PRELOOP];
+        const len_t len = npiv[LENGTH];
+        const hm_t * const ds = npiv + OFFSET;
+        k = 0;
+        memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
+        memset(drm, 0, (unsigned long)mul->ld * sizeof(int64_t));
+        for (j = 0; j < os; ++j) {
+            drl[ds[j]]  = (int64_t)cfs[j];
+        }
+        for (; j < len; j += UNROLL) {
+            drl[ds[j]]    = (int64_t)cfs[j];
+            drl[ds[j+1]]  = (int64_t)cfs[j+1];
+            drl[ds[j+2]]  = (int64_t)cfs[j+2];
+            drl[ds[j+3]]  = (int64_t)cfs[j+3];
+        }
+        drm[npiv[MULT]] = 1;
+        cfs = NULL;
+        do {
+            sc  = npiv[OFFSET];
+            free(npiv);
+            free(cfs);
+            npiv  = reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
+                    drl, drm, mat, mul,  bs, pivs, sc, i, mult, st);
+            if (!npiv) {
+                break;
+            }
+            /* normalize coefficient array
+             * NOTE: this has to be done here, otherwise the reduction may
+             * lead to wrong results in a parallel computation since other
+             * threads might directly use the new pivot once it is synced. */
+            if (mat->cf_32[npiv[COEFFS]][0] != 1) {
+                normalize_sparse_matrix_row_ff_32(
+                        mat->cf_32[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
+            }
+            k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
+            cfs = mat->cf_32[npiv[COEFFS]];
+        } while (!k);
+    }
+
+    /* we do not need the old pivots anymore */
+    for (i = 0; i < ncl; ++i) {
+        free(pivs[i]);
+        pivs[i] = NULL;
+    }
+
+
+
+    free(pivs);
+    pivs  = NULL;
+    free(dr);
+    dr  = NULL;
+
+    /* TODO */
+    mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
+    mat->np = mat->nr = mat->sz = npivs;
+}
+
 static void exact_sparse_reduced_echelon_form_nf_ff_32(
         mat_t *mat,
         const bs_t * const tbr,
@@ -2602,6 +2991,46 @@ static void exact_sparse_linear_algebra_ff_32(
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
         printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(stdout);
+    }
+}
+
+static void exact_sparse_linear_algebra_sat_ff_32(
+        mat_t *mat,
+        bs_t *mul,
+        const bs_t * const sat,
+        const bs_t * const bs,
+        stat_t *st
+        )
+{
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    len_t i;
+
+    /* allocate temporary storage space for sparse
+     * coefficients of new pivot rows */
+    mat->cf_32  = realloc(mat->cf_32,
+            (unsigned long)mat->nrl * sizeof(cf32_t *));
+    exact_sparse_reduced_echelon_form_sat_ff_32(mat, mul, sat, bs, st);
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->la_ctime  +=  ct1 - ct0;
+    st->la_rtime  +=  rt1 - rt0;
+
+    st->num_zerored += (mat->nrl - mat->np);
+    uint32_t zeroes = 0;
+    for (i = 0; i < mat->nrl; ++i) {
+        if (mat->tr[i] == NULL) {
+            zeroes  +=  1;
+        }
+    }
+    if (st->info_level > 1) {
+        printf("%7d new w/ %4d zero", mat->np, zeroes);
         fflush(stdout);
     }
 }

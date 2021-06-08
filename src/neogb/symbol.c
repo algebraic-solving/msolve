@@ -224,6 +224,11 @@ static void select_saturation(
     for (i = mul->lo; i < mul->ld; ++i) {
         const hm_t *b   = sat->hm[0];
         const hm_t m    = mul->hm[i][OFFSET];
+        printf("mul in symbolic %u --> ", i);
+        for (len_t ii=0; ii<bht->nv; ++ii) {
+            printf("%d ", bht->ev[m][ii]);
+        }
+        printf("\n");
         /* remove the multiplier business for the moment, no need
          * and it corrupts a bit the sht size for efficient matrix
          * generation */

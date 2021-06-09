@@ -155,7 +155,7 @@ static len_t quotient_basis(
     while (nqbd > 0 && deg < max_deg) {
         nqb = (hm_t *)calloc(sum(ind, nv) + nv, sizeof(hm_t));
         nqbd = generate_new_basis_elements(htp, nqb, qb, qbd, ind, bs);
-        qb = realloc(qb, (unsigned long)qbd * nqbd * sizeof(hm_t));
+        qb = realloc(qb, (unsigned long)(qbd + nqbd) * sizeof(hm_t));
         printf("qb before adding\n");
         for (len_t ii = 0; ii < qbd; ++ii) {
             printf("pos %u --> ", ii);
@@ -215,11 +215,14 @@ static void update_multipliers(
 
     /* quotient monomials */
     for (i = 0; i < qdim; ++i) {
+        printf("i %u | ctr %u\n", i, ctr);
        mul->hm[ctr]           = realloc(mul->hm[ctr], (1+OFFSET)*sizeof(hm_t));
        mul->hm[ctr][LENGTH]   = 1;
        mul->hm[ctr][PRELOOP]  = 0;
        mul->hm[ctr][MULT]     = ctr;
        mul->hm[ctr][OFFSET]   = qb[i];
+       printf("ctr %u | qdim %u\n", ctr, qdim);
+       printf("cf %p\n",mul->cf_32[0]);
        mul->cf_32[ctr]        = realloc(mul->cf_32[ctr], sizeof(cf32_t));
        mul->cf_32[ctr][0]     = 1;
        ctr++;
@@ -252,8 +255,6 @@ int core_f4sat(
     bs_t *sat   = *satp;
     /* current quotient basis up to max lm degree in intermediate basis */
     hm_t *qb    = NULL;
-    /* elements to compute the normal forms of */
-    bs_t *tbr   = initialize_basis_ff_32(10);
     /* elements tracking reduction steps of tbr, being
      * added to bs if we find a linear dependency on
      * elements in tbr. They represent the multipliers
@@ -337,6 +338,7 @@ int core_f4sat(
         if (st->info_level > 1) {
             printf("%13.2f sec\n", rrt1-rrt0);
         }
+        clean_hash_table(sht);
         /* check for new elements to be tested for adding saturation
          * information to the intermediate basis */
         update_multipliers(&qb, &mul, &bht, st, bs);
@@ -354,8 +356,8 @@ int core_f4sat(
         /* linear algebra, depending on choice, see set_function_pointers() */
         exact_sparse_linear_algebra_sat_ff_32(mat, mul, sat, bs, st);
         /* columns indices are mapped back to exponent hashes */
-        return_normal_forms_to_basis(
-                mat, tbr, bht, sht, hcm, st);
+        /* return_normal_forms_to_basis(
+         *         mat, tbr, bht, sht, hcm, st); */
 
         /* all rows in mat are now polynomials in the basis,
         * so we do not need the rows anymore */
@@ -395,8 +397,11 @@ int core_f4sat(
     *stp  = st;
 
     /* free and clean up */
-    free(tbr);
     free(hcm);
+    free(hcmm);
+    free(qb);
+
+    free_basis(&mul);
     /* note that all rows kept from mat during the overall computation are
      * basis elements and thus we do not need to free the rows itself, but
      * just the matrix structure */

@@ -29,19 +29,25 @@ static void free_basis_elements(
     if (bs->cf_8) {
         for (i = 0; i < bs->ld; ++i) {
             free(bs->cf_8[i]);
+            bs->cf_8[i] = NULL;
             free(bs->hm[i]);
+            bs->hm[i] = NULL;
         }
     }
     if (bs->cf_16) {
         for (i = 0; i < bs->ld; ++i) {
             free(bs->cf_16[i]);
+            bs->cf_16[i]  = NULL;
             free(bs->hm[i]);
+            bs->hm[i] = NULL;
         }
     }
     if (bs->cf_32) {
         for (i = 0; i < bs->ld; ++i) {
             free(bs->cf_32[i]);
+            bs->cf_32[i]  = NULL;
             free(bs->hm[i]);
+            bs->hm[i] = NULL;
         }
     }
     if (bs->cf_qq) {
@@ -52,7 +58,9 @@ static void free_basis_elements(
                 mpz_clear(coeffs[j]);
             }
             free(bs->cf_qq[bs->hm[i][COEFFS]]);
+            bs->cf_qq[bs->hm[i][COEFFS]]  = NULL;
             free(bs->hm[i]);
+            bs->hm[i] = NULL;
         }
     }
     bs->ld  = bs->lo  = 0;
@@ -304,11 +312,11 @@ static bs_t *initialize_basis_ff_32(
 
     bs->cf_8  = NULL;
     bs->cf_16 = NULL;
-    bs->cf_32 = (cf32_t **)malloc((unsigned long)bs->sz * sizeof(cf32_t *));
+    bs->cf_32 = (cf32_t **)calloc((unsigned long)bs->sz, sizeof(cf32_t *));
     bs->cf_qq = NULL;
-    bs->hm    = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
-    bs->lm    = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
-    bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
+    bs->hm    = (hm_t **)calloc((unsigned long)bs->sz, sizeof(hm_t *));
+    bs->lm    = (sdm_t *)calloc((unsigned long)bs->sz, sizeof(sdm_t));
+    bs->lmps  = (bl_t *)calloc((unsigned long)bs->sz, sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
 
     return bs;
@@ -319,8 +327,10 @@ static inline void check_enlarge_basis_ff_32(
         const len_t added
         )
 {
+        printf("hallo | %u | %u | %u\n", bs->ld, added, bs->sz);
     if (bs->ld + added >= bs->sz) {
         bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
+        printf("hallo\n");
         bs->cf_32 = realloc(bs->cf_32,
                 (unsigned long)bs->sz * sizeof(cf32_t *));
         bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
@@ -334,7 +344,7 @@ static inline void check_enlarge_basis_ff_32(
 
 static inline void normalize_initial_basis_ff_32(
         bs_t *bs,
-        const uint32_t fc
+       const uint32_t fc
         )
 {
     len_t i, j;

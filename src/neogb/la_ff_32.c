@@ -1804,9 +1804,10 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     mat->np = mat->nr = mat->sz = npivs;
 }
 
-static void exact_sparse_reduced_echelon_form_sat_ff_32(
+static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         mat_t *mat,
         bs_t *mul,
+        len_t *kernel,
         const bs_t * const sat,
         const bs_t * const bs,
         stat_t *st
@@ -1833,7 +1834,6 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, sc) \
     schedule(dynamic)
-    printf("nrl %un", nrl);
     for (i = 0; i < nrl; ++i) {
         int64_t *drl  = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
@@ -1859,7 +1859,6 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         free(cfs);
         npiv  = reduce_dense_row_by_known_pivots_sparse_ff_32(
                 drl, mat, bs, pivs, sc, i, st);
-        printf("i %u -- npiv %p .. OFFSET %u\n", i, npiv, npiv[OFFSET]);
         if (!npiv) {
             mat->tr[i]  = NULL;
             continue;
@@ -1901,6 +1900,8 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     }
     upivs = realloc(upivs, (unsigned long)ctr * sizeof(hm_t *));
 
+    /* dimension of kernel */
+    len_t kdim  = 0;
     /* dense row for multipliers */
     int64_t *drm  = calloc((unsigned long)mul->ld, sizeof(int64_t));
     /* now we do a ususal F4 reduction with updated pivs, but we have
@@ -1934,6 +1935,8 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
             npiv  = reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
                     drl, drm, mat, mul,  bs, pivs, sc, i, mult, st);
             if (!npiv) {
+                kernel[mult]  = 1;
+                kdim++;
                 break;
             }
             /* normalize coefficient array
@@ -1965,6 +1968,8 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     /* TODO */
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
     mat->np = mat->nr = mat->sz = npivs;
+
+    return kdim;
 }
 
 static void exact_sparse_reduced_echelon_form_nf_ff_32(
@@ -3008,13 +3013,15 @@ static void exact_sparse_linear_algebra_sat_ff_32(
     ct0 = cputime();
     rt0 = realtime();
 
-    len_t i;
+    len_t i, kdim;
 
     /* allocate temporary storage space for sparse
      * coefficients of new pivot rows */
     mat->cf_32  = realloc(mat->cf_32,
             (unsigned long)mat->nrl * sizeof(cf32_t *));
-    exact_sparse_reduced_echelon_form_sat_ff_32(mat, mul, sat, bs, st);
+    len_t *kernel = calloc((unsigned long)mul->ld, sizeof(len_t));
+    kdim =  exact_sparse_reduced_echelon_form_sat_ff_32(
+            mat, mul, kernel, sat, bs, st);
 
     /* timings */
     ct1 = cputime();
@@ -3022,17 +3029,15 @@ static void exact_sparse_linear_algebra_sat_ff_32(
     st->la_ctime  +=  ct1 - ct0;
     st->la_rtime  +=  rt1 - rt0;
 
-    st->num_zerored += (mat->nrl - mat->np);
-    uint32_t zeroes = 0;
-    for (i = 0; i < mat->nrl; ++i) {
-        if (mat->tr[i] == NULL) {
-            zeroes  +=  1;
-        }
-    }
     if (st->info_level > 1) {
-        printf("%7d new w/ %4d zero", mat->np, zeroes);
+        printf("%7d new kernel elements", kdim);
         fflush(stdout);
     }
+    for (i = 0; i < mul->ld; ++i) {
+        printf("kernel[%u] = %u\n", i, kernel[i]);
+    }
+
+
 }
 
 static void exact_sparse_linear_algebra_nf_ff_32(

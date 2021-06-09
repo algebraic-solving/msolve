@@ -54,14 +54,14 @@ static void convert_multipliers_to_columns(
     }
     sort_r(hcm, (unsigned long)mul->ld, sizeof(hi_t), hcm_cmp, ht);
 
-    /* printf("hcm\n");
-     * for (int ii=0; ii<j; ++ii) {
-     *     printf("hcm[%d] = %d | ", ii, hcm[ii]);
-     *     for (int jj = 0; jj < sht->nv; ++jj) {
-     *         printf("%d ", sht->ev[hcm[ii]][jj]);
-     *     }
-     *     printf("\n");
-     * } */
+    printf("hcmm\n");
+    for (int ii=0; ii<mul->ld; ++ii) {
+        printf("hcmm[%d] = %d | ", ii, hcm[ii]);
+        for (int jj = 0; jj < ht->nv; ++jj) {
+            printf("%d ", ht->ev[hcm[ii]][jj]);
+        }
+        printf("\n");
+    }
 
 
     /* store the other direction (hash -> column) */
@@ -116,17 +116,18 @@ static void convert_hashes_to_columns(
     }
     sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
 
-    /* printf("hcm\n");
-     * for (int ii=0; ii<j; ++ii) {
-     *     printf("hcm[%d] = %d | ", ii, hcm[ii]);
-     *     for (int jj = 0; jj < sht->nv; ++jj) {
-     *         printf("%d ", sht->ev[hcm[ii]][jj]);
-     *     }
-     *     printf("\n");
-     * } */
+    printf("hcm\n");
+    for (int ii=0; ii<j; ++ii) {
+        printf("hcm[%d] = %d | ", ii, hcm[ii]);
+        for (int jj = 0; jj < sht->nv; ++jj) {
+            printf("%d ", sht->ev[hcm[ii]][jj]);
+        }
+        printf("\n");
+    }
 
     mat->ncl  = k;
     mat->ncr  = (len_t)esld - 1 - mat->ncl;
+    printf("ncl %u | ncr %u\n", mat->ncl, mat->ncr);
 
     st->num_rowsred +=  mat->nrl;
 

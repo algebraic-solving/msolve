@@ -215,10 +215,11 @@ static void update_multipliers(
 
     /* quotient monomials */
     for (i = 0; i < qdim; ++i) {
-        printf("i %u | ctr %u\n", i, ctr);
+        printf("i %u | ctr %u | sz %u\n", i, ctr, mul->sz);
        mul->hm[ctr]           = realloc(mul->hm[ctr], (1+OFFSET)*sizeof(hm_t));
        mul->hm[ctr][LENGTH]   = 1;
        mul->hm[ctr][PRELOOP]  = 0;
+       mul->hm[ctr][COEFFS]   = ctr;
        mul->hm[ctr][MULT]     = ctr;
        mul->hm[ctr][OFFSET]   = qb[i];
        printf("ctr %u | qdim %u\n", ctr, qdim);
@@ -390,6 +391,7 @@ int core_f4sat(
          * thus we need pointers */
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
+    printf("basis has %u / %u elements.\n", bs->ld, bs->lml);
 
     *bsp  = bs;
     *satp = sat;

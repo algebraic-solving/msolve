@@ -235,10 +235,11 @@ static void select_saturation(
         /* const hi_t mulh = insert_in_hash_table(mul, sht);
          * const hi_t h    = sht->hd[mulh].val;
          * const deg_t d   = sht->hd[mulh].deg; */
-        const hi_t h    = bht->hd[m].val;
-        const deg_t d   = bht->hd[m].deg;
-        trows[ntr++]    = multiplied_poly_to_matrix_row(
+        const hi_t h        = bht->hd[m].val;
+        const deg_t d       = bht->hd[m].deg;
+        trows[ntr]          = multiplied_poly_to_matrix_row(
                 sht, bht, h, d, bht->ev[m], b);
+        trows[ntr++][MULT]  = mul->hm[i][MULT];
         mat->nr++;
     }
 }

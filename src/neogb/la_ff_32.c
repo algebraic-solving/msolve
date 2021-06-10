@@ -509,7 +509,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         /* found reducer row, get multiplier */
         const int64_t mul = (int64_t)dr[i];
         dts   = pivs[i];
+        printf("i %u -- dts[MULT] %u\n", i, dts[MULT]);
         dtsm  = mulb->hm[dts[MULT]];
+        printf("i %u -- dts[MULT] %u -- dtsm[COEFFS] %u\n", i, dts[MULT], dtsm[COEFFS]);
         cfsm  = mulb->cf_32[dtsm[COEFFS]];
         if (i < ncl) {
             cfs   = bs->cf_32[dts[COEFFS]];
@@ -661,6 +663,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     row[COEFFS]   = tmp_pos;
     row[PRELOOP]  = j % UNROLL;
     row[LENGTH]   = j;
+    row[MULT]     = mul_idx;
     mat->cf_32[tmp_pos]  = cf;
 
     mulb->hm[mul_idx]  =
@@ -680,8 +683,10 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             }
         }
     }
-    rsm[PRELOOP]  = j % UNROLL;
-    rsm[LENGTH]   = j;
+    mulb->hm[mul_idx][PRELOOP]  = j % UNROLL;
+    mulb->hm[mul_idx][LENGTH]   = j;
+    mulb->hm[mul_idx][COEFFS]   = mul_idx;
+    printf("mul_idx %u\n", mul_idx);
 
     return row;
 }
@@ -1838,6 +1843,7 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         int64_t *drl  = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
         len_t mult      = upivs[i][MULT];
+        printf("i %u --> MULT %u\n", i, upivs[i][MULT]);
         /* we only saturate w.r.t. one element at the moment */
         cf32_t *cfs     = sat->cf_32[0];
         const len_t os  = npiv[PRELOOP];
@@ -1865,6 +1871,7 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         }
         npiv[MULT]  = mult;
         mat->tr[i]  = npiv;
+        printf("mat->tr[%u]: OFFSET %u | MULT %u\n", i, mat->tr[i][OFFSET], mat->tr[i][MULT]);
         /* k   = __sync_bool_c#csompare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv); */
         cfs = mat->cf_32[npiv[COEFFS]];
     }
@@ -1935,6 +1942,7 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
             npiv  = reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
                     drl, drm, mat, mul,  bs, pivs, sc, i, mult, st);
             if (!npiv) {
+                printf("yippie\n");
                 kernel[mult]  = 1;
                 kdim++;
                 break;

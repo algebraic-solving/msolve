@@ -205,6 +205,58 @@ static void convert_hashes_to_columns(
     *hcmp = hcm;
 }
 
+static void add_kernel_elements_to_basis(
+        bs_t *bs,
+        bs_t *mul,
+        const ht_t * const ht,
+        const hi_t * const hcm,
+        const len_t * const kernel,
+        const len_t kdim,
+        stat_t *st
+        )
+{
+    len_t i, j;
+
+    len_t ctr       = 0;
+    const len_t bld = bs->ld;
+
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    /* fix size of basis for entering new elements directly */
+    check_enlarge_basis(bs, kdim);
+
+    /* only for 35 bit at the moment */
+    for (i = 0; i < mul->ld; ++i) {
+        if (kernel[i] != 0) {
+            bs->cf_32[bld+ctr]  = mul->cf_32[mul->hm[i][COEFFS]];
+            mul->cf_32[mul->hm[i][COEFFS]]  = NULL;
+            bs->hm[bld+ctr]     = mul->hm[i];
+            mul->hm[i]          = NULL;
+            for (j = OFFSET; j < bs->hm[bld+ctr][LENGTH]+OFFSET; ++j) {
+                bs->hm[bld+ctr][j] = hcm[bs->hm[bld+ctr][j]];
+            }
+            if (ht->hd[bs->hm[bld+ctr][OFFSET]].deg == 0) {
+                bs->constant  = 1;
+            }
+            printf("new element from kernel: length %u | ", bs->hm[bld+ctr][LENGTH]);
+            for (int jj=0; jj < ht->nv; ++jj) {
+                printf("%u ", ht->ev[bs->hm[bld+ctr][OFFSET]][jj]);
+            }
+            printf("\n");
+            ctr++;
+        }
+    }
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->convert_ctime +=  ct1 - ct0;
+    st->convert_rtime +=  rt1 - rt0;
+}
+
 static void return_normal_forms_to_basis(
         mat_t *mat,
         bs_t *bs,

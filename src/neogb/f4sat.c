@@ -281,6 +281,10 @@ int core_f4sat(
 
     int32_t round, i, j;
 
+    /* dimension of kernel in each step */
+    len_t kdim    = 0;
+    len_t *kernel = NULL;
+
     /* reset bs->ld for first update process */
     bs->ld  = 0;
 
@@ -355,7 +359,12 @@ int core_f4sat(
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
         /* linear algebra, depending on choice, see set_function_pointers() */
-        exact_sparse_linear_algebra_sat_ff_32(mat, mul, sat, bs, st);
+        kdim  = compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
+
+        if (kdim > 0) {
+            add_kernel_elements_to_basis(
+                    bs, mul, bht, hcmm, kernel, kdim, st);
+        }
         /* columns indices are mapped back to exponent hashes */
         /* return_normal_forms_to_basis(
          *         mat, tbr, bht, sht, hcm, st); */
@@ -364,6 +373,9 @@ int core_f4sat(
         * so we do not need the rows anymore */
         clear_matrix(mat);
         clean_hash_table(sht);
+
+        /* check redundancy only if input is not homogeneous */
+        update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
 
         /* free multiplier list
          * todo: keep already reduced, nonzero elements for next round */

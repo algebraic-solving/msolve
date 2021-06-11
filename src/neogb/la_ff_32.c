@@ -1943,7 +1943,7 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         hm_t *npiv      = upivs[i];
         hm_t mult       = upivs[i][MULT];
         cf32_t *cfs     = mat->cf_32[npiv[COEFFS]];
-        mat->cf_32[npiv[COEFFS]] = NULL;
+        len_t tmp_pos   = npiv[COEFFS];
         printf("mat->cf_32[%u] set NULL.\n", npiv[COEFFS]);
         const len_t os  = npiv[PRELOOP];
         const len_t len = npiv[LENGTH];
@@ -1967,7 +1967,7 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
             free(npiv);
             free(cfs);
             npiv  = reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
-                    drl, drm, mat, mul,  bs, pivs, sc, i, mult, st);
+                    drl, drm, mat, mul,  bs, pivs, sc, tmp_pos, mult, st);
             if (!npiv) {
                 kernel[mult]  = 1;
                 kdim++;

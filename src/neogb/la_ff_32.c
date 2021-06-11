@@ -562,6 +562,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             dr[ds[j+6]] = res[3];
         }
         const len_t lenm = dtsm[LENGTH];
+        printf("lenm %u\n", lenm);
         const len_t osm  = lenm % 8;
         const hm_t * const dsm  = dtsm + OFFSET;
         const uint32_t mulm32 = (uint32_t)(drm[i]);
@@ -686,7 +687,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     mulb->hm[mul_idx][PRELOOP]  = j % UNROLL;
     mulb->hm[mul_idx][LENGTH]   = j;
     mulb->hm[mul_idx][COEFFS]   = mul_idx;
-    printf("mul_idx %u --> length %u\n", mul_idx), j;
+    printf("mul_idx %u --> length %u\n", mul_idx, j);
 
     return row;
 }
@@ -1969,6 +1970,8 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
     for (i = 0; i < ncols; ++i) {
         free(pivs[i]);
         pivs[i] = NULL;
+    }
+    for (i = 0; i < nrl; ++i) {
         free(mat->cf_32[i]);
         mat->cf_32[i] = NULL;
     }

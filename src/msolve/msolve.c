@@ -4642,6 +4642,11 @@ restart:
 
     if(gens->field_char > 0){
         if (saturate == 1) {
+            /* timings */
+            double ct0, ct1, rt0, rt1;
+            ct0 = cputime();
+            rt0 = realtime();
+
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;
             bs_t *sat   = NULL;
@@ -4706,6 +4711,23 @@ restart:
                 if (!success) {
                     printf("Problem with f4sat, stopped computation.\n");
                     exit(1);
+                }
+                int64_t nb  = export_results_from_f4(bld, blen, bexp,
+                        bcf, &bs, &bht, &st);
+
+                /* timings */
+                ct1 = cputime();
+                rt1 = realtime();
+                st->overall_ctime = ct1 - ct0;
+                st->overall_rtime = rt1 - rt0;
+
+                if (st->info_level > 1) {
+                    print_final_statistics(stderr, st);
+                }
+
+                if(nb==0){
+                    fprintf(stderr, "Something went wrong during the computation\n");
+                    return -1;
                 }
             }
             return 0;

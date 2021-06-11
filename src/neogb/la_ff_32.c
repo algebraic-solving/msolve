@@ -76,6 +76,32 @@ static inline cf32_t *normalize_sparse_matrix_row_ff_32(
     return row;
 }
 
+static inline cf32_t *adjust_multiplier_sparse_matrix_row_ff_32(
+        cf32_t *row,
+        const cf32_t * const cfs,
+        const len_t os,
+        const len_t len,
+        const uint32_t fc
+        )
+{
+    len_t i;
+
+    const uint32_t inv  = mod_p_inverse_32(cfs[0], fc);
+
+    for (i = 0; i < os; ++i) {
+        row[i]  =  (cf32_t)(((uint64_t)row[i] * inv) % fc);
+    }
+    /* we need to set i to os since os < 1 is possible */
+    for (i = os; i < len; i += UNROLL) {
+        row[i]    = (cf32_t)(((uint64_t)row[i] * inv) % fc);
+        row[i+1]  = (cf32_t)(((uint64_t)row[i+1] * inv) % fc);
+        row[i+2]  = (cf32_t)(((uint64_t)row[i+2] * inv) % fc);
+        row[i+3]  = (cf32_t)(((uint64_t)row[i+3] * inv) % fc);
+    }
+
+    return row;
+}
+
 static inline cf32_t *multiply_sparse_matrix_row_ff_32(
         cf32_t *row,
         const cf32_t mul,
@@ -509,10 +535,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         /* found reducer row, get multiplier */
         const int64_t mul = (int64_t)dr[i];
         dts   = pivs[i];
-        printf("i %u -- dts[MULT] %u\n", i, dts[MULT]);
         dtsm  = mulb->hm[dts[MULT]];
-        printf("i %u -- dts[MULT] %u -- dtsm[COEFFS] %u\n", i, dts[MULT], dtsm[COEFFS]);
         cfsm  = mulb->cf_32[dtsm[COEFFS]];
+        printf("i %u | ncl %u | dts[COEFFS] %u\n", i, ncl, dts[COEFFS]);
         if (i < ncl) {
             cfs   = bs->cf_32[dts[COEFFS]];
         } else {
@@ -562,7 +587,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             dr[ds[j+6]] = res[3];
         }
         const len_t lenm = dtsm[LENGTH];
-        printf("lenm %u\n", lenm);
         const len_t osm  = lenm % 8;
         const hm_t * const dsm  = dtsm + OFFSET;
         const uint32_t mulm32 = (uint32_t)(drm[i]);
@@ -687,7 +711,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     mulb->hm[mul_idx][PRELOOP]  = j % UNROLL;
     mulb->hm[mul_idx][LENGTH]   = j;
     mulb->hm[mul_idx][COEFFS]   = mul_idx;
-    printf("mul_idx %u --> length %u\n", mul_idx, j);
 
     return row;
 }
@@ -1722,7 +1745,6 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     for (i = 0; i < nrl; ++i) {
         int64_t *drl  = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
-        printf("npiv[COEFFS] = %u\n", npiv[COEFFS]);
         cf32_t *cfs     = bs->cf_32[npiv[COEFFS]];
         const len_t os  = npiv[PRELOOP];
         const len_t len = npiv[LENGTH];
@@ -1848,7 +1870,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         int64_t *drl  = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
         len_t mult      = upivs[i][MULT];
-        printf("i %u --> MULT %u\n", i, upivs[i][MULT]);
         /* we only saturate w.r.t. one element at the moment */
         cf32_t *cfs     = sat->cf_32[0];
         const len_t os  = npiv[PRELOOP];
@@ -1878,7 +1899,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         }
         npiv[MULT]  = mult;
         mat->tr[i]  = npiv;
-        printf("mat->tr[%u]: OFFSET %u | MULT %u\n", i, mat->tr[i][OFFSET], mat->tr[i][MULT]);
         /* k   = __sync_bool_c#csompare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv); */
         cfs = mat->cf_32[npiv[COEFFS]];
     }
@@ -1904,7 +1924,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
     /* compute kernel */
     for (i = nrl; i > 0; --i) {
         if (mat->tr[i-1] != NULL) {
-            printf("%p || i %u --> offset %u, ncl %u, ncols %u\n", mat->tr[i-1],i, mat->tr[i-1][OFFSET], ncl, ncols);
             if (pivs[mat->tr[i-1][OFFSET]] == NULL) {
                 pivs[mat->tr[i-1][OFFSET]] = mat->tr[i-1];
             } else {
@@ -1924,6 +1943,8 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         hm_t *npiv      = upivs[i];
         hm_t mult       = upivs[i][MULT];
         cf32_t *cfs     = mat->cf_32[npiv[COEFFS]];
+        mat->cf_32[npiv[COEFFS]] = NULL;
+        printf("mat->cf_32[%u] set NULL.\n", npiv[COEFFS]);
         const len_t os  = npiv[PRELOOP];
         const len_t len = npiv[LENGTH];
         const hm_t * const ds = npiv + OFFSET;
@@ -1948,7 +1969,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
             npiv  = reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
                     drl, drm, mat, mul,  bs, pivs, sc, i, mult, st);
             if (!npiv) {
-                printf("yippie\n");
                 kernel[mult]  = 1;
                 kdim++;
                 break;
@@ -1960,6 +1980,14 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
             if (mat->cf_32[npiv[COEFFS]][0] != 1) {
                 normalize_sparse_matrix_row_ff_32(
                         mat->cf_32[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
+                /* adjust mul entry correspondingly */
+                adjust_multiplier_sparse_matrix_row_ff_32(
+                        mul->cf_32[mul->hm[mult][COEFFS]],
+                        mat->cf_32[npiv[COEFFS]],
+                        mul->hm[mult][PRELOOP],
+                        mul->hm[mult][LENGTH],
+                        st->fc);
+
             }
             k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
             cfs = mat->cf_32[npiv[COEFFS]];
@@ -1972,6 +2000,7 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         pivs[i] = NULL;
     }
     for (i = 0; i < nrl; ++i) {
+        printf("i %u | nrl %u\n", i, nrl);
         free(mat->cf_32[i]);
         mat->cf_32[i] = NULL;
     }
@@ -3053,12 +3082,12 @@ static len_t compute_kernel_sat_ff_32(
     st->la_rtime  +=  rt1 - rt0;
 
     if (st->info_level > 1) {
-        printf("%7d new kernel elements", kdim);
+        printf("%7d new kernel elements\n", kdim);
         fflush(stdout);
     }
-    for (i = 0; i < mul->ld; ++i) {
-        printf("kernel[%u] = %u\n", i, kernel[i]);
-    }
+    /* for (i = 0; i < mul->ld; ++i) {
+     *     printf("kernel[%u] = %u\n", i, kernel[i]);
+     * } */
 
     return kdim;
 }

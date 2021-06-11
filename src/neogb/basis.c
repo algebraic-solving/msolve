@@ -335,10 +335,8 @@ static inline void check_enlarge_basis_ff_32(
         const len_t added
         )
 {
-        printf("hallo | %u | %u | %u\n", bs->ld, added, bs->sz);
     if (bs->ld + added >= bs->sz) {
         bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        printf("hallo\n");
         bs->cf_32 = realloc(bs->cf_32,
                 (unsigned long)bs->sz * sizeof(cf32_t *));
         memset(bs->cf_32+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf32_t *));

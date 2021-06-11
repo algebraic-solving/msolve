@@ -52,31 +52,17 @@ static inline len_t generate_new_basis_elements(
     hm_t htmp = 0;
     exp_t *etmp  = calloc((unsigned long)nv, sizeof(exp_t));
 
-    printf("oqb_dim %u\n", oqb_dim);
-    printf("oqb[0] %u\n", oqb[0]);
     for (i = nv; i > 0; --i) {
         while (ht->esz - ht->eld < oqb_dim-ind[nv-i]) {
             enlarge_hash_table(ht);
         }
         for (j = ind[nv-i]; j < oqb_dim; ++j) {
             memcpy(etmp, ht->ev[oqb[j]], (unsigned long)nv*sizeof(exp_t));;
-            printf("before etmp %u || ", j);
-            for (len_t ii = 0; ii < nv; ii++) {
-                printf("%d ", etmp[ii]);
-            }
-            printf("\n");
             etmp[i-1]++;
-            printf("etmp changing position %u -> ", i);
-            for (len_t ii = 0; ii < nv; ii++) {
-                printf("%d ", etmp[ii]);
-            }
-            printf("\n");
-            printf("ctr is at the moment %u\n", ctr);
             cqb[ctr]  = check_lm_divisibility_and_insert_in_hash_table(
                             etmp, ht, bs
                             );
             if (cqb[ctr] != 0) {
-                printf(" -- added at pos %u !\n", ctr);
                 ctr++;
             }
         }
@@ -136,54 +122,45 @@ static len_t quotient_basis(
 
     const len_t nv  = (*htp)->nv;
 
-    printf("LML\n");
-    for (len_t i = 0; i < bs->lml; ++i) {
-        for (len_t j = 0; j < nv; ++j) {
-            printf("%d ", (*htp)->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        }
-        printf("\n");
-    }
     /* clear ht-ev[0] */
     memset((*htp)->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
 
     len_t *ind      = calloc((unsigned long)nv, sizeof(len_t));
 
-    printf("max degree: %d\n", max_deg);
     qb  = (hm_t *)calloc((unsigned long)1, sizeof(hm_t));
-    printf("nqb allocated %lu\n",sum(ind, nv) + 1);
 
     while (nqbd > 0 && deg < max_deg) {
         nqb = (hm_t *)calloc(sum(ind, nv) + nv, sizeof(hm_t));
         nqbd = generate_new_basis_elements(htp, nqb, qb, qbd, ind, bs);
         qb = realloc(qb, (unsigned long)(qbd + nqbd) * sizeof(hm_t));
-        printf("qb before adding\n");
-        for (len_t ii = 0; ii < qbd; ++ii) {
-            printf("pos %u --> ", ii);
-            for (len_t jj = 0; jj < nv; ++jj) {
-                printf("%d ", (*htp)->ev[qb[ii]][jj]);
-            }
-            printf("\n");
-        }
-        printf("nqb before adding\n");
-        for (len_t ii = 0; ii < nqbd; ++ii) {
-            printf("pos %u --> ", ii);
-            for (len_t jj = 0; jj < nv; ++jj) {
-                printf("%d ", (*htp)->ev[nqb[ii]][jj]);
-            }
-            printf("\n");
-        }
+        /* printf("qb before adding\n");
+         * for (len_t ii = 0; ii < qbd; ++ii) {
+         *     printf("pos %u --> ", ii);
+         *     for (len_t jj = 0; jj < nv; ++jj) {
+         *         printf("%d ", (*htp)->ev[qb[ii]][jj]);
+         *     }
+         *     printf("\n");
+         * }
+         * printf("nqb before adding\n");
+         * for (len_t ii = 0; ii < nqbd; ++ii) {
+         *     printf("pos %u --> ", ii);
+         *     for (len_t jj = 0; jj < nv; ++jj) {
+         *         printf("%d ", (*htp)->ev[nqb[ii]][jj]);
+         *     }
+         *     printf("\n");
+         * } */
         memcpy(qb+qbd, nqb, (unsigned long)nqbd * sizeof(hm_t));
         update_indices(ind, qb, qbd, nqbd, *htp);
         qbd   +=  nqbd;
         deg++;
-        printf("qb after adding\n");
-        for (len_t ii = 0; ii < qbd; ++ii) {
-            printf("pos %u --> ", ii);
-            for (len_t jj = 0; jj < nv; ++jj) {
-                printf("%d ", (*htp)->ev[qb[ii]][jj]);
-            }
-            printf("\n");
-        }
+        /* printf("qb after adding\n");
+         * for (len_t ii = 0; ii < qbd; ++ii) {
+         *     printf("pos %u --> ", ii);
+         *     for (len_t jj = 0; jj < nv; ++jj) {
+         *         printf("%d ", (*htp)->ev[qb[ii]][jj]);
+         *     }
+         *     printf("\n");
+         * } */
     }
     free(nqb);
     free(ind);
@@ -215,28 +192,25 @@ static void update_multipliers(
 
     /* quotient monomials */
     for (i = 0; i < qdim; ++i) {
-        printf("i %u | ctr %u | sz %u\n", i, ctr, mul->sz);
        mul->hm[ctr]           = realloc(mul->hm[ctr], (1+OFFSET)*sizeof(hm_t));
        mul->hm[ctr][LENGTH]   = 1;
        mul->hm[ctr][PRELOOP]  = 1;
        mul->hm[ctr][COEFFS]   = ctr;
        mul->hm[ctr][MULT]     = ctr;
        mul->hm[ctr][OFFSET]   = qb[i];
-       printf("ctr %u | qdim %u\n", ctr, qdim);
-       printf("cf %p\n",mul->cf_32[0]);
        mul->cf_32[ctr]        = realloc(mul->cf_32[ctr], sizeof(cf32_t));
        mul->cf_32[ctr][0]     = 1;
        ctr++;
     }
     mul->ld = ctr;
     st->new_multipliers = mul->ld - mul->lo;
-    for (i = 0; i < mul->ld; ++i) {
-        printf("%3u -> ", i);
-        for (len_t j = 0; j < ht->nv; ++j) {
-            printf("%d ", ht->ev[mul->hm[i][OFFSET]][j]);
-        }
-        printf("\n");
-    }
+    /* for (i = 0; i < mul->ld; ++i) {
+     *     printf("%3u -> ", i);
+     *     for (len_t j = 0; j < ht->nv; ++j) {
+     *         printf("%d ", ht->ev[mul->hm[i][OFFSET]][j]);
+     *     }
+     *     printf("\n");
+     * } */
 
     *mulp = mul;
     *htp  = ht;
@@ -401,7 +375,7 @@ int core_f4sat(
          * thus we need pointers */
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
-    printf("basis has %u / %u elements.\n", bs->ld, bs->lml);
+    printf("basis has  %u elements.\n", bs->lml);
 
     for (i = 0; i < bs->lml; ++i) {
         printf("%u --> ", i);

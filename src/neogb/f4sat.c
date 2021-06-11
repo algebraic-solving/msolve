@@ -218,7 +218,7 @@ static void update_multipliers(
         printf("i %u | ctr %u | sz %u\n", i, ctr, mul->sz);
        mul->hm[ctr]           = realloc(mul->hm[ctr], (1+OFFSET)*sizeof(hm_t));
        mul->hm[ctr][LENGTH]   = 1;
-       mul->hm[ctr][PRELOOP]  = 0;
+       mul->hm[ctr][PRELOOP]  = 1;
        mul->hm[ctr][COEFFS]   = ctr;
        mul->hm[ctr][MULT]     = ctr;
        mul->hm[ctr][OFFSET]   = qb[i];
@@ -332,8 +332,7 @@ int core_f4sat(
          * so we do not need the rows anymore */
         clear_matrix(mat);
 
-        /* check redundancy only if input is not homogeneous */
-        update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis(ps, bs, bht, uht, st, mat->np, 1);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         if (bs->constant  == 1) {
@@ -374,8 +373,7 @@ int core_f4sat(
         clear_matrix(mat);
         clean_hash_table(sht);
 
-        /* check redundancy only if input is not homogeneous */
-        update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis(ps, bs, bht, uht, st, kdim, 1);
 
         /* free multiplier list
          * todo: keep already reduced, nonzero elements for next round */
@@ -404,6 +402,14 @@ int core_f4sat(
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
     printf("basis has %u / %u elements.\n", bs->ld, bs->lml);
+
+    for (i = 0; i < bs->lml; ++i) {
+        printf("%u --> ", i);
+        for (j = 0; j < bht->nv; ++j) {
+            printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+        } 
+        printf("\n");
+    }
 
     *bsp  = bs;
     *satp = sat;

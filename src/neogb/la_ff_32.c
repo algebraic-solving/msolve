@@ -1721,6 +1721,7 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     for (i = 0; i < nrl; ++i) {
         int64_t *drl  = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
+        printf("npiv[COEFFS] = %u\n", npiv[COEFFS]);
         cf32_t *cfs     = bs->cf_32[npiv[COEFFS]];
         const len_t os  = npiv[PRELOOP];
         const len_t len = npiv[LENGTH];

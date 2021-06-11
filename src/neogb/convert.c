@@ -142,6 +142,7 @@ static void convert_hashes_to_columns(
     for (k = 0; k < mat->nru; ++k) {
         const len_t os  = rrows[k][PRELOOP];
         const len_t len = rrows[k][LENGTH];
+        printf("os %u | len %u\n", os, len);
         row = rrows[k] + OFFSET;
         for (j = 0; j < os; ++j) {
             row[j]  = hds[row[j]].idx;
@@ -233,7 +234,8 @@ static void add_kernel_elements_to_basis(
         if (kernel[i] != 0) {
             bs->cf_32[bld+ctr]  = mul->cf_32[mul->hm[i][COEFFS]];
             mul->cf_32[mul->hm[i][COEFFS]]  = NULL;
-            bs->hm[bld+ctr]     = mul->hm[i];
+            bs->hm[bld+ctr]         = mul->hm[i];
+            bs->hm[bld+ctr][COEFFS] = bld+ctr;
             mul->hm[i]          = NULL;
             for (j = OFFSET; j < bs->hm[bld+ctr][LENGTH]+OFFSET; ++j) {
                 bs->hm[bld+ctr][j] = hcm[bs->hm[bld+ctr][j]];
@@ -241,7 +243,7 @@ static void add_kernel_elements_to_basis(
             if (ht->hd[bs->hm[bld+ctr][OFFSET]].deg == 0) {
                 bs->constant  = 1;
             }
-            printf("new element from kernel: length %u | ", bs->hm[bld+ctr][LENGTH]);
+            printf("new element from kernel (%u): length %u | ", bld+ctr, bs->hm[bld+ctr][LENGTH]);
             for (int jj=0; jj < ht->nv; ++jj) {
                 printf("%u ", ht->ev[bs->hm[bld+ctr][OFFSET]][jj]);
             }

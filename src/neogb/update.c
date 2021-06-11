@@ -79,6 +79,7 @@ static void insert_and_update_spairs(
     const len_t pl  = psl->ld;
     const len_t bl  = bs->ld;
 
+    printf("bl %u\n", bl);
     const hm_t nch = bs->hm[bl][OFFSET];
 
     bs->mltdeg  = bs->mltdeg > bht->hd[nch].deg ?

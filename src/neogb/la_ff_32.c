@@ -537,12 +537,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         dts   = pivs[i];
         dtsm  = mulb->hm[dts[MULT]];
         cfsm  = mulb->cf_32[dtsm[COEFFS]];
-        printf("i %u | ncl %u | dts[COEFFS] %u\n", i, ncl, dts[COEFFS]);
-        if (i < ncl) {
-            cfs   = bs->cf_32[dts[COEFFS]];
-        } else {
-            cfs   = mcf[dts[COEFFS]];
-        }
+        cfs   = mcf[dts[COEFFS]];
 #ifdef HAVE_AVX2
         const len_t len = dts[LENGTH];
         const len_t os  = len % 8;
@@ -1892,6 +1887,7 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         npiv  = reduce_dense_row_by_known_pivots_sparse_ff_32(
                 drl, mat, bs, pivs, sc, i, st);
         if (!npiv) {
+            mat->cf_32[i] = NULL;
             mat->tr[i]  = NULL;
             kernel[mult]  = 1;
             kdim++;
@@ -1939,11 +1935,12 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
     /* now we do a ususal F4 reduction with updated pivs, but we have
      * to track the reduction steps when reducing each row from upivs */
     for (i = 0; i < ctr; ++i) {
-        int64_t *drl  = dr;
-        hm_t *npiv      = upivs[i];
-        hm_t mult       = upivs[i][MULT];
-        cf32_t *cfs     = mat->cf_32[npiv[COEFFS]];
-        len_t tmp_pos   = npiv[COEFFS];
+        int64_t *drl        = dr;
+        hm_t *npiv          = upivs[i];
+        hm_t mult           = upivs[i][MULT];
+        len_t tmp_pos       = npiv[COEFFS];
+        cf32_t *cfs         = mat->cf_32[tmp_pos];
+        mat->cf_32[tmp_pos] = NULL;
         printf("mat->cf_32[%u] set NULL.\n", npiv[COEFFS]);
         const len_t os  = npiv[PRELOOP];
         const len_t len = npiv[LENGTH];

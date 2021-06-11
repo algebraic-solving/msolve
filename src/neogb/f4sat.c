@@ -44,13 +44,12 @@ static inline len_t generate_new_basis_elements(
         const bs_t * const bs
         )
 {
-    len_t i, j, k;
+    len_t i, j;
 
-    ht_t *ht  = *htp;
+    ht_t *ht        = *htp;
     const len_t nv  = ht->nv;
-    len_t ctr = 0;
-    hm_t htmp = 0;
-    exp_t *etmp  = calloc((unsigned long)nv, sizeof(exp_t));
+    len_t ctr       = 0;
+    exp_t *etmp     = calloc((unsigned long)nv, sizeof(exp_t));
 
     for (i = nv; i > 0; --i) {
         while (ht->esz - ht->eld < oqb_dim-ind[nv-i]) {

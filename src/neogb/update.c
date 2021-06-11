@@ -74,7 +74,9 @@ static void insert_and_update_spairs(
 
     spair_t *ps = psl->p;
 
+#ifdef HAVE_OPENMP
     const int max_nthrds = 4 <= st->nthrds ? 4 : st->nthrds;
+#endif
 
     const len_t pl  = psl->ld;
     const len_t bl  = bs->ld;

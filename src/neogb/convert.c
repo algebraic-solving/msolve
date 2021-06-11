@@ -33,9 +33,6 @@ static void convert_multipliers_to_columns(
         )
 {
     hl_t i;
-    hi_t j, k;
-    hm_t *row;
-    int64_t nterms = 0;
 
     hi_t *hcm = *hcmp;
 
@@ -43,8 +40,6 @@ static void convert_multipliers_to_columns(
     double ct0, ct1, rt0, rt1;
     ct0 = cputime();
     rt0 = realtime();
-
-    len_t hi;
 
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
@@ -73,6 +68,11 @@ static void convert_multipliers_to_columns(
     for (i = 0; i < mul->ld; ++i) {
         mul->hm[i][OFFSET]  =  ht->hd[mul->hm[i][OFFSET]].idx;
     }
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->convert_ctime +=  ct1 - ct0;
+    st->convert_rtime +=  rt1 - rt0;
     *hcmp = hcm;
 }
 

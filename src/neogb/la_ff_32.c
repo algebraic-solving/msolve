@@ -1906,13 +1906,9 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         pivs[i] = NULL;
     }
 
-    len_t npivs = 0; /* number of new pivots */
-
-    dr      = realloc(dr, (unsigned long)ncols * sizeof(int64_t));
-    /* mat->tr = realloc(mat->tr, (unsigned long)ncr * sizeof(hm_t *)); */
-
-    upivs = NULL;
-    upivs = (hm_t **)calloc((unsigned long)mat->nrl, sizeof(hm_t *));
+    dr        = realloc(dr, (unsigned long)ncols * sizeof(int64_t));
+    upivs     = NULL;
+    upivs     = (hm_t **)calloc((unsigned long)mat->nrl, sizeof(hm_t *));
     len_t ctr = 0;
 
 
@@ -3056,7 +3052,7 @@ static len_t compute_kernel_sat_ff_32(
     ct0 = cputime();
     rt0 = realtime();
 
-    len_t i, kdim;
+    len_t kdim;
 
     len_t *kernel = *kernelp;
 

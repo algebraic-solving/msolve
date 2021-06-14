@@ -155,7 +155,6 @@ static void convert_hashes_to_columns(
     for (k = 0; k < mat->nru; ++k) {
         nterms  +=  rrows[k][LENGTH];
     }
-
 #pragma omp parallel for num_threads(st->nthrds) private(k, j)
     for (k = 0; k < mat->nrl; ++k) {
         const len_t os  = trows[k][PRELOOP];
@@ -227,7 +226,7 @@ static void add_kernel_elements_to_basis(
     /* fix size of basis for entering new elements directly */
     check_enlarge_basis(bs, kdim);
 
-    /* only for 35 bit at the moment */
+    /* only for 32 bit at the moment */
     for (i = 0; i < mul->ld; ++i) {
         if (kernel[i] != 0) {
             bs->cf_32[bld+ctr]  = mul->cf_32[mul->hm[i][COEFFS]];
@@ -242,8 +241,12 @@ static void add_kernel_elements_to_basis(
                 bs->constant  = 1;
             }
             printf("new element from kernel (%u): length %u | ", bld+ctr, bs->hm[bld+ctr][LENGTH]);
+            for (int kk=0; kk<bs->hm[bld+ctr][LENGTH]; ++kk) {
+                printf("%u | ", bs->cf_32[bld+ctr][kk]);
             for (int jj=0; jj < ht->nv; ++jj) {
-                printf("%u ", ht->ev[bs->hm[bld+ctr][OFFSET]][jj]);
+                printf("%u ", ht->ev[bs->hm[bld+ctr][OFFSET+kk]][jj]);
+            }
+            printf(" || ");
             }
             printf("\n");
             ctr++;

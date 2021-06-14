@@ -218,6 +218,14 @@ static void select_saturation(
     mat->nc = mat->ncl = mat->ncr = 0;
     mat->nr = 0;
 
+    for (i=0; i < sat->hm[0][LENGTH]; ++i) {
+        printf("%u | ", sat->cf_32[sat->hm[0][COEFFS]][i]);
+        for (len_t j = 0; j < bht->nv; ++j) {
+            printf("%u ", bht->ev[sat->hm[0][OFFSET+i]][j]);
+        }
+        printf(" ||| ");
+    }
+    printf("\n");
     for (i = 0; i < mul->lo; ++i) {
         /* todo: reconsider old data */
     }
@@ -239,7 +247,16 @@ static void select_saturation(
         const deg_t d       = bht->hd[m].deg;
         trows[ntr]          = multiplied_poly_to_matrix_row(
                 sht, bht, h, d, bht->ev[m], b);
-        trows[ntr++][MULT]  = mul->hm[i][MULT];
+        printf("---\n");
+    for (int k=0; k < trows[ntr][LENGTH]; ++k) {
+        printf("%u | ", sat->cf_32[trows[ntr][COEFFS]][k]);
+        for (len_t j = 0; j < sht->nv; ++j) {
+            printf("%u ", sht->ev[trows[ntr][OFFSET+k]][j]);
+        }
+        printf(" ||| ");
+    }
+    printf("\n");
+        trows[ntr++][MULT]  =i;
         mat->nr++;
     }
 }

@@ -121,6 +121,7 @@ static void select_spairs_by_minimal_degree(
             * row in the matrix, thus we have to reset elcm inside the for loop */
         elcm  = bht->ev[lcm];
         d     = 0;
+        printf("prev %u\n", prev);
         b     = bs->hm[prev];
         eb    = bht->ev[b[OFFSET]];
         for (l = 0; l < nv; ++l) {
@@ -155,6 +156,7 @@ static void select_spairs_by_minimal_degree(
             elcm  = bht->ev[lcm];
             d     = 0;
             b     = bs->hm[prev];
+        printf("prev2 %u\n", prev);
             eb    = bht->ev[b[OFFSET]];
             for (l = 0; l < nv; ++l) {
                 etmp[l] = (exp_t)(elcm[l] - eb[l]);
@@ -177,6 +179,8 @@ static void select_spairs_by_minimal_degree(
 
         i = j;
     }
+    /* clear ht-ev[0] */
+    memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
@@ -232,11 +236,11 @@ static void select_saturation(
     for (i = mul->lo; i < mul->ld; ++i) {
         const hm_t *b   = sat->hm[0];
         const hm_t m    = mul->hm[i][OFFSET];
-        /* printf("mul in symbolic %u --> ", i);
-         * for (len_t ii=0; ii<bht->nv; ++ii) {
-         *     printf("%d ", bht->ev[m][ii]);
-         * }
-         * printf("\n"); */
+        printf("mul in symbolic %u --> ", i);
+        for (len_t ii=0; ii<bht->nv; ++ii) {
+            printf("%d ", bht->ev[m][ii]);
+        }
+        printf("\n");
         /* remove the multiplier business for the moment, no need
          * and it corrupts a bit the sht size for efficient matrix
          * generation */
@@ -355,6 +359,20 @@ start:
                 goto start;
             }
         }
+        printf("e ");
+        for (len_t ii=0; ii < nv; ++ii) {
+            printf("%u ", e[ii]);
+        }
+        printf("f ");
+        for (len_t ii=0; ii < nv; ++ii) {
+            printf("%u ", f[ii]);
+        }
+        printf("etmp ");
+        for (len_t ii=0; ii < nv; ++ii) {
+            printf("%u ", etmp[ii]);
+        }
+        printf("\n");
+        printf("degree %u\n", d);
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
         /* track trace information ? */
@@ -388,6 +406,7 @@ static void symbolic_preprocessing(
 
     /* at the moment we have as many reducers as we have different lcms */
     len_t nrr = mat->nc; 
+    printf("nrr %u\n", nrr);
 
     /* note that we have already counted the different lcms, i.e.
      * ncols until this step. moreover, we have also already marked
@@ -397,6 +416,7 @@ static void symbolic_preprocessing(
 
     const hl_t oesld = sht->eld;
     const len_t onrr  = mat->nc;
+    printf("oesld %u\n", oesld);
     i = 1;
     /* we only have to check if idx is set for the elements already set
      * when selecting spairs, afterwards (second for loop) we do not
@@ -413,6 +433,7 @@ static void symbolic_preprocessing(
         }
     }
     for (; i < sht->eld; ++i) {
+        printf("%u / %u\n", i, sht->eld);
         if (mat->sz == nrr) {
             mat->sz *=  2;
             mat->rr  =  realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));

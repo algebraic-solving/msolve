@@ -124,9 +124,12 @@ static len_t quotient_basis(
     /* clear ht-ev[0] */
     memset((*htp)->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
 
+
     len_t *ind      = calloc((unsigned long)nv, sizeof(len_t));
 
     qb  = (hm_t *)calloc((unsigned long)1, sizeof(hm_t));
+    qb[0] = check_lm_divisibility_and_insert_in_hash_table(
+                            (*htp)->ev[0], (*htp), bs);
 
     while (nqbd > 0 && deg < max_deg) {
         nqb = (hm_t *)calloc(sum(ind, nv) + nv, sizeof(hm_t));
@@ -279,6 +282,9 @@ int core_f4sat(
             reset_hash_table(bht, bs, ps, st);
             st->num_rht++;
         }
+        for (len_t ii=0; ii < bs->ld; ++ii) {
+            printf("length of %2u is %2u\n", ii, bs->hm[ii][LENGTH]);
+        }
         rrt0  = realtime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
             st->max_bht_size : bht->esz;
@@ -308,12 +314,14 @@ int core_f4sat(
         update_basis(ps, bs, bht, uht, st, mat->np, 1);
 
         /* if we found a constant we are done, so remove all remaining pairs */
-        if (bs->constant  == 1) {
-            ps->ld  = 0;
-        }
         rrt1 = realtime();
         if (st->info_level > 1) {
             printf("%13.2f sec\n", rrt1-rrt0);
+        }
+        if (bs->constant  == 1) {
+            printf("basis is constant\n");
+            ps->ld  = 0;
+            break;
         }
         clean_hash_table(sht);
         /* check for new elements to be tested for adding saturation
@@ -323,29 +331,40 @@ int core_f4sat(
         select_saturation(sat, mul, mat, st, sht, bht);
 
         symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
-        if (st->info_level > 1) {
-            printf("nf computation data");
+
+        printf("mat->nrl %u\n", mat->nrl);
+        printf("mat->nru %u\n", mat->nru);
+        printf("mat->nc %u\n", mat->nc);
+        /* It may happen that there is no reducer at all for the
+         * saturation elements, then nothing has to be done. */
+        if (mat->nru > 0) {
+            if (st->info_level > 1) {
+                printf("nf computation data");
+            }
+            convert_hashes_to_columns(&hcm, mat, st, sht);
+            convert_multipliers_to_columns(&hcmm, mul, st, bht);
+            sort_matrix_rows_decreasing(mat->rr, mat->nru);
+
+            /* linear algebra, depending on choice, see set_function_pointers() */
+            kdim  = compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
+
+            if (kdim > 0) {
+                add_kernel_elements_to_basis(
+                        bs, mul, bht, hcmm, kernel, kdim, st);
+            }
+            /* columns indices are mapped back to exponent hashes */
+            /* return_normal_forms_to_basis(
+             *         mat, tbr, bht, sht, hcm, st); */
+
+            /* all rows in mat are now polynomials in the basis,
+             * so we do not need the rows anymore */
         }
-        convert_hashes_to_columns(&hcm, mat, st, sht);
-        convert_multipliers_to_columns(&hcmm, mul, st, bht);
-        sort_matrix_rows_decreasing(mat->rr, mat->nru);
-
-        /* linear algebra, depending on choice, see set_function_pointers() */
-        kdim  = compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
-
-        if (kdim > 0) {
-            add_kernel_elements_to_basis(
-                    bs, mul, bht, hcmm, kernel, kdim, st);
-        }
-        /* columns indices are mapped back to exponent hashes */
-        /* return_normal_forms_to_basis(
-         *         mat, tbr, bht, sht, hcm, st); */
-
-        /* all rows in mat are now polynomials in the basis,
-        * so we do not need the rows anymore */
         clear_matrix(mat);
         clean_hash_table(sht);
 
+        for (len_t ii = 0; ii < mul->ld; ++ii) {
+            bht->hd[hcmm[ii]].idx = 0;
+        }
         update_basis(ps, bs, bht, uht, st, kdim, 1);
 
         /* free multiplier list
@@ -368,6 +387,16 @@ int core_f4sat(
     }
     bs->lml = j;
 
+    printf("before red gb\n");
+    for (i = 0; i < bs->lml; ++i) {
+        printf("%u --> \n", i);
+        printf("lmps %u\n", bs->lmps[i]);
+        printf("%p %u\n",bs->hm[ bs->lmps[i]][OFFSET]);
+        for (j = 0; j < bht->nv; ++j) {
+            printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+        } 
+        printf("\n");
+    }
     /* reduce final basis? */
     if (st->reduce_gb == 1) {
         /* note: bht will become sht, and sht will become NULL,
@@ -377,7 +406,9 @@ int core_f4sat(
     printf("basis has  %u elements.\n", bs->lml);
 
     for (i = 0; i < bs->lml; ++i) {
-        printf("%u --> ", i);
+        printf("%u --> \n", i);
+        printf("lmps %u\n", bs->lmps[i]);
+        printf("%p %u\n",bs->hm[ bs->lmps[i]][OFFSET]);
         for (j = 0; j < bht->nv; ++j) {
             printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
         } 

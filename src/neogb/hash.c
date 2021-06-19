@@ -886,12 +886,24 @@ static inline void insert_multiplied_poly_in_hash_table(
 letsgo:
     for (; l < len; ++l) {
         const val_t h   = h1 + hd1[b[l]].val;
+        printf("l %u / length %u\n", l, len);
         const exp_t * const eb = ev1[b[l]];
+        printf("basis element monomial ");
+        for (j = 0; j < nv; ++j) {
+            printf("%u ", eb[j]);
+        }
+        printf("\n");
 
         n = ev2[ht2->eld];
         for (j = 0; j < nv; ++j) {
             n[j]  = (exp_t)(ea[j] + eb[j]);
         }
+        printf("adding ");
+        for (j = 0; j < nv; ++j) {
+            printf("%u ", n[j]);
+        }
+        printf("\n");
+
         k = h;
         i = 0;
 restart:
@@ -924,6 +936,7 @@ restart:
         ht2->hmap[k]  = pos = (hi_t)ht2->eld;
         d = hd2 + ht2->eld;
         d->deg  = deg + hd1[b[l]].deg;
+        printf("deg %u + %u = %u\n", deg,hd1[b[l]].deg, d->deg);
         d->sdm  = generate_short_divmask(n, ht2);
         d->val  = h;
 

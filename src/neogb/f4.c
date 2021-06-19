@@ -184,6 +184,8 @@ start:
     }
     *hcmp = hcm;
 
+    printf("bs->ld %u -- k %u\n", bs->ld, k);
+
     /* timings */
     ct1 = cputime();
     rt1 = realtime();

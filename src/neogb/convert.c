@@ -35,6 +35,8 @@ static void convert_multipliers_to_columns(
     hl_t i;
 
     hi_t *hcm = *hcmp;
+    /* clear ht-ev[0] */
+    memset(ht->ev[0], 0, (unsigned long)ht->nv * sizeof(exp_t));
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -49,14 +51,14 @@ static void convert_multipliers_to_columns(
     }
     sort_r(hcm, (unsigned long)mul->ld, sizeof(hi_t), hcm_cmp, ht);
 
-    /* printf("hcmm\n");
-     * for (int ii=0; ii<mul->ld; ++ii) {
-     *     printf("hcmm[%d] = %d | ", ii, hcm[ii]);
-     *     for (int jj = 0; jj < ht->nv; ++jj) {
-     *         printf("%d ", ht->ev[hcm[ii]][jj]);
-     *     }
-     *     printf("\n");
-     * } */
+    printf("hcmm\n");
+    for (int ii=0; ii<mul->ld; ++ii) {
+        printf("hcmm[%d] = %d | idx %u | ", ii, ht->hd[hcm[ii]].idx, hcm[ii]);
+        for (int jj = 0; jj < ht->nv; ++jj) {
+            printf("%d ", ht->ev[hcm[ii]][jj]);
+        }
+        printf("\n");
+    }
 
 
     /* store the other direction (hash -> column) */
@@ -116,14 +118,14 @@ static void convert_hashes_to_columns(
     }
     sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
 
-    /* printf("hcm\n");
-     * for (int ii=0; ii<j; ++ii) {
-     *     printf("hcm[%d] = %d | ", ii, hcm[ii]);
-     *     for (int jj = 0; jj < sht->nv; ++jj) {
-     *         printf("%d ", sht->ev[hcm[ii]][jj]);
-     *     }
-     *     printf("\n");
-     * } */
+    printf("hcm\n");
+    for (int ii=0; ii<j; ++ii) {
+        printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, hds[hcm[ii]].deg);
+        for (int jj = 0; jj < sht->nv; ++jj) {
+            printf("%d ", sht->ev[hcm[ii]][jj]);
+        }
+        printf("\n");
+    }
 
     mat->ncl  = k;
     mat->ncr  = (len_t)esld - 1 - mat->ncl;
@@ -213,7 +215,7 @@ static void add_kernel_elements_to_basis(
         stat_t *st
         )
 {
-    len_t i, j;
+    len_t i, j, k;
 
     len_t ctr       = 0;
     const len_t bld = bs->ld;
@@ -226,32 +228,44 @@ static void add_kernel_elements_to_basis(
     /* fix size of basis for entering new elements directly */
     check_enlarge_basis(bs, kdim);
 
-    /* only for 32 bit at the moment */
+    /* we need to sort the kernel elements first (in order to track
+     * redundancy correctly) */
+    hm_t **rows = (hm_t **)calloc((unsigned long)mul->ld, sizeof(hm_t *));
+    k = 0;
     for (i = 0; i < mul->ld; ++i) {
         if (kernel[i] != 0) {
-            bs->cf_32[bld+ctr]  = mul->cf_32[mul->hm[i][COEFFS]];
-            mul->cf_32[mul->hm[i][COEFFS]]  = NULL;
-            bs->hm[bld+ctr]         = mul->hm[i];
-            bs->hm[bld+ctr][COEFFS] = bld+ctr;
-            mul->hm[i]          = NULL;
-            for (j = OFFSET; j < bs->hm[bld+ctr][LENGTH]+OFFSET; ++j) {
-                bs->hm[bld+ctr][j] = hcm[bs->hm[bld+ctr][j]];
-            }
-            if (ht->hd[bs->hm[bld+ctr][OFFSET]].deg == 0) {
-                bs->constant  = 1;
-            }
-            printf("new element from kernel (%u): length %u | ", bld+ctr, bs->hm[bld+ctr][LENGTH]);
-            for (int kk=0; kk<bs->hm[bld+ctr][LENGTH]; ++kk) {
-                printf("%u | ", bs->cf_32[bld+ctr][kk]);
+            rows[k++]   = mul->hm[i];
+            mul->hm[i]  = NULL;
+        }
+    }
+    rows  = realloc(rows, (unsigned long)k * sizeof(hm_t *));
+    sort_matrix_rows_increasing(rows, k);
+    /* only for 32 bit at the moment */
+    for (i = 0; i < k; ++i) {
+        bs->cf_32[bld+ctr]  = mul->cf_32[rows[i][COEFFS]];
+        mul->cf_32[rows[i][COEFFS]] = NULL;
+        bs->hm[bld+ctr]             = rows[i];
+        bs->hm[bld+ctr][COEFFS]     = bld+ctr;
+        for (j = OFFSET; j < bs->hm[bld+ctr][LENGTH]+OFFSET; ++j) {
+            bs->hm[bld+ctr][j] = hcm[bs->hm[bld+ctr][j]];
+        }
+        if (ht->hd[bs->hm[bld+ctr][OFFSET]].deg == 0) {
+            bs->constant  = 1;
+        }
+        printf("new element from kernel (%u): length %u | ", bld+ctr, bs->hm[bld+ctr][LENGTH]);
+        for (int kk=0; kk<bs->hm[bld+ctr][LENGTH]; ++kk) {
+            printf("%u | ", bs->cf_32[bld+ctr][kk]);
+            printf("%u | ", ht->hd[bs->hm[bld+ctr][OFFSET+kk]].deg);
             for (int jj=0; jj < ht->nv; ++jj) {
                 printf("%u ", ht->ev[bs->hm[bld+ctr][OFFSET+kk]][jj]);
             }
             printf(" || ");
-            }
-            printf("\n");
-            ctr++;
         }
+        printf("\n");
+        ctr++;
     }
+    free(rows);
+    rows  = NULL;
 
     /* timings */
     ct1 = cputime();
@@ -374,6 +388,15 @@ static void convert_sparse_matrix_rows_to_basis_elements(
                 bs->cf_32[bl+i] = mat->cf_32[rows[i][COEFFS]];
                 rows[i][COEFFS] = bl+i;
                 bs->hm[bl+i]    = rows[i];
+            printf("new element (%u): length %u | ", bl+i, bs->hm[bl+i][LENGTH]);
+            for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) {
+                printf("%u | ", bs->cf_32[bl+i][kk]);
+            for (int jj=0; jj < bht->nv; ++jj) {
+                printf("%u ", bht->ev[bs->hm[bl+i][OFFSET+kk]][jj]);
+            }
+            printf(" || ");
+            }
+            printf("\n");
             }
             break;
         default:

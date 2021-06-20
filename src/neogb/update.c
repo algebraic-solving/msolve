@@ -80,7 +80,6 @@ static void insert_and_update_spairs(
 
     const len_t pl  = psl->ld;
     const len_t bl  = bs->ld;
-    printf("lenght of basis element %u --> %u\n", bl, bs->hm[bl][LENGTH]);
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
@@ -211,7 +210,6 @@ static void insert_and_update_spairs(
     }
 
     st->num_gb_crit +=  nl - psl->ld;
-    printf("lenght of basis element %u --> %u\n", bl, bs->hm[bl][LENGTH]);
 
     bs->ld++;
 }

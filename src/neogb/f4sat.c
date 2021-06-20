@@ -273,17 +273,14 @@ int core_f4sat(
      * are left in the pairset */
     if (st->info_level > 1) {
         printf("\ndeg     sel   pairs        mat          density \
-                new data             time(rd)\n");
+          new data             time(rd)\n");
         printf("-------------------------------------------------\
-                ----------------------------------------\n");
+----------------------------------------\n");
     }
     for (round = 1; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
             st->num_rht++;
-        }
-        for (len_t ii=0; ii < bs->ld; ++ii) {
-            printf("length of %2u is %2u\n", ii, bs->hm[ii][LENGTH]);
         }
         rrt0  = realtime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
@@ -326,15 +323,13 @@ int core_f4sat(
         clean_hash_table(sht);
         /* check for new elements to be tested for adding saturation
          * information to the intermediate basis */
+        rrt0  = realtime();
         update_multipliers(&qb, &mul, &bht, st, bs);
         /* check for monomial multiples of elements from saturation list */
         select_saturation(sat, mul, mat, st, sht, bht);
 
         symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
 
-        printf("mat->nrl %u\n", mat->nrl);
-        printf("mat->nru %u\n", mat->nru);
-        printf("mat->nc %u\n", mat->nc);
         /* It may happen that there is no reducer at all for the
          * saturation elements, then nothing has to be done. */
         if (mat->nru > 0) {
@@ -370,11 +365,15 @@ int core_f4sat(
         /* free multiplier list
          * todo: keep already reduced, nonzero elements for next round */
         free_basis_elements(mul);
+        rrt1 = realtime();
+        if (st->info_level > 1) {
+            printf("%10.2f sec\n", rrt1-rrt0);
+        }
 
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\
-                ----------------------------------------\n");
+----------------------------------------\n");
     }
     /* remove possible redudant elements */
     j = 0;
@@ -387,16 +386,6 @@ int core_f4sat(
     }
     bs->lml = j;
 
-    printf("before red gb\n");
-    for (i = 0; i < bs->lml; ++i) {
-        printf("%u --> \n", i);
-        printf("lmps %u\n", bs->lmps[i]);
-        printf("%p %u\n",bs->hm[ bs->lmps[i]][OFFSET]);
-        for (j = 0; j < bht->nv; ++j) {
-            printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        } 
-        printf("\n");
-    }
     /* reduce final basis? */
     if (st->reduce_gb == 1) {
         /* note: bht will become sht, and sht will become NULL,
@@ -406,9 +395,6 @@ int core_f4sat(
     printf("basis has  %u elements.\n", bs->lml);
 
     for (i = 0; i < bs->lml; ++i) {
-        printf("%u --> \n", i);
-        printf("lmps %u\n", bs->lmps[i]);
-        printf("%p %u\n",bs->hm[ bs->lmps[i]][OFFSET]);
         for (j = 0; j < bht->nv; ++j) {
             printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
         } 

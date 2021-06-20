@@ -388,7 +388,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
         if (i < ncl) {
             cfs   = bs->cf_32[dts[COEFFS]];
         } else {
-            printf("hier irgendwann?\n");
             cfs   = mcf[dts[COEFFS]];
         }
 #ifdef HAVE_AVX2
@@ -464,15 +463,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
     cf32_t *cf  = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
     j = 0;
     hm_t *rs  = row + OFFSET;
-    /* if (np == -1) {
-     *     np = end;
-     * } */
-    for (i= 0; i<end; ++i) {
-        if (dr[i] != 0) {
-            printf("dr[%u/%u/%u/%u] = %lld\n", i, dpiv, end, ncl, dr[i]);
-        }
-    }
-        printf("\n");
     for (i = end; i < ncols; ++i) {
         if (dr[i] != 0) {
             dr[i] = dr[i] % mod;
@@ -662,7 +652,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     const int64_t mod           = (int64_t)st->fc;
     const int64_t mod2          = (int64_t)st->fc * st->fc;
     const len_t ncols           = mat->nc;
-    const len_t ncl             = mat->ncl;
     cf32_t * const * const mcf  = mat->cf_32;
 #ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
@@ -672,13 +661,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
 #endif
 
     k = 0;
-    printf("dpiv < ncl ? %u < %u ? %u\n", dpiv, ncl, dpiv < ncl);
-    for (i=dpiv; i < ncols; ++i) {
-        if (dr[i] != 0) {
-        printf("%u|%lld ", i, dr[i]);
-        }
-    }
-        printf("\n");
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
             dr[i] = dr[i] % mod;
@@ -700,14 +682,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         dtsm  = mulb->hm[dts[MULT]];
         cfsm  = mulb->cf_32[dtsm[COEFFS]];
         cfs   = mcf[dts[COEFFS]];
-        printf("red by ");
-        for(len_t ii=0; ii<dts[LENGTH]; ++ii) {
-            printf("%u|%u ", dts[ii+OFFSET], cfs[ii]);
-        }
-        printf("\n");
-        if (cfs[0] != 1) {
-            printf("reduce with pivs[%u] --> lead coeff %u\n", i, cfs[0]);
-        }  
 #ifdef HAVE_AVX2
         const len_t len = dts[LENGTH];
         const len_t os  = len % 8;
@@ -813,7 +787,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         }
         const len_t osm   = dtsm[PRELOOP];
         const len_t lenm  = dtsm[LENGTH];
-        printf("lenm %u\n", lenm);
         const hm_t * const dsm = dtsm + OFFSET;
         for (j = 0; j < osm; ++j) {
             drm[dsm[j]] -=  mul * cfsm[j];
@@ -834,12 +807,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         st->application_nr_mult +=  len / 1000.0;
         st->application_nr_add  +=  len / 1000.0;
         st->application_nr_red++;
-    for (len_t ii=dpiv; ii < ncols; ++ii) {
-        if (dr[ii] != 0) {
-        printf("%u|%lld ", ii, dr[ii]);
-        }
-    }
-        printf("\n");
     }
 
     /* we always have to write the multiplier entry for the kernel
@@ -861,17 +828,10 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             }
         }
     }
-    printf("rsm -> ");
-    for (i = 0; i < j; ++i) {
-        printf("%u|%u ", cfm[i], rsm[i]);
-    }
-    printf("\n");
-    printf("after reduction mult[%u] piv %u\n", mul_idx, mulb->hm[mul_idx][OFFSET]);
     mulb->hm[mul_idx][PRELOOP]  = j % UNROLL;
     mulb->hm[mul_idx][LENGTH]   = j;
     mulb->hm[mul_idx][COEFFS]   = mul_idx;
 
-    printf("j %u\n", j);
     mulb->hm[mul_idx] = realloc(mulb->hm[mul_idx],
             (unsigned long)(j+OFFSET) * sizeof(hm_t));
     mulb->cf_32[mul_idx]  = realloc(mulb->cf_32[mul_idx],
@@ -879,12 +839,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
 
 
     if (k == 0) {
-        for (int ii = 0; ii < ncols; ++ii) {
-            if (dr[ii] != 0) {
-                printf("dr[%d] = %lld\n", ii, dr[ii]);
-            }
-        }
-        printf("it's a kernel element!\n");
         return NULL;
     }
 
@@ -894,9 +848,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     hm_t *rs  = row + OFFSET;
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
-            if (i < dpiv) {
-                printf("nonzero < dpiv\n");
-            }
             rs[j] = (hm_t)i;
             cf[j] = (cf32_t)dr[i];
             j++;
@@ -2062,17 +2013,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, sc) \
     schedule(dynamic)
-    for (i = 0; i < ncols; ++i) {
-        if (pivs[i] != NULL) {
-            printf("pivs[%u] = %u / %u with cfs %u\n", i, pivs[i][OFFSET], ncl, bs->cf_32[pivs[i][COEFFS]][0]);
-            len_t min = pivs[i][OFFSET];
-            for (j = OFFSET; j < pivs[i][LENGTH]+OFFSET; ++j) {
-                if (pivs[i][j] < min) {
-                    printf("!! %u at position %u\n", pivs[i][j], j);
-                }
-            }
-        }
-    }
     for (i = 0; i < nrl; ++i) {
         int64_t *drl  = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
@@ -2108,7 +2048,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
             mat->tr[i]    = NULL;
             kernel[mult]  = 1;
             kdim++;
-            printf("here?\n");
             continue;
         }
         /* adjust mul entry correspondingly */
@@ -2155,15 +2094,12 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
         int64_t *drl        = dr;
         hm_t *npiv          = upivs[i];
         hm_t mult           = upivs[i][MULT];
-    printf("before reduction mult[%u] piv %u -- length %u\n", mult, mul->hm[mult][OFFSET], mul->hm[mult][LENGTH]);
         len_t tmp_pos       = npiv[COEFFS];
         cf32_t *cfs         = mat->cf_32[tmp_pos];
         mat->cf_32[tmp_pos] = NULL;
-        printf("mat->cf_32[%u] set NULL.\n", npiv[COEFFS]);
-        const len_t os  = npiv[PRELOOP];
-        const len_t len = npiv[LENGTH];
+        const len_t os      = npiv[PRELOOP];
+        const len_t len     = npiv[LENGTH];
         const hm_t * const ds = npiv + OFFSET;
-        printf("upivs[%u] pivot %u\n", i, ds[0]);
         k = 0;
         memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
         memset(drm, 0, (unsigned long)mul->ld * sizeof(int64_t));
@@ -2176,9 +2112,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
             drl[ds[j+2]]  = (int64_t)cfs[j+2];
             drl[ds[j+3]]  = (int64_t)cfs[j+3];
         }
-        if (ncols > 3540 && drl[3540] != 0) {
-            printf("monomial nonzero\n");
-        }
         drm[mul->hm[mult][OFFSET]] = mul->cf_32[mul->hm[mult][COEFFS]][0];
         cfs = NULL;
         do {
@@ -2189,12 +2122,10 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
                     drl, drm, mat, mul,  bs, pivs, sc, tmp_pos, mult, st);
             if (!npiv) {
                 kernel[mult]  = 1;
-                printf("length %u --> ", mul->hm[mult][LENGTH]);
                 kdim++;
                 normalize_sparse_matrix_row_ff_32(
                         mul->cf_32[mul->hm[mult][COEFFS]],
                         mul->hm[mult][PRELOOP], mul->hm[mult][LENGTH], st->fc);
-            printf("here--2?\n");
                 break;
             }
             /* normalize coefficient array
@@ -2215,7 +2146,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
             }
             k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
             cfs = mat->cf_32[npiv[COEFFS]];
-        printf("new pivot %u with cf %u\n", npiv[OFFSET], cfs[0]);
         } while (!k);
     }
 
@@ -2233,10 +2163,6 @@ static len_t exact_sparse_reduced_echelon_form_sat_ff_32(
     pivs  = NULL;
     free(dr);
     dr  = NULL;
-
-    /* TODO */
-    /* mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-     * mat->np = mat->nr = mat->sz = npivs; */
 
     return kdim;
 }
@@ -3306,7 +3232,7 @@ static len_t compute_kernel_sat_ff_32(
     st->la_rtime  +=  rt1 - rt0;
 
     if (st->info_level > 1) {
-        printf("%7d new kernel elements\n", kdim);
+        printf("%7d new kernel elements", kdim);
         fflush(stdout);
     }
     /* for (i = 0; i < mul->ld; ++i) {

@@ -142,8 +142,8 @@ static len_t quotient_basis(
          *         printf("%d ", (*htp)->ev[qb[ii]][jj]);
          *     }
          *     printf("\n");
-         * }
-         * printf("nqb before adding\n");
+         * } */
+        /* printf("nqb before adding\n");
          * for (len_t ii = 0; ii < nqbd; ++ii) {
          *     printf("pos %u --> ", ii);
          *     for (len_t jj = 0; jj < nv; ++jj) {
@@ -176,12 +176,13 @@ static void update_multipliers(
         bs_t **mulp,
         ht_t **htp,
         stat_t *st,
-        const bs_t *bs
+        const bs_t *bs,
+        const deg_t max_deg
         )
 {
     len_t i;
 
-    len_t qdim  = quotient_basis(qdp, htp, bs, bs->mltdeg);
+    len_t qdim  = quotient_basis(qdp, htp, bs, max_deg);
     ht_t *ht  = *htp;
     bs_t *mul = *mulp;
 
@@ -306,7 +307,7 @@ int core_f4sat(
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
-        clear_matrix(mat);
+        clear_matrix(mat); // does not reset mat->np
 
         update_basis(ps, bs, bht, uht, st, mat->np, 1);
 
@@ -321,53 +322,55 @@ int core_f4sat(
             break;
         }
         clean_hash_table(sht);
-        /* check for new elements to be tested for adding saturation
-         * information to the intermediate basis */
-        rrt0  = realtime();
-        update_multipliers(&qb, &mul, &bht, st, bs);
-        /* check for monomial multiples of elements from saturation list */
-        select_saturation(sat, mul, mat, st, sht, bht);
+        if (mat->np > 0) {
+            /* check for new elements to be tested for adding saturation
+             * information to the intermediate basis */
+            rrt0  = realtime();
+            update_multipliers(&qb, &mul, &bht, st, bs, bs->mltdeg-bht->hd[sat->hm[0][OFFSET]].deg);
+            /* check for monomial multiples of elements from saturation list */
+            select_saturation(sat, mul, mat, st, sht, bht);
 
-        symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+            symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
 
-        /* It may happen that there is no reducer at all for the
-         * saturation elements, then nothing has to be done. */
-        if (mat->nru > 0) {
+            /* It may happen that there is no reducer at all for the
+             * saturation elements, then nothing has to be done. */
+            if (mat->nru > 0) {
+                if (st->info_level > 1) {
+                    printf("nf computation data");
+                }
+                convert_hashes_to_columns(&hcm, mat, st, sht);
+                convert_multipliers_to_columns(&hcmm, mul, st, bht);
+                sort_matrix_rows_decreasing(mat->rr, mat->nru);
+
+                /* linear algebra, depending on choice, see set_function_pointers() */
+                kdim  = compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
+
+                if (kdim > 0) {
+                    add_kernel_elements_to_basis(
+                            bs, mul, bht, hcmm, kernel, kdim, st);
+                    update_basis(ps, bs, bht, uht, st, kdim, 1);
+
+                }
+                for (len_t ii = 0; ii < mul->ld; ++ii) {
+                    bht->hd[hcmm[ii]].idx = 0;
+                }
+                /* columns indices are mapped back to exponent hashes */
+                /* return_normal_forms_to_basis(
+                 *         mat, tbr, bht, sht, hcm, st); */
+
+                /* all rows in mat are now polynomials in the basis,
+                 * so we do not need the rows anymore */
+            }
+            clear_matrix(mat);
+            clean_hash_table(sht);
+
+            /* free multiplier list
+             * todo: keep already reduced, nonzero elements for next round */
+            free_basis_elements(mul);
+            rrt1 = realtime();
             if (st->info_level > 1) {
-                printf("nf computation data");
+                printf("%10.2f sec\n", rrt1-rrt0);
             }
-            convert_hashes_to_columns(&hcm, mat, st, sht);
-            convert_multipliers_to_columns(&hcmm, mul, st, bht);
-            sort_matrix_rows_decreasing(mat->rr, mat->nru);
-
-            /* linear algebra, depending on choice, see set_function_pointers() */
-            kdim  = compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
-
-            if (kdim > 0) {
-                add_kernel_elements_to_basis(
-                        bs, mul, bht, hcmm, kernel, kdim, st);
-            }
-            /* columns indices are mapped back to exponent hashes */
-            /* return_normal_forms_to_basis(
-             *         mat, tbr, bht, sht, hcm, st); */
-
-            /* all rows in mat are now polynomials in the basis,
-             * so we do not need the rows anymore */
-        }
-        clear_matrix(mat);
-        clean_hash_table(sht);
-
-        for (len_t ii = 0; ii < mul->ld; ++ii) {
-            bht->hd[hcmm[ii]].idx = 0;
-        }
-        update_basis(ps, bs, bht, uht, st, kdim, 1);
-
-        /* free multiplier list
-         * todo: keep already reduced, nonzero elements for next round */
-        free_basis_elements(mul);
-        rrt1 = realtime();
-        if (st->info_level > 1) {
-            printf("%10.2f sec\n", rrt1-rrt0);
         }
 
     }

@@ -336,7 +336,7 @@ int core_f4sat(
              * saturation elements, then nothing has to be done. */
             if (mat->nru > 0) {
                 if (st->info_level > 1) {
-                    printf("nf computation data");
+                    printf("kernel computation ");
                 }
                 convert_hashes_to_columns(&hcm, mat, st, sht);
                 convert_multipliers_to_columns(&hcmm, mul, st, bht);

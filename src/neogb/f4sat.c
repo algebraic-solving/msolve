@@ -326,7 +326,7 @@ int core_f4sat(
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             rrt0  = realtime();
-            update_multipliers(&qb, &mul, &bht, st, bs, bs->mltdeg-bht->hd[sat->hm[0][OFFSET]].deg);
+            update_multipliers(&qb, &mul, &bht, st, bs, bs->mltdeg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mul, mat, st, sht, bht);
 

@@ -27,7 +27,7 @@
  * initial matrix. this is a first step for receiving a full GBLA matrix. */
 static void convert_multipliers_to_columns(
         hi_t **hcmp,
-        bs_t *mul,
+        bs_t *sat,
         stat_t *st,
         ht_t *ht
         )
@@ -45,9 +45,9 @@ static void convert_multipliers_to_columns(
 
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
-    hcm = realloc(hcm, (unsigned long)mul->ld * sizeof(hi_t));
-    for (i = 0; i < mul->ld; ++i) {
-        hcm[i]  = mul->hm[i][OFFSET];
+    hcm = realloc(hcm, (unsigned long)sat->ld * sizeof(hi_t));
+    for (i = 0; i < sat->ld; ++i) {
+        hcm[i]  = sat->hm[i][MULT];
     }
     sort_r(hcm, (unsigned long)mul->ld, sizeof(hi_t), hcm_cmp, ht);
 
@@ -61,13 +61,13 @@ static void convert_multipliers_to_columns(
      * } */
 
     /* store the other direction (hash -> column) */
-    for (i = 0; i < mul->ld; ++i) {
+    for (i = 0; i < sat->ld; ++i) {
         ht->hd[hcm[i]].idx  = (hi_t)i;
     }
 
     /* map column positions to mul entries*/
-    for (i = 0; i < mul->ld; ++i) {
-        mul->hm[i][OFFSET]  =  ht->hd[mul->hm[i][OFFSET]].idx;
+    for (i = 0; i < sat->ld; ++i) {
+        sat->hm[i][MULT]  =  ht->hd[sat->hm[i][MULT]].idx;
     }
     /* timings */
     ct1 = cputime();

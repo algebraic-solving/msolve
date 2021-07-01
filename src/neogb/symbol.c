@@ -198,10 +198,9 @@ static void select_spairs_by_minimal_degree(
     st->select_rtime  +=  rt1 - rt0;
 }
 
+/* write elements straight to sat, not to a matrix */
 static void select_saturation(
-        const bs_t * const sat,
-        const bs_t * const mul,
-        mat_t *mat,
+        bs_t *sat,
         stat_t *st,
         ht_t *sht,
         ht_t *bht
@@ -209,11 +208,15 @@ static void select_saturation(
 {
     len_t i;
 
-    len_t ntr = 0;
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
 
     /* preset matrix meta data */
     mat->rr       = (hm_t **)malloc(100 * sizeof(hm_t *));
-    mat->tr       = (hm_t **)malloc((unsigned long)mul->ld * sizeof(hm_t *));
+    mat->tr       = (hm_t **)malloc((unsigned long)tbr->ld * sizeof(hm_t *));
     hm_t **trows  = mat->tr;
 
     mat->sz = 100;
@@ -228,25 +231,28 @@ static void select_saturation(
      *     printf(" ||| ");
      * }
      * printf("\n"); */
+    const hm_t *b   = sat->hm[0];
+    /* reconsider old data from previous saturation runs which are
+     * already stored in sat */
     for (i = 0; i < mul->lo; ++i) {
-        /* todo: reconsider old data */
+        for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
+            sat->hm[i][j] = insert_in_hash_table(
+                    bht->ev[sat->hm[i][j]], sht);
+        }
     }
-    for (i = mul->lo; i < mul->ld; ++i) {
-        const hm_t *b   = sat->hm[0];
-        const hm_t m    = mul->hm[i][OFFSET];
-        /* remove the multiplier business for the moment, no need
-         * and it corrupts a bit the sht size for efficient matrix
-         * generation */
-        /* const hi_t mulh = insert_in_hash_table(mul, sht);
-         * const hi_t h    = sht->hd[mulh].val;
-         * const deg_t d   = sht->hd[mulh].deg; */
-        const hi_t h        = bht->hd[m].val;
-        const deg_t d       = bht->hd[m].deg;
-        trows[ntr]          = multiplied_poly_to_matrix_row(
+    for (i; i < mul->ld; ++i) {
+        const hm_t m  = sat->hm[i][MULT];
+        const hi_t h  = bht->hd[m].val;
+        const deg_t d = bht->hd[m].deg;
+        sat->hm[i]    = multiplied_poly_to_matrix_row(
                 sht, bht, h, d, bht->ev[m], b);
-        trows[ntr++][MULT]  =i;
-        mat->nr++;
     }
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->select_ctime  +=  ct1 - ct0;
+    st->select_rtime  +=  rt1 - rt0;
 }
 
 

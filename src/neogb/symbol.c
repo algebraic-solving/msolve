@@ -201,6 +201,7 @@ static void select_spairs_by_minimal_degree(
 /* write elements straight to sat, not to a matrix */
 static void select_saturation(
         bs_t *sat,
+        mat_t *mat,
         stat_t *st,
         ht_t *sht,
         ht_t *bht
@@ -215,9 +216,8 @@ static void select_saturation(
 
 
     /* preset matrix meta data */
-    mat->rr       = (hm_t **)malloc(100 * sizeof(hm_t *));
-    mat->tr       = (hm_t **)malloc((unsigned long)tbr->ld * sizeof(hm_t *));
-    hm_t **trows  = mat->tr;
+    mat->rr = (hm_t **)malloc(100 * sizeof(hm_t *));
+    mat->tr = NULL:
 
     mat->sz = 100;
     mat->nc = mat->ncl = mat->ncr = 0;

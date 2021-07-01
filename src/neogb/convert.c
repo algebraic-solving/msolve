@@ -77,6 +77,136 @@ static void convert_multipliers_to_columns(
     *hcmp = hcm;
 }
 
+static void convert_hashes_to_columns_sat(
+        hi_t **hcmp,
+        mat_t *mat,
+        bs_t *sat,
+        stat_t *st,
+        ht_t *sht
+        )
+{
+    hl_t i;
+    hi_t j, k;
+    hm_t *row;
+    int64_t nterms = 0;
+
+    hi_t *hcm = *hcmp;
+
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    len_t hi;
+
+    const len_t mnr = mat->nr;
+    const hl_t esld = sht->eld;
+    hd_t *hds       = sht->hd;
+    hm_t **rrows    = mat->rr;
+    hm_t **trows    = mat->tr;
+
+    /* all elements in the sht hash table represent
+     * exactly one column of the matrix */
+    hcm = realloc(hcm, (esld-1) * sizeof(hi_t));
+    for (k = 0, j = 0, i = 1; i < esld; ++i) {
+        hi  = hds[i].idx;
+
+        hcm[j++]  = i;
+        if (hi == 2) {
+            k++;
+        }
+    }
+    sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
+
+    /* printf("hcm\n");
+     * for (int ii=0; ii<j; ++ii) {
+     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, hds[hcm[ii]].deg);
+     *     for (int jj = 0; jj < sht->nv; ++jj) {
+     *         printf("%d ", sht->ev[hcm[ii]][jj]);
+     *     }
+     *     printf("\n");
+     * } */
+
+    mat->ncl  = k;
+    mat->ncr  = (len_t)esld - 1 - mat->ncl;
+
+    st->num_rowsred +=  sat->ld;
+
+    /* store the other direction (hash -> column) */
+    const hi_t ld = (hi_t)(esld - 1);
+    for (k = 0; k < ld; ++k) {
+        hds[hcm[k]].idx  = (hi_t)k;
+    }
+
+    /* map column positions to reducer matrix */
+#pragma omp parallel for num_threads(st->nthrds) private(k, j)
+    for (k = 0; k < mat->nru; ++k) {
+        const len_t os  = rrows[k][PRELOOP];
+        const len_t len = rrows[k][LENGTH];
+        row = rrows[k] + OFFSET;
+        for (j = 0; j < os; ++j) {
+            row[j]  = hds[row[j]].idx;
+        }
+        for (; j < len; j += UNROLL) {
+            row[j]    = hds[row[j]].idx;
+            row[j+1]  = hds[row[j+1]].idx;
+            row[j+2]  = hds[row[j+2]].idx;
+            row[j+3]  = hds[row[j+3]].idx;
+        }
+    }
+    for (k = 0; k < mat->nru; ++k) {
+        nterms  +=  rrows[k][LENGTH];
+    }
+    /* map column positions to saturation elements */
+#pragma omp parallel for num_threads(st->nthrds) private(k, j)
+    for (k = 0; k < sat->ld; ++k) {
+        const len_t os  = sat->hm[k][PRELOOP];
+        const len_t len = sat->hm[k][LENGTH];
+        row = sat->hm[k] + OFFSET;
+        for (j = 0; j < os; ++j) {
+            row[j]  = hds[row[j]].idx;
+        }
+        for (; j < len; j += UNROLL) {
+            row[j]    = hds[row[j]].idx;
+            row[j+1]  = hds[row[j+1]].idx;
+            row[j+2]  = hds[row[j+2]].idx;
+            row[j+3]  = hds[row[j+3]].idx;
+        }
+    }
+    for (k = 0; k < mat->nrl; ++k) {
+        nterms  +=  sat->hm[k][LENGTH];
+    }
+
+    /* next we sort each row by the new colum order due
+     * to known / unkown pivots */
+
+    /* NOTE: As strange as it may sound, we do not need to sort the rows.
+     * When reducing, we copy them to dense rows, there we copy the coefficients
+     * at the right place and reduce then. For the reducers itself it is not
+     * important in which order the terms are represented as long as the first
+     * term is the lead term, which is always true. Once a row is finally reduced
+     * it is copied back to a sparse representation, now in the correct term
+     * order since it is coming from the correctly sorted dense row. So all newly
+     * added elements have all their terms sorted correctly w.r.t. the given
+     * monomial order. */
+
+    /* compute density of matrix */
+    nterms  *=  100; /* for percentage */
+    double density = (double)nterms / (double)mnr / (double)mat->nc;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->convert_ctime +=  ct1 - ct0;
+    st->convert_rtime +=  rt1 - rt0;
+    if (st->info_level > 1) {
+        printf(" %7d x %-7d %8.2f%%", mat->nr, mat->nc, density);
+        fflush(stdout);
+    }
+    *hcmp = hcm;
+}
+
+
 static void convert_hashes_to_columns(
         hi_t **hcmp,
         mat_t *mat,

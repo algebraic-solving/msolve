@@ -329,7 +329,7 @@ int core_f4sat(
             rrt0  = realtime();
             update_multipliers(&qb, &sat, &bht, st, bs, bs->mltdeg);
             /* check for monomial multiples of elements from saturation list */
-            select_saturation(sat, mul, mat, st, sht, bht);
+            select_saturation(sat, mat, st, sht, bht);
 
             symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
 
@@ -339,11 +339,10 @@ int core_f4sat(
                 if (st->info_level > 1) {
                     printf("kernel computation ");
                 }
-                convert_hashes_to_columns(&hcm, mat, st, sht);
+                convert_hashes_to_columns_sat(&hcm, mat, sat, st, sht);
                 convert_multipliers_to_columns(&hcmm, mul, st, bht);
                 sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
-                /* linear algebra, depending on choice, see set_function_pointers() */
                 kdim  = compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
 
                 if (kdim > 0) {

@@ -173,7 +173,7 @@ static len_t quotient_basis(
 
 static void update_multipliers(
         hm_t **qdp,
-        bs_t **mulp,
+        bs_t **satp,
         ht_t **htp,
         stat_t *st,
         const bs_t *bs,
@@ -184,38 +184,40 @@ static void update_multipliers(
 
     len_t qdim  = quotient_basis(qdp, htp, bs, max_deg);
     ht_t *ht  = *htp;
-    bs_t *mul = *mulp;
+    bs_t *sat = *satp;
 
-    mul->lo   = mul->ld;
-    bl_t ctr  = mul->lo;
+    sat->lo   = sat->ld;
+    bl_t ctr  = sat->lo;
 
-    check_enlarge_basis(mul, qdim);
+    check_enlarge_basis(sat, qdim);
 
     hm_t *qb  = *qdp;
 
-    /* quotient monomials */
+    /* new saturation elements from new quotient monomials */
     for (i = 0; i < qdim; ++i) {
-       mul->hm[ctr]           = realloc(mul->hm[ctr], (1+OFFSET)*sizeof(hm_t));
-       mul->hm[ctr][LENGTH]   = 1;
-       mul->hm[ctr][PRELOOP]  = 1;
-       mul->hm[ctr][COEFFS]   = ctr;
-       mul->hm[ctr][MULT]     = ctr;
-       mul->hm[ctr][OFFSET]   = qb[i];
-       mul->cf_32[ctr]        = realloc(mul->cf_32[ctr], sizeof(cf32_t));
-       mul->cf_32[ctr][0]     = 1;
+       sat->hm[ctr]           = realloc(
+               sat->hm[ctr],
+               (sat->hm[0][LENGTH]+OFFSET)*sizeof(hm_t));
+       sat->hm[ctr][LENGTH]   = sat->hm[0][LENGTH];
+       sat->hm[ctr][PRELOOP]  = sat->hm[0][PRELOOP];
+       sat->hm[ctr][COEFFS]   = sat->hm[0][COEFFS];
+       sat->hm[ctr][MULT]     = qb[i];
        ctr++;
     }
-    mul->ld = ctr;
-    st->new_multipliers = mul->ld - mul->lo;
-    /* for (i = 0; i < mul->ld; ++i) {
+    sat->ld = ctr;
+    st->new_sattipliers = sat->ld - sat->lo;
+    /* for (i = 0; i < sat->ld; ++i) {
      *     printf("%3u -> ", i);
      *     for (len_t j = 0; j < ht->nv; ++j) {
-     *         printf("%d ", ht->ev[mul->hm[i][OFFSET]][j]);
+     *         printf("%d ", ht->ev[sat->hm[i][OFFSET]][j]);
      *     }
      *     printf("\n");
      * } */
 
-    *mulp = mul;
+    if (sat->mltdeg < max_deg) {
+        sat->mltdeg = max_deg;
+    }
+    *satp = sat;
     *htp  = ht;
 }
 
@@ -237,7 +239,6 @@ int core_f4sat(
      * added to bs if we find a linear dependency on
      * elements in tbr. They represent the multipliers
      * of the elements we saturate with. */
-    bs_t *mul   = initialize_basis_ff_32(10);
     /* timings for one round */
     double rrt0, rrt1;
 
@@ -326,7 +327,7 @@ int core_f4sat(
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             rrt0  = realtime();
-            update_multipliers(&qb, &mul, &bht, st, bs, bs->mltdeg);
+            update_multipliers(&qb, &sat, &bht, st, bs, bs->mltdeg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mul, mat, st, sht, bht);
 

@@ -336,11 +336,9 @@ static void convert_hashes_to_columns(
 
 static void add_kernel_elements_to_basis(
         bs_t *bs,
-        bs_t *mul,
+        bs_t *kernel,
         const ht_t * const ht,
         const hi_t * const hcm,
-        const len_t * const kernel,
-        const len_t kdim,
         stat_t *st
         )
 {
@@ -355,26 +353,23 @@ static void add_kernel_elements_to_basis(
     rt0 = realtime();
 
     /* fix size of basis for entering new elements directly */
-    check_enlarge_basis(bs, kdim);
+    check_enlarge_basis(bs, kernel->ld);
 
     /* we need to sort the kernel elements first (in order to track
      * redundancy correctly) */
-    hm_t **rows = (hm_t **)calloc((unsigned long)mul->ld, sizeof(hm_t *));
+    hm_t **rows = (hm_t **)calloc((unsigned long)kernel->ld, sizeof(hm_t *));
     k = 0;
     for (i = 0; i < mul->ld; ++i) {
-        if (kernel[i] != 0) {
-            rows[k++]   = mul->hm[i];
-            mul->hm[i]  = NULL;
-        }
+        rows[k++]     = kernel->hm[i];
+        kernel->hm[i] = NULL;
     }
-    rows  = realloc(rows, (unsigned long)k * sizeof(hm_t *));
     sort_matrix_rows_increasing(rows, k);
     /* only for 32 bit at the moment */
-    for (i = 0; i < k; ++i) {
-        bs->cf_32[bld+ctr]  = mul->cf_32[rows[i][COEFFS]];
-        mul->cf_32[rows[i][COEFFS]] = NULL;
-        bs->hm[bld+ctr]             = rows[i];
-        bs->hm[bld+ctr][COEFFS]     = bld+ctr;
+    for (i = 0; i < kernel->ld; ++i) {
+        bs->cf_32[bld+ctr]              = kernel->cf_32[rows[i][COEFFS]];
+        kernel->cf_32[rows[i][COEFFS]]  = NULL;
+        bs->hm[bld+ctr]                 = rows[i];
+        bs->hm[bld+ctr][COEFFS]         = bld+ctr;
         for (j = OFFSET; j < bs->hm[bld+ctr][LENGTH]+OFFSET; ++j) {
             bs->hm[bld+ctr][j] = hcm[bs->hm[bld+ctr][j]];
         }

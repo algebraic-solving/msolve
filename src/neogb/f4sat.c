@@ -173,17 +173,19 @@ static len_t quotient_basis(
 
 static void update_multipliers(
         hm_t **qdp,
-        ht_t **htp,
+        ht_t **bhtp,
+        ht_t **shtp,
         bs_t *sat,
         stat_t *st,
         const bs_t *bs,
         const deg_t max_deg
         )
 {
-    len_t i, j;
+    len_t i;
 
-    len_t qdim  = quotient_basis(qdp, htp, bs, max_deg);
-    ht_t *ht  = *htp;
+    len_t qdim  = quotient_basis(qdp, bhtp, bs, max_deg);
+    ht_t *bht   = *bhtp;
+    ht_t *sht   = *shtp;
 
     bl_t ctr  = 0;
 
@@ -199,8 +201,8 @@ static void update_multipliers(
             sat->cf_32[i] = NULL;
             i++;
         }
-        sat->hm[ctr]  = sat->hm[i];
-        sat->cf_32[ctr] = sat->cf_32[i];
+        sat->hm[ctr]          = sat->hm[i];
+        sat->cf_32[ctr]       = sat->cf_32[i];
         sat->hm[ctr][COEFFS]  = ctr;
         ctr++;
     }
@@ -229,8 +231,8 @@ static void update_multipliers(
     if (sat->mltdeg < max_deg) {
         sat->mltdeg = max_deg;
     }
-    *satp = sat;
-    *htp  = ht;
+    *bhtp = bht;
+    *shtp = sht;
 }
 
 int core_f4sat(
@@ -276,7 +278,7 @@ int core_f4sat(
 
     ps_t *ps = initialize_pairset();
 
-    int32_t round, i, j, k, l;
+    int32_t round, i, j;
 
     /* elements of kernel in saturation step, to be added to basis bs */
     bs_t *kernel  = initialize_basis(10);;
@@ -345,7 +347,7 @@ int core_f4sat(
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             rrt0  = realtime();
-            update_multipliers(&qb, &bht, sat, st, bs, bs->mltdeg);
+            update_multipliers(&qb, &bht, &sht, sat, st, bs, bs->mltdeg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
 
@@ -358,19 +360,19 @@ int core_f4sat(
                     printf("kernel computation ");
                 }
                 convert_hashes_to_columns_sat(&hcm, mat, sat, st, sht);
-                convert_multipliers_to_columns(&hcmm, mul, st, bht);
+                convert_multipliers_to_columns(&hcmm, sat, st, bht);
                 sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
-                compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
+                compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (kernel->ld > 0) {
                     add_kernel_elements_to_basis(
-                            bs, kernel, bht, hcmm, kernel->ld, st);
+                            bs, kernel, bht, hcmm, st);
                     update_basis(ps, bs, bht, uht, st, kernel->ld, 1);
 
                 }
-                for (k = 0; k < sat->ld; ++k) {
-                    bht->hd[hcmm[k]].idx = 0;
+                for (i = 0; i < sat->ld; ++i) {
+                    bht->hd[hcmm[i]].idx = 0;
                 }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(
@@ -384,10 +386,10 @@ int core_f4sat(
             clean_hash_table(sht);
 
             /* move hashes for sat entries from sht back to bht */
-            for (k = 0; k < sat->ld; ++k) {
-                for (l = OFFSET; l < sat->hm[i][LENGTH]+OFFSET; ++l) {
-                    sat->hm[k][l] = insert_in_hash_table(
-                            sht->ev[sat->hm[k][l]], bht);
+            for (i = 0; i < sat->ld; ++i) {
+                for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
+                    sat->hm[i][j] = insert_in_hash_table(
+                            sht->ev[sat->hm[i][j]], bht);
                 }
             }
 

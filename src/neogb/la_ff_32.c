@@ -3231,7 +3231,7 @@ static void exact_sparse_linear_algebra_ff_32(
     }
 }
 
-static len_t compute_kernel_sat_ff_32(
+static void compute_kernel_sat_ff_32(
         bs_t *sat,
         mat_t *mat,
         bs_t *kernel,
@@ -3259,11 +3259,6 @@ static len_t compute_kernel_sat_ff_32(
         printf("%7d new kernel elements", kernel->ld);
         fflush(stdout);
     }
-    /* for (i = 0; i < mul->ld; ++i) {
-     *     printf("kernel[%u] = %u\n", i, kernel[i]);
-     * } */
-
-    return kernel->ld;
 }
 
 static void exact_sparse_linear_algebra_nf_ff_32(

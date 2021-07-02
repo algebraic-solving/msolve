@@ -177,26 +177,37 @@ static void update_multipliers(
         bs_t *sat,
         stat_t *st,
         const bs_t *bs,
-        const deg_t prev_deg
         const deg_t max_deg
         )
 {
-    len_t i;
+    len_t i, j;
 
     len_t qdim  = quotient_basis(qdp, htp, bs, max_deg);
     ht_t *ht  = *htp;
-    bs_t *sat = *satp;
 
-    sat->lo   = sat->ld;
-    bl_t ctr  = sat->lo;
+    bl_t ctr  = 0;
 
     check_enlarge_basis(sat, qdim);
 
     hm_t *qb  = *qdp;
 
+    for (i = 0; i < sat->ld; ++i) {
+        while (qb[ctr] != sat->hm[i][MULT]) {
+            free(sat->hm[i]);
+            sat->hm[i]    = NULL;
+            free(sat->cf_32[i]);
+            sat->cf_32[i] = NULL;
+            i++;
+        }
+        sat->hm[ctr]  = sat->hm[i];
+        sat->cf_32[ctr] = sat->cf_32[i];
+        sat->hm[ctr][COEFFS]  = ctr;
+        ctr++;
+    }
+
     const hm_t *b   = sat->hm[0];
     /* new saturation elements from new quotient monomials */
-    for (i = 0; i < qdim; ++i) {
+    for (i = ctr; i < qdim; ++i) {
         const hm_t m      = qb[i];
         const hi_t h      = bht->hd[m].val;
         const deg_t d     = bht->hd[m].deg;
@@ -232,8 +243,15 @@ int core_f4sat(
     bs_t *bs    = *bsp;
     ht_t *bht   = *bhtp;
     stat_t *st  = *stp;
+
     /* elements to saturate input ideal with */
     bs_t *sat   = *satp;
+    /* initialize multiplier of first element in sat to be the hash of
+     * the all-zeroes exponent vector. */
+    memset(bht->ev[0], 0, (unsigned long)bht->nv * sizeof(exp_t));
+    sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
+    sat->ld = 1;
+
     /* current quotient basis up to max lm degree in intermediate basis */
     hm_t *qb    = NULL;
     /* elements tracking reduction steps of tbr, being
@@ -260,9 +278,8 @@ int core_f4sat(
 
     int32_t round, i, j, k, l;
 
-    /* dimension of kernel in each step */
-    len_t kdim    = 0;
-    len_t *kernel = NULL;
+    /* elements of kernel in saturation step, to be added to basis bs */
+    bs_t *kernel  = initialize_basis(10);;
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
@@ -328,7 +345,7 @@ int core_f4sat(
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             rrt0  = realtime();
-            update_multipliers(&qb, &sat, &bht, st, bs, bs->mltdeg);
+            update_multipliers(&qb, &bht, sat, st, bs, bs->mltdeg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
 
@@ -344,12 +361,12 @@ int core_f4sat(
                 convert_multipliers_to_columns(&hcmm, mul, st, bht);
                 sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
-                kdim  = compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
+                compute_kernel_sat_ff_32(&kernel, mat, mul, sat, bs, st);
 
-                if (kdim > 0) {
+                if (kernel->ld > 0) {
                     add_kernel_elements_to_basis(
-                            bs, kernel, bht, hcmm, kdim, st);
-                    update_basis(ps, bs, bht, uht, st, kdim, 1);
+                            bs, kernel, bht, hcmm, kernel->ld, st);
+                    update_basis(ps, bs, bht, uht, st, kernel->ld, 1);
 
                 }
                 for (k = 0; k < sat->ld; ++k) {

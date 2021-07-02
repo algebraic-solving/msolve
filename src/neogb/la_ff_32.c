@@ -805,9 +805,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
 
     /* we always have to write the multiplier entry for the kernel
      * construction, especially if we computed a zero row. */
-    mulh[tmp_pos]
+    mulh[tmp_pos]   =
         (hm_t *)malloc((unsigned long)(sat_ld+OFFSET) * sizeof(hm_t));
-    mulcf[tmp_pos]
+    mulcf[tmp_pos]  =
         (cf32_t *)malloc((unsigned long)(sat_ld) * sizeof(cf32_t));
     j = 0;
     hm_t *rsm   = mulh[tmp_pos] + OFFSET;
@@ -1989,9 +1989,6 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     const len_t nrl   = mat->nrl;
     const len_t ncl   = mat->ncl;
 
-    /* dimension of kernel */
-    len_t kdim  = 0;
-
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
     memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
@@ -2017,7 +2014,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         hm_t *npiv      = upivs[i];
         len_t mult      = npiv[MULT];
         /* we only saturate w.r.t. one element at the moment */
-        len_t cf_idx    = npiv[COEFFS]
+        len_t cf_idx    = npiv[COEFFS];
         cf32_t *cfs     = sat->cf_32[cf_idx];
         const len_t os  = npiv[PRELOOP];
         const len_t len = npiv[LENGTH];
@@ -2043,7 +2040,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         /* npiv  = reduce_dense_row_by_known_pivots_sparse_ff_32(
          *         drl, mat, bs, pivs, sc, i, st); */
         npiv  = reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
-                drl, mat, bs, pivs, sc, i, ncl, ncols, st);
+                drl, sat, bs, pivs, sc, cf_idx, i, ncl, ncols, st);
         if (!npiv) {
             sat->hm[i]  = NULL;
             kernel->hm[kernel->ld-1]    = (hm_t *)malloc(
@@ -2062,32 +2059,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
          * saturation step of f4sat */
         npiv[MULT]  = mult;
         sat->hm[i]  = npiv;
-        /* next copy non zero saturation and multiplier data,
-         * normalize saturation element for further kernel
-         * computation */
-        /* const len_t ctr = tmp->ld-1;
-         * tmp->hm[ctr]  = malloc(
-         *         (unsigned long)(npiv[LENGTH]+OFFSET) * sizeof(hm_t));
-         * memcpy(tmp->hm[ctr], npiv,
-         *         (unsigned long)(npiv[LENGTH]+OFFSET) * sizeof(hm_t));
-         * tmp->hm[ctr][COEFFS]  = ctr;
-         * tmp->cf_32[ctr] = malloc(
-         *         (unsigned long)(npiv[LENGTH]) * sizeof(cf32_t));
-         * memcpy(tmp->hm[ctr], sat->cf_32[npiv[COEFFS]],
-         *         (unsigned long)(npiv[LENGTH]) * sizeof(hm_t));
-         * tmp->ld++; */
-
-        /* adjust mul entry correspondingly */
-        /* if (mat->cf_32[npiv[COEFFS]][0] != 1) {
-         *     adjust_multiplier_sparse_matrix_row_ff_32(
-         *             mul->cf_32[mul->hm[mult][COEFFS]],
-         *             mat->cf_32[npiv[COEFFS]],
-         *             mul->hm[mult][PRELOOP],
-         *             mul->hm[mult][LENGTH],
-         *             st->fc);
-         *     normalize_sparse_matrix_row_ff_32(
-         *             mat->cf_32[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
-         * } } */
+    }
 
     mat->np = mat->nr = mat->sz = nrl;
     /* we do not need the old pivots anymore */
@@ -2120,7 +2092,6 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     for (i = 0; i < ctr; ++i) {
         int64_t *drl        = dr;
         hm_t *npiv          = upivs[i];
-        hm_t mult           = upivs[i][MULT];
         len_t tmp_pos       = npiv[COEFFS];
         cf32_t *cfs         = sat->cf_32[tmp_pos];
         const len_t os      = npiv[PRELOOP];
@@ -2128,7 +2099,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         const hm_t * const ds = npiv + OFFSET;
         k = 0;
         memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
-        memset(drm, 0, (unsigned long)mul->ld * sizeof(int64_t));
+        memset(drm, 0, (unsigned long)sat->ld * sizeof(int64_t));
         for (j = 0; j < os; ++j) {
             drl[ds[j]]  = (int64_t)cfs[j];
         }
@@ -2142,7 +2113,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         do {
             sc    = npiv[OFFSET];
             npiv  = reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
-                    drl, drm, pivcf, mulh, mulcf, bs, pivs, sc, tmp_pos,
+                    drl, drm, pivcf, mulh, mulcf, pivs, sc, tmp_pos,
                     sat->ld, ncols, st);
             if (!npiv) {
                 /* normalize new kernel element */

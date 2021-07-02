@@ -207,7 +207,7 @@ static void select_saturation(
         ht_t *bht
         )
 {
-    len_t i;
+    len_t i, j;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -217,7 +217,7 @@ static void select_saturation(
 
     /* preset matrix meta data */
     mat->rr = (hm_t **)malloc(100 * sizeof(hm_t *));
-    mat->tr = NULL:
+    mat->tr = NULL;
 
     mat->sz = 100;
     mat->nc = mat->ncl = mat->ncr = 0;
@@ -232,7 +232,7 @@ static void select_saturation(
      * }
      * printf("\n"); */
     /* move hashes of sat data from bht to sht for linear algebra */
-    for (i = 0; i < mul->ld; ++i) {
+    for (i = 0; i < sat->ld; ++i) {
         for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
             sat->hm[i][j] = insert_in_hash_table(
                     bht->ev[sat->hm[i][j]], sht);

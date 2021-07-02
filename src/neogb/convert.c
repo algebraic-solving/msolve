@@ -49,7 +49,7 @@ static void convert_multipliers_to_columns(
     for (i = 0; i < sat->ld; ++i) {
         hcm[i]  = sat->hm[i][MULT];
     }
-    sort_r(hcm, (unsigned long)mul->ld, sizeof(hi_t), hcm_cmp, ht);
+    sort_r(hcm, (unsigned long)sat->ld, sizeof(hi_t), hcm_cmp, ht);
 
     /* printf("hcmm\n");
      * for (int ii=0; ii<mul->ld; ++ii) {
@@ -103,7 +103,6 @@ static void convert_hashes_to_columns_sat(
     const hl_t esld = sht->eld;
     hd_t *hds       = sht->hd;
     hm_t **rrows    = mat->rr;
-    hm_t **trows    = mat->tr;
 
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
@@ -373,7 +372,7 @@ static void add_kernel_elements_to_basis(
      * redundancy correctly) */
     hm_t **rows = (hm_t **)calloc((unsigned long)kernel->ld, sizeof(hm_t *));
     k = 0;
-    for (i = 0; i < mul->ld; ++i) {
+    for (i = 0; i < kernel->ld; ++i) {
         rows[k++]     = kernel->hm[i];
         kernel->hm[i] = NULL;
     }

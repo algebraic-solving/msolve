@@ -334,6 +334,20 @@ static void convert_hashes_to_columns(
     *hcmp = hcm;
 }
 
+static void convert_columns_to_hashes(
+        bs_t *bs,
+        const hi_t * const hcm
+        )
+{
+    len_t i, j;
+
+    for (i = 0; i < bs->ld; ++i) {
+        for (j = OFFSET; j < bs->hm[i][LENGTH]+OFFSET; ++j) {
+            bs->hm[i][j]  = hcm[bs->hm[i][j]];
+        }
+    }
+}
+
 static void add_kernel_elements_to_basis(
         bs_t *bs,
         bs_t *kernel,

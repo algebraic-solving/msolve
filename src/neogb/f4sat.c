@@ -173,10 +173,11 @@ static len_t quotient_basis(
 
 static void update_multipliers(
         hm_t **qdp,
-        bs_t **satp,
         ht_t **htp,
+        bs_t *sat,
         stat_t *st,
         const bs_t *bs,
+        const deg_t prev_deg
         const deg_t max_deg
         )
 {
@@ -193,19 +194,19 @@ static void update_multipliers(
 
     hm_t *qb  = *qdp;
 
+    const hm_t *b   = sat->hm[0];
     /* new saturation elements from new quotient monomials */
     for (i = 0; i < qdim; ++i) {
-       sat->hm[ctr]           = realloc(
-               sat->hm[ctr],
-               (sat->hm[0][LENGTH]+OFFSET)*sizeof(hm_t));
-       sat->hm[ctr][LENGTH]   = sat->hm[0][LENGTH];
-       sat->hm[ctr][PRELOOP]  = sat->hm[0][PRELOOP];
-       sat->hm[ctr][COEFFS]   = sat->hm[0][COEFFS];
-       sat->hm[ctr][MULT]     = qb[i];
+        const hm_t m      = qb[i];
+        const hi_t h      = bht->hd[m].val;
+        const deg_t d     = bht->hd[m].deg;
+        sat->hm[i]        = multiplied_poly_to_matrix_row(
+                sht, bht, h, d, bht->ev[m], b);
+       sat->hm[ctr][MULT] = qb[i];
        ctr++;
     }
     sat->ld = ctr;
-    st->new_sattipliers = sat->ld - sat->lo;
+    st->new_multipliers = sat->ld - sat->lo;
     /* for (i = 0; i < sat->ld; ++i) {
      *     printf("%3u -> ", i);
      *     for (len_t j = 0; j < ht->nv; ++j) {
@@ -257,7 +258,7 @@ int core_f4sat(
 
     ps_t *ps = initialize_pairset();
 
-    int32_t round, i, j;
+    int32_t round, i, j, k, l;
 
     /* dimension of kernel in each step */
     len_t kdim    = 0;
@@ -347,12 +348,12 @@ int core_f4sat(
 
                 if (kdim > 0) {
                     add_kernel_elements_to_basis(
-                            bs, mul, bht, hcmm, kernel, kdim, st);
+                            bs, kernel, bht, hcmm, kdim, st);
                     update_basis(ps, bs, bht, uht, st, kdim, 1);
 
                 }
-                for (len_t ii = 0; ii < mul->ld; ++ii) {
-                    bht->hd[hcmm[ii]].idx = 0;
+                for (k = 0; k < sat->ld; ++k) {
+                    bht->hd[hcmm[k]].idx = 0;
                 }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(
@@ -360,13 +361,19 @@ int core_f4sat(
 
                 /* all rows in mat are now polynomials in the basis,
                  * so we do not need the rows anymore */
+                convert_columns_to_hashes(sat, hcm);
             }
             clear_matrix(mat);
             clean_hash_table(sht);
 
-            /* free multiplier list
-             * todo: keep already reduced, nonzero elements for next round */
-            free_basis_elements(mul);
+            /* move hashes for sat entries from sht back to bht */
+            for (k = 0; k < sat->ld; ++k) {
+                for (l = OFFSET; l < sat->hm[i][LENGTH]+OFFSET; ++l) {
+                    sat->hm[k][l] = insert_in_hash_table(
+                            sht->ev[sat->hm[k][l]], bht);
+                }
+            }
+
             rrt1 = realtime();
             if (st->info_level > 1) {
                 printf("%10.2f sec\n", rrt1-rrt0);
@@ -414,7 +421,9 @@ int core_f4sat(
     free(hcmm);
     free(qb);
 
-    free_basis(&mul);
+    free_basis_elements(sat);
+    free_basis(&sat);
+    free_basis(&kernel);
     /* note that all rows kept from mat during the overall computation are
      * basis elements and thus we do not need to free the rows itself, but
      * just the matrix structure */

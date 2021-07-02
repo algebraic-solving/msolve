@@ -231,21 +231,12 @@ static void select_saturation(
      *     printf(" ||| ");
      * }
      * printf("\n"); */
-    const hm_t *b   = sat->hm[0];
-    /* reconsider old data from previous saturation runs which are
-     * already stored in sat */
-    for (i = 0; i < mul->lo; ++i) {
+    /* move hashes of sat data from bht to sht for linear algebra */
+    for (i = 0; i < mul->ld; ++i) {
         for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
             sat->hm[i][j] = insert_in_hash_table(
                     bht->ev[sat->hm[i][j]], sht);
         }
-    }
-    for (i; i < mul->ld; ++i) {
-        const hm_t m  = sat->hm[i][MULT];
-        const hi_t h  = bht->hd[m].val;
-        const deg_t d = bht->hd[m].deg;
-        sat->hm[i]    = multiplied_poly_to_matrix_row(
-                sht, bht, h, d, bht->ev[m], b);
     }
 
     /* timings */

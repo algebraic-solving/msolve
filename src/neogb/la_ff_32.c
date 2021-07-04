@@ -836,6 +836,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         return NULL;
     }
 
+    printf("k %u\n", k);
     hm_t *row   = (hm_t *)malloc((unsigned long)(k+OFFSET) * sizeof(hm_t));
     cf32_t *cf  = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
     j = 0;
@@ -847,6 +848,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             j++;
         }
     }
+    printf("j %u\n", j);
     row[COEFFS]     = tmp_pos;
     row[PRELOOP]    = j % UNROLL;
     row[LENGTH]     = j;
@@ -2011,12 +2013,13 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     schedule(dynamic)
     for (i = 0; i < sat->ld; ++i) {
     printf("A - i %u | kernel %p | ld %u\n", i, kernel, kernel->ld);
-        int64_t *drl  = dr + (omp_get_thread_num() * ncols);
+        int64_t *drl    = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
         len_t mult      = npiv[MULT];
         /* we only saturate w.r.t. one element at the moment */
         len_t cf_idx    = npiv[COEFFS];
         cf32_t *cfs     = sat->cf_32[cf_idx];
+        printf("i %u == %u cf_idx ?\n", i, cf_idx);
         const len_t os  = npiv[PRELOOP];
         const len_t len = npiv[LENGTH];
         const hm_t * const ds = npiv + OFFSET;
@@ -2037,7 +2040,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         free(npiv);
         upivs[i]  = NULL;
         free(cfs);
-        cfs = NULL;
+        sat->cf_32[cf_idx]  = NULL;
         /* npiv  = reduce_dense_row_by_known_pivots_sparse_ff_32(
          *         drl, mat, bs, pivs, sc, i, st); */
         npiv  = reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
@@ -2089,17 +2092,19 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     hm_t **mulh     = (hm_t **)malloc((unsigned long)ctr * sizeof(hm_t *));
     cf32_t **mulcf  = (cf32_t **)malloc((unsigned long)ctr * sizeof(cf32_t *));
     cf32_t **pivcf  = (cf32_t **)malloc((unsigned long)ctr * sizeof(cf32_t *));
-    int64_t *drm  = calloc((unsigned long)sat->ld, sizeof(int64_t));
+    int64_t *drm    = calloc((unsigned long)sat->ld, sizeof(int64_t));
     /* now we do a ususal F4 reduction with updated pivs, but we have
      * to track the reduction steps when reducing each row from upivs */
     for (i = 0; i < ctr; ++i) {
     printf("B - i %u | kernel %p | ld %u\n", i, kernel, kernel->ld);
-        int64_t *drl        = dr;
-        hm_t *npiv          = upivs[i];
-        len_t tmp_pos       = npiv[COEFFS];
-        cf32_t *cfs         = sat->cf_32[tmp_pos];
-        const len_t os      = npiv[PRELOOP];
-        const len_t len     = npiv[LENGTH];
+        int64_t *drl          = dr;
+        hm_t *npiv            = upivs[i];
+        printf("npiv %p\n", npiv);
+        len_t tmp_pos         = npiv[COEFFS];
+        printf("tmp_pos %u\n", tmp_pos);
+        cf32_t *cfs           = sat->cf_32[tmp_pos];
+        const len_t os        = npiv[PRELOOP];
+        const len_t len       = npiv[LENGTH];
         const hm_t * const ds = npiv + OFFSET;
         k = 0;
         memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));

@@ -468,6 +468,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
             j++;
         }
     }
+    printf("k %u == %u j?\n", k, j);
     if (j == 0) {
         free(row);
         free(cf);
@@ -2075,7 +2076,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
 
     dr        = realloc(dr, (unsigned long)ncols * sizeof(int64_t));
     upivs     = NULL;
-    upivs     = (hm_t **)calloc((unsigned long)nrl, sizeof(hm_t *));
+    upivs     = (hm_t **)calloc((unsigned long)sat->ld, sizeof(hm_t *));
     len_t ctr = 0;
 
     /* compute kernel */
@@ -2126,15 +2127,26 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
                     sat->ld, ncols, st);
             if (!npiv) {
                 /* normalize new kernel element */
+                printf("kernel coeffs ");
+                for (int ii = 0; ii <mulh[tmp_pos][LENGTH]; ++ii) {
+                    printf("%u ||| ", mulcf[mulh[tmp_pos][COEFFS]][ii]);
+                }
                 normalize_sparse_matrix_row_ff_32(
                         mulcf[mulh[tmp_pos][COEFFS]],
                         mulh[tmp_pos][PRELOOP],
                         mulh[tmp_pos][LENGTH], st->fc);
-                kernel->hm[kernel->ld]    = mulh[tmp_pos];
-                kernel->cf_32[kernel->ld] = mulcf[mulh[tmp_pos][COEFFS]];
+                printf("normalized kernel coeffs ");
+                for (int ii = 0; ii <mulh[tmp_pos][LENGTH]; ++ii) {
+                    printf("%u ||| ", mulcf[mulh[tmp_pos][COEFFS]][ii]);
+                }
+                printf("\n");
+                kernel->hm[kernel->ld]          = mulh[tmp_pos];
+                kernel->cf_32[kernel->ld]       = mulcf[mulh[tmp_pos][COEFFS]];
+                printf("%p == %p\n", mulcf[mulh[tmp_pos][COEFFS]], kernel->cf_32[kernel->ld]);
+                mulcf[mulh[tmp_pos][COEFFS]]    = NULL;
+                mulh[tmp_pos]                   = NULL;
+                kernel->hm[kernel->ld][COEFFS]  = kernel->ld;
                 kernel->ld++;
-                mulcf[mulh[tmp_pos][COEFFS]]  = NULL;
-                mulh[tmp_pos]                 = NULL;
                 break;
             }
             /* normalize coefficient array

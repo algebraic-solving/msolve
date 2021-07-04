@@ -389,16 +389,16 @@ static void add_kernel_elements_to_basis(
         if (ht->hd[bs->hm[bld+ctr][OFFSET]].deg == 0) {
             bs->constant  = 1;
         }
-        /* printf("new element from kernel (%u): length %u | ", bld+ctr, bs->hm[bld+ctr][LENGTH]);
-         * for (int kk=0; kk<bs->hm[bld+ctr][LENGTH]; ++kk) {
-         *     printf("%u | ", bs->cf_32[bld+ctr][kk]);
-         *     printf("%u | ", ht->hd[bs->hm[bld+ctr][OFFSET+kk]].deg);
-         *     for (int jj=0; jj < ht->nv; ++jj) {
-         *         printf("%u ", ht->ev[bs->hm[bld+ctr][OFFSET+kk]][jj]);
-         *     }
-         *     printf(" || ");
-         * }
-         * printf("\n"); */
+        printf("new element %p from kernel (%u): length %u | ", bs->cf_32[bld+ctr], bld+ctr, bs->hm[bld+ctr][LENGTH]);
+        for (int kk=0; kk<bs->hm[bld+ctr][LENGTH]; ++kk) {
+            printf("%u | ", bs->cf_32[bld+ctr][kk]);
+            printf("%u | ", ht->hd[bs->hm[bld+ctr][OFFSET+kk]].deg);
+            for (int jj=0; jj < ht->nv; ++jj) {
+                printf("%u ", ht->ev[bs->hm[bld+ctr][OFFSET+kk]][jj]);
+            }
+            printf(" || ");
+        }
+        printf("\n");
         ctr++;
     }
     free(rows);

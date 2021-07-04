@@ -199,7 +199,7 @@ static void convert_hashes_to_columns_sat(
     st->convert_ctime +=  ct1 - ct0;
     st->convert_rtime +=  rt1 - rt0;
     if (st->info_level > 1) {
-        printf(" %7d x %-7d %8.2f%%", mat->nr, mat->nc, density);
+        printf(" %7d x %-7d %8.2f%%", mat->nr + sat->ld, mat->nc, density);
         fflush(stdout);
     }
     *hcmp = hcm;

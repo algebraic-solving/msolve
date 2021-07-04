@@ -281,7 +281,8 @@ int core_f4sat(
     int32_t round, i, j;
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(10);;
+    bs_t *kernel  = initialize_basis(10);
+    printf("kernel %p | ld %u\n", kernel, kernel->ld);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;

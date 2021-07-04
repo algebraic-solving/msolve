@@ -2010,6 +2010,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     private(i, j, sc) \
     schedule(dynamic)
     for (i = 0; i < sat->ld; ++i) {
+    printf("A - i %u | kernel %p | ld %u\n", i, kernel, kernel->ld);
         int64_t *drl  = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
         len_t mult      = npiv[MULT];
@@ -2043,15 +2044,15 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
                 drl, sat, bs, pivs, sc, cf_idx, i, ncl, ncols, st);
         if (!npiv) {
             sat->hm[i]  = NULL;
-            kernel->hm[kernel->ld-1]    = (hm_t *)malloc(
+            kernel->hm[kernel->ld]    = (hm_t *)malloc(
                     (unsigned long)(OFFSET+1) * sizeof(hm_t));
-            kernel->cf_32[kernel->ld-1] = (cf32_t *)malloc(
+            kernel->cf_32[kernel->ld] = (cf32_t *)malloc(
                     (unsigned long)1 * sizeof(cf32_t));
-            kernel->hm[kernel->ld-1][OFFSET]  = mult;
-            kernel->hm[kernel->ld-1][LENGTH]  = 1;
-            kernel->hm[kernel->ld-1][PRELOOP] = 1;
-            kernel->hm[kernel->ld-1][COEFFS]  = kernel->ld-1;
-            kernel->cf_32[kernel->ld-1][0]    = 1;
+            kernel->hm[kernel->ld][OFFSET]  = mult;
+            kernel->hm[kernel->ld][LENGTH]  = 1;
+            kernel->hm[kernel->ld][PRELOOP] = 1;
+            kernel->hm[kernel->ld][COEFFS]  = kernel->ld;
+            kernel->cf_32[kernel->ld][0]    = 1;
             kernel->ld++;
             continue;
         }
@@ -2061,6 +2062,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         sat->hm[i]  = npiv;
     }
 
+    printf("|| kernel %p | ld %u | sat->ld %u\n", kernel, kernel->ld, sat->ld);
     mat->np = mat->nr = mat->sz = nrl;
     /* we do not need the old pivots anymore */
     for (i = 0; i < ncl; ++i) {
@@ -2082,6 +2084,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     sort_matrix_rows_increasing(upivs, ctr);
     upivs = realloc(upivs, (unsigned long)ctr * sizeof(hm_t *));
 
+    printf("| kernel %p | ld %u\n", kernel, kernel->ld);
     /* dense row for multipliers */
     hm_t **mulh     = (hm_t **)malloc((unsigned long)ctr * sizeof(hm_t *));
     cf32_t **mulcf  = (cf32_t **)malloc((unsigned long)ctr * sizeof(cf32_t *));
@@ -2090,6 +2093,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     /* now we do a ususal F4 reduction with updated pivs, but we have
      * to track the reduction steps when reducing each row from upivs */
     for (i = 0; i < ctr; ++i) {
+    printf("B - i %u | kernel %p | ld %u\n", i, kernel, kernel->ld);
         int64_t *drl        = dr;
         hm_t *npiv          = upivs[i];
         len_t tmp_pos       = npiv[COEFFS];
@@ -2121,11 +2125,11 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
                         mulcf[mulh[tmp_pos][COEFFS]],
                         mulh[tmp_pos][PRELOOP],
                         mulh[tmp_pos][LENGTH], st->fc);
-                kernel->hm[kernel->ld-1]    = mulh[tmp_pos];
-                kernel->cf_32[kernel->ld-1] = mulcf[mulh[tmp_pos][COEFFS]];
+                kernel->hm[kernel->ld]    = mulh[tmp_pos];
+                kernel->cf_32[kernel->ld] = mulcf[mulh[tmp_pos][COEFFS]];
                 kernel->ld++;
-                mulh[tmp_pos]                 = NULL;
                 mulcf[mulh[tmp_pos][COEFFS]]  = NULL;
+                mulh[tmp_pos]                 = NULL;
                 break;
             }
             /* normalize coefficient array
@@ -3216,6 +3220,8 @@ static void compute_kernel_sat_ff_32(
     rt0 = realtime();
 
     check_enlarge_basis(kernel, sat->ld);
+    printf("2 kernel %p | ld %u\n", kernel, kernel->ld);
+    printf("sz %u | sat->ld %u\n", kernel->sz, sat->ld);
 
     exact_sparse_reduced_echelon_form_sat_ff_32(
             sat, mat, kernel, bs, st);

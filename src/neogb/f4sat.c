@@ -207,7 +207,12 @@ static void update_multipliers(
         ctr++;
     }
 
-    const hm_t *b   = sat->hm[0];
+    /* TODO: Here we could apply the simplify idea from F4:
+    * Any of these new elements is a multiple of an element
+    * of lower degree already handled. Thus we can use this
+    * "divisor" instead of the initial saturation element sat[0]. */
+    const hm_t * const b      = sat->hm[0];
+    const cf32_t * const cfs  = sat->cf_32[0];
     /* new saturation elements from new quotient monomials */
     for (i = ctr; i < qdim; ++i) {
         const hm_t m      = qb[i];
@@ -216,6 +221,11 @@ static void update_multipliers(
         sat->hm[i]        = multiplied_poly_to_matrix_row(
                 sht, bht, h, d, bht->ev[m], b);
        sat->hm[ctr][MULT] = qb[i];
+       sat->cf_32[ctr]    = (cf32_t *)malloc(
+               (unsigned long)b[LENGTH] * sizeof(cf32_t));
+       memcpy(sat->cf_32[ctr], cfs,
+               (unsigned long)b[LENGTH] * sizeof(cf32_t));
+       sat->hm[ctr][COEFFS] = ctr;
        ctr++;
     }
     sat->ld = ctr;

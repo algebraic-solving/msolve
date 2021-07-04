@@ -207,8 +207,6 @@ static void select_saturation(
         ht_t *bht
         )
 {
-    len_t i, j;
-
     /* timings */
     double ct0, ct1, rt0, rt1;
     ct0 = cputime();
@@ -232,12 +230,12 @@ static void select_saturation(
      * }
      * printf("\n"); */
     /* move hashes of sat data from bht to sht for linear algebra */
-    for (i = 0; i < sat->ld; ++i) {
-        for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
-            sat->hm[i][j] = insert_in_hash_table(
-                    bht->ev[sat->hm[i][j]], sht);
-        }
-    }
+    /* for (i = 0; i < sat->ld; ++i) {
+     *     for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
+     *         sat->hm[i][j] = insert_in_hash_table(
+     *                 bht->ev[sat->hm[i][j]], sht);
+     *     }
+     * } */
 
     /* timings */
     ct1 = cputime();

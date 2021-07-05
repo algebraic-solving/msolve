@@ -2115,7 +2115,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
             drl[ds[j+2]]  = (int64_t)cfs[j+2];
             drl[ds[j+3]]  = (int64_t)cfs[j+3];
         }
-        drm[sat->hm[i][MULT]] = 1;
+        drm[upivs[i][MULT]] = 1;
         do {
             sc    = npiv[OFFSET];
             npiv  = reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(

@@ -335,7 +335,8 @@ static void convert_hashes_to_columns(
 
 static void convert_columns_to_hashes(
         bs_t *bs,
-        const hi_t * const hcm
+        const hi_t * const hcm,
+        const hi_t * const hcmm
         )
 {
     len_t i, j;
@@ -344,6 +345,7 @@ static void convert_columns_to_hashes(
         for (j = OFFSET; j < bs->hm[i][LENGTH]+OFFSET; ++j) {
             bs->hm[i][j]  = hcm[bs->hm[i][j]];
         }
+        bs->hm[i][MULT] = hcmm[bs->hm[i][MULT]];
     }
 }
 

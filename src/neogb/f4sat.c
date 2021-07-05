@@ -193,6 +193,21 @@ static void update_multipliers(
 
     hm_t *qb  = *qdp;
 
+    /* remove elements that moved directly to kernel, i.e. monomials
+     * added to the basis during the first stage of saturation
+     * linear algebra */
+    for (i = 0; i < sat->ld; ++i) {
+        if (sat->hm[i] != NULL) {
+            sat->hm[ctr] = sat->hm[i];
+            sat->cf_32[ctr] = sat->cf_32[i];
+            sat->hm[ctr][COEFFS]  = ctr;
+            ctr++;
+        }
+    }
+    sat->ld = ctr;
+
+    ctr = 0;
+
     for (i = 0; i < sat->ld; ++i) {
         while (i < sat->ld && ctr < qdim && qb[ctr] != sat->hm[i][MULT]) {
             free(sat->hm[i]);
@@ -202,7 +217,6 @@ static void update_multipliers(
             i++;
         }
         if (i < sat->ld) {
-            printf("ctr %u | i %u | sat->ld %u\n", ctr, i, sat->ld);
             sat->hm[ctr]          = sat->hm[i];
             sat->cf_32[ctr]       = sat->cf_32[i];
             sat->hm[ctr][COEFFS]  = ctr;
@@ -401,9 +415,11 @@ int core_f4sat(
 
             /* move hashes for sat entries from sht back to bht */
             for (i = 0; i < sat->ld; ++i) {
-                for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
-                    sat->hm[i][j] = insert_in_hash_table(
-                            sht->ev[sat->hm[i][j]], bht);
+                if (sat->hm[i] != NULL) {
+                    for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
+                        sat->hm[i][j] = insert_in_hash_table(
+                                sht->ev[sat->hm[i][j]], bht);
+                    }
                 }
             }
 

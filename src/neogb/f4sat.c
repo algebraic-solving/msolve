@@ -201,10 +201,13 @@ static void update_multipliers(
             sat->cf_32[i] = NULL;
             i++;
         }
-        sat->hm[ctr]          = sat->hm[i];
-        sat->cf_32[ctr]       = sat->cf_32[i];
-        sat->hm[ctr][COEFFS]  = ctr;
-        ctr++;
+        if (i < sat->ld) {
+            printf("ctr %u | i %u | sat->ld %u\n", ctr, i, sat->ld);
+            sat->hm[ctr]          = sat->hm[i];
+            sat->cf_32[ctr]       = sat->cf_32[i];
+            sat->hm[ctr][COEFFS]  = ctr;
+            ctr++;
+        }
     }
 
     /* TODO: Here we could apply the simplify idea from F4:
@@ -382,16 +385,16 @@ int core_f4sat(
                     update_basis(ps, bs, bht, uht, st, kernel->ld, 1);
 
                 }
-                for (i = 0; i < sat->ld; ++i) {
-                    bht->hd[hcmm[i]].idx = 0;
-                }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(
                  *         mat, tbr, bht, sht, hcm, st); */
 
                 /* all rows in mat are now polynomials in the basis,
                  * so we do not need the rows anymore */
-                convert_columns_to_hashes(sat, hcm);
+                convert_columns_to_hashes(sat, hcm, hcmm);
+                for (i = 0; i < sat->ld; ++i) {
+                    bht->hd[hcmm[i]].idx = 0;
+                }
             }
             clear_matrix(mat);
             clean_hash_table(sht);

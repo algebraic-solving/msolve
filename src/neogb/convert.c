@@ -375,6 +375,7 @@ static void add_kernel_elements_to_basis(
     hm_t **rows = (hm_t **)calloc((unsigned long)kernel->ld, sizeof(hm_t *));
     k = 0;
     for (i = 0; i < kernel->ld; ++i) {
+        printf("kernel[%u] = %p\n", i, kernel->hm[i]);
         rows[k++]     = kernel->hm[i];
         kernel->hm[i] = NULL;
     }
@@ -405,6 +406,8 @@ static void add_kernel_elements_to_basis(
     }
     free(rows);
     rows  = NULL;
+
+    kernel->ld  = 0;
 
     /* timings */
     ct1 = cputime();

@@ -194,7 +194,7 @@ static void update_multipliers(
     hm_t *qb  = *qdp;
 
     for (i = 0; i < sat->ld; ++i) {
-        while (i < sat->ld && qb[ctr] != sat->hm[i][MULT]) {
+        while (i < sat->ld && ctr < qdim && qb[ctr] != sat->hm[i][MULT]) {
             free(sat->hm[i]);
             sat->hm[i]    = NULL;
             free(sat->cf_32[i]);

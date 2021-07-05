@@ -342,10 +342,12 @@ static void convert_columns_to_hashes(
     len_t i, j;
 
     for (i = 0; i < bs->ld; ++i) {
-        for (j = OFFSET; j < bs->hm[i][LENGTH]+OFFSET; ++j) {
-            bs->hm[i][j]  = hcm[bs->hm[i][j]];
+        if (bs->hm[i] != NULL) {
+            for (j = OFFSET; j < bs->hm[i][LENGTH]+OFFSET; ++j) {
+                bs->hm[i][j]  = hcm[bs->hm[i][j]];
+            }
+            bs->hm[i][MULT] = hcmm[bs->hm[i][MULT]];
         }
-        bs->hm[i][MULT] = hcmm[bs->hm[i][MULT]];
     }
 }
 

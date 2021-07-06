@@ -667,7 +667,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
                 np  = i;
             }
             k++;
-            continue;
+            break;
         }
 
         /* found reducer row, get multiplier */
@@ -822,6 +822,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             }
         }
     }
+    printf("j %u | tmp_pos %u \n", j, tmp_pos);
     mulh[tmp_pos][PRELOOP]  = j % UNROLL;
     mulh[tmp_pos][LENGTH]   = j;
     mulh[tmp_pos][COEFFS]   = tmp_pos;
@@ -840,7 +841,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     cf32_t *cf  = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
     j = 0;
     hm_t *rs  = row + OFFSET;
-    for (i = dpiv; i < ncols; ++i) {
+    for (i = np; i < ncols; ++i) {
         if (dr[i] != 0) {
             rs[j] = (hm_t)i;
             cf[j] = (cf32_t)dr[i];

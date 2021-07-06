@@ -844,6 +844,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     hm_t *rs  = row + OFFSET;
     for (i = np; i < ncols; ++i) {
         if (dr[i] != 0) {
+            dr[i] = dr[i] % mod;
+        }
+        if (dr[i] != 0) {
             rs[j] = (hm_t)i;
             cf[j] = (cf32_t)dr[i];
             j++;

@@ -132,7 +132,8 @@ static len_t quotient_basis(
                             (*htp)->ev[0], (*htp), bs);
 
     while (nqbd > 0 && deg < max_deg) {
-        nqb = (hm_t *)calloc(sum(ind, nv) + nv, sizeof(hm_t));
+        nqb = realloc(nqb, (sum(ind, nv) + nv) * sizeof(hm_t));
+        memset(nqb, 0, (sum(ind, nv) + nv) * sizeof(hm_t));
         nqbd = generate_new_basis_elements(htp, nqb, qb, qbd, ind, bs);
         qb = realloc(qb, (unsigned long)(qbd + nqbd) * sizeof(hm_t));
         /* printf("qb before adding\n");

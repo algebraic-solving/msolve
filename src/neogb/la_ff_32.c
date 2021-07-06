@@ -2180,6 +2180,10 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         mulh[i]   = NULL;
     }
 
+    free(pivcf);
+    pivcf = NULL;
+    free(mulcf);
+    mulcf = NULL;
     free(mulh);
     mulh = NULL;
     free(upivs);

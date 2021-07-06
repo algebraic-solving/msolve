@@ -837,6 +837,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         return NULL;
     }
 
+    k = ncols - np;
     hm_t *row   = (hm_t *)malloc((unsigned long)(k+OFFSET) * sizeof(hm_t));
     cf32_t *cf  = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
     j = 0;

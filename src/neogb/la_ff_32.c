@@ -468,7 +468,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
             j++;
         }
     }
-    printf("k %u == %u j?\n", k, j);
     if (j == 0) {
         free(row);
         free(cf);
@@ -837,7 +836,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         return NULL;
     }
 
-    printf("k %u\n", k);
     hm_t *row   = (hm_t *)malloc((unsigned long)(k+OFFSET) * sizeof(hm_t));
     cf32_t *cf  = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
     j = 0;
@@ -849,7 +847,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             j++;
         }
     }
-    printf("j %u\n", j);
     row[COEFFS]     = tmp_pos;
     row[PRELOOP]    = j % UNROLL;
     row[LENGTH]     = j;

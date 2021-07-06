@@ -339,6 +339,11 @@ start:
             }
         }
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
+        printf("reducer found %u | %u --> ", lmps[i], b[LENGTH]);
+        for (int ii = 0; ii < bht->nv; ++ii) {
+            printf("%u ", etmp[ii]);
+        }
+        printf("\n");
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
         /* track trace information ? */
         if (tht != NULL) {
@@ -378,7 +383,9 @@ static void symbolic_preprocessing(
      * we only have to do the bookkeeping for newly added reducers
      * in the following. */
 
+    printf("initial nc %u\n", mat->nc);
     const hl_t oesld = sht->eld;
+    printf("oesld %u\n", oesld);
     const len_t onrr  = mat->nc;
     i = 1;
     /* we only have to check if idx is set for the elements already set

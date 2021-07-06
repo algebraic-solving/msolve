@@ -2037,7 +2037,6 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         upivs[i]  = NULL;
         free(cfs);
         sat->cf_32[cf_idx]  = NULL;
-        printf("i = %u | cf_idx = %u\n", i, cf_idx);
         /* npiv  = reduce_dense_row_by_known_pivots_sparse_ff_32(
          *         drl, mat, bs, pivs, sc, i, st); */
         npiv  = reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(

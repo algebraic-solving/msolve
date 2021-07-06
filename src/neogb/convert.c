@@ -409,8 +409,6 @@ static void add_kernel_elements_to_basis(
     free(rows);
     rows  = NULL;
 
-    kernel->ld  = 0;
-
     /* timings */
     ct1 = cputime();
     rt1 = realtime();

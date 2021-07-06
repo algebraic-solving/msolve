@@ -422,7 +422,7 @@ int core_f4sat(
                     add_kernel_elements_to_basis(
                             bs, kernel, bht, hcmm, st);
                     update_basis(ps, bs, bht, uht, st, kernel->ld, 1);
-
+                    kernel->ld  = 0;
                 }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(

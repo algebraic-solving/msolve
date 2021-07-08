@@ -51,14 +51,14 @@ static void convert_multipliers_to_columns(
     }
     sort_r(hcm, (unsigned long)sat->ld, sizeof(hi_t), hcm_cmp, ht);
 
-    /* printf("hcmm\n");
-     * for (int ii=0; ii<mul->ld; ++ii) {
-     *     printf("hcmm[%d] = %d | idx %u | ", ii, ht->hd[hcm[ii]].idx, hcm[ii]);
-     *     for (int jj = 0; jj < ht->nv; ++jj) {
-     *         printf("%d ", ht->ev[hcm[ii]][jj]);
-     *     }
-     *     printf("\n");
-     * } */
+    printf("hcmm\n");
+    for (int ii=0; ii<sat->ld; ++ii) {
+        printf("hcmm[%d] = %d | idx %u | ", ii, ht->hd[hcm[ii]].idx, hcm[ii]);
+        for (int jj = 0; jj < ht->nv; ++jj) {
+            printf("%d ", ht->ev[hcm[ii]][jj]);
+        }
+        printf("\n");
+    }
 
     /* store the other direction (hash -> column) */
     for (i = 0; i < sat->ld; ++i) {
@@ -117,14 +117,14 @@ static void convert_hashes_to_columns_sat(
     }
     sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
 
-    /* printf("hcm\n");
-     * for (int ii=0; ii<j; ++ii) {
-     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, hds[hcm[ii]].deg);
-     *     for (int jj = 0; jj < sht->nv; ++jj) {
-     *         printf("%d ", sht->ev[hcm[ii]][jj]);
-     *     }
-     *     printf("\n");
-     * } */
+    printf("hcm\n");
+    for (int ii=0; ii<j; ++ii) {
+        printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, hds[hcm[ii]].deg);
+        for (int jj = 0; jj < sht->nv; ++jj) {
+            printf("%d ", sht->ev[hcm[ii]][jj]);
+        }
+        printf("\n");
+    }
 
     mat->ncl  = k;
     mat->ncr  = (len_t)esld - 1 - mat->ncl;
@@ -246,14 +246,14 @@ static void convert_hashes_to_columns(
     }
     sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
 
-    /* printf("hcm\n");
-     * for (int ii=0; ii<j; ++ii) {
-     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, hds[hcm[ii]].deg);
-     *     for (int jj = 0; jj < sht->nv; ++jj) {
-     *         printf("%d ", sht->ev[hcm[ii]][jj]);
-     *     }
-     *     printf("\n");
-     * } */
+    printf("hcm\n");
+    for (int ii=0; ii<j; ++ii) {
+        printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, hds[hcm[ii]].deg);
+        for (int jj = 0; jj < sht->nv; ++jj) {
+            printf("%d ", sht->ev[hcm[ii]][jj]);
+        }
+        printf("\n");
+    }
 
     mat->ncl  = k;
     mat->ncr  = (len_t)esld - 1 - mat->ncl;
@@ -377,7 +377,7 @@ static void add_kernel_elements_to_basis(
     hm_t **rows = (hm_t **)calloc((unsigned long)kernel->ld, sizeof(hm_t *));
     k = 0;
     for (i = 0; i < kernel->ld; ++i) {
-        printf("kernel[%u] = %p\n", i, kernel->hm[i]);
+        /* printf("kernel[%u] = %p\n", i, kernel->hm[i]); */
         rows[k++]     = kernel->hm[i];
         kernel->hm[i] = NULL;
     }
@@ -394,7 +394,7 @@ static void add_kernel_elements_to_basis(
         if (ht->hd[bs->hm[bld+ctr][OFFSET]].deg == 0) {
             bs->constant  = 1;
         }
-        printf("new element %p from kernel (%u): length %u | ", bs->cf_32[bld+ctr], bld+ctr, bs->hm[bld+ctr][LENGTH]);
+        printf("new element from kernel (%u): length %u | ", bld+ctr, bs->hm[bld+ctr][LENGTH]);
         for (int kk=0; kk<bs->hm[bld+ctr][LENGTH]; ++kk) {
             printf("%u | ", bs->cf_32[bld+ctr][kk]);
             printf("%u | ", ht->hd[bs->hm[bld+ctr][OFFSET+kk]].deg);
@@ -572,6 +572,7 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
 
     const len_t bl  = bs->ld;
     const len_t np  = mat->np;
+    printf("np %u\n", np);
 
     /* timings */
     double ct0, ct1, rt0, rt1;

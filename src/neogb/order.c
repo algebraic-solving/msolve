@@ -195,6 +195,42 @@ static int matrix_row_cmp_increasing(
     return 0;
 }
 
+static int matrix_row_mult_cmp_increasing(
+        const void *a,
+        const void *b
+        )
+{
+    hm_t va, vb;
+    /* compare pivot resp. column index */
+    va  = ((hm_t **)a)[0][OFFSET];
+    vb  = ((hm_t **)b)[0][OFFSET];
+    if (va > vb) {
+        return -1;
+    }
+    if (va < vb) {
+        return 1;
+    }
+    /* compare multiplier resp. column index */
+    va  = ((hm_t **)a)[0][MULT];
+    vb  = ((hm_t **)b)[0][MULT];
+    if (va < vb) {
+        return -1;
+    }
+    if (va > vb) {
+        return 1;
+    }
+    /* same column index => compare density of row */
+    va  = ((hm_t **)a)[0][LENGTH];
+    vb  = ((hm_t **)b)[0][LENGTH];
+    if (va > vb) {
+        return -1;
+    }
+    if (va < vb) {
+        return 1;
+    }
+    return 0;
+}
+
 static inline void sort_matrix_rows_decreasing(
         hm_t **rows,
         const len_t nrows
@@ -211,6 +247,15 @@ static inline void sort_matrix_rows_increasing(
 {
     qsort(rows, (unsigned long)nrows, sizeof(hm_t *),
             &matrix_row_cmp_increasing);
+}
+
+static inline void sort_matrix_rows_mult_increasing(
+        hm_t **rows,
+        const len_t nrows
+        )
+{
+    qsort(rows, (unsigned long)nrows, sizeof(hm_t *),
+            &matrix_row_mult_cmp_increasing);
 }
 
 static int dense_matrix_row_cmp(

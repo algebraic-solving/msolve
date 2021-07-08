@@ -659,6 +659,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         if (dr[i] != 0) {
             dr[i] = dr[i] % mod;
         }
+        if (dpiv == 2493) {
+            printf("dr[%u] = %ld\n", i, dr[i]);
+        }
         if (dr[i] == 0) {
             continue;
         }
@@ -670,6 +673,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             break;
         }
 
+        printf("reducer %u\n", i);
         /* found reducer row, get multiplier */
         const int64_t mul = (int64_t)dr[i];
         dts   = pivs[i];
@@ -822,7 +826,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
             }
         }
     }
-    printf("j %u | tmp_pos %u \n", j, tmp_pos);
     mulh[tmp_pos][PRELOOP]  = j % UNROLL;
     mulh[tmp_pos][LENGTH]   = j;
     mulh[tmp_pos][COEFFS]   = tmp_pos;
@@ -1992,7 +1995,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
 
     const len_t ncols = mat->nc;
     const len_t nrl   = mat->nrl;
-    const len_t ncl   = mat->ncl;
+    const len_t ncl   = mat->nru;
 
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
@@ -2025,6 +2028,13 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         const len_t len = npiv[LENGTH];
         const hm_t * const ds = npiv + OFFSET;
         memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
+        if (mult == 863) {
+            printf("863!!! --> ");
+            for (int ii = 0; ii < npiv[LENGTH]; ++ii) {
+                printf("%u | ", cfs[ii]);
+            }
+            printf("\n");
+        } 
         for (j = 0; j < os; ++j) {
             drl[ds[j]]  = (int64_t)cfs[j];
         }
@@ -2065,6 +2075,13 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
          * saturation step of f4sat */
         npiv[MULT]  = mult;
         sat->hm[i]  = npiv;
+        if (mult == 863) {
+            printf("863!!! DONE --> ");
+            for (int ii = 0; ii < npiv[LENGTH]; ++ii) {
+                printf("%u | ", sat->cf_32[npiv[COEFFS]][ii]);
+            }
+            printf("\n");
+        } 
     }
 
     printf("|| kernel %p | ld %u | sat->ld %u\n", kernel, kernel->ld, sat->ld);
@@ -2107,6 +2124,11 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         k = 0;
         memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
         memset(drm, 0, (unsigned long)sat->ld * sizeof(int64_t));
+        printf("i %u | mult %u | pos %u | length %u\n", i, upivs[i][MULT], ds[0], len); 
+            for (int ii = 0; ii < npiv[LENGTH]; ++ii) {
+                printf("%u | ", cfs[ii]);
+            }
+            printf("\n");
         for (j = 0; j < os; ++j) {
             drl[ds[j]]  = (int64_t)cfs[j];
         }
@@ -2124,25 +2146,16 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
                     sat->ld, ncols, st);
             if (!npiv) {
                 /* normalize new kernel element */
-                printf("kernel coeffs ");
-                for (int ii = 0; ii <mulh[tmp_pos][LENGTH]; ++ii) {
-                    printf("%u ||| ", mulcf[mulh[tmp_pos][COEFFS]][ii]);
-                }
                 normalize_sparse_matrix_row_ff_32(
                         mulcf[mulh[tmp_pos][COEFFS]],
                         mulh[tmp_pos][PRELOOP],
                         mulh[tmp_pos][LENGTH], st->fc);
-                printf("normalized kernel coeffs ");
-                for (int ii = 0; ii <mulh[tmp_pos][LENGTH]; ++ii) {
-                    printf("%u ||| ", mulcf[mulh[tmp_pos][COEFFS]][ii]);
-                }
-                printf("\n");
                 kernel->hm[kernel->ld]          = mulh[tmp_pos];
                 kernel->cf_32[kernel->ld]       = mulcf[mulh[tmp_pos][COEFFS]];
-                printf("%p == %p\n", mulcf[mulh[tmp_pos][COEFFS]], kernel->cf_32[kernel->ld]);
                 mulcf[mulh[tmp_pos][COEFFS]]    = NULL;
                 mulh[tmp_pos]                   = NULL;
                 kernel->hm[kernel->ld][COEFFS]  = kernel->ld;
+                printf("ab in den kernel %u\n", kernel->hm[kernel->ld][OFFSET]);
                 kernel->ld++;
                 break;
             }
@@ -2158,11 +2171,20 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
                         mulh[npiv[MULT]][PRELOOP],
                         mulh[npiv[MULT]][LENGTH],
                         st->fc);
+                /* for (int kk = 0; kk < mulh[npiv[MULT]][LENGTH]; ++kk) {
+                 *     printf("%u ", mulcf[mulh[npiv[MULT]][COEFFS]][kk]);
+                 * }
+                 * printf("\n"); */
                 normalize_sparse_matrix_row_ff_32(
                         pivcf[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
 
             }
             k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
+            printf("new piv at %u of length %u\n", npiv[OFFSET], npiv[LENGTH]);
+            for (int ii = 0; ii < npiv[LENGTH]; ++ii) {
+                printf("%u | ", pivcf[npiv[COEFFS]][ii]);
+            }
+            printf("\n");
         } while (!k);
     }
 

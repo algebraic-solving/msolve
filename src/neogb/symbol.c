@@ -383,9 +383,7 @@ static void symbolic_preprocessing(
      * we only have to do the bookkeeping for newly added reducers
      * in the following. */
 
-    printf("initial nc %u\n", mat->nc);
     const hl_t oesld = sht->eld;
-    printf("oesld %u\n", oesld);
     const len_t onrr  = mat->nc;
     i = 1;
     /* we only have to check if idx is set for the elements already set

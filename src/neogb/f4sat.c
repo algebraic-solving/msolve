@@ -225,7 +225,6 @@ static void update_multipliers(
         }
     }
     sat->lo = ctr;
-    printf("sat->lo %u\n", sat->lo);
 
     /* TODO: Here we could apply the simplify idea from F4:
     * Any of these new elements is a multiple of an element
@@ -233,26 +232,11 @@ static void update_multipliers(
     * "divisor" instead of the initial saturation element sat[0]. */
     const hm_t * const b      = sat->hm[0];
     const cf32_t * const cfs  = sat->cf_32[0];
-    printf("cfs %p\n", cfs);
     /* new saturation elements from new quotient monomials */
-    for (i = 0; i < sat->lo; ++i) {
-        const hm_t m      = sat->hm[i][MULT];
-        printf("mult[%u] = ", i);
-        for (int ii = 0; ii<bht->nv; ++ii) {
-            printf("%u ", bht->ev[m][ii]);
-        }
-        printf("\n");
-    }
-    printf("ctr %u | qdim %u\n", ctr, qdim);
     for (i = ctr; i < qdim; ++i) {
         const hm_t m      = qb[i];
         const hi_t h      = bht->hd[m].val;
         const deg_t d     = bht->hd[m].deg;
-        printf("mult[%u] = ", i);
-        for (int ii = 0; ii<bht->nv; ++ii) {
-            printf("%u ", bht->ev[m][ii]);
-        }
-        printf("\n");
         sat->hm[i]        = multiplied_poly_to_matrix_row(
                 sht, bht, h, d, bht->ev[m], b);
        sat->hm[i][MULT] = qb[i];
@@ -281,11 +265,6 @@ static void update_multipliers(
      *     printf("\n");
      * } */
     sat->ld = qdim;
-    for (i = 0; i < sat->ld; ++i) {
-        if (qb[i] != sat->hm[i][MULT]) {
-            printf("qb --- %u != %u\n", qb[i], sat->hm[i][MULT]);
-        }
-    }
     st->new_multipliers = sat->ld - sat->lo;
     /* for (i = 0; i < sat->ld; ++i) {
      *     printf("%3u -> ", i);
@@ -349,7 +328,6 @@ int core_f4sat(
 
     /* elements of kernel in saturation step, to be added to basis bs */
     bs_t *kernel  = initialize_basis(10);
-    printf("kernel %p | ld %u\n", kernel, kernel->ld);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
@@ -399,13 +377,6 @@ int core_f4sat(
         clear_matrix(mat); // does not reset mat->np
 
         update_basis(ps, bs, bht, uht, st, mat->np, 1);
-        printf("F4 step\n");
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = 0; j < bht->nv; ++j) {
-            printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        } 
-        printf("\n");
-    }
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -457,13 +428,6 @@ int core_f4sat(
                     bht->hd[hcmm[i]].idx = 0;
                 }
             }
-        printf("SAT step\n");
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = 0; j < bht->nv; ++j) {
-            printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        } 
-        printf("\n");
-    }
             clear_matrix(mat);
             clean_hash_table(sht);
 

@@ -182,7 +182,7 @@ static void update_multipliers(
         const deg_t max_deg
         )
 {
-    len_t i, j;
+    len_t i, j, k;
 
     len_t qdim  = quotient_basis(qdp, bhtp, bs, max_deg);
     ht_t *bht   = *bhtp;
@@ -193,6 +193,7 @@ static void update_multipliers(
     check_enlarge_basis(sat, qdim);
 
     hm_t *qb  = *qdp;
+    exp_t *etmp = bht->ev[0];
 
     /* remove elements that moved directly to kernel, i.e. monomials
      * added to the basis during the first stage of saturation
@@ -226,24 +227,35 @@ static void update_multipliers(
     }
     sat->lo = ctr;
 
-    /* TODO: Here we could apply the simplify idea from F4:
+    /* Here we apply the simplify idea from F4:
     * Any of these new elements is a multiple of an element
     * of lower degree already handled. Thus we can use this
     * "divisor" instead of the initial saturation element sat[0]. */
-    const hm_t * const b      = sat->hm[0];
-    const cf32_t * const cfs  = sat->cf_32[0];
     /* new saturation elements from new quotient monomials */
     for (i = ctr; i < qdim; ++i) {
-        const hm_t m      = qb[i];
-        const hi_t h      = bht->hd[m].val;
-        const deg_t d     = bht->hd[m].deg;
+        const hm_t m    = qb[i];
+        const sdm_t ns  = ~bht->hd[qb[i]].sdm;
+        j = sat->lo-1;
+sat_restart:
+        while (j > 0 && bht->hd[sat->hm[j][MULT]].sdm & ns) {
+            j--;
+        }
+        for (k = 0; k < bht->nv; ++k) {
+            etmp[k] = bht->ev[qb[i]][k] - bht->ev[sat->hm[j][MULT]][k];
+            if (etmp[k] < 0) {
+                j--;
+                goto sat_restart;
+            }
+        }
+        const hi_t h      = bht->hd[m].val - bht->hd[sat->hm[j][MULT]].val;
+        const deg_t d     = bht->hd[m].deg - bht->hd[sat->hm[j][MULT]].deg;
         sat->hm[i]        = multiplied_poly_to_matrix_row(
-                sht, bht, h, d, bht->ev[m], b);
+                sht, bht, h, d, etmp, sat->hm[j]);
        sat->hm[i][MULT] = qb[i];
        sat->cf_32[i]    = (cf32_t *)malloc(
-               (unsigned long)b[LENGTH] * sizeof(cf32_t));
-       memcpy(sat->cf_32[i], cfs,
-               (unsigned long)b[LENGTH] * sizeof(cf32_t));
+               (unsigned long)sat->hm[j][LENGTH] * sizeof(cf32_t));
+       memcpy(sat->cf_32[i], sat->cf_32[sat->hm[j][COEFFS]],
+               (unsigned long)sat->hm[j][LENGTH] * sizeof(cf32_t));
        sat->hm[i][COEFFS] = i;
     }
     /* AFTER mapping the new sat elements to sht we can map the old ones.
@@ -346,6 +358,7 @@ int core_f4sat(
 ----------------------------------------\n");
     }
     len_t sat_test  = 0;
+    len_t set       = 0;
     for (round = 1; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
@@ -372,7 +385,7 @@ int core_f4sat(
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
                     mat, bs, bht, sht, hcm, st);
-            sat_test++;
+            /* sat_test++; */
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -391,11 +404,16 @@ int core_f4sat(
             break;
         }
         clean_hash_table(sht);
-        if (sat_test % 3 == 0 || ps->ld == 0) {
+        if (set == 0) {
+            sat_test  = 2*bs->mltdeg/3;
+            set = 1;
+        }
+        while (ps->ld == 0 && sat_test <= bs->mltdeg) {
+        /* if (sat_test % 4 == 0 || ps->ld == 0) { */
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             rrt0  = realtime();
-            update_multipliers(&qb, &bht, &sht, sat, st, bs, bs->mltdeg);
+            update_multipliers(&qb, &bht, &sht, sat, st, bs, sat_test);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
 
@@ -447,6 +465,7 @@ int core_f4sat(
             if (st->info_level > 1) {
                 printf("%10.2f sec\n", rrt1-rrt0);
             }
+            sat_test++;
         }
 
     }

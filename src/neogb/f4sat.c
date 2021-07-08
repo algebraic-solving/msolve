@@ -345,6 +345,7 @@ int core_f4sat(
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
+    len_t sat_test  = 0;
     for (round = 1; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
@@ -371,6 +372,7 @@ int core_f4sat(
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
                     mat, bs, bht, sht, hcm, st);
+            sat_test++;
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -389,7 +391,7 @@ int core_f4sat(
             break;
         }
         clean_hash_table(sht);
-        if (mat->np > 0) {
+        if (sat_test % 3 == 0 || ps->ld == 0) {
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             rrt0  = realtime();

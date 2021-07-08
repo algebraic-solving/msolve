@@ -1989,6 +1989,10 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     len_t i = 0, j, k;
     hi_t sc = 0;    /* starting column */
 
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
     const len_t ncols = mat->nc;
     const len_t nrl   = mat->nrl;
     const len_t ncl   = mat->nru;
@@ -2076,7 +2080,11 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     upivs     = NULL;
     upivs     = (hm_t **)calloc((unsigned long)sat->ld, sizeof(hm_t *));
     len_t ctr = 0;
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
 
+    printf("nf time %10.2f sec\n", rt1-rt0);
     /* compute kernel */
     for (i = 0; i < sat->ld; ++i) {
         if (sat->hm[i] != NULL) {

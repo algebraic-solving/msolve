@@ -404,12 +404,12 @@ int core_f4sat(
             break;
         }
         clean_hash_table(sht);
-        if (set == 0) {
-            sat_test  = 2*bs->mltdeg/3;
-            set = 1;
-        }
-        while (ps->ld == 0 && sat_test <= bs->mltdeg) {
-        /* if (sat_test % 4 == 0 || ps->ld == 0) { */
+        /* if (set == 0) {
+         *     sat_test  = 2*bs->mltdeg/3;
+         *     set = 1;
+         * } */
+        /* while (ps->ld == 0 && sat_test <= bs->mltdeg) { */
+        if (sat_test % 4 == 0 || ps->ld == 0) {
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             rrt0  = realtime();
@@ -465,8 +465,8 @@ int core_f4sat(
             if (st->info_level > 1) {
                 printf("%10.2f sec\n", rrt1-rrt0);
             }
-            sat_test++;
         }
+        sat_test++;
 
     }
     if (st->info_level > 1) {

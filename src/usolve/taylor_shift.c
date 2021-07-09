@@ -156,13 +156,13 @@ static void taylorshift1_dac(mpz_t *upol,
   }
 
   unsigned long int fdeg = deg - (nblocks - 1)*sz;
-  unsigned long int cont2 = 0;
 
 #ifdef HAVE_OPENMP
   omp_set_num_threads(nthreads);
 #endif
-#pragma omp parallel for num_threads(nthreads) //schedule(static)
+#pragma omp parallel for num_threads(nthreads) schedule(dynamic)
   for(unsigned long int i = 0; i <= nblocks - 1; i++){
+    unsigned long int cont2 = 0;
     if(i < nblocks-1){
       cont2 = mpz_poly_remove_binary_content(&upol[i * sz],
                                              sz-1);
@@ -177,6 +177,7 @@ static void taylorshift1_dac(mpz_t *upol,
     }
   }
 
+  unsigned long int cont2 = 0;
   unsigned long int npowers = LOG2(nblocks);
   mpz_t *shifted = NULL;
 

@@ -46,8 +46,9 @@ static void mpz_2_fmpz_poly(fmpz_poly_t poly_flint, const mpz_t *poly_gmp,
 
   poly_flint->length = deg + 1;
   poly_flint->alloc = deg + 1;
-#pragma omp parallel for num_threads(nthreads)
-  for(unsigned long int i=0;i<=deg;i++){
+  unsigned long int i;
+#pragma omp parallel for private(i) num_threads(nthreads)
+  for(i = 0; i <= deg; i++){
     fmpz_poly_set_coeff_mpz(poly_flint, ((slong)i),poly_gmp[i]);
   }
 }
@@ -61,7 +62,7 @@ static void fmpz_poly_2_mpz(mpz_t *poly_gmp, const fmpz_poly_t poly_flint,
                             const unsigned int nthreads){
   unsigned long int i;
 #pragma omp parallel for private(i) num_threads(nthreads)
-  for(i = 0;i <= deg; i++){
+  for(i = 0; i <= deg; i++){
     fmpz_get_mpz(poly_gmp[i],(poly_flint->coeffs + i));
   }
 
@@ -104,7 +105,8 @@ static void mpz_poly_mul(mpz_t *res,
   fmpz_poly_clear(pol2_fmpz_poly);
 
 #else
-
+  fprintf(stderr, "FLINT is missing for univariate polynomial multiplication\n");
+  exit(1);
 #endif
 }
 

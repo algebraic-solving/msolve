@@ -307,17 +307,17 @@ static int change_variable_order_in_input_system(
     }
     if (cvo > -1) {
         /* undo last variable change */
-        tmp_char = gens->vnames[nvars-1-cvo];
-        gens->vnames[nvars-1-cvo] = gens->vnames[0];
-        gens->vnames[0]  = tmp_char;
+        tmp_char = gens->vnames[nvars-1];
+        gens->vnames[nvars-1] = gens->vnames[cvo];
+        gens->vnames[cvo]  = tmp_char;
         len = 0;
         tmp = 0;
         for (i = 0; i < ngens; ++i) {
             for (j = 0; j < gens->lens[i]; ++j) {
-                tmp = gens->exps[len + j * nvars + nvars-1-cvo];
-                gens->exps[len + j * nvars + nvars-1-cvo] =
-                    gens->exps[len + j * nvars + 0];
-                gens->exps[len + j * nvars + 0] = tmp;
+                tmp = gens->exps[len + j * nvars + nvars - 1];
+                gens->exps[len + j * nvars + nvars - 1] =
+                    gens->exps[len + j * nvars + cvo];
+                gens->exps[len + j * nvars + cvo] = tmp;
             }
             len +=  gens->lens[i]*nvars;
         }
@@ -334,17 +334,17 @@ static int change_variable_order_in_input_system(
         return 0;
     }
     /* do the current variable change */
-    tmp_char = gens->vnames[nvars-1-cvo-1];
-    gens->vnames[nvars-1-cvo-1]  = gens->vnames[0];
-    gens->vnames[0]  = tmp_char;
+    tmp_char = gens->vnames[nvars-1];
+    gens->vnames[nvars-1]  = gens->vnames[cvo+1];
+    gens->vnames[cvo+1]  = tmp_char;
     len = 0;
     tmp = 0;
     for (i = 0; i < gens->ngens; ++i) {
         for (j = 0; j < gens->lens[i]; ++j) {
-            tmp = gens->exps[len + j * nvars + nvars-1-cvo-1];
-            gens->exps[len + j * nvars + nvars-1-cvo-1] =
-                gens->exps[len + j * nvars + 0];
-            gens->exps[len + j * nvars + 0] = tmp;
+            tmp = gens->exps[len + j * nvars + nvars-1];
+            gens->exps[len + j * nvars + nvars-1] =
+                gens->exps[len + j * nvars + cvo + 1];
+            gens->exps[len + j * nvars + cvo + 1] = tmp;
         }
         len +=  gens->lens[i]*nvars;
     }

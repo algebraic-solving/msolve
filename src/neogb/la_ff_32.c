@@ -50,6 +50,177 @@ static inline cf32_t *normalize_dense_matrix_row_ff_32(
     return row;
 }
 
+static inline void normalize_dense_matrix_row_kernel_ff_32(
+        cf32_t *row,
+        const len_t start,
+        const len_t nc,
+        const uint32_t fc
+        )
+{
+    len_t i;
+
+    const int64_t mod           = (int64_t)fc;
+    const int64_t mod2          = (int64_t)fc * fc;
+    const len_t len     = nc;
+    const len_t os      = len % UNROLL;
+    const int64_t inv  =  (int64_t)mod_p_inverse_32(row[start], fc);
+
+    int64_t tmp = 0;
+    for (i = start; i < os; ++i) {
+        row[i]  = (cf32_t)(((uint64_t)row[i] * inv) % fc);
+    }
+    /* we need to set i to os since os < 1 is possible */
+    for (i = os; i < len; i += UNROLL) {
+        row[i]    = (cf32_t)(((uint64_t)row[i] * inv) % fc);
+        row[i+1]  = (cf32_t)(((uint64_t)row[i+1] * inv) % fc);
+        row[i+2]  = (cf32_t)(((uint64_t)row[i+2] * inv) % fc);
+        row[i+3]  = (cf32_t)(((uint64_t)row[i+3] * inv) % fc);
+    }
+}
+
+static int reduce_dense_row_by_dense_pivots_ff_32(
+        int64_t *dr,
+        cf32_t *dm,
+        cf32_t **pivs,
+        const len_t start,
+        const len_t nc,
+        const len_t fc
+        )
+{
+    len_t i, j;
+
+    const int64_t mod   = (int64_t)fc;
+    const int64_t mod2  = (int64_t)fc * fc;
+
+    for (i = start; i < nc; ++i) {
+        if (dr[i] != 0) {
+            dr[i] = dr[i] % mod;
+        }
+        if (dr[i] == 0) {
+            continue;
+        }
+        if (pivs[i] == NULL) {
+            /* add new pivot to dm */
+            /* for (j = 0; j < i; ++j) {
+             *     if (dr[j] != 0) {
+             *         printf("dr =/= 0 at pos %u / %u || %u\n", j, i, start);
+             *         break;
+             *     }
+             * } */
+            cf32_t *np  = dm + i*nc;
+            for (j = i; j < nc; ++j) {
+                dr[j] = dr[j] % mod;
+                np[j] = (cf32_t)dr[j];
+            }
+            /* normalize new pivot row */
+            normalize_dense_matrix_row_kernel_ff_32(
+                    np, i, nc, fc);
+
+            pivs[i] = np;
+
+            return i;
+        }
+
+        const int64_t mul = (int64_t)dr[i];
+        const cf32_t *red = pivs[i];
+
+        const len_t os  = ((nc-i) % 4) + i;
+
+        /* for (j = 0; j < nc; ++j) {
+         *     dr[j] -=  mul * red[j];
+         *     dr[j] +=  (dr[j] >> 63) & mod2;
+         * } */
+        for (j = i; j < os; ++j) {
+            dr[j] -=  mul * red[j];
+            dr[j] +=  (dr[j] >> 63) & mod2;
+        }
+        for (; j < nc; j += 4) {
+            dr[j]   -=  mul * red[j];
+            dr[j]   +=  (dr[j] >> 63) & mod2;
+            dr[j+1] -=  mul * red[j+1];
+            dr[j+1] +=  (dr[j+1] >> 63) & mod2;
+            dr[j+2] -=  mul * red[j+2];
+            dr[j+2] +=  (dr[j+2] >> 63) & mod2;
+            dr[j+3] -=  mul * red[j+3];
+            dr[j+3] +=  (dr[j+3] >> 63) & mod2;
+        }
+    }
+    return -1;
+}
+
+/* If the matrix has size m (rows) x n (columns) with m << n then
+ * we do the following: Generate a dense m x m matrix where the entries
+ * in the mth column is a random linear combination of column entries
+ * m up to n from the correspdoning row. Next we check if the kernel
+ * for this m x m matrix is trivial or not. */
+static int is_kernel_trivial(
+        bs_t *sat,
+        hm_t **upivs, /* already sorted by increasing pivot */
+        const len_t ncl, /* number of columns left, all of them are zero */
+        const len_t ncr, /* number of columns right */
+        const stat_t * const st
+        )
+{
+    len_t i, j;
+
+    int ret = 0;
+    const int64_t fc   = st->fc;
+    const int64_t mod2  = (int64_t)fc * fc;
+    /* make a dense matrix first */
+    const len_t dim = sat->ld;
+    /* allocate memory */
+    cf32_t *dm    = (cf32_t *)calloc((unsigned long)(dim*dim), sizeof(cf32_t));
+    int64_t *dr   = (int64_t *)calloc((unsigned long)dim, sizeof(int64_t));
+    int64_t *mul  = (int64_t *)calloc((unsigned long)ncr, sizeof(int64_t));
+    cf32_t **pivs = (cf32_t **)calloc((unsigned long)dim, sizeof(cf32_t *));
+
+    /* fill random value array */
+    for (i = 0; i < ncr; ++i) {
+        mul[i]  = (int64_t)rand() & fc;
+    }
+    for (i = 0; i < sat->ld; ++i) {
+        memset(dr, 0, (unsigned long)dim * sizeof(int64_t));
+        hm_t *npiv  = upivs[i];
+        const len_t len = upivs[i][LENGTH];
+        cf32_t *cf  = sat->cf_32[npiv[COEFFS]];
+        hm_t *cols  = npiv + OFFSET;
+        j = 0;
+        /* while (j < len) {
+         *     dr[cols[j]-ncl] = cf[j];
+         *     j++;
+         * } */
+        while (j < len && cols[j] < dim+ncl) {
+            dr[cols[j]-ncl] = cf[j];
+            j++;
+        }
+        while (j < len) {
+            dr[dim-1] -=  mul[cols[j]-ncl] * cf[j];
+            dr[dim-1] +=  (dr[dim-1] >> 63) & mod2;
+            j++;
+        }
+        const len_t start = cols[0] - ncl < dim-1 ? cols[0] - ncl : dim-1;
+        if (start < dim-1) {
+            ret = reduce_dense_row_by_dense_pivots_ff_32(
+                    dr, dm, pivs, start, dim, fc);
+                    /* dr, dm, pivs, cols[0]-ncl, ncr, fc); */
+            if (ret == -1) {
+                free(dm);
+                free(dr);
+                free(mul);
+                free(pivs);
+                return 0;
+            }
+        }
+    }
+    free(dm);
+    free(dr);
+    free(mul);
+    free(pivs);
+
+    return 1;
+
+}
+
 static inline cf32_t *normalize_sparse_matrix_row_ff_32(
         cf32_t *row,
         const len_t os,
@@ -111,8 +282,6 @@ static inline cf32_t *multiply_sparse_matrix_row_ff_32(
         )
 {
     len_t i;
-
-
     for (i = 0; i < os; ++i) {
         row[i]  =  (cf32_t)(((uint64_t)row[i] * mul) % fc);
     }
@@ -638,7 +807,8 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         const hm_t tmp_pos, /* position of new coeffs arrays */
         const len_t sat_ld, /* number of current multipliers */
         const len_t ncols,  /* number of columns */
-        stat_t *st
+        stat_t *st,
+        const len_t ncl
         )
 {
     hi_t i, j, k;
@@ -2094,6 +2264,24 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     sort_matrix_rows_increasing(upivs, ctr);
     upivs = realloc(upivs, (unsigned long)ctr * sizeof(hm_t *));
 
+    /* first test if kernel is trivial */
+    if (is_kernel_trivial(sat, upivs, ncl, mat->ncr, st)) {
+        /* we do not need the old pivots anymore */
+        for (i = 0; i < ncols; ++i) {
+            free(pivs[i]);
+            pivs[i] = NULL;
+        }
+        free(upivs);
+        upivs = NULL;
+        free(pivs);
+        pivs  = NULL;
+        free(dr);
+        dr    = NULL;
+        return;
+    }
+
+    printf("not trivial! ");
+    /* if kernel is not trivial really compute it */
     /* dense row for multipliers */
     hm_t **mulh     = (hm_t **)calloc((unsigned long)ctr, sizeof(hm_t *));
     cf32_t **mulcf  = (cf32_t **)calloc((unsigned long)ctr, sizeof(cf32_t *));
@@ -2126,7 +2314,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
             sc    = npiv[OFFSET];
             npiv  = reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
                     drl, drm, pivcf, mulh, mulcf, pivs, sc, tmp_pos,
-                    sat->ld, ncols, st);
+                    sat->ld, ncols, st, ncl);
             if (!npiv) {
                 /* normalize new kernel element */
                 normalize_sparse_matrix_row_ff_32(

@@ -490,14 +490,14 @@ int core_f4sat(
          * thus we need pointers */
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
-    printf("basis has  %u elements.\n", bs->lml);
-
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = 0; j < bht->nv; ++j) {
-            printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        } 
-        printf("\n");
-    }
+/*     printf("basis has  %u elements.\n", bs->lml);
+ *
+ *     for (i = 0; i < bs->lml; ++i) {
+ *         for (j = 0; j < bht->nv; ++j) {
+ *             printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+ *         }
+ *         printf("\n");
+ *     } */
 
     *bsp  = bs;
     *satp = sat;

@@ -231,7 +231,6 @@ static void update_multipliers(
     * Any of these new elements is a multiple of an element
     * of lower degree already handled. Thus we can use this
     * "divisor" instead of the initial saturation element sat[0]. */
-    /* new saturation elements from new quotient monomials */
     for (i = ctr; i < qdim; ++i) {
         const hm_t m    = qb[i];
         const sdm_t ns  = ~bht->hd[qb[i]].sdm;
@@ -280,8 +279,8 @@ sat_restart:
     st->new_multipliers = sat->ld - sat->lo;
     /* for (i = 0; i < sat->ld; ++i) {
      *     printf("%3u -> ", i);
-     *     for (len_t j = 0; j < ht->nv; ++j) {
-     *         printf("%d ", ht->ev[sat->hm[i][OFFSET]][j]);
+     *     for (len_t j = 0; j < sht->nv; ++j) {
+     *         printf("%d ", sht->ev[sat->hm[i][OFFSET]][j]);
      *     }
      *     printf("\n");
      * } */
@@ -358,6 +357,7 @@ int core_f4sat(
 ----------------------------------------\n");
     }
     len_t sat_test  = 0;
+    deg_t sat_deg   = 0;
     len_t set       = 0;
     for (round = 1; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
@@ -385,7 +385,7 @@ int core_f4sat(
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
                     mat, bs, bht, sht, hcm, st);
-            /* sat_test++; */
+            sat_test++;
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -404,16 +404,23 @@ int core_f4sat(
             break;
         }
         clean_hash_table(sht);
-        if (set == 0) {
-            sat_test  = 2*bs->mltdeg/3;
-            set = 1;
-        }
-        while (ps->ld == 0 && sat_test <= bs->mltdeg) {
-        /* if (sat_test % 4 == 0 || ps->ld == 0) { */
+        /* if (set == 0) {
+         *     sat_test  = 2*bs->mltdeg/3;
+         *     set = 1;
+         * } */
+        /* while (ps->ld == 0 && sat_test <= bs->mltdeg) { */
+        if (sat_test % 3 == 0 || ps->ld == 0) {
+
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
+            if (ps->ld != 0) {
+                sat_deg = 2*bs->mltdeg/3;
+            } else {
+                sat_deg = bs->mltdeg;
+            }
             rrt0  = realtime();
-            update_multipliers(&qb, &bht, &sht, sat, st, bs, sat_test);
+            printf("sat->deg %u\n", sat_deg);
+            update_multipliers(&qb, &bht, &sht, sat, st, bs, sat_deg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
 
@@ -432,6 +439,7 @@ int core_f4sat(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (kernel->ld > 0) {
+                    sat_test  = 0;
                     add_kernel_elements_to_basis(
                             bs, kernel, bht, hcmm, st);
                     update_basis(ps, bs, bht, uht, st, kernel->ld, 1);
@@ -449,23 +457,26 @@ int core_f4sat(
                 }
             }
             clear_matrix(mat);
-            clean_hash_table(sht);
 
             /* move hashes for sat entries from sht back to bht */
             for (i = 0; i < sat->ld; ++i) {
                 if (sat->hm[i] != NULL) {
+                    while (bht->esz - bht->eld < sat->hm[i][LENGTH]) {
+                        enlarge_hash_table(bht);
+                    }
                     for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
                         sat->hm[i][j] = insert_in_hash_table(
                                 sht->ev[sat->hm[i][j]], bht);
                     }
                 }
             }
+            clean_hash_table(sht);
 
             rrt1 = realtime();
             if (st->info_level > 1) {
                 printf("%10.2f sec\n", rrt1-rrt0);
             }
-        sat_test++;
+            /* sat_test++; */
         }
 
     }

@@ -293,7 +293,7 @@ colframe=white!40!black,coltext=white!25!black,colback=white
 \section{Introduction}
 
 \msolve~is a C library for solving multivariate polynomial systems of equations. 
-It relies on computer algebra, a.k.a. symbolic computation, algorithms to
+It relies on computer algebra, a.k.a.\ symbolic computation, algorithms to
 compute \emph{algebraic} representations of the solution set from which
 many, if not all, informations can be extracted.
 
@@ -343,7 +343,7 @@ the solutions with coordinates in the field of real numbers $\R$ (for instance
 in robotics or biology) or in the field of complex numbers $\C$ (for instance in
 signal theory).
 
-When the number of solutions such systems in $\C^n$ is finite (one says that
+When the number of solutions of such systems in $\C^n$ is finite (one says that
 such systems have dimension at most zero), then it is well-known that the
 coordinates of the solutions can be parametrized by an \emph{algebraic number}
 at which one evaluates a rational fraction. In other words, there exist
@@ -352,12 +352,15 @@ square-free and the solution set in $\C^n$ can be written as
 \[
   \left \{
   \left (\frac{v_1(\vartheta)}{w'(\vartheta)}, \ldots,
-  \frac{v_n(\vartheta)}{w'(\vartheta)}\right ) \quad \mid \quad w(\vartheta) = 0
+  \frac{v_n(\vartheta)}{w'(\vartheta)}\right ) \quad \st \quad w(\vartheta) = 0
 \right \}
 \]
-where $w'=\frac{\partial w}{\partial t}$. Note that, with such an encoding
+where
+$w'=\frac{\ud w}{\ud t}$.
+% $w'=\frac{\partial w}{\partial t}$.
+Note that, with such an encoding
 (which is called a rational parametrization of the solution set), one can
-approximate at arbitrary precision the solutions of the input system (by isolate
+approximate at arbitrary precision the solutions of the input system (by isolating
 the ones of the univariate polynomial $w$).
 Note also that, since $w$ is square-free, $w$ and $w'$ are co-prime and the
 denominator in the above parametrization can be replaced by a constant.
@@ -385,12 +388,12 @@ several properties of the solution set, in particular its \emph{dimension} and
 its \emph{degree} (see Section~\ref{sec:posdim}). 
 
 For applications in cryptology and/or coding theory, polynomial systems lie in
-some polynomial ring $\F[x_1, \ldots, x_n]$ where $\F$ is some finite field. In
+some polynomial ring $\bF[x_1, \ldots, x_n]$ where $\bF$ is some finite field. In
 that situation, \msolve~only supports prime field $\frac{\Z}{p\Z}$ with $p <
-2^{31}$. Denoting by $\overline{\F}$ an algebraic closure of $\F$, such systems
+2^{31}$. Denoting by $\overline{\bF}$ an algebraic closure of $\bF$, such systems
 have dimension at most $0$ when they have finitely many solutions in
-$\overline{\F}^n$, else they have positive dimension. For systems of dimension
-at most zero, an above rational parametrization can be computed when the
+$\overline{\bF}^n$, else they have positive dimension. For systems of dimension
+at most zero, a rational parametrization as above can be computed when the
 characteristic of the field is large enough. 
 
 \section{Input file format}
@@ -442,7 +445,10 @@ f_1=\cdots=f_s=0
 \]
 in $\overline{\K}^n$.
 
-When $V$ is empty in $\overline{\K}[x_1, \ldots, x_n]$, the
+When $V$ is
+empty,
+% in $\overline{\K}[x_1, \ldots, x_n]$,
+the
 output of \msolve~is
 \begin{verbatim}
 [1, []]
@@ -450,27 +456,68 @@ output of \msolve~is
 
 When $V$ is finite, say $V$ is the union of the $\ell$ points $\balpha_1,
 \ldots, \balpha_\ell$ in $\overline{\K}^n$ with $\balpha_i = (\alpha_{i,1},
-\ldots, \alpha_{i,n})$. 
-
-When the input system has finitely many solutions in $\overline{\K}^n$, the
+\ldots, \alpha_{i,n})$,
+% When the input system has finitely many solutions in
+% $\overline{\K}^n$,
+the
 output is encoded as follows:
+% \begin{verbatim}
+% [dim, [deg, nbsols, form, vars, [lw, lwp, param]]]
+% \end{verbatim}
+% where
+% \begin{itemize}
+% \item \texttt{dim} is $0$ (which indicates that the input system has finitely
+%   many solutions);
+% \item \texttt{deg} is the number of solutions counted with multiplicities in
+%   $\overline{\K}^n$;
+% \item \texttt{nbsols} is the number of solutions in $\overline{\K}^n$; 
+% \item \texttt{form} is the linear form $t$;
+% \item \texttt{vars} is the list of the variables which are parametrized;
+% \item \texttt{lw} is the encoding of the eliminating polynomial $w$;
+% \item \texttt{lwp} is the encoding of the denominator used in the rational
+%   parametrization;
+% \item \texttt{param} is the list of the output parametrizations as described
+%   above ; the $i$th one corresponds to the $i$th element of \texttt{vars}.
+%   % \textcolor{magenta}{I am not sure this is still the case, maybe I used a reverse
+%   %   ordering.} 
+% \end{itemize}
 \begin{verbatim}
-[dim, [deg, nbsols, form, vars, [lw, lwp, param]]]
+[dim, nbvar, deg, varstr, linform, lw, lwp, param]
 \end{verbatim}
-where
+in characteristic $0$, where
 \begin{itemize}
 \item \texttt{dim} is $0$ (which indicates that the input system has finitely
   many solutions);
+\item \texttt{nbvar} is the number of variables;
 \item \texttt{deg} is the number of solutions counted with multiplicities in
   $\overline{\K}^n$;
-\item \texttt{nbsols} is the number of solutions in $\overline{\K}^n$; 
-\item \texttt{form} is the linear form $\lambda$
-\item \texttt{vars} is the list of the variables which are parametrized;
-\item \texttt{lw} is the encoding of the eliminating polynomial $w$;
+% \item \texttt{nbsols} is the number of solutions in $\overline{\K}^n$; 
+\item \texttt{varstr} is the list of the variables which are parametrized;
+\item \texttt{linform} is the linear form $t$, it is empty if there is none;
+\item \texttt{lw} is the encoding of the eliminating polynomial $w$
+  either in $t$ or the last variable of \texttt{varstr};
 \item \texttt{lwp} is the encoding of the denominator used in the rational
   parametrization;
 \item \texttt{param} is the list of the output parametrizations as described
-  above ; the $i$-th one corresponds to the $i$-th element of \texttt{vars}.
+  above ; the $i$th one corresponds to the $i$th element of \texttt{varstr}.
+  % \textcolor{magenta}{I am not sure this is still the case, maybe I used a reverse
+  %   ordering.} 
+\end{itemize}
+\begin{verbatim}
+[char, nbvar, elim, den, param]
+\end{verbatim}
+in positive characteristic, where
+\begin{itemize}
+\item \texttt{char} is the characteristic of the field;
+% \item \texttt{dim} is $0$ (which indicates that the input system has finitely
+%   many solutions);
+\item \texttt{nbvar} is the number of variables;
+\item \texttt{elim} is the encoding of the eliminating polynomial of
+  the last variable;
+\item \texttt{den} is the encoding of the denominator used in the rational
+  parametrization, it is always $1$ at the moment;
+\item \texttt{param} is the list of the output parametrizations as described
+  above ; the $i$th one corresponds to the $i$th element of \texttt{vars}.
   % \textcolor{magenta}{I am not sure this is still the case, maybe I used a reverse
   %   ordering.} 
 \end{itemize}
@@ -576,3 +623,8 @@ preliminary version of the Sage interface.
 \renewcommand*{\bibfont}{\small}
   \printbibliography
 \end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:

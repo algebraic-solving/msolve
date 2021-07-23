@@ -232,6 +232,7 @@ colframe=white!40!black,coltext=white!25!black,colback=white
 \newcommand{\Proj}{\ensuremath{\bP^n}}
 \newcommand{\intx}[1]{\int_{\mathrlap{#1}}}
 \newcommand{\muav}{\mu_{\textrm{av}}}
+\newcommand\Fquatre{\textsc{\texorpdfstring{F\textsubscript{4}}{F4}}\xspace}
 
 \def\geq{\geqslant}
 \def\leq{\leqslant}
@@ -399,15 +400,13 @@ characteristic of the field is large enough.
 \section{Input file format}
 
 Consider the following polynomial system of equations
-\begin{center}
-$
-\begin{array}{rcl}
-x+2y+2z-1 &= &0\\
-x^2+2y^2+2z^2-x &= &0\\
-2xy+2yz-y &= &0
-\end{array}
-$
-\end{center}
+\[
+  \begin{array}{rcl}
+    x+2 y+2 z-1 &= &0\\
+    x^2+2 y^2+2 z^2-x &= &0\\
+    2 x y+2 y z-y &= &0
+  \end{array}
+\]
 in $\Q[x,y,z]$.
 
 In order to solve it with \msolve~one simply produces a file with the following content
@@ -423,9 +422,9 @@ x^2+2*y^2+2*z^2-x,
 Hence the structure of input files to \msolve is as follows:
 \begin{enumerate}
 \item the first line contains the variables of the input system, separated with
-  a comma ; 
+  a comma; 
 \item the second line contains the characteristic of the field over which
-  computations are performed ; 
+  computations are performed; 
 \item the next lines contain polynomials, in expanded form, separated by a comma
   (except the last one) and with a line break. 
 \end{enumerate}
@@ -614,9 +613,10 @@ the rational parametrization as first entry and the solutions as second entry.
 \section{Credits}
 
 The main developers of \msolve~are J\'er\'emy Berthomieu, Christian Eder and
-Mohab Safey El Din. It relies on original implementations of Faug\`ere's $F_4$
-algorithm \cite{F4} as well as Faug\`ere and Mou's Sparse-FGLM algorithm
-\cite{SparseFGLM}. We are grateful to Huu Phuoc Le and Jorge Garcia Fontan for a
+Mohab Safey El Din. It relies on original implementations of Faugère's \Fquatre
+algorithm~\cite{F4} as well as Faug\`ere and Mou's Sparse-FGLM
+algorithm~\cite{SparseFGLM}. We are grateful to Huu Phuoc Le and Jorge
+García Fontán for a 
 preliminary version of the Maple interface as well as Rémi Prébet for a
 preliminary version of the Sage interface.  
 

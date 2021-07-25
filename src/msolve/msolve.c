@@ -4883,9 +4883,14 @@ static void export_julia_rational_parametrization_qq(
         int32_t *dim_quot,
         int32_t **lens,
         void **cfs,
-        const mpz_param_t param
+        void **real_sols_num,
+        int32_t **real_sols_den,
+        const mpz_param_t param,
+        const long nb_real_roots,
+        const real_point_t *real_pts
         )
 {
+
     int32_t i, j;
     int64_t ctr = 0;
 
@@ -4938,6 +4943,31 @@ static void export_julia_rational_parametrization_qq(
         }
         *lens = len;
         *cfs  = (void *)cf;
+
+        mpz_t *sols_num = (mpz_t *)malloc(
+                (unsigned long)nb_real_roots * real_pts[0]->nvars * sizeof(mpz_t));
+
+        int32_t *sols_den = (int32_t *)malloc(
+                (unsigned long)nb_real_roots * real_pts[0]->nvars * sizeof(int32_t));
+
+
+        mpz_t tmp;
+        mpz_init(tmp);
+
+        ctr = 0;
+        for (i = 0; i < nb_real_roots; ++i) {
+            for (j = 0; j < real_pts[i]->nvars; ++j) {
+                mpz_add(tmp, real_pts[i]->coords[j]->val_do,
+                        real_pts[i]->coords[j]->val_up);
+                mpz_init_set(sols_num[ctr], tmp);
+                sols_den[ctr] = real_pts[i]->coords[j]->k_do + 1;
+                ctr++;
+            }
+        }
+
+
+        *real_sols_num = (void *)sols_num;
+        *real_sols_den = sols_den;
     }
 }
 
@@ -4947,6 +4977,9 @@ void msolve_julia(
         int32_t *rp_dquot,
         int32_t **rp_lens,
         void **rp_cfs,
+        int32_t *n_real_sols,
+        void **real_sols_num,
+        int32_t **real_sols_den,
         int32_t *lens,
         int32_t *exps,
         void *cfs,
@@ -4972,6 +5005,7 @@ void msolve_julia(
     double st0 = cputime();
     double rt0 = realtime();
 
+    len_t i;
     files_gb *files = calloc(1, sizeof(files_gb));
 
     if (output_file != NULL) {
@@ -4980,21 +5014,37 @@ void msolve_julia(
 
     data_gens_ff_t *gens = allocate_data_gens();
 
+    unsigned long nterms  = 0;
+    for (i = 0; i < nr_gens; ++i) {
+        nterms  +=  lens[i];
+    }
     gens->nvars                 = nr_vars;
     gens->ngens                 = nr_gens;
     gens->field_char            = field_char;
     gens->change_var_order      = -1;
     gens->linear_form_base_coef = 0;
-    gens->vnames                = var_names;
-    gens->lens                  = lens;
-    gens->exps                  = exps;
+    /* gens->vnames                = var_names; */
+    gens->vnames  = (char **)malloc((unsigned long)nr_vars * sizeof(char *));
+    memcpy(gens->vnames, var_names, (unsigned long)nr_vars * sizeof(char *));
+    /* gens->lens                  = lens; */
+    gens->lens  = (int32_t *)malloc((unsigned long)nr_gens * sizeof(int32_t));
+    memcpy(gens->lens, lens, (unsigned long)nr_gens * sizeof(int32_t));
+    /* gens->exps                  = exps; */
+    gens->exps  = (int32_t *)malloc(nterms * nr_vars * sizeof(int32_t));
+    memcpy(gens->exps, exps, nterms * nr_vars * sizeof(int32_t));
     gens->rand_linear           = 0;
 
     if (field_char > 0) {
-        gens->cfs = (int32_t *)cfs;
+        gens->cfs = (int32_t *)malloc(nterms * sizeof(int32_t));
+        memcpy(gens->cfs, (int32_t *)cfs, nterms * sizeof(int32_t));
+        /* gens->cfs = (int32_t *)cfs; */
     } else {
         if (field_char == 0) {
-            gens->mpz_cfs = (mpz_t **)cfs;
+            gens->mpz_cfs = (mpz_t **)malloc(nterms * 2 * sizeof(mpz_t *));
+            for (i = 0; i < 2*nterms; ++i) {
+                gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));
+                mpz_init_set(*(gens->mpz_cfs[i]), *(((mpz_t **)cfs)[i]));
+            }
         }
     }
 
@@ -5008,7 +5058,7 @@ void msolve_julia(
     real_point_t *real_pts  = NULL;
 
     /* main msolve functionality */
-    core_msolve(la_option, nr_threads, info_level, initial_hts,
+    int ret = core_msolve(la_option, nr_threads, info_level, initial_hts,
             max_nr_pairs, reset_ht, 0 /* generate pbm */, 1 /* reduce_gb */,
             print_gb, get_param, genericity_handling, 0 /* normal_form */,
             0 /* normal_form_matrix */, 0 /* is_gb */, precision,
@@ -5019,11 +5069,19 @@ void msolve_julia(
     free(gens);
     gens  = NULL;
 
-    export_julia_rational_parametrization_qq(
-            rp_ld, rp_dim, rp_dquot, rp_lens, rp_cfs, mpz_param);
+    if (mpz_param->dim != -1) {
+        export_julia_rational_parametrization_qq(
+                rp_ld, rp_dim, rp_dquot, rp_lens, rp_cfs,
+                real_sols_num, real_sols_den, mpz_param,
+                nb_real_roots, real_pts);
+    } else {
+        *rp_ld  = -1;
+    }
     /* free parametrization */
     free(param);
     mpz_param_clear(mpz_param);
+    
+    *n_real_sols = nb_real_roots;
 
     free(real_roots);
 

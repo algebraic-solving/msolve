@@ -1222,7 +1222,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
                                                          const int info_level){
 
 
-  *bdiv_xn = malloc(sizeof(int32_t) * bs->lml);
+  *bdiv_xn = malloc(bs->lml * sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
 
   long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
@@ -1258,7 +1258,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   }
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "Length ofpolynomials whose leading terms is divisible by x_n\n");
+  fprintf(stderr, "Length of polynomials whose leading terms is divisible by x_n\n");
   for(long i = 0; i < len_xn; i++){
     fprintf(stderr, "%d, ", len_gb_xn[i]);
   }
@@ -1343,15 +1343,20 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
 #if DEBUGBUILDMATRIX > 0
       fprintf(stderr, " => does NOT remain in monomial basis\n");
 #endif
-      matrix->dense_idx[l_dens] = i;
-      l_dens++;
-      if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
-        copy_poly_in_matrix_from_bs(matrix, nrows, bs, ht, 
+      int boo = 0;
+      if(count < len_xn){
+        boo = is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv);
+      }
+      if(boo){
+        matrix->dense_idx[l_dens] = i;
+        l_dens++;
+        copy_poly_in_matrix_from_bs(matrix, nrows, bs, ht,
                                     div_xn[count], len_gb_xn[count],
                                     start_cf_gb_xn[count], len_gb_xn[count], lmb,
                                     nv, fc);
         nrows++;
         count++;
+
         if(len_xn < count && i < dquot){
           if(info_level){
             fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
@@ -1376,7 +1381,6 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
           display_monomial_full(stderr, nv, NULL, 0, exp);
           fprintf(stderr, " gets outside the staircase\n");
         }
-
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -1387,7 +1391,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
         free(len_gb_xn);
         free(start_cf_gb_xn);
         free(div_xn);
-
+        fprintf(stderr, "ICI??\n");
         return NULL;
       }
     }

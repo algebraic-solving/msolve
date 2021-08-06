@@ -160,6 +160,9 @@ void msolve_julia(
         int32_t *rp_dquot,
         int32_t **rp_lens,
         void **rp_cfs,
+        int32_t *n_real_sols,
+        void **real_sols_num,
+        int32_t **real_sols_den,
         int32_t *lens,
         int32_t *exps,
         void *cfs,
@@ -175,7 +178,7 @@ void msolve_julia(
         const int32_t reset_ht,
         const int32_t la_option,
         const int32_t print_gb,
-        int32_t get_param,
+        const int32_t get_param,
         const int32_t genericity_handling,
         const int32_t precision,
         const int32_t info_level

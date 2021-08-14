@@ -283,6 +283,7 @@ struct stat_t
 
     /* for f4sat */
     uint32_t new_multipliers;
+    uint32_t nr_kernel_elts;
 };
 
 /* function pointers */

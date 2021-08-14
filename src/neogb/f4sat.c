@@ -21,6 +21,51 @@
 
 #include "f4sat.h"
 
+static inline int is_pure_power(
+        const exp_t * const ev,
+        const len_t nv
+        )
+{
+    len_t i;
+
+    len_t ctr = 0;
+    
+    for (i = 0; i < nv; ++i) {
+        if (ev[i] == 0) {
+            ctr++;
+        }
+    }
+
+    if (ctr == nv-1) {
+        return 1;
+    }
+    return 0;
+}
+
+static inline int s_zero_dimensional(
+        const bs_t * const bs,
+        const ht_t * const ht
+        )
+{
+    len_t i;
+
+    len_t ctr = 0;
+    
+    const len_t nv  = ht->nv;
+    const len_t lml = bs->lml;
+
+    for (i = 0; i < lml; ++i) {
+        if (is_pure_power(ht->ev[bs->hm[bs->lmps[i]][OFFSET]], ht->nv)) {
+            ctr ++;
+        }
+    }
+    
+    if (ctr == nv) {
+        return 1;
+    }
+    return 0;
+}
+
 static inline unsigned long sum(
         const len_t * const ind,
         const len_t len)
@@ -416,6 +461,10 @@ int core_f4sat(
         printf("found %u\n", found);
         if (found == 3 && (bs->mltdeg >= (bht->hd[sat->hm[0][OFFSET]].deg + bht->hd[bs->hm[0][OFFSET]].deg+6)) || ps->ld == 0) {
 
+            if (st->nr_kernel_elts > 0) {
+                printf("kernel elements until now %u\n", st->nr_kernel_elts);
+                printf("dimension zero? %u\n", is_zero_dimensional(bs, bht));
+            }
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             if (ps->ld != 0) {
@@ -464,6 +513,7 @@ int core_f4sat(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (kernel->ld > 0) {
+                    st->nr_kernel_elts  +=  kernel->ld;
                     sat_test  = 0;
                     add_kernel_elements_to_basis(
                             sat, bs, kernel, bht, hcmm, st);

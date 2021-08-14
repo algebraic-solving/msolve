@@ -352,6 +352,7 @@ static void convert_columns_to_hashes(
 }
 
 static void add_kernel_elements_to_basis(
+        bs_t *sat,
         bs_t *bs,
         bs_t *kernel,
         const ht_t * const ht,
@@ -359,6 +360,8 @@ static void add_kernel_elements_to_basis(
         stat_t *st
         )
 {
+    len_t *terms  = (len_t *)calloc((unsigned long)sat->ld, sizeof(len_t));
+    len_t nterms  = 0;
     len_t i, j, k;
 
     len_t ctr       = 0;
@@ -390,6 +393,16 @@ static void add_kernel_elements_to_basis(
         bs->hm[bld+ctr][COEFFS]         = bld+ctr;
         for (j = OFFSET; j < bs->hm[bld+ctr][LENGTH]+OFFSET; ++j) {
             bs->hm[bld+ctr][j] = hcm[bs->hm[bld+ctr][j]];
+            if (nterms != 0) {
+                for (int kk = 0; kk < nterms; ++kk) {
+                    if (terms[kk] == bs->hm[bld+ctr][j]) {
+                        goto next_j;
+                    }
+                }
+            }
+            terms[nterms] = bs->hm[bld+ctr][j];
+            nterms++;
+next_j:
         }
         if (ht->hd[bs->hm[bld+ctr][OFFSET]].deg == 0) {
             bs->constant  = 1;
@@ -406,6 +419,8 @@ static void add_kernel_elements_to_basis(
          * printf("\n"); */
         ctr++;
     }
+    printf("%u of %u terms are used for kernel elements, %.2f\n", nterms, sat->ld, (float)nterms / (float)sat->ld);
+    free(terms);
     free(rows);
     rows  = NULL;
 

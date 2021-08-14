@@ -95,6 +95,8 @@ static void select_spairs_by_minimal_degree(
     mat->nc = mat->ncl = mat->ncr = 0;
     mat->nr = 0;
 
+    int ctr = 0;
+
     i = 0;
 
     while (i < nps) {
@@ -153,6 +155,13 @@ static void select_spairs_by_minimal_degree(
             /* ev might change when enlarging the hash table during insertion of a new
              * row in the matrix, thus we have to reset elcm inside the for loop */
             elcm  = bht->ev[lcm];
+            if (elcm[0] > 0) {
+                /* printf("pair with lcm ");
+                 * for (int ii = 0; ii < nv; ++ii) {
+                 *     printf("%u ", elcm[ii]);
+                 * }
+                 * printf("\n"); */
+            }
             d     = 0;
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
@@ -174,9 +183,10 @@ static void select_spairs_by_minimal_degree(
             sht->hd[trows[ntr++][OFFSET]].idx = 2;
             mat->nr++;
         }
-
+        ctr++;
         i = j;
     }
+    /* printf("%u pairs in degree %u\n", ctr, md); */
     /* clear ht-ev[0] */
     memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
     /* fix rows to be reduced */

@@ -359,6 +359,7 @@ int core_f4sat(
     len_t sat_test  = 0;
     deg_t sat_deg   = 0;
     len_t set       = 0;
+    len_t found     = 0;
     for (round = 1; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
@@ -409,12 +410,16 @@ int core_f4sat(
          *     set = 1;
          * } */
         /* while (ps->ld == 0 && sat_test <= bs->mltdeg) { */
-        if (sat_test % 3 == 0 || ps->ld == 0) {
+        if (found < 3) {
+            found++;
+        }
+        printf("found %u\n", found);
+        if (found == 3 && (bs->mltdeg >= (bht->hd[sat->hm[0][OFFSET]].deg + bht->hd[bs->hm[0][OFFSET]].deg+6)) || ps->ld == 0) {
 
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             if (ps->ld != 0) {
-                sat_deg = 2*bs->mltdeg/3;
+                sat_deg = bs->mltdeg;
             } else {
                 sat_deg = bs->mltdeg;
             }
@@ -432,6 +437,26 @@ int core_f4sat(
                 if (st->info_level > 1) {
                     printf("kernel computation ");
                 }
+                int ctr = 0;
+                for (int ii = 1; ii < sat->ld; ++ii) {
+                    for (int jj = 0; jj < ii; jj++) {
+                        if (sat->hm[ii][MULT] == sat->hm[jj][MULT]) {
+                            printf("MULT %d == %d\n", ii, jj);
+                            ctr++;
+                        }
+                    }
+                }
+                printf("%d are the very same!!!\n", ctr);
+                /* int ctr  = 0;
+                 * for (int ii = 0; ii<sat->ld; ++ii) {
+                 *     if (sht->hd[sat->hm[ii][OFFSET]].idx == 2) {
+                 *         sat->hm[ctr]  = sat->hm[ii];
+                 *     } else {
+                 *         free(sat->hm[ii]);
+                 *         sat->hm[ii] = NULL;
+                 *     }
+                 * }
+                 * sat->ld = ctr; */
                 convert_hashes_to_columns_sat(&hcm, mat, sat, st, sht);
                 convert_multipliers_to_columns(&hcmm, sat, st, bht);
                 sort_matrix_rows_decreasing(mat->rr, mat->nru);
@@ -441,9 +466,10 @@ int core_f4sat(
                 if (kernel->ld > 0) {
                     sat_test  = 0;
                     add_kernel_elements_to_basis(
-                            bs, kernel, bht, hcmm, st);
+                            sat, bs, kernel, bht, hcmm, st);
                     update_basis(ps, bs, bht, uht, st, kernel->ld, 1);
                     kernel->ld  = 0;
+                    found = 0;
                 }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(
@@ -458,6 +484,7 @@ int core_f4sat(
             }
             clear_matrix(mat);
 
+            printf("found %u\n", found);
             /* move hashes for sat entries from sht back to bht */
             for (i = 0; i < sat->ld; ++i) {
                 if (sat->hm[i] != NULL) {

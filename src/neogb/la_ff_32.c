@@ -163,13 +163,18 @@ static int is_kernel_trivial(
 {
     len_t i, j;
 
+    len_t max_col = 0;
+    for (i = 0; i < sat->ld; ++i) {
+        max_col = max_col < sat->hm[i][OFFSET] ? sat->hm[i][OFFSET] : max_col;
+    }
+    printf("sat->ld %u | max_col %u | ncl %u || %u\n", sat->ld, max_col, ncl, max_col - ncl);
     int ret = 0;
     const int64_t fc   = st->fc;
     const int64_t mod2  = (int64_t)fc * fc;
     /* make a dense matrix first */
-    const len_t dim = sat->ld;
+    const len_t dim = max_col - ncl;
     /* allocate memory */
-    cf32_t *dm    = (cf32_t *)calloc((unsigned long)(dim*dim), sizeof(cf32_t));
+    cf32_t *dm    = (cf32_t *)calloc((unsigned long)(sat->ld*dim), sizeof(cf32_t));
     int64_t *dr   = (int64_t *)calloc((unsigned long)dim, sizeof(int64_t));
     int64_t *mul  = (int64_t *)calloc((unsigned long)ncr, sizeof(int64_t));
     cf32_t **pivs = (cf32_t **)calloc((unsigned long)dim, sizeof(cf32_t *));
@@ -198,18 +203,15 @@ static int is_kernel_trivial(
             dr[dim-1] +=  (dr[dim-1] >> 63) & mod2;
             j++;
         }
-        const len_t start = cols[0] - ncl < dim-1 ? cols[0] - ncl : dim-1;
-        if (start < dim-1) {
-            ret = reduce_dense_row_by_dense_pivots_ff_32(
-                    dr, dm, pivs, start, dim, fc);
-                    /* dr, dm, pivs, cols[0]-ncl, ncr, fc); */
-            if (ret == -1) {
-                free(dm);
-                free(dr);
-                free(mul);
-                free(pivs);
-                return 0;
-            }
+        ret = reduce_dense_row_by_dense_pivots_ff_32(
+                dr, dm, pivs, cols[0]-ncl, dim, fc);
+                /* dr, dm, pivs, cols[0]-ncl, ncr, fc); */
+        if (ret == -1) {
+            free(dm);
+            free(dr);
+            free(mul);
+            free(pivs);
+            return 0;
         }
     }
     free(dm);
@@ -2265,22 +2267,22 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     upivs = realloc(upivs, (unsigned long)ctr * sizeof(hm_t *));
 
     /* first test if kernel is trivial */
-    if (is_kernel_trivial(sat, upivs, ncl, mat->ncr, st)) {
-        /* we do not need the old pivots anymore */
-        for (i = 0; i < ncols; ++i) {
-            free(pivs[i]);
-            pivs[i] = NULL;
-        }
-        free(upivs);
-        upivs = NULL;
-        free(pivs);
-        pivs  = NULL;
-        free(dr);
-        dr    = NULL;
-        return;
-    }
-
-    printf("not trivial! ");
+/*     if (is_kernel_trivial(sat, upivs, ncl, mat->ncr, st)) {
+ *         [> we do not need the old pivots anymore <]
+ *         for (i = 0; i < ncols; ++i) {
+ *             free(pivs[i]);
+ *             pivs[i] = NULL;
+ *         }
+ *         free(upivs);
+ *         upivs = NULL;
+ *         free(pivs);
+ *         pivs  = NULL;
+ *         free(dr);
+ *         dr    = NULL;
+ *         return;
+ *     }
+ *
+ *     printf("not trivial! "); */
     /* if kernel is not trivial really compute it */
     /* dense row for multipliers */
     hm_t **mulh     = (hm_t **)calloc((unsigned long)ctr, sizeof(hm_t *));

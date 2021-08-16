@@ -42,7 +42,7 @@ static inline int is_pure_power(
     return 0;
 }
 
-static inline int s_zero_dimensional(
+static inline int is_zero_dimensional(
         const bs_t * const bs,
         const ht_t * const ht
         )
@@ -64,6 +64,78 @@ static inline int s_zero_dimensional(
         return 1;
     }
     return 0;
+}
+
+static int is_already_saturated(
+        bs_t *bs,
+        const bs_t * const sat,
+        mat_t *mat,
+        hi_t *hcm,
+        ht_t *bht,
+        ht_t *sht,
+        ht_t *uht,
+        stat_t *st
+        )
+{
+    len_t i;
+
+    int is_constant = 0;
+    
+    ps_t *ps = initialize_pairset();
+    /* add phi to basis and generate pairs with phi */
+    check_enlarge_basis(bs, 1);
+
+    cf32_t *cf  = (cf32_t *)malloc(
+            (unsigned long)sat->hm[0][LENGTH] * sizeof(cf32_t));
+    memcpy(cf, sat->cf_32[sat->hm[0][COEFFS]],
+            (unsigned long)sat->hm[0][LENGTH] * sizeof(cf32_t));
+    hm_t *hm  = (hm_t *)malloc(
+            (unsigned long)sat->hm[0][LENGTH]+OFFSET * sizeof(hm_t));
+    memcpy(hm, sat->hm[0],
+            (unsigned long)sat->hm[0][LENGTH]+OFFSET * sizeof(cf32_t));
+
+    bs->cf_32[bs->ld] = cf;
+    hm[COEFFS]        = bs->ld;
+    bs->hm[bs->ld]    = hm;
+
+    update_basis(ps, bs, bht, uht, st, 1, 1);
+    
+    select_all_spairs(mat, bs, ps, st, sht, bht, NULL);
+    symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+    convert_hashes_to_columns(&hcm, mat, st, sht);
+    sort_matrix_rows_decreasing(mat->rr, mat->nru);
+    sort_matrix_rows_increasing(mat->tr, mat->nrl);
+    /* print pbm files of the matrices */
+    if (st->gen_pbm_file != 0) {
+        write_pbm_file(mat, st);
+    }
+    /* linear algebra, depending on choice, see set_function_pointers() */
+    linear_algebra(mat, bs, st);
+
+    for (i = 0; i < mat->np; ++i) {
+        insert_in_basis_hash_table_pivots(mat->tr[i], bht, sht, hcm);
+        if (bht->hd[mat->tr[i][OFFSET]].deg == 0) {
+            is_constant  = 1;
+            break;
+        }
+    }
+    for (i = 0; i < mat->np; ++i) {
+        free(mat->cf_32[mat->tr[i][COEFFS]]);
+        mat->cf_32[mat->tr[i][COEFFS]]  = NULL;
+        free(mat->tr[i]);
+        mat->tr[i]  = NULL;
+    }
+
+    free(cf);
+    cf  = NULL;
+    free(hm);
+    hm  = NULL;
+    if (ps != NULL) {
+        free_pairset(&ps);
+    }
+    bs->ld--;
+
+    return is_constant;
 }
 
 static inline unsigned long sum(
@@ -455,15 +527,18 @@ int core_f4sat(
          *     set = 1;
          * } */
         /* while (ps->ld == 0 && sat_test <= bs->mltdeg) { */
-        if (found < 3) {
+        if (found < 2) {
             found++;
         }
         printf("found %u\n", found);
-        if (found == 3 && (bs->mltdeg >= (bht->hd[sat->hm[0][OFFSET]].deg + bht->hd[bs->hm[0][OFFSET]].deg+6)) || ps->ld == 0) {
+        if (found == 2 && (bs->mltdeg >= (bht->hd[sat->hm[0][OFFSET]].deg + bht->hd[bs->hm[0][OFFSET]].deg+6)) || ps->ld == 0) {
 
             if (st->nr_kernel_elts > 0) {
                 printf("kernel elements until now %u\n", st->nr_kernel_elts);
                 printf("dimension zero? %u\n", is_zero_dimensional(bs, bht));
+                if (is_zero_dimensional(bs, bht)) {
+                    printf("saturated? %d\n", is_already_saturated(bs, sat, mat, hcm, bht, sht, uht, st));
+                }
             }
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */

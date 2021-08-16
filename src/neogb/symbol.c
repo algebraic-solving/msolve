@@ -25,6 +25,176 @@
 #include <immintrin.h>
 #endif
 
+static void select_all_spairs(
+        mat_t *mat,
+        const bs_t * const bs,
+        ps_t *psl,
+        stat_t *st,
+        ht_t *sht,
+        ht_t *bht,
+        ht_t *tht
+        )
+{
+    len_t i, j, k, l, nps, npd, nrr = 0, ntr = 0;
+    hm_t *b;
+    deg_t d     = 0;
+    len_t load  = 0;
+    hi_t lcm;
+    len_t *gens;
+    exp_t *elcm, *eb;
+    exp_t *etmp = bht->ev[0];
+
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    spair_t *ps     = psl->p;
+    const len_t nv  = bht->nv;
+
+    /* sort pair set */
+    sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
+
+    /* select pairs of this degree respecting maximal selection size mnsel */
+    npd  = psl->ld;
+    sort_r(ps, (unsigned long)npd, sizeof(spair_t), spair_cmp, bht);
+    /* now do maximal selection if it applies */
+
+    nps = psl->ld;
+    
+    if (st->info_level > 1) {
+        printf("%3d  %6d %7d", 0, nps, psl->ld);
+        fflush(stdout);
+    }
+    /* statistics */
+    st->num_pairsred  +=  nps;
+    /* list for generators */
+    gens  = (len_t *)malloc(2 * (unsigned long)nps * sizeof(len_t));
+    /* preset matrix meta data */
+    mat->rr       = (hm_t **)malloc(2 * (unsigned long)nps * sizeof(hm_t *));
+    hm_t **rrows  = mat->rr;
+    mat->tr       = (hm_t **)malloc(2 * (unsigned long)nps * sizeof(hm_t *));
+    hm_t **trows  = mat->tr;
+    mat->sz = 2 * nps;
+    mat->nc = mat->ncl = mat->ncr = 0;
+    mat->nr = 0;
+
+    int ctr = 0;
+
+
+    i = 0;
+
+    while (i < nps) {
+        /* ncols initially counts number of different lcms */
+        mat->nc++;
+        load  = 0;
+        lcm   = ps[i].lcm;
+        j = i;
+
+        while (j < nps && ps[j].lcm == lcm) {
+            gens[load++] = ps[j].gen1;
+            gens[load++] = ps[j].gen2;
+            ++j;
+        }
+        /* sort gens set */
+        qsort(gens, (unsigned long)load, sizeof(len_t), gens_cmp);
+
+        len_t prev  = -1;
+
+        /* first element with given lcm goes into reducer part of matrix,
+         * all remaining ones go to to be reduced part */
+        prev  = gens[0];
+        printf("prev %u / %u\n", prev, bs->ld);
+        /* ev might change when enlarging the hash table during insertion of a new
+            * row in the matrix, thus we have to reset elcm inside the for loop */
+        elcm  = bht->ev[lcm];
+        d     = 0;
+        b     = bs->hm[prev];
+        eb    = bht->ev[b[OFFSET]];
+        for (l = 0; l < nv; ++l) {
+            etmp[l] = (exp_t)(elcm[l] - eb[l]);
+            d     +=  etmp[l];
+        }
+        const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
+        /* note that we use index mat->nc and not mat->nr since for each new
+         * lcm we add exactly one row to mat->rr */
+        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+        /* track trace information ? */
+        if (tht != NULL) { 
+           rrows[nrr][BINDEX]  = prev;
+            if (tht->eld == tht->esz-1) {
+                enlarge_hash_table(tht);
+            }
+            rrows[nrr][MULT]    = insert_in_hash_table(etmp, tht);
+        }
+
+        /* mark lcm column as lead term column */
+        sht->hd[rrows[nrr++][OFFSET]].idx = 2; 
+        /* still we have to increase the number of rows */
+        mat->nr++;
+        for (k = 1; k < load; ++k) {
+            /* check sorted list for doubles */
+            if (gens[k] ==  prev) {
+                continue;
+            }
+            prev  = gens[k];
+            /* ev might change when enlarging the hash table during insertion of a new
+             * row in the matrix, thus we have to reset elcm inside the for loop */
+            elcm  = bht->ev[lcm];
+            if (elcm[0] > 0) {
+                /* printf("pair with lcm ");
+                 * for (int ii = 0; ii < nv; ++ii) {
+                 *     printf("%u ", elcm[ii]);
+                 * }
+                 * printf("\n"); */
+            }
+            d     = 0;
+            b     = bs->hm[prev];
+            eb    = bht->ev[b[OFFSET]];
+            for (l = 0; l < nv; ++l) {
+                etmp[l] = (exp_t)(elcm[l] - eb[l]);
+                d     +=  etmp[l];
+            }
+            const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
+            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+            /* track trace information ? */
+            if (tht != NULL) {
+                trows[ntr][BINDEX]  = prev;
+                if (tht->eld == tht->esz-1) {
+                    enlarge_hash_table(tht);
+                }
+                trows[ntr][MULT]    = insert_in_hash_table(etmp, tht);
+            }
+            /* mark lcm column as lead term column */
+            sht->hd[trows[ntr++][OFFSET]].idx = 2;
+            mat->nr++;
+        }
+        ctr++;
+        i = j;
+    }
+    printf("nc %u | nr %u || %u\n", mat->nc, mat->nr, sht->eld);
+    /* printf("%u pairs in degree %u\n", ctr, md); */
+    /* clear ht-ev[0] */
+    memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
+    /* fix rows to be reduced */
+    mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
+
+    st->num_rowsred +=  mat->nr - mat->nc;
+    st->current_deg =   d;
+
+    free(gens);
+
+    /* remove selected spairs from pairset */
+    memmove(ps, ps+nps, (unsigned long)(psl->ld-nps) * sizeof(spair_t));
+    psl->ld -=  nps;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->select_ctime  +=  ct1 - ct0;
+    st->select_rtime  +=  rt1 - rt0;
+}
+
 static void select_spairs_by_minimal_degree(
         mat_t *mat,
         const bs_t * const bs,
@@ -399,10 +569,12 @@ static void symbolic_preprocessing(
     /* we only have to check if idx is set for the elements already set
      * when selecting spairs, afterwards (second for loop) we do not
      * have to do this check */
+    printf("here1 %u | %u\n", oesld, nrr);
     while (mat->sz <= nrr + oesld) {
         mat->sz *=  2;
         mat->rr =   realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
     }
+    printf("here2 %u\n", oesld);
     for (; i < oesld; ++i) {
         if (!sht->hd[i].idx) {
             sht->hd[i].idx = 1;
@@ -410,7 +582,9 @@ static void symbolic_preprocessing(
             find_multiplied_reducer(bs, i, bht, &nrr, mat->rr, sht, tht);
         }
     }
+    printf("here3\n");
     for (; i < sht->eld; ++i) {
+        printf("sht->eld %u\n", sht->eld);
         if (mat->sz == nrr) {
             mat->sz *=  2;
             mat->rr  =  realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
@@ -434,6 +608,7 @@ static void symbolic_preprocessing(
         mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
     }
 
+    printf("sp done\n");
     /* statistics */
     st->max_sht_size  = st->max_sht_size > sht->esz ?
         st->max_sht_size : sht->esz;

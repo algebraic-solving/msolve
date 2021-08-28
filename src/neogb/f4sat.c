@@ -476,7 +476,6 @@ int core_f4sat(
     len_t sat_test  = 0;
     deg_t sat_deg   = 0;
     len_t set       = 0;
-    len_t found     = 0;
     for (round = 1; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
@@ -527,28 +526,23 @@ int core_f4sat(
          *     set = 1;
          * } */
         /* while (ps->ld == 0 && sat_test <= bs->mltdeg) { */
-        if (found < 2) {
-            found++;
-        }
-        printf("found %u\n", found);
-        if (found == 2 && (bs->mltdeg >= (bht->hd[sat->hm[0][OFFSET]].deg + bht->hd[bs->hm[0][OFFSET]].deg+6)) || ps->ld == 0) {
-
-            if (st->nr_kernel_elts > 0) {
-                printf("kernel elements until now %u\n", st->nr_kernel_elts);
-                printf("dimension zero? %u\n", is_zero_dimensional(bs, bht));
-                if (is_zero_dimensional(bs, bht)) {
-                    printf("saturated? %d\n", is_already_saturated(bs, sat, mat, hcm, bht, sht, uht, st));
-                }
-            }
+        if (sat_test % 3 == 0 || ps->ld == 0) {
+            /* if (st->nr_kernel_elts > 0) {
+             *     printf("kernel elements until now %u\n", st->nr_kernel_elts);
+             *     printf("dimension zero? %u\n", is_zero_dimensional(bs, bht));
+             *     if (is_zero_dimensional(bs, bht)) {
+             *         printf("saturated? %d\n", is_already_saturated(bs, sat, mat, hcm, bht, sht, uht, st));
+             *     }
+             * } */
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             if (ps->ld != 0) {
-                sat_deg = bs->mltdeg;
+                sat_deg = 2*bs->mltdeg/3;
             } else {
                 sat_deg = bs->mltdeg;
             }
             rrt0  = realtime();
-            printf("sat->deg %u\n", sat_deg);
+            printf("sat_test %u || sat->deg %u\n", sat_test, sat_deg);
             update_multipliers(&qb, &bht, &sht, sat, st, bs, sat_deg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
@@ -561,16 +555,15 @@ int core_f4sat(
                 if (st->info_level > 1) {
                     printf("kernel computation ");
                 }
-                int ctr = 0;
-                for (int ii = 1; ii < sat->ld; ++ii) {
-                    for (int jj = 0; jj < ii; jj++) {
-                        if (sat->hm[ii][MULT] == sat->hm[jj][MULT]) {
-                            printf("MULT %d == %d\n", ii, jj);
-                            ctr++;
-                        }
-                    }
-                }
-                printf("%d are the very same!!!\n", ctr);
+                /* int ctr = 0;
+                 * for (int ii = 1; ii < sat->ld; ++ii) {
+                 *     for (int jj = 0; jj < ii; jj++) {
+                 *         if (sat->hm[ii][MULT] == sat->hm[jj][MULT]) {
+                 *             printf("MULT %d == %d\n", ii, jj);
+                 *             ctr++;
+                 *         }
+                 *     }
+                 * } */
                 /* int ctr  = 0;
                  * for (int ii = 0; ii<sat->ld; ++ii) {
                  *     if (sht->hd[sat->hm[ii][OFFSET]].idx == 2) {
@@ -594,7 +587,6 @@ int core_f4sat(
                             sat, bs, kernel, bht, hcmm, st);
                     update_basis(ps, bs, bht, uht, st, kernel->ld, 1);
                     kernel->ld  = 0;
-                    found = 0;
                 }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(
@@ -609,7 +601,6 @@ int core_f4sat(
             }
             clear_matrix(mat);
 
-            printf("found %u\n", found);
             /* move hashes for sat entries from sht back to bht */
             for (i = 0; i < sat->ld; ++i) {
                 if (sat->hm[i] != NULL) {

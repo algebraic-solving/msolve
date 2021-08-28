@@ -213,10 +213,10 @@ static int matrix_row_mult_cmp_increasing(
     /* compare multiplier resp. column index */
     va  = ((hm_t **)a)[0][MULT];
     vb  = ((hm_t **)b)[0][MULT];
-    if (va < vb) {
+    if (va > vb) {
         return -1;
     }
-    if (va > vb) {
+    if (va < vb) {
         return 1;
     }
     /* same column index => compare density of row */
@@ -361,6 +361,9 @@ static inline int monomial_cmp_drl(
 {
     len_t i;
 
+    if (a == b) {
+        return 0;
+    }
     const deg_t da = ht->hd[a].deg;
     const deg_t db = ht->hd[b].deg;
 
@@ -481,7 +484,28 @@ static int spair_cmp_drl(
     const hi_t lb   = ((spair_t *)b)->lcm;
     const ht_t *ht  = (ht_t *)htp;
 
-    return (int)monomial_cmp(la, lb, ht);
+    int mc = (int)monomial_cmp(la, lb, ht);
+    if (mc != 0) {
+        if (mc < 0)
+            return -1;
+        else
+            return 1;
+
+        /* return mc; */
+    }
+    if (((spair_t *)a)->gen1 < ((spair_t *)b)->gen1) {
+        return -1;
+    }
+    if (((spair_t *)a)->gen1 > ((spair_t *)b)->gen1) {
+        return 1;
+    }
+    if (((spair_t *)a)->gen2 < ((spair_t *)b)->gen2) {
+        return -1;
+    }
+    if (((spair_t *)a)->gen2 > ((spair_t *)b)->gen2) {
+        return 1;
+    }
+    return 0;
 }
 
 static int spair_degree_cmp(

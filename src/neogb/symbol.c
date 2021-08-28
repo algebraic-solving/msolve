@@ -104,7 +104,7 @@ static void select_all_spairs(
         /* first element with given lcm goes into reducer part of matrix,
          * all remaining ones go to to be reduced part */
         prev  = gens[0];
-        printf("prev %u / %u\n", prev, bs->ld);
+        /* printf("prev %u / %u\n", prev, bs->ld); */
         /* ev might change when enlarging the hash table during insertion of a new
             * row in the matrix, thus we have to reset elcm inside the for loop */
         elcm  = bht->ev[lcm];
@@ -172,7 +172,7 @@ static void select_all_spairs(
         ctr++;
         i = j;
     }
-    printf("nc %u | nr %u || %u\n", mat->nc, mat->nr, sht->eld);
+    /* printf("nc %u | nr %u || %u\n", mat->nc, mat->nr, sht->eld); */
     /* printf("%u pairs in degree %u\n", ctr, md); */
     /* clear ht-ev[0] */
     memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
@@ -569,12 +569,10 @@ static void symbolic_preprocessing(
     /* we only have to check if idx is set for the elements already set
      * when selecting spairs, afterwards (second for loop) we do not
      * have to do this check */
-    printf("here1 %u | %u\n", oesld, nrr);
     while (mat->sz <= nrr + oesld) {
         mat->sz *=  2;
         mat->rr =   realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
     }
-    printf("here2 %u\n", oesld);
     for (; i < oesld; ++i) {
         if (!sht->hd[i].idx) {
             sht->hd[i].idx = 1;
@@ -582,9 +580,7 @@ static void symbolic_preprocessing(
             find_multiplied_reducer(bs, i, bht, &nrr, mat->rr, sht, tht);
         }
     }
-    printf("here3\n");
     for (; i < sht->eld; ++i) {
-        printf("sht->eld %u\n", sht->eld);
         if (mat->sz == nrr) {
             mat->sz *=  2;
             mat->rr  =  realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
@@ -608,7 +604,6 @@ static void symbolic_preprocessing(
         mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
     }
 
-    printf("sp done\n");
     /* statistics */
     st->max_sht_size  = st->max_sht_size > sht->esz ?
         st->max_sht_size : sht->esz;

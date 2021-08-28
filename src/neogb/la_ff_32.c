@@ -2263,7 +2263,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
                 upivs[ctr++]  = sat->hm[i];
         }
     }
-    sort_matrix_rows_increasing(upivs, ctr);
+    sort_matrix_rows_mult_increasing(upivs, ctr);
     upivs = realloc(upivs, (unsigned long)ctr * sizeof(hm_t *));
 
     /* first test if kernel is trivial */

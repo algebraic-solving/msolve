@@ -70,14 +70,19 @@ static int is_already_saturated(
         bs_t *bs,
         const bs_t * const sat,
         mat_t *mat,
-        hi_t *hcm,
-        ht_t *bht,
-        ht_t *sht,
-        ht_t *uht,
+        hi_t **hcmp,
+        ht_t **bhtp,
+        ht_t **shtp,
+        ht_t **uhtp,
         stat_t *st
         )
 {
     len_t i;
+
+    hi_t *hcm = *hcmp;
+    ht_t *bht = *bhtp;
+    ht_t *sht = *shtp;
+    ht_t *uht = *uhtp;
 
     int is_constant = 0;
     
@@ -134,6 +139,11 @@ static int is_already_saturated(
         free_pairset(&ps);
     }
     bs->ld--;
+
+    *hcmp = hcm;
+    *bhtp = bht;
+    *shtp = sht;
+    *uhtp = uht;
 
     return is_constant;
 }

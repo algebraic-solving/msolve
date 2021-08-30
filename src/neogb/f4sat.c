@@ -90,9 +90,9 @@ static int is_already_saturated(
     memcpy(cf, sat->cf_32[sat->hm[0][COEFFS]],
             (unsigned long)sat->hm[0][LENGTH] * sizeof(cf32_t));
     hm_t *hm  = (hm_t *)malloc(
-            (unsigned long)sat->hm[0][LENGTH]+OFFSET * sizeof(hm_t));
+            (unsigned long)(sat->hm[0][LENGTH]+OFFSET) * sizeof(hm_t));
     memcpy(hm, sat->hm[0],
-            (unsigned long)sat->hm[0][LENGTH]+OFFSET * sizeof(cf32_t));
+            (unsigned long)(sat->hm[0][LENGTH]+OFFSET) * sizeof(hm_t));
 
     bs->cf_32[bs->ld] = cf;
     hm[COEFFS]        = bs->ld;

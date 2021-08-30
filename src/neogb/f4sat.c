@@ -537,13 +537,13 @@ int core_f4sat(
          * } */
         /* while (ps->ld == 0 && sat_test <= bs->mltdeg) { */
         if (sat_test % 3 == 0 || ps->ld == 0) {
-            /* if (st->nr_kernel_elts > 0) {
-             *     printf("kernel elements until now %u\n", st->nr_kernel_elts);
-             *     printf("dimension zero? %u\n", is_zero_dimensional(bs, bht));
-             *     if (is_zero_dimensional(bs, bht)) {
-             *         printf("saturated? %d\n", is_already_saturated(bs, sat, mat, hcm, bht, sht, uht, st));
-             *     }
-             * } */
+            if (st->nr_kernel_elts > 0) {
+                printf("kernel elements until now %u\n", st->nr_kernel_elts);
+                printf("dimension zero? %u\n", is_zero_dimensional(bs, bht));
+                if (is_zero_dimensional(bs, bht)) {
+                    printf("saturated? %d\n", is_already_saturated(bs, sat, mat, &hcm, &bht, &sht, &uht, st));
+                }
+            }
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
             if (ps->ld != 0) {

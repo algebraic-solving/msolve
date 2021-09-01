@@ -84,11 +84,21 @@ static int is_already_saturated(
     ht_t *sht = *shtp;
     ht_t *uht = *uhtp;
 
-    int is_constant = 0;
-    
-    ps_t *ps = initialize_pairset();
     /* add phi to basis and generate pairs with phi */
     check_enlarge_basis(bs, 1);
+
+    int is_constant = 0;
+
+    /* copy old lm data from bs to restore after test */
+    const len_t lml = bs->lml;
+    sdm_t *lm       = (sdm_t *)malloc((unsigned long)lml * sizeof(sdm_t));
+    memcpy(lm, bs->lm, (unsigned long)lml * sizeof(sdm_t));
+    bl_t *lmps      = (bl_t *)malloc((unsigned long)lml * sizeof(bl_t));
+    memcpy(lmps, bs->lmps, (unsigned long)lml * sizeof(bl_t));
+    int8_t *red     = (int8_t *)malloc((unsigned long)bs->sz * sizeof(int8_t));
+    memcpy(red, bs->red, (unsigned long)bs->sz * sizeof(int8_t));
+    
+    ps_t *ps = initialize_pairset();
 
     cf32_t *cf  = (cf32_t *)malloc(
             (unsigned long)sat->hm[0][LENGTH] * sizeof(cf32_t));
@@ -110,10 +120,6 @@ static int is_already_saturated(
     convert_hashes_to_columns(&hcm, mat, st, sht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
     sort_matrix_rows_increasing(mat->tr, mat->nrl);
-    /* print pbm files of the matrices */
-    if (st->gen_pbm_file != 0) {
-        write_pbm_file(mat, st);
-    }
     /* linear algebra, depending on choice, see set_function_pointers() */
     linear_algebra(mat, bs, st);
 
@@ -124,12 +130,16 @@ static int is_already_saturated(
             break;
         }
     }
+
+    /* reset to old status of basis */
     for (i = 0; i < mat->np; ++i) {
         free(mat->cf_32[mat->tr[i][COEFFS]]);
         mat->cf_32[mat->tr[i][COEFFS]]  = NULL;
         free(mat->tr[i]);
         mat->tr[i]  = NULL;
     }
+    clear_matrix(mat);
+    clean_hash_table(sht);
 
     free(cf);
     cf  = NULL;
@@ -139,6 +149,14 @@ static int is_already_saturated(
         free_pairset(&ps);
     }
     bs->ld--;
+
+    free(bs->lm);
+    bs->lm    = lm;
+    free(bs->lmps);
+    bs->lmps  = lmps;
+    bs->lml   = lml;
+    free(bs->red);
+    bs->red   = red;
 
     *hcmp = hcm;
     *bhtp = bht;

@@ -77,6 +77,10 @@ static int is_already_saturated(
         stat_t *st
         )
 {
+    printf("testing if system is already saturated: ");
+    double rrt0, rrt1;
+    rrt0  = realtime();
+
     len_t i;
 
     hi_t *hcm = *hcmp;
@@ -89,7 +93,10 @@ static int is_already_saturated(
 
     int is_constant = 0;
 
-    /* copy old lm data from bs to restore after test */
+    /* copy old data from bs to restore after test */
+    const bl_t bld  = bs->ld;
+    const bl_t blo  = bs->lo;
+    const bl_t bsc  = bs->constant;
     const len_t lml = bs->lml;
     sdm_t *lm       = (sdm_t *)malloc((unsigned long)lml * sizeof(sdm_t));
     memcpy(lm, bs->lm, (unsigned long)lml * sizeof(sdm_t));
@@ -115,40 +122,59 @@ static int is_already_saturated(
 
     update_basis(ps, bs, bht, uht, st, 1, 1);
     
-    select_all_spairs(mat, bs, ps, st, sht, bht, NULL);
-    symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
-    convert_hashes_to_columns(&hcm, mat, st, sht);
-    sort_matrix_rows_decreasing(mat->rr, mat->nru);
-    sort_matrix_rows_increasing(mat->tr, mat->nrl);
-    /* linear algebra, depending on choice, see set_function_pointers() */
-    linear_algebra(mat, bs, st);
+    /* suppress infolevel printing in the test step */
+    int32_t infolevel = st->info_level;
+    st->info_level  = 0;
+    while (ps->ld > 0) {
 
-    for (i = 0; i < mat->np; ++i) {
-        insert_in_basis_hash_table_pivots(mat->tr[i], bht, sht, hcm);
-        if (bht->hd[mat->tr[i][OFFSET]].deg == 0) {
-            is_constant  = 1;
+        select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
+        /* select_all_spairs(mat, bs, ps, st, sht, bht, NULL); */
+        symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+        convert_hashes_to_columns(&hcm, mat, st, sht);
+        sort_matrix_rows_decreasing(mat->rr, mat->nru);
+        sort_matrix_rows_increasing(mat->tr, mat->nrl);
+        /* linear algebra, depending on choice, see set_function_pointers() */
+        linear_algebra(mat, bs, st);
+
+        /* columns indices are mapped back to exponent hashes */
+        if (mat->np > 0) {
+            convert_sparse_matrix_rows_to_basis_elements(
+                    mat, bs, bht, sht, hcm, st);
+        }
+        /* all rows in mat are now polynomials in the basis,
+         * so we do not need the rows anymore */
+        clear_matrix(mat); // does not reset mat->np
+        clean_hash_table(sht);
+
+        update_basis(ps, bs, bht, uht, st, mat->np, 1);
+
+        /* if we found a constant we are done, so remove all remaining pairs */
+        if (bs->constant  == 1) {
+            ps->ld  = 0;
             break;
         }
+
     }
 
-    /* reset to old status of basis */
-    for (i = 0; i < mat->np; ++i) {
-        free(mat->cf_32[mat->tr[i][COEFFS]]);
-        mat->cf_32[mat->tr[i][COEFFS]]  = NULL;
-        free(mat->tr[i]);
-        mat->tr[i]  = NULL;
-    }
-    clear_matrix(mat);
-    clean_hash_table(sht);
+    is_constant = bs->constant;
 
-    free(cf);
-    cf  = NULL;
-    free(hm);
-    hm  = NULL;
+    /* reset basis data to state before starting test */
+    for (i = bld; i < bs->ld; ++i) {
+        free(bs->cf_32[bs->hm[i][COEFFS]]);
+        bs->cf_32[bs->hm[i][COEFFS]]  = NULL;
+        free(bs->hm[i]);
+        bs->hm[i] = NULL;
+    }
     if (ps != NULL) {
         free_pairset(&ps);
     }
-    bs->ld--;
+    bs->ld  = bld;
+    bs->lo  = blo;
+
+    bs->constant  = bsc;
+
+    /* reset infolevel */
+    st->info_level  = infolevel;
 
     free(bs->lm);
     bs->lm    = lm;
@@ -162,6 +188,17 @@ static int is_already_saturated(
     *bhtp = bht;
     *shtp = sht;
     *uhtp = uht;
+
+    if (is_constant == 1) {
+        printf("yes.");
+    } else {
+        printf("no.");
+    }
+
+    rrt1 = realtime();
+    if (st->info_level > 1) {
+        printf("%40.2f sec\n", rrt1-rrt0);
+    }
 
     return is_constant;
 }
@@ -448,6 +485,12 @@ int core_f4sat(
     ht_t *bht   = *bhtp;
     stat_t *st  = *stp;
 
+    /* global saturation data */
+    len_t sat_test  = 0;
+    deg_t sat_deg   = 0;
+    len_t set       = 0;
+    int sat_done    = 0;
+
     /* elements to saturate input ideal with */
     bs_t *sat   = *satp;
     /* initialize multiplier of first element in sat to be the hash of
@@ -487,7 +530,6 @@ int core_f4sat(
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
-
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
@@ -501,9 +543,6 @@ int core_f4sat(
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
-    len_t sat_test  = 0;
-    deg_t sat_deg   = 0;
-    len_t set       = 0;
     for (round = 1; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
@@ -549,18 +588,14 @@ int core_f4sat(
             break;
         }
         clean_hash_table(sht);
-        /* if (set == 0) {
-         *     sat_test  = 2*bs->mltdeg/3;
-         *     set = 1;
-         * } */
-        /* while (ps->ld == 0 && sat_test <= bs->mltdeg) { */
-        if (sat_test % 3 == 0 || ps->ld == 0) {
-            if (st->nr_kernel_elts > 0) {
-                printf("kernel elements until now %u\n", st->nr_kernel_elts);
-                printf("dimension zero? %u\n", is_zero_dimensional(bs, bht));
-                if (is_zero_dimensional(bs, bht)) {
-                    printf("saturated? %d\n", is_already_saturated(bs, sat, mat, &hcm, &bht, &sht, &uht, st));
-                }
+
+        if (sat_done == 0 && (sat_test % 3 == 0 || ps->ld == 0)) {
+            if (st->nr_kernel_elts > 0 &&
+                    is_zero_dimensional(bs, bht) &&
+                    is_already_saturated(
+                        bs, sat, mat, &hcm, &bht, &sht, &uht, st)) {
+                sat_done  = 1;
+                goto end_sat_step;
             }
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
@@ -570,7 +605,7 @@ int core_f4sat(
                 sat_deg = bs->mltdeg;
             }
             rrt0  = realtime();
-            printf("sat_test %u || sat->deg %u\n", sat_test, sat_deg);
+            /* printf("sat->deg %u\n", sat_deg); */
             update_multipliers(&qb, &bht, &sht, sat, st, bs, sat_deg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
@@ -581,7 +616,8 @@ int core_f4sat(
              * saturation elements, then nothing has to be done. */
             if (mat->nru > 0) {
                 if (st->info_level > 1) {
-                    printf("kernel computation ");
+                    /* printf("kernel computation "); */
+                    printf("%3u compute kernel ", sat_deg);
                 }
                 /* int ctr = 0;
                  * for (int ii = 1; ii < sat->ld; ++ii) {
@@ -647,9 +683,8 @@ int core_f4sat(
             if (st->info_level > 1) {
                 printf("%10.2f sec\n", rrt1-rrt0);
             }
-            /* sat_test++; */
         }
-
+end_sat_step:
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\

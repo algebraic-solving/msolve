@@ -2256,7 +2256,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     ct1 = cputime();
     rt1 = realtime();
 
-    printf("nf time %10.2f sec\n", rt1-rt0);
+    printf("        normal form time %12.2f sec\n", rt1-rt0);
     /* compute kernel */
     for (i = 0; i < sat->ld; ++i) {
         if (sat->hm[i] != NULL) {
@@ -3438,7 +3438,7 @@ static void compute_kernel_sat_ff_32(
     st->la_rtime  +=  rt1 - rt0;
 
     if (st->info_level > 1) {
-        printf("%7d new kernel elements", kernel->ld);
+        printf("%54d new kernel elements", kernel->ld);
         fflush(stdout);
     }
 }

@@ -617,7 +617,7 @@ int core_f4sat(
             if (mat->nru > 0) {
                 if (st->info_level > 1) {
                     /* printf("kernel computation "); */
-                    printf("%3u compute kernel ", sat_deg);
+                    printf("%3u  compute kernel", sat_deg);
                 }
                 /* int ctr = 0;
                  * for (int ii = 1; ii < sat->ld; ++ii) {

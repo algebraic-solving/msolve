@@ -21,6 +21,17 @@
 
 #include "f4sat.h"
 
+static inline void free_kernel_coefficients(
+        bs_t *kernel
+        )
+{
+    len_t i;
+
+    for (i = 0; i < kernel->ld; ++i) {
+        free(kernel->cf_32[i]);
+    }
+}
+
 static inline int is_pure_power(
         const exp_t * const ev,
         const len_t nv
@@ -591,6 +602,7 @@ int core_f4sat(
 
         if (sat_done == 0 && (sat_test % 3 == 0 || ps->ld == 0)) {
             if (st->nr_kernel_elts > 0 &&
+                    ps->ld == 0 &&
                     is_zero_dimensional(bs, bht) &&
                     is_already_saturated(
                         bs, sat, mat, &hcm, &bht, &sht, &uht, st)) {
@@ -645,11 +657,20 @@ int core_f4sat(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (kernel->ld > 0) {
+                    clear_matrix(mat);
+                    /* interreduce kernel */
+                    copy_kernel_to_matrix(mat, kernel, sat->ld);
+                    /* linear algebra, depending on choice, see set_function_pointers() */
+                    linear_algebra(mat, kernel, st);
+                    /* columns indices are mapped back to exponent hashes */
+                    if (mat->np > 0) {
+                        convert_sparse_matrix_rows_to_basis_elements_use_sht(
+                                mat, bs, hcmm, st);
+                    }
                     st->nr_kernel_elts  +=  kernel->ld;
                     sat_test  = 0;
-                    add_kernel_elements_to_basis(
-                            sat, bs, kernel, bht, hcmm, st);
-                    update_basis(ps, bs, bht, uht, st, kernel->ld, 1);
+                    free_kernel_coefficients(kernel);
+                    update_basis(ps, bs, bht, uht, st, mat->np, 1);
                     kernel->ld  = 0;
                 }
                 /* columns indices are mapped back to exponent hashes */

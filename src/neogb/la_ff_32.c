@@ -3413,6 +3413,30 @@ static void exact_sparse_linear_algebra_ff_32(
     }
 }
 
+static void copy_kernel_to_matrix(
+        mat_t *mat,
+        bs_t *kernel,
+        const len_t nc
+        )
+{
+    len_t i;
+
+    sort_matrix_rows_increasing(kernel->hm, kernel->ld);
+
+    mat->tr = (hm_t **)malloc((unsigned long)kernel->ld * sizeof(hm_t *));
+
+    mat->nr   = kernel->ld;
+    mat->nc   = nc;
+    mat->nru  = 0;
+    mat->nrl  = kernel->ld;
+    mat->ncl  = 0;
+    mat->ncr  = mat->nc;
+
+    for (i = 0; i < kernel->ld; ++i) {
+        mat->tr[i]  = kernel->hm[i];
+    }
+}
+
 static void compute_kernel_sat_ff_32(
         bs_t *sat,
         mat_t *mat,

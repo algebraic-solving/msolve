@@ -541,7 +541,7 @@ bs_t *f4sat_trace_learning_phase(
     ct0 = cputime();
     rt0 = realtime();
 
-    int32_t round, i, j;
+    int32_t round, nonzero_round, i, j;
 
     /* global saturation data */
     len_t sat_test  = 0;
@@ -621,6 +621,7 @@ bs_t *f4sat_trace_learning_phase(
         if (mat->np > 0) {
             add_lms_to_trace(trace, bs, mat->np);
             trace->ld++;
+            nonzero_round++;
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -710,6 +711,15 @@ bs_t *f4sat_trace_learning_phase(
                         convert_sparse_matrix_rows_to_basis_elements_use_sht(
                                 mat, bs, hcmm, st);
                     }
+                    /* track round in which kernel computation is not trivial */
+                    if (trace->rld == trace->rsz) {
+                        trace->rsz  *=  2;
+                        trace->rd = realloc(
+                                trace->rd,
+                                (unsigned long)trace->rsz * sizeof(len_t));
+                    }
+                    trace->rd[trace->rld++] = nonzero_round;
+
                     st->nr_kernel_elts  +=  kernel->ld;
                     sat_test  = 0;
                     free_kernel_coefficients(kernel);

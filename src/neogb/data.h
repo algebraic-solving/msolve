@@ -213,6 +213,10 @@ struct trace_t
     sdm_t *lm;    /* non-redundant lead monomials as short divmask */
     bl_t lml;     /* number of lead monomials of non redundant
                      elements in basis */
+    len_t *rd;    /* rounds in which saturation steps lead to
+                   * non-trivial kernels */
+    len_t rld;    /* load of rounds stored, i.e. how often do saturate */
+    len_t rsz;    /* size of rounds stored */
 };
 
 

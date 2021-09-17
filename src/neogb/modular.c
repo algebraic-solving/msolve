@@ -30,6 +30,10 @@ trace_t *initialize_trace(
     tr->sz  = 8;
     tr->ld  = 0;
     tr->td  = calloc((unsigned long)tr->sz, sizeof(td_t));
+    /* rounds stuff for f4sat */
+    tr->rsz = 8;
+    tr->rld = 0;
+    tr->rd  = calloc((unsigned long)tr->rsz, sizeof(len_t));
 
     return tr;
 }
@@ -52,6 +56,7 @@ void free_trace(
     free(tr->lm);
     free(tr->lmps);
     free(tr->td);
+    free(tr->rds);
     free(tr);
     tr    = NULL;
     *trp  = tr;

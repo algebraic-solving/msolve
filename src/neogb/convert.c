@@ -419,7 +419,7 @@ next_j:
          * printf("\n"); */
         ctr++;
     }
-    printf("%u of %u terms are used for kernel elements, %.2f\n", nterms, sat->ld, (float)nterms / (float)sat->ld);
+    /* printf("%u of %u terms are used for kernel elements, %.2f\n", nterms, sat->ld, (float)nterms / (float)sat->ld); */
     free(terms);
     free(rows);
     rows  = NULL;

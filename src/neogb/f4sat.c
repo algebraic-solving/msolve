@@ -145,7 +145,7 @@ static int is_already_saturated(
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
-        linear_algebra(mat, bs, st);
+        probabilistic_sparse_linear_algebra_ff_32(mat, bs, st);
 
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {

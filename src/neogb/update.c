@@ -214,6 +214,43 @@ static void insert_and_update_spairs(
     bs->ld++;
 }
 
+static void update_lm(
+        bs_t *bs,
+        const ht_t * const bht,
+        stat_t *st
+        )
+{
+    len_t i, k;
+    
+    const bl_t lml          = bs->lml;
+    const bl_t * const lmps = bs->lmps;
+
+    k = 0;
+    if (st->mo == 0 && st->num_redundant_old < st->num_redundant) {
+        const sdm_t *lms  = bs->lm;
+        for (i = 0; i < lml; ++i) {
+            if (bs->red[lmps[i]] == 0) {
+                bs->lm[k]   = lms[i];
+                bs->lmps[k] = lmps[i];
+                k++;
+            }
+        }
+        bs->lml = k;
+    }
+    k = bs->lml;
+    for (i = bs->lo; i < bs->ld; ++i) {
+        if (bs->red[i] == 0) {
+            bs->lm[k]   = bht->hd[bs->hm[i][OFFSET]].sdm;
+            bs->lmps[k] = i;
+            k++;
+        }
+    }
+    bs->lml = k;
+    bs->lo  = bs->ld;
+
+    st->num_redundant_old = st->num_redundant;
+}
+
 static void update_basis(
         ps_t *ps,
         bs_t *bs,

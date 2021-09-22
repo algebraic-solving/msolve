@@ -215,6 +215,7 @@ struct trace_t
                      elements in basis */
     len_t *rd;    /* rounds in which saturation steps lead to
                    * non-trivial kernels */
+    deg_t *deg;   /* degree for multipliers in saturation step */
     len_t rld;    /* load of rounds stored, i.e. how often do saturate */
     len_t rsz;    /* size of rounds stored */
 };

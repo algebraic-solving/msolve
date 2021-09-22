@@ -34,6 +34,7 @@ trace_t *initialize_trace(
     tr->rsz = 8;
     tr->rld = 0;
     tr->rd  = calloc((unsigned long)tr->rsz, sizeof(len_t));
+    tr->deg = calloc((unsigned long)tr->rsz, sizeof(deg_t));
 
     return tr;
 }
@@ -56,7 +57,8 @@ void free_trace(
     free(tr->lm);
     free(tr->lmps);
     free(tr->td);
-    free(tr->rds);
+    free(tr->rd);
+    free(tr->deg);
     free(tr);
     tr    = NULL;
     *trp  = tr;
@@ -348,7 +350,9 @@ bs_t *f4sat_trace_application_phase(
     ct0 = cputime();
     rt0 = realtime();
 
-    int32_t ret, round, ctr, i;
+    /* current quotient basis up to max lm degree in intermediate basis */
+    hm_t *qb    = NULL;
+    int32_t ret, round, ctr, i, j;
     ctr = 0;
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
@@ -369,6 +373,13 @@ bs_t *f4sat_trace_application_phase(
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = lbht;
 
+    /* initialize multiplier of first element in sat to be the hash of
+     * the all-zeroes exponent vector. */
+    memset(bht->ev[0], 0, (unsigned long)bht->nv * sizeof(exp_t));
+    sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
+    sat->ld = 1;
+    len_t sat_deg = 0;
+
     /* normalize the copied basis */
     normalize_initial_basis(bs, fc);
 
@@ -387,10 +398,10 @@ bs_t *f4sat_trace_application_phase(
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
     if (st->info_level > 1) {
-        printf("\nround   deg          mat          density \
-                new data             time(rd)\n");
+        printf("\ndeg     sel   pairs        mat          density \
+          new data             time(rd)\n");
         printf("-------------------------------------------------\
-                ----------------------------------------\n");
+----------------------------------------\n");
     }
     for (round = 0; round < trace->ld; ++round) {
         rrt0  = realtime();
@@ -430,8 +441,9 @@ bs_t *f4sat_trace_application_phase(
                     goto stop;
                 }
             }
+            bs->ld  +=  mat->np;
+            update_lm(bs, bht, st);
         }
-        bs->ld  +=  mat->np;
         clean_hash_table(sht);
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -443,17 +455,10 @@ bs_t *f4sat_trace_application_phase(
         }
         /* saturation step starts here */
         if (trace->rd[ctr]  ==  round) {
-            ctr++;
-            }
+            sat_deg = trace->deg[ctr++];
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
-            if (ps->ld != 0) {
-                sat_deg = 2*bs->mltdeg/3;
-            } else {
-                sat_deg = bs->mltdeg;
-            }
             rrt0  = realtime();
-            /* printf("sat->deg %u\n", sat_deg); */
             update_multipliers(&qb, &bht, &sht, sat, st, bs, sat_deg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
@@ -501,19 +506,16 @@ bs_t *f4sat_trace_application_phase(
                 /* interreduce kernel */
                 copy_kernel_to_matrix(mat, kernel, sat->ld);
                 /* linear algebra, depending on choice, see set_function_pointers() */
-                linear_algebra(mat, kernel, st);
+                exact_sparse_linear_algebra_ff_32(mat, kernel, st);
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
                             mat, bs, hcmm, st);
+                    bs->ld  +=  mat->np;
+                    update_lm(bs, bht, st);
                 }
-                /* in the application phase round counting
-                * starts at 0, so that's OK */
-                trace->rd[trace->rld++] = trace->ld;
-
                 st->nr_kernel_elts  +=  kernel->ld;
                 free_kernel_coefficients(kernel);
-                update_basis(ps, bs, bht, uht, st, mat->np, 1);
                 kernel->ld  = 0;
                 /* all rows in mat are now polynomials in the basis,
                  * so we do not need the rows anymore */
@@ -808,7 +810,7 @@ bs_t *f4sat_trace_learning_phase(
         ht_t * tht,               /* trace hash table for multipliers */
         const bs_t * const ggb,   /* global basis */
         const bs_t * const gsat,  /* global saturation element */
-        ht_t *gbht,               /* global basis hash table, generated
+        ht_t **gbhtp,             /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
         stat_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
@@ -821,6 +823,8 @@ bs_t *f4sat_trace_learning_phase(
     rt0 = realtime();
 
     int32_t round, i, j;
+    /* current quotient basis up to max lm degree in intermediate basis */
+    hm_t *qb    = NULL;
 
     /* global saturation data */
     len_t sat_test  = 0;
@@ -845,7 +849,7 @@ bs_t *f4sat_trace_learning_phase(
     stat_t *st  = copy_statistics(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
-    ht_t *bht   = gbht;
+    ht_t *bht   = *gbhtp;
 
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
@@ -866,14 +870,19 @@ bs_t *f4sat_trace_learning_phase(
     /* reset bs->ld for first update process */
     bs->ld  = 0;
 
+    /* move input generators to basis and generate first spairs.
+     * always check redundancy since input generators may be redundant
+     * even so they are homogeneous. */
+    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
     if (st->info_level > 1) {
         printf("Learning phase with prime p = %d\n", fc);
         printf("\ndeg     sel   pairs        mat          density \
-                new data             time(rd)\n");
+          new data             time(rd)\n");
         printf("-------------------------------------------------\
-                ----------------------------------------\n");
+----------------------------------------\n");
     }
     for (round = 1; ps->ld > 0; ++round) {
         rrt0  = realtime();
@@ -893,6 +902,7 @@ bs_t *f4sat_trace_learning_phase(
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
                     mat, bs, bht, sht, hcm, st);
+            sat_test++;
         }
         clean_hash_table(sht);
         /* add lead monomials to trace, stores hashes in basis hash
@@ -979,11 +989,15 @@ bs_t *f4sat_trace_learning_phase(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (kernel->ld > 0) {
+                    if (st->info_level > 1) {
+                        printf("\n                                               ");
+                    }
                     clear_matrix(mat);
                     /* interreduce kernel */
                     copy_kernel_to_matrix(mat, kernel, sat->ld);
                     /* linear algebra, depending on choice, see set_function_pointers() */
-                    linear_algebra(mat, kernel, st);
+                    probabilistic_sparse_linear_algebra_ff_32(mat, kernel, st);
+                    /* linear_algebra(mat, kernel, st); */
                     /* columns indices are mapped back to exponent hashes */
                     if (mat->np > 0) {
                         convert_sparse_matrix_rows_to_basis_elements_use_sht(
@@ -998,13 +1012,17 @@ bs_t *f4sat_trace_learning_phase(
                     }
                     /* in the application phase round counting
                      * starts at 0, so that's OK */
-                    trace->rd[trace->rld++] = trace->ld;
+                    trace->rd[trace->rld]     = trace->ld-1;
+                    trace->deg[trace->rld++]  = sat_deg;
 
                     st->nr_kernel_elts  +=  kernel->ld;
                     sat_test  = 0;
                     free_kernel_coefficients(kernel);
                     update_basis(ps, bs, bht, uht, st, mat->np, 1);
                     kernel->ld  = 0;
+                    if (st->info_level > 1) {
+                        printf("   ");
+                    }
                 }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(
@@ -1096,6 +1114,8 @@ end_sat_step:
     free(hcm);
     free(hcmm);
     free(qb);
+    *gbhtp = bht;
+
     if (sht != NULL) {
         free_hash_table(&sht);
     }

@@ -4659,16 +4659,16 @@ restart:
 
             int success = 0;
 
-/*             initialize generators of ideal, note the "gens->ngens-normal_form" which
- *             means that we only take the first nr_gens-normal_form generators from
- *             the input file, the last normal_form polynomial in the file will
- *             be reduced w.r.t. the basis
- *
- *             NOTE: There is a little hack here, instead of gens->field_char we
- *             give 1073741827 as parameter, which ensures that all F4 internal
- *             routines are the 32-bit implementations (since nf is at the moment
- *             only implemented for 32-bit elements). Later on we set st-fc by hand
- *             to the correct field characteristic. */
+            /*             initialize generators of ideal, note the "gens->ngens-normal_form" which
+             *             means that we only take the first nr_gens-normal_form generators from
+             *             the input file, the last normal_form polynomial in the file will
+             *             be reduced w.r.t. the basis
+             *
+             *             NOTE: There is a little hack here, instead of gens->field_char we
+             *             give 1073741827 as parameter, which ensures that all F4 internal
+             *             routines are the 32-bit implementations (since nf is at the moment
+             *             only implemented for 32-bit elements). Later on we set st-fc by hand
+             *             to the correct field characteristic. */
             success = initialize_f4_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, gens->nvars,
@@ -4679,9 +4679,9 @@ restart:
 
             st->fc  = gens->field_char;
             if(info_level){
-              fprintf(stderr,
-                      "NOTE: Field characteristic is now corrected to %u\n",
-                      st->fc);
+                fprintf(stderr,
+                        "NOTE: Field characteristic is now corrected to %u\n",
+                        st->fc);
             }
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
@@ -4738,7 +4738,7 @@ restart:
                     update_ht, la_option, info_level, print_gb,
                     files);
             if (b == 0) {
-              //When dquot = 1 
+                //When dquot = 1 
                 if(files->out_file != NULL){
                     FILE *ofile = fopen(files->out_file, "a");
                     display_fglm_param_maple(ofile, param);
@@ -4820,16 +4820,16 @@ restart:
 
             int success = 0;
 
-/*             initialize generators of ideal, note the "gens->ngens-normal_form" which
- *             means that we only take the first nr_gens-normal_form generators from
- *             the input file, the last normal_form polynomial in the file will
- *             be reduced w.r.t. the basis
- *
- *             NOTE: There is a little hack here, instead of gens->field_char we
- *             give 1073741827 as parameter, which ensures that all F4 internal
- *             routines are the 32-bit implementations (since nf is at the moment
- *             only implemented for 32-bit elements). Later on we set st-fc by hand
- *             to the correct field characteristic. */
+            /*             initialize generators of ideal, note the "gens->ngens-normal_form" which
+             *             means that we only take the first nr_gens-normal_form generators from
+             *             the input file, the last normal_form polynomial in the file will
+             *             be reduced w.r.t. the basis
+             *
+             *             NOTE: There is a little hack here, instead of gens->field_char we
+             *             give 1073741827 as parameter, which ensures that all F4 internal
+             *             routines are the 32-bit implementations (since nf is at the moment
+             *             only implemented for 32-bit elements). Later on we set st-fc by hand
+             *             to the correct field characteristic. */
             success = initialize_f4_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, gens->nvars,
@@ -4840,9 +4840,9 @@ restart:
 
             st->fc  = gens->field_char;
             if(info_level){
-              fprintf(stderr,
-                      "NOTE: Field characteristic is now corrected to %u\n",
-                      st->fc);
+                fprintf(stderr,
+                        "NOTE: Field characteristic is now corrected to %u\n",
+                        st->fc);
             }
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
@@ -4892,70 +4892,70 @@ restart:
                     stdout, normal_form, tbr->lml, tbr, bht, st, gens->vnames, 0);
 
             if (normal_form_matrix > 0) {
-            /* sht and hcm will store the union of the support
-             * of all normal forms in tbr. */
-            ht_t *sht   = initialize_secondary_hash_table(bht, st);
-            hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
-            mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
+                /* sht and hcm will store the union of the support
+                 * of all normal forms in tbr. */
+                ht_t *sht   = initialize_secondary_hash_table(bht, st);
+                hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
+                mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
-            printf("\nStarts computation of normal form matrix\n");
-            get_normal_form_matrix(tbr, bht, normal_form,
-                    st, &sht, &hcm, &mat);
+                printf("\nStarts computation of normal form matrix\n");
+                get_normal_form_matrix(tbr, bht, normal_form,
+                        st, &sht, &hcm, &mat);
 
-            printf("\n\nLength of union of support of all normal forms: %u\n",
-                    mat->nc);
+                printf("\n\nLength of union of support of all normal forms: %u\n",
+                        mat->nc);
 
-            printf("\nUnion of support, sorted by decreasing monomial order:\n");
-            for (len_t k = 0; k < mat->nc; ++k) {
-                for (len_t l = 0; l < sht->nv; ++l) {
-                    printf("%2u ", sht->ev[hcm[k]][l]);
-                }
-                printf("\n");
-            }
-
-            /* sparse represented matrix of normal forms, note that the column entries
-             * of the rows are not sorted, but you can do so using any sort algorithm */
-            printf("\nMatrix of normal forms (sparse format, note that entries are\n");
-            printf("NOT completely sorted by column index):\n");
-            int64_t nterms  = 0;
-            for (len_t k = 0; k < mat->nr; ++k) {
-                printf("row %u | ", k);
-                for (len_t l = 0; l < mat->tr[k][LENGTH]; ++l) {
-                    printf("%u at %u, ",
-                            tbr->cf_32[mat->tr[k][COEFFS]][l],
-                            mat->tr[k][l+OFFSET]);
-                }
-                printf("\n");
-                nterms  +=  mat->tr[k][LENGTH];
-            }
-            nterms  *=  100; /* for percentage */
-            double density = (double)nterms / (double)mat->nr / (double)mat->nc;
-            printf("\nMatrix of normal forms (dense format)\n");
-            cf32_t *dr  = (cf32_t *)malloc(
-                    (unsigned long)mat->nc * sizeof(cf32_t));
-            for (len_t k = 0; k < mat->nr; ++k) {
-                memset(dr, 0, (unsigned long)mat->nc * sizeof(cf32_t));
-                printf("row %u | ", k);
-                for (len_t l = 0; l < mat->tr[k][LENGTH]; ++l) {
-                    dr[mat->tr[k][l+OFFSET]]  =
-                        tbr->cf_32[mat->tr[k][COEFFS]][l];
-                }
-                for (len_t l = 0; l < mat->nc; ++l) {
-                    printf("%u, ", dr[l]);
-                }
-                printf("\n");
-            }
-            printf("density of matrix: %.2f%%\n", density);
-                    for (len_t k = 0; k < mat->nr; ++k) {
-                        free(mat->tr[k]);
+                printf("\nUnion of support, sorted by decreasing monomial order:\n");
+                for (len_t k = 0; k < mat->nc; ++k) {
+                    for (len_t l = 0; l < sht->nv; ++l) {
+                        printf("%2u ", sht->ev[hcm[k]][l]);
                     }
-            free(mat);
-            mat = NULL;
-            free(hcm);
-            hcm = NULL;
-            if (sht != NULL) {
-                free_hash_table(&sht);
-            }
+                    printf("\n");
+                }
+
+                /* sparse represented matrix of normal forms, note that the column entries
+                 * of the rows are not sorted, but you can do so using any sort algorithm */
+                printf("\nMatrix of normal forms (sparse format, note that entries are\n");
+                printf("NOT completely sorted by column index):\n");
+                int64_t nterms  = 0;
+                for (len_t k = 0; k < mat->nr; ++k) {
+                    printf("row %u | ", k);
+                    for (len_t l = 0; l < mat->tr[k][LENGTH]; ++l) {
+                        printf("%u at %u, ",
+                                tbr->cf_32[mat->tr[k][COEFFS]][l],
+                                mat->tr[k][l+OFFSET]);
+                    }
+                    printf("\n");
+                    nterms  +=  mat->tr[k][LENGTH];
+                }
+                nterms  *=  100; /* for percentage */
+                double density = (double)nterms / (double)mat->nr / (double)mat->nc;
+                printf("\nMatrix of normal forms (dense format)\n");
+                cf32_t *dr  = (cf32_t *)malloc(
+                        (unsigned long)mat->nc * sizeof(cf32_t));
+                for (len_t k = 0; k < mat->nr; ++k) {
+                    memset(dr, 0, (unsigned long)mat->nc * sizeof(cf32_t));
+                    printf("row %u | ", k);
+                    for (len_t l = 0; l < mat->tr[k][LENGTH]; ++l) {
+                        dr[mat->tr[k][l+OFFSET]]  =
+                            tbr->cf_32[mat->tr[k][COEFFS]][l];
+                    }
+                    for (len_t l = 0; l < mat->nc; ++l) {
+                        printf("%u, ", dr[l]);
+                    }
+                    printf("\n");
+                }
+                printf("density of matrix: %.2f%%\n", density);
+                for (len_t k = 0; k < mat->nr; ++k) {
+                    free(mat->tr[k]);
+                }
+                free(mat);
+                mat = NULL;
+                free(hcm);
+                hcm = NULL;
+                if (sht != NULL) {
+                    free_hash_table(&sht);
+                }
             }
             /* free and clean up */
             if (bs != NULL) {
@@ -4974,155 +4974,333 @@ restart:
         }
     }
     else{
-        int dim = - 2;
-        long dquot = -1;
+        if (saturate == 1) {
+            /* timings */
+            double ct0, ct1, rt0, rt1;
+            ct0 = cputime();
+            rt0 = realtime();
+            const uint32_t prime_start = pow(2, 30);
+            const int32_t nr_primes = nr_threads;
 
-        b = real_msolve_qq(*mpz_paramp, 
-                           &param,
-                           &dim,
-                           &dquot,
-                           nb_real_roots_ptr,
-                           real_roots_ptr,
-                           real_pts_ptr,
-                           gens,
-                           initial_hts, nr_threads, max_pairs, update_ht,
-                           la_option, info_level, print_gb,
-                           generate_pbm, precision, files, round, get_param);
+            /* data structures for basis, hash table and statistics */
+            bs_t *sat_qq   = NULL;
 
-        if(b == 0){
-            if(dim == 0 && dquot > 0){
-                (*mpz_paramp)->nvars  = gens->nvars;
-                if(files->out_file != NULL){
-                    FILE *ofile = fopen(files->out_file, "a+");
-                    if (get_param >= 1) {
-                      mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
-                    }
-                    if(get_param <= 1){
-                      if(get_param){
-                        fprintf(ofile, ",");
-                      }
-                      display_real_points(
-                                          ofile, *real_pts_ptr, *nb_real_roots_ptr);
-                    }
-                    fprintf(ofile, ":\n");
-                    fclose(ofile);
-                }
-                else{
-                    if (get_param >= 1) {
-                      mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
-                    }
-                    if(get_param <= 1){
-                      if(get_param){
-                        fprintf(stdout, ",");
-                      }
-                      display_real_points(stdout, *real_pts_ptr,
-                                          *nb_real_roots_ptr);
-                    }
-                    fprintf(stdout, ":\n");
+            /* initialize stuff */
+            stat_t *st  = initialize_statistics();
+
+            /* checks and set all meta data. if a nonzero value is returned then
+             * some of the input data is corrupted. */
+            if (check_and_set_meta_data_trace(st, gens->lens, gens->exps, (void *)gens->mpz_cfs, gens->field_char,
+                        0, gens->nvars, gens->ngens-saturate, initial_hts, nr_threads,
+                        max_pairs, update_ht, la_option, 1, prime_start,
+                        nr_primes, 0, info_level)) {
+                free(st);
+                return -3;
+            }
+
+            printf("fc %u, ngens %u\n", gens->field_char, gens->ngens);
+            /* lucky primes */
+            primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
+
+            /*******************
+             * initialize basis
+             *******************/
+            bs_t *bs_qq = initialize_basis(st->ngens);
+            /* initialize basis hash table, update hash table, symbolic hash table */
+            ht_t *bht = initialize_basis_hash_table(st);
+            /* hash table to store the hashes of the multiples of
+             * the basis elements stored in the trace */
+            ht_t *tht = initialize_secondary_hash_table(bht, st);
+            /* read in ideal, move coefficients to integers */
+            import_julia_data(bs_qq, bht, st, gens->lens, gens->exps, (void *)gens->mpz_cfs);
+
+            if (st->info_level > 0) {
+                print_initial_statistics(stderr, st);
+            }
+
+            /* for faster divisibility checks, needs to be done after we have
+             * read some input data for applying heuristics */
+            calculate_divmask(bht);
+
+            /* sort initial elements, smallest lead term first */
+            sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
+                    initial_input_cmp, bht);
+            remove_content_of_initial_basis(bs_qq);
+
+
+            /* generate lucky prime numbers */
+            generate_lucky_primes(lp, bs_qq, st->prime_start, st->nprimes);
+
+            /* generate array to store modular bases */
+            bs_t **bs = (bs_t **)calloc((unsigned long)st->nprimes, sizeof(bs_t *));
+            int *bad_primes = calloc((unsigned long)st->nprimes, sizeof(int));
+
+            /* initialize tracer */
+            trace_t *trace  = initialize_trace();
+
+            srand(time(0));
+            uint32_t prime = next_prime(1<<30);
+            prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+            while(is_lucky_prime_ui(prime, bs_qq)){
+                prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+            }
+
+            uint32_t primeinit = prime;
+            lp->p[0] = primeinit;
+
+
+            if (is_gb == 1) {
+                for (len_t k = 0; k < bs_qq->ld; ++k) {
+                    bs_qq->lmps[k] = k;
+                    bs_qq->lm[k]   = bht->hd[bs_qq->hm[k][OFFSET]].sdm;
+                    bs_qq->lml     = bs_qq->ld;
                 }
             }
-            if(dquot == 0){
+            sat_qq = initialize_basis(2*saturate);
+            import_julia_data_nf_qq(
+                    sat_qq, bht, st, gens->ngens-saturate, gens->ngens,
+                    gens->lens, gens->exps, (void *)gens->mpz_cfs);
+            sat_qq->ld = sat_qq->lml  =  saturate;
+            /* normalize_initial_basis(tbr, st->fc); */
+            for (int k = 0; k < saturate; ++k) {
+                sat_qq->lmps[k]  = k; /* fix input element in tbr */
+            }
 
-                if(files->out_file != NULL){
-                    FILE *ofile2 = fopen(files->out_file, "a+");
-                    if(get_param == 1){
-                      fprintf(ofile2, "[0, %d, 0, [0, [1]]],", gens->nvars);
+            /* compute a gb for initial generators */
+            bs_t *test  = f4sat_trace_learning_phase(
+                    trace,
+                    tht,
+                    bs_qq,
+                    sat_qq,
+                    &bht,
+                    st,
+                    lp->p[0]);
+
+            /* int64_t nb  = export_results_from_f4(bld, blen, bexp,
+             *         bcf, &bs, &bht, &st); */
+
+            /* timings */
+            ct1 = cputime();
+            rt1 = realtime();
+            st->overall_ctime = ct1 - ct0;
+            st->overall_rtime = rt1 - rt0;
+
+            if (st->info_level > 1) {
+                print_final_statistics(stderr, st);
+            }
+            if(info_level){
+                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+            }
+
+            int rerun = 1, nprimes = 1, mcheck =1;
+
+            int i;
+
+            ht_t *lht = copy_hash_table(bht, st);
+
+            int nbdoit = 1;
+            int doit = 1;
+            int prdone = 0;
+            prime = next_prime(1<<30);
+
+            while(rerun == 1 || mcheck == 1){
+
+                /* generate lucky prime numbers */
+                if(prdone % nbdoit == 0){
+                    doit=1;
+                }
+                else{
+                    doit = 0;
+                }
+                prime = next_prime(prime);
+                lp->p[0] = prime;
+                while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+                    prime = next_prime(prime);
+                    lp->p[0] = prime;
+                }
+
+                for(len_t i = 1; i < st->nprimes; i++){
+                    prime = next_prime(prime);
+                    lp->p[i] = prime;
+                    while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+                        prime = next_prime(prime);
+                        lp->p[i] = prime;
                     }
-                    display_real_points_middle(
-                                   stdout, *real_pts_ptr, *nb_real_roots_ptr);
-                    fclose(ofile2);
                 }
-                else{
-                  if(get_param == 1){
-                    fprintf(stdout, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
-                  }
-                  display_real_points_middle(
-                                   stdout, *real_pts_ptr, *nb_real_roots_ptr);
+                prime = lp->p[st->nprimes - 1];
+
+                double ca0;
+
+                double stf4 = 0;
+
+                for (i = 0; i < st->nprimes; ++i){
+                    ca0 = realtime();
+                    bs[i] = f4sat_trace_application_phase(
+                            trace,
+                            tht,
+                            bs_qq,
+                            sat_qq,
+                            lht,
+                            st,
+                            lp->p[i]);
+
+                    stf4 = realtime()-ca0;
+                    printf("F4 trace timing %13.2f\n", stf4);
+                    printf("bs[%u]->lml = %u\n", i, bs[i]->lml);
                 }
             }
-            if(dim > 0){
-                fprintf(stderr, "The ideal has positive dimension\n");
-                if(files->out_file != NULL){
-                    FILE *ofile2 = fopen(files->out_file, "a+");
-                    //1 because dim is >0
-                    fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
-                    fclose(ofile2);
+            return 0;
+        } else {
+            int dim = - 2;
+            long dquot = -1;
+
+            b = real_msolve_qq(*mpz_paramp, 
+                    &param,
+                    &dim,
+                    &dquot,
+                    nb_real_roots_ptr,
+                    real_roots_ptr,
+                    real_pts_ptr,
+                    gens,
+                    initial_hts, nr_threads, max_pairs, update_ht,
+                    la_option, info_level, print_gb,
+                    generate_pbm, precision, files, round, get_param);
+
+            if(b == 0){
+                if(dim == 0 && dquot > 0){
+                    (*mpz_paramp)->nvars  = gens->nvars;
+                    if(files->out_file != NULL){
+                        FILE *ofile = fopen(files->out_file, "a+");
+                        if (get_param >= 1) {
+                            mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
+                        }
+                        if(get_param <= 1){
+                            if(get_param){
+                                fprintf(ofile, ",");
+                            }
+                            display_real_points(
+                                    ofile, *real_pts_ptr, *nb_real_roots_ptr);
+                        }
+                        fprintf(ofile, ":\n");
+                        fclose(ofile);
+                    }
+                    else{
+                        if (get_param >= 1) {
+                            mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
+                        }
+                        if(get_param <= 1){
+                            if(get_param){
+                                fprintf(stdout, ",");
+                            }
+                            display_real_points(stdout, *real_pts_ptr,
+                                    *nb_real_roots_ptr);
+                        }
+                        fprintf(stdout, ":\n");
+                    }
                 }
-                else{
-                    fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
+                if(dquot == 0){
+
+                    if(files->out_file != NULL){
+                        FILE *ofile2 = fopen(files->out_file, "a+");
+                        if(get_param == 1){
+                            fprintf(ofile2, "[0, %d, 0, [0, [1]]],", gens->nvars);
+                        }
+                        display_real_points_middle(
+                                stdout, *real_pts_ptr, *nb_real_roots_ptr);
+                        fclose(ofile2);
+                    }
+                    else{
+                        if(get_param == 1){
+                            fprintf(stdout, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
+                        }
+                        display_real_points_middle(
+                                stdout, *real_pts_ptr, *nb_real_roots_ptr);
+                    }
+                }
+                if(dim > 0){
+                    fprintf(stderr, "The ideal has positive dimension\n");
+                    if(files->out_file != NULL){
+                        FILE *ofile2 = fopen(files->out_file, "a+");
+                        //1 because dim is >0
+                        fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
+                        fclose(ofile2);
+                    }
+                    else{
+                        fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
+                    }
                 }
             }
-        }
-        if (b == 1) {
-            free(bld);
-            bld = NULL;
-            free(blen);
-            blen  = NULL;
-            free(bexp);
-            bexp  = NULL;
-            free(bcf);
-            bcf = NULL;
-            free(param);
-            param = NULL;
-            if (genericity_handling > 0) {
-                if (change_variable_order_in_input_system(gens, info_level)) {
+            if (b == 1) {
+                free(bld);
+                bld = NULL;
+                free(blen);
+                blen  = NULL;
+                free(bexp);
+                bexp  = NULL;
+                free(bcf);
+                bcf = NULL;
+                free(param);
+                param = NULL;
+                if (genericity_handling > 0) {
+                    if (change_variable_order_in_input_system(gens, info_level)) {
+                        goto restart;
+                    }
+                    if (genericity_handling == 2) {
+                        if (add_linear_form_to_input_system(gens, info_level)) {
+                            goto restart;
+                        }
+                    }
+                }
+                fprintf(stderr, "\n=====> Computation failed <=====\n");
+                fprintf(stderr, "Try to add a random linear form with ");
+                fprintf(stderr, "a new variable\n");
+                fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
+                fprintf(stderr, "This will\n");
+                fprintf(stderr, "be done automatically if you run msolve with option\n");
+                fprintf(stderr, "\"-g2\" which is the default.\n");
+                (*mpz_paramp)->dim  = -1;
+            }
+            if(b==-2){
+                fprintf(stderr, "Characteristic of the field here shouldn't be positive\n");
+                (*mpz_paramp)->dim = -2;
+            }
+            if(b==-3){
+                fprintf(stderr, "Problem when checking meta data\n");
+                (*mpz_paramp)->dim  = -3;
+            }
+            if(b == -4){
+                fprintf(stderr, "Bad prime chosen initially\n");
+                goto restart;
+                /* (*mpz_paramp)->dim  = -4; */
+            }
+            if(b == 2){
+                free(bld);
+                bld = NULL;
+                free(blen);
+                blen  = NULL;
+                free(bexp);
+                bexp  = NULL;
+                free(bcf);
+                bcf = NULL;
+                free(param);
+                param = NULL;
+                round++;
+                if (add_random_linear_form_to_input_system(gens, info_level)) {
                     goto restart;
                 }
-                if (genericity_handling == 2) {
-                    if (add_linear_form_to_input_system(gens, info_level)) {
-                      goto restart;
-                    }
-                }
             }
-            fprintf(stderr, "\n=====> Computation failed <=====\n");
-            fprintf(stderr, "Try to add a random linear form with ");
-            fprintf(stderr, "a new variable\n");
-            fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
-            fprintf(stderr, "This will\n");
-            fprintf(stderr, "be done automatically if you run msolve with option\n");
-            fprintf(stderr, "\"-g2\" which is the default.\n");
-            (*mpz_paramp)->dim  = -1;
         }
-        if(b==-2){
-            fprintf(stderr, "Characteristic of the field here shouldn't be positive\n");
-           (*mpz_paramp)->dim = -2;
-        }
-        if(b==-3){
-            fprintf(stderr, "Problem when checking meta data\n");
-            (*mpz_paramp)->dim  = -3;
-        }
-        if(b == -4){
-            fprintf(stderr, "Bad prime chosen initially\n");
-            goto restart;
-            /* (*mpz_paramp)->dim  = -4; */
-        }
-        if(b == 2){
-          free(bld);
-          bld = NULL;
-          free(blen);
-          blen  = NULL;
-          free(bexp);
-          bexp  = NULL;
-          free(bcf);
-          bcf = NULL;
-          free(param);
-          param = NULL;
-          round++;
-          if (add_random_linear_form_to_input_system(gens, info_level)) {
-            goto restart;
-          }
-        }
+
+        free(bld);
+        free(blen);
+        free(bexp);
+        free(bcf);
+
+        /* get parametrization */
+        *paramp     = param;
+
+        return !(b==0);
     }
-
-    free(bld);
-    free(blen);
-    free(bexp);
-    free(bcf);
-
-    /* get parametrization */
-    *paramp     = param;
-
-    return !(b==0);
 }
 
 static void export_julia_rational_parametrization_qq(

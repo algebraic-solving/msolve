@@ -657,6 +657,9 @@ int core_f4sat(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (kernel->ld > 0) {
+                    if (st->info_level > 1) {
+                        printf("\n                                               ");
+                    }
                     clear_matrix(mat);
                     /* interreduce kernel */
                     copy_kernel_to_matrix(mat, kernel, sat->ld);
@@ -672,6 +675,9 @@ int core_f4sat(
                     free_kernel_coefficients(kernel);
                     update_basis(ps, bs, bht, uht, st, mat->np, 1);
                     kernel->ld  = 0;
+                    if (st->info_level > 1) {
+                        printf("   ");
+                    }
                 }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(

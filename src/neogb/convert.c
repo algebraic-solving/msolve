@@ -537,8 +537,30 @@ static void convert_sparse_matrix_rows_to_basis_elements(
             }
             break;
         case 32:
+            int ii;
+            long power_t;
+            exp_t *e  = bht->ev[0];
             for (i = 0; i < np; ++i) {
+                power_t = 0;
                 insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
+/*                 for (ii = OFFSET; ii < rows[i][LENGTH]+OFFSET; ++ii) {
+ *                     if (bht->ev[rows[i][ii]][bht->nv-1] > 0) {
+ *                         power_t = power_t > bht->ev[rows[i][ii]][bht->nv-1] ? power_t : bht->ev[rows[i][ii]][bht->nv-1];
+ *                     }
+ *                     else {
+ *                         power_t  =  -1;
+ *                         break;
+ *                     }
+ *                 }
+ *                 if (power_t != -1) {
+ *                     for (ii = OFFSET; ii < rows[i][LENGTH]+OFFSET; ++ii) {
+ *                         memcpy(e, bht->ev[rows[i][ii]], (unsigned long)bht->nv * sizeof(exp_t));
+ *                         e[bht->nv-1] -= power_t;
+ *                         rows[i][ii] = insert_in_hash_table(e, bht);
+ *
+ *                     }
+ *                     printf("power_t %ld\n", power_t);
+ *                 } */
                 if (bht->hd[rows[i][OFFSET]].deg == 0) {
                     bs->constant  = 1;
                 }

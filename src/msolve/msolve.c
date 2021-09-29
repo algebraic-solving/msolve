@@ -5103,7 +5103,7 @@ restart:
             int prdone = 0;
             prime = next_prime(1<<30);
 
-            while(rerun == 1 || mcheck == 1){
+            /* while(rerun == 1 || mcheck == 1){ */
 
                 /* generate lucky prime numbers */
                 if(prdone % nbdoit == 0){
@@ -5148,7 +5148,7 @@ restart:
                     printf("F4 trace timing %13.2f\n", stf4);
                     printf("bs[%u]->lml = %u\n", i, bs[i]->lml);
                 }
-            }
+            /* } */
             return 0;
         } else {
             int dim = - 2;

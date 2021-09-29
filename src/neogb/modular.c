@@ -1103,14 +1103,14 @@ end_sat_step:
      * thus we need pointers */
     reduce_basis_no_hash_table_switching(bs, mat, &hcm, bht, sht, st);
 
-    printf("basis has  %u elements.\n", bs->lml);
-
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = 0; j < bht->nv; ++j) {
-            printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        }
-        printf("\n");
-    }
+/*     printf("basis has  %u elements.\n", bs->lml);
+ *
+ *     for (i = 0; i < bs->lml; ++i) {
+ *         for (j = 0; j < bht->nv; ++j) {
+ *             printf("%u ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+ *         }
+ *         printf("\n");
+ *     } */
     /* get basis meta data */
     st->size_basis  = bs->lml;
     for (i = 0; i < bs->lml; ++i) {

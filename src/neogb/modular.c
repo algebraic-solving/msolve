@@ -1020,7 +1020,7 @@ bs_t *f4sat_trace_learning_phase(
                         /* in the application phase round counting
                          * starts at 0, so that's OK */
                         trace->rd[trace->rld]     = trace->ld-1;
-                        trace->deg[trace->rld++]  = sat_deg;
+                        trace->deg[trace->rld++]  = ii;
 
                         st->nr_kernel_elts  +=  kernel->ld;
                         sat_test  = 0;

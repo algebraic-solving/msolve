@@ -2818,7 +2818,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   }
 
   /* lucky primes */
-  primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
+  primes_t *lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t));
 
   /*******************
   * initialize basis
@@ -2846,18 +2846,18 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   remove_content_of_initial_basis(bs_qq);
 
   /* generate lucky prime numbers */
-  generate_lucky_primes(lp, bs_qq, st->prime_start, st->nprimes);
+  generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
 
   /* generate array to store modular bases */
-  bs_t **bs = (bs_t **)calloc((unsigned long)st->nprimes, sizeof(bs_t *));
+  bs_t **bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
 
-  param_t **nmod_params =  (param_t **)calloc((unsigned long)st->nprimes,
+  param_t **nmod_params =  (param_t **)calloc((unsigned long)st->nthrds,
                                               sizeof(param_t *));
 
-  int *bad_primes = calloc((unsigned long)st->nprimes, sizeof(int));
+  int *bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
 
   /* initialize tracers */
-  trace_t **btrace = (trace_t **)calloc(st->nprimes,
+  trace_t **btrace = (trace_t **)calloc(st->nthrds,
                                        sizeof(trace_t *));
   btrace[0]  = initialize_trace();
   /* initialization of other tracers is done through duplication */
@@ -2871,35 +2871,32 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   uint32_t primeinit = prime;
   lp->p[0] = primeinit;
-  lp->p[0] = 1116049349;
-  primeinit = 1116049349;
-  fprintf(stderr, "PRIME IS FIXED!!\n");
 
-  sp_matfglm_t **bmatrix = (sp_matfglm_t **)calloc(st->nprimes,
+  sp_matfglm_t **bmatrix = (sp_matfglm_t **)calloc(st->nthrds,
                                                   sizeof(sp_matfglm_t *));
 
-  int32_t **bdiv_xn = (int32_t **)calloc(st->nprimes, sizeof(int32_t *));
-  int32_t **blen_gb_xn = (int32_t **)calloc(st->nprimes, sizeof(int32_t *));
-  int32_t **bstart_cf_gb_xn = (int32_t **)calloc(st->nprimes, sizeof(int32_t *));
+  int32_t **bdiv_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
+  int32_t **blen_gb_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
+  int32_t **bstart_cf_gb_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
 
-  fglm_data_t **bdata_fglm = (fglm_data_t **)calloc(st->nprimes,
+  fglm_data_t **bdata_fglm = (fglm_data_t **)calloc(st->nthrds,
                                                     sizeof(fglm_data_t *));
-  fglm_bms_data_t **bdata_bms = (fglm_bms_data_t **)calloc(st->nprimes,
+  fglm_bms_data_t **bdata_bms = (fglm_bms_data_t **)calloc(st->nthrds,
                                                           sizeof(fglm_bms_data_t *));
-  int32_t *num_gb = (int32_t *)calloc(st->nprimes, sizeof(int32_t));
-  int32_t **leadmons_ori = (int32_t **)calloc(st->nprimes, sizeof(int32_t *));
-  int32_t **leadmons_current = (int32_t**)calloc(st->nprimes, sizeof(int32_t *));
+  int32_t *num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));
+  int32_t **leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
+  int32_t **leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
 
   uint64_t bsz = 0;
 
   /* data for linear forms */
   long nlins = 0;
-  long *bnlins = (long *)malloc(sizeof(long) * st->nprimes);
-  uint64_t **blinvars = (uint64_t **)malloc(sizeof(uint64_t *) * st->nprimes);
+  long *bnlins = (long *)malloc(sizeof(long) * st->nthrds);
+  uint64_t **blinvars = (uint64_t **)malloc(sizeof(uint64_t *) * st->nthrds);
   uint64_t *linvars = calloc(bht->nv, sizeof(uint64_t));
   blinvars[0] = linvars;
-  uint32_t **lineqs_ptr = malloc(sizeof(uint32_t *) * st->nprimes);
-  uint64_t **bsquvars = (uint64_t **) malloc(sizeof(uint64_t *) * st->nprimes);
+  uint32_t **lineqs_ptr = malloc(sizeof(uint32_t *) * st->nthrds);
+  uint64_t **bsquvars = (uint64_t **) malloc(sizeof(uint64_t *) * st->nthrds);
   uint64_t *squvars = calloc(nr_vars-1, sizeof(uint64_t));
   bsquvars[0] = squvars;
 
@@ -2943,14 +2940,14 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   if(lmb_ori == NULL || success == 0) {
       /* print_msolve_message(stderr, 1); */
-    for(int i = 0; i < st->nprimes; i++){
+    for(int i = 0; i < st->nthrds; i++){
       free_trace(&btrace[i]);
     }
     free_shared_hash_data(bht);
     free_hash_table(&bht);
     free_hash_table(&tht);
 
-    for (i = 0; i < st->nprimes; ++i) {
+    for (i = 0; i < st->nthrds; ++i) {
       //      free_basis(&(bs[i]));
     }
     free(bs);
@@ -2982,7 +2979,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   }
 
   /* duplicate data for multi-threaded multi-mod computation */
-  duplicate_data_mthread_trace(st->nprimes, st, num_gb,
+  duplicate_data_mthread_trace(st->nthrds, st, num_gb,
                                leadmons_ori, leadmons_current,
                                btrace,
                                bdata_bms, bdata_fglm,
@@ -2992,19 +2989,20 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                bsquvars);
 
   /* copy of hash tables for tracer application */
-  ht_t **blht = (ht_t **)malloc((st->nprimes) * sizeof(ht_t *));
+  ht_t **blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
   blht[0] = bht;
-  for(int i = 1; i < st->nprimes; i++){
+  for(int i = 1; i < st->nthrds; i++){
     ht_t *lht = copy_hash_table(bht, st);
     blht[i] = lht;
   }
-  ht_t **btht = (ht_t **)malloc((st->nprimes) * sizeof(ht_t *));
+  ht_t **btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
   btht[0] = tht;
-  for(int i = 1; i < st->nprimes; i++){
+  for(int i = 1; i < st->nthrds; i++){
     btht[i] = copy_hash_table(tht, st);
   }
 
   normalize_nmod_param(nmod_params[0]);
+
 
   if(info_level){
     fprintf(stderr, "\nStarts trace based multi-modular computations\n");
@@ -3077,7 +3075,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       lp->p[0] = prime;
     }
 
-    for(len_t i = 1; i < st->nprimes; i++){
+    for(len_t i = 1; i < st->nthrds; i++){
       prime = next_prime(prime);
       lp->p[i] = prime;
       while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
@@ -3085,7 +3083,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
         lp->p[i] = prime;
       }
     }
-    prime = lp->p[st->nprimes - 1];
+    prime = lp->p[st->nthrds - 1];
 
     double ca0 = realtime();
 
@@ -3130,7 +3128,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       }
     }
 
-    for(int i = 0; i < st->nprimes; i++){
+    for(int i = 0; i < st->nthrds; i++){
       if(bad_primes[i] == 0){
         normalize_nmod_param(nmod_params[i]);
       }
@@ -3139,7 +3137,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     /* scrr measures time spent in ratrecon for modular images */
     double crr = 0, scrr = 0;
     /* CRT + rational reconstruction */
-    for(len_t i = 0; i < st->nprimes; i++){
+    for(len_t i = 0; i < st->nthrds; i++){
       if(bad_primes[i] == 0){
         if(rerun == 0){
           mcheck = check_param_modular(mpz_param, nmod_params[i], lp->p[i],
@@ -3233,7 +3231,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* free and clean up */
   free_shared_hash_data(bht);
-  for(int i = 0; i < st->nprimes; i++){
+  for(int i = 0; i < st->nthrds; i++){
     free_hash_table(blht+i);
     free_hash_table(btht+i);
   }
@@ -3242,7 +3240,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   //here we should clean nmod_params
 
-  for(i = 0; i < st->nprimes; ++i){
+  for(i = 0; i < st->nthrds; ++i){
     if (bs[i] != NULL) {
       free_basis(&(bs[i]));
     }
@@ -3265,8 +3263,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(blinvars[i]);
     free(lineqs_ptr[i]);
     free(bsquvars[i]);
-  }
-  for(i = 1; i < st->nprimes; i++){
   }
 
   free_basis(&(bs_qq));
@@ -3534,12 +3530,11 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
         }
     }
 
-    duplicate_data_mthread(st->nprimes, nr_vars, num_gb,
+    duplicate_data_mthread(st->nthrds, nr_vars, num_gb,
                            leadmons_ori, leadmons_current,
                            bdata_bms, bdata_fglm,
                            bstart_cf_gb_xn, blen_gb_xn, bdiv_xn,
                            bmatrix, nmod_params);
-
 
     if(info_level){
         fprintf(stderr, "\nStarts multi-modular computations based on probabilistic linear algebra\n");

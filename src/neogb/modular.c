@@ -233,7 +233,7 @@ bs_t *f4_trace_application_phase(
       generate_matrix_from_trace(mat, trace, round, bs, st, sht, bht, tht);
         if (st->info_level > 1) {
             printf("%5d", round+1);
-            printf("%6u ", sht->hd[mat->tr[0][OFFSET]].deg);
+            printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
             fflush(stdout);
         }
       convert_hashes_to_columns(&hcm, mat, st, sht);
@@ -712,7 +712,7 @@ bs_t *f4sat_trace_application_phase(
         generate_matrix_from_trace(mat, trace, round, bs, st, sht, bht, tht);
         if (st->info_level > 1) {
             printf("%5d", round+1);
-            printf("%6u ", sht->hd[mat->tr[0][OFFSET]].deg);
+            printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG];
             fflush(stdout);
         }
         convert_hashes_to_columns(&hcm, mat, st, sht);
@@ -1156,7 +1156,7 @@ bs_t *f4sat_trace_learning_phase(
     sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
     sat->ld = 1;
 
-    next_deg  = 2*bht->hd[sat->hm[0][OFFSET]].deg;
+    next_deg  = 2*bht->ev[sat->hm[0][OFFSET]][DEG];
 
     /* normalize the copied basis */
     normalize_initial_basis(bs, fc);

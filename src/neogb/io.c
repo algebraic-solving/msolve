@@ -113,7 +113,7 @@ static void import_julia_data_ff_8(
         for (j = off; j < off+lens[i]; ++j) {
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[0]  +=  e[k+1];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -128,10 +128,10 @@ static void import_julia_data_ff_8(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][0];
+        deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][0]) {
+            if (deg != ht->ev[hm[j]][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -234,7 +234,7 @@ static void import_julia_data_ff_16(
         for (j = off; j < off+lens[i]; ++j) {
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[0]    +=  e[k+1];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -249,10 +249,10 @@ static void import_julia_data_ff_16(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][0];
+        deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][0]) {
+            if (deg != ht->ev[hm[j]][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -356,7 +356,7 @@ static void import_julia_data_ff_32(
         for (j = off; j < off+lens[i]; ++j) {
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[0]    +=  e[k+1];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -372,10 +372,10 @@ static void import_julia_data_ff_32(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][0];
+        deg = ht->ev[hm[OFFSET][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][0]) {
+            if (deg != ht->ev[hm[j]]DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -440,7 +440,7 @@ void import_julia_data_nf_ff_32(
         for (j = off; j < off+lens[i]; ++j) {
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[0]    +=  e[k+1];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -573,7 +573,7 @@ void import_julia_data_nf_qq(
         for (j = off; j < off+lens[i]; ++j) {
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[0]    +=  e[k+1];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
             mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
@@ -650,7 +650,7 @@ static void import_julia_data_qq(
         for (j = off; j < off+lens[i]; ++j) {
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[0]    +=  e[k+1];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
             mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
@@ -664,10 +664,10 @@ static void import_julia_data_qq(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][0];
+        deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][0]) {
+            if (deg != ht->ev[hm[j][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }

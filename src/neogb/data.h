@@ -56,6 +56,8 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 #define MULT    OFFSET-4  /* hash of multiplier (for tracing and saturation) */
 #define BINDEX  OFFSET-5  /* basis index of element (for tracing) */
 
+#define DEG 0             /* the first entry in each exponent vector
+                           * stores the degree */
 
 /* computational data */
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */

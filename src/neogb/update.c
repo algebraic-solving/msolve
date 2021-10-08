@@ -83,7 +83,7 @@ static void insert_and_update_spairs(
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
-    bs->mltdeg  = bs->mltdeg > bht->hd[nch].deg ?
+    bs->mltdeg  = bs->mltdeg > bht->eh[nch][0] ?
         bs->mltdeg : bht->hd[nch].deg;
 
     reinitialize_hash_table(uht, bl);

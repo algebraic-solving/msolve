@@ -193,9 +193,9 @@ static int spair_degree_cmp(
         void *htp
         )
 {
-    const hd_t *hd  = ((ht_t *)htp)->hd;
-    const deg_t da  = hd[((spair_t *)a)->lcm].deg;
-    const deg_t db  = hd[((spair_t *)b)->lcm].deg;
+    const hd_t *ev  = ((ht_t *)htp)->ev;
+    const deg_t da  = ev[((spair_t *)a)->lcm][DEG];
+    const deg_t db  = ev[((spair_t *)b)->lcm][DEG];
 
     return (da-db);
 }
@@ -225,8 +225,8 @@ static int initial_input_cmp_lex(
     /* lexicographical */
     const len_t nv  = ht->nv;
 
-    i = 0;
-    while(i < nv-1 && ea[i] == eb[i]) {
+    i = 1;
+    while(i < nv && ea[i] == eb[i]) {
         ++i;
     }
     return ea[i] - eb[i];
@@ -250,8 +250,8 @@ static int initial_gens_cmp_lex(
     /* lexicographical */
     const len_t nv  = ht->nv;
 
-    i = 0;
-    while(i < nv-1 && ea[i] == eb[i]) {
+    i = 1;
+    while(i < nv && ea[i] == eb[i]) {
         ++i;
     }
     return ea[i] - eb[i];
@@ -284,8 +284,8 @@ static int monomial_cmp_pivots_lex(
     /* lexicographical */
     const len_t nv  = ht->nv;
 
-    i = 0;
-    while(i < nv-1 && ea[i] == eb[i]) {
+    i = 1;
+    while(i < nv && ea[i] == eb[i]) {
         ++i;
     }
     return eb[i] - ea[i];
@@ -303,8 +303,8 @@ static inline int monomial_cmp_lex(
     const exp_t * const eb  = ht->ev[b];
     const len_t nv  = ht->nv;
 
-    i = 0;
-    while(i < nv-1 && ea[i] == eb[i]) {
+    i = 1;
+    while(i < nv && ea[i] == eb[i]) {
         ++i;
     }
     return ea[i] - eb[i];
@@ -334,8 +334,8 @@ static int spair_cmp_deglex(
     const hi_t lb   = ((spair_t *)b)->lcm;
     const ht_t *ht  = (ht_t *)htp;
 
-    if (ht->hd[la].deg != ht->hd[lb].deg) {
-        return (ht->hd[la].deg < ht->hd[lb].deg) ? -1 : 1;
+    if (ht->ev[la][DEG] != ht->ev[lb][DEG]) {
+        return (ht->ev[la][DEG] < ht->ev[lb][DEG]) ? -1 : 1;
     } else {
         return (int)monomial_cmp(la, lb, ht);
     }
@@ -360,24 +360,21 @@ static int initial_input_cmp_drl(
     const hm_t ha  = ((hm_t **)a)[0][OFFSET];
     const hm_t hb  = ((hm_t **)b)[0][OFFSET];
 
-    const deg_t da = ht->hd[ha].deg;
-    const deg_t db = ht->hd[hb].deg;
+    const exp_t * const ea  = ht->ev[ha];
+    const exp_t * const eb  = ht->ev[hb];
 
     /* DRL */
-    if (da < db) {
+    if (ea[DEG] < eb[DEG]) {
         return -1;
     } else {
-        if (da != db) {
+        if (ea[DEG] != eb[DEG]) {
             return 1;
         }
     }
 
-    const exp_t * const ea  = ht->ev[ha];
-    const exp_t * const eb  = ht->ev[hb];
-
     /* note: reverse lexicographical */
-    i = ht->nv - 1;
-    while (i > 0 && ea[i] == eb[i]) {
+    i = ht->nv;
+    while (i > 1 && ea[i] == eb[i]) {
         --i;
     }
     return eb[i] - ea[i];
@@ -395,24 +392,20 @@ static int initial_gens_cmp_drl(
     const hm_t ha  = **(hm_t **)a;
     const hm_t hb  = **(hm_t **)b;
 
-    const deg_t da = ht->hd[ha].deg;
-    const deg_t db = ht->hd[hb].deg;
-
+    const exp_t * const ea  = ht->ev[ha];
+    const exp_t * const eb  = ht->ev[hb];
     /* DRL */
-    if (da < db) {
+    if (ea[DEG] < eb[DEG]) {
         return 1;
     } else {
-        if (da != db) {
+        if (ea[DEG] != eb[DEG]) {
             return -1;
         }
     }
 
-    const exp_t * const ea  = ht->ev[ha];
-    const exp_t * const eb  = ht->ev[hb];
-
     /* note: reverse lexicographical */
-    i = ht->nv - 1;
-    while (i > 0 && ea[i] == eb[i]) {
+    i = ht->nv;
+    while (i > 1 && ea[i] == eb[i]) {
         --i;
     }
     return ea[i] - eb[i];
@@ -439,21 +432,21 @@ static int monomial_cmp_pivots_drl(
     }
 #endif
 
+    const exp_t * const ea  = ht->ev[a];
+    const exp_t * const eb  = ht->ev[b];
+
     /* then DRL */
-    if (ha.deg > hb.deg) {
+    if (ea[DEG] > eb[DEG]) {
         return -1;
     } else {
-        if (ha.deg != hb.deg) {
+        if (ea[DEG] != eb[DEG]) {
             return 1;
         }
     }
 
-    const exp_t * const ea  = ht->ev[a];
-    const exp_t * const eb  = ht->ev[b];
-
     /* note: reverse lexicographical */
-    i = ht->nv - 1;
-    while (i > 0 && ea[i] == eb[i]) {
+    i = ht->nv;
+    while (i > 1 && ea[i] == eb[i]) {
         --i;
     }
     return ea[i] - eb[i];
@@ -470,23 +463,21 @@ static inline int monomial_cmp_drl(
     if (a == b) {
         return 0;
     }
-    const deg_t da = ht->hd[a].deg;
-    const deg_t db = ht->hd[b].deg;
-
-    /* DRL */
-    if (da > db) {
-        return 1;
-    } else {
-        if (da != db) {
-            return -1;
-        }
-    }
 
     const exp_t * const ea  = ht->ev[a];
     const exp_t * const eb  = ht->ev[b];
 
-    i = ht->nv - 1;
-    while (i > 0 && ea[i] == eb[i]) {
+    /* DRL */
+    if (ea[DEG] > eb[DEG]) {
+        return 1;
+    } else {
+        if (ea[DEG] != eb[DEG]) {
+            return -1;
+        }
+    }
+
+    i = ht->nv;
+    while (i > 1 && ea[i] == eb[i]) {
         --i;
     }
     return eb[i] - ea[i];

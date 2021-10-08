@@ -37,7 +37,6 @@ static void select_all_spairs(
 {
     len_t i, j, k, l, nps, npd, nrr = 0, ntr = 0;
     hm_t *b;
-    deg_t d     = 0;
     len_t load  = 0;
     hi_t lcm;
     len_t *gens;
@@ -108,17 +107,16 @@ static void select_all_spairs(
         /* ev might change when enlarging the hash table during insertion of a new
             * row in the matrix, thus we have to reset elcm inside the for loop */
         elcm  = bht->ev[lcm];
-        d     = 0;
         b     = bs->hm[prev];
         eb    = bht->ev[b[OFFSET]];
-        for (l = 0; l < nv; ++l) {
-            etmp[l] = (exp_t)(elcm[l] - eb[l]);
-            d     +=  etmp[l];
+        for (l = 1; l <= nv; ++l) {
+            etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
+            etmp[DEG] +=  etmp[l];
         }
         const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
         /* note that we use index mat->nc and not mat->nr since for each new
          * lcm we add exactly one row to mat->rr */
-        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
         if (tht != NULL) { 
            rrows[nrr][BINDEX]  = prev;
@@ -151,12 +149,12 @@ static void select_all_spairs(
             d     = 0;
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
-            for (l = 0; l < nv; ++l) {
-                etmp[l] = (exp_t)(elcm[l] - eb[l]);
-                d     +=  etmp[l];
+            for (l = 1; l <= nv; ++l) {
+                etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
+                etmp[DEG] +=  etmp[l];
             }
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
-            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
             /* track trace information ? */
             if (tht != NULL) {
                 trows[ntr][BINDEX]  = prev;
@@ -180,7 +178,7 @@ static void select_all_spairs(
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
     st->num_rowsred +=  mat->nr - mat->nc;
-    st->current_deg =   d;
+    st->current_deg =   etmp[DEG];
 
     free(gens);
 
@@ -207,7 +205,6 @@ static void select_spairs_by_minimal_degree(
 {
     len_t i, j, k, l, md, nps, npd, nrr = 0, ntr = 0;
     hm_t *b;
-    deg_t d = 0;
     len_t load = 0;
     hi_t lcm;
     len_t *gens;
@@ -295,14 +292,14 @@ static void select_spairs_by_minimal_degree(
         d     = 0;
         b     = bs->hm[prev];
         eb    = bht->ev[b[OFFSET]];
-        for (l = 0; l < nv; ++l) {
-            etmp[l] = (exp_t)(elcm[l] - eb[l]);
-            d     +=  etmp[l];
+        for (l = 1; l <= nv; ++l) {
+            etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
+            etmp[DEG] +=  etmp[l];
         }
         const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
         /* note that we use index mat->nc and not mat->nr since for each new
          * lcm we add exactly one row to mat->rr */
-        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
         if (tht != NULL) { 
            rrows[nrr][BINDEX]  = prev;
@@ -335,12 +332,12 @@ static void select_spairs_by_minimal_degree(
             d     = 0;
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
-            for (l = 0; l < nv; ++l) {
-                etmp[l] = (exp_t)(elcm[l] - eb[l]);
-                d     +=  etmp[l];
+            for (l = 1; l <= nv; ++l) {
+                etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
+                etmp[DEG] +=  etmp[l];
             }
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
-            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
             /* track trace information ? */
             if (tht != NULL) {
                 trows[ntr][BINDEX]  = prev;
@@ -460,9 +457,8 @@ static void select_tbr(
          * const hi_t h    = sht->hd[mulh].val;
          * const deg_t d   = sht->hd[mulh].deg; */
         const hi_t h    = 0;
-        const deg_t d   = 0;
         trows[ntr++]    = multiplied_poly_to_matrix_row(
-                sht, bht, h, d, mul, b);
+                sht, bht, h, mul, b);
         mat->nr++;
     }
 }
@@ -505,13 +501,8 @@ start:
     }
     if (i < lml) {
         const hm_t *b = bs->hm[lmps[i]];
-        const deg_t d = hdd - hdb[b[OFFSET]].deg;
-        if (d < 0) {
-            i++;
-            goto start;
-        }
         const exp_t * const f = evb[b[OFFSET]];
-        for (k=0; k < nv; ++k) {
+        for (k=0; k <= nv; ++k) {
             etmp[k] = (exp_t)(e[k]-f[k]);
             if (etmp[k] < 0) {
                 i++;
@@ -524,7 +515,7 @@ start:
          *     printf("%u ", etmp[ii]);
          * }
          * printf("\n"); */
-        rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+        rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
         if (tht != NULL) {
             rows[rr][BINDEX]  = lmps[i];
@@ -633,7 +624,6 @@ static void generate_matrix_from_trace(
 
     len_t i, nr;
     hm_t *b;
-    deg_t d;
     exp_t *emul;
     hi_t h;
 
@@ -652,9 +642,8 @@ static void generate_matrix_from_trace(
         b     = bs->hm[td.rri[i++]];
         emul  = tht->ev[td.rri[i]];
         h     = tht->hd[td.rri[i]].val;
-        d     = tht->hd[td.rri[i++]].deg;
 
-        rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, d, emul, b);
+        rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         sht->hd[rrows[nr][OFFSET]].idx = 2;
         ++nr;
 
@@ -666,9 +655,8 @@ static void generate_matrix_from_trace(
         b     = bs->hm[td.tri[i++]];
         emul  = tht->ev[td.tri[i]];
         h     = tht->hd[td.tri[i]].val;
-        d     = tht->hd[td.tri[i]].deg;
 
-        trows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, d, emul, b);
+        trows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         /* At the moment rba is unused */
         rba[nr]   = td.rba[i/2];
         i++;

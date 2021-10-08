@@ -83,8 +83,8 @@ static void insert_and_update_spairs(
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
-    bs->mltdeg  = bs->mltdeg > bht->eh[nch][0] ?
-        bs->mltdeg : bht->hd[nch].deg;
+    bs->mltdeg  = bs->mltdeg > bht->eh[nch][DEG] ?
+        bs->mltdeg : bht->ev[nch][DEG];
 
     reinitialize_hash_table(uht, bl);
     /* statistics */
@@ -92,7 +92,9 @@ static void insert_and_update_spairs(
         st->max_uht_size : uht->esz;
 
     const hd_t * const hd = bht->hd;
+    const exp_t ** ev  = bht->ev;
     hd_t *hdu = uht->hd;
+    exp_t **evu = uht->ev
 
     /* only other lead terms from the matrix may render
      * the current element useless */
@@ -122,7 +124,7 @@ static void insert_and_update_spairs(
     if (check_redundancy == 1) {
         for (i = 0; i < bl; ++i) {
             plcm[i] = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            dlcm[i] = hdu[plcm[i]].deg;
+            dlcm[i] = evu[plcm[i]][DEG];
             if (bs->red[i] == 0) {
                 pp[i].gen1  = i;
                 pp[i].gen2  = bl;
@@ -132,7 +134,7 @@ static void insert_and_update_spairs(
     } else {
         for (i = 0; i < bl; ++i) {
             plcm[i] = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            dlcm[i] = hdu[plcm[i]].deg;
+            dlcm[i] = evu[plcm[i]][DEG];
             pp[i].gen1  = i;
             pp[i].gen2  = bl;
             pp[i].lcm   = plcm[i];
@@ -149,7 +151,7 @@ static void insert_and_update_spairs(
         l = ps[i].gen2;
         const int32_t m = dlcm[l] > dlcm[j] ? dlcm[l] : dlcm[j];
         if (check_monomial_division(ps[i].lcm, nch, bht)
-                && hd[ps[i].lcm].deg > m
+                && ev[ps[i].lcm][DEG] > m
            ) {
             ps[i].lcm = 0;
         }
@@ -198,7 +200,7 @@ static void insert_and_update_spairs(
     const bl_t lml          = bs->lml;
     const bl_t * const lmps = bs->lmps;
 
-    if (bs->mltdeg > bht->hd[nch].deg) {
+    if (bs->mltdeg > bht->ev[nch][DEG]) {
         /* mark redundant elements in basis */
         for (i = 0; i < lml; ++i) {
             if (bs->red[lmps[i]] == 0

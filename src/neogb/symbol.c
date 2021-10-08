@@ -225,7 +225,7 @@ static void select_spairs_by_minimal_degree(
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
     /* get minimal degree */
-    md  = bht->hd[ps[0].lcm].deg;
+    md  = bht->ev[ps[0].lcm][DEG];
 
     /* select pairs of this degree respecting maximal selection size mnsel */
     for (i = 0; i < psl->ld; ++i) {

@@ -70,8 +70,8 @@ ht_t *initialize_basis_hash_table(
 
     /* generate random values */
     ht->rsd = 2463534242;
-    ht->rn  = calloc((unsigned long)nv, sizeof(val_t));
-    for (i = nv; i > 0; --i) {
+    ht->rn  = calloc((unsigned long)(nv+1), sizeof(val_t));
+    for (i = nv+1; i > 0; --i) {
         /* random values should not be zero */
         ht->rn[i-1] = pseudo_random_number_generator(&(ht->rsd)) | 1;
     }
@@ -86,7 +86,7 @@ ht_t *initialize_basis_hash_table(
         fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
-            (unsigned long)ht->nv * ht->esz * sizeof(exp_t));
+            (unsigned long)(ht->nv+1) * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
         fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
@@ -94,7 +94,7 @@ ht_t *initialize_basis_hash_table(
     }
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {
-        ht->ev[j]  = tmp + (j*nv);
+        ht->ev[j]  = tmp + (j*(nv+1));
     }
     st->max_bht_size  = ht->esz;
     return ht;
@@ -134,7 +134,7 @@ ht_t *copy_hash_table(
         fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
-            (unsigned long)nv * ht->esz * sizeof(exp_t));
+            (unsigned long)(nv+1) * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
         fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
@@ -144,7 +144,7 @@ ht_t *copy_hash_table(
     ht->eld = bht->eld;
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {
-        ht->ev[j]  = tmp + (j*nv);
+        ht->ev[j]  = tmp + (j*(nv+1));
     }
     return ht;
 }
@@ -183,7 +183,7 @@ ht_t *initialize_secondary_hash_table(
         fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
-            (unsigned long)nv * ht->esz * sizeof(exp_t));
+            (unsigned long)(nv+1) * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
         fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
@@ -191,7 +191,7 @@ ht_t *initialize_secondary_hash_table(
     }
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {
-        ht->ev[j]  = tmp + (j*nv);
+        ht->ev[j]  = tmp + (j*(nv+1));
     }
     return ht;
 }
@@ -260,7 +260,7 @@ static void enlarge_hash_table(
     /* note: memory is allocated as one big block, so reallocating
      *       memory from ev[0] is enough    */
     ht->ev[0] = realloc(ht->ev[0],
-            esz * (unsigned long)nv * sizeof(exp_t));
+            esz * (unsigned long)(nv+1) * sizeof(exp_t));
     if (ht->ev[0] == NULL) {
         fprintf(stderr, "Enlarging exponent vector for hash table failed\n");
         fprintf(stderr, "for esz = %lu, segmentation fault will follow.\n", (unsigned long)esz);
@@ -268,7 +268,7 @@ static void enlarge_hash_table(
     /* due to realloc we have to reset ALL ev entries,
      * memory might have been moved */
     for (i = 1; i < esz; ++i) {
-        ht->ev[i] = ht->ev[0] + (i*nv);
+        ht->ev[i] = ht->ev[0] + (i*(nv+1));
     }
 
     /* The hash table should be double the size of the exponent space in
@@ -358,14 +358,14 @@ void calculate_divmask(
   exp_t *e  = ev[1];
 
   /* get initial values from first hash table entry */
-  for (i = 0; i < ht->ndv; ++i) {
+  for (i = 1; i <= ht->ndv; ++i) {
     max_exp[i]  = min_exp[i]  = e[i];
   }
 
   /* get maximal and minimal exponent element entries in hash table */
   for (i = 2; i < ht->eld; ++i) {
     e = ev[i];
-    for (j = 0; j < ht->ndv; ++j) {
+    for (j = 1; j <= ht->ndv; ++j) {
       if (e[j] > max_exp[j]) {
         max_exp[j]  = e[j];
         continue;
@@ -377,7 +377,7 @@ void calculate_divmask(
   }
 
   /* calculate average values for generating divmasks */
-  for (i = 0; i < ht->ndv; ++i) {
+  for (i = 1; i <= ht->ndv; ++i) {
     steps = (max_exp[i] - min_exp[i]) / ht->bpv;
     if (steps == 0)
       steps++;
@@ -413,12 +413,12 @@ static inline hi_t check_monomial_division(
   const exp_t *const ea = ht->ev[a];
   const exp_t *const eb = ht->ev[b];
   /* exponent check */
-  for (i = 0; i < nv-1; i += 2) {
+  for (i = 1; i < nv; i += 2) {
     if (ea[i] < eb[i] || ea[i+1] < eb[i+1]) {
       return 0;
     }
   }
-  if (ea[nv-1] < eb[nv-1]) {
+  if (ea[nv] < eb[nv]) {
     return 0;
   }
   return 1;
@@ -451,13 +451,13 @@ restart:
         }
         const exp_t *const ea = ht->ev[a[j]];
         /* exponent check */
-        for (i = 0; i < nv-1; i += 2) {
+        for (i = 1; i <= nv; i += 2) {
             if (ea[i] < eb[i] || ea[i+1] < eb[i+1]) {
                 j++;
                 goto restart;
             }
         }
-        if (ea[nv-1] < eb[nv-1]) {
+        if (ea[nv] < eb[nv]) {
             continue;
         }
         a[j]  = 0;
@@ -473,7 +473,6 @@ static inline hi_t check_lm_divisibility_and_insert_in_hash_table(
     hl_t i;
     hi_t k, pos;
     len_t j;
-    deg_t deg;
     exp_t *e;
     hd_t *d;
     const len_t lml   = bs->lml;
@@ -497,7 +496,7 @@ start:
     }
     if (i < lml) {
         e = ht->ev[bs->hm[lmps[i]][OFFSET]];
-        for (j = 0; j < nv; ++j) {
+        for (j = 1; j <= nv; ++j) {
             if (e[j] > a[j]) {
                 i++;
                 goto start;
@@ -510,7 +509,7 @@ start:
      * lead monomial and we can add it to the hash table */
 
     /* generate hash value */
-    for (j = 0; j < nv; ++j) {
+    for (j = 1; j <= nv; ++j) {
         h +=  ht->rn[j] * a[j];
     }
     /* probing */
@@ -527,13 +526,13 @@ restart:
             continue;
         }
         const exp_t * const ehm = ht->ev[hm];
-        for (j = 0; j < nv-1; j += 2) {
+        for (j = 1; j < nv; j += 2) {
             if (a[j] != ehm[j] || a[j+1] != ehm[j+1]) {
                 i++;
                 goto restart;
             }
         }
-        if (a[nv-1] != ehm[nv-1]) {
+        if (a[nv] != ehm[nv]) {
             i++;
             goto restart;
         }
@@ -544,12 +543,9 @@ restart:
     ht->hmap[k]  = pos = (hi_t)ht->eld;
     e   = ht->ev[pos];
     d   = ht->hd + pos;
-    deg = 0;
-    for (j = 0; j < nv; ++j) {
+    for (j = 0; j <= nv; ++j) {
         e[j]  =   a[j];
-        deg   +=  a[j];
     }
-    d->deg  = deg;
     d->sdm  = generate_short_divmask(e, ht);
     d->val  = h;
 
@@ -566,7 +562,6 @@ static inline hi_t insert_in_hash_table(
     hl_t i;
     hi_t k, pos;
     len_t j;
-    deg_t deg;
     exp_t *e;
     hd_t *d;
     val_t h = 0;
@@ -576,7 +571,7 @@ static inline hi_t insert_in_hash_table(
     const hi_t mod = (hi_t)(ht->hsz - 1);
 
     /* generate hash value */
-    for (j = 0; j < nv; ++j) {
+    for (j = 1; j <= nv; ++j) {
         h +=  ht->rn[j] * a[j];
     }
     /* probing */
@@ -593,13 +588,13 @@ restart:
             continue;
         }
         const exp_t * const ehm = ht->ev[hm];
-        for (j = 0; j < nv-1; j += 2) {
+        for (j = 1; j < nv; j += 2) {
             if (a[j] != ehm[j] || a[j+1] != ehm[j+1]) {
                 i++;
                 goto restart;
             }
         }
-        if (a[nv-1] != ehm[nv-1]) {
+        if (a[nv] != ehm[nv]) {
             i++;
             goto restart;
         }
@@ -610,12 +605,9 @@ restart:
     ht->hmap[k]  = pos = (hi_t)ht->eld;
     e   = ht->ev[pos];
     d   = ht->hd + pos;
-    deg = 0;
-    for (j = 0; j < nv; ++j) {
+    for (j = 0; j <= nv; ++j) {
         e[j]  =   a[j];
-        deg   +=  a[j];
     }
-    d->deg  = deg;
     d->sdm  = generate_short_divmask(e, ht);
     d->val  = h;
 
@@ -649,7 +641,7 @@ static inline void reinitialize_hash_table(
         /* note: memory is allocated as one big block, so reallocating
          *       memory from evl[0] is enough    */
         ht->ev[0]  = realloc(ht->ev[0],
-                esz * (unsigned long)nv * sizeof(exp_t));
+                esz * (unsigned long)(nv+1) * sizeof(exp_t));
         if (ht->ev[0] == NULL) {
             fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
             fprintf(stderr, "reinitialization failed, esz = %lu\n", (unsigned long)esz);
@@ -657,7 +649,7 @@ static inline void reinitialize_hash_table(
         }
         /* due to realloc we have to reset ALL evl entries, memory might be moved */
         for (i = 1; i < esz; ++i) {
-            ht->ev[i] = ht->ev[0] + (i*nv);
+            ht->ev[i] = ht->ev[0] + (i*(nv+1));
         }
         ht->hmap  = realloc(ht->hmap, hsz * sizeof(hi_t));
     }
@@ -689,12 +681,12 @@ static inline int prime_monomials(
     const exp_t * const eb = ht->ev[b];
 
     const len_t nv  = ht->nv;
-    for (i = 0; i < nv-1; i += 2) {
+    for (i = 1; i < nv; i += 2) {
         if ((ea[i] != 0 && eb[i] != 0) || (ea[i+1] != 0 && eb[i+1] != 0)) {
             return 0;
         }
     }
-    if (ea[nv-1] != 0 && eb[nv-1] != 0) {
+    if (ea[nv] != 0 && eb[nv] != 0) {
         return 0;
     }
     return 1;
@@ -716,7 +708,7 @@ static inline void insert_plcms_in_basis_hash_table(
     len_t j, l, m;
     hd_t *d;
 
-    spair_t *ps     = psl->p;
+    (spair_t *ps     = psl->p;
     const len_t nv  = bht->nv;
     const hl_t hsz  = bht->hsz;
     /* ht->hsz <= 2^32 => mod is always uint32_t */
@@ -736,7 +728,7 @@ letsgo:
         ps[m] = pp[l];
         const val_t h = uht->hd[lcms[l]].val;
         memcpy(bht->ev[bht->eld], uht->ev[lcms[l]],
-                (unsigned long)nv * sizeof(exp_t));
+                (unsigned long)(nv+1) * sizeof(exp_t));
         const exp_t * const n = bht->ev[bht->eld];
         k = h;
         i = 0;
@@ -751,13 +743,13 @@ restart:
                 continue;
             }
             const exp_t * const ehm = bht->ev[hm];
-            for (j = 0; j < nv-1; j += 2) {
+            for (j = 1; j < nv; j += 2) {
                 if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
                     i++;
                     goto restart;
                 }
             }
-            if (n[nv-1] != ehm[nv-1]) {
+            if (n[nv] != ehm[nv]) {
                 i++;
                 goto restart;
             }
@@ -769,7 +761,6 @@ restart:
         /* add element to hash table */
         bht->hmap[k] = pos = (hi_t)bht->eld;
         d = bht->hd + bht->eld;
-        d->deg  = uht->hd[lcms[l]].deg;
         d->sdm  = uht->hd[lcms[l]].sdm;
         d->val  = h;
 
@@ -812,7 +803,7 @@ static inline void insert_in_basis_hash_table_pivots(
 letsgo:
     for (; l < len; ++l) {
         const val_t h = hds[hcm[row[l]]].val;
-        memcpy(ev[bht->eld], evs[hcm[row[l]]], (unsigned long)nv * sizeof(exp_t));
+        memcpy(ev[bht->eld], evs[hcm[row[l]]], (unsigned long)(nv+1) * sizeof(exp_t));
         const exp_t * const n = ev[bht->eld];
         k = h;
         i = 0;
@@ -827,13 +818,13 @@ restart:
                 continue;
             }
             const exp_t * const ehm = ev[hm];
-            for (j = 0; j < nv-1; j += 2) {
+            for (j = 1; j < nv; j += 2) {
                 if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
                     i++;
                     goto restart;
                 }
             }
-            if (n[nv-1] != ehm[nv-1]) {
+            if (n[nv] != ehm[nv]) {
                 i++;
                 goto restart;
             }
@@ -845,7 +836,6 @@ restart:
         /* add element to hash table */
         hmap[k] = pos = (hi_t)bht->eld;
         d = hd + bht->eld;
-        d->deg  = hds[hcm[row[l]]].deg;
         d->sdm  = hds[hcm[row[l]]].sdm;
         d->val  = h;
 
@@ -857,7 +847,6 @@ restart:
 static inline void insert_multiplied_poly_in_hash_table(
     hm_t *row,
     const val_t h1,
-    const deg_t deg,
     const exp_t * const ea,
     const hm_t * const b,
     const ht_t * const ht1,
@@ -889,7 +878,7 @@ letsgo:
         const exp_t * const eb = ev1[b[l]];
 
         n = ev2[ht2->eld];
-        for (j = 0; j < nv; ++j) {
+        for (j = 0; j <= nv; ++j) {
             n[j]  = (exp_t)(ea[j] + eb[j]);
         }
 
@@ -906,13 +895,13 @@ restart:
                 continue;
             }
             const exp_t * const ehm = ev2[hm];
-            for (j = 0; j < nv-1; j += 2) {
+            for (j = 1; j < nv; j += 2) {
                 if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
                     i++;
                     goto restart;
                 }
             }
-            if (n[nv-1] != ehm[nv-1]) {
+            if (n[nv] != ehm[nv]) {
                 i++;
                 goto restart;
             }
@@ -924,7 +913,6 @@ restart:
         /* add element to hash table */
         ht2->hmap[k]  = pos = (hi_t)ht2->eld;
         d = hd2 + ht2->eld;
-        d->deg  = deg + hd1[b[l]].deg;
         d->sdm  = generate_short_divmask(n, ht2);
         d->val  = h;
 
@@ -957,7 +945,7 @@ letsgo:
         const exp_t * const n = oev[row[l]];
         /* generate hash value */
         h = 0;
-        for (j = 0; j < nv; ++j) {
+        for (j = 1; j <= nv; ++j) {
             h +=  ht->rn[j] * n[j];
         }
         k = h;
@@ -973,13 +961,13 @@ restart:
                 continue;
             }
             const exp_t * const ehm = ht->ev[hm];
-            for (j = 0; j < nv-1; j += 2) {
+            for (j = 1; j < nv; j += 2) {
                 if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
                     i++;
                     goto restart;
                 }
             }
-            if (n[0] != ehm[0]) {
+            if (n[nv] != ehm[nv]) {
                 i++;
                 goto restart;
             }
@@ -992,9 +980,8 @@ restart:
         ht->hmap[k] = pos = (hi_t)ht->eld;
         e = ht->ev[ht->eld];
         d = ht->hd + ht->eld;
-        for (j = 0; j < nv; ++j) {
+        for (j = 0; j <= nv; ++j) {
             e[j]    =   n[j];
-            d->deg  +=  n[j];
         }
         d->sdm  = generate_short_divmask(e, ht);
         d->val  = h;
@@ -1096,7 +1083,6 @@ static inline hm_t *multiplied_poly_to_matrix_row(
     ht_t *sht,
     const ht_t *bht,
     const val_t hm,
-    const deg_t deg,
     const exp_t * const em,
     const hm_t *poly
     )
@@ -1111,7 +1097,7 @@ static inline hm_t *multiplied_poly_to_matrix_row(
   while (sht->eld+poly[LENGTH] >= sht->esz) {
     enlarge_hash_table(sht);
   }
-  insert_multiplied_poly_in_hash_table(row, hm, deg, em, poly, bht, sht);
+  insert_multiplied_poly_in_hash_table(row, hm, em, poly, bht, sht);
 
   return row;
 }

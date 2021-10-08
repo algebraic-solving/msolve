@@ -82,7 +82,7 @@ struct hd_t
 {
     val_t val;
     sdm_t sdm;
-    deg_t deg;
+    /* deg_t deg; */
     ind_t idx;
 };
 

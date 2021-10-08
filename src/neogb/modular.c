@@ -334,6 +334,304 @@ stop:
     return bs;
 }
 
+bs_t *f4sat_trace_application_test_phase(
+        const trace_t * const trace,  /* trace of the F4 Algorithm */
+        const ht_t * const tht,       /* trace hash table for multipliers */
+        const bs_t * const ggb,       /* global basis */
+        const bs_t * const gsat,      /* global saturation element */
+        ht_t *lbht,                   /* local basis hash table, not shared */
+        stat_t *gst,                  /* global statistics */
+        const uint32_t fc             /* characteristic of field */
+        )
+{
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    double rrt0, rrt1; /* for one round only */
+    ct0 = cputime();
+    rt0 = realtime();
+
+    ps_t * ps   = initialize_pairset();
+    /* current quotient basis up to max lm degree in intermediate basis */
+    hm_t *qb    = NULL;
+    int32_t ret, round, ctr, i, j;
+    ctr = 0;
+    /* hashes-to-columns map, initialized with length 1, is reallocated
+     * in each call when generating matrices for linear algebra */
+    hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
+    /* hashes-to-columns maps for multipliers in saturation step */
+    hi_t *hcmm  = (hi_t *)malloc(sizeof(hi_t));
+
+    /* set routines corresponding to prime size */
+    reset_trace_function_pointers(fc);
+
+    /* matrix holding sparse information generated
+     * during symbolic preprocessing */
+    mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
+
+    /* copy global data as input */
+    stat_t *st  = copy_statistics(gst, fc);
+    bs_t *bs    = copy_basis_mod_p(ggb, st);
+    bs_t *sat   = copy_basis_mod_p(gsat, st);
+    ht_t *bht   = lbht;
+
+    /* initialize multiplier of first element in sat to be the hash of
+     * the all-zeroes exponent vector. */
+    memset(bht->ev[0], 0, (unsigned long)bht->nv * sizeof(exp_t));
+    sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
+    sat->ld = 1;
+    len_t sat_deg = 0;
+
+    /* normalize the copied basis */
+    normalize_initial_basis(bs, fc);
+
+    /* initialize specialized hash table */
+    ht_t *sht = initialize_secondary_hash_table(bht, st);
+    ht_t *uht = initialize_secondary_hash_table(bht, st);
+
+    /* elements of kernel in saturation step, to be added to basis bs */
+    bs_t *kernel  = initialize_basis(10);
+
+    /* reset bs->ld for first update process */
+    bs->ld  = 0;
+    /* move input generators to basis and generate first spairs.
+     * always check redundancy since input generators may be redundant
+     * even so they are homogeneous. */
+    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+
+    if(st->info_level>1){
+        printf("Application phase with prime p = %d, overall there are %u rounds\n",
+                fc, trace->ld);
+    }
+    /* let's start the f4 rounds,  we are done when no more spairs
+     * are left in the pairset */
+    if (st->info_level > 1) {
+        printf("\ndeg     sel   pairs        mat          density \
+          new data             time(rd)\n");
+        printf("-------------------------------------------------\
+----------------------------------------\n");
+    }
+    for (round = 1; ps->ld > 0; ++round) {
+        if (round % st->reset_ht == 0) {
+            reset_hash_table(bht, bs, ps, st);
+            st->num_rht++;
+        }
+        rrt0  = realtime();
+        st->max_bht_size  = st->max_bht_size > bht->esz ?
+            st->max_bht_size : bht->esz;
+        st->current_rd  = round;
+
+        /* preprocess data for next reduction round */
+        select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
+        symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+        convert_hashes_to_columns(&hcm, mat, st, sht);
+        sort_matrix_rows_decreasing(mat->rr, mat->nru);
+        sort_matrix_rows_increasing(mat->tr, mat->nrl);
+        /* print pbm files of the matrices */
+        if (st->gen_pbm_file != 0) {
+            write_pbm_file(mat, st);
+        }
+        /* linear algebra, depending on choice, see set_function_pointers() */
+        exact_sparse_linear_algebra_ff_32(mat, bs, st);
+        /* columns indices are mapped back to exponent hashes */
+        if (mat->np > 0) {
+            convert_sparse_matrix_rows_to_basis_elements(
+                    mat, bs, bht, sht, hcm, st);
+        }
+        /* all rows in mat are now polynomials in the basis,
+         * so we do not need the rows anymore */
+        clear_matrix(mat); // does not reset mat->np
+
+        update_basis(ps, bs, bht, uht, st, mat->np, 1);
+        printf("f4 bs->lml %u\n", bs->lml);
+
+        /* if we found a constant we are done, so remove all remaining pairs */
+        rrt1 = realtime();
+        if (st->info_level > 1) {
+            printf("%13.2f sec\n", rrt1-rrt0);
+        }
+        if (bs->constant  == 1) {
+            printf("basis is constant\n");
+            ps->ld  = 0;
+            break;
+        }
+        clean_hash_table(sht);
+
+        /* saturation step starts here */
+        if (trace->rd[ctr]  ==  round-1) {
+            sat_deg = trace->deg[ctr++];
+            rrt0  = realtime();
+            /* printf("sat->deg %u\n", sat_deg); */
+            update_multipliers(&qb, &bht, &sht, sat, st, bs, sat_deg);
+            /* check for monomial multiples of elements from saturation list */
+            select_saturation(sat, mat, st, sht, bht);
+
+            symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+
+            /* It may happen that there is no reducer at all for the
+             * saturation elements, then nothing has to be done. */
+            if (mat->nru > 0) {
+                if (st->info_level > 1) {
+                    /* printf("kernel computation "); */
+                    printf("%3u  compute kernel", sat_deg);
+                }
+                /* int ctr = 0;
+                 * for (int ii = 1; ii < sat->ld; ++ii) {
+                 *     for (int jj = 0; jj < ii; jj++) {
+                 *         if (sat->hm[ii][MULT] == sat->hm[jj][MULT]) {
+                 *             printf("MULT %d == %d\n", ii, jj);
+                 *             ctr++;
+                 *         }
+                 *     }
+                 * } */
+                /* int ctr  = 0;
+                 * for (int ii = 0; ii<sat->ld; ++ii) {
+                 *     if (sht->hd[sat->hm[ii][OFFSET]].idx == 2) {
+                 *         sat->hm[ctr]  = sat->hm[ii];
+                 *     } else {
+                 *         free(sat->hm[ii]);
+                 *         sat->hm[ii] = NULL;
+                 *     }
+                 * }
+                 * sat->ld = ctr; */
+                convert_hashes_to_columns_sat(&hcm, mat, sat, st, sht);
+                convert_multipliers_to_columns(&hcmm, sat, st, bht);
+                sort_matrix_rows_decreasing(mat->rr, mat->nru);
+
+                compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
+
+                if (kernel->ld > 0) {
+                    if (st->info_level > 1) {
+                        printf("\n                                               ");
+                    }
+                    clear_matrix(mat);
+                    /* interreduce kernel */
+                    copy_kernel_to_matrix(mat, kernel, sat->ld);
+                    /* linear algebra, depending on choice, see set_function_pointers() */
+                    exact_sparse_linear_algebra_ff_32(mat, kernel, st);
+                    /* columns indices are mapped back to exponent hashes */
+                    if (mat->np > 0) {
+                        convert_sparse_matrix_rows_to_basis_elements_use_sht(
+                                mat, bs, hcmm, st);
+                    }
+                    st->nr_kernel_elts  +=  kernel->ld;
+                    free_kernel_coefficients(kernel);
+                    update_basis(ps, bs, bht, uht, st, mat->np, 1);
+        printf("sat bs->lml %u\n", bs->lml);
+                    kernel->ld  = 0;
+                    if (st->info_level > 1) {
+                        printf("   ");
+                    }
+                }
+                /* columns indices are mapped back to exponent hashes */
+                /* return_normal_forms_to_basis(
+                 *         mat, tbr, bht, sht, hcm, st); */
+
+                /* all rows in mat are now polynomials in the basis,
+                 * so we do not need the rows anymore */
+                convert_columns_to_hashes(sat, hcm, hcmm);
+                for (i = 0; i < sat->ld; ++i) {
+                    bht->hd[hcmm[i]].idx = 0;
+                }
+            }
+            clear_matrix(mat);
+
+            /* move hashes for sat entries from sht back to bht */
+            for (i = 0; i < sat->ld; ++i) {
+                if (sat->hm[i] != NULL) {
+                    while (bht->esz - bht->eld < sat->hm[i][LENGTH]) {
+                        enlarge_hash_table(bht);
+                    }
+                    for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
+                        sat->hm[i][j] = insert_in_hash_table(
+                                sht->ev[sat->hm[i][j]], bht);
+                    }
+                }
+            }
+            clean_hash_table(sht);
+
+            rrt1 = realtime();
+            if (st->info_level > 1) {
+                printf("%10.2f sec\n", rrt1-rrt0);
+            }
+        }
+end_sat_step:
+    }
+    if (st->info_level > 1) {
+        printf("-------------------------------------------------\
+                ----------------------------------------\n");
+    }
+    /* remove possible redudant elements */
+    j = 0;
+    for (i = 0; i < bs->lml; ++i) {
+        if (bs->red[bs->lmps[i]] == 0) {
+            bs->lm[j]   = bs->lm[i];
+            bs->lmps[j] = bs->lmps[i];
+            ++j;
+        }
+    }
+    bs->lml = j;
+
+    /* apply non-redundant basis data from trace to basis
+     * before interreduction */
+    /* bs->lml  = trace->lml;
+     * free(bs->lmps);
+     * bs->lmps = (bl_t *)calloc((unsigned long)bs->lml,
+     *         sizeof(bl_t));
+     * memcpy(bs->lmps, trace->lmps,
+     *         (unsigned long)bs->lml * sizeof(bl_t));
+     * free(bs->lm);
+     * bs->lm   = (sdm_t *)calloc((unsigned long)bs->lml,
+     *         sizeof(sdm_t));
+     * memcpy(bs->lm, trace->lm,
+     *         (unsigned long)bs->lml * sizeof(sdm_t)); */
+
+    /* reduce final basis */
+    /* note: bht will become sht, and sht will become NULL,
+     * thus we need pointers */
+    reduce_basis_no_hash_table_switching(
+            bs, mat, &hcm, bht, sht, st);
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->overall_ctime = ct1 - ct0;
+    st->overall_rtime = rt1 - rt0;
+
+    /* get basis meta data */
+    st->size_basis  = bs->lml;
+    for (i = 0; i < bs->lml; ++i) {
+        st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
+    }
+    if (st->info_level > 0) {
+        print_final_statistics(stderr, st);
+    }
+
+stop:
+    /* free and clean up */
+    free(hcm);
+    free(hcmm);
+    if (sht != NULL) {
+        free_hash_table(&sht);
+    }
+    free_basis_elements(sat);
+    free_basis(&sat);
+    free_basis(&kernel);
+    /* note that all rows kept from mat during the overall computation are
+     * basis elements and thus we do not need to free the rows itself, but
+     * just the matrix structure */
+    free(mat);
+    gst->application_nr_add   = st->application_nr_add;
+    gst->application_nr_mult  = st->application_nr_mult;
+    gst->application_nr_red   = st->application_nr_red;
+    free(st);
+
+    if (ret != 0) {
+        free_basis(&bs);
+    }
+
+    return bs;
+}
+
 bs_t *f4sat_trace_application_phase(
         const trace_t * const trace,  /* trace of the F4 Algorithm */
         const ht_t * const tht,       /* trace hash table for multipliers */
@@ -920,6 +1218,7 @@ bs_t *f4sat_trace_learning_phase(
 
         /* check redundancy only if input is not homogeneous */
         update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        printf("f4 bs->lml %u\n", bs->lml);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -954,7 +1253,7 @@ bs_t *f4sat_trace_learning_phase(
                 sat_deg = bs->mltdeg;
             }
             len_t bld = bs->ld;
-            for (int ii = next_deg; ii < sat_deg; ++ii) {
+            for (deg_t ii = next_deg; ii < sat_deg; ++ii) {
                 rrt0  = realtime();
                 /* printf("sat->deg %u\n", sat_deg); */
                 update_multipliers(&qb, &bht, &sht, sat, st, bs, ii);
@@ -1026,6 +1325,7 @@ bs_t *f4sat_trace_learning_phase(
                         sat_test  = 0;
                         free_kernel_coefficients(kernel);
                         update_basis(ps, bs, bht, uht, st, mat->np, 1);
+        printf("sat bs->lml %u\n", bs->lml);
                         kernel->ld  = 0;
                         if (st->info_level > 1) {
                             printf("   ");

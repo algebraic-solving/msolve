@@ -114,7 +114,7 @@ static void reduce_basis(
     ht_t *sht   = *shtp;
     hi_t *hcm   = *hcmp;
     exp_t *etmp = bht->ev[0];
-    memset(etmp, 0, (unsigned long)bht->nv * sizeof(exp_t));
+    memset(etmp, 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
     mat->nr = 0;
@@ -123,7 +123,7 @@ static void reduce_basis(
     /* add all non-redundant basis elements as matrix rows */
     for (i = 0; i < bs->lml; ++i) {
         mat->rr[mat->nr] = multiplied_poly_to_matrix_row(
-                sht, bht, 0, 0, etmp, bs->hm[bs->lmps[i]]);
+                sht, bht, 0, etmp, bs->hm[bs->lmps[i]]);
         sht->hd[mat->rr[mat->nr][OFFSET]].idx  = 1;
         mat->nr++;
     }

@@ -708,7 +708,7 @@ static inline void insert_plcms_in_basis_hash_table(
     len_t j, l, m;
     hd_t *d;
 
-    (spair_t *ps     = psl->p;
+    spair_t *ps     = psl->p;
     const len_t nv  = bht->nv;
     const hl_t hsz  = bht->hsz;
     /* ht->hsz <= 2^32 => mod is always uint32_t */

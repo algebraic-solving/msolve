@@ -95,7 +95,7 @@ void reduce_basis_no_hash_table_switching(
 
     hi_t *hcm   = *hcmp;
     exp_t *etmp = bht->ev[0];
-    memset(etmp, 0, (unsigned long)bht->nv * sizeof(exp_t));
+    memset(etmp, 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
     mat->nr = mat->nc = mat->ncl  = mat->ncr  = 0;
@@ -104,7 +104,7 @@ void reduce_basis_no_hash_table_switching(
     /* add all non-redundant basis elements as matrix rows */
     for (i = 0; i < bs->lml; ++i) {
         mat->rr[mat->nr] = multiplied_poly_to_matrix_row(
-                sht, bht, 0, 0, etmp, bs->hm[bs->lmps[i]]);
+                sht, bht, 0, etmp, bs->hm[bs->lmps[i]]);
         sht->hd[mat->rr[mat->nr][OFFSET]].idx  = 1;
         mat->nr++;
     }
@@ -712,7 +712,7 @@ bs_t *f4sat_trace_application_phase(
         generate_matrix_from_trace(mat, trace, round, bs, st, sht, bht, tht);
         if (st->info_level > 1) {
             printf("%5d", round+1);
-            printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG];
+            printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
             fflush(stdout);
         }
         convert_hashes_to_columns(&hcm, mat, st, sht);

@@ -404,7 +404,7 @@ static void add_kernel_elements_to_basis(
             nterms++;
 next_j:
         }
-        if (ht->hd[bs->ev[bld+ctr][OFFSET]][DEG] == 0) {
+        if (ht->ev[bs->hm[bld+ctr][OFFSET]][DEG] == 0) {
             bs->constant  = 1;
         }
         /* printf("new element from kernel (%u): length %u | ", bld+ctr, bs->hm[bld+ctr][LENGTH]);
@@ -537,11 +537,11 @@ static void convert_sparse_matrix_rows_to_basis_elements(
             }
             break;
         case 32:
-            int ii;
-            long power_t;
-            exp_t *e  = bht->ev[0];
+            /* int ii;
+             * long power_t;
+             * exp_t *e  = bht->ev[0]; */
             for (i = 0; i < np; ++i) {
-                power_t = 0;
+                /* power_t = 0; */
                 insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
 /*                 for (ii = OFFSET; ii < rows[i][LENGTH]+OFFSET; ++ii) {
  *                     if (bht->ev[rows[i][ii]][bht->nv-1] > 0) {

@@ -146,7 +146,6 @@ static void select_all_spairs(
                  * }
                  * printf("\n"); */
             }
-            d     = 0;
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
             for (l = 1; l <= nv; ++l) {
@@ -226,7 +225,7 @@ static void select_spairs_by_minimal_degree(
 
     /* select pairs of this degree respecting maximal selection size mnsel */
     for (i = 0; i < psl->ld; ++i) {
-        if (bht->hd[ps[i].lcm].deg > md) {
+        if (bht->ev[ps[i].lcm][DEG] > md) {
             break;
         }
     }
@@ -289,7 +288,6 @@ static void select_spairs_by_minimal_degree(
         /* ev might change when enlarging the hash table during insertion of a new
             * row in the matrix, thus we have to reset elcm inside the for loop */
         elcm  = bht->ev[lcm];
-        d     = 0;
         b     = bs->hm[prev];
         eb    = bht->ev[b[OFFSET]];
         for (l = 1; l <= nv; ++l) {
@@ -329,7 +327,6 @@ static void select_spairs_by_minimal_degree(
                  * }
                  * printf("\n"); */
             }
-            d     = 0;
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
             for (l = 1; l <= nv; ++l) {
@@ -485,7 +482,6 @@ static inline void find_multiplied_reducer(
     const hd_t hdm    = sht->hd[m];
     const len_t lml   = bs->lml;
     const sdm_t ns    = ~hdm.sdm;
-    const deg_t hdd   = hdm.deg;
 
     const sdm_t * const lms = bs->lm;
     const bl_t * const lmps = bs->lmps;

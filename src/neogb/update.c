@@ -83,7 +83,7 @@ static void insert_and_update_spairs(
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
-    bs->mltdeg  = bs->mltdeg > bht->eh[nch][DEG] ?
+    bs->mltdeg  = bs->mltdeg > bht->ev[nch][DEG] ?
         bs->mltdeg : bht->ev[nch][DEG];
 
     reinitialize_hash_table(uht, bl);
@@ -91,10 +91,8 @@ static void insert_and_update_spairs(
     st->max_uht_size  = st->max_uht_size > uht->esz ?
         st->max_uht_size : uht->esz;
 
-    const hd_t * const hd = bht->hd;
-    const exp_t ** ev  = bht->ev;
-    hd_t *hdu = uht->hd;
-    exp_t **evu = uht->ev
+    exp_t **ev  = bht->ev;
+    exp_t **evu = uht->ev;
 
     /* only other lead terms from the matrix may render
      * the current element useless */

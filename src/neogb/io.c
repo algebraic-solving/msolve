@@ -372,10 +372,10 @@ static void import_julia_data_ff_32(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET][DEG];
+        deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]]DEG]) {
+            if (deg != ht->ev[hm[j]][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -667,7 +667,7 @@ static void import_julia_data_qq(
         deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j][DEG]) {
+            if (deg != ht->ev[hm[j]][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }

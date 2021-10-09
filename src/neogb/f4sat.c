@@ -432,7 +432,7 @@ sat_restart:
         while (j > 0 && bht->hd[sat->hm[j][MULT]].sdm & ns) {
             j--;
         }
-        for (k = 0; k < bht->nv; ++k) {
+        for (k = 0; k <= bht->nv; ++k) {
             etmp[k] = bht->ev[qb[i]][k] - bht->ev[sat->hm[j][MULT]][k];
             if (etmp[k] < 0) {
                 j--;
@@ -440,9 +440,8 @@ sat_restart:
             }
         }
         const hi_t h      = bht->hd[m].val - bht->hd[sat->hm[j][MULT]].val;
-        const deg_t d     = bht->ev[m][DEG] - bht->ev[sat->hm[j][MULT]][DEG];
         sat->hm[i]        = multiplied_poly_to_matrix_row(
-                sht, bht, h, d, etmp, sat->hm[j]);
+                sht, bht, h, etmp, sat->hm[j]);
        sat->hm[i][MULT] = qb[i];
        sat->cf_32[i]    = (cf32_t *)malloc(
                (unsigned long)sat->hm[j][LENGTH] * sizeof(cf32_t));

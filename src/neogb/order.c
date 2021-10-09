@@ -193,7 +193,7 @@ static int spair_degree_cmp(
         void *htp
         )
 {
-    const hd_t *ev  = ((ht_t *)htp)->ev;
+    exp_t **ev      = ((ht_t *)htp)->ev;
     const deg_t da  = ev[((spair_t *)a)->lcm][DEG];
     const deg_t db  = ev[((spair_t *)b)->lcm][DEG];
 

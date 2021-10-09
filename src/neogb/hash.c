@@ -743,7 +743,7 @@ restart:
                 continue;
             }
             const exp_t * const ehm = bht->ev[hm];
-            for (j = 1; j < nv; j += 2) {
+            for (j = 0; j < nv; j += 2) {
                 if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
                     i++;
                     goto restart;
@@ -1073,9 +1073,13 @@ static inline hi_t get_lcm(
     exp_t *etmp = ht1->ev[0];
     const len_t nv  = ht1->nv;
 
-    for (i = 0; i < nv; ++i) {
+    etmp[DEG] = 0;
+    for (i = 1; i <= nv; ++i) {
+        printf("%u %u\n", ea[i], eb[i]);
         etmp[i]  = ea[i] < eb[i] ? eb[i] : ea[i];
+        etmp[DEG] += etmp[i];
     }
+    printf("deg %u \ nv %u\n", etmp[DEG], nv);
     return insert_in_hash_table(etmp, ht2);
 }
 

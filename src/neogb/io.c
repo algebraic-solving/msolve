@@ -111,6 +111,7 @@ static void import_julia_data_ff_8(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
                 e[DEG]  +=  e[k+1];
@@ -232,6 +233,7 @@ static void import_julia_data_ff_16(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
                 e[DEG]  +=  e[k+1];
@@ -354,6 +356,7 @@ static void import_julia_data_ff_32(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
                 e[DEG]  +=  e[k+1];
@@ -438,6 +441,7 @@ void import_julia_data_nf_ff_32(
         tbr->red[i-start] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
                 e[DEG]  +=  e[k+1];
@@ -571,6 +575,7 @@ void import_julia_data_nf_qq(
         bs->red[i-start] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
                 e[DEG]  +=  e[k+1];
@@ -648,6 +653,7 @@ static void import_julia_data_qq(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
                 e[DEG]  +=  e[k+1];

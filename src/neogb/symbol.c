@@ -109,9 +109,8 @@ static void select_all_spairs(
         elcm  = bht->ev[lcm];
         b     = bs->hm[prev];
         eb    = bht->ev[b[OFFSET]];
-        for (l = 1; l <= nv; ++l) {
+        for (l = 0; l <= nv; ++l) {
             etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
-            etmp[DEG] +=  etmp[l];
         }
         const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
         /* note that we use index mat->nc and not mat->nr since for each new
@@ -148,9 +147,8 @@ static void select_all_spairs(
             }
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
-            for (l = 1; l <= nv; ++l) {
+            for (l = 0; l <= nv; ++l) {
                 etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
-                etmp[DEG] +=  etmp[l];
             }
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
@@ -290,9 +288,8 @@ static void select_spairs_by_minimal_degree(
         elcm  = bht->ev[lcm];
         b     = bs->hm[prev];
         eb    = bht->ev[b[OFFSET]];
-        for (l = 1; l <= nv; ++l) {
+        for (l = 0; l <= nv; ++l) {
             etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
-            etmp[DEG] +=  etmp[l];
         }
         const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
         /* note that we use index mat->nc and not mat->nr since for each new
@@ -329,9 +326,8 @@ static void select_spairs_by_minimal_degree(
             }
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
-            for (l = 1; l <= nv; ++l) {
+            for (l = 0; l <= nv; ++l) {
                 etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
-                etmp[DEG] +=  etmp[l];
             }
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);

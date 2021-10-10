@@ -570,7 +570,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
                 /* printf("new element (%u): length %u | ", bl+i, bs->hm[bl+i][LENGTH]);
                  * for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) {
                  *     printf("%u | ", bs->cf_32[bl+i][kk]);
-                 * for (int jj=0; jj < bht->nv; ++jj) {
+                 * for (int jj=0; jj <= bht->nv; ++jj) {
                  *     printf("%u ", bht->ev[bs->hm[bl+i][OFFSET+kk]][jj]);
                  * }
                  * printf(" || ");

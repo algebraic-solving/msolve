@@ -1075,11 +1075,9 @@ static inline hi_t get_lcm(
 
     etmp[DEG] = 0;
     for (i = 1; i <= nv; ++i) {
-        printf("%u %u\n", ea[i], eb[i]);
         etmp[i]  = ea[i] < eb[i] ? eb[i] : ea[i];
         etmp[DEG] += etmp[i];
     }
-    printf("deg %u \ nv %u\n", etmp[DEG], nv);
     return insert_in_hash_table(etmp, ht2);
 }
 

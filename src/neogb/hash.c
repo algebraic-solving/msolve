@@ -74,7 +74,6 @@ ht_t *initialize_basis_hash_table(
     for (i = nv+1; i > 0; --i) {
         /* random values should not be zero */
         ht->rn[i-1] = pseudo_random_number_generator(&(ht->rsd)) | 1;
-        printf("rn -> %u\n", ht->rn[i-1]);
     }
     /* generate exponent vector */
     /* keep first entry empty for faster divisibility checks */

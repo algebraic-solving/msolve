@@ -74,6 +74,7 @@ ht_t *initialize_basis_hash_table(
     for (i = nv+1; i > 0; --i) {
         /* random values should not be zero */
         ht->rn[i-1] = pseudo_random_number_generator(&(ht->rsd)) | 1;
+        printf("rn -> %u\n", ht->rn[i-1]);
     }
     /* generate exponent vector */
     /* keep first entry empty for faster divisibility checks */
@@ -413,7 +414,7 @@ static inline hi_t check_monomial_division(
   const exp_t *const ea = ht->ev[a];
   const exp_t *const eb = ht->ev[b];
   /* exponent check */
-  for (i = 1; i < nv; i += 2) {
+  for (i = 0; i < nv; i += 2) {
     if (ea[i] < eb[i] || ea[i+1] < eb[i+1]) {
       return 0;
     }
@@ -496,7 +497,7 @@ start:
     }
     if (i < lml) {
         e = ht->ev[bs->hm[lmps[i]][OFFSET]];
-        for (j = 1; j <= nv; ++j) {
+        for (j = 0; j <= nv; ++j) {
             if (e[j] > a[j]) {
                 i++;
                 goto start;
@@ -526,7 +527,7 @@ restart:
             continue;
         }
         const exp_t * const ehm = ht->ev[hm];
-        for (j = 1; j < nv; j += 2) {
+        for (j = 0; j < nv; j += 2) {
             if (a[j] != ehm[j] || a[j+1] != ehm[j+1]) {
                 i++;
                 goto restart;
@@ -543,9 +544,7 @@ restart:
     ht->hmap[k]  = pos = (hi_t)ht->eld;
     e   = ht->ev[pos];
     d   = ht->hd + pos;
-    for (j = 0; j <= nv; ++j) {
-        e[j]  =   a[j];
-    }
+    memcpy(e, a, (unsigned long)(nv+1) * sizeof(exp_t));
     d->sdm  = generate_short_divmask(e, ht);
     d->val  = h;
 
@@ -588,7 +587,7 @@ restart:
             continue;
         }
         const exp_t * const ehm = ht->ev[hm];
-        for (j = 1; j < nv; j += 2) {
+        for (j = 0; j < nv; j += 2) {
             if (a[j] != ehm[j] || a[j+1] != ehm[j+1]) {
                 i++;
                 goto restart;
@@ -605,9 +604,7 @@ restart:
     ht->hmap[k]  = pos = (hi_t)ht->eld;
     e   = ht->ev[pos];
     d   = ht->hd + pos;
-    for (j = 0; j <= nv; ++j) {
-        e[j]  =   a[j];
-    }
+    memcpy(e, a, (unsigned long)(nv+1) * sizeof(exp_t));
     d->sdm  = generate_short_divmask(e, ht);
     d->val  = h;
 
@@ -818,7 +815,7 @@ restart:
                 continue;
             }
             const exp_t * const ehm = ev[hm];
-            for (j = 1; j < nv; j += 2) {
+            for (j = 0; j < nv; j += 2) {
                 if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
                     i++;
                     goto restart;
@@ -895,7 +892,7 @@ restart:
                 continue;
             }
             const exp_t * const ehm = ev2[hm];
-            for (j = 1; j < nv; j += 2) {
+            for (j = 0; j < nv; j += 2) {
                 if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
                     i++;
                     goto restart;
@@ -961,7 +958,7 @@ restart:
                 continue;
             }
             const exp_t * const ehm = ht->ev[hm];
-            for (j = 1; j < nv; j += 2) {
+            for (j = 0; j < nv; j += 2) {
                 if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
                     i++;
                     goto restart;
@@ -980,9 +977,7 @@ restart:
         ht->hmap[k] = pos = (hi_t)ht->eld;
         e = ht->ev[ht->eld];
         d = ht->hd + ht->eld;
-        for (j = 0; j <= nv; ++j) {
-            e[j]    =   n[j];
-        }
+        memcpy(e, n, (unsigned long)(nv+1) * sizeof(exp_t));
         d->sdm  = generate_short_divmask(e, ht);
         d->val  = h;
 

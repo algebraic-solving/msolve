@@ -242,15 +242,16 @@ static inline len_t generate_new_basis_elements(
     ht_t *ht        = *htp;
     const len_t nv  = ht->nv;
     len_t ctr       = 0;
-    exp_t *etmp     = calloc((unsigned long)nv, sizeof(exp_t));
+    exp_t *etmp     = calloc((unsigned long)(nv+1), sizeof(exp_t));
 
     for (i = nv; i > 0; --i) {
         while (ht->esz - ht->eld < oqb_dim-ind[nv-i]) {
             enlarge_hash_table(ht);
         }
         for (j = ind[nv-i]; j < oqb_dim; ++j) {
-            memcpy(etmp, ht->ev[oqb[j]], (unsigned long)nv*sizeof(exp_t));;
-            etmp[i-1]++;
+            memcpy(etmp, ht->ev[oqb[j]], (unsigned long)(nv+1)*sizeof(exp_t));;
+            etmp[i]++;
+            etmp[DEG]++;
             cqb[ctr]  = check_lm_divisibility_and_insert_in_hash_table(
                             etmp, ht, bs
                             );
@@ -281,7 +282,7 @@ static inline void update_indices(
 
     for (i = nv-1; i > 0; --i) {
         for (j = ind[nv-1-i]; j < dim; ++j) {
-            if (ht->ev[qb[j]][i] == 0) {
+            if (ht->ev[qb[j]][i+1] == 0) {
                 ind[nv-i] = j;
                 break;
             }
@@ -315,7 +316,7 @@ static len_t quotient_basis(
     const len_t nv  = (*htp)->nv;
 
     /* clear ht-ev[0] */
-    memset((*htp)->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
+    memset((*htp)->ev[0], 0, (unsigned long)(nv+1) * sizeof(exp_t));
 
 
     len_t *ind      = calloc((unsigned long)nv, sizeof(len_t));
@@ -332,15 +333,15 @@ static len_t quotient_basis(
         /* printf("qb before adding\n");
          * for (len_t ii = 0; ii < qbd; ++ii) {
          *     printf("pos %u --> ", ii);
-         *     for (len_t jj = 0; jj < nv; ++jj) {
+         *     for (len_t jj = 0; jj <= nv; ++jj) {
          *         printf("%d ", (*htp)->ev[qb[ii]][jj]);
          *     }
          *     printf("\n");
-         * } */
-        /* printf("nqb before adding\n");
+         * }
+         * printf("nqb before adding\n");
          * for (len_t ii = 0; ii < nqbd; ++ii) {
          *     printf("pos %u --> ", ii);
-         *     for (len_t jj = 0; jj < nv; ++jj) {
+         *     for (len_t jj = 0; jj <= nv; ++jj) {
          *         printf("%d ", (*htp)->ev[nqb[ii]][jj]);
          *     }
          *     printf("\n");
@@ -401,9 +402,11 @@ static void update_multipliers(
     }
     sat->ld = ctr;
 
+    printf("sat->ld %u\n", sat->ld);
     ctr = 0;
 
     for (i = 0; i < sat->ld; ++i) {
+        /* printf("qb[%u] = %u !=! %u (%u)\n", ctr, qb[ctr], i, sat->hm[i][MULT]); */
         while (i < sat->ld && ctr < qdim && qb[ctr] != sat->hm[i][MULT]) {
             free(sat->hm[i]);
             sat->hm[i]    = NULL;
@@ -428,6 +431,7 @@ static void update_multipliers(
         const hm_t m    = qb[i];
         const sdm_t ns  = ~bht->hd[qb[i]].sdm;
         j = sat->lo-1;
+        /* printf("sat->lo %u | j %u\n", sat->lo, j); */
 sat_restart:
         while (j > 0 && bht->hd[sat->hm[j][MULT]].sdm & ns) {
             j--;
@@ -471,7 +475,7 @@ sat_restart:
     st->new_multipliers = sat->ld - sat->lo;
     /* for (i = 0; i < sat->ld; ++i) {
      *     printf("%3u -> ", i);
-     *     for (len_t j = 0; j < sht->nv; ++j) {
+     *     for (len_t j = 0; j <= sht->nv; ++j) {
      *         printf("%d ", sht->ev[sat->hm[i][OFFSET]][j]);
      *     }
      *     printf("\n");

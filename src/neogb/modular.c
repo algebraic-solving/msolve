@@ -442,7 +442,6 @@ bs_t *f4sat_trace_application_test_phase(
         clear_matrix(mat); // does not reset mat->np
 
         update_basis(ps, bs, bht, uht, st, mat->np, 1);
-        printf("f4 bs->lml %u\n", bs->lml);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -1152,7 +1151,7 @@ bs_t *f4sat_trace_learning_phase(
 
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
-    memset(bht->ev[0], 0, (unsigned long)bht->nv * sizeof(exp_t));
+    memset(bht->ev[0], 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
     sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
     sat->ld = 1;
 
@@ -1218,7 +1217,6 @@ bs_t *f4sat_trace_learning_phase(
 
         /* check redundancy only if input is not homogeneous */
         update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
-        printf("f4 bs->lml %u\n", bs->lml);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();

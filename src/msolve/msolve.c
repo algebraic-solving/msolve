@@ -688,10 +688,7 @@ static inline void check_and_set_linear_poly_non_hashed(long *nlins_ptr,
   *nlins_ptr = nlins;
 
   //On recupere les coefficients des formes lineaires
-  uint32_t* lineqs = calloc(nlins*(nvars + 1), sizeof(uint64_t));
-  for(long i = 0; i < nlins*(nvars+1); i++){
-    lineqs[i] = 0;
-  }
+  uint32_t* lineqs = calloc(nlins*(nvars + 1), sizeof(uint32_t));
 
   int cnt = 0;
 
@@ -2220,7 +2217,7 @@ static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
     //    len[cl] = bs->hm[bi][LENGTH];
 
     dt  = bs->hm[bi] + OFFSET;
-    for (int k = 0; k < nv; ++k) {
+    for (int k = 1; k <= nv; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
     //    cc  +=  len[cl];
@@ -2243,7 +2240,7 @@ static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
     //    len[cl] = bs->hm[bi][LENGTH];
 
     dt  = bs->hm[bi] + OFFSET;
-    for (int k = 0; k < nv; ++k) {
+    for (int k = 1; k <= nv; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
     //    cc  +=  len[cl];
@@ -2258,9 +2255,9 @@ static inline void set_linear_poly(long nlins, uint32_t *lineqs, uint64_t *linva
   for(long i = 0; i < nlins*((bht->nv + 1)); i++){
     lineqs[i] = 0;
   }
-  for(long i = 0; i < nlins*(bht->nv+1); i++){
-    lineqs[i] = 0;
-  }
+  /* for(long i = 0; i < nlins*(bht->nv+1); i++){
+   *   lineqs[i] = 0;
+   * } */
   int cnt = 0;
 
   for(int i = 0; i < bht->nv; i++){
@@ -2282,7 +2279,9 @@ static inline void set_linear_poly(long nlins, uint32_t *lineqs, uint64_t *linva
           exp_t *exp = bht->ev[dt[j]];
           int isvar = 0;
           for(int k = 0; k < bht->nv; k++){
-            if(exp[k]==1){
+            /* exponent vectors in hash table store the degree
+             * at the first position, thus "+1" */
+            if(exp[k+1]==1){
               lineqs[cnt*(bht->nv+1)+k] = coef;
               isvar=1;
             }
@@ -2326,10 +2325,7 @@ static inline void check_and_set_linear_poly(long *nlins_ptr, uint64_t *linvars,
   *nlins_ptr = nlins;
 
   //On recupere les coefficients des formes lineaires
-  uint32_t* lineqs = calloc(nlins*(bht->nv + 1), sizeof(uint64_t));
-  for(long i = 0; i < nlins*(bht->nv+1); i++){
-    lineqs[i] = 0;
-  }
+  uint32_t* lineqs = calloc(nlins*(bht->nv + 1), sizeof(uint32_t));
   int cnt = 0;
   for(int i = 0; i < bht->nv; i++){
     if(linvars[i] != 0){
@@ -2350,7 +2346,9 @@ static inline void check_and_set_linear_poly(long *nlins_ptr, uint64_t *linvars,
           exp_t *exp = bht->ev[dt[j]];
           int isvar = 0;
           for(int k = 0; k < bht->nv; k++){
-            if(exp[k]==1){
+            /* exponent vectors in hash table store the degree
+             * at the first position, thus "+1" */
+            if(exp[k+1]==1){
               lineqs[cnt*(bht->nv+1)+k] = coef;
               isvar=1;
             }
@@ -2431,6 +2429,13 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
 
     /* Leading monomials from Grobner basis */
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
+    for (int ii = 0; ii < bs->lml; ++ii) {
+        printf("%u -- ", ii);
+        for (int jj = 0; jj < bht->nv; ++jj) {
+            printf("%u ", bexp_lm[ii*bht->nv+jj]);
+        }
+        printf("\n");
+    }
     leadmons[0] = bexp_lm;
     num_gb[0] = bs->lml;
 
@@ -4907,7 +4912,7 @@ restart:
 
                 printf("\nUnion of support, sorted by decreasing monomial order:\n");
                 for (len_t k = 0; k < mat->nc; ++k) {
-                    for (len_t l = 0; l < sht->nv; ++l) {
+                    for (len_t l = 1; l <= sht->nv; ++l) {
                         printf("%2u ", sht->ev[hcm[k]][l]);
                     }
                     printf("\n");

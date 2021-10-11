@@ -241,7 +241,7 @@ static void print_msolve_polynomials_ff_32(
                 len = bs->hm[idx][LENGTH];
                 cf  = bs->cf_32[bs->hm[idx][COEFFS]];
                 fprintf(file, "%u", cf[0]);
-                for (k = 1; k= < nv; ++k) {
+                for (k = 1; k <= nv; ++k) {
                     if (ht->ev[hm[0]][k] > 0) {
                         fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[0]][k]);
                     }

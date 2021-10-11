@@ -736,7 +736,7 @@ static int64_t export_julia_data_ff_8(
         }
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 0; k < nv; ++k) {
+            for (k = 1; k <= nv; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -799,7 +799,7 @@ static int64_t export_julia_data_ff_16(
         }
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 0; k < nv; ++k) {
+            for (k = 1; k <= nv; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -869,7 +869,7 @@ static int64_t export_julia_data_ff_32(
 
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 0; k < nv; ++k) {
+            for (k = 1; k <= nv; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -933,7 +933,7 @@ static int64_t export_julia_data_qq(
 
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 0; k < nv; ++k) {
+            for (k = 1; k <= nv; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }

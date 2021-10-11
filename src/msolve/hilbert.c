@@ -233,13 +233,15 @@ static inline int is_equal_exponent_dm(bs_t *bs, ht_t *ht, long idx, long pos,
   const bl_t bi = bs->lmps[idx];
   hm_t *dt = bs->hm[bi] + OFFSET;
 
-  for(long k = 0; k < nv - 1; k++){
-    int e = (int32_t)ht->ev[dt[pos]][k];
+  for(long k = 0; k < nv-1 ; k++){
+    /* in hash table exponent vectors store their degree in the first entry,
+     * thus we have to go by "k+1" */
+    int e = (int32_t)ht->ev[dt[pos]][k+1];
     if(e != exp2[k]){
       return 0;
     }
   }
-  int e = (int32_t)ht->ev[dt[pos]][nv - 1];
+  int e = (int32_t)ht->ev[dt[pos]][nv];
   return (e == exp2[nv - 1]);
 }
 

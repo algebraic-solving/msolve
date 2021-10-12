@@ -633,7 +633,7 @@ static void generate_matrix_from_trace(
     while (i < td.rld) {
         b     = bs->hm[td.rri[i++]];
         emul  = tht->ev[td.rri[i]];
-        h     = tht->hd[td.rri[i]].val;
+        h     = tht->hd[td.rri[i++]].val;
 
         rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         sht->hd[rrows[nr][OFFSET]].idx = 2;

@@ -402,7 +402,6 @@ static void update_multipliers(
     }
     sat->ld = ctr;
 
-    printf("sat->ld %u\n", sat->ld);
     ctr = 0;
 
     for (i = 0; i < sat->ld; ++i) {

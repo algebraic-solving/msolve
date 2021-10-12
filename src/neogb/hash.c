@@ -327,7 +327,7 @@ static inline sdm_t generate_short_divmask(
   const len_t ndv = ht->ndv;
   const len_t bpv = ht->bpv;
 
-  for (i = 0; i < ndv; ++i) {
+  for (i = 1; i <= ndv; ++i) {
     for (j = 0; j < bpv; ++j) {
       if ((sdm_t)a[i] >= ht->dm[ctr]) {
         res |= 1 << ctr;

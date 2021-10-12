@@ -5140,7 +5140,7 @@ restart:
 
                 for (i = 0; i < st->nprimes; ++i){
                     ca0 = realtime();
-                    bs[i] = f4sat_trace_application_test_phase(
+                    bs[i] = f4sat_trace_application_phase(
                             trace,
                             tht,
                             bs_qq,

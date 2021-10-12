@@ -2429,13 +2429,6 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
 
     /* Leading monomials from Grobner basis */
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
-    for (int ii = 0; ii < bs->lml; ++ii) {
-        printf("%u -- ", ii);
-        for (int jj = 0; jj < bht->nv; ++jj) {
-            printf("%u ", bexp_lm[ii*bht->nv+jj]);
-        }
-        printf("\n");
-    }
     leadmons[0] = bexp_lm;
     num_gb[0] = bs->lml;
 

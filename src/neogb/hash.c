@@ -451,7 +451,7 @@ restart:
         }
         const exp_t *const ea = ht->ev[a[j]];
         /* exponent check */
-        for (i = 0; i <= nv; i += 2) {
+        for (i = 0; i < nv; i += 2) {
             if (ea[i] < eb[i] || ea[i+1] < eb[i+1]) {
                 j++;
                 goto restart;

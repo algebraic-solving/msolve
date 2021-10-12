@@ -358,26 +358,26 @@ void calculate_divmask(
   exp_t *e  = ev[1];
 
   /* get initial values from first hash table entry */
-  for (i = 1; i <= ht->ndv; ++i) {
-    max_exp[i]  = min_exp[i]  = e[i];
+  for (i = 0; i < ht->ndv; ++i) {
+    max_exp[i]  = min_exp[i]  = e[i+1];
   }
 
   /* get maximal and minimal exponent element entries in hash table */
   for (i = 2; i < ht->eld; ++i) {
     e = ev[i];
-    for (j = 1; j <= ht->ndv; ++j) {
+    for (j = 0; j < ht->ndv; ++j) {
       if (e[j] > max_exp[j]) {
-        max_exp[j]  = e[j];
+        max_exp[j]  = e[j+1];
         continue;
       }
       if (e[j] < min_exp[j]) {
-        min_exp[j]  = e[j];
+        min_exp[j]  = e[j+1];
       }
     }
   }
 
   /* calculate average values for generating divmasks */
-  for (i = 1; i <= ht->ndv; ++i) {
+  for (i = 0; i < ht->ndv; ++i) {
     steps = (max_exp[i] - min_exp[i]) / ht->bpv;
     if (steps == 0)
       steps++;

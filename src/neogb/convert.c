@@ -391,18 +391,20 @@ static void add_kernel_elements_to_basis(
         kernel->cf_32[rows[i][COEFFS]]  = NULL;
         bs->hm[bld+ctr]                 = rows[i];
         bs->hm[bld+ctr][COEFFS]         = bld+ctr;
-        for (j = OFFSET; j < bs->hm[bld+ctr][LENGTH]+OFFSET; ++j) {
+        j = OFFSET;
+next_j:
+        for (; j < bs->hm[bld+ctr][LENGTH]+OFFSET; ++j) {
             bs->hm[bld+ctr][j] = hcm[bs->hm[bld+ctr][j]];
             if (nterms != 0) {
                 for (int kk = 0; kk < nterms; ++kk) {
                     if (terms[kk] == bs->hm[bld+ctr][j]) {
+                        j++;
                         goto next_j;
                     }
                 }
             }
             terms[nterms] = bs->hm[bld+ctr][j];
             nterms++;
-next_j:
         }
         if (ht->ev[bs->hm[bld+ctr][OFFSET]][DEG] == 0) {
             bs->constant  = 1;

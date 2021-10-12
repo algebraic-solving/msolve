@@ -410,7 +410,9 @@ bs_t *f4sat_trace_application_test_phase(
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
-    for (round = 1; ps->ld > 0; ++round) {
+    round = 1;
+end_sat_step:
+    for (; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
             st->num_rht++;
@@ -553,7 +555,6 @@ bs_t *f4sat_trace_application_test_phase(
                 printf("%10.2f sec\n", rrt1-rrt0);
             }
         }
-end_sat_step:
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\
@@ -700,7 +701,9 @@ bs_t *f4sat_trace_application_phase(
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
-    for (round = 0; round < trace->ld; ++round) {
+    round = 0;
+end_sat_step:
+    for (; round < trace->ld; ++round) {
         rrt0  = realtime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
             st->max_bht_size : bht->esz;
@@ -842,7 +845,6 @@ bs_t *f4sat_trace_application_phase(
                 printf("%10.2f sec\n", rrt1-rrt0);
             }
         }
-end_sat_step:
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\
@@ -1184,7 +1186,9 @@ bs_t *f4sat_trace_learning_phase(
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
-    for (round = 1; ps->ld > 0; ++round) {
+    round = 1;
+end_sat_step:
+    for (; ps->ld > 0; ++round) {
         rrt0  = realtime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
             st->max_bht_size : bht->esz;
@@ -1367,7 +1371,6 @@ bs_t *f4sat_trace_learning_phase(
             }
             next_deg  = sat_deg;
         }
-end_sat_step:
     }
 
     if (st->info_level > 1) {

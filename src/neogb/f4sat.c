@@ -557,7 +557,9 @@ int core_f4sat(
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
-    for (round = 1; ps->ld > 0; ++round) {
+    round = 1;
+end_sat_step:
+    for (; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
             st->num_rht++;
@@ -714,7 +716,6 @@ int core_f4sat(
                 printf("%10.2f sec\n", rrt1-rrt0);
             }
         }
-end_sat_step:
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\

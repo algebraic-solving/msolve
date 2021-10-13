@@ -43,6 +43,7 @@ int
 _mpq_reconstruct_mpz_2(mpz_t n, mpz_t d,
     const mpz_t a, const mpz_t m, const mpz_t N, const mpz_t D)
 {
+
     mpz_t q, r, s, t;
     int success = 0;
 
@@ -182,7 +183,6 @@ int mpq_reconstruct_mpz_with_denom(mpq_t *res, mpz_t a, const mpz_t m,
   }
   else{
     while(mpz_cmp_ui(a, 0) < 0){
-      //      mpz_fprint(stderr, a); fprintf(stderr, "\n");
       mpz_add(a, a, m);
     }
     int b = _mpq_reconstruct_mpz_with_denom(mpq_numref(*res),
@@ -190,4 +190,114 @@ int mpq_reconstruct_mpz_with_denom(mpq_t *res, mpz_t a, const mpz_t m,
                                             num, den);
     return b;
   }
+}
+
+
+/* Rational reconstruction -- classical algorithm
+   returns 1 in case of success else returns 0
+
+   assumes that 2ND < mod
+
+   In case of success, n and d are such that
+   n/d = u modulo mod
+   gcd(n,d)=1
+   and |n| < recadata->N, |d| < recdata->D
+
+
+ */
+int ratreconwden(mpz_t n, mpz_t d, /* output numerator and denominator */
+                 mpz_t u, const mpz_t mod, const mpz_t gden,
+                 rrec_data_t recdata){
+
+  while(mpz_cmp_ui(u, 0) < 0){
+    mpz_add(u, u, mod);
+  }
+  mpz_mul(u, u, gden);
+  mpz_mod(u, u, mod);
+  mpz_set(recdata->r0, mod);
+  mpz_set_ui(recdata->t0, 0);
+
+  mpz_set(recdata->r1, u);
+  mpz_set_ui(recdata->t1, 1);
+
+  while(mpz_cmp(recdata->r1, recdata->N)>0){
+    mpz_fdiv_q(recdata->q, recdata->r0, recdata->r1);
+
+    mpz_mul(recdata->tmp, recdata->q, recdata->r1);
+    mpz_sub(recdata->tmp, recdata->r0, recdata->tmp);
+    mpz_swap(recdata->r0, recdata->r1);
+    mpz_swap(recdata->r1, recdata->tmp);
+
+    mpz_mul(recdata->tmp, recdata->q, recdata->t1);
+    mpz_sub(recdata->tmp, recdata->t0, recdata->tmp);
+    mpz_swap(recdata->t0, recdata->t1);
+    mpz_swap(recdata->t1, recdata->tmp);
+  }
+  mpz_set(n, recdata->r1);
+  mpz_set(d, recdata->t1);
+
+  if(mpz_sgn(d) < 0){
+    mpz_neg(n, n);
+    mpz_neg(d, d);
+  }
+  mpz_gcd(recdata->q, n, d);
+  if(mpz_cmp(d, recdata->D) <= 0 && mpz_cmp_ui(recdata->q, 1)==0){
+    return 1;
+  }
+
+  return 0;
+}
+
+/* Rational reconstruction -- classical algorithm
+   returns 1 in case of success else returns 0
+
+   assumes that 2ND < mod
+
+   In case of success, n and d are such that
+   n/d = u modulo mod
+   gcd(n,d)=1
+   and |n| < recadata->N, |d| < recdata->D
+
+
+ */
+int ratrecon(mpz_t n, mpz_t d, /* output numerator and denominator */
+             mpz_t u, const mpz_t mod,
+             rrec_data_t recdata){
+
+  while(mpz_cmp_ui(u, 0) < 0){
+    mpz_add(u, u, mod);
+  }
+
+  mpz_set(recdata->r0, mod);
+  mpz_set_ui(recdata->t0, 0);
+
+  mpz_set(recdata->r1, u);
+  mpz_set_ui(recdata->t1, 1);
+
+  while(mpz_cmp(recdata->r1, recdata->N)>0){
+    mpz_fdiv_q(recdata->q, recdata->r0, recdata->r1);
+
+    mpz_mul(recdata->tmp, recdata->q, recdata->r1);
+    mpz_sub(recdata->tmp, recdata->r0, recdata->tmp);
+    mpz_swap(recdata->r0, recdata->r1);
+    mpz_swap(recdata->r1, recdata->tmp);
+
+    mpz_mul(recdata->tmp, recdata->q, recdata->t1);
+    mpz_sub(recdata->tmp, recdata->t0, recdata->tmp);
+    mpz_swap(recdata->t0, recdata->t1);
+    mpz_swap(recdata->t1, recdata->tmp);
+  }
+  mpz_set(n, recdata->r1);
+  mpz_set(d, recdata->t1);
+
+  if(mpz_sgn(d) < 0){
+    mpz_neg(n, n);
+    mpz_neg(d, d);
+  }
+  mpz_gcd(recdata->q, n, d);
+  if(mpz_cmp(d, recdata->D) <= 0 && mpz_cmp_ui(recdata->q, 1)==0){
+    return 1;
+  }
+
+  return 0;
 }

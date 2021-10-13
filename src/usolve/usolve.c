@@ -37,7 +37,7 @@
 #include "flint/fmpz_poly.h"
 
 
-#define THRESHOLDSHIFT 256 //512
+#define THRESHOLDSHIFT 256
 #define POWER_HACK 1
 
 #define ilog2(a) mpz_sizeinbase(a,2)
@@ -1000,8 +1000,8 @@ static void initialize_heap_flags(usolve_flags *flags,
       mpz_init(flags->tmpol_desc[i]);
     }
 
-    if(flags->nthreads>=1){
-      //used for parallel taylor_shift
+    if(flags->nthreads>=1 && 0==1){
+      /* used for parallel Taylor shift */
       flags->tmp_threads = malloc(sizeof(mpz_t *) * (flags->nthreads + 1));
       flags->pols_threads = malloc(sizeof(mpz_t *) * flags->nthreads);
       mpz_t ** tmp = flags->tmp_threads;
@@ -1048,7 +1048,7 @@ static inline void free_heap_flags(usolve_flags *flags,
     mpz_clear(flags->Values[1]);
     free(flags->Values);
 
-    if(flags->nthreads>1){
+    if(flags->nthreads>=1 &&0==1){
       for(int i = 0; i < flags->nthreads; i++){
 
         for(unsigned long int j = 0; j <= deg; j++){
@@ -1155,6 +1155,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
                                              flags->bound_pos, deg,
                                              flags->nthreads);
     initialize_heap_flags(flags, deg);
+
     unsigned olddeg = deg;
     bisection_rec(upol, &deg, e, 0,
                   pos_roots, nb_pos_roots,
@@ -1169,7 +1170,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
   /* replaces upol(x) by upol(-x) => negative roots */
 
   if(zero_root == 0){
-    deg = deg0; 
+    deg = deg0;
   }
   else{
     deg = (deg0 - 1);
@@ -1264,6 +1265,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
                      unsigned long int *nb_pos_roots,
                      unsigned long int *nb_neg_roots,
                      const int32_t precision,
+                     int nthrds,
                      int info_level){
   usolve_flags *flags = (usolve_flags*)(malloc(sizeof(usolve_flags)));
   initialize_flags(flags);
@@ -1277,6 +1279,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   if(info_level>1){
     flags->print_stats = 1;
   }
+  flags->nthreads = nthrds;
   if(flags->verbose>=1 || flags->print_stats == 1){
     fprintf(stderr, "Degree = %ld \t Max bit size = %lu Min bit size = %lu \n",
             flags->cur_deg,
@@ -1327,8 +1330,6 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
     fprintf(stderr,"Time for refinement (elapsed): %.2f sec\n", refine_time);
   }
 
-  free(flags->tmp_threads);
-  free(flags->pols_threads);
   free(flags);
   return roots;
 }

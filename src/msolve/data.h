@@ -59,6 +59,20 @@ typedef struct{
 } data_gens_ff_t;
 
 typedef struct{
+  mpz_t r0;
+  mpz_t r1;
+  mpz_t t0;
+  mpz_t t1;
+  mpz_t q;
+  mpz_t tmp;
+  mpz_t N;
+  mpz_t D;
+} rrec_data_struct_t;
+
+typedef rrec_data_struct_t rrec_data_t[1];
+
+
+typedef struct{
   int32_t length;
   int32_t alloc;
   mpz_t *coeffs;

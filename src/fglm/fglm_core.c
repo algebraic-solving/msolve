@@ -686,9 +686,6 @@ static inline long make_square_free_elim_poly(param_t *param,
 
   if(boo && dim == dimquot){
     nmod_poly_set(param->elim, data_bms->BMS->V1);
-    if(info_level){
-      fprintf(stderr, "The ideal is radical: %ld solutions\n", dim);
-    }
   }
   else{
 
@@ -1152,7 +1149,6 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed: %.2f sec\n",
             realtime()-st);
-    fprintf(stderr, "Elimination done.\n");
   }
 
 
@@ -1197,10 +1193,9 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
       fprintf(stderr, "Radical ideal might have no correct parametrization\n");
     } else if (right_param < nvars) {
       fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-      fprintf(stderr, "the radical ideal seem correct\n");
     } else {
       fprintf(stderr, "All the parametrizations of ");
-      fprintf(stderr, "the radical ideal seem correct\n");
+      fprintf(stderr, "the radical ideal are correct\n");
     }
   }
   if(info_level){
@@ -1287,7 +1282,6 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
             realtime()-st);
-    fprintf(stderr, "Elimination done.\n");
   }
 
 
@@ -1336,7 +1330,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
       if (right_param == 1) {
         if(info_level){
           fprintf(stderr,
-                  "Parametrizations of the radical of the input ideal are not correct\n");
+                  "Ideal not in generic position, parametrizations are not correct\n");
         }
         *success = 0;
       }
@@ -1353,7 +1347,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
           if (right_param < nvars) {
             if(info_level){
               fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-              fprintf(stderr, "the radical ideal seem correct\n");
+              fprintf(stderr, "the radical ideal are correct\n");
             }
             *success = 0;
           }
@@ -1454,7 +1448,6 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
             realtime()-st);
-    fprintf(stderr, "Elimination done.\n");
   }
   if(param->elim->length-1 != deg_init){
     return 1;

@@ -353,7 +353,7 @@ bs_t *f4sat_trace_application_test_phase(
     ps_t * ps   = initialize_pairset();
     /* current quotient basis up to max lm degree in intermediate basis */
     hm_t *qb    = NULL;
-    int32_t ret, round, ctr, i, j;
+    int32_t round, ctr, i, j;
     ctr = 0;
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
@@ -411,7 +411,6 @@ bs_t *f4sat_trace_application_test_phase(
 ----------------------------------------\n");
     }
     round = 1;
-end_sat_step:
     for (; ps->ld > 0; ++round) {
         if (round % st->reset_ht == 0) {
             reset_hash_table(bht, bs, ps, st);
@@ -605,7 +604,6 @@ end_sat_step:
         print_final_statistics(stderr, st);
     }
 
-stop:
     /* free and clean up */
     free(hcm);
     free(hcmm);
@@ -623,10 +621,6 @@ stop:
     gst->application_nr_mult  = st->application_nr_mult;
     gst->application_nr_red   = st->application_nr_red;
     free(st);
-
-    if (ret != 0) {
-        free_basis(&bs);
-    }
 
     return bs;
 }
@@ -701,7 +695,6 @@ bs_t *f4sat_trace_application_phase(
 ----------------------------------------\n");
     }
     round = 0;
-end_sat_step:
     for (; round < trace->ld; ++round) {
         rrt0  = realtime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
@@ -1128,8 +1121,7 @@ bs_t *f4sat_trace_learning_phase(
     /* global saturation data */
     len_t sat_test  = 0;
     deg_t sat_deg   = 0;
-    len_t set       = 0;
-    int sat_done    = 0;
+    /* int sat_done    = 0; */
 
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
@@ -1243,7 +1235,7 @@ end_sat_step:
                     is_zero_dimensional(bs, bht) &&
                     is_already_saturated(
                         bs, sat, mat, &hcm, &bht, &sht, &uht, st)) {
-                sat_done  = 1;
+                /* sat_done  = 1; */
                 goto end_sat_step;
             }
             /* check for new elements to be tested for adding saturation
@@ -1484,6 +1476,7 @@ int64_t f4_trace_julia(
         const void *cfs,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t ht_size,
@@ -1520,7 +1513,7 @@ int64_t f4_trace_julia(
     /* checks and set all meta data. if a nonzero value is returned then
      * some of the input data is corrupted. */
     if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
-                mon_order, nr_vars, nr_gens, ht_size, nr_threads,
+                mon_order, elim_block_len, nr_vars, nr_gens, ht_size, nr_threads,
                 max_nr_pairs, reset_ht, la_option, reduce_gb, prime_start,
                 nr_primes, pbm_file, info_level)) {
         return 0;

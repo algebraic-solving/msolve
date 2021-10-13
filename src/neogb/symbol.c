@@ -25,6 +25,8 @@
 #include <immintrin.h>
 #endif
 
+/* select_all_pairs() is unused at the moment */
+#if 0 
 static void select_all_spairs(
         mat_t *mat,
         const bs_t * const bs,
@@ -189,6 +191,7 @@ static void select_all_spairs(
     st->select_ctime  +=  ct1 - ct0;
     st->select_rtime  +=  rt1 - rt0;
 }
+#endif
 
 static void select_spairs_by_minimal_degree(
         mat_t *mat,

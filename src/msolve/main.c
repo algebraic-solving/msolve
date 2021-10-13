@@ -175,6 +175,7 @@ static void getoptions(
         int32_t *initial_hts,
         int32_t *nthreads,
         int32_t *max_pairs,
+        int32_t *elim_block_len,
         int32_t *linear_algebra,
         int32_t *update_ht,
         int32_t *reduce_gb,
@@ -193,12 +194,18 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:v:l:t:o:u:i:p:P:g:c:s:S:r:m:M:n:";
+  char options[] = "hf:v:l:t:e:o:u:i:p:P:g:c:s:S:r:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'h':
       display_help(argv[0]);
       exit(0);
+    case 'e':
+      *elim_block_len = strtol(optarg, NULL, 10);
+      if (*elim_block_len < 0) {
+          *elim_block_len = 0;
+      }
+      break;
     case 'u':
       *update_ht = strtol(optarg, NULL, 10);
       break;
@@ -327,6 +334,7 @@ int main(int argc, char **argv){
     int32_t info_level            = 0;
     int32_t initial_hts           = 17;
     int32_t max_pairs             = 0;
+    int32_t elim_block_len        = 0;
     int32_t update_ht             = 0;
     int32_t generate_pbm          = 0;
     int32_t reduce_gb             = 1;
@@ -343,7 +351,7 @@ int main(int argc, char **argv){
     files->in_file = NULL;
     files->out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
-            &la_option, &update_ht, &reduce_gb, &print_gb,
+            &elim_block_len, &la_option, &update_ht, &reduce_gb, &print_gb,
             &genericity_handling, &saturate, &normal_form, &normal_form_matrix,
             &is_gb, &get_param, &precision, &generate_pbm, &info_level,
             files);
@@ -377,10 +385,10 @@ int main(int argc, char **argv){
 
     /* main msolve functionality */
     int ret = core_msolve(la_option, nr_threads, info_level, initial_hts,
-            max_pairs, update_ht, generate_pbm, reduce_gb, print_gb, get_param,
-            genericity_handling, saturate, normal_form, normal_form_matrix, is_gb,
-            precision, files, gens, &param, &mpz_param, &nb_real_roots,
-            &real_roots, &real_pts);
+            max_pairs, elim_block_len, update_ht, generate_pbm, reduce_gb,
+            print_gb, get_param, genericity_handling, saturate, normal_form,
+            normal_form_matrix, is_gb, precision, files, gens, &param,
+            &mpz_param, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
     free(param);

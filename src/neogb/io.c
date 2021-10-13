@@ -532,7 +532,6 @@ void import_julia_data_nf_qq(
 
     int32_t off       = 0; /* offset in arrays */
     const len_t nv    = st->nvars;
-    const len_t ngens = st->ngens;
 
     /* we want to get rid of denominators, i.e. we want to handle
      * the coefficients as integers resp. mpz_t numbers. for this we
@@ -956,6 +955,7 @@ int32_t check_and_set_meta_data(
         const void *cfs,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t ht_size,
@@ -1002,6 +1002,14 @@ int32_t check_and_set_meta_data(
     } else {
         st->mo  = mon_order;
     }
+    /* elimination block order? If so, store the blocks length */
+    st->nev = elim_block_len >= 0 ? elim_block_len : 0;
+    if (st->nev >= st->nvars) {
+        printf("error: Too large elimination block.\n");
+        exit(1);
+    }
+    printf("ebl = %d\n", st->nev);
+
     /* set hash table size */
     st->init_hts  = ht_size;
     if (st->init_hts <= 0) {
@@ -1283,6 +1291,7 @@ int32_t check_and_set_meta_data_trace(
         const void *cfs,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t ht_size,
@@ -1306,8 +1315,8 @@ int32_t check_and_set_meta_data_trace(
         st->nprimes = 10;
     }
     return check_and_set_meta_data(st, lens, exps,
-            cfs, field_char, mon_order, nr_vars, nr_gens,
-            ht_size, nr_threads, max_nr_pairs, reset_hash_table,
+            cfs, field_char, mon_order, elim_block_len, nr_vars,
+            nr_gens, ht_size, nr_threads, max_nr_pairs, reset_hash_table,
             la_option, reduce_gb, pbm_file, info_level);
 }
 

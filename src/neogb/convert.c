@@ -351,6 +351,8 @@ static void convert_columns_to_hashes(
     }
 }
 
+/* add_kernel_elements_to_basis() is unused at the moment */
+#if 0
 static void add_kernel_elements_to_basis(
         bs_t *sat,
         bs_t *bs,
@@ -432,6 +434,7 @@ next_j:
     st->convert_ctime +=  ct1 - ct0;
     st->convert_rtime +=  rt1 - rt0;
 }
+#endif
 
 static void return_normal_forms_to_basis(
         mat_t *mat,

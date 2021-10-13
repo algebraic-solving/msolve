@@ -53,9 +53,11 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 #define LENGTH  OFFSET-1  /* length of the row */
 #define PRELOOP OFFSET-2  /* length of not unrolled loop part */
 #define COEFFS  OFFSET-3  /* index of corresponding coefficient vector */
-#define MULT    OFFSET-4  /* hash of multiplier (for tracing) */
+#define MULT    OFFSET-4  /* hash of multiplier (for tracing and saturation) */
 #define BINDEX  OFFSET-5  /* basis index of element (for tracing) */
 
+#define DEG 0             /* the first entry in each exponent vector
+                           * stores the degree */
 
 /* computational data */
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */
@@ -82,7 +84,7 @@ struct hd_t
 {
     val_t val;
     sdm_t sdm;
-    deg_t deg;
+    /* deg_t deg; */
     ind_t idx;
 };
 
@@ -213,6 +215,11 @@ struct trace_t
     sdm_t *lm;    /* non-redundant lead monomials as short divmask */
     bl_t lml;     /* number of lead monomials of non redundant
                      elements in basis */
+    len_t *rd;    /* rounds in which saturation steps lead to
+                   * non-trivial kernels */
+    deg_t *deg;   /* degree for multipliers in saturation step */
+    len_t rld;    /* load of rounds stored, i.e. how often do saturate */
+    len_t rsz;    /* size of rounds stored */
 };
 
 
@@ -280,6 +287,10 @@ struct stat_t
     double application_nr_mult;
     double application_nr_add;
     uint64_t application_nr_red;
+
+    /* for f4sat */
+    uint32_t new_multipliers;
+    uint32_t nr_kernel_elts;
 };
 
 /* function pointers */

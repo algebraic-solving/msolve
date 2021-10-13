@@ -19,20 +19,16 @@
  * Mohab Safey El Din */
 
 
-#ifndef LIBNEOGB_H
-#define LIBNEOGB_H
+#ifndef GB_F4SAT_H
+#define GB_F4SAT_H
 
 #include "data.h"
-#include "basis.h"
 #include "f4.h"
-#include "hash.h"
-#include "io.h"
-#include "modular.h"
-#include "nf.h"
-#include "f4sat.h"
-#include "stat.h"
-#include "sort_r.h"
-#include "tools.h"
-#include "update.h"
 
+int core_f4sat(
+        bs_t **bsp,
+        bs_t **satp,
+        ht_t **bhtp,
+        stat_t **stp
+        );
 #endif

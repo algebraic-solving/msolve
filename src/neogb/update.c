@@ -74,23 +74,25 @@ static void insert_and_update_spairs(
 
     spair_t *ps = psl->p;
 
+#ifdef HAVE_OPENMP
     const int max_nthrds = 4 <= st->nthrds ? 4 : st->nthrds;
+#endif
 
     const len_t pl  = psl->ld;
     const len_t bl  = bs->ld;
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
-    bs->mltdeg  = bs->mltdeg > bht->hd[nch].deg ?
-        bs->mltdeg : bht->hd[nch].deg;
+    bs->mltdeg  = bs->mltdeg > bht->ev[nch][DEG] ?
+        bs->mltdeg : bht->ev[nch][DEG];
 
     reinitialize_hash_table(uht, bl);
     /* statistics */
     st->max_uht_size  = st->max_uht_size > uht->esz ?
         st->max_uht_size : uht->esz;
 
-    const hd_t * const hd = bht->hd;
-    hd_t *hdu = uht->hd;
+    exp_t **ev  = bht->ev;
+    exp_t **evu = uht->ev;
 
     /* only other lead terms from the matrix may render
      * the current element useless */
@@ -120,7 +122,7 @@ static void insert_and_update_spairs(
     if (check_redundancy == 1) {
         for (i = 0; i < bl; ++i) {
             plcm[i] = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            dlcm[i] = hdu[plcm[i]].deg;
+            dlcm[i] = evu[plcm[i]][DEG];
             if (bs->red[i] == 0) {
                 pp[i].gen1  = i;
                 pp[i].gen2  = bl;
@@ -130,7 +132,7 @@ static void insert_and_update_spairs(
     } else {
         for (i = 0; i < bl; ++i) {
             plcm[i] = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            dlcm[i] = hdu[plcm[i]].deg;
+            dlcm[i] = evu[plcm[i]][DEG];
             pp[i].gen1  = i;
             pp[i].gen2  = bl;
             pp[i].lcm   = plcm[i];
@@ -147,7 +149,7 @@ static void insert_and_update_spairs(
         l = ps[i].gen2;
         const int32_t m = dlcm[l] > dlcm[j] ? dlcm[l] : dlcm[j];
         if (check_monomial_division(ps[i].lcm, nch, bht)
-                && hd[ps[i].lcm].deg > m
+                && ev[ps[i].lcm][DEG] > m
            ) {
             ps[i].lcm = 0;
         }
@@ -196,7 +198,7 @@ static void insert_and_update_spairs(
     const bl_t lml          = bs->lml;
     const bl_t * const lmps = bs->lmps;
 
-    if (bs->mltdeg > bht->hd[nch].deg) {
+    if (bs->mltdeg > bht->ev[nch][DEG]) {
         /* mark redundant elements in basis */
         for (i = 0; i < lml; ++i) {
             if (bs->red[lmps[i]] == 0
@@ -210,6 +212,43 @@ static void insert_and_update_spairs(
     st->num_gb_crit +=  nl - psl->ld;
 
     bs->ld++;
+}
+
+static void update_lm(
+        bs_t *bs,
+        const ht_t * const bht,
+        stat_t *st
+        )
+{
+    len_t i, k;
+    
+    const bl_t lml          = bs->lml;
+    const bl_t * const lmps = bs->lmps;
+
+    k = 0;
+    if (st->mo == 0 && st->num_redundant_old < st->num_redundant) {
+        const sdm_t *lms  = bs->lm;
+        for (i = 0; i < lml; ++i) {
+            if (bs->red[lmps[i]] == 0) {
+                bs->lm[k]   = lms[i];
+                bs->lmps[k] = lmps[i];
+                k++;
+            }
+        }
+        bs->lml = k;
+    }
+    k = bs->lml;
+    for (i = bs->lo; i < bs->ld; ++i) {
+        if (bs->red[i] == 0) {
+            bs->lm[k]   = bht->hd[bs->hm[i][OFFSET]].sdm;
+            bs->lmps[k] = i;
+            k++;
+        }
+    }
+    bs->lml = k;
+    bs->lo  = bs->ld;
+
+    st->num_redundant_old = st->num_redundant;
 }
 
 static void update_basis(

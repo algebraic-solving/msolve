@@ -126,7 +126,8 @@ int real_msolve_qq(
         int32_t pbm_file,
         int32_t precision,
         files_gb *files,
-        int
+        int,
+        int32_t
         );
 
 int core_msolve(

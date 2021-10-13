@@ -65,6 +65,8 @@ typedef struct{
   mpz_t t1;
   mpz_t q;
   mpz_t tmp;
+  mpz_t N;
+  mpz_t D;
 } rrec_data_struct_t;
 
 typedef rrec_data_struct_t rrec_data_t[1];

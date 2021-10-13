@@ -142,6 +142,7 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
     }
   }
   fprintf(file, "],\n");
+  fprintf(stderr, "[1,"); /*at the moment, a single param is returned */
   mpz_upoly_out_str(file, param->elim); //elim. poly
   fprintf(file, ",\n");
   mpz_upoly_out_str(file, param->denom); //denom. poly
@@ -161,12 +162,13 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
   }
   /* fprintf(file, "]"); */
   fprintf(file, "]");
+  fprintf(file, "]");
 }
 
 static inline void mpz_param_out_str_maple(FILE *file,
         const data_gens_ff_t *gens,const long dquot, mpz_param_t param){
   mpz_param_out_str(file, gens, dquot, param);
-  fprintf(file, "],");
+  fprintf(file, "]");
 }
 
 static inline data_gens_ff_t *allocate_data_gens(){
@@ -1421,6 +1423,8 @@ void initialize_rrec_data(rrec_data_t recdata){
   mpz_init(recdata->t1);
   mpz_init(recdata->q);
   mpz_init(recdata->tmp);
+  mpz_init(recdata->N);
+  mpz_init(recdata->D);
 }
 
 void free_rrec_data(rrec_data_t recdata){
@@ -1430,89 +1434,20 @@ void free_rrec_data(rrec_data_t recdata){
   mpz_clear(recdata->t1);
   mpz_clear(recdata->q);
   mpz_clear(recdata->tmp);
+  mpz_clear(recdata->N);
+  mpz_clear(recdata->D);
 }
 
 
 
-int mqrr(mpz_t n, mpz_t d, mpz_t u, mpz_t mod, mpz_t T,
-         rrec_data_t rdata){
-  if(mpz_cmp_ui(u, 0) == 0){
-    if(mpz_cmp(mod, T) > 0){
-      mpz_set_ui(n, 0);
-      mpz_set_ui(d, 1);
-      return 1;
-    }
-    else{
-      return 0;
-    }
-  }
-  mpz_set_ui(n, 0);
-  mpz_set_ui(d, 0);
-
-  mpz_set_ui(rdata->t0, 0);
-  mpz_set(rdata->r0, mod);
-
-  mpz_set_ui(rdata->t1, 1);
-  mpz_set(rdata->r1, u);
-
-  while(( mpz_cmp_ui(rdata->r1, 0) ) && ( mpz_cmp(rdata->r0, T) > 0 )){
-    fprintf(stderr, "*");
-    mpz_fdiv_q(rdata->q, rdata->r0, rdata->r1);
-    if(mpz_cmp(rdata->q, T) > 0){
-      mpz_set(n, rdata->r1);
-      mpz_set(d, rdata->t1);
-      mpz_set(T, rdata->q);
-    }
-    mpz_mul(rdata->tmp, rdata->q, rdata->r1);
-    mpz_sub(rdata->tmp, rdata->r0, rdata->tmp);
-
-    mpz_set(rdata->r0, rdata->r1);
-    mpz_set(rdata->r1, rdata->tmp);
-
-    mpz_mul(rdata->tmp, rdata->q, rdata->t1);
-    mpz_sub(rdata->tmp, rdata->t0, rdata->tmp);
-
-    mpz_set(rdata->t0, rdata->t1);
-    mpz_set(rdata->t1, rdata->tmp);
-  }
-  mpz_gcd(rdata->q, n, d);
-  if((mpz_cmp_ui(d, 0) == 0) || mpz_cmp_ui(rdata->q, 1) != 0){
-    fprintf(stderr, "<<%d>>", mpz_cmp_ui(d, 0));
-    return 0;
-  }
-  if(mpz_sgn(d) == -1){
-    mpz_neg(n, n);
-    mpz_neg(d, d);
-  }
-  return 1;
-}
-
-
-int mqrr_rat_recon(mpz_t *num, mpz_t *den, mpz_t *lu, 
-                   mpz_t mod, mpz_t T,
-                   const long min, const long max,
-                   rrec_data_t rdata){
-  mpz_set_ui(T, mpz_sizeinbase(mod,2));
-  mpz_mul_ui(T, T, mpz_sizeinbase(mod,2));
-  mpz_mul_2exp(T, T, 1);
-  mpz_add_ui(T, T, 1);
-  mpz_out_str(stderr, 10, mod);fprintf(stderr, "->\n");
-  mpz_out_str(stderr, 10, T);fprintf(stderr, "->");
-  for(long i = min; i < max ; i++){
-    int b = mqrr(num[i], den[i], lu[i], mod, T, rdata);
-    if(b == 0) {
-      fprintf(stderr, "i=%ld[%ld,%ld]", i, min, max);
-      return 0;
-    }
-  }
-  return 1;
-}
 
 /**
 
    la sortie est recons / denominator
- **/
 
+ **/
+#define RR 1
+#ifdef RR
 static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
                                                   mpz_t denominator,
                                                   mpz_t *pol,
@@ -1520,6 +1455,150 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
                                                   mpz_t modulus,
                                                   long *maxrec,
                                                   mpq_t *coef,
+                                                  mpz_t rnum,
+                                                  mpz_t rden,
+                                                  mpz_t *tmp_num,
+                                                  mpz_t *tmp_den,
+                                                  mpz_t lcm,
+                                                  mpz_t guessed_num,
+                                                  mpz_t guessed_den,
+                                                  rrec_data_t rdata,
+                                                  int info_level){
+
+
+  if(ratrecon(rnum, rden, pol[*maxrec], modulus, rdata) == 0){
+    return 0;
+  }
+
+  mpz_set(tmp_num[*maxrec], rnum);
+  mpz_set(tmp_den[*maxrec], rden);
+
+  for(long i = *maxrec + 1; i < len; i++){
+    int b = ratrecon(rnum, rden, pol[i], modulus, rdata);
+    if(b == 0){
+      *maxrec = i - 1;
+      return b;
+    }
+
+    mpz_set(tmp_num[i], rnum);
+    mpz_set(tmp_den[i], rden);
+  }
+  for(long i = 0; i < *maxrec; i++){
+    int b = ratrecon(rnum, rden, pol[i], modulus, rdata);
+
+    if(b == 0){
+      if(info_level){
+        fprintf(stderr, "[*]");
+      }
+      *maxrec = MAX(i-1, 0);
+      return b;
+    }
+
+    mpz_set(tmp_num[i], rnum);
+    mpz_set(tmp_den[i], rden);
+  }
+
+  mpz_set(lcm, tmp_den[0]);
+  for(long i = 1; i < len; i++){
+    mpz_lcm(lcm, lcm, tmp_den[i]);
+  }
+  for(long i = 0; i < len; i++){
+    mpz_divexact(tmp_den[i], lcm, tmp_den[i]);
+  }
+  for(long i = 0; i < len; i++){
+    mpz_mul(tmp_num[i], tmp_num[i], tmp_den[i]);
+  }
+  for(long i = 0; i < len; i++){
+    mpz_set(recons[i], tmp_num[i]);
+  }
+  mpz_set(denominator, lcm);
+
+  return 1;
+
+}
+
+static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
+                                                  mpz_t denominator,
+                                                  mpz_t *pol,
+                                                  long len,
+                                                  mpz_t modulus,
+                                                  long *maxrec,
+                                                  mpq_t *coef,
+                                                  mpz_t rnum,
+                                                  mpz_t rden,
+                                                  mpz_t *tmp_num,
+                                                  mpz_t *tmp_den,
+                                                  mpz_t lcm,
+                                                  mpz_t guessed_num,
+                                                  mpz_t guessed_den,
+                                                  rrec_data_t rdata,
+                                                  int info_level){
+
+  mpz_set(guessed_num, pol[*maxrec]);
+  if(ratreconwden(rnum, rden, guessed_num, modulus, guessed_den, rdata) == 0){
+    return 0;
+  }
+
+  mpz_set(tmp_num[*maxrec], rnum);
+  mpz_set(tmp_den[*maxrec], rden);
+
+  for(long i = *maxrec + 1; i < len; i++){
+    mpz_set(guessed_num, pol[i]);
+    int b = ratreconwden(rnum, rden, guessed_num, modulus, guessed_den, rdata);
+
+    if(b == 0){
+      *maxrec = i - 1;
+      return b;
+    }
+
+    mpz_set(tmp_num[i], rnum);
+    mpz_set(tmp_den[i], rden);
+  }
+  for(long i = 0; i < *maxrec; i++){
+    mpz_set(guessed_num, pol[i]);
+    int b = ratreconwden(rnum, rden, guessed_num, modulus, guessed_den, rdata);
+
+    if(b == 0){
+      if(info_level){
+        fprintf(stderr, "[*]");
+      }
+      *maxrec = MAX(i-1, 0);
+      return b;
+    }
+
+    mpz_set(tmp_num[i], rnum);
+    mpz_set(tmp_den[i], rden);
+  }
+
+  mpz_set(lcm, tmp_den[0]);
+  for(long i = 1; i < len; i++){
+    mpz_lcm(lcm, lcm, tmp_den[i]);
+  }
+  for(long i = 0; i < len; i++){
+    mpz_divexact(tmp_den[i], lcm, tmp_den[i]);
+  }
+  for(long i = 0; i < len; i++){
+    mpz_mul(tmp_num[i], tmp_num[i], tmp_den[i]);
+  }
+  for(long i = 0; i < len; i++){
+    mpz_set(recons[i], tmp_num[i]);
+  }
+  mpz_set(denominator, lcm);
+
+  return 1;
+
+}
+
+#else
+static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
+                                                  mpz_t denominator,
+                                                  mpz_t *pol,
+                                                  long len,
+                                                  mpz_t modulus,
+                                                  long *maxrec,
+                                                  mpq_t *coef,
+                                                  mpz_t rnum,
+                                                  mpz_t rden,
                                                   mpz_t *tmp_num,
                                                   mpz_t *tmp_den,
                                                   mpz_t lcm,
@@ -1531,31 +1610,25 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
   if(mpq_reconstruct_mpz(coef, pol[*maxrec], modulus) == 0){
     return 0;
   }
-
-  /* mpq_canonicalize(*coef); */
   mpz_set(tmp_num[*maxrec], mpq_numref(*coef));
   mpz_set(tmp_den[*maxrec], mpq_denref(*coef));
 
-  /* int boo = mqrr_rat_recon(tmp_num, tmp_den, pol, modulus, lcm, *maxrec, len, rdata); */
-  /* fprintf(stderr, "(%d)\n", boo); */
   for(long i = *maxrec + 1; i < len; i++){
-    int b = mpq_reconstruct_mpz_with_denom(coef, pol[i],
-                                           modulus,
-                                           guessed_num, guessed_den);
+    int b = mpq_reconstruct_mpz(coef, pol[i],
+                                modulus,
+                                guessed_num, guessed_den);
+
     if(b == 0){
       *maxrec = i - 1;
       return b;
     }
-    /* mpq_canonicalize(*coef); */
-
     mpz_set(tmp_num[i], mpq_numref(*coef));
     mpz_set(tmp_den[i], mpq_denref(*coef));
   }
   for(long i = 0; i < *maxrec; i++){
-    int b = mpq_reconstruct_mpz_with_denom(coef, pol[i],
-                                           modulus,
-                                           guessed_num, guessed_den);
-
+    int b = mpq_reconstruct_mpz(coef, pol[i],
+                                modulus,
+                                guessed_num, guessed_den);
     if(b == 0){
       if(info_level){
         fprintf(stderr, "[*]");
@@ -1563,7 +1636,6 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
       *maxrec = MAX(i-1, 0);
       return b;
     }
-    /* mpq_canonicalize(*coef); */
 
     mpz_set(tmp_num[i], mpq_numref(*coef));
     mpz_set(tmp_den[i], mpq_denref(*coef));
@@ -1587,6 +1659,7 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
   return 1;
 
 }
+#endif
 
 /**
 
@@ -1600,6 +1673,8 @@ static inline int rational_reconstruction_upoly(mpz_upoly_t recons,
                                                 mpz_t modulus,
                                                 long *maxrec,
                                                 mpq_t *coef,
+                                                mpz_t rnum,
+                                                mpz_t rden,
                                                 mpz_upoly_t tmp_num,
                                                 mpz_upoly_t tmp_den,
                                                 mpz_t lcm,
@@ -1611,6 +1686,35 @@ static inline int rational_reconstruction_upoly(mpz_upoly_t recons,
   return rational_reconstruction_mpz_ptr(recons->coeffs, denominator,
                                          pol->coeffs, len,
                                          modulus, maxrec, coef,
+                                         rnum, rden,
+                                         tmp_num->coeffs,
+                                         tmp_den->coeffs,
+                                         lcm, guessed_num, guessed_den,
+                                         rdata,
+                                         info_level);
+}
+
+static inline int rational_reconstruction_upoly_with_denom(mpz_upoly_t recons,
+                                                mpz_t denominator,
+                                                mpz_upoly_t pol,
+                                                long len,
+                                                mpz_t modulus,
+                                                long *maxrec,
+                                                mpq_t *coef,
+                                                mpz_t rnum,
+                                                mpz_t rden,
+                                                mpz_upoly_t tmp_num,
+                                                mpz_upoly_t tmp_den,
+                                                mpz_t lcm,
+                                                mpz_t guessed_num,
+                                                mpz_t guessed_den,
+                                                rrec_data_t rdata,
+                                                int info_level){
+
+  return rational_reconstruction_mpz_ptr_with_denom(recons->coeffs, denominator,
+                                         pol->coeffs, len,
+                                         modulus, maxrec, coef,
+                                         rnum, rden,
                                          tmp_num->coeffs,
                                          tmp_den->coeffs,
                                          lcm, guessed_num, guessed_den,
@@ -1619,72 +1723,6 @@ static inline int rational_reconstruction_upoly(mpz_upoly_t recons,
 }
 
 
-/**
-
-   la sortie est recons / denominator
- **/
-
-static inline int rational_reconstruction_upoly_old(mpz_upoly_t recons,
-                                                mpz_t denominator,
-                                                mpz_upoly_t pol,
-                                                long len,
-                                                mpz_t modulus,
-                                                long *maxrec,
-                                                mpq_t *coef,
-                                                mpz_upoly_t tmp_num,
-                                                mpz_upoly_t tmp_den,
-                                                mpz_t lcm,
-                                                mpz_t guessed_num,
-                                                mpz_t guessed_den){
-  if(mpq_reconstruct_mpz(coef, pol->coeffs[*maxrec], modulus) == 0){
-    return 0;
-  }
-  mpz_set(tmp_num->coeffs[*maxrec], mpq_numref(*coef));
-  mpz_set(tmp_den->coeffs[*maxrec], mpq_denref(*coef));
-
-  for(long i = *maxrec + 1; i < len; i++){
-    int b = mpq_reconstruct_mpz_with_denom(coef, pol->coeffs[i],
-                                           modulus,
-                                           guessed_num, guessed_den);
-    if(b == 0){
-      *maxrec = i - 1;
-      return b;
-    }
-    mpz_set(tmp_num->coeffs[i], mpq_numref(*coef));
-    mpz_set(tmp_den->coeffs[i], mpq_denref(*coef));
-  }
-  for(long i = 0; i < *maxrec; i++){
-    int b = mpq_reconstruct_mpz_with_denom(coef, pol->coeffs[i],
-                                           modulus,
-                                           guessed_num, guessed_den);
-
-    if(b == 0){
-      fprintf(stderr, "[%ld]->[%ld]", *maxrec, i);
-      *maxrec = MAX(i-1, 0);
-      return b;
-    }
-    mpz_set(tmp_num->coeffs[i], mpq_numref(*coef));
-    mpz_set(tmp_den->coeffs[i], mpq_denref(*coef));
-  }
-
-  mpz_set(lcm, tmp_den->coeffs[0]);
-  for(long i = 1; i < len; i++){
-    mpz_lcm(lcm, lcm, tmp_den->coeffs[i]);
-  }
-  for(long i = 0; i < len; i++){
-    mpz_divexact(tmp_den->coeffs[i], lcm, tmp_den->coeffs[i]);
-  }
-  for(long i = 0; i < len; i++){
-    mpz_mul(tmp_num->coeffs[i], tmp_num->coeffs[i], tmp_den->coeffs[i]);
-  }
-  for(long i = 0; i < len; i++){
-    mpz_set(recons->coeffs[i], tmp_num->coeffs[i]);
-  }
-  mpz_set(denominator, lcm);
-
-  return 1;
-
-}
 
 
 /**
@@ -1769,7 +1807,6 @@ returns 0 if rational reconstruction failed
 
  **/
 
-//#define TRY 1
 static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               mpz_param_t tmp_mpz_param,
                                               param_t *nmod_param,
@@ -1777,6 +1814,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               mpz_upoly_t denom,
                                               mpz_t *modulus, int32_t prime,
                                               mpq_t *coef,
+                                              mpz_t rnum, mpz_t rden,
                                               rrec_data_t recdata,
                                               mpz_t *guessed_num,
                                               mpz_t *guessed_den,
@@ -1796,6 +1834,8 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_fdiv_q_2exp(*guessed_num, *modulus, 1);
   mpz_sqrt(*guessed_num, *guessed_num);
   mpz_set(*guessed_den, *guessed_num);
+  mpz_set(recdata->N, *guessed_num);
+  mpz_set(recdata->D, *guessed_den);
 
   mpz_t denominator;
   mpz_init(denominator);
@@ -1813,6 +1853,8 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                         *modulus,
                                         maxrec,
                                         coef,
+                                        rnum,
+                                        rden,
                                         numer,
                                         denom,
                                         lcm,
@@ -1845,18 +1887,24 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_set_ui(mpq_denref(c), 1);
   int nc = mpz_param->nvars - 1;
 
+#ifdef RR
+  mpz_set(*guessed_den, lc);
+#endif
+
   for(int i = 0; i < nc; i++){
     *maxrec = 0;
 
     if(is_lifted[0]>0 && is_lifted[i+1]==0){
-
-      b = rational_reconstruction_upoly(mpz_param->coords[i],
+#ifdef RR
+      b = rational_reconstruction_upoly_with_denom(mpz_param->coords[i],
                                         denominator,
                                         tmp_mpz_param->coords[i],
                                         nmod_param->coords[i]->length,
                                         *modulus,
                                         maxrec,
                                         coef,
+                                        rnum,
+                                        rden,
                                         numer,
                                         denom,
                                         lcm,
@@ -1864,6 +1912,24 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                         *guessed_den,
                                         recdata,
                                         info_level);
+#else
+      b = rational_reconstruction_upoly(mpz_param->coords[i],
+                                        denominator,
+                                        tmp_mpz_param->coords[i],
+                                        nmod_param->coords[i]->length,
+                                        *modulus,
+                                        maxrec,
+                                        coef,
+                                        rnum,
+                                        rden,
+                                        numer,
+                                        denom,
+                                        lcm,
+                                        *guessed_num,
+                                        *guessed_den,
+                                        recdata,
+                                        info_level);
+#endif
     }
     if(b == 0){
       mpz_clear(denominator);
@@ -1882,7 +1948,11 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     }
 
     mpz_set(mpq_denref(c), denominator);
+#ifdef RR
+    /* mpz_mul_ui(mpq_numref(c), lc, 1); */
+#else
     mpz_mul_ui(mpq_numref(c), lc, 1);
+#endif
     mpq_canonicalize(c);
     mpz_set(mpz_param->cfs[i], mpq_denref(c));
 
@@ -1895,7 +1965,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_clear(lcm);
   mpz_clear(lc);
   mpq_clear(c);
-  /* fprintf(stderr, "RATRECON time = %.2f\n", realtime()-st); */
+
   return 1;
 }
 
@@ -2806,7 +2876,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* initialize stuff */
   stat_t *st  = initialize_statistics();
-
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
@@ -3022,6 +3091,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpq_t result, test;
   mpq_init(result);
   mpq_init(test);
+  mpz_t rnum, rden; /* num and den of reconstructed rationals */
+  mpz_init(rnum);
+  mpz_init(rden);
   set_mpz_param_nmod(tmp_mpz_param, nmod_params[0]);
   long nsols = tmp_mpz_param->nsols;
 
@@ -3065,7 +3137,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   while(rerun == 1 || mcheck == 1){
 
     /* controls call to rational reconstruction */
-    doit = ((prdone %nbdoit) == 0);
+    doit = ((prdone%nbdoit) == 0);
 
     /* generate lucky prime numbers */
     prime = next_prime(prime);
@@ -3150,7 +3222,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            nmod_params[i],
                                            numer, denom,
                                            &modulus, lp->p[i],
-                                           &result, recdata,
+                                           &result,
+                                           rnum, rden, recdata,
                                            &guessed_num, &guessed_den,
                                            &maxrec,
                                            is_lifted,
@@ -3176,6 +3249,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
           free(lineqs_ptr);
           free(squvars);
           free_rrec_data(recdata);
+          fprintf(stderr, "Many other data should be cleaned\n");
           return -4;
         }
       }
@@ -3226,6 +3300,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpz_clear(guessed_den);
   mpq_clear(test);
   mpq_clear(result);
+  mpz_clear(rnum);
+  mpz_clear(rden);
   mpz_clear(modulus);
   free_rrec_data(recdata);
 
@@ -3556,6 +3632,9 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     mpq_t result, test;
     mpq_init(result);
     mpq_init(test);
+    mpz_t rnum, rden;
+    mpz_init(rnum);
+    mpz_init(rden);
     set_mpz_param_nmod(tmp_mpz_param, nmod_params[0]);
     long nsols = tmp_mpz_param->nsols;
 
@@ -3670,6 +3749,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
                                              denom,
                                              &modulus, lp->p[i],
                                              &result,
+                                             rnum, rden,
                                              recdata,
                                              &guessed_num, &guessed_den,
                                              &maxrec,
@@ -3736,7 +3816,8 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     mpq_clear(test);
     mpq_clear(result);
     mpz_clear(modulus);
-
+    mpz_clear(rnum);
+    mpz_clear(rden);
     free_shared_hash_data(bht);
     free_hash_table(&bht);
     free_rrec_data(recdata);
@@ -3897,12 +3978,15 @@ void display_real_point(FILE *fstream, real_point_t pt){
 }
 
 void display_real_points(FILE *fstream, real_point_t *pts, long nb){
+  fprintf(fstream, "[1,\n"); /* because at the moment we return a single list */
+  fprintf(fstream, "[");
   for(long i = 0; i < nb - 1; i++){
-    display_real_point_middle(fstream, pts[i]);
+    display_real_point(fstream, pts[i]);
     fprintf(fstream, ", ");
   }
   display_real_point(fstream, pts[nb - 1]);
-  fprintf(fstream, "\n");
+  fprintf(fstream, "]\n");
+  fprintf(fstream, "]");
 }
 
 void single_exact_real_root_param(mpz_param_t param, interval *rt, long nb,
@@ -4385,7 +4469,8 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int32_t pbm_file,
                    int32_t precision,
                    files_gb *files,
-                   int round){
+                   int round,
+                   int32_t get_param){
     if(la_option == 2 || la_option == 1){
         int b = msolve_trace_qq(mp_param,
                                 nmod_param,
@@ -4402,10 +4487,17 @@ int real_msolve_qq(mpz_param_t mp_param,
                                 pbm_file,
                                 files,
                                 round);
+
         long unsigned int nbpos = 0;
         long unsigned int nbneg = 0;
         interval *roots   = NULL;
         real_point_t *pts = NULL;
+        long nb = 0;
+
+        if(get_param>1){
+          return b;
+        }
+
         if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0){
 
             mpz_t *pol = malloc(sizeof(mpz_t)*mp_param->elim->length);
@@ -4428,9 +4520,6 @@ int real_msolve_qq(mpz_param_t mp_param,
             long nb = nbpos + nbneg;
             double step = (realtime() - st) / (nb) * 10 * LOG2(precision);
 
-            /* if(info_level){ */
-            /*   display_roots_system(stderr, roots, nb); */
-            /* } */
             if(info_level > 0){
                 fprintf(stderr, "Number of real roots: %ld\n", nb);
             }
@@ -4794,6 +4883,7 @@ restart:
     else{
         int dim = - 2;
         long dquot = -1;
+
         b = real_msolve_qq(*mpz_paramp, 
                            &param,
                            &dim,
@@ -4804,26 +4894,38 @@ restart:
                            gens,
                            initial_hts, nr_threads, max_pairs, update_ht,
                            la_option, info_level, print_gb,
-                           generate_pbm, precision, files, round);
+                           generate_pbm, precision, files, round, get_param);
 
         if(b == 0){
             if(dim == 0 && dquot > 0){
                 (*mpz_paramp)->nvars  = gens->nvars;
                 if(files->out_file != NULL){
                     FILE *ofile = fopen(files->out_file, "a+");
-                    if (get_param == 1) {
-                        mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
+                    if (get_param >= 1) {
+                      mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
                     }
-                    display_real_points_middle(
-                            ofile, *real_pts_ptr, *nb_real_roots_ptr);
+                    if(get_param <= 1){
+                      if(get_param){
+                        fprintf(ofile, ",");
+                      }
+                      display_real_points(
+                                          ofile, *real_pts_ptr, *nb_real_roots_ptr);
+                    }
+                    fprintf(ofile, ":\n");
                     fclose(ofile);
                 }
                 else{
-                    if (get_param == 1) {
-                        mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
+                    if (get_param >= 1) {
+                      mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
                     }
-                    display_real_points_middle(
-                            stdout, *real_pts_ptr, *nb_real_roots_ptr);
+                    if(get_param <= 1){
+                      if(get_param){
+                        fprintf(stdout, ",");
+                      }
+                      display_real_points(stdout, *real_pts_ptr,
+                                          *nb_real_roots_ptr);
+                    }
+                    fprintf(stdout, ":\n");
                 }
             }
             if(dquot == 0){

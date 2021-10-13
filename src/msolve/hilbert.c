@@ -1391,7 +1391,6 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
         free(len_gb_xn);
         free(start_cf_gb_xn);
         free(div_xn);
-        fprintf(stderr, "ICI??\n");
         return NULL;
       }
     }

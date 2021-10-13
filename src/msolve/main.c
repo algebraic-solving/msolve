@@ -246,12 +246,12 @@ static void getoptions(
       break;
     case 'P':
       *get_param = strtol(optarg, NULL, 10);
-      if (*get_param < 0) {
+      if (*get_param <= 0) {
           *get_param = 0;
       }
-      if (*get_param > 1) {
-          *get_param = 1;
-      }
+      /* if (*get_param > 1) { */
+      /*     *get_param = 1; */
+      /* } */
       break;
     case 'g':
       *print_gb = strtol(optarg, NULL, 10);
@@ -351,7 +351,7 @@ int main(int argc, char **argv){
     int32_t nr_gens     = 0;
     data_gens_ff_t *gens = allocate_data_gens();
 
-    get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens); 
+    get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens);
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t *)*(nr_vars));
 

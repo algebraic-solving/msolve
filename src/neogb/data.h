@@ -88,6 +88,24 @@ struct hd_t
     ind_t idx;
 };
 
+/* 
+ * Exponent vectors look the following for n variables:
+ *
+ * 1. If we use a non-block monomial order like DRL
+ * [deg, exp_v1, ..., exp_vn]
+ * -> length is n+1
+ *
+ * 2. If we use a block elimination order with two blocks
+ * of k variables and n-k variables
+ * [deg_b1, exp_v1, ..., exp_vk, deg_b2, exp_vk+1, ..., exp_vn]
+ * -> length is n+2
+ *
+ *  In any of the above situations nv will be n.
+ *  evl will be nv + 1 + (ebl != 0) where ebl is the number
+ *  of variables in the first variable block + 1 (for the degree of
+ *  this block) if we use an elimination block order, 0 otherwise.
+ *  */
+
 /* hash table data structure */
 typedef struct ht_t ht_t;
 struct ht_t
@@ -98,8 +116,15 @@ struct ht_t
     hl_t eld;     /* load of exponent vector */
     hl_t esz;     /* size of exponent vector */
     hl_t hsz;     /* size of hash map, might be 2^32 */
+    len_t ebl;    /* elimination block length:
+                   * degree + #elimination variables,
+                   * 0 if no elimination order */
     len_t nv;     /* number of variables */
+    len_t evl;    /* real length of exponent vector,
+                   * includes degree (or two degrees
+                   * if an elimination order is used) */
     sdm_t *dm;    /* divisor map for divisibility checks */
+    len_t *dv;    /* variables for divmask */
     len_t ndv;    /* number of variables for divmask */
     len_t bpv;    /* bits per variable in divmask */
     val_t *rn;    /* random numbers for hash generation */
@@ -260,6 +285,7 @@ struct stat_t
     int32_t mnsel;
     int32_t homogeneous;
     uint32_t fc;
+    int32_t nev; /* number of elimination variables */
     int32_t mo;
     int32_t laopt;
     int32_t init_hts;

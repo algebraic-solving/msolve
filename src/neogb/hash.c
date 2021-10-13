@@ -60,17 +60,47 @@ ht_t *initialize_basis_hash_table(
     }
     ht->ndv = (unsigned long)nv < (CHAR_BIT * sizeof(sdm_t)) ?
         nv : (len_t)((CHAR_BIT * sizeof(sdm_t)));
+    ht->dv  = (len_t *)calloc((unsigned long)ht->ndv, sizeof(len_t));
+
     ht->hsz   = (hl_t)pow(2, st->init_hts);
     ht->esz   = ht->hsz / 2;
     ht->hmap  = calloc(ht->hsz, sizeof(hi_t));
 
+    if (st->nev == 0) {
+        ht->evl = nv + 1; /* store also degree at first position */
+        ht->ebl = 0;
+        for (i = 1; i <= ht->ndv; ++i) {
+            ht->dv[i-1] = i;
+        }
+        for (i = 1; i <= ht->ndv; ++i) {
+            printf("dv[%u] = %u\n", i-1, ht->dv[i-1]);
+        }
+    } else {
+        ht->evl = nv + 2; /* store also degrees for both blocks, see
+                           * data.h for more on exponent vector structure */
+        ht->ebl = st->nev + 1; /* store also degree at first position */
+        if (st->nev >= ht->ndv) {
+            for (i = 1; i <= ht->ndv; ++i) {
+                ht->dv[i-1] = i;
+            }
+        } else {
+            len_t ctr = 0;
+            for (i = 1; i <= st->nev; ++i) {
+                ht->dv[ctr++] = i;
+            }
+            for (i = ht->ebl+1; i < ht->ndv+2; ++i) {
+                ht->dv[ctr++] = i;
+            }
+        }
+
+    }
     /* generate divmask map */
     ht->dm  = (sdm_t *)calloc(
             (unsigned long)(ht->ndv * ht->bpv), sizeof(sdm_t));
 
     /* generate random values */
     ht->rsd = 2463534242;
-    ht->rn  = calloc((unsigned long)(nv+1), sizeof(val_t));
+    ht->rn  = calloc((unsigned long)ht->evl, sizeof(val_t));
     for (i = nv+1; i > 0; --i) {
         /* random values should not be zero */
         ht->rn[i-1] = pseudo_random_number_generator(&(ht->rsd)) | 1;
@@ -86,7 +116,7 @@ ht_t *initialize_basis_hash_table(
         fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
-            (unsigned long)(ht->nv+1) * ht->esz * sizeof(exp_t));
+            (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
         fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
@@ -94,7 +124,7 @@ ht_t *initialize_basis_hash_table(
     }
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {
-        ht->ev[j]  = tmp + (j*(nv+1));
+        ht->ev[j]  = tmp + (j*ht->evl);
     }
     st->max_bht_size  = ht->esz;
     return ht;
@@ -111,6 +141,8 @@ ht_t *copy_hash_table(
     ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
 
     ht->nv    = nv;
+    ht->evl   = bht->evl;
+    ht->ebl   = bht->ebl;
     ht->hsz   = bht->hsz;
     ht->esz   = bht->esz;
 
@@ -121,6 +153,9 @@ ht_t *copy_hash_table(
     ht->bpv = bht->bpv;
     ht->dm  = bht->dm;
     ht->rn  = bht->rn;
+
+    ht->dv  = (len_t *)calloc((unsigned long)ht->ndv, sizeof(len_t));
+    memcpy(ht->dv, bht->dv, (unsigned long)ht->ndv * sizeof(len_t));
 
     /* generate exponent vector */
     /* keep first entry empty for faster divisibility checks */
@@ -134,17 +169,17 @@ ht_t *copy_hash_table(
         fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
-            (unsigned long)(nv+1) * ht->esz * sizeof(exp_t));
+            (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
         fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
         fprintf(stderr, "segmentation fault will follow.\n");
     }
-    memcpy(tmp, bht->ev[0], (unsigned long)nv * ht->esz * sizeof(exp_t));
+    memcpy(tmp, bht->ev[0], (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
     ht->eld = bht->eld;
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {
-        ht->ev[j]  = tmp + (j*(nv+1));
+        ht->ev[j]  = tmp + (j*ht->evl);
     }
     return ht;
 }
@@ -159,6 +194,8 @@ ht_t *initialize_secondary_hash_table(
 
     ht_t *ht  = (ht_t *)malloc(sizeof(ht_t)); 
     ht->nv    = nv;
+    ht->evl   = bht->evl;
+    ht->ebl   = bht->ebl;
 
     /* generate map */
     int32_t min = 3 > st->init_hts-5 ? 3 : st->init_hts-5;
@@ -172,6 +209,9 @@ ht_t *initialize_secondary_hash_table(
     ht->dm  = bht->dm;
     ht->rn  = bht->rn;
 
+    ht->dv  = (len_t *)calloc((unsigned long)ht->ndv, sizeof(len_t));
+    memcpy(ht->dv, bht->dv, (unsigned long)ht->ndv * sizeof(len_t));
+
     /* generate exponent vector */
     /* keep first entry empty for faster divisibility checks */
     ht->eld = 1;
@@ -183,7 +223,7 @@ ht_t *initialize_secondary_hash_table(
         fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
-            (unsigned long)(nv+1) * ht->esz * sizeof(exp_t));
+            (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
         fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
@@ -191,7 +231,7 @@ ht_t *initialize_secondary_hash_table(
     }
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {
-        ht->ev[j]  = tmp + (j*(nv+1));
+        ht->ev[j]  = tmp + (j*ht->evl);
     }
     return ht;
 }
@@ -221,6 +261,10 @@ void free_hash_table(
         free(ht->hmap);
         ht->hmap = NULL;
     }
+    if (ht->dv) {
+        free(ht->dv);
+        ht->dv  = NULL;
+    }
     if (ht->hd) {
         free(ht->hd);
         ht->hd  = NULL;
@@ -244,7 +288,6 @@ static void enlarge_hash_table(
 {
     hl_t i, j;
     val_t h, k;
-    const len_t nv  = ht->nv;
 
     ht->esz = 2 * ht->esz;
     const hl_t esz  = ht->esz;
@@ -260,7 +303,7 @@ static void enlarge_hash_table(
     /* note: memory is allocated as one big block, so reallocating
      *       memory from ev[0] is enough    */
     ht->ev[0] = realloc(ht->ev[0],
-            esz * (unsigned long)(nv+1) * sizeof(exp_t));
+            esz * (unsigned long)ht->evl * sizeof(exp_t));
     if (ht->ev[0] == NULL) {
         fprintf(stderr, "Enlarging exponent vector for hash table failed\n");
         fprintf(stderr, "for esz = %lu, segmentation fault will follow.\n", (unsigned long)esz);
@@ -268,7 +311,7 @@ static void enlarge_hash_table(
     /* due to realloc we have to reset ALL ev entries,
      * memory might have been moved */
     for (i = 1; i < esz; ++i) {
-        ht->ev[i] = ht->ev[0] + (i*(nv+1));
+        ht->ev[i] = ht->ev[0] + (i*ht->evl);
     }
 
     /* The hash table should be double the size of the exponent space in
@@ -325,11 +368,12 @@ static inline sdm_t generate_short_divmask(
   int32_t res = 0;
   int32_t ctr = 0;
   const len_t ndv = ht->ndv;
+  const len_t * const dv  = ht->dv;
   const len_t bpv = ht->bpv;
 
-  for (i = 1; i <= ndv; ++i) {
+  for (i = 0; i < ndv; ++i) {
     for (j = 0; j < bpv; ++j) {
-      if ((sdm_t)a[i] >= ht->dm[ctr]) {
+      if ((sdm_t)a[dv[i]] >= ht->dm[ctr]) {
         res |= 1 << ctr;
       }
       ctr++;
@@ -350,6 +394,7 @@ void calculate_divmask(
   hl_t k;
   len_t j, steps;
   int32_t ctr = 0;
+  const len_t * const dv  = ht->dv;
   exp_t **ev  = ht->ev;
 
   deg_t *max_exp  = (deg_t *)malloc((unsigned long)ht->ndv * sizeof(deg_t));
@@ -359,19 +404,19 @@ void calculate_divmask(
 
   /* get initial values from first hash table entry */
   for (i = 0; i < ht->ndv; ++i) {
-    max_exp[i]  = min_exp[i]  = e[i+1];
+    max_exp[i]  = min_exp[i]  = e[dv[i]];
   }
 
   /* get maximal and minimal exponent element entries in hash table */
   for (i = 2; i < ht->eld; ++i) {
     e = ev[i];
     for (j = 0; j < ht->ndv; ++j) {
-      if (e[j] > max_exp[j]) {
-        max_exp[j]  = e[j+1];
+      if (e[dv[j]] > max_exp[j]) {
+        max_exp[j]  = e[dv[j]];
         continue;
       }
-      if (e[j] < min_exp[j]) {
-        min_exp[j]  = e[j+1];
+      if (e[dv[j]] < min_exp[j]) {
+        min_exp[j]  = e[dv[j]];
       }
     }
   }

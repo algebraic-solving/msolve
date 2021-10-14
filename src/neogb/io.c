@@ -111,8 +111,10 @@ static void import_julia_data_ff_8(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
-                e[k]  = (exp_t)(exps+(nv*j))[k];
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -127,10 +129,10 @@ static void import_julia_data_ff_8(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->hd[hm[OFFSET]].deg;
+        deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->hd[hm[j]].deg) {
+            if (deg != ht->ev[hm[j]][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -231,8 +233,10 @@ static void import_julia_data_ff_16(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
-                e[k]  = (exp_t)(exps+(nv*j))[k];
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -247,10 +251,10 @@ static void import_julia_data_ff_16(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->hd[hm[OFFSET]].deg;
+        deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->hd[hm[j]].deg) {
+            if (deg != ht->ev[hm[j]][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -352,8 +356,10 @@ static void import_julia_data_ff_32(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
-                e[k]  = (exp_t)(exps+(nv*j))[k];
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -369,10 +375,10 @@ static void import_julia_data_ff_32(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->hd[hm[OFFSET]].deg;
+        deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->hd[hm[j]].deg) {
+            if (deg != ht->ev[hm[j]][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -435,8 +441,10 @@ void import_julia_data_nf_ff_32(
         tbr->red[i-start] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
-                e[k]  = (exp_t)(exps+(nv*j))[k];
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -450,7 +458,7 @@ void import_julia_data_nf_ff_32(
     }
 }
 
-static void sort_terms_ff_qq(
+static void sort_terms_qq(
     mpz_t **cfp,
     hm_t **hmp,
     ht_t *ht
@@ -499,6 +507,92 @@ static void sort_terms_ff_qq(
   *hmp  = hm;
 }
 
+
+void import_julia_data_nf_qq(
+        bs_t *bs,
+        ht_t *ht,
+        stat_t *st,
+        const int32_t start,
+        const int32_t stop,
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *vcfs
+        )
+{
+    int32_t i, j;
+    len_t k;
+    mpz_t *cf;
+    hm_t *hm;
+    mpz_t prod_den, mul;
+    mpz_inits(prod_den, mul, NULL);
+
+    /* these coefficients are numerator, denominator, numerator, denominator, ...
+     * i.e. the array has length 2*nterms */
+    mpz_t **cfs  = (mpz_t **)vcfs;
+
+    int32_t off       = 0; /* offset in arrays */
+    const len_t nv    = st->nvars;
+    const len_t ngens = st->ngens;
+
+    /* we want to get rid of denominators, i.e. we want to handle
+     * the coefficients as integers resp. mpz_t numbers. for this we
+     * first get the product of all denominators of a polynomial and
+     * then multiply with this product each term. the polynomials are
+    * then be made content free by another function. */
+    for (i = 0; i < start; ++i) {
+        off +=  lens[i];
+    }
+    int32_t nterms  = 0;
+    for (i = start; i < stop; ++i) {
+        nterms  +=  lens[i];
+    }
+
+    exp_t *e  = ht->ev[0]; /* use as temporary storage */
+    for (i = start; i < stop; ++i) {
+        while (lens[i] >= ht->esz) {
+            enlarge_hash_table(ht);
+            e  = ht->ev[0]; /* reset e if enlarging */
+        }
+        mpz_set_si(prod_den, 1);
+
+        for (j = off; j < off+lens[i]; ++j) {
+            mpz_mul(prod_den, prod_den, *(cfs[2*j+1]));
+        }
+
+        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
+        cf  = (mpz_t *)malloc((unsigned long)(lens[i]) * sizeof(mpz_t));
+
+        bs->hm[i-start]     = hm;
+        bs->cf_qq[i-start]  = cf;
+
+        for (j = 0; j < lens[i]; ++j) {
+          mpz_init(cf[j]);
+        }
+        hm[COEFFS]  = i-start; /* link to matcf entry */
+        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
+        hm[LENGTH]  = lens[i]; /* length */
+
+        bs->red[i-start] = 0;
+
+        for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
+            for (k = 0; k < nv; ++k) {
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                e[DEG]  +=  e[k+1];
+            }
+            hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
+            mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
+            mpz_mul(cf[j-off], mul, *(cfs[2*j]));
+        }
+        /* mark initial generators, they have to be added to the basis first */
+        off +=  lens[i];
+        /* sort terms in polynomial w.r.t. given monomial order */
+        sort_terms_qq(&cf, &hm, ht);
+    }
+    mpz_clears(prod_den, mul, NULL);
+}
+
+
 static void import_julia_data_qq(
         bs_t *bs,
         ht_t *ht,
@@ -538,6 +632,8 @@ static void import_julia_data_qq(
         mpz_set_si(prod_den, 1);
 
         for (j = off; j < off+lens[i]; ++j) {
+            /* printf("i %u | j %u\n", i, j);
+             * gmp_printf("%Zd\n", *(cfs[2*j+1])); */
             mpz_mul(prod_den, prod_den, *(cfs[2*j+1]));
         }
 
@@ -557,8 +653,10 @@ static void import_julia_data_qq(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
+            e[DEG]  = 0;
             for (k = 0; k < nv; ++k) {
-                e[k]  = (exp_t)(exps+(nv*j))[k];
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                e[DEG]  +=  e[k+1];
             }
             hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
             mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
@@ -567,15 +665,15 @@ static void import_julia_data_qq(
         /* mark initial generators, they have to be added to the basis first */
         off +=  lens[i];
         /* sort terms in polynomial w.r.t. given monomial order */
-        sort_terms_ff_qq(&cf, &hm, ht);
+        sort_terms_qq(&cf, &hm, ht);
     }
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->hd[hm[OFFSET]].deg;
+        deg = ht->ev[hm[OFFSET]][DEG];
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->hd[hm[j]].deg) {
+            if (deg != ht->ev[hm[j]][DEG]) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -638,7 +736,7 @@ static int64_t export_julia_data_ff_8(
         }
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 0; k < nv; ++k) {
+            for (k = 1; k <= nv; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -701,7 +799,7 @@ static int64_t export_julia_data_ff_16(
         }
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 0; k < nv; ++k) {
+            for (k = 1; k <= nv; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -771,7 +869,7 @@ static int64_t export_julia_data_ff_32(
 
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 0; k < nv; ++k) {
+            for (k = 1; k <= nv; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -835,7 +933,7 @@ static int64_t export_julia_data_qq(
 
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 0; k < nv; ++k) {
+            for (k = 1; k <= nv; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }

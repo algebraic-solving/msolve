@@ -58,6 +58,17 @@ void import_julia_data_nf_ff_32(
         const void *vcfs
         );
 
+void import_julia_data_nf_qq(
+        bs_t *tbr,
+        ht_t *ht,
+        stat_t *st,
+        const int32_t start,
+        const int32_t stop,
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *vcfs
+        );
+
 int32_t check_and_set_meta_data_trace(
         stat_t *st,
         const int32_t *lens,

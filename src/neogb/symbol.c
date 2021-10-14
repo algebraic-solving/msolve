@@ -25,6 +25,171 @@
 #include <immintrin.h>
 #endif
 
+static void select_all_spairs(
+        mat_t *mat,
+        const bs_t * const bs,
+        ps_t *psl,
+        stat_t *st,
+        ht_t *sht,
+        ht_t *bht,
+        ht_t *tht
+        )
+{
+    len_t i, j, k, l, nps, npd, nrr = 0, ntr = 0;
+    hm_t *b;
+    len_t load  = 0;
+    hi_t lcm;
+    len_t *gens;
+    exp_t *elcm, *eb;
+    exp_t *etmp = bht->ev[0];
+
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    spair_t *ps     = psl->p;
+    const len_t nv  = bht->nv;
+
+    /* sort pair set */
+    sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
+
+    /* select pairs of this degree respecting maximal selection size mnsel */
+    npd  = psl->ld;
+    sort_r(ps, (unsigned long)npd, sizeof(spair_t), spair_cmp, bht);
+    /* now do maximal selection if it applies */
+
+    nps = psl->ld;
+    
+    if (st->info_level > 1) {
+        printf("%3d  %6d %7d", 0, nps, psl->ld);
+        fflush(stdout);
+    }
+    /* statistics */
+    st->num_pairsred  +=  nps;
+    /* list for generators */
+    gens  = (len_t *)malloc(2 * (unsigned long)nps * sizeof(len_t));
+    /* preset matrix meta data */
+    mat->rr       = (hm_t **)malloc(2 * (unsigned long)nps * sizeof(hm_t *));
+    hm_t **rrows  = mat->rr;
+    mat->tr       = (hm_t **)malloc(2 * (unsigned long)nps * sizeof(hm_t *));
+    hm_t **trows  = mat->tr;
+    mat->sz = 2 * nps;
+    mat->nc = mat->ncl = mat->ncr = 0;
+    mat->nr = 0;
+
+    int ctr = 0;
+
+
+    i = 0;
+
+    while (i < nps) {
+        /* ncols initially counts number of different lcms */
+        mat->nc++;
+        load  = 0;
+        lcm   = ps[i].lcm;
+        j = i;
+
+        while (j < nps && ps[j].lcm == lcm) {
+            gens[load++] = ps[j].gen1;
+            gens[load++] = ps[j].gen2;
+            ++j;
+        }
+        /* sort gens set */
+        qsort(gens, (unsigned long)load, sizeof(len_t), gens_cmp);
+
+        len_t prev  = -1;
+
+        /* first element with given lcm goes into reducer part of matrix,
+         * all remaining ones go to to be reduced part */
+        prev  = gens[0];
+        /* printf("prev %u / %u\n", prev, bs->ld); */
+        /* ev might change when enlarging the hash table during insertion of a new
+            * row in the matrix, thus we have to reset elcm inside the for loop */
+        elcm  = bht->ev[lcm];
+        b     = bs->hm[prev];
+        eb    = bht->ev[b[OFFSET]];
+        for (l = 0; l <= nv; ++l) {
+            etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
+        }
+        const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
+        /* note that we use index mat->nc and not mat->nr since for each new
+         * lcm we add exactly one row to mat->rr */
+        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
+        /* track trace information ? */
+        if (tht != NULL) { 
+           rrows[nrr][BINDEX]  = prev;
+            if (tht->eld == tht->esz-1) {
+                enlarge_hash_table(tht);
+            }
+            rrows[nrr][MULT]    = insert_in_hash_table(etmp, tht);
+        }
+
+        /* mark lcm column as lead term column */
+        sht->hd[rrows[nrr++][OFFSET]].idx = 2; 
+        /* still we have to increase the number of rows */
+        mat->nr++;
+        for (k = 1; k < load; ++k) {
+            /* check sorted list for doubles */
+            if (gens[k] ==  prev) {
+                continue;
+            }
+            prev  = gens[k];
+            /* ev might change when enlarging the hash table during insertion of a new
+             * row in the matrix, thus we have to reset elcm inside the for loop */
+            elcm  = bht->ev[lcm];
+            if (elcm[0] > 0) {
+                /* printf("pair with lcm ");
+                 * for (int ii = 0; ii < nv; ++ii) {
+                 *     printf("%u ", elcm[ii]);
+                 * }
+                 * printf("\n"); */
+            }
+            b     = bs->hm[prev];
+            eb    = bht->ev[b[OFFSET]];
+            for (l = 0; l <= nv; ++l) {
+                etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
+            }
+            const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
+            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
+            /* track trace information ? */
+            if (tht != NULL) {
+                trows[ntr][BINDEX]  = prev;
+                if (tht->eld == tht->esz-1) {
+                    enlarge_hash_table(tht);
+                }
+                trows[ntr][MULT]    = insert_in_hash_table(etmp, tht);
+            }
+            /* mark lcm column as lead term column */
+            sht->hd[trows[ntr++][OFFSET]].idx = 2;
+            mat->nr++;
+        }
+        ctr++;
+        i = j;
+    }
+    /* printf("nc %u | nr %u || %u\n", mat->nc, mat->nr, sht->eld); */
+    /* printf("%u pairs in degree %u\n", ctr, md); */
+    /* clear ht-ev[0] */
+    memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
+    /* fix rows to be reduced */
+    mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
+
+    st->num_rowsred +=  mat->nr - mat->nc;
+    st->current_deg =   etmp[DEG];
+
+    free(gens);
+
+    /* remove selected spairs from pairset */
+    memmove(ps, ps+nps, (unsigned long)(psl->ld-nps) * sizeof(spair_t));
+    psl->ld -=  nps;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->select_ctime  +=  ct1 - ct0;
+    st->select_rtime  +=  rt1 - rt0;
+}
+
 static void select_spairs_by_minimal_degree(
         mat_t *mat,
         const bs_t * const bs,
@@ -37,7 +202,6 @@ static void select_spairs_by_minimal_degree(
 {
     len_t i, j, k, l, md, nps, npd, nrr = 0, ntr = 0;
     hm_t *b;
-    deg_t d = 0;
     len_t load = 0;
     hi_t lcm;
     len_t *gens;
@@ -55,11 +219,11 @@ static void select_spairs_by_minimal_degree(
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
     /* get minimal degree */
-    md  = bht->hd[ps[0].lcm].deg;
+    md  = bht->ev[ps[0].lcm][DEG];
 
     /* select pairs of this degree respecting maximal selection size mnsel */
     for (i = 0; i < psl->ld; ++i) {
-        if (bht->hd[ps[i].lcm].deg > md) {
+        if (bht->ev[ps[i].lcm][DEG] > md) {
             break;
         }
     }
@@ -95,6 +259,8 @@ static void select_spairs_by_minimal_degree(
     mat->nc = mat->ncl = mat->ncr = 0;
     mat->nr = 0;
 
+    int ctr = 0;
+
     i = 0;
 
     while (i < nps) {
@@ -120,17 +286,15 @@ static void select_spairs_by_minimal_degree(
         /* ev might change when enlarging the hash table during insertion of a new
             * row in the matrix, thus we have to reset elcm inside the for loop */
         elcm  = bht->ev[lcm];
-        d     = 0;
         b     = bs->hm[prev];
         eb    = bht->ev[b[OFFSET]];
-        for (l = 0; l < nv; ++l) {
-            etmp[l] = (exp_t)(elcm[l] - eb[l]);
-            d     +=  etmp[l];
+        for (l = 0; l <= nv; ++l) {
+            etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
         }
         const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
         /* note that we use index mat->nc and not mat->nr since for each new
          * lcm we add exactly one row to mat->rr */
-        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
         if (tht != NULL) { 
            rrows[nrr][BINDEX]  = prev;
@@ -153,15 +317,20 @@ static void select_spairs_by_minimal_degree(
             /* ev might change when enlarging the hash table during insertion of a new
              * row in the matrix, thus we have to reset elcm inside the for loop */
             elcm  = bht->ev[lcm];
-            d     = 0;
+            if (elcm[0] > 0) {
+                /* printf("pair with lcm ");
+                 * for (int ii = 0; ii < nv; ++ii) {
+                 *     printf("%u ", elcm[ii]);
+                 * }
+                 * printf("\n"); */
+            }
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
-            for (l = 0; l < nv; ++l) {
-                etmp[l] = (exp_t)(elcm[l] - eb[l]);
-                d     +=  etmp[l];
+            for (l = 0; l <= nv; ++l) {
+                etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
             }
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
-            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
             /* track trace information ? */
             if (tht != NULL) {
                 trows[ntr][BINDEX]  = prev;
@@ -174,9 +343,12 @@ static void select_spairs_by_minimal_degree(
             sht->hd[trows[ntr++][OFFSET]].idx = 2;
             mat->nr++;
         }
-
+        ctr++;
         i = j;
     }
+    /* printf("%u pairs in degree %u\n", ctr, md); */
+    /* clear ht-ev[0] */
+    memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
@@ -195,6 +367,53 @@ static void select_spairs_by_minimal_degree(
     st->select_ctime  +=  ct1 - ct0;
     st->select_rtime  +=  rt1 - rt0;
 }
+
+/* write elements straight to sat, not to a matrix */
+static void select_saturation(
+        bs_t *sat,
+        mat_t *mat,
+        stat_t *st,
+        ht_t *sht,
+        ht_t *bht
+        )
+{
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+
+    /* preset matrix meta data */
+    mat->rr = (hm_t **)malloc(100 * sizeof(hm_t *));
+    mat->tr = NULL;
+
+    mat->sz = 100;
+    mat->nc = mat->ncl = mat->ncr = 0;
+    mat->nr = 0;
+
+    /* for (i=0; i < sat->hm[0][LENGTH]; ++i) {
+     *     printf("%u | ", sat->cf_32[sat->hm[0][COEFFS]][i]);
+     *     for (len_t j = 0; j < bht->nv; ++j) {
+     *         printf("%u ", bht->ev[sat->hm[0][OFFSET+i]][j]);
+     *     }
+     *     printf(" ||| ");
+     * }
+     * printf("\n"); */
+    /* move hashes of sat data from bht to sht for linear algebra */
+    /* for (i = 0; i < sat->ld; ++i) {
+     *     for (j = OFFSET; j < sat->hm[i][LENGTH]+OFFSET; ++j) {
+     *         sat->hm[i][j] = insert_in_hash_table(
+     *                 bht->ev[sat->hm[i][j]], sht);
+     *     }
+     * } */
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->select_ctime  +=  ct1 - ct0;
+    st->select_rtime  +=  rt1 - rt0;
+}
+
 
 static void select_tbr(
         const bs_t * const tbr,
@@ -231,9 +450,8 @@ static void select_tbr(
          * const hi_t h    = sht->hd[mulh].val;
          * const deg_t d   = sht->hd[mulh].deg; */
         const hi_t h    = 0;
-        const deg_t d   = 0;
         trows[ntr++]    = multiplied_poly_to_matrix_row(
-                sht, bht, h, d, mul, b);
+                sht, bht, h, mul, b);
         mat->nr++;
     }
 }
@@ -260,7 +478,6 @@ static inline void find_multiplied_reducer(
     const hd_t hdm    = sht->hd[m];
     const len_t lml   = bs->lml;
     const sdm_t ns    = ~hdm.sdm;
-    const deg_t hdd   = hdm.deg;
 
     const sdm_t * const lms = bs->lm;
     const bl_t * const lmps = bs->lmps;
@@ -276,13 +493,8 @@ start:
     }
     if (i < lml) {
         const hm_t *b = bs->hm[lmps[i]];
-        const deg_t d = hdd - hdb[b[OFFSET]].deg;
-        if (d < 0) {
-            i++;
-            goto start;
-        }
         const exp_t * const f = evb[b[OFFSET]];
-        for (k=0; k < nv; ++k) {
+        for (k=0; k <= nv; ++k) {
             etmp[k] = (exp_t)(e[k]-f[k]);
             if (etmp[k] < 0) {
                 i++;
@@ -290,7 +502,12 @@ start:
             }
         }
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
-        rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, d, etmp, b);
+        /* printf("reducer found %u | %u --> ", lmps[i], b[LENGTH]);
+         * for (int ii = 0; ii < bht->nv; ++ii) {
+         *     printf("%u ", etmp[ii]);
+         * }
+         * printf("\n"); */
+        rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
         if (tht != NULL) {
             rows[rr][BINDEX]  = lmps[i];
@@ -399,7 +616,6 @@ static void generate_matrix_from_trace(
 
     len_t i, nr;
     hm_t *b;
-    deg_t d;
     exp_t *emul;
     hi_t h;
 
@@ -417,10 +633,9 @@ static void generate_matrix_from_trace(
     while (i < td.rld) {
         b     = bs->hm[td.rri[i++]];
         emul  = tht->ev[td.rri[i]];
-        h     = tht->hd[td.rri[i]].val;
-        d     = tht->hd[td.rri[i++]].deg;
+        h     = tht->hd[td.rri[i++]].val;
 
-        rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, d, emul, b);
+        rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         sht->hd[rrows[nr][OFFSET]].idx = 2;
         ++nr;
 
@@ -432,9 +647,8 @@ static void generate_matrix_from_trace(
         b     = bs->hm[td.tri[i++]];
         emul  = tht->ev[td.tri[i]];
         h     = tht->hd[td.tri[i]].val;
-        d     = tht->hd[td.tri[i]].deg;
 
-        trows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, d, emul, b);
+        trows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         /* At the moment rba is unused */
         rba[nr]   = td.rba[i/2];
         i++;

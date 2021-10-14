@@ -12,6 +12,7 @@ EXTRA_DIST	=		basis.h \
 								io.h \
 								modular.h \
 								nf.h \
+								f4sat.h \
 								sort_r.h \
 								stat.h \
 								tools.h \

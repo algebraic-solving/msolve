@@ -233,13 +233,15 @@ static inline int is_equal_exponent_dm(bs_t *bs, ht_t *ht, long idx, long pos,
   const bl_t bi = bs->lmps[idx];
   hm_t *dt = bs->hm[bi] + OFFSET;
 
-  for(long k = 0; k < nv - 1; k++){
-    int e = (int32_t)ht->ev[dt[pos]][k];
+  for(long k = 0; k < nv-1 ; k++){
+    /* in hash table exponent vectors store their degree in the first entry,
+     * thus we have to go by "k+1" */
+    int e = (int32_t)ht->ev[dt[pos]][k+1];
     if(e != exp2[k]){
       return 0;
     }
   }
-  int e = (int32_t)ht->ev[dt[pos]][nv - 1];
+  int e = (int32_t)ht->ev[dt[pos]][nv];
   return (e == exp2[nv - 1]);
 }
 
@@ -680,7 +682,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
                                                  const int nv, const long fc){
 
 
-  *bdiv_xn = malloc(sizeof(int32_t) * bld);
+  *bdiv_xn = calloc((unsigned long)bld, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
 
   long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn);
@@ -1222,7 +1224,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
                                                          const int info_level){
 
 
-  *bdiv_xn = malloc(bs->lml * sizeof(int32_t));
+  *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
 
   long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);

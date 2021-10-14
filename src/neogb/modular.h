@@ -131,10 +131,31 @@ bs_t *f4_trace_learning_phase(
         const int32_t fc          /* characteristic of field */
         );
 
+bs_t *f4sat_trace_learning_phase(
+        trace_t *trace,           /* trace of the F4 Algorithm */
+        ht_t * tht,               /* trace hash table for multipliers */
+        const bs_t * const ggb,   /* global basis */
+        const bs_t * const gsat,  /* global saturation elements */
+        ht_t **gbhtp,               /* global basis hash table, generated
+                                   * in this run, used in upcoming runs */
+        stat_t *gst,              /* global statistics */
+        const int32_t fc          /* characteristic of field */
+        );
+
 bs_t *f4_trace_application_phase(
         const trace_t * const trace,  /* trace of the F4 Algorithm */
         const ht_t * const tht,       /* trace hash table for multipliers */
         const bs_t * const ggb,       /* global basis */
+        ht_t *lbht,                   /* local basis hash table, not shared */
+        stat_t *gst,                  /* global statistics */
+        const uint32_t fc             /* characteristic of field */
+        );
+
+bs_t *f4sat_trace_application_phase(
+        const trace_t * const trace,  /* trace of the F4 Algorithm */
+        const ht_t * const tht,       /* trace hash table for multipliers */
+        const bs_t * const ggb,       /* global basis */
+        const bs_t * const gsat,      /* global saturation elements */
         ht_t *lbht,                   /* local basis hash table, not shared */
         stat_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */

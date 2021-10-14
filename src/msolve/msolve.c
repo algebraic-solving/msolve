@@ -2413,7 +2413,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         int *success)
 {
     double ca0, rt;
-    ca0 = realtime(); 
+    ca0 = realtime();
+
     bs_t *bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
     rt = realtime()-ca0;
 
@@ -3010,16 +3011,21 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     for(int i = 0; i < st->nthrds; i++){
       free_trace(&btrace[i]);
     }
+    free(btrace);
     free_shared_hash_data(bht);
     free_hash_table(&bht);
     free_hash_table(&tht);
-
-    for (i = 0; i < st->nthrds; ++i) {
-      //      free_basis(&(bs[i]));
-    }
+    free(bht);
+    free(tht);
+    /* for (i = 0; i < st->nthrds; ++i) { */
+    /*   free_basis(&(bs[i])); */
+    /* } */
     free(bs);
+    free(bs_qq);
     //here we should clean nmod_params
     free_lucky_primes(&lp);
+    free(bad_primes);
+    free(lp);
     free(st);
     free(linvars);
     free(nmod_params);
@@ -3028,6 +3034,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     }
     free(lineqs_ptr);
     free(squvars);
+    fprintf(stderr, "ICI??\n");
     if(*dim_ptr==1){
       if(info_level){
         fprintf(stderr, "Positive dimensional Grobner basis\n");

@@ -682,7 +682,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
                                                  const int nv, const long fc){
 
 
-  *bdiv_xn = malloc(sizeof(int32_t) * bld);
+  *bdiv_xn = calloc((unsigned long)bld, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
 
   long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn);
@@ -1224,7 +1224,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
                                                          const int info_level){
 
 
-  *bdiv_xn = malloc(bs->lml * sizeof(int32_t));
+  *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
 
   long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);

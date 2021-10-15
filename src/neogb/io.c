@@ -90,6 +90,7 @@ static void import_julia_data_ff_8(
 
     int32_t off       = 0; /* offset in arrays */
     const len_t nv    = st->nvars;
+    const len_t nev   = st->nev;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -111,10 +112,18 @@ static void import_julia_data_ff_8(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
+            /* initialize degree entries to zero */
+            e[0]    = 0;
+            e[nev]  = 0;
+            for (k = 0; k < nev; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
+                /* degree */
+                e[0]  +=  e[k+1];
+            }
+            for (k = nev; k < nv; ++k) {
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                /* degree */
+                e[nev]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -212,6 +221,7 @@ static void import_julia_data_ff_16(
 
     int32_t off       = 0; /* offset in arrays */
     const len_t nv    = st->nvars;
+    const len_t nev   = st->nev;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -233,10 +243,18 @@ static void import_julia_data_ff_16(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
+            /* initialize degree entries to zero */
+            e[0]    = 0;
+            e[nev]  = 0;
+            for (k = 0; k < nev; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
+                /* degree */
+                e[0]  +=  e[k+1];
+            }
+            for (k = nev; k < nv; ++k) {
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                /* degree */
+                e[nev]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -335,6 +353,7 @@ static void import_julia_data_ff_32(
 
     int32_t off       = 0; /* offset in arrays */
     const len_t nv    = st->nvars;
+    const len_t nev   = st->nev;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -356,10 +375,18 @@ static void import_julia_data_ff_32(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
+            /* initialize degree entries to zero */
+            e[0]    = 0;
+            e[nev]  = 0;
+            for (k = 0; k < nev; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
+                /* degree */
+                e[0]  +=  e[k+1];
+            }
+            for (k = nev; k < nv; ++k) {
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                /* degree */
+                e[nev]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
@@ -413,6 +440,7 @@ void import_julia_data_nf_ff_32(
 
     int32_t off       = 0; /* offset in arrays */
     const len_t nv    = st->nvars;
+    const len_t nev   = st->nev;
     const len_t fc    = st->fc;
 
     for (i = 0; i < start; ++i) {
@@ -441,10 +469,18 @@ void import_julia_data_nf_ff_32(
         tbr->red[i-start] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
+            /* initialize degree entries to zero */
+            e[0]    = 0;
+            e[nev]  = 0;
+            for (k = 0; k < nev; ++k) {
                 e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
+                /* degree */
+                e[0]  +=  e[k+1];
+            }
+            for (k = nev; k < nv; ++k) {
+                e[k+1]  = (exp_t)(exps+(nv*j))[k];
+                /* degree */
+                e[nev]  +=  e[k+1];
             }
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */

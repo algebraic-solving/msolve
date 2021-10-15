@@ -72,9 +72,6 @@ ht_t *initialize_basis_hash_table(
         for (i = 1; i <= ht->ndv; ++i) {
             ht->dv[i-1] = i;
         }
-        for (i = 1; i <= ht->ndv; ++i) {
-            printf("dv[%u] = %u\n", i-1, ht->dv[i-1]);
-        }
     } else {
         ht->evl = nv + 2; /* store also degrees for both blocks, see
                            * data.h for more on exponent vector structure */

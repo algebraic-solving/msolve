@@ -293,6 +293,7 @@ static long mpz_poly_sgn_variations_coeffs_bsize_with_index(mpz_t* upol,
       }
     }
   }
+  int oldnb = nb;
   N = L + 1;
   int c = mpz_cmp_ui(upol[0],0);
   long int l = ilog2_mpz(upol[0]);
@@ -309,6 +310,13 @@ static long mpz_poly_sgn_variations_coeffs_bsize_with_index(mpz_t* upol,
   return -1;
 }
 
+/* This is called to perform a Taylor shift after truncation
+   of coefficients of pol by maxnbits - 2*(deg + 1).
+
+   Hence the first deg bits of the computed Taylor shifts are correct
+   (actually, the sgn variation count functions use a more accurate
+   estimate)
+*/
 static long taylorshift1_dac_wsgnvar(mpz_t *pol,
                                      const unsigned long int deg,
                                      mpz_t *tmpol,

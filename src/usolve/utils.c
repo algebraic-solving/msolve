@@ -230,9 +230,12 @@ unsigned long int mpz_poly_min_bsize_coeffs(mpz_t *upol,
 
 
 /* One assumes up(0) != 0 */
-/* as soon as more that 3 sign variations are found, the computation is stopped */
+/* as soon as more that 3 sign variations are found,
+   the computation is stopped */
 /* takes into accound the loss of precison */
-static long USOLVEmpz_poly_sgn_variations_coeffs_bsize(mpz_t* upol, unsigned long deg, unsigned long int bsize){
+static long USOLVEmpz_poly_sgn_variations_coeffs_bsize(mpz_t* upol,
+                                                       unsigned long deg,
+                                                       unsigned long int bsize){
   unsigned long int i;
   long nb = 0;
   int s = mpz_sgn(upol[deg]);

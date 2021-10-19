@@ -2959,12 +2959,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* data for linear forms */
   long nlins = 0;
-  long *bnlins = (long *)malloc(sizeof(long) * st->nthrds);
-  uint64_t **blinvars = (uint64_t **)malloc(sizeof(uint64_t *) * st->nthrds);
+  long *bnlins = (long *)calloc(st->nthrds, sizeof(long));
+  uint64_t **blinvars = (uint64_t **)calloc(st->nthrds, sizeof(uint64_t *));
   uint64_t *linvars = calloc(bht->nv, sizeof(uint64_t));
   blinvars[0] = linvars;
-  uint32_t **lineqs_ptr = malloc(sizeof(uint32_t *) * st->nthrds);
-  uint64_t **bsquvars = (uint64_t **) malloc(sizeof(uint64_t *) * st->nthrds);
+  uint32_t **lineqs_ptr = calloc(st->nthrds, sizeof(uint32_t *));
+  uint64_t **bsquvars = (uint64_t **) calloc(st->nthrds, sizeof(uint64_t *));
   uint64_t *squvars = calloc(nr_vars-1, sizeof(uint64_t));
   bsquvars[0] = squvars;
 
@@ -3009,7 +3009,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   if(lmb_ori == NULL || success == 0) {
       /* print_msolve_message(stderr, 1); */
     for(int i = 0; i < st->nthrds; i++){
-      free_trace(&btrace[i]);
+      /* free_trace(&btrace[i]); */
     }
     free(btrace);
     free_shared_hash_data(bht);

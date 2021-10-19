@@ -142,7 +142,7 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
     }
   }
   fprintf(file, "],\n");
-  fprintf(stderr, "[1,"); /*at the moment, a single param is returned */
+  fprintf(file, "[1,"); /*at the moment, a single param is returned */
   mpz_upoly_out_str(file, param->elim); //elim. poly
   fprintf(file, ",\n");
   mpz_upoly_out_str(file, param->denom); //denom. poly
@@ -3034,7 +3034,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     }
     free(lineqs_ptr);
     free(squvars);
-    fprintf(stderr, "ICI??\n");
     if(*dim_ptr==1){
       if(info_level){
         fprintf(stderr, "Positive dimensional Grobner basis\n");
@@ -4150,7 +4149,9 @@ void generate_table_values_full(interval *rt, mpz_t c,
 }
 
 
-
+/* evaluates denom (which has degree deg)
+   at the interval [r/2^k, (r+1)/2^k]
+   returns  */
 int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
                 mpz_t *xdo, mpz_t *xup,
                 mpz_t tmp, mpz_t den_do, mpz_t den_up,
@@ -4195,6 +4196,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  int info_level){
 
   unsigned long ns = param->nsols ;
+  /* root is exact */
   if(rt->isexact==1){
     single_exact_real_root_param(param, rt, nb,
                                  xdo, xup, den_up, den_do,
@@ -4206,33 +4208,27 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   long b = 16;
   prec = MAX(prec, rt->k);
-  long corr = ns + rt->k;
+  long corr = (ns + rt->k);
 
-  /* generate_table_values(rt, c, ns, b, */
-  /*                       corr, */
-  /*                       xdo, xup); */
+  /* checks whether the abs. value of the root is greater than 1 */
   generate_table_values_full(rt, c, ns, b,
                              corr,
                              xdo, xup);
 
-  while(/* lazy_mpz_poly_eval_interval(param->denom->coeffs, */
-        /*                             param->denom->length - 1, */
-        /*                             rt->k, */
-        /*                             xdo, xup, */
-        /*                             2*(prec+ns+rt->k), corr, b, */
-        /*                             tmp, den_do, den_up) */
-        value_denom(param->denom->coeffs,
+  while(value_denom(param->denom->coeffs,
                     param->denom->length - 1,
                     rt->numer,
                     rt->k,
                     xdo, xup,
                     tmp, den_do, den_up, corr)){
+    /* root is positive */
     if(mpz_sgn(rt->numer)>=0){
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
       refine_QIR_positive_root(polelim, &ns, rt, tab, 2*(rt->k),
                                info_level);
     }
     else{
+      /* root is positive */
       mpz_add_ui(pos_root->numer, rt->numer, 1);
       mpz_neg(pos_root->numer, pos_root->numer);
       pos_root->k = rt->k;
@@ -4402,10 +4398,10 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
     mpz_init_set_ui(xup[i], 1);
     mpz_init_set_ui(xdo[i], 1);
   }
-  mpz_t *tab = (mpz_t*)(malloc(sizeof(mpz_t)*8));//table for some intermediate values
+  mpz_t *tab = (mpz_t*)(calloc(8,sizeof(mpz_t)));//table for some intermediate values
   for(int i=0;i<8;i++)mpz_init(tab[i]);
 
-  mpz_t *polelim = malloc(sizeof(mpz_t) * param->elim->length);
+  mpz_t *polelim = calloc(param->elim->length, sizeof(mpz_t));
   for(long i = 0; i < param->elim->length; i++){
     mpz_init_set(polelim[i], param->elim->coeffs[i]);
   }

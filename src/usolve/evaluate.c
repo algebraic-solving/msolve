@@ -212,9 +212,13 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
   return (mpz_sgn(val_do) != mpz_sgn(val_up));
 }
 
+/* evaluates up (of degree deg) over the interval
+   through scalar product up*xdo and up*xup
+   up to precision corr
+ */
 int mpz_scalar_product_interval(mpz_t *up, const long int deg, const long k,
-                           mpz_t *xdo, mpz_t *xup,
-                           mpz_t tmp,
+                                mpz_t *xdo, mpz_t *xup,
+                                mpz_t tmp,
                                 mpz_t val_do, mpz_t val_up,
                                 long corr){
   if(deg == -1){
@@ -245,7 +249,6 @@ int mpz_scalar_product_interval(mpz_t *up, const long int deg, const long k,
       mpz_mul(tmp, up[i], xup[i]);
       mpz_add(val_do, val_do, tmp);
     }
-
   }
   return (mpz_sgn(val_do) != mpz_sgn(val_up));
 }

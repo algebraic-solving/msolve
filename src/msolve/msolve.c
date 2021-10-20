@@ -142,7 +142,7 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
     }
   }
   fprintf(file, "],\n");
-  fprintf(stderr, "[1,"); /*at the moment, a single param is returned */
+  fprintf(file, "[1,"); /*at the moment, a single param is returned */
   mpz_upoly_out_str(file, param->elim); //elim. poly
   fprintf(file, ",\n");
   mpz_upoly_out_str(file, param->denom); //denom. poly
@@ -2413,7 +2413,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         int *success)
 {
     double ca0, rt;
-    ca0 = realtime(); 
+    ca0 = realtime();
+
     bs_t *bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
     rt = realtime()-ca0;
 
@@ -2958,12 +2959,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* data for linear forms */
   long nlins = 0;
-  long *bnlins = (long *)malloc(sizeof(long) * st->nthrds);
-  uint64_t **blinvars = (uint64_t **)malloc(sizeof(uint64_t *) * st->nthrds);
+  long *bnlins = (long *)calloc(st->nthrds, sizeof(long));
+  uint64_t **blinvars = (uint64_t **)calloc(st->nthrds, sizeof(uint64_t *));
   uint64_t *linvars = calloc(bht->nv, sizeof(uint64_t));
   blinvars[0] = linvars;
-  uint32_t **lineqs_ptr = malloc(sizeof(uint32_t *) * st->nthrds);
-  uint64_t **bsquvars = (uint64_t **) malloc(sizeof(uint64_t *) * st->nthrds);
+  uint32_t **lineqs_ptr = calloc(st->nthrds, sizeof(uint32_t *));
+  uint64_t **bsquvars = (uint64_t **) calloc(st->nthrds, sizeof(uint64_t *));
   uint64_t *squvars = calloc(nr_vars-1, sizeof(uint64_t));
   bsquvars[0] = squvars;
 
@@ -3008,18 +3009,23 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   if(lmb_ori == NULL || success == 0) {
       /* print_msolve_message(stderr, 1); */
     for(int i = 0; i < st->nthrds; i++){
-      free_trace(&btrace[i]);
+      /* free_trace(&btrace[i]); */
     }
+    free(btrace);
     free_shared_hash_data(bht);
     free_hash_table(&bht);
     free_hash_table(&tht);
-
-    for (i = 0; i < st->nthrds; ++i) {
-      //      free_basis(&(bs[i]));
-    }
+    free(bht);
+    free(tht);
+    /* for (i = 0; i < st->nthrds; ++i) { */
+    /*   free_basis(&(bs[i])); */
+    /* } */
     free(bs);
+    free(bs_qq);
     //here we should clean nmod_params
     free_lucky_primes(&lp);
+    free(bad_primes);
+    free(lp);
     free(st);
     free(linvars);
     free(nmod_params);
@@ -4143,7 +4149,9 @@ void generate_table_values_full(interval *rt, mpz_t c,
 }
 
 
-
+/* evaluates denom (which has degree deg)
+   at the interval [r/2^k, (r+1)/2^k]
+   returns  */
 int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
                 mpz_t *xdo, mpz_t *xup,
                 mpz_t tmp, mpz_t den_do, mpz_t den_up,
@@ -4188,6 +4196,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  int info_level){
 
   unsigned long ns = param->nsols ;
+  /* root is exact */
   if(rt->isexact==1){
     single_exact_real_root_param(param, rt, nb,
                                  xdo, xup, den_up, den_do,
@@ -4199,33 +4208,27 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   long b = 16;
   prec = MAX(prec, rt->k);
-  long corr = ns + rt->k;
+  long corr = (ns + rt->k);
 
-  /* generate_table_values(rt, c, ns, b, */
-  /*                       corr, */
-  /*                       xdo, xup); */
+  /* checks whether the abs. value of the root is greater than 1 */
   generate_table_values_full(rt, c, ns, b,
                              corr,
                              xdo, xup);
 
-  while(/* lazy_mpz_poly_eval_interval(param->denom->coeffs, */
-        /*                             param->denom->length - 1, */
-        /*                             rt->k, */
-        /*                             xdo, xup, */
-        /*                             2*(prec+ns+rt->k), corr, b, */
-        /*                             tmp, den_do, den_up) */
-        value_denom(param->denom->coeffs,
+  while(value_denom(param->denom->coeffs,
                     param->denom->length - 1,
                     rt->numer,
                     rt->k,
                     xdo, xup,
                     tmp, den_do, den_up, corr)){
+    /* root is positive */
     if(mpz_sgn(rt->numer)>=0){
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
       refine_QIR_positive_root(polelim, &ns, rt, tab, 2*(rt->k),
                                info_level);
     }
     else{
+      /* root is positive */
       mpz_add_ui(pos_root->numer, rt->numer, 1);
       mpz_neg(pos_root->numer, pos_root->numer);
       pos_root->k = rt->k;
@@ -4395,10 +4398,10 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
     mpz_init_set_ui(xup[i], 1);
     mpz_init_set_ui(xdo[i], 1);
   }
-  mpz_t *tab = (mpz_t*)(malloc(sizeof(mpz_t)*8));//table for some intermediate values
+  mpz_t *tab = (mpz_t*)(calloc(8,sizeof(mpz_t)));//table for some intermediate values
   for(int i=0;i<8;i++)mpz_init(tab[i]);
 
-  mpz_t *polelim = malloc(sizeof(mpz_t) * param->elim->length);
+  mpz_t *polelim = calloc(param->elim->length, sizeof(mpz_t));
   for(long i = 0; i < param->elim->length; i++){
     mpz_init_set(polelim[i], param->elim->coeffs[i]);
   }

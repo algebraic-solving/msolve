@@ -5204,7 +5204,7 @@ restart:
                             fprintf(ofile2, "[0, %d, 0, [0, [1]]],", gens->nvars);
                         }
                         display_real_points_middle(
-                                stdout, *real_pts_ptr, *nb_real_roots_ptr);
+                                ofile2, *real_pts_ptr, *nb_real_roots_ptr);
                         fclose(ofile2);
                     }
                     else{
@@ -5216,7 +5216,9 @@ restart:
                     }
                 }
                 if(dim > 0){
-                    fprintf(stderr, "The ideal has positive dimension\n");
+                    if (info_level > 0) {
+                        fprintf(stderr, "The ideal has positive dimension\n");
+                    }
                     if(files->out_file != NULL){
                         FILE *ofile2 = fopen(files->out_file, "a+");
                         //1 because dim is >0

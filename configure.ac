@@ -13,12 +13,7 @@ AM_PROG_AR
 LT_INIT
 
 # Checks for programs.
-AC_PROG_AWK
 AC_PROG_CC
-AC_PROG_INSTALL
-AC_PROG_LN_S
-AC_PROG_MAKE_SET
-AC_PROG_RANLIB
 
 # Checks for libraries.
 # CAUTION: Order matters for static binary building.
@@ -65,7 +60,9 @@ AC_TYPE_UINT8_T
 
 AX_COUNT_CPUS
 AX_EXT
-AX_GCC_BUILTIN
+AX_GCC_BUILTIN([__builtin_constant_p])
+AX_GCC_BUILTIN([__builtin_clzll])
+AX_GCC_BUILTIN([__builtin_clzl])
 
 # Checks for library functions.
 AC_FUNC_MALLOC

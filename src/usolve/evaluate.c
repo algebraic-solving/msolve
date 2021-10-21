@@ -119,7 +119,9 @@ void mpz_poly_eval_2exp_naive(mpz_t *up,
 
 }
 
+/* EValuation over an interval using a Horner scheme */
 /* assumes a and b have the same sign */
+/* returns (mpz_sgn(val_do) != mpz_sgn(val_up)); */
 int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
                            mpz_t a, mpz_t b,
                            mpz_t tmp,
@@ -200,12 +202,6 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
         fprintf(stderr, "=> sign of val_up = %d\n", mpz_sgn(val_up));
         exit(1);
       }
-      /* if((mpz_sgn(val_do) != mpz_sgn(val_up))){ */
-      /*   fprintf(stderr, "\ni = %ld ->sign of a, b = %d, %d\n", i, mpz_sgn(a), mpz_sgn(b)); */
-      /*   fprintf(stderr, "%d / %d\n", mpz_sgn(val_do), mpz_sgn(val_up)); */
-      /*   fprintf(stderr, " a vs b %d\n", mpz_cmp(a, b)); */
-      /* } */
-
     }
   }
   mpz_clear(s);
@@ -215,6 +211,11 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
 /* evaluates up (of degree deg) over the interval
    through scalar product up*xdo and up*xup
    up to precision corr
+
+   Values are stored in val_do, val_up
+   => [val_do / 2^corr, val_up/2^corr]
+
+   returns (mpz_sgn(val_do) != mpz_sgn(val_up))
  */
 int mpz_scalar_product_interval(mpz_t *up, const long int deg, const long k,
                                 mpz_t *xdo, mpz_t *xup,

@@ -3988,7 +3988,9 @@ void display_real_points(FILE *fstream, real_point_t *pts, long nb){
     display_real_point(fstream, pts[i]);
     fprintf(fstream, ", ");
   }
-  display_real_point(fstream, pts[nb - 1]);
+  if(nb){
+    display_real_point(fstream, pts[nb - 1]);
+  }
   fprintf(fstream, "]\n");
   fprintf(fstream, "]");
 }
@@ -4156,22 +4158,25 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
                 mpz_t *xdo, mpz_t *xup,
                 mpz_t tmp, mpz_t den_do, mpz_t den_up,
                 long corr){
-  int boo = mpz_scalar_product_interval(denom, deg, k,
-                                        xdo, xup,
-                                        tmp, den_do, den_up, corr);
-  if(mpz_cmp(den_do, den_up) > 0){
-    fprintf(stderr, "BUG (den_do > den_up)\n");
-    mpz_out_str(stderr, 10, den_do); fprintf(stderr, "\n");
-    mpz_out_str(stderr, 10, den_up); fprintf(stderr, "\n");
-    exit(1);
-  }
-  if(boo == 0){
-    return boo;
-  }
+  /* /\* boo is 1 if den_do and den_up have not the same sign */
+  /*    else it is 0 */
+  /*  *\/ */
+  /* int boo = mpz_scalar_product_interval(denom, deg, k, */
+  /*                                       xdo, xup, */
+  /*                                       tmp, den_do, den_up, corr); */
+  /* if(mpz_cmp(den_do, den_up) > 0){ */
+  /*   fprintf(stderr, "BUG (den_do > den_up)\n"); */
+  /*   mpz_out_str(stderr, 10, den_do); fprintf(stderr, "\n"); */
+  /*   mpz_out_str(stderr, 10, den_up); fprintf(stderr, "\n"); */
+  /*   exit(1); */
+  /* } */
+  /* if(boo == 0){ */
+  /*   return boo; */
+  /* } */
   mpz_t c;
   mpz_init(c);
   mpz_add_ui(c, r, 1);
-  boo = mpz_poly_eval_interval(denom, deg, k,
+  int boo = mpz_poly_eval_interval(denom, deg, k,
                                r, c,
                                tmp, den_do, den_up);
   if(mpz_cmp(den_do, den_up) > 0){
@@ -4186,6 +4191,54 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
 
   return boo;
 }
+
+
+/*
+ 
+
+
+ */
+int evalquadric(mpz_t *upol, mpz_t r, long k, mpz_t v1, mpz_t v2){
+  mpz_t tmp1, tmp2;
+  /* computes the discriminant in tmp1 */
+  mpz_init_set(tmp1, upol[1]);
+  mpz_mul(tmp1, tmp1, tmp1);
+  mpz_init_set(tmp2, upol[0]);
+  mpz_mul(tmp2, tmp2, upol[1]);
+  mpz_mul_2exp(tmp2, tmp2, 2);
+  mpz_sub(tmp1, tmp1, tmp2);
+
+  if(mpz_sgn(tmp1) < 0){
+    /* Discriminant is negative */
+    return 1;
+  }
+  /* Discriminant is positive */
+
+}
+
+int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k,
+                   mpz_t *xdo, mpz_t *xup,
+                   mpz_t tmp, mpz_t den_do, mpz_t den_up,
+                   long corr){
+  mpz_t c;
+  mpz_init(c);
+  mpz_add_ui(c, r, 1);
+  int boo = mpz_poly_eval_interval(denom, deg, k,
+                               r, c,
+                               tmp, den_do, den_up);
+  if(mpz_cmp(den_do, den_up) > 0){
+    fprintf(stderr, "BUG (den_do > den_up)\n");
+    exit(1);
+  }
+  mpz_mul_2exp(den_do, den_do, corr);
+  mpz_mul_2exp(den_up, den_up, corr);
+  mpz_fdiv_q_2exp(den_do, den_do, k*deg);
+  mpz_cdiv_q_2exp(den_up, den_up, k*deg);
+  mpz_clear(c);
+
+  return boo;
+}
+
 
 void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  interval *rt, long nb, interval *pos_root,
@@ -4221,6 +4274,8 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                     rt->k,
                     xdo, xup,
                     tmp, den_do, den_up, corr)){
+    fprintf(stderr, "==> "); mpz_out_str(stderr, 10, rt->numer);
+    fprintf(stderr, " / 2^%ld\n", rt->k);
     /* root is positive */
     if(mpz_sgn(rt->numer)>=0){
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
@@ -4501,7 +4556,7 @@ int real_msolve_qq(mpz_param_t mp_param,
 
         if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0){
 
-            mpz_t *pol = malloc(sizeof(mpz_t)*mp_param->elim->length);
+          mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
             for(long i = 0; i < mp_param->elim->length; i++){
                 mpz_init_set(pol[i], mp_param->elim->coeffs[i]);
             }
@@ -4572,7 +4627,6 @@ int real_msolve_qq(mpz_param_t mp_param,
             *nb_real_roots_ptr  = nb;
             *real_pts_ptr       = pts;
         }
-
         return b;
     }
     else{

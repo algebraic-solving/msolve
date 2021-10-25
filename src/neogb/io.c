@@ -1099,28 +1099,36 @@ void set_function_pointers(
         )
 {
   /* todo: this needs to be generalized for different monomial orders */
-  switch (st->mo) {
-    case 0:
-      initial_input_cmp   = initial_input_cmp_drl;
-      initial_gens_cmp    = initial_gens_cmp_drl;
-      monomial_cmp        = monomial_cmp_drl;
-      spair_cmp           = spair_cmp_drl;
-      hcm_cmp             = hcm_cmp_pivots_drl;
-      break;
-    case 1:
-      initial_input_cmp   = initial_input_cmp_lex;
-      initial_gens_cmp    = initial_gens_cmp_lex;
-      monomial_cmp        = monomial_cmp_lex;
-      spair_cmp           = spair_cmp_deglex;
-      hcm_cmp             = hcm_cmp_pivots_lex;
-      break;
-    default:
-      initial_input_cmp   = initial_input_cmp_drl;
-      initial_gens_cmp    = initial_gens_cmp_drl;
-      monomial_cmp        = monomial_cmp_drl;
-      spair_cmp           = spair_cmp_drl;
-      hcm_cmp             = hcm_cmp_pivots_drl;
-  }
+    if (st->nev > 0) {
+      initial_input_cmp   = initial_input_cmp_be;
+      initial_gens_cmp    = initial_gens_cmp_be;
+      monomial_cmp        = monomial_cmp_be;
+      spair_cmp           = spair_cmp_be;
+      hcm_cmp             = hcm_cmp_pivots_be;
+    } else {
+        switch (st->mo) {
+            case 0:
+                initial_input_cmp   = initial_input_cmp_drl;
+                initial_gens_cmp    = initial_gens_cmp_drl;
+                monomial_cmp        = monomial_cmp_drl;
+                spair_cmp           = spair_cmp_drl;
+                hcm_cmp             = hcm_cmp_pivots_drl;
+                break;
+            case 1:
+                initial_input_cmp   = initial_input_cmp_lex;
+                initial_gens_cmp    = initial_gens_cmp_lex;
+                monomial_cmp        = monomial_cmp_lex;
+                spair_cmp           = spair_cmp_deglex;
+                hcm_cmp             = hcm_cmp_pivots_lex;
+                break;
+            default:
+                initial_input_cmp   = initial_input_cmp_drl;
+                initial_gens_cmp    = initial_gens_cmp_drl;
+                monomial_cmp        = monomial_cmp_drl;
+                spair_cmp           = spair_cmp_drl;
+                hcm_cmp             = hcm_cmp_pivots_drl;
+        }
+    }
 
   /* up to 17 bits we can use one modular operation for reducing a row. this works
    * for matrices with #rows <= 54 million */

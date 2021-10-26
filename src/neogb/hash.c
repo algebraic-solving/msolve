@@ -1115,11 +1115,12 @@ static inline hi_t get_lcm(
     /* set degree(s), if ebl == 0, i.e. we do not have an elimination block
      * order then the second for loop is just not executed and the third one
      * computes correctly the full degree of the lcm. */
-    etmp[0]   = 0;
-    etmp[ebl] = 0;
     for (i = 1; i < evl; ++i) {
         etmp[i]  = ea[i] < eb[i] ? eb[i] : ea[i];
     }
+    /* reset degree entries */
+    etmp[0]   = 0;
+    etmp[ebl] = 0;
     for (i = 1; i < ebl; ++i) {
         etmp[0]  += etmp[i];
     }

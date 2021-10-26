@@ -22,7 +22,7 @@
 #include "io.h"
 
 /* See exponent vector description in data.h for more information. */
-inline void set_exponent_vector(
+static inline void set_exponent_vector(
         exp_t *ev,
         const int32_t *iev,  /* input exponent vectors */
         const int32_t idx,

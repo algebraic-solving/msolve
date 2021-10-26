@@ -21,6 +21,37 @@
 
 #include "io.h"
 
+/* See exponent vector description in data.h for more information. */
+inline void set_exponent_vector(
+        exp_t *ev,
+        const int32_t *iev,  /* input exponent vectors */
+        const int32_t idx,
+        const ht_t *ht,
+        const stat_t *st
+        )
+{
+    len_t i;
+
+    const len_t nv  = ht->nv;
+    const len_t ebl = ht->ebl;
+    const len_t nev = st->nev;
+    const len_t off = ebl - nev + 1;
+
+    ev[0]   = 0;
+    ev[ebl] = 0;
+
+    for (i = 0; i < nev; ++i) {
+        ev[i+1] = (exp_t)(iev+(nv*idx))[i];
+        /* degree */
+        ev[0]   +=  ev[i+1];
+    }
+    for (i = nev; i < nv; ++i) {
+        ev[i+off] = (exp_t)(iev+(nv*idx))[i];
+        /* degree */
+        ev[ebl]    +=  ev[i+off];
+    }
+}
+
 /* note that depending on the input data we set the corresponding
  * function pointers for monomial resp. spair comparisons, taking
  * spairs by a given minimal property for symbolic preprocessing, etc. */
@@ -89,8 +120,6 @@ static void import_julia_data_ff_8(
     int32_t *cfs  = (int32_t *)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
-    const len_t nev   = st->nev;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -112,19 +141,7 @@ static void import_julia_data_ff_8(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            /* initialize degree entries to zero */
-            e[0]    = 0;
-            e[nev]  = 0;
-            for (k = 0; k < nev; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                /* degree */
-                e[0]  +=  e[k+1];
-            }
-            for (k = nev; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                /* degree */
-                e[nev]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
             cfs[j]            +=  (cfs[j] >> 31) & fc;
@@ -220,8 +237,6 @@ static void import_julia_data_ff_16(
     int32_t *cfs  = (int32_t *)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
-    const len_t nev   = st->nev;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -243,19 +258,7 @@ static void import_julia_data_ff_16(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            /* initialize degree entries to zero */
-            e[0]    = 0;
-            e[nev]  = 0;
-            for (k = 0; k < nev; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                /* degree */
-                e[0]  +=  e[k+1];
-            }
-            for (k = nev; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                /* degree */
-                e[nev]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
             cfs[j]            +=  (cfs[j] >> 31) & fc;
@@ -352,8 +355,6 @@ static void import_julia_data_ff_32(
     int32_t *cfs  = (int32_t *)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
-    const len_t nev   = st->nev;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -375,19 +376,7 @@ static void import_julia_data_ff_32(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            /* initialize degree entries to zero */
-            e[0]    = 0;
-            e[nev]  = 0;
-            for (k = 0; k < nev; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                /* degree */
-                e[0]  +=  e[k+1];
-            }
-            for (k = nev; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                /* degree */
-                e[nev]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
             tmpcf             =   (int64_t)cfs[j];
@@ -431,7 +420,6 @@ void import_julia_data_nf_ff_32(
         )
 {
     int32_t i, j;
-    len_t k;
     cf32_t *cf    = NULL;
     int64_t tmpcf = 0;
     hm_t *hm      = NULL;
@@ -439,8 +427,6 @@ void import_julia_data_nf_ff_32(
     int32_t *cfs  = (int32_t *)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
-    const len_t nev   = st->nev;
     const len_t fc    = st->fc;
 
     for (i = 0; i < start; ++i) {
@@ -469,19 +455,7 @@ void import_julia_data_nf_ff_32(
         tbr->red[i-start] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            /* initialize degree entries to zero */
-            e[0]    = 0;
-            e[nev]  = 0;
-            for (k = 0; k < nev; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                /* degree */
-                e[0]  +=  e[k+1];
-            }
-            for (k = nev; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                /* degree */
-                e[nev]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
             tmpcf             =   (int64_t)cfs[j];
@@ -556,7 +530,6 @@ void import_julia_data_nf_qq(
         )
 {
     int32_t i, j;
-    len_t k;
     mpz_t *cf;
     hm_t *hm;
     mpz_t prod_den, mul;
@@ -564,10 +537,9 @@ void import_julia_data_nf_qq(
 
     /* these coefficients are numerator, denominator, numerator, denominator, ...
      * i.e. the array has length 2*nterms */
-    mpz_t **cfs  = (mpz_t **)vcfs;
+    mpz_t **cfs = (mpz_t **)vcfs;
 
-    int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
+    int32_t off = 0; /* offset in arrays */
 
     /* we want to get rid of denominators, i.e. we want to handle
      * the coefficients as integers resp. mpz_t numbers. for this we
@@ -610,11 +582,7 @@ void import_julia_data_nf_qq(
         bs->red[i-start] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
             mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
             mpz_mul(cf[j-off], mul, *(cfs[2*j]));
@@ -649,7 +617,6 @@ static void import_julia_data_qq(
     mpz_t **cfs  = (mpz_t **)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
     const len_t ngens = st->ngens;
 
     /* we want to get rid of denominators, i.e. we want to handle
@@ -688,11 +655,11 @@ static void import_julia_data_qq(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
+            set_exponent_vector(e, exps, j, ht, st);
+            for (int ii = 0; ii < ht->evl; ++ii) {
+                printf("%d ", e[ii]);
             }
+            printf("\n");
             hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
             mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
             mpz_mul(cf[j-off], mul, *(cfs[2*j]));

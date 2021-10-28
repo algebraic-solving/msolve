@@ -583,8 +583,10 @@ restart:
     e   = ht->ev[pos];
     d   = ht->hd + pos;
     memcpy(e, a, (unsigned long)evl * sizeof(exp_t));
-    d->sdm  = generate_short_divmask(e, ht);
-    d->val  = h;
+    d->sdm  =   generate_short_divmask(e, ht);
+    d->deg  =   e[0];
+    d->deg  +=  ht->ebl > 0 ? e[ht->ebl] : 0;
+    d->val  =   h;
 
     ht->eld++;
 
@@ -643,8 +645,10 @@ restart:
     e   = ht->ev[pos];
     d   = ht->hd + pos;
     memcpy(e, a, (unsigned long)evl * sizeof(exp_t));
-    d->sdm  = generate_short_divmask(e, ht);
-    d->val  = h;
+    d->sdm  =   generate_short_divmask(e, ht);
+    d->deg  =   e[0];
+    d->deg  +=  ht->ebl > 0 ? e[ht->ebl] : 0;
+    d->val  =   h;
 
     ht->eld++;
 
@@ -718,15 +722,15 @@ static inline int prime_monomials(
     const len_t evl = ht->evl;
     const len_t ebl = ht->ebl;
 
-    for (i = 1; i < evl-1; i += 2) {
-        if ((ea[i] != 0 && eb[i] != 0) || (ea[i+1] != 0 && eb[i+1] != 0)) {
-            if (i != ebl) {
-                return 0;
-            }
+    for (i = 1; i < ebl; ++i) {
+        if (ea[i] != 0 && eb[i] != 0) {
+            return 0;
         }
     }
-    if (ea[evl-1] != 0 && eb[evl-1] != 0) {
-        return 0;
+    for (i = ebl+1; i < evl; ++i) {
+        if (ea[i] != 0 && eb[i] != 0) {
+            return 0;
+        }
     }
     return 1;
 }
@@ -801,6 +805,7 @@ restart:
         bht->hmap[k] = pos = (hi_t)bht->eld;
         d = bht->hd + bht->eld;
         d->sdm  = uht->hd[lcms[l]].sdm;
+        d->deg  = uht->hd[lcms[l]].deg;
         d->val  = h;
 
         bht->eld++;
@@ -877,6 +882,7 @@ restart:
         hmap[k] = pos = (hi_t)bht->eld;
         d = hd + bht->eld;
         d->sdm  = hds[hcm[row[l]]].sdm;
+        d->deg  = hds[hcm[row[l]]].deg;
         d->val  = h;
 
         bht->eld++;
@@ -953,8 +959,10 @@ restart:
         /* add element to hash table */
         ht2->hmap[k]  = pos = (hi_t)ht2->eld;
         d = hd2 + ht2->eld;
-        d->sdm  = generate_short_divmask(n, ht2);
-        d->val  = h;
+        d->sdm  =   generate_short_divmask(n, ht2);
+        d->deg  =   n[0];
+        d->deg  +=  ht2->ebl > 0 ? n[ht2->ebl] : 0;
+        d->val  =   h;
 
         ht2->eld++;
         row[l] =  pos;
@@ -1021,8 +1029,10 @@ restart:
         e = ht->ev[ht->eld];
         d = ht->hd + ht->eld;
         memcpy(e, n, (unsigned long)evl * sizeof(exp_t));
-        d->sdm  = generate_short_divmask(e, ht);
-        d->val  = h;
+        d->sdm  =   generate_short_divmask(e, ht);
+        d->deg  =   e[0];
+        d->deg  +=  ht->ebl > 0 ? e[ht->ebl] : 0;
+        d->val  =   h;
 
         ht->eld++;
         row[l] =  pos;
@@ -1048,7 +1058,7 @@ static void reset_hash_table(
     spair_t *ps = psl->p;
     exp_t **oev  = ht->ev;
 
-    const len_t nv  = ht->nv;
+    const len_t evl = ht->evl;
     const hl_t esz  = ht->esz;
     const bl_t bld  = bs->ld;
     const len_t pld = psl->ld;
@@ -1060,14 +1070,14 @@ static void reset_hash_table(
         fprintf(stderr, "segmentation fault will follow.\n");
     }
     exp_t *tmp  = (exp_t *)malloc(
-            (unsigned long)nv * esz * sizeof(exp_t));
+            (unsigned long)evl * esz * sizeof(exp_t));
     if (tmp == NULL) {
         fprintf(stderr, "Computation needs too much memory on this machine,\n");
         fprintf(stderr, "resetting table failed, esz = %lu\n", (unsigned long)esz);
         fprintf(stderr, "segmentation fault will follow.\n");
     }
     for (k = 0; k < esz; ++k) {
-        ht->ev[k]  = tmp + k*nv;
+        ht->ev[k]  = tmp + k*evl;
     }
     ht->eld = 1;
     memset(ht->hmap, 0, ht->hsz * sizeof(hi_t));
@@ -1127,6 +1137,11 @@ static inline hi_t get_lcm(
     for (i = ebl+1; i < evl; ++i) {
         etmp[ebl] += etmp[i];
     }
+    /* printf("lcm -> ");
+     * for (int ii = 0; ii < evl; ++ii) {
+     *     printf("%d ", etmp[ii]);
+     * }
+     * printf("\n"); */
     return insert_in_hash_table(etmp, ht2);
 }
 

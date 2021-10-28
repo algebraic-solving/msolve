@@ -155,10 +155,10 @@ static void import_julia_data_ff_8(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][DEG];
+        deg = ht->hd[hm[OFFSET]].deg;
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][DEG]) {
+            if (deg != ht->hd[hm[j]].deg) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -272,10 +272,10 @@ static void import_julia_data_ff_16(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][DEG];
+        deg = ht->hd[hm[OFFSET]].deg;
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][DEG]) {
+            if (deg != ht->hd[hm[j]].deg) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -391,10 +391,10 @@ static void import_julia_data_ff_32(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][DEG];
+        deg = ht->hd[hm[OFFSET]].deg;
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][DEG]) {
+            if (deg != ht->hd[hm[j]].deg) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -656,10 +656,10 @@ static void import_julia_data_qq(
 
         for (j = off; j < off+lens[i]; ++j) {
             set_exponent_vector(e, exps, j, ht, st);
-            for (int ii = 0; ii < ht->evl; ++ii) {
-                printf("%d ", e[ii]);
-            }
-            printf("\n");
+            /* for (int ii = 0; ii < ht->evl; ++ii) {
+             *     printf("%d ", e[ii]);
+             * }
+             * printf("\n"); */
             hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
             mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
             mpz_mul(cf[j-off], mul, *(cfs[2*j]));
@@ -672,10 +672,10 @@ static void import_julia_data_qq(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][DEG];
+        deg = ht->hd[hm[OFFSET]].deg;
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][DEG]) {
+            if (deg != ht->hd[hm[j]].deg) {
                 st->homogeneous = 0;
                 goto done;
             }

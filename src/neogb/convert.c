@@ -119,8 +119,8 @@ static void convert_hashes_to_columns_sat(
 
     /* printf("hcm\n");
      * for (int ii=0; ii<j; ++ii) {
-     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, sht->ev[hcm[ii]][DEG];
-     *     for (int jj = 0; jj < sht->nv; ++jj) {
+     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, sht->ev[hcm[ii]][DEG]+sht->ev[hcm[ii]][sht->ebl]);
+     *     for (int jj = 0; jj < sht->evl; ++jj) {
      *         printf("%d ", sht->ev[hcm[ii]][jj]);
      *     }
      *     printf("\n");
@@ -248,8 +248,8 @@ static void convert_hashes_to_columns(
 
     /* printf("hcm\n");
      * for (int ii=0; ii<j; ++ii) {
-     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, sht->ev[hcm[ii]][DEG]);
-     *     for (int jj = 0; jj < sht->nv; ++jj) {
+     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, sht->ev[hcm[ii]][DEG]+sht->ev[hcm[ii]][sht->ebl]);
+     *     for (int jj = 0; jj < sht->evl; ++jj) {
      *         printf("%d ", sht->ev[hcm[ii]][jj]);
      *     }
      *     printf("\n");
@@ -510,7 +510,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         case 0:
             for (i = 0; i < np; ++i) {
                 insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                if (bht->ev[rows[i][OFFSET]][DEG] == 0) {
+                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
                     bs->constant  = 1;
                 }
                 bs->cf_qq[bl+i] = mat->cf_qq[rows[i][COEFFS]];
@@ -522,7 +522,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         case 8:
             for (i = 0; i < np; ++i) {
                 insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                if (bht->ev[rows[i][OFFSET]][DEG] == 0) {
+                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
                     bs->constant  = 1;
                 }
                 bs->cf_8[bl+i]  = mat->cf_8[rows[i][COEFFS]];
@@ -533,7 +533,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         case 16:
             for (i = 0; i < np; ++i) {
                 insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                if (bht->ev[rows[i][OFFSET]][DEG] == 0) {
+                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
                     bs->constant  = 1;
                 }
                 bs->cf_16[bl+i] = mat->cf_16[rows[i][COEFFS]];
@@ -547,7 +547,17 @@ static void convert_sparse_matrix_rows_to_basis_elements(
              * exp_t *e  = bht->ev[0]; */
             for (i = 0; i < np; ++i) {
                 /* power_t = 0; */
+                /* printf("?bht->ev[1] = ");
+                 * for (int ii = 0; ii < bht->evl; ++ii) {
+                 *     printf("%d ", bht->ev[1][ii]);
+                 * }
+                 * printf("\n"); */
                 insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
+                /* printf("!bht->ev[1] = ");
+                 * for (int ii = 0; ii < bht->evl; ++ii) {
+                 *     printf("%d ", bht->ev[1][ii]);
+                 * }
+                 * printf("\n"); */
 /*                 for (ii = OFFSET; ii < rows[i][LENGTH]+OFFSET; ++ii) {
  *                     if (bht->ev[rows[i][ii]][bht->nv-1] > 0) {
  *                         power_t = power_t > bht->ev[rows[i][ii]][bht->nv-1] ? power_t : bht->ev[rows[i][ii]][bht->nv-1];
@@ -566,7 +576,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
  *                     }
  *                     printf("power_t %ld\n", power_t);
  *                 } */
-                if (bht->ev[rows[i][OFFSET]][DEG] == 0) {
+                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
                     bs->constant  = 1;
                 }
                 bs->cf_32[bl+i] = mat->cf_32[rows[i][COEFFS]];
@@ -575,7 +585,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
                 /* printf("new element (%u): length %u | ", bl+i, bs->hm[bl+i][LENGTH]);
                  * for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) {
                  *     printf("%u | ", bs->cf_32[bl+i][kk]);
-                 * for (int jj=0; jj <= bht->nv; ++jj) {
+                 * for (int jj=0; jj < bht->evl; ++jj) {
                  *     printf("%u ", bht->ev[bs->hm[bl+i][OFFSET+kk]][jj]);
                  * }
                  * printf(" || ");
@@ -586,7 +596,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         default:
             for (i = 0; i < np; ++i) {
                 insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                if (bht->ev[rows[i][OFFSET]][DEG] == 0) {
+                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
                     bs->constant  = 1;
                 }
                 bs->cf_32[bl+i] = mat->cf_32[rows[i][COEFFS]];

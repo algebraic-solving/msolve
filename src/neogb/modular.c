@@ -95,7 +95,7 @@ void reduce_basis_no_hash_table_switching(
 
     hi_t *hcm   = *hcmp;
     exp_t *etmp = bht->ev[0];
-    memset(etmp, 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
+    memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
     mat->nr = mat->nc = mat->ncl  = mat->ncr  = 0;
@@ -1044,8 +1044,21 @@ bs_t *f4_trace_learning_phase(
 
     /* get basis meta data */
     st->size_basis  = bs->lml;
+    len_t bsctr = 0;
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
+        if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+            bsctr++;
+        }
+        /* printf("bs[%u] = ", i);
+         * for (int ii = 0; ii < bht->evl; ++ii) {
+         * printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][ii]);
+         * }
+         * printf("\n"); */
+    }
+    printf("eliminated basis -> %u\n", bsctr);
+    if (st->info_level > 0) {
+      print_final_statistics(stderr, st);
     }
 
     /* timings */
@@ -1706,9 +1719,19 @@ bs_t *modular_f4(
 
     /* get basis meta data */
     st->size_basis  = bs->lml;
+    len_t bsctr = 0;
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
+        if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+            bsctr++;
+        }
+        /* printf("bs[%u] = ", i);
+         * for (int ii = 0; ii < bht->evl; ++ii) {
+         * printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][ii]);
+         * }
+         * printf("\n"); */
     }
+    printf("eliminated basis -> %u\n", bsctr);
     if (st->info_level > 0) {
       print_final_statistics(stderr, st);
     }

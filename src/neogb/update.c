@@ -83,8 +83,9 @@ static void insert_and_update_spairs(
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
-    bs->mltdeg  = bs->mltdeg > bht->ev[nch][DEG] ?
-        bs->mltdeg : bht->ev[nch][DEG];
+    deg_t ndeg  = bht->hd[nch].deg;
+    bs->mltdeg  = bs->mltdeg > ndeg ?
+        bs->mltdeg : ndeg;
 
     reinitialize_hash_table(uht, bl);
     /* statistics */
@@ -115,14 +116,13 @@ static void insert_and_update_spairs(
     }
 
     hi_t *plcm  = (hi_t *)malloc((unsigned long)(bl+1) * sizeof(hi_t));
-    deg_t *dlcm  = (deg_t *)malloc((unsigned long)(bl+1) * sizeof(deg_t));
     spair_t *pp = ps+pl;
 
     /* create all possible new pairs */
     if (check_redundancy == 1) {
         for (i = 0; i < bl; ++i) {
-            plcm[i] = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            dlcm[i] = evu[plcm[i]][DEG];
+            plcm[i]   = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
+            pp[i].deg = uht->hd[plcm[i]].deg;
             if (bs->red[i] == 0) {
                 pp[i].gen1  = i;
                 pp[i].gen2  = bl;
@@ -131,8 +131,8 @@ static void insert_and_update_spairs(
         }
     } else {
         for (i = 0; i < bl; ++i) {
-            plcm[i] = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            dlcm[i] = evu[plcm[i]][DEG];
+            plcm[i]     =  get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
+            pp[i].deg   = uht->hd[plcm[i]].deg;
             pp[i].gen1  = i;
             pp[i].gen2  = bl;
             pp[i].lcm   = plcm[i];
@@ -147,14 +147,13 @@ static void insert_and_update_spairs(
     for (i = 0; i < pl; ++i) {
         j = ps[i].gen1;
         l = ps[i].gen2;
-        const int32_t m = dlcm[l] > dlcm[j] ? dlcm[l] : dlcm[j];
+        const int32_t m = pp[l].deg > pp[j].deg ? pp[l].deg : pp[j].deg;
         if (check_monomial_division(ps[i].lcm, nch, bht)
-                && ev[ps[i].lcm][DEG] > m
+                && ps[i].deg > m
            ) {
             ps[i].lcm = 0;
         }
     }
-    free(dlcm);
     /* check new pairs for redundancy */
     j = 0;
     for (i = 0; i < bl; ++i) {
@@ -198,7 +197,7 @@ static void insert_and_update_spairs(
     const bl_t lml          = bs->lml;
     const bl_t * const lmps = bs->lmps;
 
-    if (bs->mltdeg > bht->ev[nch][DEG]) {
+    if (bs->mltdeg > ndeg) {
         /* mark redundant elements in basis */
         for (i = 0; i < lml; ++i) {
             if (bs->red[lmps[i]] == 0

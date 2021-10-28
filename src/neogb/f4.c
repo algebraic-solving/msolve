@@ -114,7 +114,7 @@ static void reduce_basis(
     ht_t *sht   = *shtp;
     hi_t *hcm   = *hcmp;
     exp_t *etmp = bht->ev[0];
-    memset(etmp, 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
+    memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
     mat->nr = 0;
@@ -382,6 +382,13 @@ int core_f4(
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
 
+    len_t bsctr = 0;
+    for (int ii = 0; ii < bs->lml; ++ii) {
+        if (bht->ev[bs->hm[bs->lmps[ii]][OFFSET]][0] == 0) {
+            bsctr++;
+        }
+    }
+    printf("eliminated basis -> %u\n", bsctr);
     *bsp  = bs;
     *bhtp = bht;
     *stp  = st;

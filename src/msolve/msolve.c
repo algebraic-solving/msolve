@@ -4990,6 +4990,164 @@ restart:
         return 0;
     }
     else{
+        if (elim_block_len > 0) {
+            /* timings */
+            double ct0, ct1, rt0, rt1;
+            ct0 = cputime();
+            rt0 = realtime();
+            const uint32_t prime_start = pow(2, 30);
+            const int32_t nr_primes = nr_threads;
+
+
+            /* initialize stuff */
+            stat_t *st  = initialize_statistics();
+
+            /* checks and set all meta data. if a nonzero value is returned then
+             * some of the input data is corrupted. */
+            if (check_and_set_meta_data_trace(st, gens->lens, gens->exps,
+                        (void *)gens->mpz_cfs, gens->field_char, 0,
+                        elim_block_len, gens->nvars, gens->ngens,
+                        initial_hts, nr_threads, max_pairs, update_ht,
+                        la_option, 1, prime_start, nr_primes, 0, info_level)) {
+                free(st);
+                return -3;
+            }
+
+            printf("fc %u, ngens %u\n", gens->field_char, gens->ngens);
+            /* lucky primes */
+            primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
+
+            /*******************
+             * initialize basis
+             *******************/
+            bs_t *bs_qq = initialize_basis(st->ngens);
+            /* initialize basis hash table, update hash table, symbolic hash table */
+            ht_t *bht = initialize_basis_hash_table(st);
+            /* hash table to store the hashes of the multiples of
+             * the basis elements stored in the trace */
+            ht_t *tht = initialize_secondary_hash_table(bht, st);
+            /* read in ideal, move coefficients to integers */
+            import_julia_data(bs_qq, bht, st, gens->lens, gens->exps, (void *)gens->mpz_cfs);
+
+            if (st->info_level > 0) {
+                print_initial_statistics(stderr, st);
+            }
+
+            /* for faster divisibility checks, needs to be done after we have
+             * read some input data for applying heuristics */
+            calculate_divmask(bht);
+
+            /* sort initial elements, smallest lead term first */
+            sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
+                    initial_input_cmp, bht);
+            remove_content_of_initial_basis(bs_qq);
+
+
+            /* generate lucky prime numbers */
+            generate_lucky_primes(lp, bs_qq, st->prime_start, st->nprimes);
+
+            /* generate array to store modular bases */
+            bs_t **bs = (bs_t **)calloc((unsigned long)st->nprimes, sizeof(bs_t *));
+
+            /* initialize tracer */
+            trace_t *trace  = initialize_trace();
+
+            srand(time(0));
+            uint32_t prime = next_prime(1<<30);
+            prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+            while(is_lucky_prime_ui(prime, bs_qq)){
+                prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+            }
+
+            uint32_t primeinit = prime;
+            lp->p[0] = primeinit;
+
+
+            if (is_gb == 1) {
+                for (len_t k = 0; k < bs_qq->ld; ++k) {
+                    bs_qq->lmps[k] = k;
+                    bs_qq->lm[k]   = bht->hd[bs_qq->hm[k][OFFSET]].sdm;
+                    bs_qq->lml     = bs_qq->ld;
+                }
+            }
+
+            st->laopt = 44;
+            bs_t *bsprob = modular_f4(bs_qq, bht, st, lp->p[0]);
+
+
+            st->laopt = 2;
+            /* compute a gb for initial generators */
+            f4_trace_learning_phase(
+                    trace,
+                    tht,
+                    bs_qq,
+                    bht,
+                    st,
+                    lp->p[0]);
+
+            /* int64_t nb  = export_results_from_f4(bld, blen, bexp,
+             *         bcf, &bs, &bht, &st); */
+
+            /* timings */
+            ct1 = cputime();
+            rt1 = realtime();
+            st->overall_ctime = ct1 - ct0;
+            st->overall_rtime = rt1 - rt0;
+
+            if (st->info_level > 1) {
+                print_final_statistics(stderr, st);
+            }
+            if(info_level){
+                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+            }
+
+            int i;
+
+            ht_t *lht = copy_hash_table(bht, st);
+
+            prime = next_prime(1<<30);
+
+            /* while(rerun == 1 || mcheck == 1){ */
+
+                /* generate lucky prime numbers */
+                prime = next_prime(prime);
+                lp->p[0] = prime;
+                while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+                    prime = next_prime(prime);
+                    lp->p[0] = prime;
+                }
+
+                for(len_t i = 1; i < st->nprimes; i++){
+                    prime = next_prime(prime);
+                    lp->p[i] = prime;
+                    while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+                        prime = next_prime(prime);
+                        lp->p[i] = prime;
+                    }
+                }
+                prime = lp->p[st->nprimes - 1];
+
+                double ca0;
+
+                double stf4 = 0;
+
+                for (i = 0; i < st->nprimes; ++i){
+                    ca0 = realtime();
+                    bs[i] = f4_trace_application_phase(
+                            trace,
+                            tht,
+                            bs_qq,
+                            lht,
+                            st,
+                            lp->p[i]);
+
+                    stf4 = realtime()-ca0;
+                    printf("F4 trace timing %13.2f\n", stf4);
+                    printf("bs[%u]->lml = %u\n", i, bs[i]->lml);
+                }
+            /* } */
+            return 0;
+        }
         if (saturate == 1) {
             /* timings */
             double ct0, ct1, rt0, rt1;

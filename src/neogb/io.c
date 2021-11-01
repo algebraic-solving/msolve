@@ -21,6 +21,37 @@
 
 #include "io.h"
 
+/* See exponent vector description in data.h for more information. */
+static inline void set_exponent_vector(
+        exp_t *ev,
+        const int32_t *iev,  /* input exponent vectors */
+        const int32_t idx,
+        const ht_t *ht,
+        const stat_t *st
+        )
+{
+    len_t i;
+
+    const len_t nv  = ht->nv;
+    const len_t ebl = ht->ebl;
+    const len_t nev = st->nev;
+    const len_t off = ebl - nev + 1;
+
+    ev[0]   = 0;
+    ev[ebl] = 0;
+
+    for (i = 0; i < nev; ++i) {
+        ev[i+1] = (exp_t)(iev+(nv*idx))[i];
+        /* degree */
+        ev[0]   +=  ev[i+1];
+    }
+    for (i = nev; i < nv; ++i) {
+        ev[i+off] = (exp_t)(iev+(nv*idx))[i];
+        /* degree */
+        ev[ebl]    +=  ev[i+off];
+    }
+}
+
 /* note that depending on the input data we set the corresponding
  * function pointers for monomial resp. spair comparisons, taking
  * spairs by a given minimal property for symbolic preprocessing, etc. */
@@ -89,7 +120,6 @@ static void import_julia_data_ff_8(
     int32_t *cfs  = (int32_t *)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -111,11 +141,7 @@ static void import_julia_data_ff_8(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
             cfs[j]            +=  (cfs[j] >> 31) & fc;
@@ -129,10 +155,10 @@ static void import_julia_data_ff_8(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][DEG];
+        deg = ht->hd[hm[OFFSET]].deg;
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][DEG]) {
+            if (deg != ht->hd[hm[j]].deg) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -211,7 +237,6 @@ static void import_julia_data_ff_16(
     int32_t *cfs  = (int32_t *)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -233,11 +258,7 @@ static void import_julia_data_ff_16(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
             cfs[j]            +=  (cfs[j] >> 31) & fc;
@@ -251,10 +272,10 @@ static void import_julia_data_ff_16(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][DEG];
+        deg = ht->hd[hm[OFFSET]].deg;
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][DEG]) {
+            if (deg != ht->hd[hm[j]].deg) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -334,7 +355,6 @@ static void import_julia_data_ff_32(
     int32_t *cfs  = (int32_t *)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
     const len_t ngens = st->ngens;
     const len_t fc    = st->fc;
 
@@ -356,11 +376,7 @@ static void import_julia_data_ff_32(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
             tmpcf             =   (int64_t)cfs[j];
@@ -375,10 +391,10 @@ static void import_julia_data_ff_32(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][DEG];
+        deg = ht->hd[hm[OFFSET]].deg;
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][DEG]) {
+            if (deg != ht->hd[hm[j]].deg) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -404,7 +420,6 @@ void import_julia_data_nf_ff_32(
         )
 {
     int32_t i, j;
-    len_t k;
     cf32_t *cf    = NULL;
     int64_t tmpcf = 0;
     hm_t *hm      = NULL;
@@ -412,7 +427,6 @@ void import_julia_data_nf_ff_32(
     int32_t *cfs  = (int32_t *)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
     const len_t fc    = st->fc;
 
     for (i = 0; i < start; ++i) {
@@ -441,11 +455,7 @@ void import_julia_data_nf_ff_32(
         tbr->red[i-start] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             /* make coefficient positive */
             tmpcf             =   (int64_t)cfs[j];
@@ -520,7 +530,6 @@ void import_julia_data_nf_qq(
         )
 {
     int32_t i, j;
-    len_t k;
     mpz_t *cf;
     hm_t *hm;
     mpz_t prod_den, mul;
@@ -528,11 +537,9 @@ void import_julia_data_nf_qq(
 
     /* these coefficients are numerator, denominator, numerator, denominator, ...
      * i.e. the array has length 2*nterms */
-    mpz_t **cfs  = (mpz_t **)vcfs;
+    mpz_t **cfs = (mpz_t **)vcfs;
 
-    int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
-    const len_t ngens = st->ngens;
+    int32_t off = 0; /* offset in arrays */
 
     /* we want to get rid of denominators, i.e. we want to handle
      * the coefficients as integers resp. mpz_t numbers. for this we
@@ -575,11 +582,7 @@ void import_julia_data_nf_qq(
         bs->red[i-start] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
             hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
             mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
             mpz_mul(cf[j-off], mul, *(cfs[2*j]));
@@ -614,7 +617,6 @@ static void import_julia_data_qq(
     mpz_t **cfs  = (mpz_t **)vcfs;
 
     int32_t off       = 0; /* offset in arrays */
-    const len_t nv    = st->nvars;
     const len_t ngens = st->ngens;
 
     /* we want to get rid of denominators, i.e. we want to handle
@@ -653,11 +655,11 @@ static void import_julia_data_qq(
         bs->red[i] = 0;
 
         for (j = off; j < off+lens[i]; ++j) {
-            e[DEG]  = 0;
-            for (k = 0; k < nv; ++k) {
-                e[k+1]  = (exp_t)(exps+(nv*j))[k];
-                e[DEG]  +=  e[k+1];
-            }
+            set_exponent_vector(e, exps, j, ht, st);
+            /* for (int ii = 0; ii < ht->evl; ++ii) {
+             *     printf("%d ", e[ii]);
+             * }
+             * printf("\n"); */
             hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
             mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
             mpz_mul(cf[j-off], mul, *(cfs[2*j]));
@@ -670,10 +672,10 @@ static void import_julia_data_qq(
     deg_t deg = 0;
     for (i = 0; i < ngens; ++i) {
         hm  = bs->hm[i];
-        deg = ht->ev[hm[OFFSET]][DEG];
+        deg = ht->hd[hm[OFFSET]].deg;
         k   = hm[LENGTH] + OFFSET;
         for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->ev[hm[j]][DEG]) {
+            if (deg != ht->hd[hm[j]].deg) {
                 st->homogeneous = 0;
                 goto done;
             }
@@ -956,6 +958,7 @@ int32_t check_and_set_meta_data(
         const void *cfs,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t ht_size,
@@ -1002,6 +1005,14 @@ int32_t check_and_set_meta_data(
     } else {
         st->mo  = mon_order;
     }
+    /* elimination block order? If so, store the blocks length */
+    st->nev = elim_block_len >= 0 ? elim_block_len : 0;
+    if (st->nev >= st->nvars) {
+        printf("error: Too large elimination block.\n");
+        exit(1);
+    }
+    printf("ebl = %d\n", st->nev);
+
     /* set hash table size */
     st->init_hts  = ht_size;
     if (st->init_hts <= 0) {
@@ -1055,28 +1066,36 @@ void set_function_pointers(
         )
 {
   /* todo: this needs to be generalized for different monomial orders */
-  switch (st->mo) {
-    case 0:
-      initial_input_cmp   = initial_input_cmp_drl;
-      initial_gens_cmp    = initial_gens_cmp_drl;
-      monomial_cmp        = monomial_cmp_drl;
-      spair_cmp           = spair_cmp_drl;
-      hcm_cmp             = hcm_cmp_pivots_drl;
-      break;
-    case 1:
-      initial_input_cmp   = initial_input_cmp_lex;
-      initial_gens_cmp    = initial_gens_cmp_lex;
-      monomial_cmp        = monomial_cmp_lex;
-      spair_cmp           = spair_cmp_deglex;
-      hcm_cmp             = hcm_cmp_pivots_lex;
-      break;
-    default:
-      initial_input_cmp   = initial_input_cmp_drl;
-      initial_gens_cmp    = initial_gens_cmp_drl;
-      monomial_cmp        = monomial_cmp_drl;
-      spair_cmp           = spair_cmp_drl;
-      hcm_cmp             = hcm_cmp_pivots_drl;
-  }
+    if (st->nev > 0) {
+      initial_input_cmp   = initial_input_cmp_be;
+      initial_gens_cmp    = initial_gens_cmp_be;
+      monomial_cmp        = monomial_cmp_be;
+      spair_cmp           = spair_cmp_be;
+      hcm_cmp             = hcm_cmp_pivots_be;
+    } else {
+        switch (st->mo) {
+            case 0:
+                initial_input_cmp   = initial_input_cmp_drl;
+                initial_gens_cmp    = initial_gens_cmp_drl;
+                monomial_cmp        = monomial_cmp_drl;
+                spair_cmp           = spair_cmp_drl;
+                hcm_cmp             = hcm_cmp_pivots_drl;
+                break;
+            case 1:
+                initial_input_cmp   = initial_input_cmp_lex;
+                initial_gens_cmp    = initial_gens_cmp_lex;
+                monomial_cmp        = monomial_cmp_lex;
+                spair_cmp           = spair_cmp_deglex;
+                hcm_cmp             = hcm_cmp_pivots_lex;
+                break;
+            default:
+                initial_input_cmp   = initial_input_cmp_drl;
+                initial_gens_cmp    = initial_gens_cmp_drl;
+                monomial_cmp        = monomial_cmp_drl;
+                spair_cmp           = spair_cmp_drl;
+                hcm_cmp             = hcm_cmp_pivots_drl;
+        }
+    }
 
   /* up to 17 bits we can use one modular operation for reducing a row. this works
    * for matrices with #rows <= 54 million */
@@ -1283,6 +1302,7 @@ int32_t check_and_set_meta_data_trace(
         const void *cfs,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t ht_size,
@@ -1306,8 +1326,8 @@ int32_t check_and_set_meta_data_trace(
         st->nprimes = 10;
     }
     return check_and_set_meta_data(st, lens, exps,
-            cfs, field_char, mon_order, nr_vars, nr_gens,
-            ht_size, nr_threads, max_nr_pairs, reset_hash_table,
+            cfs, field_char, mon_order, elim_block_len, nr_vars,
+            nr_gens, ht_size, nr_threads, max_nr_pairs, reset_hash_table,
             la_option, reduce_gb, pbm_file, info_level);
 }
 

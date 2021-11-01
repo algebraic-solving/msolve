@@ -59,13 +59,10 @@ static inline void normalize_dense_matrix_row_kernel_ff_32(
 {
     len_t i;
 
-    const int64_t mod           = (int64_t)fc;
-    const int64_t mod2          = (int64_t)fc * fc;
     const len_t len     = nc;
     const len_t os      = len % UNROLL;
     const int64_t inv  =  (int64_t)mod_p_inverse_32(row[start], fc);
 
-    int64_t tmp = 0;
     for (i = start; i < os; ++i) {
         row[i]  = (cf32_t)(((uint64_t)row[i] * inv) % fc);
     }
@@ -78,6 +75,8 @@ static inline void normalize_dense_matrix_row_kernel_ff_32(
     }
 }
 
+/* unused at the moment */
+#if 0
 static int reduce_dense_row_by_dense_pivots_ff_32(
         int64_t *dr,
         cf32_t *dm,
@@ -147,7 +146,10 @@ static int reduce_dense_row_by_dense_pivots_ff_32(
     }
     return -1;
 }
+#endif
 
+/* is_kernel_trivial() is unused at the moment */
+#if 0
 /* If the matrix has size m (rows) x n (columns) with m << n then
  * we do the following: Generate a dense m x m matrix where the entries
  * in the mth column is a random linear combination of column entries
@@ -220,8 +222,8 @@ static int is_kernel_trivial(
     free(pivs);
 
     return 1;
-
 }
+#endif
 
 static inline cf32_t *normalize_sparse_matrix_row_ff_32(
         cf32_t *row,
@@ -2161,8 +2163,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     len_t i = 0, j, k;
     hi_t sc = 0;    /* starting column */
 
-    double ct0, ct1, rt0, rt1;
-    ct0 = cputime();
+    double rt0, rt1;
     rt0 = realtime();
 
     const len_t ncols = mat->nc;
@@ -2253,7 +2254,6 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     upivs     = (hm_t **)calloc((unsigned long)sat->ld, sizeof(hm_t *));
     len_t ctr = 0;
     /* timings */
-    ct1 = cputime();
     rt1 = realtime();
 
     printf("        normal form time %12.2f sec\n", rt1-rt0);

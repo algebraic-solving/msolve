@@ -25,6 +25,8 @@
 #include <immintrin.h>
 #endif
 
+/* select_all_pairs() is unused at the moment */
+#if 0 
 static void select_all_spairs(
         mat_t *mat,
         const bs_t * const bs,
@@ -189,6 +191,7 @@ static void select_all_spairs(
     st->select_ctime  +=  ct1 - ct0;
     st->select_rtime  +=  rt1 - rt0;
 }
+#endif
 
 static void select_spairs_by_minimal_degree(
         mat_t *mat,
@@ -215,15 +218,16 @@ static void select_spairs_by_minimal_degree(
 
     spair_t *ps     = psl->p;
     const len_t nv  = bht->nv;
+    const len_t evl = bht->evl;
 
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
     /* get minimal degree */
-    md  = bht->ev[ps[0].lcm][DEG];
+    md  = bht->hd[ps[0].lcm].deg;
 
     /* select pairs of this degree respecting maximal selection size mnsel */
     for (i = 0; i < psl->ld; ++i) {
-        if (bht->ev[ps[i].lcm][DEG] > md) {
+        if (bht->hd[ps[i].lcm].deg > md) {
             break;
         }
     }
@@ -288,7 +292,7 @@ static void select_spairs_by_minimal_degree(
         elcm  = bht->ev[lcm];
         b     = bs->hm[prev];
         eb    = bht->ev[b[OFFSET]];
-        for (l = 0; l <= nv; ++l) {
+        for (l = 0; l < evl; ++l) {
             etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
         }
         const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
@@ -326,7 +330,7 @@ static void select_spairs_by_minimal_degree(
             }
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
-            for (l = 0; l <= nv; ++l) {
+            for (l = 0; l < evl; ++l) {
                 etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
             }
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
@@ -348,7 +352,7 @@ static void select_spairs_by_minimal_degree(
     }
     /* printf("%u pairs in degree %u\n", ctr, md); */
     /* clear ht-ev[0] */
-    memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
+    memset(bht->ev[0], 0, (unsigned long)evl * sizeof(exp_t));
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
@@ -472,6 +476,7 @@ static inline void find_multiplied_reducer(
     const len_t rr  = *nr;
 
     const len_t nv  = bht->nv;
+    const len_t evl = bht->evl;
 
     const exp_t * const e  = sht->ev[m];
 
@@ -494,8 +499,9 @@ start:
     if (i < lml) {
         const hm_t *b = bs->hm[lmps[i]];
         const exp_t * const f = evb[b[OFFSET]];
-        for (k=0; k <= nv; ++k) {
+        for (k=0; k < evl; ++k) {
             etmp[k] = (exp_t)(e[k]-f[k]);
+            /* printf("etmp[%u] = %d\n", k, etmp[k]); */
             if (etmp[k] < 0) {
                 i++;
                 goto start;
@@ -503,8 +509,17 @@ start:
         }
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
         /* printf("reducer found %u | %u --> ", lmps[i], b[LENGTH]);
-         * for (int ii = 0; ii < bht->nv; ++ii) {
-         *     printf("%u ", etmp[ii]);
+         * printf("boffset %u\n", b[OFFSET]);
+         * for (int ii = 0; ii < bht->evl; ++ii) {
+         *     printf("%d ", e[ii]);
+         * }
+         * printf("\n");
+         * for (int ii = 0; ii < bht->evl; ++ii) {
+         *     printf("%d ", f[ii]);
+         * }
+         * printf("\n");
+         * for (int ii = 0; ii < bht->evl; ++ii) {
+         *     printf("%d ", etmp[ii]);
          * }
          * printf("\n"); */
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);

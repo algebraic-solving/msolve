@@ -114,7 +114,7 @@ static void reduce_basis(
     ht_t *sht   = *shtp;
     hi_t *hcm   = *hcmp;
     exp_t *etmp = bht->ev[0];
-    memset(etmp, 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
+    memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
     mat->nr = 0;
@@ -209,6 +209,7 @@ int initialize_f4_input_data(
         const void *cfs,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t ht_size,
@@ -231,8 +232,9 @@ int initialize_f4_input_data(
     /* checks and set all meta data. if a nonzero value is returned then
      * some of the input data is corrupted. */
     if (check_and_set_meta_data(st, lens, exps, cfs, field_char, mon_order,
-                nr_vars, nr_gens, ht_size, nr_threads, max_nr_pairs,
-                reset_ht, la_option, reduce_gb, pbm_file, info_level)) {
+                elim_block_len, nr_vars, nr_gens, ht_size, nr_threads,
+                max_nr_pairs, reset_ht, la_option, reduce_gb, pbm_file,
+                info_level)) {
         return 0;
     }
 
@@ -380,6 +382,13 @@ int core_f4(
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
 
+    len_t bsctr = 0;
+    for (int ii = 0; ii < bs->lml; ++ii) {
+        if (bht->ev[bs->hm[bs->lmps[ii]][OFFSET]][0] == 0) {
+            bsctr++;
+        }
+    }
+    printf("eliminated basis -> %u\n", bsctr);
     *bsp  = bs;
     *bhtp = bht;
     *stp  = st;
@@ -447,6 +456,7 @@ int64_t f4_julia(
         const void *cfs,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t ht_size,
@@ -472,8 +482,8 @@ int64_t f4_julia(
     int success = 0;
 
     success = initialize_f4_input_data(&bs, &bht, &st,
-            lens, exps, cfs, field_char, mon_order, nr_vars,
-            nr_gens, ht_size, nr_threads, max_nr_pairs,
+            lens, exps, cfs, field_char, mon_order, elim_block_len,
+            nr_vars, nr_gens, ht_size, nr_threads, max_nr_pairs,
             reset_ht, la_option, reduce_gb, pbm_file, info_level);
 
     if (!success) {

@@ -782,6 +782,7 @@ int msolve_ff(param_t **bparam,
               int32_t initial_hts,
               int32_t nr_threads,
               int32_t max_pairs,
+              int32_t elim_block_len,
               int32_t update_ht,
               int32_t la_option,
               int32_t info_level,
@@ -803,6 +804,7 @@ int msolve_ff(param_t **bparam,
   int64_t nb = f4_julia(bld, blen, bexp, bcf,
                         gens->lens, gens->exps, (void *)gens->cfs, gens->field_char,
                         0, //mon_order,
+                        elim_block_len,
                         gens->nvars, gens->ngens, initial_hts,
                         nr_threads, max_pairs, update_ht, la_option,
                         1, //reduce_gb
@@ -1054,6 +1056,7 @@ int msolve_ff_alloc(param_t **bparam,
                     int32_t initial_hts,
                     int32_t nr_threads,
                     int32_t max_pairs,
+                    int32_t elim_block_len,
                     int32_t update_ht,
                     int32_t la_option,
                     int32_t info_level,
@@ -1090,8 +1093,8 @@ int msolve_ff_alloc(param_t **bparam,
 
     success = initialize_f4_input_data(&bs, &bht, &st,
             gens->lens, gens->exps, (void *)gens->cfs,
-            gens->field_char, 0, gens->nvars, gens->ngens,
-            initial_hts, nr_threads, max_pairs,
+            gens->field_char, 0, elim_block_len, gens->nvars,
+            gens->ngens, initial_hts, nr_threads, max_pairs,
             update_ht, la_option, 1, 0, info_level);
 
     if (!success) {
@@ -1302,6 +1305,7 @@ int modular_run_msolve(param_t **bparam,
                        int32_t initial_hts,
                        int32_t nr_threads,
                        int32_t max_pairs,
+                       int32_t elim_block_len,
                        int32_t update_ht,
                        int32_t la_option,
                        int32_t info_level,
@@ -1319,9 +1323,8 @@ int modular_run_msolve(param_t **bparam,
   int b = msolve_ff(bparam,
                     //bld, blen, bexp, bcf,
                     gens,
-                    initial_hts, nr_threads, max_pairs, update_ht, la_option,
-                    info_level,
-                    files);
+                    initial_hts, nr_threads, max_pairs, elim_block_len,
+                    update_ht, la_option, info_level, files);
   gens->field_char = 0;
 
   return b;
@@ -1840,7 +1843,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_init(lcm);
   int b = 0;
 
-  double st = realtime();
+  /* double st = realtime(); */
 
   if(is_lifted[0]==0){
       b = rational_reconstruction_upoly(mpz_param->elim,
@@ -2094,6 +2097,7 @@ int msolve_prob_linalg_qq(mpz_param_t mp_param,
                    int32_t initial_hts,
                    int32_t nr_threads,
                    int32_t max_pairs,
+                   int32_t elim_block_len,
                    int32_t update_ht,
                    int32_t la_option,
                    int32_t info_level,
@@ -2104,7 +2108,8 @@ int msolve_prob_linalg_qq(mpz_param_t mp_param,
   fprintf(stderr, "{%d}", prime);
   int b = modular_run_msolve(bparam, //bld, blen, bexp, bcf,
                              gens,
-                             initial_hts, nr_threads, max_pairs, update_ht,
+                             initial_hts, nr_threads, max_pairs,
+                             elim_block_len, update_ht,
                              la_option,
                              info_level, files,
                              prime);
@@ -2146,7 +2151,8 @@ int msolve_prob_linalg_qq(mpz_param_t mp_param,
     prime = next_prime(prime + 1);
     b = modular_run_msolve(bparam, //bld, blen, bexp, bcf,
                            gens,
-                           initial_hts, nr_threads, max_pairs, update_ht,
+                           initial_hts, nr_threads, max_pairs,
+                           elim_block_len, update_ht,
                            la_option,
                            0, //info_level,
                            files,
@@ -2845,6 +2851,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                     int32_t ht_size, //initial_hts,
                     int32_t nr_threads,
                     int32_t max_nr_pairs,
+                    int32_t elim_block_len,
                     int32_t reset_ht,
                     int32_t la_option,
                     int32_t info_level,
@@ -2878,9 +2885,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
-              mon_order, nr_vars, nr_gens, ht_size, nr_threads,
-              max_nr_pairs, reset_ht, la_option, reduce_gb, prime_start,
-              nr_primes, pbm_file, info_level)) {
+              mon_order, elim_block_len, nr_vars, nr_gens, ht_size,
+              nr_threads, max_nr_pairs, reset_ht, la_option, reduce_gb,
+              prime_start, nr_primes, pbm_file, info_level)) {
     free(st);
     return -3;
   }
@@ -3399,6 +3406,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
                             int32_t ht_size, //initial_hts,
                             int32_t nr_threads,
                             int32_t max_nr_pairs,
+                            int32_t elim_block_len,
                             int32_t reset_ht,
                             int32_t la_option,
                             int32_t info_level,
@@ -3434,9 +3442,9 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     /* checks and set all meta data. if a nonzero value is returned then
      * some of the input data is corrupted. */
     if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
-                mon_order, nr_vars, nr_gens, ht_size, nr_threads,
-                max_nr_pairs, reset_ht, la_option, reduce_gb, prime_start,
-                nr_primes, pbm_file, info_level)) {
+                mon_order, elim_block_len, nr_vars, nr_gens, ht_size,
+                nr_threads, max_nr_pairs, reset_ht, la_option, reduce_gb,
+                prime_start, nr_primes, pbm_file, info_level)) {
         free(st);
         return -3;
     }
@@ -3859,6 +3867,7 @@ int msolve_qq(mpz_param_t mp_param,
               int32_t ht_size, //initial_hts,
               int32_t nr_threads,
               int32_t max_nr_pairs,
+              int32_t elim_block_len,
               int32_t reset_ht,
               int32_t la_option,
               int32_t info_level,
@@ -3876,6 +3885,7 @@ int msolve_qq(mpz_param_t mp_param,
                            ht_size, //initial_hts,
                            nr_threads,
                            max_nr_pairs,
+                           elim_block_len,
                            reset_ht,
                            la_option,
                            info_level,
@@ -3893,6 +3903,7 @@ int msolve_qq(mpz_param_t mp_param,
                                    ht_size, //initial_hts,
                                    nr_threads,
                                    max_nr_pairs,
+                                   elim_block_len,
                                    reset_ht,
                                    la_option,
                                    info_level,
@@ -4463,6 +4474,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int32_t ht_size, //initial_hts,
                    int32_t nr_threads,
                    int32_t max_nr_pairs,
+                   int32_t elim_block_len,
                    int32_t reset_ht,
                    int32_t la_option,
                    int32_t info_level,
@@ -4481,6 +4493,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                                 ht_size, //initial_hts,
                                 nr_threads,
                                 max_nr_pairs,
+                                elim_block_len,
                                 reset_ht,
                                 la_option,
                                 info_level,
@@ -4493,7 +4506,6 @@ int real_msolve_qq(mpz_param_t mp_param,
         long unsigned int nbneg = 0;
         interval *roots   = NULL;
         real_point_t *pts = NULL;
-        long nb = 0;
 
         if(get_param>1){
           return b;
@@ -4584,6 +4596,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                                         ht_size, //initial_hts,
                                         nr_threads,
                                         max_nr_pairs,
+                                        elim_block_len,
                                         reset_ht,
                                         la_option,
                                         info_level,
@@ -4602,6 +4615,7 @@ int core_msolve(
   int32_t info_level,
   int32_t initial_hts,
   int32_t max_pairs,
+  int32_t elim_block_len,
   int32_t update_ht,
   int32_t generate_pbm,
   int32_t reduce_gb,
@@ -4672,7 +4686,7 @@ restart:
              *             to the correct field characteristic. */
             success = initialize_f4_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
-                    1073741827, 0 /* DRL order */, gens->nvars,
+                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens-saturate, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, 1 /* reduce_gb */, 0,
@@ -4736,8 +4750,8 @@ restart:
         if (normal_form == 0) {
             b = msolve_ff_alloc(&param, bld, blen, bexp, bcf,
                     gens, initial_hts, nr_threads, max_pairs,
-                    update_ht, la_option, info_level, print_gb,
-                    files);
+                    elim_block_len, update_ht, la_option,
+                    info_level, print_gb, files);
             if (b == 0) {
                 //When dquot = 1 
                 if(files->out_file != NULL){
@@ -4833,7 +4847,7 @@ restart:
              *             to the correct field characteristic. */
             success = initialize_f4_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
-                    1073741827, 0 /* DRL order */, gens->nvars,
+                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens-normal_form, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, 1 /* reduce_gb */, 0,
@@ -4973,9 +4987,10 @@ restart:
             }
 
         }
+        return 0;
     }
     else{
-        if (saturate == 1) {
+        if (elim_block_len > 0) {
             /* timings */
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
@@ -4983,18 +4998,17 @@ restart:
             const uint32_t prime_start = pow(2, 30);
             const int32_t nr_primes = nr_threads;
 
-            /* data structures for basis, hash table and statistics */
-            bs_t *sat_qq   = NULL;
 
             /* initialize stuff */
             stat_t *st  = initialize_statistics();
 
             /* checks and set all meta data. if a nonzero value is returned then
              * some of the input data is corrupted. */
-            if (check_and_set_meta_data_trace(st, gens->lens, gens->exps, (void *)gens->mpz_cfs, gens->field_char,
-                        0, gens->nvars, gens->ngens-saturate, initial_hts, nr_threads,
-                        max_pairs, update_ht, la_option, 1, prime_start,
-                        nr_primes, 0, info_level)) {
+            if (check_and_set_meta_data_trace(st, gens->lens, gens->exps,
+                        (void *)gens->mpz_cfs, gens->field_char, 0,
+                        elim_block_len, gens->nvars, gens->ngens,
+                        initial_hts, nr_threads, max_pairs, update_ht,
+                        la_option, 1, prime_start, nr_primes, 0, info_level)) {
                 free(st);
                 return -3;
             }
@@ -5034,7 +5048,166 @@ restart:
 
             /* generate array to store modular bases */
             bs_t **bs = (bs_t **)calloc((unsigned long)st->nprimes, sizeof(bs_t *));
-            int *bad_primes = calloc((unsigned long)st->nprimes, sizeof(int));
+
+            /* initialize tracer */
+            trace_t *trace  = initialize_trace();
+
+            srand(time(0));
+            uint32_t prime = next_prime(1<<30);
+            prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+            while(is_lucky_prime_ui(prime, bs_qq)){
+                prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+            }
+
+            uint32_t primeinit = prime;
+            lp->p[0] = primeinit;
+
+
+            if (is_gb == 1) {
+                for (len_t k = 0; k < bs_qq->ld; ++k) {
+                    bs_qq->lmps[k] = k;
+                    bs_qq->lm[k]   = bht->hd[bs_qq->hm[k][OFFSET]].sdm;
+                    bs_qq->lml     = bs_qq->ld;
+                }
+            }
+
+            st->laopt = 44;
+            bs_t *bsprob = modular_f4(bs_qq, bht, st, lp->p[0]);
+
+
+            st->laopt = 2;
+            /* compute a gb for initial generators */
+            f4_trace_learning_phase(
+                    trace,
+                    tht,
+                    bs_qq,
+                    bht,
+                    st,
+                    lp->p[0]);
+
+            /* int64_t nb  = export_results_from_f4(bld, blen, bexp,
+             *         bcf, &bs, &bht, &st); */
+
+            /* timings */
+            ct1 = cputime();
+            rt1 = realtime();
+            st->overall_ctime = ct1 - ct0;
+            st->overall_rtime = rt1 - rt0;
+
+            if (st->info_level > 1) {
+                print_final_statistics(stderr, st);
+            }
+            if(info_level){
+                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+            }
+
+            int i;
+
+            ht_t *lht = copy_hash_table(bht, st);
+
+            prime = next_prime(1<<30);
+
+            /* while(rerun == 1 || mcheck == 1){ */
+
+                /* generate lucky prime numbers */
+                prime = next_prime(prime);
+                lp->p[0] = prime;
+                while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+                    prime = next_prime(prime);
+                    lp->p[0] = prime;
+                }
+
+                for(len_t i = 1; i < st->nprimes; i++){
+                    prime = next_prime(prime);
+                    lp->p[i] = prime;
+                    while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+                        prime = next_prime(prime);
+                        lp->p[i] = prime;
+                    }
+                }
+                prime = lp->p[st->nprimes - 1];
+
+                double ca0;
+
+                double stf4 = 0;
+
+                for (i = 0; i < st->nprimes; ++i){
+                    ca0 = realtime();
+                    bs[i] = f4_trace_application_phase(
+                            trace,
+                            tht,
+                            bs_qq,
+                            lht,
+                            st,
+                            lp->p[i]);
+
+                    stf4 = realtime()-ca0;
+                    printf("F4 trace timing %13.2f\n", stf4);
+                    printf("bs[%u]->lml = %u\n", i, bs[i]->lml);
+                }
+            /* } */
+            return 0;
+        }
+        if (saturate == 1) {
+            /* timings */
+            double ct0, ct1, rt0, rt1;
+            ct0 = cputime();
+            rt0 = realtime();
+            const uint32_t prime_start = pow(2, 30);
+            const int32_t nr_primes = nr_threads;
+
+            /* data structures for basis, hash table and statistics */
+            bs_t *sat_qq   = NULL;
+
+            /* initialize stuff */
+            stat_t *st  = initialize_statistics();
+
+            /* checks and set all meta data. if a nonzero value is returned then
+             * some of the input data is corrupted. */
+            if (check_and_set_meta_data_trace(st, gens->lens, gens->exps,
+                        (void *)gens->mpz_cfs, gens->field_char, 0,
+                        elim_block_len, gens->nvars, gens->ngens-saturate,
+                        initial_hts, nr_threads, max_pairs, update_ht,
+                        la_option, 1, prime_start, nr_primes, 0, info_level)) {
+                free(st);
+                return -3;
+            }
+
+            printf("fc %u, ngens %u\n", gens->field_char, gens->ngens);
+            /* lucky primes */
+            primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
+
+            /*******************
+             * initialize basis
+             *******************/
+            bs_t *bs_qq = initialize_basis(st->ngens);
+            /* initialize basis hash table, update hash table, symbolic hash table */
+            ht_t *bht = initialize_basis_hash_table(st);
+            /* hash table to store the hashes of the multiples of
+             * the basis elements stored in the trace */
+            ht_t *tht = initialize_secondary_hash_table(bht, st);
+            /* read in ideal, move coefficients to integers */
+            import_julia_data(bs_qq, bht, st, gens->lens, gens->exps, (void *)gens->mpz_cfs);
+
+            if (st->info_level > 0) {
+                print_initial_statistics(stderr, st);
+            }
+
+            /* for faster divisibility checks, needs to be done after we have
+             * read some input data for applying heuristics */
+            calculate_divmask(bht);
+
+            /* sort initial elements, smallest lead term first */
+            sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
+                    initial_input_cmp, bht);
+            remove_content_of_initial_basis(bs_qq);
+
+
+            /* generate lucky prime numbers */
+            generate_lucky_primes(lp, bs_qq, st->prime_start, st->nprimes);
+
+            /* generate array to store modular bases */
+            bs_t **bs = (bs_t **)calloc((unsigned long)st->nprimes, sizeof(bs_t *));
 
             /* initialize tracer */
             trace_t *trace  = initialize_trace();
@@ -5068,7 +5241,7 @@ restart:
             }
 
             /* compute a gb for initial generators */
-            bs_t *test  = f4sat_trace_learning_phase(
+            f4sat_trace_learning_phase(
                     trace,
                     tht,
                     bs_qq,
@@ -5093,26 +5266,15 @@ restart:
                 fprintf(stderr, "\nStarts trace based multi-modular computations\n");
             }
 
-            int rerun = 1, nprimes = 1, mcheck =1;
-
             int i;
 
             ht_t *lht = copy_hash_table(bht, st);
 
-            int nbdoit = 1;
-            int doit = 1;
-            int prdone = 0;
             prime = next_prime(1<<30);
 
             /* while(rerun == 1 || mcheck == 1){ */
 
                 /* generate lucky prime numbers */
-                if(prdone % nbdoit == 0){
-                    doit=1;
-                }
-                else{
-                    doit = 0;
-                }
                 prime = next_prime(prime);
                 lp->p[0] = prime;
                 while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
@@ -5163,7 +5325,8 @@ restart:
                     real_roots_ptr,
                     real_pts_ptr,
                     gens,
-                    initial_hts, nr_threads, max_pairs, update_ht,
+                    initial_hts, nr_threads, max_pairs, 
+                    elim_block_len, update_ht,
                     la_option, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
 
@@ -5416,6 +5579,7 @@ void msolve_julia(
         char *output_file,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t initial_hts,
@@ -5488,12 +5652,15 @@ void msolve_julia(
 
     /* main msolve functionality */
     int ret = core_msolve(la_option, nr_threads, info_level, initial_hts,
-            max_nr_pairs, reset_ht, 0 /* generate pbm */, 1 /* reduce_gb */,
-            print_gb, get_param, genericity_handling, 0 /* saturate */,
-            0 /* normal_form */, 0 /* normal_form_matrix */, 0 /* is_gb */,
-            precision, files, gens, &param, &mpz_param, &nb_real_roots,
-            &real_roots, &real_pts);
+            max_nr_pairs, elim_block_len, reset_ht, 0 /* generate pbm */,
+            1 /* reduce_gb */, print_gb, get_param, genericity_handling,
+            0 /* saturate */, 0 /* normal_form */, 0 /* normal_form_matrix */,
+            0 /* is_gb */, precision, files, gens, &param, &mpz_param,
+            &nb_real_roots, &real_roots, &real_pts);
 
+    if (ret == -1) {
+        exit(1);
+    }
     /* clean up data storage, but do not free data handled by julia */
     free(gens);
     gens  = NULL;

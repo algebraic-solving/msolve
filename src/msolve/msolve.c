@@ -2449,6 +2449,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
             return NULL;
         }
     }
+
     /* set st->fc to finite characteristic for printing */
     st->fc  = fc;
     print_ff_basis_data(
@@ -2461,10 +2462,11 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     if(has_dimension_zero(bs->lml, bht->nv, bexp_lm)){
         long dquot = 0;
         int32_t *lmb = monomial_basis(bs->lml, bht->nv, bexp_lm, &dquot);
+
         if(info_level){
             fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
         }
-
+        if(print_gb==0){
         *bmatrix = build_matrixn_from_bs_trace(bdiv_xn,
                                                blen_gb_xn,
                                                bstart_cf_gb_xn,
@@ -2472,7 +2474,6 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                                bexp_lm, bht->nv,
                                                fc,
                                                info_level);
-        free_basis(&(bs));
         if(*bmatrix == NULL){
             *success = 0;
             *dim = 0;
@@ -2493,8 +2494,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                                info_level,
                                                bdata_fglm, bdata_bms,
                                                success);
-
-
+        }
+        free_basis(&(bs));
         *dim = 0;
         *dquot_ori = dquot;
         return lmb;
@@ -2502,6 +2503,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     else{
         *dim  = 1;
         *dquot_ori = -1;
+        free_basis(&(bs));
         return NULL;
     }
 }
@@ -2824,7 +2826,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
   => Positive dimension dim > 0
   => Dimension zero + calcul qui a pu etre fait. dim=0 dquot > 0
 
-  - renvoie 1 si le calcul a echoue.
+  - renvoie 1 si le calcul a echoue 
   => Dimension 0 => pas en position generique
 
   - renvoie 2 si besoin de plus de genericite.
@@ -2992,7 +2994,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                             &success);
 
 
-  if(*dim_ptr == 0 && success && *dquot_ptr > 0){
+  if(*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0){
     if(nmod_params[0]->elim->length - 1 != *dquot_ptr){
       for(int i = 0; i < nr_vars - 1; i++){
         if((squvars[i] == 0) && round ){
@@ -3006,7 +3008,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpz_param->dim    = *dim_ptr;
   mpz_param->dquot  = *dquot_ptr;
 
-  if(lmb_ori == NULL || success == 0) {
+  if(lmb_ori == NULL || success == 0 || print_gb) {
       /* print_msolve_message(stderr, 1); */
     for(int i = 0; i < st->nthrds; i++){
       /* free_trace(&btrace[i]); */
@@ -3034,6 +3036,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     }
     free(lineqs_ptr);
     free(squvars);
+    if(print_gb){
+      return 0;
+    }
     if(*dim_ptr==1){
       if(info_level){
         fprintf(stderr, "Positive dimensional Grobner basis\n");
@@ -4608,6 +4613,14 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int round,
                    int32_t get_param){
     if(la_option == 2 || la_option == 1){
+      /*
+       0 is comp. is ok
+       1 if comp. failed 
+       2 if more genericity is required
+       -2 if charac is > 0
+       -3 if meta data are corrupted
+       -4 if bad prime
+       */
         int b = msolve_trace_qq(mp_param,
                                 nmod_param,
                                 dim_ptr,
@@ -4632,6 +4645,10 @@ int real_msolve_qq(mpz_param_t mp_param,
 
         if(get_param>1){
           return b;
+        }
+
+        if(print_gb){
+          return 0;
         }
 
         if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0){
@@ -5304,6 +5321,9 @@ restart:
                     initial_hts, nr_threads, max_pairs, update_ht,
                     la_option, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
+            if(print_gb){
+              return 0;
+            }
 
             if(b == 0){
                 if(dim == 0 && dquot > 0){

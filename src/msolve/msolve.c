@@ -4151,6 +4151,78 @@ void generate_table_values_full(interval *rt, mpz_t c,
 }
 
 
+/*
+  quad:=a*x^2+b*x+c;
+  rr1:=r/2^k;
+  rr2:=(r+1)/2^k;
+  numer(expand(subs(x=1/(x+1),subs(x=x*(rr2-rr1),subs(x=x+rr1, quad)))));
+
+  > numer(subs(x=x+r/2^k, quad)) = 
+  (2^k)^2*a*x^2+((2^k)^2*b+2*2^k*a*r)*x+c*(2^k)^2+2^k*b*r+a*r^2
+
+  return 1 if quad has real roots in [0, 1] else it returns 0
+ */
+int evalquadric(mpz_t *quad, mpz_t r, long k, 
+                mpz_t *tmpquad, mpz_t tmp){
+
+  /*We start by computing numer(subs(x=x*(rr2-rr1),subs(x=x+rr1, quad))) */
+  /* This is  */
+  /*a*x^2+(b*2^k+2*a*r)*x+c*(2^k)^2+2^k*b*r+a*r^2*/
+  mpz_set(tmpquad[2], quad[2]); 
+
+  mpz_set(tmp, quad[2]);
+  mpz_mul(tmp, tmp, r);
+  /* tmp = a * r */
+  mpz_set(tmpquad[0], tmp);
+  mpz_mul(tmpquad[0], tmpquad[0], r);
+  /* tmpquad[0] = a*r^2 */
+  mpz_mul_2exp(tmp, tmp, 1);
+  /* Now tmp = 2*a*r*/
+
+  mpz_set(tmpquad[1], quad[1]);
+  mpz_mul_2exp(tmpquad[1], tmpquad[1], k);
+  /*tmpquad[1] = b*2^k*/
+  mpz_add(tmpquad[1], tmpquad[1], tmp);
+  /* Now tmpquad[1] = 2^k * b + 2 * a * r */
+
+  mpz_set(tmp, quad[1]);
+  /*tmp = b*/
+  mpz_mul(tmp, tmp, r);
+  mpz_mul_2exp(tmp, tmp, k);
+  mpz_add(tmpquad[0], tmpquad[0], tmp);
+  /* tmpquad[0] =  2^k*b*r + a*r^2*/
+
+  mpz_set(tmp, quad[0]);
+  mpz_mul_2exp(tmp, tmp, 2*k);
+  /*tmp = c*2^(2k)*/
+  mpz_add(tmpquad[0], tmpquad[0], tmp);
+
+  /* At this stage, one has computed
+     tmpquad = numer(subs(x=x*(rr2-rr1),subs(x=x+rr1, quad)))
+     We want to know if it has real roots in [0, 1]
+   */
+  /* If all coefficients have the same sign, there is no root */
+  int s=mpz_sgn(tmpquad[0]);
+  if(s==mpz_sgn(tmpquad[1]) && s==mpz_sgn(tmpquad[2])){
+    return 0;
+  }
+  /* One computes numer(subs(x=1/(x+1)), tmpquad) to apply Descartes*/
+  /* if tmpquad = a2*x^2+a1*x+a0 computes
+     a0*x^2+(2*a0+a1)*x+a0+a1+a2
+  */
+  mpz_add(tmpquad[1], tmpquad[1], tmpquad[0]);
+  mpz_add(tmpquad[2], tmpquad[2], tmpquad[1]);
+  mpz_add(tmpquad[1], tmpquad[1], tmpquad[0]);
+
+  /* We apply now Descartes */
+  s=mpz_sgn(tmpquad[0]);
+  if(s==mpz_sgn(tmpquad[1]) && s==mpz_sgn(tmpquad[2])){
+    return 0;
+  }
+  return 1;
+}
+
+
 /* evaluates denom (which has degree deg)
    at the interval [r/2^k, (r+1)/2^k]
    returns  */
@@ -4158,24 +4230,53 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
                 mpz_t *xdo, mpz_t *xup,
                 mpz_t tmp, mpz_t den_do, mpz_t den_up,
                 long corr){
+
   /* /\* boo is 1 if den_do and den_up have not the same sign */
   /*    else it is 0 */
-  /*  *\/ */
-  /* int boo = mpz_scalar_product_interval(denom, deg, k, */
-  /*                                       xdo, xup, */
-  /*                                       tmp, den_do, den_up, corr); */
-  /* if(mpz_cmp(den_do, den_up) > 0){ */
-  /*   fprintf(stderr, "BUG (den_do > den_up)\n"); */
-  /*   mpz_out_str(stderr, 10, den_do); fprintf(stderr, "\n"); */
-  /*   mpz_out_str(stderr, 10, den_up); fprintf(stderr, "\n"); */
-  /*   exit(1); */
-  /* } */
-  /* if(boo == 0){ */
-  /*   return boo; */
-  /* } */
   mpz_t c;
   mpz_init(c);
   mpz_add_ui(c, r, 1);
+
+  /* /\* MODIFS START HERE  *\/ */
+  /* mpz_t * tmpquad = calloc(3, sizeof(mpz_t)); */
+  /* mpz_t * quad = calloc(3, sizeof(mpz_t)); */
+  /* mpz_init(tmpquad[0]); */
+  /* mpz_init(tmpquad[1]); */
+  /* mpz_init(tmpquad[2]); */
+  /* mpz_init(quad[0]); */
+  /* mpz_init(quad[1]); */
+  /* mpz_init(quad[2]); */
+  /* int q = deg / 3; */
+  /* for(int i = 0; i < q; i++){ */
+  /*   mpz_set(quad[0], denom[3*i]); */
+  /*   mpz_set(quad[1], denom[3*i+1]); */
+  /*   mpz_set(quad[2], denom[3*i+2]); */
+  /*   int b = evalquadric(quad, r, k, */
+  /*                       tmpquad, tmp); */
+  /*   if(b==1)fprintf(stderr, "[r]\n"); */
+  /* } */
+  /* mpz_poly_eval_2exp_naive2(denom, deg, r, k, den_do, tmp); */
+  /* mpz_poly_eval_2exp_naive2(denom, deg, c, k, den_up, tmp); */
+  /* mpz_clear(tmpquad[0]); */
+  /* mpz_clear(tmpquad[1]); */
+  /* mpz_clear(tmpquad[2]); */
+  /* mpz_clear(quad[0]); */
+  /* mpz_clear(quad[1]); */
+  /* mpz_clear(quad[2]); */
+  /* mpz_clear(c); */
+
+  /* if(mpz_sgn(den_do)!=mpz_sgn(den_up)){ */
+  /*   return 1; */
+  /* } */
+  /* if(mpz_cmp(den_do, den_up)>0){ */
+  /*   mpz_swap(den_do, den_up); */
+  /* } */
+  /* mpz_mul_2exp(den_do, den_do, corr); */
+  /* mpz_mul_2exp(den_up, den_up, corr); */
+  /* mpz_fdiv_q_2exp(den_do, den_do, k*deg); */
+  /* mpz_cdiv_q_2exp(den_up, den_up, k*deg); */
+  /* return 0; */
+  /* /\*MODIFS END HERE *\/ */
   int boo = mpz_poly_eval_interval(denom, deg, k,
                                r, c,
                                tmp, den_do, den_up);
@@ -4193,28 +4294,7 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
 }
 
 
-/*
- 
 
-
- */
-int evalquadric(mpz_t *upol, mpz_t r, long k, mpz_t v1, mpz_t v2){
-  mpz_t tmp1, tmp2;
-  /* computes the discriminant in tmp1 */
-  mpz_init_set(tmp1, upol[1]);
-  mpz_mul(tmp1, tmp1, tmp1);
-  mpz_init_set(tmp2, upol[0]);
-  mpz_mul(tmp2, tmp2, upol[1]);
-  mpz_mul_2exp(tmp2, tmp2, 2);
-  mpz_sub(tmp1, tmp1, tmp2);
-
-  if(mpz_sgn(tmp1) < 0){
-    /* Discriminant is negative */
-    return 1;
-  }
-  /* Discriminant is positive */
-
-}
 
 int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k,
                    mpz_t *xdo, mpz_t *xup,
@@ -4261,7 +4341,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   long b = 16;
   prec = MAX(prec, rt->k);
-  long corr = (ns + rt->k);
+  long corr = 2*(ns + rt->k);
 
   /* checks whether the abs. value of the root is greater than 1 */
   generate_table_values_full(rt, c, ns, b,
@@ -4460,7 +4540,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   for(long i = 0; i < param->elim->length; i++){
     mpz_init_set(polelim[i], param->elim->coeffs[i]);
   }
-  interval *pos_root = malloc(sizeof(interval));
+  interval *pos_root = calloc(1, sizeof(interval));
   mpz_init(pos_root->numer);
   double et = realtime();
   for(long nc = 0; nc < nb; nc++){
@@ -4566,10 +4646,13 @@ int real_msolve_qq(mpz_param_t mp_param,
                                                       mp_param->elim->length - 1);
 
             long prec = MAX(precision, 64 + 4*(LOG2(mp_param->elim->length) + LOG2(maxnbits)) );
-            if(ilog2_mpz(mp_param->elim->coeffs[0]) > ilog2_mpz(mp_param->elim->coeffs[mp_param->nsols])){
-              prec += (maxnbits - minnbits) / 2;
+            if(info_level){
+              fprintf(stderr, "Real root isolation starts at precision %ld\n",
+                      prec);
             }
-
+            /* if(ilog2_mpz(mp_param->elim->coeffs[0]) > ilog2_mpz(mp_param->elim->coeffs[mp_param->nsols])){ */
+            /*   prec += (maxnbits - minnbits) / 2; */
+            /* } */
             double st = realtime();
             roots = real_roots(pol, mp_param->elim->length - 1,
                                &nbpos, &nbneg, prec, nr_threads, info_level );
@@ -4586,6 +4669,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                 }
                 double st = realtime();
                 pts = malloc(sizeof(real_point_t) * nb);
+                fprintf(stderr, "nbvars = %ld\n", mp_param->nvars);
                 for(long i = 0; i < nb; i++){
                     real_point_init(pts[i], mp_param->nvars);
                 }

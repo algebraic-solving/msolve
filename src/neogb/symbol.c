@@ -217,7 +217,6 @@ static void select_spairs_by_minimal_degree(
     rt0 = realtime();
 
     spair_t *ps     = psl->p;
-    const len_t nv  = bht->nv;
     const len_t evl = bht->evl;
 
     /* sort pair set */
@@ -475,7 +474,6 @@ static inline void find_multiplied_reducer(
 
     const len_t rr  = *nr;
 
-    const len_t nv  = bht->nv;
     const len_t evl = bht->evl;
 
     const exp_t * const e  = sht->ev[m];

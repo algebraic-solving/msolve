@@ -2211,7 +2211,9 @@ int msolve_prob_linalg_qq(mpz_param_t mp_param,
 static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
   hm_t *dt;
   const len_t nelts = bs->lml;
-  const int nv = ht->nv;
+  const int nv    = ht->nv;
+  const len_t ebl = ht->ebl;
+  const len_t evl = ht->evl;
   int32_t *exp  = (int32_t *)malloc(
                                     (unsigned long)(nelts) * (unsigned long)(nv) * sizeof(int32_t));
   /* counters for lengths, exponents and coefficients */
@@ -2223,7 +2225,10 @@ static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
     //    len[cl] = bs->hm[bi][LENGTH];
 
     dt  = bs->hm[bi] + OFFSET;
-    for (int k = 1; k <= nv; ++k) {
+    for (int k = 1; k < ebl; ++k) {
+      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
+    }
+    for (int k = ebl+1; k < evl; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
     //    cc  +=  len[cl];
@@ -2236,7 +2241,8 @@ static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
 static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
   hm_t *dt;
   const len_t nelts = bs->lml;
-  const int nv = ht->nv;
+  const len_t ebl = ht->ebl;
+  const len_t evl = ht->evl;
 
   /* counters for lengths, exponents and coefficients */
   int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
@@ -2246,7 +2252,10 @@ static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
     //    len[cl] = bs->hm[bi][LENGTH];
 
     dt  = bs->hm[bi] + OFFSET;
-    for (int k = 1; k <= nv; ++k) {
+    for (int k = 1; k < ebl; ++k) {
+      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
+    }
+    for (int k = ebl+1; k < evl; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
     //    cc  +=  len[cl];
@@ -2258,7 +2267,12 @@ static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
 static inline void set_linear_poly(long nlins, uint32_t *lineqs, uint64_t *linvars,
                                    ht_t *bht, int32_t *bexp_lm, bs_t *bs){
 
-  for(long i = 0; i < nlins*((bht->nv + 1)); i++){
+  const int nv    = bht->nv;
+  const len_t ebl = bht->ebl;
+  const len_t evl = bht->evl;
+  len_t ctr       = 0;
+    exp_t *etmp   = (exp_t *)calloc((unsigned long)nv, sizeof(exp_t));
+  for(long i = 0; i < nlins*((nv + 1)); i++){
     lineqs[i] = 0;
   }
   /* for(long i = 0; i < nlins*(bht->nv+1); i++){
@@ -2266,7 +2280,7 @@ static inline void set_linear_poly(long nlins, uint32_t *lineqs, uint64_t *linva
    * } */
   int cnt = 0;
 
-  for(int i = 0; i < bht->nv; i++){
+  for(int i = 0; i < nv; i++){
     if(linvars[i] != 0){
 
       long len = bs->hm[bs->lmps[linvars[i] - 1]][LENGTH];
@@ -2275,7 +2289,7 @@ static inline void set_linear_poly(long nlins, uint32_t *lineqs, uint64_t *linva
       if(len==bht->nv+1){
         for(long j = 0; j<len; j++){
           uint32_t coef = bs->cf_32[bs->hm[bi][COEFFS]][j];
-          lineqs[cnt*(bht->nv+1)+j] = coef;
+          lineqs[cnt*(nv+1)+j] = coef;
         }
       }
       else{
@@ -2283,11 +2297,18 @@ static inline void set_linear_poly(long nlins, uint32_t *lineqs, uint64_t *linva
         for(long j = 0; j<len; j++){
           uint32_t coef = bs->cf_32[bs->hm[bi][COEFFS]][j];
           exp_t *exp = bht->ev[dt[j]];
+          /* convert to usual exponent vector without block elimination storage structure */
+          ctr = 0;
+        for (int k = 1; k < ebl; ++k) {
+            etmp[ctr++] = (int32_t)exp[k];
+        }
+        for (int k = ebl+1; k < evl; ++k) {
+            etmp[ctr++] = (int32_t)exp[k];
+        }
+
           int isvar = 0;
-          for(int k = 0; k < bht->nv; k++){
-            /* exponent vectors in hash table store the degree
-             * at the first position, thus "+1" */
-            if(exp[k+1]==1){
+          for(int k = 0; k < nv-1; k++){
+            if(etmp[k]==1){
               lineqs[cnt*(bht->nv+1)+k] = coef;
               isvar=1;
             }
@@ -2300,6 +2321,7 @@ static inline void set_linear_poly(long nlins, uint32_t *lineqs, uint64_t *linva
       }
     }
   }
+  free(etmp);
 }
 
 

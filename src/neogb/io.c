@@ -705,6 +705,8 @@ static int64_t export_julia_data_ff_8(
     hm_t *dt;
 
     const len_t nv  = ht->nv;
+    const len_t evl = ht->evl;
+    const len_t ebl = ht->ebl;
     const len_t lml = bs->lml;
 
     int64_t nterms  = 0; /* # of terms in basis */
@@ -738,7 +740,10 @@ static int64_t export_julia_data_ff_8(
         }
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 1; k <= nv; ++k) {
+            for (k = 1; k = ebl; ++k) {
+                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
+            }
+            for (k = ebl+1; k < evl; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -768,6 +773,8 @@ static int64_t export_julia_data_ff_16(
     hm_t *dt;
 
     const len_t nv  = ht->nv;
+    const len_t evl = ht->evl;
+    const len_t ebl = ht->ebl;
     const len_t lml = bs->lml;
 
     int64_t nterms  = 0; /* # of terms in basis */
@@ -801,7 +808,10 @@ static int64_t export_julia_data_ff_16(
         }
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 1; k <= nv; ++k) {
+            for (k = 1; k < ebl; ++k) {
+                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
+            }
+            for (k = ebl+1; k < evl; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -831,6 +841,8 @@ static int64_t export_julia_data_ff_32(
     hm_t *dt;
 
     const len_t nv  = ht->nv;
+    const len_t evl = ht->evl;
+    const len_t ebl = ht->ebl;
     const len_t lml = bs->lml;
 
     int64_t nterms  = 0; /* # of terms in basis */
@@ -871,7 +883,10 @@ static int64_t export_julia_data_ff_32(
 
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 1; k <= nv; ++k) {
+            for (k = 1; k < ebl; ++k) {
+                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
+            }
+            for (k = ebl+1; k < evl; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
@@ -901,6 +916,8 @@ static int64_t export_julia_data_qq(
     hm_t *dt;
 
     const len_t nv  = ht->nv;
+    const len_t evl = ht->evl;
+    const len_t ebl = ht->ebl;
     const len_t lml = bs->lml;
 
     int64_t nterms  = 0; /* # of terms in basis */
@@ -935,7 +952,10 @@ static int64_t export_julia_data_qq(
 
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 1; k <= nv; ++k) {
+            for (k = 1; k < ebl; ++k) {
+                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
+            }
+            for (k = ebl+1; k < evl; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }

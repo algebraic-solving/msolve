@@ -92,9 +92,6 @@ static void insert_and_update_spairs(
     st->max_uht_size  = st->max_uht_size > uht->esz ?
         st->max_uht_size : uht->esz;
 
-    exp_t **ev  = bht->ev;
-    exp_t **evu = uht->ev;
-
     /* only other lead terms from the matrix may render
      * the current element useless */
     if (check_redundancy == 1) {

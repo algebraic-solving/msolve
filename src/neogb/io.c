@@ -740,7 +740,7 @@ static int64_t export_julia_data_ff_8(
         }
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
-            for (k = 1; k = ebl; ++k) {
+            for (k = 1; k < ebl; ++k) {
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
             for (k = ebl+1; k < evl; ++k) {

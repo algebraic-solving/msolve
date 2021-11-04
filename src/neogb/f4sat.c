@@ -501,7 +501,6 @@ int core_f4sat(
     /* global saturation data */
     len_t sat_test  = 0;
     deg_t sat_deg   = 0;
-    len_t set       = 0;
     int sat_done    = 0;
 
     /* elements to saturate input ideal with */

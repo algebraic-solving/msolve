@@ -91,6 +91,9 @@ static long descartes_truncate(mpz_t *upol2,
                                const unsigned long nbits, long sigh,
                                long *flag, usolve_flags *flags){
   int i;
+  /* /\* Max bit size of coefficients in upol1 *\/ */
+  /* const unsigned long int nbits = mpz_poly_max_bsize_coeffs(upol1, deg); */
+
   const unsigned long int lc = ilog2_mpz(upol2[deg]);
   /* One wants to divide all coefficients by 2^trunc */
   /* Hence only 2*(deg+1) bits are taken into account */

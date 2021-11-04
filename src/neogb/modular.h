@@ -171,6 +171,7 @@ int64_t f4_trace_julia(
         const void *cfs,
         const uint32_t field_char,
         const int32_t mon_order,
+        const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
         const int32_t ht_size,

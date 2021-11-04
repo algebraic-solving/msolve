@@ -4109,7 +4109,10 @@ void generate_table_values(interval *rt, mpz_t c,
   }
 }
 
-
+/*
+ xdo[i] and xup[i] are rt^i and c^i at precision 2^corr
+[xdo[i]/2^corr, xup[i]/2^corr] contain [rt^i, c^i]
+ */
 void generate_table_values_full(interval *rt, mpz_t c,
                                 const long ns, const long b,
                                 const long corr,
@@ -4242,6 +4245,24 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
   mpz_init(c);
   mpz_add_ui(c, r, 1);
 
+  mpz_poly_eval_2exp_naive2(denom, deg, r, k, den_do, tmp);
+  mpz_poly_eval_2exp_naive2(denom, deg, c, k, den_up, tmp);
+
+  mpz_clear(c);
+
+  if(mpz_sgn(den_do)!=mpz_sgn(den_up)){
+    return 1;
+  }
+  if(mpz_cmp(den_do, den_up)>0){
+    mpz_swap(den_do, den_up);
+  }
+  mpz_mul_2exp(den_do, den_do, corr);
+  mpz_mul_2exp(den_up, den_up, corr);
+  mpz_fdiv_q_2exp(den_do, den_do, k*deg);
+  mpz_cdiv_q_2exp(den_up, den_up, k*deg);
+  return 0;
+
+
   /* /\* MODIFS START HERE  *\/ */
   /* mpz_t * tmpquad = calloc(3, sizeof(mpz_t)); */
   /* mpz_t * quad = calloc(3, sizeof(mpz_t)); */
@@ -4348,7 +4369,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   prec = MAX(prec, rt->k);
   long corr = 2*(ns + rt->k);
 
-  /* checks whether the abs. value of the root is greater than 1 */
   generate_table_values_full(rt, c, ns, b,
                              corr,
                              xdo, xup);
@@ -4359,8 +4379,9 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                     rt->k,
                     xdo, xup,
                     tmp, den_do, den_up, corr)){
-    fprintf(stderr, "==> "); mpz_out_str(stderr, 10, rt->numer);
-    fprintf(stderr, " / 2^%ld\n", rt->k);
+    /* fprintf(stderr, "==> "); mpz_out_str(stderr, 10, rt->numer); */
+    /* fprintf(stderr, " / 2^%ld\n", rt->k); */
+
     /* root is positive */
     if(mpz_sgn(rt->numer)>=0){
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
@@ -4433,12 +4454,12 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     /*                             xdo, xup, */
     /*                             (rt->k)*(param->coords[nv]->length-1), corr, b, */
     /*                             tmp, val_do, val_up); */
+
     mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                 param->coords[nv]->length - 1,
                                 rt->k,
                                 xdo, xup,
                                 tmp, val_do, val_up, corr);
-
     mpz_neg(val_do, val_do);
     mpz_neg(val_up, val_up);
     mpz_swap(val_up, val_do);
@@ -4661,8 +4682,13 @@ int real_msolve_qq(mpz_param_t mp_param,
                                                    mp_param->elim->length - 1);
             long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
                                                       mp_param->elim->length - 1);
-
-            long prec = MAX(precision, 64 + 4*(LOG2(mp_param->elim->length) + LOG2(maxnbits)) );
+            for(int i = 0; i < mp_param->nvars - 1; i++){
+              long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
+                                        mp_param->coords[i]->length - 1);
+              maxnbits = MAX(cmax, maxnbits);
+            }
+            /* long prec = MAX(precision, 64 + 4*(LOG2(mp_param->elim->length) + LOG2(maxnbits)) ); */
+            long prec = MAX(precision, 64 + 2*(LOG2(mp_param->elim->length) + (maxnbits / 32)) );
             if(info_level){
               fprintf(stderr, "Real root isolation starts at precision %ld\n",
                       prec);

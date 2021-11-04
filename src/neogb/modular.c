@@ -1056,7 +1056,9 @@ bs_t *f4_trace_learning_phase(
          * }
          * printf("\n"); */
     }
-    printf("eliminated basis -> %u\n", bsctr);
+    if (st->nev > 0 && st->info_level > 0) {
+        printf("eliminated basis -> %u\n", bsctr);
+    }
     if (st->info_level > 0) {
       print_final_statistics(stderr, st);
     }
@@ -1731,7 +1733,9 @@ bs_t *modular_f4(
          * }
          * printf("\n"); */
     }
-    printf("eliminated basis -> %u\n", bsctr);
+    if (st->nev > 0 && st->info_level > 0) {
+        printf("eliminated basis -> %u\n", bsctr);
+    }
     if (st->info_level > 0) {
       print_final_statistics(stderr, st);
     }

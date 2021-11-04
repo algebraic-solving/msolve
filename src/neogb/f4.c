@@ -388,7 +388,9 @@ int core_f4(
             bsctr++;
         }
     }
-    printf("eliminated basis -> %u\n", bsctr);
+    if (st->nev > 0 && st->info_level > 0) {
+        printf("eliminated basis -> %u\n", bsctr);
+    }
     *bsp  = bs;
     *bhtp = bht;
     *stp  = st;

@@ -28,7 +28,7 @@ ps_t *initialize_pairset(
     ps_t *ps  = (ps_t *)malloc(sizeof(ps_t));
     ps->ld  = 0;
     ps->sz  = 192;
-    ps->p = (spair_t *)malloc((unsigned long)ps->sz * sizeof(spair_t));
+    ps->p = (spair_t *)calloc((unsigned long)ps->sz, sizeof(spair_t));
     return ps;
 }
 

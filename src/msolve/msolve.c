@@ -801,7 +801,7 @@ int msolve_ff(param_t **bparam,
   uint64_t *linvars = calloc(gens->nvars, sizeof(uint64_t));
   uint32_t **lineqs_ptr = malloc(sizeof(uint32_t *));
 
-  int64_t nb = f4_julia(bld, blen, bexp, bcf,
+  int64_t nb = f4_julia(&malloc, bld, blen, bexp, bcf,
                         gens->lens, gens->exps, (void *)gens->cfs, gens->field_char,
                         0, //mon_order,
                         elim_block_len,
@@ -1109,7 +1109,7 @@ int msolve_ff_alloc(param_t **bparam,
         exit(1);
     }
     int64_t nb  = export_results_from_f4(bld, blen, bexp,
-            bcf, &bs, &bht, &st);
+            bcf, &malloc, &bs, &bht, &st);
 
     /* timings */
     ct1 = cputime();
@@ -4750,7 +4750,7 @@ restart:
                     exit(1);
                 }
                 int64_t nb  = export_results_from_f4(bld, blen, bexp,
-                        bcf, &bs, &bht, &st);
+                        bcf, &malloc, &bs, &bht, &st);
 
                 /* timings */
                 ct1 = cputime();

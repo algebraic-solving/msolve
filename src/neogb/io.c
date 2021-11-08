@@ -696,6 +696,7 @@ static int64_t export_julia_data_ff_8(
         int32_t **blen,
         int32_t **bexp,
         void **bcf,
+        void *(*mallocp) (size_t),
         const bs_t * const bs,
         const ht_t * const ht,
         const uint32_t fc
@@ -722,11 +723,11 @@ static int64_t export_julia_data_ff_8(
         return 0;
     }
 
-    int32_t *len  = (int32_t *)malloc(
+    int32_t *len  = (int32_t *)(*mallocp)(
             (unsigned long)(nelts) * sizeof(int32_t));
-    int32_t *exp  = (int32_t *)malloc(
+    int32_t *exp  = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * (unsigned long)(nv) * sizeof(int32_t));
-    int32_t *cf   = (int32_t *)malloc(
+    int32_t *cf   = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * sizeof(int32_t));
 
     /* counters for lengths, exponents and coefficients */
@@ -764,6 +765,7 @@ static int64_t export_julia_data_ff_16(
         int32_t **blen,
         int32_t **bexp,
         void **bcf,
+        void *(*mallocp) (size_t),
         const bs_t * const bs,
         const ht_t * const ht,
         const uint32_t fc
@@ -790,11 +792,11 @@ static int64_t export_julia_data_ff_16(
         return 0;
     }
 
-    int32_t *len  = (int32_t *)malloc(
+    int32_t *len  = (int32_t *)(*mallocp)(
             (unsigned long)(nelts) * sizeof(int32_t));
-    int32_t *exp  = (int32_t *)malloc(
+    int32_t *exp  = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * (unsigned long)(nv) * sizeof(int32_t));
-    int32_t *cf   = (int32_t *)malloc(
+    int32_t *cf   = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * sizeof(int32_t));
 
     /* counters for lengths, exponents and coefficients */
@@ -832,6 +834,7 @@ static int64_t export_julia_data_ff_32(
         int32_t **blen,
         int32_t **bexp,
         void **bcf,
+        void *(*mallocp) (size_t),
         const bs_t * const bs,
         const ht_t * const ht,
         const uint32_t fc
@@ -858,11 +861,11 @@ static int64_t export_julia_data_ff_32(
         return 0;
     }
 
-    int32_t *len  = (int32_t *)malloc(
+    int32_t *len  = (int32_t *)(*mallocp)(
             (unsigned long)(nelts) * sizeof(int32_t));
-    int32_t *exp  = (int32_t *)malloc(
+    int32_t *exp  = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * (unsigned long)(nv) * sizeof(int32_t));
-    int32_t *cf   = (int32_t *)malloc(
+    int32_t *cf   = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * sizeof(int32_t));
 
     /* counters for lengths, exponents and coefficients */
@@ -907,6 +910,7 @@ static int64_t export_julia_data_qq(
         int32_t **blen,
         int32_t **bexp,
         void **bcf,
+        void *(*mallocp) (size_t),
         const bs_t * const bs,
         const ht_t * const ht,
         const uint32_t fc
@@ -933,11 +937,11 @@ static int64_t export_julia_data_qq(
         return 0;
     }
 
-    int32_t *len  = (int32_t *)malloc(
+    int32_t *len  = (int32_t *)(*mallocp)(
             (unsigned long)(nelts) * sizeof(int32_t));
-    int32_t *exp  = (int32_t *)malloc(
+    int32_t *exp  = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * (unsigned long)(nv) * sizeof(int32_t));
-    mpz_t *cf     = (mpz_t *)malloc(
+    mpz_t *cf     = (mpz_t *)(*mallocp)(
             (unsigned long)(nterms) * sizeof(mpz_t));
 
     /* counters for lengths, exponents and coefficients */

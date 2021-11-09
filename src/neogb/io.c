@@ -1035,8 +1035,6 @@ int32_t check_and_set_meta_data(
         printf("error: Too large elimination block.\n");
         exit(1);
     }
-    printf("ebl = %d\n", st->nev);
-
     /* set hash table size */
     st->init_hts  = ht_size;
     if (st->init_hts <= 0) {

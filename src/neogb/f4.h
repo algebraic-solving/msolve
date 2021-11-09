@@ -56,7 +56,7 @@ int initialize_f4_input_data(
         );
 
 int64_t f4_julia(
-        void *(*jl_malloc) (size_t),
+        void *(*mallocp) (size_t),
         int32_t *bld,   /* basis load */
         int32_t **blen, /* length of each poly in basis */
         int32_t **bexp, /* basis exponent vectors */

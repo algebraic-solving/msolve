@@ -448,7 +448,7 @@ int64_t export_results_from_f4(
  *
  *  RETURNs the length of the jl_basis array */
 int64_t f4_julia(
-        void *(*jl_malloc) (size_t),
+        void *(*mallocp) (size_t),
         /* return values */
         int32_t *bld,   /* basis load */
         int32_t **blen, /* length of each poly in basis */
@@ -503,7 +503,7 @@ int64_t f4_julia(
     }
 
     int64_t nterms  = export_results_from_f4(bld, blen, bexp,
-            bcf, jl_malloc, &bs, &bht, &st);
+            bcf, mallocp, &bs, &bht, &st);
 
     /* timings */
     ct1 = cputime();

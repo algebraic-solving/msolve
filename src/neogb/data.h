@@ -381,6 +381,7 @@ extern int64_t (*export_julia_data)(
         int32_t **blen,
         int32_t **bexp,
         void **bcf,
+        void *(*mallocp) (size_t),
         const bs_t * const bs,
         const ht_t * const ht,
         const uint32_t fc

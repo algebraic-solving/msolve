@@ -801,7 +801,7 @@ int msolve_ff(param_t **bparam,
   uint64_t *linvars = calloc(gens->nvars, sizeof(uint64_t));
   uint32_t **lineqs_ptr = malloc(sizeof(uint32_t *));
 
-  int64_t nb = f4_julia(bld, blen, bexp, bcf,
+  int64_t nb = f4_julia(&malloc, bld, blen, bexp, bcf,
                         gens->lens, gens->exps, (void *)gens->cfs, gens->field_char,
                         0, //mon_order,
                         elim_block_len,
@@ -1109,7 +1109,7 @@ int msolve_ff_alloc(param_t **bparam,
         exit(1);
     }
     int64_t nb  = export_results_from_f4(bld, blen, bexp,
-            bcf, &bs, &bht, &st);
+            bcf, &malloc, &bs, &bht, &st);
 
     /* timings */
     ct1 = cputime();
@@ -4750,7 +4750,7 @@ restart:
                     exit(1);
                 }
                 int64_t nb  = export_results_from_f4(bld, blen, bexp,
-                        bcf, &bs, &bht, &st);
+                        bcf, &malloc, &bs, &bht, &st);
 
                 /* timings */
                 ct1 = cputime();
@@ -5492,6 +5492,7 @@ restart:
 }
 
 static void export_julia_rational_parametrization_qq(
+        void *(*mallocp) (size_t),
         int32_t *load,
         int32_t *dim,
         int32_t *dim_quot,
@@ -5516,7 +5517,7 @@ static void export_julia_rational_parametrization_qq(
         *lens = NULL;
         *cfs  = NULL;
     } else {
-        int32_t *len  = (int32_t *)malloc(
+        int32_t *len  = (int32_t *)(*mallocp)(
                 (unsigned long)(param->nvars+1) * sizeof(int32_t));
 
         /* precompute number of all terms of all polynomials */
@@ -5533,7 +5534,7 @@ static void export_julia_rational_parametrization_qq(
             len[i+2]  =   param->coords[i]->length+1;
         }
 
-        mpz_t *cf     = (mpz_t *)malloc(
+        mpz_t *cf     = (mpz_t *)(*mallocp)(
                 (unsigned long)(nterms) * sizeof(mpz_t));
 
         /* store elim */
@@ -5558,10 +5559,10 @@ static void export_julia_rational_parametrization_qq(
         *lens = len;
         *cfs  = (void *)cf;
 
-        mpz_t *sols_num = (mpz_t *)malloc(
+        mpz_t *sols_num = (mpz_t *)(*mallocp)(
                 (unsigned long)nb_real_roots * real_pts[0]->nvars * sizeof(mpz_t));
 
-        int32_t *sols_den = (int32_t *)malloc(
+        int32_t *sols_den = (int32_t *)(*mallocp)(
                 (unsigned long)nb_real_roots * real_pts[0]->nvars * sizeof(int32_t));
 
 
@@ -5586,6 +5587,7 @@ static void export_julia_rational_parametrization_qq(
 }
 
 void msolve_julia(
+        void *(*mallocp) (size_t),
         int32_t *rp_ld,
         int32_t *rp_dim,
         int32_t *rp_dquot,
@@ -5689,9 +5691,9 @@ void msolve_julia(
 
     if (mpz_param->dim != -1) {
         export_julia_rational_parametrization_qq(
-                rp_ld, rp_dim, rp_dquot, rp_lens, rp_cfs,
-                real_sols_num, real_sols_den, mpz_param,
-                nb_real_roots, real_pts);
+                mallocp, rp_ld, rp_dim, rp_dquot, rp_lens,
+                rp_cfs, real_sols_num, real_sols_den,
+                mpz_param, nb_real_roots, real_pts);
     } else {
         *rp_ld  = -1;
     }

@@ -420,6 +420,7 @@ int64_t export_results_from_f4(
     int32_t **blen, /* length of each poly in basis */
     int32_t **bexp, /* basis exponent vectors */
     void **bcf,     /* coefficients of basis elements */
+    void *(*mallocp) (size_t),
     bs_t **bsp,
     ht_t **bhtp,
     stat_t **stp
@@ -431,7 +432,7 @@ int64_t export_results_from_f4(
     stat_t *st  = *stp;
 
     st->nterms_basis  = export_julia_data(
-        bld, blen, bexp, bcf, bs, bht, st->fc);
+        bld, blen, bexp, bcf, mallocp, bs, bht, st->fc);
     st->size_basis    = *bld;
 
     return st->nterms_basis;
@@ -447,6 +448,7 @@ int64_t export_results_from_f4(
  *
  *  RETURNs the length of the jl_basis array */
 int64_t f4_julia(
+        void *(*mallocp) (size_t),
         /* return values */
         int32_t *bld,   /* basis load */
         int32_t **blen, /* length of each poly in basis */
@@ -501,7 +503,7 @@ int64_t f4_julia(
     }
 
     int64_t nterms  = export_results_from_f4(bld, blen, bexp,
-            bcf, &bs, &bht, &st);
+            bcf, mallocp, &bs, &bht, &st);
 
     /* timings */
     ct1 = cputime();

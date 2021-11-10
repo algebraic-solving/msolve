@@ -181,6 +181,23 @@ static inline data_gens_ff_t *allocate_data_gens(){
   return gens;
 }
 
+static inline void free_data_gens(data_gens_ff_t *gens){
+  for(long i = 0; i < gens->nvars; i++){
+    free(gens->vnames[i]);
+  }
+  free(gens->vnames);
+  for(long i = 0; i < 2*gens->nterms; i++){
+    mpz_clear(*(gens->mpz_cfs[i]));
+    free(gens->mpz_cfs[i]);
+  }
+  free(gens->mpz_cfs);
+  free(gens->lens);
+  free(gens->cfs);
+  free(gens->exps);
+  free(gens->random_linear_form);
+  free(gens);
+}
+
 static inline void display_term(FILE *file, int64_t ind, data_gens_ff_t *gens,
                                 int32_t **blen, int32_t *bcf, int32_t **bexp){
   if(bcf[ind] != 0 && bcf[ind] != 1){
@@ -2477,6 +2494,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
             return NULL;
         }
     }
+
     /* set st->fc to finite characteristic for printing */
     st->fc  = fc;
     print_ff_basis_data(
@@ -2489,10 +2507,11 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     if(has_dimension_zero(bs->lml, bht->nv, bexp_lm)){
         long dquot = 0;
         int32_t *lmb = monomial_basis(bs->lml, bht->nv, bexp_lm, &dquot);
+
         if(info_level){
             fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
         }
-
+        if(print_gb==0){
         *bmatrix = build_matrixn_from_bs_trace(bdiv_xn,
                                                blen_gb_xn,
                                                bstart_cf_gb_xn,
@@ -2500,7 +2519,6 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                                bexp_lm, bht->nv,
                                                fc,
                                                info_level);
-        free_basis(&(bs));
         if(*bmatrix == NULL){
             *success = 0;
             *dim = 0;
@@ -2521,8 +2539,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                                info_level,
                                                bdata_fglm, bdata_bms,
                                                success);
-
-
+        }
+        free_basis(&(bs));
         *dim = 0;
         *dquot_ori = dquot;
         return lmb;
@@ -2530,6 +2548,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     else{
         *dim  = 1;
         *dquot_ori = -1;
+        free_basis(&(bs));
         return NULL;
     }
 }
@@ -2852,7 +2871,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
   => Positive dimension dim > 0
   => Dimension zero + calcul qui a pu etre fait. dim=0 dquot > 0
 
-  - renvoie 1 si le calcul a echoue.
+  - renvoie 1 si le calcul a echoue 
   => Dimension 0 => pas en position generique
 
   - renvoie 2 si besoin de plus de genericite.
@@ -2884,8 +2903,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
+  const uint32_t field_char = 0; /* gens->field_char; */
   const void *cfs = gens->mpz_cfs;
-  const uint32_t field_char = gens->field_char;
+
   const int mon_order = 0;
   const int32_t nr_vars = gens->nvars;
   const int32_t nr_gens = gens->ngens;
@@ -2898,12 +2918,13 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       fprintf(stderr, "Tracer only for computations over Q. Call\n");
       fprintf(stderr, "standard F4 Algorithm for computations over\n");
       fprintf(stderr, "finite fields.\n");
-      return -2;
+      /* return -2; */
   }
   len_t i;
 
   /* initialize stuff */
   stat_t *st  = initialize_statistics();
+
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
@@ -2940,8 +2961,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* sort initial elements, smallest lead term first */
   sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
           initial_input_cmp, bht);
-  remove_content_of_initial_basis(bs_qq);
 
+  remove_content_of_initial_basis(bs_qq);
   /* generate lucky prime numbers */
   generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
 
@@ -2959,16 +2980,19 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   btrace[0]  = initialize_trace();
   /* initialization of other tracers is done through duplication */
 
-  srand(time(0));
   uint32_t prime = next_prime(1<<30);
+  uint32_t primeinit;
+  srand(time(0));
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   while(is_lucky_prime_ui(prime, bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
-  uint32_t primeinit = prime;
+  primeinit = prime;
   lp->p[0] = primeinit;
-
+  if(gens->field_char){
+    lp->p[0] = gens->field_char;
+  }
   sp_matfglm_t **bmatrix = (sp_matfglm_t **)calloc(st->nthrds,
                                                   sizeof(sp_matfglm_t *));
 
@@ -3000,6 +3024,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   int success = 1;
   int squares = 1;
+
   int32_t *lmb_ori = modular_trace_learning(bmatrix, bdiv_xn, blen_gb_xn,
                                             bstart_cf_gb_xn,
 
@@ -3021,7 +3046,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                             &success);
 
 
-  if(*dim_ptr == 0 && success && *dquot_ptr > 0){
+  if(*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0){
     if(nmod_params[0]->elim->length - 1 != *dquot_ptr){
       for(int i = 0; i < nr_vars - 1; i++){
         if((squvars[i] == 0) && round ){
@@ -3035,7 +3060,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpz_param->dim    = *dim_ptr;
   mpz_param->dquot  = *dquot_ptr;
 
-  if(lmb_ori == NULL || success == 0) {
+  if(lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
       /* print_msolve_message(stderr, 1); */
     for(int i = 0; i < st->nthrds; i++){
       /* free_trace(&btrace[i]); */
@@ -3063,6 +3088,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     }
     free(lineqs_ptr);
     free(squvars);
+    if(print_gb){
+      return 0;
+    }
+    if(*dim_ptr == 0 && gens->field_char){
+      return 0;
+    }
     if(*dim_ptr==1){
       if(info_level){
         fprintf(stderr, "Positive dimensional Grobner basis\n");
@@ -4021,7 +4052,9 @@ void display_real_points(FILE *fstream, real_point_t *pts, long nb){
     display_real_point(fstream, pts[i]);
     fprintf(fstream, ", ");
   }
-  display_real_point(fstream, pts[nb - 1]);
+  if(nb){
+    display_real_point(fstream, pts[nb - 1]);
+  }
   fprintf(fstream, "]\n");
   fprintf(fstream, "]");
 }
@@ -4135,7 +4168,10 @@ void generate_table_values(interval *rt, mpz_t c,
   }
 }
 
-
+/*
+ xdo[i] and xup[i] are rt^i and c^i at precision 2^corr
+[xdo[i]/2^corr, xup[i]/2^corr] contain [rt^i, c^i]
+ */
 void generate_table_values_full(interval *rt, mpz_t c,
                                 const long ns, const long b,
                                 const long corr,
@@ -4182,6 +4218,78 @@ void generate_table_values_full(interval *rt, mpz_t c,
 }
 
 
+
+/*
+  quad:=a*x^2+b*x+c;
+  rr1:=r/2^k;
+  rr2:=(r+1)/2^k;
+  numer(expand(subs(x=1/(x+1),subs(x=x*(rr2-rr1),subs(x=x+rr1, quad)))));
+
+  > numer(subs(x=x+r/2^k, quad)) = 
+  (2^k)^2*a*x^2+((2^k)^2*b+2*2^k*a*r)*x+c*(2^k)^2+2^k*b*r+a*r^2
+
+  return 1 if quad has real roots in [0, 1] else it returns 0
+ */
+int evalquadric(mpz_t *quad, mpz_t r, long k, 
+                mpz_t *tmpquad, mpz_t tmp){
+
+  /*We start by computing numer(subs(x=x*(rr2-rr1),subs(x=x+rr1, quad))) */
+  /* This is  */
+  /*a*x^2+(b*2^k+2*a*r)*x+c*(2^k)^2+2^k*b*r+a*r^2*/
+  mpz_set(tmpquad[2], quad[2]); 
+
+  mpz_set(tmp, quad[2]);
+  mpz_mul(tmp, tmp, r);
+  /* tmp = a * r */
+  mpz_set(tmpquad[0], tmp);
+  mpz_mul(tmpquad[0], tmpquad[0], r);
+  /* tmpquad[0] = a*r^2 */
+  mpz_mul_2exp(tmp, tmp, 1);
+  /* Now tmp = 2*a*r*/
+
+  mpz_set(tmpquad[1], quad[1]);
+  mpz_mul_2exp(tmpquad[1], tmpquad[1], k);
+  /*tmpquad[1] = b*2^k*/
+  mpz_add(tmpquad[1], tmpquad[1], tmp);
+  /* Now tmpquad[1] = 2^k * b + 2 * a * r */
+
+  mpz_set(tmp, quad[1]);
+  /*tmp = b*/
+  mpz_mul(tmp, tmp, r);
+  mpz_mul_2exp(tmp, tmp, k);
+  mpz_add(tmpquad[0], tmpquad[0], tmp);
+  /* tmpquad[0] =  2^k*b*r + a*r^2*/
+
+  mpz_set(tmp, quad[0]);
+  mpz_mul_2exp(tmp, tmp, 2*k);
+  /*tmp = c*2^(2k)*/
+  mpz_add(tmpquad[0], tmpquad[0], tmp);
+
+  /* At this stage, one has computed
+     tmpquad = numer(subs(x=x*(rr2-rr1),subs(x=x+rr1, quad)))
+     We want to know if it has real roots in [0, 1]
+   */
+  /* If all coefficients have the same sign, there is no root */
+  int s=mpz_sgn(tmpquad[0]);
+  if(s==mpz_sgn(tmpquad[1]) && s==mpz_sgn(tmpquad[2])){
+    return 0;
+  }
+  /* One computes numer(subs(x=1/(x+1)), tmpquad) to apply Descartes*/
+  /* if tmpquad = a2*x^2+a1*x+a0 computes
+     a0*x^2+(2*a0+a1)*x+a0+a1+a2
+  */
+  mpz_add(tmpquad[1], tmpquad[1], tmpquad[0]);
+  mpz_add(tmpquad[2], tmpquad[2], tmpquad[1]);
+  mpz_add(tmpquad[1], tmpquad[1], tmpquad[0]);
+
+  /* We apply now Descartes */
+  s=mpz_sgn(tmpquad[0]);
+  if(s==mpz_sgn(tmpquad[1]) && s==mpz_sgn(tmpquad[2])){
+    return 0;
+  }
+  return 1;
+}
+
 /* evaluates denom (which has degree deg)
    at the interval [r/2^k, (r+1)/2^k]
    returns  */
@@ -4189,22 +4297,72 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
                 mpz_t *xdo, mpz_t *xup,
                 mpz_t tmp, mpz_t den_do, mpz_t den_up,
                 long corr){
-  int boo = mpz_scalar_product_interval(denom, deg, k,
-                                        xdo, xup,
-                                        tmp, den_do, den_up, corr);
-  if(mpz_cmp(den_do, den_up) > 0){
-    fprintf(stderr, "BUG (den_do > den_up)\n");
-    mpz_out_str(stderr, 10, den_do); fprintf(stderr, "\n");
-    mpz_out_str(stderr, 10, den_up); fprintf(stderr, "\n");
-    exit(1);
-  }
-  if(boo == 0){
-    return boo;
-  }
+
+  /* /\* boo is 1 if den_do and den_up have not the same sign */
+  /*    else it is 0 */
   mpz_t c;
   mpz_init(c);
   mpz_add_ui(c, r, 1);
-  boo = mpz_poly_eval_interval(denom, deg, k,
+
+  mpz_poly_eval_2exp_naive2(denom, deg, r, k, den_do, tmp);
+  mpz_poly_eval_2exp_naive2(denom, deg, c, k, den_up, tmp);
+
+  mpz_clear(c);
+
+  if(mpz_sgn(den_do)!=mpz_sgn(den_up)){
+    return 1;
+  }
+  if(mpz_cmp(den_do, den_up)>0){
+    mpz_swap(den_do, den_up);
+  }
+  mpz_mul_2exp(den_do, den_do, corr);
+  mpz_mul_2exp(den_up, den_up, corr);
+  mpz_fdiv_q_2exp(den_do, den_do, k*deg);
+  mpz_cdiv_q_2exp(den_up, den_up, k*deg);
+  return 0;
+
+
+  /* /\* MODIFS START HERE  *\/ */
+  /* mpz_t * tmpquad = calloc(3, sizeof(mpz_t)); */
+  /* mpz_t * quad = calloc(3, sizeof(mpz_t)); */
+  /* mpz_init(tmpquad[0]); */
+  /* mpz_init(tmpquad[1]); */
+  /* mpz_init(tmpquad[2]); */
+  /* mpz_init(quad[0]); */
+  /* mpz_init(quad[1]); */
+  /* mpz_init(quad[2]); */
+  /* int q = deg / 3; */
+  /* for(int i = 0; i < q; i++){ */
+  /*   mpz_set(quad[0], denom[3*i]); */
+  /*   mpz_set(quad[1], denom[3*i+1]); */
+  /*   mpz_set(quad[2], denom[3*i+2]); */
+  /*   int b = evalquadric(quad, r, k, */
+  /*                       tmpquad, tmp); */
+  /*   if(b==1)fprintf(stderr, "[r]\n"); */
+  /* } */
+  /* mpz_poly_eval_2exp_naive2(denom, deg, r, k, den_do, tmp); */
+  /* mpz_poly_eval_2exp_naive2(denom, deg, c, k, den_up, tmp); */
+  /* mpz_clear(tmpquad[0]); */
+  /* mpz_clear(tmpquad[1]); */
+  /* mpz_clear(tmpquad[2]); */
+  /* mpz_clear(quad[0]); */
+  /* mpz_clear(quad[1]); */
+  /* mpz_clear(quad[2]); */
+  /* mpz_clear(c); */
+
+  /* if(mpz_sgn(den_do)!=mpz_sgn(den_up)){ */
+  /*   return 1; */
+  /* } */
+  /* if(mpz_cmp(den_do, den_up)>0){ */
+  /*   mpz_swap(den_do, den_up); */
+  /* } */
+  /* mpz_mul_2exp(den_do, den_do, corr); */
+  /* mpz_mul_2exp(den_up, den_up, corr); */
+  /* mpz_fdiv_q_2exp(den_do, den_do, k*deg); */
+  /* mpz_cdiv_q_2exp(den_up, den_up, k*deg); */
+  /* return 0; */
+  /* /\*MODIFS END HERE *\/ */
+  int boo = mpz_poly_eval_interval(denom, deg, k,
                                r, c,
                                tmp, den_do, den_up);
   if(mpz_cmp(den_do, den_up) > 0){
@@ -4219,6 +4377,33 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
 
   return boo;
 }
+
+
+
+
+int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k,
+                   mpz_t *xdo, mpz_t *xup,
+                   mpz_t tmp, mpz_t den_do, mpz_t den_up,
+                   long corr){
+  mpz_t c;
+  mpz_init(c);
+  mpz_add_ui(c, r, 1);
+  int boo = mpz_poly_eval_interval(denom, deg, k,
+                               r, c,
+                               tmp, den_do, den_up);
+  if(mpz_cmp(den_do, den_up) > 0){
+    fprintf(stderr, "BUG (den_do > den_up)\n");
+    exit(1);
+  }
+  mpz_mul_2exp(den_do, den_do, corr);
+  mpz_mul_2exp(den_up, den_up, corr);
+  mpz_fdiv_q_2exp(den_do, den_do, k*deg);
+  mpz_cdiv_q_2exp(den_up, den_up, k*deg);
+  mpz_clear(c);
+
+  return boo;
+}
+
 
 void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  interval *rt, long nb, interval *pos_root,
@@ -4241,9 +4426,11 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   long b = 16;
   prec = MAX(prec, rt->k);
-  long corr = (ns + rt->k);
+  long corr = 2*(ns + rt->k);
+
 
   /* checks whether the abs. value of the root is greater than 1 */
+
   generate_table_values_full(rt, c, ns, b,
                              corr,
                              xdo, xup);
@@ -4254,6 +4441,10 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                     rt->k,
                     xdo, xup,
                     tmp, den_do, den_up, corr)){
+
+    /* fprintf(stderr, "==> "); mpz_out_str(stderr, 10, rt->numer); */
+    /* fprintf(stderr, " / 2^%ld\n", rt->k); */
+
     /* root is positive */
     if(mpz_sgn(rt->numer)>=0){
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
@@ -4326,12 +4517,12 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     /*                             xdo, xup, */
     /*                             (rt->k)*(param->coords[nv]->length-1), corr, b, */
     /*                             tmp, val_do, val_up); */
+
     mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                 param->coords[nv]->length - 1,
                                 rt->k,
                                 xdo, xup,
                                 tmp, val_do, val_up, corr);
-
     mpz_neg(val_do, val_do);
     mpz_neg(val_up, val_up);
     mpz_swap(val_up, val_do);
@@ -4438,7 +4629,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   for(long i = 0; i < param->elim->length; i++){
     mpz_init_set(polelim[i], param->elim->coeffs[i]);
   }
-  interval *pos_root = malloc(sizeof(interval));
+  interval *pos_root = calloc(1, sizeof(interval));
   mpz_init(pos_root->numer);
   double et = realtime();
   for(long nc = 0; nc < nb; nc++){
@@ -4507,6 +4698,14 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int round,
                    int32_t get_param){
     if(la_option == 2 || la_option == 1){
+      /*
+       0 is comp. is ok
+       1 if comp. failed 
+       2 if more genericity is required
+       -2 if charac is > 0
+       -3 if meta data are corrupted
+       -4 if bad prime
+       */
         int b = msolve_trace_qq(mp_param,
                                 nmod_param,
                                 dim_ptr,
@@ -4533,9 +4732,13 @@ int real_msolve_qq(mpz_param_t mp_param,
           return b;
         }
 
-        if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0){
+        if(print_gb){
+          return 0;
+        }
 
-            mpz_t *pol = malloc(sizeof(mpz_t)*mp_param->elim->length);
+        if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
+
+          mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
             for(long i = 0; i < mp_param->elim->length; i++){
                 mpz_init_set(pol[i], mp_param->elim->coeffs[i]);
             }
@@ -4543,12 +4746,20 @@ int real_msolve_qq(mpz_param_t mp_param,
                                                    mp_param->elim->length - 1);
             long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
                                                       mp_param->elim->length - 1);
-
-            long prec = MAX(precision, 64 + 4*(LOG2(mp_param->elim->length) + LOG2(maxnbits)) );
-            if(ilog2_mpz(mp_param->elim->coeffs[0]) > ilog2_mpz(mp_param->elim->coeffs[mp_param->nsols])){
-              prec += (maxnbits - minnbits) / 2;
+            for(int i = 0; i < mp_param->nvars - 1; i++){
+              long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
+                                        mp_param->coords[i]->length - 1);
+              maxnbits = MAX(cmax, maxnbits);
             }
-
+            /* long prec = MAX(precision, 64 + 4*(LOG2(mp_param->elim->length) + LOG2(maxnbits)) ); */
+            long prec = MAX(precision, 64 + 2*(LOG2(mp_param->elim->length) + (maxnbits / 32)) );
+            if(info_level){
+              fprintf(stderr, "Real root isolation starts at precision %ld\n",
+                      prec);
+            }
+            /* if(ilog2_mpz(mp_param->elim->coeffs[0]) > ilog2_mpz(mp_param->elim->coeffs[mp_param->nsols])){ */
+            /*   prec += (maxnbits - minnbits) / 2; */
+            /* } */
             double st = realtime();
             roots = real_roots(pol, mp_param->elim->length - 1,
                                &nbpos, &nbneg, prec, nr_threads, info_level );
@@ -4565,6 +4776,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                 }
                 double st = realtime();
                 pts = malloc(sizeof(real_point_t) * nb);
+                fprintf(stderr, "nbvars = %ld\n", mp_param->nvars);
                 for(long i = 0; i < nb; i++){
                     real_point_init(pts[i], mp_param->nvars);
                 }
@@ -4606,7 +4818,6 @@ int real_msolve_qq(mpz_param_t mp_param,
             *nb_real_roots_ptr  = nb;
             *real_pts_ptr       = pts;
         }
-
         return b;
     }
     else{
@@ -4678,7 +4889,7 @@ restart:
     b     = 0;
 
     if(gens->field_char > 0){
-        if (saturate == 1) {
+        if (saturate == 1) { /* positive characteristic */
             /* timings */
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
@@ -4769,13 +4980,34 @@ restart:
             }
             return 0;
         }
-        if (normal_form == 0) {
-            b = msolve_ff_alloc(&param, bld, blen, bexp, bcf,
-                    gens, initial_hts, nr_threads, max_pairs,
-                    elim_block_len, update_ht, la_option,
-                    info_level, print_gb, files);
-            if (b == 0) {
-                //When dquot = 1 
+        /* no saturate = 0 */
+        if (normal_form == 0) {/* positive characteristic */
+
+            /* b = msolve_ff_alloc(&param, bld, blen, bexp, bcf, */
+            /*         gens, initial_hts, nr_threads, max_pairs, */
+            /*         elim_block_len, update_ht, la_option, */
+            /*         info_level, print_gb, files); */
+
+          int dim = - 2;
+          long dquot = -1;
+          b = real_msolve_qq(*mpz_paramp,
+                             &param,
+                             &dim,
+                             &dquot,
+                             nb_real_roots_ptr,
+                             real_roots_ptr,
+                             real_pts_ptr,
+                             gens,
+                             initial_hts, nr_threads, max_pairs,
+                             elim_block_len, update_ht,
+                             la_option, info_level, print_gb,
+                             generate_pbm, precision, files, round, get_param);
+          if(print_gb){
+            return 0;
+          }
+
+          if (b == 0 && gens->field_char == 0) {
+                //When dquot = 1
                 if(files->out_file != NULL){
                     FILE *ofile = fopen(files->out_file, "a");
                     display_fglm_param_maple(ofile, param);
@@ -4784,6 +5016,10 @@ restart:
                 else{
                     display_fglm_param_maple(stdout, param);
                 }
+            }
+            if (b == 0 && gens->field_char > 0) {
+              fprintf(stderr, "SOME DATA SHOULD BE DISPLAYED HERE\n");
+              return 0;
             }
             if (b == 1) {
                 free(bld);
@@ -4840,6 +5076,7 @@ restart:
                 if(b==-1) b = 0;
             }
         } else {
+          /* normal_form is 1 */
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;
             bs_t *tbr   = NULL;
@@ -5011,8 +5248,8 @@ restart:
         }
         return 0;
     }
-    else{
-        if (elim_block_len > 0) {
+    else{/* characteristic is 0 */
+      if (elim_block_len > 0) { /* characteristic is 0 */
             /* timings */
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
@@ -5170,7 +5407,8 @@ restart:
             /* } */
             return 0;
         }
-        if (saturate == 1) {
+      /* characteristic is 0 and elim_block = 0 */
+      if (saturate == 1) {       /* characteristic is 0 and elim_block = 0 */
             /* timings */
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
@@ -5335,7 +5573,7 @@ restart:
                 }
             /* } */
             return 0;
-        } else {
+      } else {       /* characteristic is 0 and elim_block = 0 and saturate = 0 */
             int dim = - 2;
             long dquot = -1;
 
@@ -5351,6 +5589,9 @@ restart:
                     elim_block_len, update_ht,
                     la_option, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
+            if(print_gb){
+              return 0;
+            }
 
             if(b == 0){
                 if(dim == 0 && dquot > 0){

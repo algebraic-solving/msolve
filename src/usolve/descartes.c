@@ -28,8 +28,9 @@
 static unsigned long descartes_classical(const mpz_t *, mpz_t *,
                                          const unsigned long, long, long *);
 
-static long descartes_truncate(mpz_t *, mpz_t *, const unsigned long,
-                                          long, long *, usolve_flags *);
+static long descartes_truncate(mpz_t *, const unsigned long,
+                               const unsigned long,
+                               long, long *, usolve_flags *);
 
 /* one assumes upol[0] != 0 */
 /* stopped as soon as more than 3 sgn variations are found */
@@ -59,13 +60,15 @@ static unsigned long int descartes(mpz_t *upol1, mpz_t *upol2,
                                    const unsigned long deg,
                                    long sigh, long *flag, usolve_flags *flags){
   unsigned long int i;
-
 #pragma omp parallel for num_threads(flags->nthreads)
   for(i = 0; i <= deg; i++){
     mpz_set(upol2[i],upol1[deg-i]);
   }
 
-  long nb = descartes_truncate(upol1, upol2, deg, sigh, flag, flags);
+  /* Max bit size of coefficients in upol1 */
+  const unsigned long nbits = mpz_poly_max_bsize_coeffs(upol1, deg);
+  long nb = descartes_truncate(upol2, deg, nbits, sigh, flag, flags);
+
   if(nb >= 0){
     return nb;
   }
@@ -83,12 +86,14 @@ static unsigned long int descartes(mpz_t *upol1, mpz_t *upol2,
 }
 
 /* assumes upol1 and upol2 are the same polynomials */
-static long descartes_truncate(mpz_t *upol1, mpz_t *upol2,
-                               const unsigned long deg, long sigh,
+static long descartes_truncate(mpz_t *upol2,
+                               const unsigned long deg,
+                               const unsigned long nbits, long sigh,
                                long *flag, usolve_flags *flags){
   int i;
-  /* Max bit size of coefficients in upol1 */
-  const unsigned long int nbits = mpz_poly_max_bsize_coeffs(upol1, deg);
+  /* /\* Max bit size of coefficients in upol1 *\/ */
+  /* const unsigned long int nbits = mpz_poly_max_bsize_coeffs(upol1, deg); */
+
   const unsigned long int lc = ilog2_mpz(upol2[deg]);
   /* One wants to divide all coefficients by 2^trunc */
   /* Hence only 2*(deg+1) bits are taken into account */

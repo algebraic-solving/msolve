@@ -896,6 +896,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
 	case 1:
 
     /* one root exactly */
+
     return nb_1_case_in_bisection_rec(c, k, tmp,
                                       roots, nbr,
                                       flags, is_half_root,
@@ -1124,7 +1125,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
   }
 
   if(zero_root==0){
-    deg = deg0; 
+    deg = deg0;
   }
   else{
     deg = (deg0 - 1);
@@ -1293,8 +1294,17 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
                                        flags);
 
   unsigned long int nbroots = *nb_pos_roots + *nb_neg_roots;
+  for(unsigned long int i = 0; i < nbroots; i++){
+    if(roots[i].isexact){
+      if(roots[i].k < 0){
+        roots[i].k = 0;
+      }
+    }
+  }
 
   /* display_roots_system(stderr, roots, nbroots); */
+  /* fprintf(stderr, "First root \n"); */
+  /* display_root(stderr, roots); */
 
   e_time = realtime ( ) - e_time;
 
@@ -1320,6 +1330,14 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
     }
   }
   refine_time = realtime() - refine_time;
+
+  for(unsigned long int i = 0; i < nbroots; i++){
+    if(roots[i].isexact){
+      if(roots[i].k < 0){
+        roots[i].k = 0;
+      }
+    }
+  }
 
   if(flags->print_stats>=1){
     display_stats(flags);

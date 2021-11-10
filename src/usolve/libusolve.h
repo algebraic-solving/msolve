@@ -36,6 +36,11 @@ void mpz_poly_eval_2exp_naive(mpz_t *,
                               mpz_t *, const int,
                               mpz_t *, mpz_t *);
 
+void mpz_poly_eval_2exp_naive2(mpz_t *,
+                              unsigned long int,
+                              mpz_t, const int,
+                              mpz_t, mpz_t);
+
 void get_values_at_bounds(mpz_t *, unsigned long int, interval *, mpz_t *);
 
 void refine_QIR_positive_root(mpz_t *, unsigned long int *, interval *,

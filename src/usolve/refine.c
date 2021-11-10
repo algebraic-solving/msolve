@@ -739,6 +739,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
 
   remove_exact_roots_by_division(upol, deg, roots, nb, nthreads);
 
+
   interval *pos_rt = (interval *)(malloc(sizeof(interval)));
   mpz_init(pos_rt->numer);
   mpz_t newc;
@@ -753,6 +754,9 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
   for(i = 0; i < nbneg; i++){
 
     interval *rt = roots + i;
+
+    /* display_root(stderr, rt); */
+
     if(rt->k > 0){
       if(rt->isexact!=1){
         mpz_add_ui(pos_rt->numer, rt->numer, 1);
@@ -788,6 +792,11 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
       }
     }
 
+    if(pos_rt->isexact==1){
+      if(pos_rt->k < 0){
+        pos_rt->k = 0;
+      }
+    }
     //We assume precision >=0
     if(pos_rt->isexact!=1){
       rt->k = pos_rt->k;
@@ -803,6 +812,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
         mpz_neg(rt->numer, rt->numer);
       }
     }
+
     e_time += realtime() - refine_time;
     if(e_time>=step){
       refine_time = realtime();
@@ -837,6 +847,11 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
       if(mpz_sgn(tab[0])==mpz_sgn(tab[1])){
         fprintf(stderr,"BUG in refinement (sgn tab[0]=sgn tab[1] for pos. roots)");
         exit(1);
+      }
+      if(rt->isexact==1){
+        if(rt->k < 0){
+          rt->k = 0;
+        }
       }
     }
 

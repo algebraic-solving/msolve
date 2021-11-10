@@ -164,6 +164,7 @@ int core_msolve(
         );
 
 void msolve_julia(
+        void *(*mallocp) (size_t),
         int32_t *rp_ld,
         int32_t *rp_dim,
         int32_t *rp_dquot,

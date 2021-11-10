@@ -24,7 +24,8 @@
 
 #include "data.h"
 
-void free_julia_data(
+void free_f4_julia_result_data(
+        void (*freep) (void *),
         int32_t **blen, /* length of each poly in basis */
         int32_t **bexp, /* basis exponent vectors */
         void **bcf,      /* coefficients of basis elements */

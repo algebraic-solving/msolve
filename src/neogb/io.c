@@ -1004,6 +1004,7 @@ int32_t check_and_set_meta_data(
     st->nvars = nr_vars;
     /* note: prime check should be done in julia */
     st->fc    = field_char;
+
     if (st->fc == 0) {
         st->ff_bits = 0;
     } else {
@@ -1075,7 +1076,6 @@ int32_t check_and_set_meta_data(
     } else {
         st->reduce_gb = reduce_gb;
     }
-
     set_function_pointers(st);
 
     return 0;

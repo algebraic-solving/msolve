@@ -181,6 +181,23 @@ static inline data_gens_ff_t *allocate_data_gens(){
   return gens;
 }
 
+static inline void free_data_gens(data_gens_ff_t *gens){
+  for(long i = 0; i < gens->nvars; i++){
+    free(gens->vnames[i]);
+  }
+  free(gens->vnames);
+  for(long i = 0; i < 2*gens->nterms; i++){
+    mpz_clear(*(gens->mpz_cfs[i]));
+    free(gens->mpz_cfs[i]);
+  }
+  free(gens->mpz_cfs);
+  free(gens->lens);
+  free(gens->cfs);
+  free(gens->exps);
+  free(gens->random_linear_form);
+  free(gens);
+}
+
 static inline void display_term(FILE *file, int64_t ind, data_gens_ff_t *gens,
                                 int32_t **blen, int32_t *bcf, int32_t **bexp){
   if(bcf[ind] != 0 && bcf[ind] != 1){
@@ -2886,8 +2903,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
+  const uint32_t field_char = 0; /* gens->field_char; */
   const void *cfs = gens->mpz_cfs;
-  const uint32_t field_char = gens->field_char;
+
   const int mon_order = 0;
   const int32_t nr_vars = gens->nvars;
   const int32_t nr_gens = gens->ngens;
@@ -2900,12 +2918,13 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       fprintf(stderr, "Tracer only for computations over Q. Call\n");
       fprintf(stderr, "standard F4 Algorithm for computations over\n");
       fprintf(stderr, "finite fields.\n");
-      return -2;
+      /* return -2; */
   }
   len_t i;
 
   /* initialize stuff */
   stat_t *st  = initialize_statistics();
+
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
@@ -2942,8 +2961,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* sort initial elements, smallest lead term first */
   sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
           initial_input_cmp, bht);
-  remove_content_of_initial_basis(bs_qq);
 
+  remove_content_of_initial_basis(bs_qq);
   /* generate lucky prime numbers */
   generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
 
@@ -2961,16 +2980,19 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   btrace[0]  = initialize_trace();
   /* initialization of other tracers is done through duplication */
 
-  srand(time(0));
   uint32_t prime = next_prime(1<<30);
+  uint32_t primeinit;
+  srand(time(0));
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   while(is_lucky_prime_ui(prime, bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
-  uint32_t primeinit = prime;
+  primeinit = prime;
   lp->p[0] = primeinit;
-
+  if(gens->field_char){
+    lp->p[0] = gens->field_char;
+  }
   sp_matfglm_t **bmatrix = (sp_matfglm_t **)calloc(st->nthrds,
                                                   sizeof(sp_matfglm_t *));
 
@@ -3002,6 +3024,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   int success = 1;
   int squares = 1;
+
   int32_t *lmb_ori = modular_trace_learning(bmatrix, bdiv_xn, blen_gb_xn,
                                             bstart_cf_gb_xn,
 
@@ -3037,7 +3060,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpz_param->dim    = *dim_ptr;
   mpz_param->dquot  = *dquot_ptr;
 
-  if(lmb_ori == NULL || success == 0 || print_gb) {
+  if(lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
       /* print_msolve_message(stderr, 1); */
     for(int i = 0; i < st->nthrds; i++){
       /* free_trace(&btrace[i]); */
@@ -3066,6 +3089,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(lineqs_ptr);
     free(squvars);
     if(print_gb){
+      return 0;
+    }
+    if(*dim_ptr == 0 && gens->field_char){
       return 0;
     }
     if(*dim_ptr==1){
@@ -4710,7 +4736,7 @@ int real_msolve_qq(mpz_param_t mp_param,
           return 0;
         }
 
-        if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0){
+        if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
 
           mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
             for(long i = 0; i < mp_param->elim->length; i++){
@@ -4863,7 +4889,7 @@ restart:
     b     = 0;
 
     if(gens->field_char > 0){
-        if (saturate == 1) {
+        if (saturate == 1) { /* positive characteristic */
             /* timings */
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
@@ -4954,13 +4980,34 @@ restart:
             }
             return 0;
         }
-        if (normal_form == 0) {
-            b = msolve_ff_alloc(&param, bld, blen, bexp, bcf,
-                    gens, initial_hts, nr_threads, max_pairs,
-                    elim_block_len, update_ht, la_option,
-                    info_level, print_gb, files);
-            if (b == 0) {
-                //When dquot = 1 
+        /* no saturate = 0 */
+        if (normal_form == 0) {/* positive characteristic */
+
+            /* b = msolve_ff_alloc(&param, bld, blen, bexp, bcf, */
+            /*         gens, initial_hts, nr_threads, max_pairs, */
+            /*         elim_block_len, update_ht, la_option, */
+            /*         info_level, print_gb, files); */
+
+          int dim = - 2;
+          long dquot = -1;
+          b = real_msolve_qq(*mpz_paramp,
+                             &param,
+                             &dim,
+                             &dquot,
+                             nb_real_roots_ptr,
+                             real_roots_ptr,
+                             real_pts_ptr,
+                             gens,
+                             initial_hts, nr_threads, max_pairs,
+                             elim_block_len, update_ht,
+                             la_option, info_level, print_gb,
+                             generate_pbm, precision, files, round, get_param);
+          if(print_gb){
+            return 0;
+          }
+
+          if (b == 0 && gens->field_char == 0) {
+                //When dquot = 1
                 if(files->out_file != NULL){
                     FILE *ofile = fopen(files->out_file, "a");
                     display_fglm_param_maple(ofile, param);
@@ -4969,6 +5016,10 @@ restart:
                 else{
                     display_fglm_param_maple(stdout, param);
                 }
+            }
+            if (b == 0 && gens->field_char > 0) {
+              fprintf(stderr, "SOME DATA SHOULD BE DISPLAYED HERE\n");
+              return 0;
             }
             if (b == 1) {
                 free(bld);
@@ -5025,6 +5076,7 @@ restart:
                 if(b==-1) b = 0;
             }
         } else {
+          /* normal_form is 1 */
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;
             bs_t *tbr   = NULL;
@@ -5196,8 +5248,8 @@ restart:
         }
         return 0;
     }
-    else{
-        if (elim_block_len > 0) {
+    else{/* characteristic is 0 */
+      if (elim_block_len > 0) { /* characteristic is 0 */
             /* timings */
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
@@ -5355,7 +5407,8 @@ restart:
             /* } */
             return 0;
         }
-        if (saturate == 1) {
+      /* characteristic is 0 and elim_block = 0 */
+      if (saturate == 1) {       /* characteristic is 0 and elim_block = 0 */
             /* timings */
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
@@ -5520,7 +5573,7 @@ restart:
                 }
             /* } */
             return 0;
-        } else {
+      } else {       /* characteristic is 0 and elim_block = 0 and saturate = 0 */
             int dim = - 2;
             long dquot = -1;
 

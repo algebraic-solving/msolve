@@ -22,19 +22,22 @@
 #include "modular.h"
 
 static int minimal_traced_lm_is_equal(
-        const hm_t *lm,
+        const hm_t *lmh,
         const len_t lml,
         const bs_t *bs
         )
 {
+    printf("bs->lml %u | trace->lml %u\n", bs->lml, lml);
     if (bs->lml != lml) {
         return 0;
     }
 
     len_t i = 0;
 
+    printf("bs->sz %u\n", bs->sz);
     for (i = 0; i < lml; ++i) {
-        if (bs->hm[bs->lmps[i]][OFFSET] != lm[i]) {
+        printf("lmps[%u] = %u\n", i, bs->lmps[i]);
+        if (bs->hm[bs->lmps[i]][OFFSET] != lmh[i]) {
             return 0;
         }
     }
@@ -71,7 +74,7 @@ void free_trace(
         free(tr->ts[i].tri);
         free(tr->ts[i].rri);
         free(tr->ts[i].nlms);
-        free(tr->ts[i].lm);
+        free(tr->ts[i].lmh);
     }
     for (i = 0; i < tr->ltd; ++i) {
         free(tr->td[i].tri);
@@ -1352,7 +1355,7 @@ end_sat_step:
                         if (mat->np > 0) {
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
                                     mat, bs, hcmm, st);
-                            add_minimal_lms_to_trace(trace, bs);
+                            add_minimal_lmh_to_trace(trace, bs);
                             trace->ts[trace->lts].min_deg = next_deg;
                             trace->lts++;
                         }
@@ -1605,7 +1608,7 @@ end_sat_step:
     for (; ps->ld > 0; ++round) {
         /* check if we have already computed the
          * full basis via tracer information */
-        if (minimal_traced_lm_is_equal(trace->lm, trace->lml, bs) == 1) {
+        if (minimal_traced_lm_is_equal(trace->lmh, trace->lml, bs) == 1) {
             ps->ld  = 0;
             break;
         }
@@ -1657,7 +1660,7 @@ end_sat_step:
         clean_hash_table(sht);
 
         /* saturation step starts here */
-        if (ts_ctr < trace->lts && minimal_traced_lm_is_equal(trace->ts[ts_ctr].lm, trace->ts[ts_ctr].lml, bs) == 1) {
+        if (ts_ctr < trace->lts && minimal_traced_lm_is_equal(trace->ts[ts_ctr].lmh, trace->ts[ts_ctr].lml, bs) == 1) {
             printf("saturate now!\n");
             next_deg  = trace->ts[ts_ctr].min_deg;
             ts_ctr++;

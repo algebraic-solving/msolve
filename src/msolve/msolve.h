@@ -194,4 +194,15 @@ void msolve_julia(
         const int32_t precision,
         const int32_t info_level
         );
+
+void free_msolve_julia_result_data(
+        void (*freep) (void *),
+        int32_t **res_len,
+        void **res_cf,
+        void **sols_num,
+        int32_t **sols_den,
+        const int64_t res_ld,
+        const int64_t nr_sols,
+        const int64_t field_char
+        );
 #endif

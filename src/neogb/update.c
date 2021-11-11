@@ -216,15 +216,34 @@ static void update_lm(
         stat_t *st
         )
 {
-    len_t i, k;
-    
-    const bl_t lml          = bs->lml;
+    len_t i, j, k, l;
+
     const bl_t * const lmps = bs->lmps;
 
-    k = 0;
-    if (st->mo == 0 && st->num_redundant_old < st->num_redundant) {
+    j = bs->lo;
+nextj:
+    for (; j < bs->ld; ++j) {
+        k = 0;
+        for (l = bs->lo; l < j; ++l) {
+            if (bs->red[l]) {
+                continue;
+            }
+            if (check_monomial_division(bs->hm[j][OFFSET], bs->hm[l][OFFSET], bht)) {
+                bs->red[j]  = 1;
+                st->num_redundant++;
+                j++;
+                goto nextj;
+            }
+        }
+        for (i = 0; i < bs->lml; ++i) {
+            if (bs->red[lmps[i]] == 0
+                    && check_monomial_division(bs->hm[lmps[i]][OFFSET], bs->hm[j][OFFSET], bht)) {
+                bs->red[lmps[i]]  = 1;
+                st->num_redundant++;
+            }
+        }
         const sdm_t *lms  = bs->lm;
-        for (i = 0; i < lml; ++i) {
+        for (i = 0; i < bs->lml; ++i) {
             if (bs->red[lmps[i]] == 0) {
                 bs->lm[k]   = lms[i];
                 bs->lmps[k] = lmps[i];
@@ -232,16 +251,14 @@ static void update_lm(
             }
         }
         bs->lml = k;
-    }
-    k = bs->lml;
-    for (i = bs->lo; i < bs->ld; ++i) {
-        if (bs->red[i] == 0) {
-            bs->lm[k]   = bht->hd[bs->hm[i][OFFSET]].sdm;
-            bs->lmps[k] = i;
+        k = bs->lml;
+        if (bs->red[j] == 0) {
+            bs->lm[k]   = bht->hd[bs->hm[j][OFFSET]].sdm;
+            bs->lmps[k] = j;
             k++;
         }
+        bs->lml = k;
     }
-    bs->lml = k;
     bs->lo  = bs->ld;
 
     st->num_redundant_old = st->num_redundant;

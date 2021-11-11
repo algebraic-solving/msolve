@@ -47,7 +47,8 @@ static void construct_trace(
     len_t i, j;
     len_t ctr = 0;
 
-    const len_t ld  = trace->ld;
+    printf("ltd %u | lts %u\n",  trace->ltd, trace->lts);
+    const len_t ld  = trace->ltd;
     const len_t nru = mat->nru;
     const len_t nrl = mat->nrl;
     rba_t **rba     = mat->rba;
@@ -63,7 +64,7 @@ static void construct_trace(
     }
 
     /* non zero new elements exist */
-    if (trace->ld == trace->sz) {
+    if (trace->ltd == trace->sz) {
         trace->sz *=  2;
         trace->td =   realloc(trace->td,
                 (unsigned long)trace->sz * sizeof(td_t));
@@ -160,13 +161,32 @@ static void add_lms_to_trace(
 {
     len_t i;
 
-    const len_t ld    = trace->ld;
-    trace->td[ld].lms = realloc(trace->td[ld].lms,
+    const len_t ld      = trace->ltd;
+    trace->td[ld].nlms  = realloc(trace->td[ld].nlms,
             (unsigned long)np * sizeof(hm_t));
 
-    for (i = 0; i < np; ++i) { trace->td[ld].lms[i]  = bs->hm[bs->ld + i][OFFSET];
+    for (i = 0; i < np; ++i) {
+        trace->td[ld].nlms[i]  = bs->hm[bs->ld + i][OFFSET];
     }
     trace->td[ld].nlm = np;
+}
+
+static void add_minimal_lms_to_trace(
+        trace_t *trace,
+        const bs_t * const bs
+        )
+{
+    len_t i;
+
+    const len_t ld    = trace->lts;
+    const len_t lml   = bs->lml;
+    trace->ts[ld].lm  = realloc(trace->ts[ld].lm,
+            (unsigned long)lml * sizeof(hm_t));
+
+    for (i = 0; i < lml; ++i) {
+        trace->ts[ld].lm[i]  = bs->hm[bs->lmps[i]][OFFSET];
+    }
+    trace->ts[ld].lml = lml;
 }
 
 /* 

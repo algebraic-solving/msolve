@@ -171,7 +171,7 @@ static void add_lms_to_trace(
     trace->td[ld].nlm = np;
 }
 
-static void add_minimal_lms_to_trace(
+static void add_minimal_lmh_to_trace(
         trace_t *trace,
         const bs_t * const bs
         )
@@ -180,11 +180,11 @@ static void add_minimal_lms_to_trace(
 
     const len_t ld    = trace->lts;
     const len_t lml   = bs->lml;
-    trace->ts[ld].lm  = realloc(trace->ts[ld].lm,
+    trace->ts[ld].lmh = realloc(trace->ts[ld].lmh,
             (unsigned long)lml * sizeof(hm_t));
 
     for (i = 0; i < lml; ++i) {
-        trace->ts[ld].lm[i]  = bs->hm[bs->lmps[i]][OFFSET];
+        trace->ts[ld].lmh[i]  = bs->hm[bs->lmps[i]][OFFSET];
     }
     trace->ts[ld].lml = lml;
 }

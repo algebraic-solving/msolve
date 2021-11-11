@@ -29,27 +29,26 @@ static inline void duplicate_tracer(int nthreads, trace_t **btrace){
     /* size for trace data */
     btrace[i]->sz = btrace[0]->sz;
     /* load of trace data */
-    btrace[i]->ld = btrace[0]->ld;
+    btrace[i]->ltd = btrace[0]->ltd;
     /* number of lead monomials of non-redundant elements in Gbasis */
     btrace[i]->lml = btrace[0]->lml;
 
     /* position of non redundant elements in Gbasis */
     btrace[i]->lmps = (bl_t *)calloc((unsigned long)btrace[0]->lml,
-                                     sizeof(bl_t));
+            sizeof(bl_t));
     memcpy(btrace[i]->lmps, btrace[0]->lmps,
-           (unsigned long)btrace[0]->lml * sizeof(bl_t));
+            (unsigned long)btrace[0]->lml * sizeof(bl_t));
 
     /* non-redundant lead mon. as short divmask */
     btrace[i]->lm   = (sdm_t *)calloc((unsigned long)btrace[0]->lml,
-                                      sizeof(sdm_t));
+            sizeof(sdm_t));
     memcpy(btrace[0]->lm, btrace[i]->lm,
-           (unsigned long)btrace[0]->lml * sizeof(sdm_t));
-
+            (unsigned long)btrace[0]->lml * sizeof(sdm_t));
 
     /* array of trace data per F4 round */
-    btrace[i]->td  = calloc((unsigned long)btrace[0]->ld, sizeof(td_t));
+    btrace[i]->td  = calloc((unsigned long)btrace[0]->ltd, sizeof(td_t));
 
-    for(len_t l = 0; l < btrace[0]->ld; ++l){
+    for(len_t l = 0; l < btrace[0]->ltd; ++l){
 
       btrace[i]->td[l].rld = btrace[0]->td[l].rld;
       btrace[i]->td[l].tld = btrace[0]->td[l].tld;
@@ -67,10 +66,10 @@ static inline void duplicate_tracer(int nthreads, trace_t **btrace){
         btrace[i]->td[l].tri[k] = btrace[0]->td[l].tri[k] ;
       }
 
-      btrace[i]->td[l].lms = calloc(btrace[0]->td[l].nlm,
+      btrace[i]->td[l].nlms = calloc(btrace[0]->td[l].nlm,
                                     sizeof(len_t));
       for(len_t k = 0; k < (btrace[0]->td[l].nlm); ++k){
-        btrace[i]->td[l].lms[k] = btrace[0]->td[l].lms[k];
+        btrace[i]->td[l].nlms[k] = btrace[0]->td[l].nlms[k];
       }
 
       btrace[i]->td[l].rba = (rba_t **)malloc((unsigned long)btrace[0]->td[l].tld * sizeof(rba_t *));

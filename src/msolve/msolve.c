@@ -5502,8 +5502,38 @@ restart:
                 sat_qq->lmps[k]  = k; /* fix input element in tbr */
             }
 
-            /* compute a gb for initial generators */
-            f4sat_trace_learning_phase(
+            printf("LEARNING PHASE -- PART 1\n");
+            f4sat_trace_learning_phase_1(
+                    trace,
+                    tht,
+                    bs_qq,
+                    sat_qq,
+                    &bht,
+                    st,
+                    lp->p[0]);
+
+            /* int64_t nb  = export_results_from_f4(bld, blen, bexp,
+             *         bcf, &bs, &bht, &st); */
+
+            /* timings */
+            ct1 = cputime();
+            rt1 = realtime();
+            st->overall_ctime = ct1 - ct0;
+            st->overall_rtime = rt1 - rt0;
+
+            if (st->info_level > 1) {
+                print_final_statistics(stderr, st);
+            }
+            if(info_level){
+                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+            }
+
+            prime = next_prime(1<<30);
+
+            lp->p[0]  = prime;
+
+            printf("LEARNING PHASE -- PART 2\n");
+            f4sat_trace_learning_phase_2(
                     trace,
                     tht,
                     bs_qq,

@@ -213,7 +213,27 @@ struct primes_t
     len_t ld;     /* current load of array */
 };
 
-/* represents the trace data of one step of the F4 algorithm */
+/* represents the trace data for one saturation step */
+typedef struct ts_t ts_t;
+struct ts_t
+{
+    len_t *rri;       /* reducer rows information in the format */
+                      /* basis index1, multiplier1,
+                       * basis index2, multiplier2,... */
+    len_t *tri;       /* to be reduced rows information in the format */
+                      /* basis index1, multiplier1,
+                       * basis index2, multiplier2,... */
+    hm_t *lm;         /* minimal generators of current leading ideal
+                         presented in the basis hash table */
+    len_t lml;        /* number of non-redundant elements in basis */
+    deg_t min_deg;    /* minimal degree to start saturation process */
+    hm_t *nlms;       /* hashes of new leading monomials represented */
+                      /* in basis hash table */
+    len_t rld;        /* load of reducer rows information*/
+    len_t tld;        /* load of to be reduced rows information*/
+    len_t nlm;        /* number of new leading monomials in this step */
+};
+
 typedef struct td_t td_t;
 struct td_t
 {
@@ -223,7 +243,7 @@ struct td_t
     len_t *tri;   /* to be reduced rows information in the format */
                   /* basis index1, multiplier1,
                    * basis index2, multiplier2,... */
-    hm_t *lms;    /* hashes of new leading monomials represented */
+    hm_t *nlms;   /* hashes of new leading monomials represented */
                   /* in basis hash table */
     rba_t **rba;  /* reducer binary array for each to be reduced row */
     len_t rld;    /* load of reducer rows information*/
@@ -235,11 +255,16 @@ typedef struct trace_t trace_t;
 struct trace_t
 {
     td_t *td;     /* array of trace data for each round of F4 */
-    len_t ld;     /* load of trace data */
+    ts_t *ts;     /* array of trace data for each saturation step */
+    len_t ltd;    /* load of trace data td */
+    len_t lts;    /* load of trace data ts */
     len_t sz;     /* size allocated for trace data */
-    bl_t *lmps;   /* position of non-redundant lead monomials in basis */
-    sdm_t *lm;    /* non-redundant lead monomials as short divmask */
-    bl_t lml;     /* number of lead monomials of non redundant
+    sdm_t *lm;    /* final minimal leading ideal represented as
+                     short divisor masks */
+    bl_t *lmps;   /* minimal basis geneator positions */
+    hm_t *lmh;    /* minimal basis leading monomial hashes represented
+                     in basis hash table */
+    bl_t lml;     /* final number of lead monomials of non redundant
                      elements in basis */
     len_t *rd;    /* rounds in which saturation steps lead to
                    * non-trivial kernels */

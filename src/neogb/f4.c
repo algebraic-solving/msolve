@@ -43,7 +43,7 @@ void free_f4_julia_result_data(
     }
 
     (*freep)(lens);
-    lens = NULL;
+    lens  = NULL;
     *blen = lens;
 
     /* exponent vectors */
@@ -54,13 +54,12 @@ void free_f4_julia_result_data(
 
     /* coefficients */
     if (field_char == 0) {
-        mpz_t **cfs = (mpz_t **)bcf;
-        for (i = 0; i < len; ++i) {
-            mpz_clear((*cfs)[i]);
-        }
-        (*freep)(*cfs);
-        (*freep)(cfs);
-        cfs = NULL;
+        /* mpz_t **cfs = (mpz_t **)bcf;
+         * for (i = 0; i < len; ++i) {
+         *     mpz_clear((*cfs)[i]);
+         * }
+         * (*freep)(*cfs);
+         * *cfs  = NULL; */
     } else {
         if (field_char > 0) {
             int32_t *cfs  = *((int32_t **)bcf);

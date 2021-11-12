@@ -683,3 +683,56 @@ static void generate_matrix_from_trace(
     st->symbol_ctime  +=  ct1 - ct0;
     st->symbol_rtime  +=  rt1 - rt0;
 }
+static void generate_saturation_reducer_rows_from_trace(
+        mat_t *mat,
+        const trace_t * const trace,
+        const len_t idx,
+        const bs_t * const bs,
+        stat_t *st,
+        ht_t *sht,
+        const ht_t * const bht,
+        const ht_t * const tht
+        )
+{
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    len_t i, nr;
+    hm_t *b;
+    exp_t *emul;
+    hi_t h;
+
+    ts_t ts       = trace->ts[idx];
+    mat->rr       = (hm_t **)malloc((unsigned long)ts.rld * sizeof(hm_t *));
+    hm_t **rrows  = mat->rr;
+
+    /* reducer rows, i.e. AB part */
+    i   = 0;
+    nr  = 0;
+    while (i < ts.rld) {
+        b     = bs->hm[ts.rri[i++]];
+        emul  = tht->ev[ts.rri[i]];
+        h     = tht->hd[ts.rri[i++]].val;
+
+        rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
+        sht->hd[rrows[nr][OFFSET]].idx = 2;
+        ++nr;
+
+    }
+    /* meta data for matrix */
+    mat->nru  = ts.rld/2;
+    mat->nr   = mat->sz = mat->nru + mat->nrl;
+    mat->nc   = sht->eld-1;
+
+    /* statistics */
+    st->max_sht_size  = st->max_sht_size > sht->esz ?
+        st->max_sht_size : sht->esz;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->symbol_ctime  +=  ct1 - ct0;
+    st->symbol_rtime  +=  rt1 - rt0;
+}

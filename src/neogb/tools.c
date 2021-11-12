@@ -47,7 +47,6 @@ static void construct_trace(
     len_t i, j;
     len_t ctr = 0;
 
-    printf("ltd %u | lts %u\n",  trace->ltd, trace->lts);
     const len_t ld  = trace->ltd;
     const len_t nru = mat->nru;
     const len_t nrl = mat->nrl;
@@ -151,6 +150,44 @@ static void construct_trace(
         }
     }
     free(reds);
+}
+
+/* Only trace reducer rows for saturation steps to keep
+ * multiplication of saturated elements more flexible. */
+static void construct_saturation_trace(
+        trace_t *trace,
+        len_t pos,
+        mat_t *mat
+        )
+{
+    len_t i;
+    len_t ctr = 0;
+
+    const len_t ld  = pos;
+    const len_t nru = mat->nru;
+
+    /* non zero new elements exist */
+    if (trace->lts == trace->sz) {
+        trace->sz *=  2;
+        trace->ts =   realloc(trace->ts,
+                (unsigned long)trace->sz * sizeof(ts_t));
+        memset(trace->ts+trace->sz/2, 0,
+                (unsigned long)trace->sz/2 * sizeof(ts_t));
+    }
+
+    /* construct rows to reduce with */
+    trace->ts[ld].rri  = realloc(trace->ts[ld].rri,
+            (unsigned long)nru * 2 * sizeof(len_t));
+    trace->ts[ld].rld = 2 * nru;
+
+    ctr = 0;
+    for (i = 0; i < nru; ++i) {
+        trace->ts[ld].rri[ctr++]  = mat->rr[i][BINDEX];
+        trace->ts[ld].rri[ctr++]  = mat->rr[i][MULT];
+    }
+    trace->ts[ld].rri = realloc(trace->ts[ld].rri,
+            (unsigned long)ctr * sizeof(len_t));
+    trace->ts[ld].rld = ctr;
 }
 
 static void add_lms_to_trace(

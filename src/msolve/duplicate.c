@@ -27,11 +27,11 @@ static inline void duplicate_tracer(int nthreads, trace_t **btrace){
     btrace[i]  = initialize_trace();
 
     /* size for trace data */
-    btrace[i]->sz = btrace[0]->sz;
+    btrace[i]->std  = btrace[0]->std;
     /* load of trace data */
-    btrace[i]->ltd = btrace[0]->ltd;
+    btrace[i]->ltd  = btrace[0]->ltd;
     /* number of lead monomials of non-redundant elements in Gbasis */
-    btrace[i]->lml = btrace[0]->lml;
+    btrace[i]->lml  = btrace[0]->lml;
 
     /* position of non redundant elements in Gbasis */
     btrace[i]->lmps = (bl_t *)calloc((unsigned long)btrace[0]->lml,

@@ -217,21 +217,21 @@ struct primes_t
 typedef struct ts_t ts_t;
 struct ts_t
 {
-    len_t *rri;       /* reducer rows information in the format */
-                      /* basis index1, multiplier1,
-                       * basis index2, multiplier2,... */
-    len_t *tri;       /* to be reduced rows information in the format */
-                      /* basis index1, multiplier1,
-                       * basis index2, multiplier2,... */
-    hm_t *lmh;        /* minimal generators of current leading ideal
-                         presented in the basis hash table */
-    len_t lml;        /* number of non-redundant elements in basis */
-    deg_t min_deg;    /* minimal degree to start saturation process */
-    hm_t *nlms;       /* hashes of new leading monomials represented */
-                      /* in basis hash table */
-    len_t rld;        /* load of reducer rows information*/
-    len_t tld;        /* load of to be reduced rows information*/
-    len_t nlm;        /* number of new leading monomials in this step */
+    len_t *rri;   /* reducer rows information in the format
+                   * basis index1, multiplier1,
+                   * basis index2, multiplier2,... */
+    len_t *tri;   /* to be reduced rows information in the format */
+                  /* basis index1, multiplier1,
+                   * basis index2, multiplier2,... */
+    hm_t *lmh;    /* minimal generators of current leading ideal
+                   * presented in the basis hash table */
+    len_t lml;    /* number of non-redundant elements in basis */
+    deg_t deg;    /* minimal degree to start saturation process */
+    hm_t *nlms;   /* hashes of new leading monomials represented
+                   * in basis hash table */
+    len_t rld;    /* load of reducer rows information*/
+    len_t tld;    /* load of to be reduced rows information*/
+    len_t nlm;    /* number of new leading monomials in this step */
 };
 
 typedef struct td_t td_t;
@@ -243,8 +243,8 @@ struct td_t
     len_t *tri;   /* to be reduced rows information in the format */
                   /* basis index1, multiplier1,
                    * basis index2, multiplier2,... */
-    hm_t *nlms;   /* hashes of new leading monomials represented */
-                  /* in basis hash table */
+    hm_t *nlms;   /* hashes of new leading monomials represented
+                   * in basis hash table */
     rba_t **rba;  /* reducer binary array for each to be reduced row */
     len_t rld;    /* load of reducer rows information*/
     len_t tld;    /* load of to be reduced rows information*/
@@ -258,7 +258,8 @@ struct trace_t
     ts_t *ts;     /* array of trace data for each saturation step */
     len_t ltd;    /* load of trace data td */
     len_t lts;    /* load of trace data ts */
-    len_t sz;     /* size allocated for trace data */
+    len_t std;    /* size allocated for trace data td */
+    len_t sts;    /* size allocated for trace data ts */
     sdm_t *lm;    /* final minimal leading ideal represented as
                      short divisor masks */
     bl_t *lmps;   /* minimal basis geneator positions */
@@ -268,7 +269,6 @@ struct trace_t
                      elements in basis */
     len_t *rd;    /* rounds in which saturation steps lead to
                    * non-trivial kernels */
-    deg_t *deg;   /* degree for multipliers in saturation step */
     len_t rld;    /* load of rounds stored, i.e. how often do saturate */
     len_t rsz;    /* size of rounds stored */
 };

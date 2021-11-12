@@ -63,12 +63,12 @@ static void construct_trace(
     }
 
     /* non zero new elements exist */
-    if (trace->ltd == trace->sz) {
-        trace->sz *=  2;
-        trace->td =   realloc(trace->td,
-                (unsigned long)trace->sz * sizeof(td_t));
-        memset(trace->td+trace->sz/2, 0,
-                (unsigned long)trace->sz/2 * sizeof(td_t));
+    if (trace->ltd == trace->std) {
+        trace->std  *=  2;
+        trace->td   =   realloc(trace->td,
+                (unsigned long)trace->std * sizeof(td_t));
+        memset(trace->td+trace->std/2, 0,
+                (unsigned long)trace->std/2 * sizeof(td_t));
     }
 
     const unsigned long lrba = nru / 32 + ((nru % 32) != 0);
@@ -166,14 +166,6 @@ static void construct_saturation_trace(
     const len_t ld  = pos;
     const len_t nru = mat->nru;
 
-    /* non zero new elements exist */
-    if (trace->lts == trace->sz) {
-        trace->sz *=  2;
-        trace->ts =   realloc(trace->ts,
-                (unsigned long)trace->sz * sizeof(ts_t));
-        memset(trace->ts+trace->sz/2, 0,
-                (unsigned long)trace->sz/2 * sizeof(ts_t));
-    }
 
     /* construct rows to reduce with */
     trace->ts[ld].rri  = realloc(trace->ts[ld].rri,
@@ -185,9 +177,7 @@ static void construct_saturation_trace(
         trace->ts[ld].rri[ctr++]  = mat->rr[i][BINDEX];
         trace->ts[ld].rri[ctr++]  = mat->rr[i][MULT];
     }
-    trace->ts[ld].rri = realloc(trace->ts[ld].rri,
-            (unsigned long)ctr * sizeof(len_t));
-    trace->ts[ld].rld = ctr;
+    trace->ts[ld].rld  = ctr;
 }
 
 static void add_lms_to_trace(

@@ -3460,11 +3460,6 @@ static void compute_kernel_sat_ff_32(
     rt1 = realtime();
     st->la_ctime  +=  ct1 - ct0;
     st->la_rtime  +=  rt1 - rt0;
-
-    if (st->info_level > 1) {
-        printf("%54d new kernel elements", kernel->ld);
-        fflush(stdout);
-    }
 }
 
 static void exact_sparse_linear_algebra_nf_ff_32(

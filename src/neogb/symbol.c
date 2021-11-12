@@ -683,6 +683,7 @@ static void generate_matrix_from_trace(
     st->symbol_ctime  +=  ct1 - ct0;
     st->symbol_rtime  +=  rt1 - rt0;
 }
+
 static void generate_saturation_reducer_rows_from_trace(
         mat_t *mat,
         const trace_t * const trace,

@@ -5274,7 +5274,6 @@ restart:
                 return -3;
             }
 
-            printf("fc %u, ngens %u\n", gens->field_char, gens->ngens);
             /* lucky primes */
             primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
 
@@ -5435,7 +5434,6 @@ restart:
                 return -3;
             }
 
-            printf("fc %u, ngens %u\n", gens->field_char, gens->ngens);
             /* lucky primes */
             primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
 

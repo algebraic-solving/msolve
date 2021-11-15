@@ -149,7 +149,7 @@ static void reduce_basis(
     /* do the linear algebra reduction */
     interreduce_matrix_rows(mat, bs, st);
     /* remap rows to basis elements (keeping their position in bs) */
-    convert_sparse_matrix_rows_to_basis_elements_use_sht(mat, bs, hcm, st);
+    convert_sparse_matrix_rows_to_basis_elements_use_sht(mat, bs, sht, hcm, st);
 
     /* bht becomes sht, so we do not have to convert the hash entries */
     bht   = sht;

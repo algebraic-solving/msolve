@@ -671,7 +671,7 @@ end_sat_step:
                     /* columns indices are mapped back to exponent hashes */
                     if (mat->np > 0) {
                         convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                mat, bs, hcmm, st);
+                                mat, bs, bht, hcmm, st);
                     }
                     st->nr_kernel_elts  +=  kernel->ld;
                     sat_test  = 0;

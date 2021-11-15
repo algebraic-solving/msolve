@@ -117,6 +117,8 @@ void free_basis(
         free(bs->hm);
         bs->hm  = NULL;
     }
+    free(bs->deg);
+    bs->deg = NULL;
     free(bs->lmps);
     bs->lmps  = NULL;
     free(bs->lm);
@@ -148,6 +150,7 @@ static bs_t *initialize_basis_ff_8(
     bs->lm    = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs->deg   = (deg_t *)calloc((unsigned long)bs->sz, sizeof(deg_t));
 
     return bs;
 }
@@ -171,6 +174,9 @@ static inline void check_enlarge_basis_ff_8(
         bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
         memset(bs->red+bs->ld, 0,
                 (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
+        bs->deg   = realloc(bs->deg, (unsigned long)bs->sz * sizeof(deg_t));
+        memset(bs->deg+bs->ld, 0,
+                (unsigned long)(bs->sz-bs->ld) * sizeof(deg_t));
     }
 }
 
@@ -237,6 +243,7 @@ static bs_t *initialize_basis_ff_16(
     bs->lm    = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs->deg   = (deg_t *)calloc((unsigned long)bs->sz, sizeof(deg_t));
 
     return bs;
 }
@@ -260,6 +267,9 @@ static inline void check_enlarge_basis_ff_16(
         bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
         memset(bs->red+bs->ld, 0,
                 (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
+        bs->deg   = realloc(bs->deg, (unsigned long)bs->sz * sizeof(deg_t));
+        memset(bs->deg+bs->ld, 0,
+                (unsigned long)(bs->sz-bs->ld) * sizeof(deg_t));
     }
 }
 
@@ -326,6 +336,7 @@ static bs_t *initialize_basis_ff_32(
     bs->lm    = (sdm_t *)calloc((unsigned long)bs->sz, sizeof(sdm_t));
     bs->lmps  = (bl_t *)calloc((unsigned long)bs->sz, sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs->deg   = (deg_t *)calloc((unsigned long)bs->sz, sizeof(deg_t));
 
     return bs;
 }
@@ -349,6 +360,9 @@ static inline void check_enlarge_basis_ff_32(
         bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
         memset(bs->red+bs->ld, 0,
                 (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
+        bs->deg   = realloc(bs->deg, (unsigned long)bs->sz * sizeof(deg_t));
+        memset(bs->deg+bs->ld, 0,
+                (unsigned long)(bs->sz-bs->ld) * sizeof(deg_t));
     }
 }
 
@@ -414,6 +428,7 @@ static bs_t *initialize_basis_qq(
     bs->lm    = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs->deg   = (deg_t *)calloc((unsigned long)bs->sz, sizeof(deg_t));
 
     return bs;
 }
@@ -436,6 +451,9 @@ static inline void check_enlarge_basis_qq(
         bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
         memset(bs->red+bs->ld, 0,
                 (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
+        bs->deg   = realloc(bs->deg, (unsigned long)bs->sz * sizeof(deg_t));
+        memset(bs->deg+bs->ld, 0,
+                (unsigned long)(bs->sz-bs->ld) * sizeof(deg_t));
     }
 }
 
@@ -450,25 +468,28 @@ static inline bs_t *copy_basis_mod_p_8(
     unsigned long prime = (unsigned long)st->fc;
 
     /* initialize basis */
-    bs_t *bs    = (bs_t *)malloc(sizeof(bs_t));
-    bs->lo      = gbs->lo;
-    bs->ld      = gbs->ld;
-    bs->lml     = gbs->lml;
-    bs->sz      = gbs->sz;
-    bs->mltdeg  = 0;
-    bs->cf_8    = (cf8_t **)malloc((unsigned long)bs->sz * sizeof(cf8_t *));
-    bs->cf_32    = NULL;
-    bs->cf_16   = NULL;
-    bs->cf_qq   = NULL;
-    bs->hm      = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
-    bs->lm      = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
-    bs->lmps    = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
-    bs->red     = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs_t *bs        = (bs_t *)malloc(sizeof(bs_t));
+    bs->lo          = gbs->lo;
+    bs->ld          = gbs->ld;
+    bs->lml         = gbs->lml;
+    bs->sz          = gbs->sz;
+    bs->constant    = gbs->constant;
+    bs->mltdeg      = 0;
+    bs->cf_8        = (cf8_t **)malloc((unsigned long)bs->sz * sizeof(cf8_t *));
+    bs->cf_32       = NULL;
+    bs->cf_16       = NULL;
+    bs->cf_qq       = NULL;
+    bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
+    bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
+    bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
+    bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs->deg         = (deg_t *)calloc((unsigned long)bs->sz, sizeof(deg_t));
 
     /* copy data */
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
     memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
+    memcpy(bs->deg, gbs->deg, (unsigned long)bs->sz * sizeof(deg_t));
 
     for (i = 0; i < bs->ld; ++i) {
         bs->cf_8[i]  =
@@ -510,11 +531,13 @@ static inline bs_t *copy_basis_mod_p_16(
     bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs->deg         = (deg_t *)calloc((unsigned long)bs->sz, sizeof(deg_t));
 
     /* copy data */
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
     memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
+    memcpy(bs->deg, gbs->deg, (unsigned long)bs->sz * sizeof(deg_t));
 
     for (i = 0; i < bs->ld; ++i) {
         bs->cf_16[i]  =
@@ -556,11 +579,13 @@ static inline bs_t *copy_basis_mod_p_32(
     bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    bs->deg         = (deg_t *)calloc((unsigned long)bs->sz, sizeof(deg_t));
 
     /* copy data */
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
     memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
+    memcpy(bs->deg, gbs->deg, (unsigned long)bs->sz * sizeof(deg_t));
 
     for (i = 0; i < bs->ld; ++i) {
         idx = gbs->hm[i][COEFFS];

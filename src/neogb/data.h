@@ -165,6 +165,7 @@ struct bs_t
     bl_t lml;       /* number of lead monomials of non redundant
                        elements in basis */
     int8_t *red;    /* tracks redundancy of basis elements */
+    deg_t *deg;     /* total degree of polynomials */
     hm_t **hm;      /* hashed monomials representing exponents */
     cf8_t **cf_8;   /* coefficients for finite fields (8 bit) */
     cf16_t **cf_16; /* coefficients for finite fields (16 bit) */

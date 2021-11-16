@@ -1365,7 +1365,7 @@ end_sat_step:
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
                                     mat, bs, bht, hcmm, st);
                             add_minimal_lmh_to_trace(trace, bs);
-                            trace->ts[trace->lts].deg = next_deg;
+                            trace->ts[trace->lts].deg = ii;
                             trace->lts++;
                             if (trace->lts == trace->sts) {
                                 trace->sts  *=  2;

@@ -49,15 +49,14 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 #define UNROLL  4
 /* we store some more information in the row arrays,
  * real data starts at index OFFSET */
-#define OFFSET  5         /* real data starts at OFFSET */
+#define OFFSET  6         /* real data starts at OFFSET */
 #define LENGTH  OFFSET-1  /* length of the row */
 #define PRELOOP OFFSET-2  /* length of not unrolled loop part */
 #define COEFFS  OFFSET-3  /* index of corresponding coefficient vector */
 #define MULT    OFFSET-4  /* hash of multiplier (for tracing and saturation) */
 #define BINDEX  OFFSET-5  /* basis index of element (for tracing) */
-
-#define DEG 0             /* the first entry in each exponent vector
-                           * stores the degree */
+#define DEG     OFFSET-6  /* the first entry in each exponent vector
+                           * stores the total degree of the polynomial */
 
 /* computational data */
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */
@@ -165,7 +164,6 @@ struct bs_t
     bl_t lml;       /* number of lead monomials of non redundant
                        elements in basis */
     int8_t *red;    /* tracks redundancy of basis elements */
-    deg_t *deg;     /* total degree of polynomials */
     hm_t **hm;      /* hashed monomials representing exponents */
     cf8_t **cf_8;   /* coefficients for finite fields (8 bit) */
     cf16_t **cf_16; /* coefficients for finite fields (16 bit) */

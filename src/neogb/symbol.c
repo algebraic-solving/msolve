@@ -222,9 +222,30 @@ static void select_spairs_by_minimal_degree(
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
     /* get minimal degree */
-    md  = bht->hd[ps[0].lcm].deg;
+    /* md  = bht->hd[ps[0].lcm].deg; */
+    md  = ps[0].deg;
 
     /* select pairs of this degree respecting maximal selection size mnsel */
+#if 0
+    printf("pair set sorted for symbolic preprocessing\n");
+    int pctr = 0;
+    deg_t degtest = 0;
+    for (i = 0; i < psl->ld; ++i) {
+        if (degtest != ps[i].deg) {
+            printf("%d elements\n", pctr);
+            printf("-- degree %d --\n", ps[i].deg);
+            degtest = ps[i].deg;
+            pctr = 0;
+        }
+        printf("deg %d --> ", ps[i].deg);
+        for (int jj = 0; jj < evl; ++jj) {
+            printf("%d ", bht->ev[ps[i].lcm][jj]);
+        }
+        pctr++;
+        printf("\n");
+    }
+    printf("\n");
+#endif
     for (i = 0; i < psl->ld; ++i) {
         if (bht->hd[ps[i].lcm].deg > md) {
             break;

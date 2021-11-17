@@ -71,6 +71,7 @@ static void insert_and_update_spairs(
         )
 {
     len_t i, j, l;
+    deg_t deg1, deg2;
 
     spair_t *ps = psl->p;
 
@@ -103,6 +104,14 @@ static void insert_and_update_spairs(
                 ps[pl].gen1 = i;
                 ps[pl].gen2 = bl;
                 ps[pl].lcm  = get_lcm(bs->hm[i][OFFSET], nch, bht, bht);
+                /* compute total degree of pair, not trivial if block order is chosen */
+                if (st->nev == 0) {
+                    ps[pl].deg = bht->hd[ps[pl].lcm].deg;
+                } else {
+                    deg1  = bht->hd[ps[pl].lcm].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
+                    deg2  = bht->hd[ps[pl].lcm].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
+                    ps[pl].deg = deg1 > deg2 ? deg1 : deg2;
+                }
                 bs->red[bl] = 1;
                 st->num_redundant++;
                 bs->ld++;
@@ -119,7 +128,14 @@ static void insert_and_update_spairs(
     if (check_redundancy == 1) {
         for (i = 0; i < bl; ++i) {
             plcm[i]   = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            pp[i].deg = uht->hd[plcm[i]].deg;
+            /* compute total degree of pair, not trivial if block order is chosen */
+            if (st->nev == 0) {
+                pp[i].deg = uht->hd[plcm[i]].deg;
+            } else {
+                deg1  = uht->hd[plcm[i]].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
+                deg2  = uht->hd[plcm[i]].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
+                pp[i].deg = deg1 > deg2 ? deg1 : deg2;
+            }
             if (bs->red[i] == 0) {
                 pp[i].gen1  = i;
                 pp[i].gen2  = bl;
@@ -129,7 +145,14 @@ static void insert_and_update_spairs(
     } else {
         for (i = 0; i < bl; ++i) {
             plcm[i]     =  get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            pp[i].deg   = uht->hd[plcm[i]].deg;
+            /* compute total degree of pair, not trivial if block order is chosen */
+            if (st->nev == 0) {
+                pp[i].deg = uht->hd[plcm[i]].deg;
+            } else {
+                deg1  = uht->hd[plcm[i]].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
+                deg2  = uht->hd[plcm[i]].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
+                pp[i].deg = deg1 > deg2 ? deg1 : deg2;
+            }
             pp[i].gen1  = i;
             pp[i].gen2  = bl;
             pp[i].lcm   = plcm[i];
@@ -144,9 +167,9 @@ static void insert_and_update_spairs(
     for (i = 0; i < pl; ++i) {
         j = ps[i].gen1;
         l = ps[i].gen2;
-        const int32_t m = pp[l].deg > pp[j].deg ? pp[l].deg : pp[j].deg;
+        const int32_t m = uht->hd[pp[l].lcm].deg > uht->hd[pp[j].lcm].deg ? uht->hd[pp[l].lcm].deg : uht->hd[pp[j].lcm].deg;
         if (check_monomial_division(ps[i].lcm, nch, bht)
-                && ps[i].deg > m
+                && bht->hd[ps[i].lcm].deg > m
            ) {
             ps[i].lcm = 0;
         }

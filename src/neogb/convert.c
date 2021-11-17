@@ -518,10 +518,6 @@ static void convert_sparse_matrix_rows_to_basis_elements(
                 }
             }
         }
-        bs->deg[bl+i] = deg;
-        if (deg == 0) {
-            bs->constant  = 1;
-        }
         switch (st->ff_bits) {
             case 0:
                 bs->cf_qq[bl+i] = mat->cf_qq[rows[i][COEFFS]];
@@ -539,11 +535,15 @@ static void convert_sparse_matrix_rows_to_basis_elements(
                 bs->cf_32[bl+i] = mat->cf_32[rows[i][COEFFS]];
                 break;
         }
-        rows[i][COEFFS] = bl+i;
-        bs->hm[bl+i]    = rows[i];
+        rows[i][COEFFS]   = bl+i;
+        bs->hm[bl+i]      = rows[i];
+        bs->hm[bl+i][DEG] = deg;
+        if (deg == 0) {
+            bs->constant  = 1;
+        }
 #if 0
         if (st->ff_bits == 32) {
-            printf("new element (%u): length %u | degree %d | ", bl+i, bs->hm[bl+i][LENGTH], bht->hd[bs->hm[bl+i][OFFSET]].deg);
+            printf("new element (%u): length %u | degree %d | ", bl+i, bs->hm[bl+i][LENGTH], bs->hm[bl+i][DEG]);
             int kk = 0;
             /* for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) { */
             printf("%u | ", bs->cf_32[bl+i][kk]);
@@ -605,10 +605,6 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
                 }
             }
         }
-        bs->deg[bl+i] = deg;
-        if (deg == 0) {
-            bs->constant  = 1;
-        }
         switch (st->ff_bits) {
             case 0:
                 bs->cf_qq[bl+i] = mat->cf_qq[row[COEFFS]];
@@ -626,11 +622,15 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
                 bs->cf_32[bl+i] = mat->cf_32[row[COEFFS]];
                 break;
         }
-        rows[i][COEFFS] = bl+i;
-        bs->hm[bl+i]    = rows[i];
+        rows[i][COEFFS]   = bl+i;
+        bs->hm[bl+i]      = rows[i];
+        bs->hm[bl+i][DEG] = deg;
+        if (deg == 0) {
+            bs->constant  = 1;
+        }
 #if 0
         if (st->ff_bits == 32) {
-            printf("new element (%u): length %u | degree %d | ", bl+i, bs->hm[bl+i][LENGTH], sht->hd[bs->hm[bl+i][OFFSET]].deg);
+            printf("new element (%u): length %u | degree %d | ", bl+i, bs->hm[bl+i][LENGTH], bs->hm[bl+i][DEG]);
             int kk = 0;
             /* for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) { */
             printf("%u | ", bs->cf_32[bl+i][kk]);

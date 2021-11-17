@@ -67,10 +67,13 @@ void print_initial_statistics(
     fprintf(file, "#equations             %11d\n", st->ngens);
     fprintf(file, "field characteristic   %11u\n", st->fc);
     fprintf(file, "homogeneous input?     %11d\n", st->homogeneous);
-    if (st->mo == 0) {
+    if (st->mo == 0 && st->nev == 0) {
         fprintf(file, "monomial order                 DRL\n");
     }
-    if (st->mo == 1) {
+    if (st->mo == 0 && st->nev > 0) {
+        fprintf(file, "monomial order             ELIM(%d)\n", st->nev);
+    }
+    if (st->mo == 1 && st->nev == 0) {
         fprintf(file, "monomial order                 LEX\n");
     }
     if ((st->mo != 0) && (st->mo != 1)) {

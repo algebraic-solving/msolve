@@ -210,6 +210,7 @@ static void select_spairs_by_minimal_degree(
     len_t *gens;
     exp_t *elcm, *eb;
     exp_t *etmp = bht->ev[0];
+    deg_t edeg  = 0;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -223,7 +224,10 @@ static void select_spairs_by_minimal_degree(
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
     /* get minimal degree */
     /* md  = bht->hd[ps[0].lcm].deg; */
-    md  = ps[0].deg;
+    md    = ps[0].deg;
+    /* if we do not use an elimination entry then md == edeg as
+     * well as ps[i].deg == bht->ev[ps[i].lcm].deg. */
+    edeg  = bht->ev[ps[0].lcm][0];
 
     /* select pairs of this degree respecting maximal selection size mnsel */
 #if 0
@@ -247,7 +251,7 @@ static void select_spairs_by_minimal_degree(
     printf("\n");
 #endif
     for (i = 0; i < psl->ld; ++i) {
-        if (bht->hd[ps[i].lcm].deg > md) {
+        if (ps[i].deg > md || bht->ev[ps[i].lcm][0] > edeg) {
             break;
         }
     }

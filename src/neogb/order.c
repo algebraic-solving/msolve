@@ -524,18 +524,18 @@ static int spair_cmp_drl(
 
         /* return mc; */
     }
-    if (((spair_t *)a)->gen1 < ((spair_t *)b)->gen1) {
-        return -1;
-    }
-    if (((spair_t *)a)->gen1 > ((spair_t *)b)->gen1) {
-        return 1;
-    }
-    if (((spair_t *)a)->gen2 < ((spair_t *)b)->gen2) {
-        return -1;
-    }
-    if (((spair_t *)a)->gen2 > ((spair_t *)b)->gen2) {
-        return 1;
-    }
+    /* if (((spair_t *)a)->gen1 < ((spair_t *)b)->gen1) {
+     *     return -1;
+     * }
+     * if (((spair_t *)a)->gen1 > ((spair_t *)b)->gen1) {
+     *     return 1;
+     * }
+     * if (((spair_t *)a)->gen2 < ((spair_t *)b)->gen2) {
+     *     return -1;
+     * }
+     * if (((spair_t *)a)->gen2 > ((spair_t *)b)->gen2) {
+     *     return 1;
+     * } */
     return 0;
 }
 

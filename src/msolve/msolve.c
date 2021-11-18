@@ -2491,6 +2491,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         if(is_empty){
             *dquot_ori = 0;
             *dim = 0;
+            print_ff_basis_data(
+                                files->out_file, "a", bs, bht, st, gens, print_gb);
             return NULL;
         }
     }
@@ -5943,7 +5945,7 @@ void msolve_julia(
     /* free parametrization */
     free(param);
     mpz_param_clear(mpz_param);
-    
+
     *n_real_sols = nb_real_roots;
 
     free(real_roots);

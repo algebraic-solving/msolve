@@ -513,7 +513,7 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
   fprintf(stderr, "RED_64 = %u\n", RED_64);
 #endif
 
-  uint32_t preinv = 2^(62) % prime;
+  uint32_t preinv = 2^(62) / prime;
   uint32_t pi1 = ((uint64_t)pow(2, 32)) / RED_64;
   uint32_t pi2 = (uint64_t)pow(2, 32) / RED_32;
 
@@ -588,7 +588,7 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
   uint32_t RED_64 = ((uint64_t)1<<63) % prime;
   RED_64 = (RED_64*2) % prime;
 
-  uint32_t preinv = 2^(62) % prime;
+  uint32_t preinv = 2^(62) / prime;
   uint32_t pi1 = ((uint64_t)pow(2, 32)) / RED_64;
   uint32_t pi2 = (uint64_t)pow(2, 32) / RED_32;
 

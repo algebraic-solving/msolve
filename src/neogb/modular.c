@@ -405,7 +405,7 @@ bs_t *f4sat_trace_application_test_phase(
 
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
-    memset(bht->ev[0], 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
+    memset(bht->ev[0], 0, (unsigned long)(bht->evl) * sizeof(exp_t));
     sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
     sat->ld = 1;
     len_t sat_deg = 0;
@@ -697,7 +697,7 @@ bs_t *f4sat_trace_application_phase(
 
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
-    memset(bht->ev[0], 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
+    memset(bht->ev[0], 0, (unsigned long)(bht->evl) * sizeof(exp_t));
     sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
     sat->ld = 1;
     len_t sat_deg = 0;
@@ -1201,7 +1201,7 @@ bs_t *f4sat_trace_learning_phase_1(
 
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
-    memset(bht->ev[0], 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
+    memset(bht->ev[0], 0, (unsigned long)(bht->evl) * sizeof(exp_t));
     sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
     sat->ld = 1;
 
@@ -1257,12 +1257,6 @@ end_sat_step:
             sat_test++;
         }
         clean_hash_table(sht);
-        /* add lead monomials to trace, stores hashes in basis hash
-         * table which is used in all upcoming F4 runs */
-        /* if (mat->np > 0) {
-         *     add_lms_to_trace(trace, bs, mat->np);
-         *     trace->ltd++;
-         * } */
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
         clear_matrix(mat);
@@ -1320,25 +1314,6 @@ end_sat_step:
                         /* printf("kernel computation "); */
                         printf("%3u  compute kernel", sat_deg);
                     }
-                    /* int ctr = 0;
-                     * for (int ii = 1; ii < sat->ld; ++ii) {
-                     *     for (int jj = 0; jj < ii; jj++) {
-                     *         if (sat->hm[ii][MULT] == sat->hm[jj][MULT]) {
-                     *             printf("MULT %d == %d\n", ii, jj);
-                     *             ctr++;
-                     *         }
-                     *     }
-                     * } */
-                    /* int ctr  = 0;
-                     * for (int ii = 0; ii<sat->ld; ++ii) {
-                     *     if (sht->hd[sat->hm[ii][OFFSET]].idx == 2) {
-                     *         sat->hm[ctr]  = sat->hm[ii];
-                     *     } else {
-                     *         free(sat->hm[ii]);
-                     *         sat->hm[ii] = NULL;
-                     *     }
-                     * }
-                     * sat->ld = ctr; */
                     convert_hashes_to_columns_sat(&hcm, mat, sat, st, sht);
                     convert_multipliers_to_columns(&hcmm, sat, st, bht);
                     sort_matrix_rows_decreasing(mat->rr, mat->nru);
@@ -1375,18 +1350,6 @@ end_sat_step:
                                         (unsigned long)trace->sts/2 * sizeof(ts_t));
                             }
                         }
-                        /* track round in which kernel computation is not trivial */
-                        /* if (trace->rld == trace->rsz) {
-                         *     trace->rsz  *=  2;
-                         *     trace->rd = realloc(
-                         *             trace->rd,
-                         *             (unsigned long)trace->rsz * sizeof(len_t));
-                         * } */
-                        /* in the application phase round counting
-                         * starts at 0, so that's OK */
-                        /* trace->rd[trace->rld]     = trace->ltd-1;
-                         * trace->deg[trace->rld++]  = ii; */
-
                         st->nr_kernel_elts  +=  kernel->ld;
                         sat_test  = 0;
                         free_kernel_coefficients(kernel);
@@ -1396,10 +1359,6 @@ end_sat_step:
                             printf("   ");
                         }
                     }
-                    /* columns indices are mapped back to exponent hashes */
-                    /* return_normal_forms_to_basis(
-                     *         mat, tbr, bht, sht, hcm, st); */
-
                     /* all rows in mat are now polynomials in the basis,
                      * so we do not need the rows anymore */
                     convert_columns_to_hashes(sat, hcm, hcmm);
@@ -1583,7 +1542,7 @@ bs_t *f4sat_trace_learning_phase_2(
 
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
-    memset(bht->ev[0], 0, (unsigned long)(bht->nv+1) * sizeof(exp_t));
+    memset(bht->ev[0], 0, (unsigned long)(bht->evl) * sizeof(exp_t));
     sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
     sat->ld = 1;
 

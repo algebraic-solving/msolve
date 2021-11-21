@@ -251,7 +251,8 @@ static void select_spairs_by_minimal_degree(
     printf("\n");
 #endif
     for (i = 0; i < psl->ld; ++i) {
-        if (ps[i].deg > md || bht->ev[ps[i].lcm][0] > edeg) {
+        if (bht->hd[ps[i].lcm].deg > bht->hd[ps[0].lcm].deg )  {
+        /* if (ps[i].deg > md || bht->ev[ps[i].lcm][0] > edeg) { */
             break;
         }
     }

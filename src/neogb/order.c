@@ -193,18 +193,18 @@ static int spair_degree_cmp(
         void *htp
         )
 {
-    const deg_t da  = ((spair_t *)a)->deg;
-    const deg_t db  = ((spair_t *)b)->deg;
+    ht_t *ht  = htp;
+    const hi_t la   = ((spair_t *)a)->lcm;
+    const hi_t lb   = ((spair_t *)b)->lcm;
+    const exp_t ea  = ht->hd[la].deg;
+    const exp_t eb  = ht->hd[lb].deg;
 
-    if (da-db != 0) {
-        return (da-db);
-    } else {
-        ht_t *ht  = htp;
-        const hi_t la   = ((spair_t *)a)->lcm;
-        const hi_t lb   = ((spair_t *)b)->lcm;
-        const exp_t ea  = ht->ev[la][0];
-        const exp_t eb  = ht->ev[lb][0];
+    if (ea-eb != 0) {
         return (ea-eb);
+    } else {
+        const deg_t da  = ((spair_t *)a)->deg;
+        const deg_t db  = ((spair_t *)b)->deg;
+        return (da - db);
     }
 }
 

@@ -47,7 +47,7 @@ static void construct_trace(
     len_t i, j;
     len_t ctr = 0;
 
-    const len_t ld  = trace->ld;
+    const len_t ld  = trace->ltd;
     const len_t nru = mat->nru;
     const len_t nrl = mat->nrl;
     rba_t **rba     = mat->rba;
@@ -63,12 +63,12 @@ static void construct_trace(
     }
 
     /* non zero new elements exist */
-    if (trace->ld == trace->sz) {
-        trace->sz *=  2;
-        trace->td =   realloc(trace->td,
-                (unsigned long)trace->sz * sizeof(td_t));
-        memset(trace->td+trace->sz/2, 0,
-                (unsigned long)trace->sz/2 * sizeof(td_t));
+    if (trace->ltd == trace->std) {
+        trace->std  *=  2;
+        trace->td   =   realloc(trace->td,
+                (unsigned long)trace->std * sizeof(td_t));
+        memset(trace->td+trace->std/2, 0,
+                (unsigned long)trace->std/2 * sizeof(td_t));
     }
 
     const unsigned long lrba = nru / 32 + ((nru % 32) != 0);
@@ -152,6 +152,34 @@ static void construct_trace(
     free(reds);
 }
 
+/* Only trace reducer rows for saturation steps to keep
+ * multiplication of saturated elements more flexible. */
+static void construct_saturation_trace(
+        trace_t *trace,
+        len_t pos,
+        mat_t *mat
+        )
+{
+    len_t i;
+    len_t ctr = 0;
+
+    const len_t ld  = pos;
+    const len_t nru = mat->nru;
+
+
+    /* construct rows to reduce with */
+    trace->ts[ld].rri  = realloc(trace->ts[ld].rri,
+            (unsigned long)nru * 2 * sizeof(len_t));
+    trace->ts[ld].rld = 2 * nru;
+
+    ctr = 0;
+    for (i = 0; i < nru; ++i) {
+        trace->ts[ld].rri[ctr++]  = mat->rr[i][BINDEX];
+        trace->ts[ld].rri[ctr++]  = mat->rr[i][MULT];
+    }
+    trace->ts[ld].rld  = ctr;
+}
+
 static void add_lms_to_trace(
         trace_t *trace,
         const bs_t * const bs,
@@ -160,13 +188,32 @@ static void add_lms_to_trace(
 {
     len_t i;
 
-    const len_t ld    = trace->ld;
-    trace->td[ld].lms = realloc(trace->td[ld].lms,
+    const len_t ld      = trace->ltd;
+    trace->td[ld].nlms  = realloc(trace->td[ld].nlms,
             (unsigned long)np * sizeof(hm_t));
 
-    for (i = 0; i < np; ++i) { trace->td[ld].lms[i]  = bs->hm[bs->ld + i][OFFSET];
+    for (i = 0; i < np; ++i) {
+        trace->td[ld].nlms[i]  = bs->hm[bs->ld + i][OFFSET];
     }
     trace->td[ld].nlm = np;
+}
+
+static void add_minimal_lmh_to_trace(
+        trace_t *trace,
+        const bs_t * const bs
+        )
+{
+    len_t i;
+
+    const len_t ld    = trace->lts;
+    const len_t lml   = bs->lml;
+    trace->ts[ld].lmh = realloc(trace->ts[ld].lmh,
+            (unsigned long)lml * sizeof(hm_t));
+
+    for (i = 0; i < lml; ++i) {
+        trace->ts[ld].lmh[i]  = bs->hm[bs->lmps[i]][OFFSET];
+    }
+    trace->ts[ld].lml = lml;
 }
 
 /* 

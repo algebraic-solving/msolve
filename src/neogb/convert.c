@@ -491,7 +491,8 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         stat_t *st
         )
 {
-    len_t i;
+    len_t i, j;
+    deg_t deg;
 
     const len_t bl  = bs->ld;
     const len_t np  = mat->np;
@@ -506,103 +507,54 @@ static void convert_sparse_matrix_rows_to_basis_elements(
 
     hm_t **rows = mat->tr;
 
-    switch (st->ff_bits) {
-        case 0:
-            for (i = 0; i < np; ++i) {
-                insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
-                    bs->constant  = 1;
+    for (i = 0; i < np; ++i) {
+        insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
+        deg = bht->hd[rows[i][OFFSET]].deg;
+        if (st->nev > 0) {
+            const len_t len = rows[i][LENGTH]+OFFSET;
+            for (j = OFFSET+1; j < len; ++j) {
+                if (deg < bht->hd[rows[i][j]].deg) {
+                    deg = bht->hd[rows[i][j]].deg;
                 }
+            }
+        }
+        switch (st->ff_bits) {
+            case 0:
                 bs->cf_qq[bl+i] = mat->cf_qq[rows[i][COEFFS]];
-
-                rows[i][COEFFS] = bl+i;
-                bs->hm[bl+i]    = rows[i];
-            }
-            break;
-        case 8:
-            for (i = 0; i < np; ++i) {
-                insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
-                    bs->constant  = 1;
-                }
+                break;
+            case 8:
                 bs->cf_8[bl+i]  = mat->cf_8[rows[i][COEFFS]];
-                rows[i][COEFFS] = bl+i;
-                bs->hm[bl+i]    = rows[i];
-            }
-            break;
-        case 16:
-            for (i = 0; i < np; ++i) {
-                insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
-                    bs->constant  = 1;
-                }
+                break;
+            case 16:
                 bs->cf_16[bl+i] = mat->cf_16[rows[i][COEFFS]];
-                rows[i][COEFFS] = bl+i;
-                bs->hm[bl+i]    = rows[i];
-            }
-            break;
-        case 32:
-            /* int ii;
-             * long power_t;
-             * exp_t *e  = bht->ev[0]; */
-            for (i = 0; i < np; ++i) {
-                /* power_t = 0; */
-                /* printf("?bht->ev[1] = ");
-                 * for (int ii = 0; ii < bht->evl; ++ii) {
-                 *     printf("%d ", bht->ev[1][ii]);
-                 * }
-                 * printf("\n"); */
-                insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                /* printf("!bht->ev[1] = ");
-                 * for (int ii = 0; ii < bht->evl; ++ii) {
-                 *     printf("%d ", bht->ev[1][ii]);
-                 * }
-                 * printf("\n"); */
-/*                 for (ii = OFFSET; ii < rows[i][LENGTH]+OFFSET; ++ii) {
- *                     if (bht->ev[rows[i][ii]][bht->nv-1] > 0) {
- *                         power_t = power_t > bht->ev[rows[i][ii]][bht->nv-1] ? power_t : bht->ev[rows[i][ii]][bht->nv-1];
- *                     }
- *                     else {
- *                         power_t  =  -1;
- *                         break;
- *                     }
- *                 }
- *                 if (power_t != -1) {
- *                     for (ii = OFFSET; ii < rows[i][LENGTH]+OFFSET; ++ii) {
- *                         memcpy(e, bht->ev[rows[i][ii]], (unsigned long)bht->nv * sizeof(exp_t));
- *                         e[bht->nv-1] -= power_t;
- *                         rows[i][ii] = insert_in_hash_table(e, bht);
- *
- *                     }
- *                     printf("power_t %ld\n", power_t);
- *                 } */
-                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
-                    bs->constant  = 1;
-                }
+                break;
+            case 32:
                 bs->cf_32[bl+i] = mat->cf_32[rows[i][COEFFS]];
-                rows[i][COEFFS] = bl+i;
-                bs->hm[bl+i]    = rows[i];
-                /* printf("new element (%u): length %u | ", bl+i, bs->hm[bl+i][LENGTH]);
-                 * for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) {
-                 *     printf("%u | ", bs->cf_32[bl+i][kk]);
-                 * for (int jj=0; jj < bht->evl; ++jj) {
-                 *     printf("%u ", bht->ev[bs->hm[bl+i][OFFSET+kk]][jj]);
-                 * }
-                 * printf(" || ");
-                 * }
-                 * printf("\n"); */
-            }
-            break;
-        default:
-            for (i = 0; i < np; ++i) {
-                insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
-                if (bht->ev[rows[i][OFFSET]][0] + bht->ev[rows[i][OFFSET]][bht->ebl] == 0) {
-                    bs->constant  = 1;
-                }
+                break;
+            default:
                 bs->cf_32[bl+i] = mat->cf_32[rows[i][COEFFS]];
-                rows[i][COEFFS] = bl+i;
-                bs->hm[bl+i]    = rows[i];
+                break;
+        }
+        rows[i][COEFFS]   = bl+i;
+        bs->hm[bl+i]      = rows[i];
+        bs->hm[bl+i][DEG] = deg;
+        if (deg == 0) {
+            bs->constant  = 1;
+        }
+#if 0
+        if (st->ff_bits == 32) {
+            printf("new element (%u): length %u | degree %d | ", bl+i, bs->hm[bl+i][LENGTH], bs->hm[bl+i][DEG]);
+            int kk = 0;
+            /* for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) { */
+            printf("%u | ", bs->cf_32[bl+i][kk]);
+            for (int jj=0; jj < bht->evl; ++jj) {
+                printf("%u ", bht->ev[bs->hm[bl+i][OFFSET+kk]][jj]);
             }
+            /* printf(" || ");
+             * } */
+            printf("\n");
+        }
+#endif
     }
 
     /* timings */
@@ -615,11 +567,13 @@ static void convert_sparse_matrix_rows_to_basis_elements(
 static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
         mat_t *mat,
         bs_t *bs,
+        const ht_t * const sht,
         const hi_t * const hcm,
         stat_t *st
         )
 {
     len_t i, j;
+    deg_t deg;
     hm_t *row;
 
     const len_t bl  = bs->ld;
@@ -635,66 +589,59 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
 
     hm_t **rows = mat->tr;
 
-    switch (st->ff_bits) {
-        case 0:
-            for (i = 0; i < np; ++i) {
-                row = rows[i];
-                const len_t len = rows[i][LENGTH]+OFFSET;
-                for (j = OFFSET; j < len; ++j) {
-                    row[j]  = hcm[row[j]];
+    for (i = 0; i < np; ++i) {
+        row = rows[i];
+        deg = sht->hd[hcm[rows[i][OFFSET]]].deg;
+        const len_t len = rows[i][LENGTH]+OFFSET;
+        if (st->nev ==  0) {
+            for (j = OFFSET; j < len; ++j) {
+                row[j]  = hcm[row[j]];
+            }
+        } else {
+            for (j = OFFSET; j < len; ++j) {
+                row[j]  = hcm[row[j]];
+                if (deg < sht->hd[row[j]].deg) {
+                    deg = sht->hd[row[j]].deg;
                 }
+            }
+        }
+        switch (st->ff_bits) {
+            case 0:
                 bs->cf_qq[bl+i] = mat->cf_qq[row[COEFFS]];
-                row[COEFFS]     = bl+i;
-                bs->hm[bl+i]    = row;
-            }
-            break;
-        case 8:
-            for (i = 0; i < np; ++i) {
-                row = rows[i];
-                const len_t len = rows[i][LENGTH]+OFFSET;
-                for (j = OFFSET; j < len; ++j) {
-                    row[j]  = hcm[row[j]];
-                }
+                break;
+            case 8:
                 bs->cf_8[bl+i]  = mat->cf_8[row[COEFFS]];
-                row[COEFFS]     = bl+i;
-                bs->hm[bl+i]    = row;
-            }
-            break;
-        case 16:
-            for (i = 0; i < np; ++i) {
-                row = rows[i];
-                const len_t len = rows[i][LENGTH]+OFFSET;
-                for (j = OFFSET; j < len; ++j) {
-                    row[j]  = hcm[row[j]];
-                }
+                break;
+            case 16:
                 bs->cf_16[bl+i] = mat->cf_16[row[COEFFS]];
-                row[COEFFS]     = bl+i;
-                bs->hm[bl+i]    = row;
-            }
-            break;
-        case 32:
-            for (i = 0; i < np; ++i) {
-                row = rows[i];
-                const len_t len = rows[i][LENGTH]+OFFSET;
-                for (j = OFFSET; j < len; ++j) {
-                    row[j]  = hcm[row[j]];
-                }
+                break;
+            case 32:
                 bs->cf_32[bl+i] = mat->cf_32[row[COEFFS]];
-                row[COEFFS]     = bl+i;
-                bs->hm[bl+i]    = row;
-            }
-            break;
-        default:
-            for (i = 0; i < np; ++i) {
-                row = rows[i];
-                const len_t len = rows[i][LENGTH]+OFFSET;
-                for (j = OFFSET; j < len; ++j) {
-                    row[j]  = hcm[row[j]];
-                }
+                break;
+            default:
                 bs->cf_32[bl+i] = mat->cf_32[row[COEFFS]];
-                row[COEFFS]     = bl+i;
-                bs->hm[bl+i]    = row;
+                break;
+        }
+        rows[i][COEFFS]   = bl+i;
+        bs->hm[bl+i]      = rows[i];
+        bs->hm[bl+i][DEG] = deg;
+        if (deg == 0) {
+            bs->constant  = 1;
+        }
+#if 0
+        if (st->ff_bits == 32) {
+            printf("new element (%u): length %u | degree %d | ", bl+i, bs->hm[bl+i][LENGTH], bs->hm[bl+i][DEG]);
+            int kk = 0;
+            /* for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) { */
+            printf("%u | ", bs->cf_32[bl+i][kk]);
+            for (int jj=0; jj < sht->evl; ++jj) {
+                printf("%u ", sht->ev[bs->hm[bl+i][OFFSET+kk]][jj]);
             }
+            /* printf(" || ");
+             * } */
+            printf("\n");
+        }
+#endif
     }
 
     /* timings */

@@ -180,9 +180,16 @@ static void print_msolve_polynomials_ff_32(
     hm_t *hm    = NULL;
     cf32_t *cf  = NULL;
 
+<<<<<<< HEAD
     const len_t nv    = ht->nv;
     const len_t ebl   = ht->ebl;
     const len_t evl   = ht->evl;
+=======
+    const len_t nv  = ht->nv;
+    const len_t ebl = ht->ebl;
+    const len_t evl = ht->evl;
+    const len_t off = st->nev > 0 ? 2 : 1;
+>>>>>>> 6e887d0 (fixes printing of basis when elimination block orders are used)
 
     /* state context if full basis is printed */
     if (from == 0 && to == bs->lml) {
@@ -214,6 +221,7 @@ static void print_msolve_polynomials_ff_32(
                 len = bs->hm[idx][LENGTH];
                 cf  = bs->cf_32[bs->hm[idx][COEFFS]];
                 ctr = 0;
+<<<<<<< HEAD
                 k = 1;
                 if (ebl > 0) {
                     while (ctr == 1 && k < ebl) {
@@ -232,6 +240,19 @@ static void print_msolve_polynomials_ff_32(
                         fprintf(file, ",\n");
                     } else {
                         fprintf(file, "\n");
+=======
+                k = ebl+1;
+                while (ctr == 0 && k < evl) {
+                    if (ht->ev[hm[0]][k] > 0) {
+                        fprintf(file, "%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
+                        ctr++;
+                    }
+                    k++;
+                }
+                for (;k < evl; ++k) {
+                    if (ht->ev[hm[0]][k] > 0) {
+                        fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
+>>>>>>> 6e887d0 (fixes printing of basis when elimination block orders are used)
                     }
                 } else {
                     while (ctr == 1 && k < evl) {
@@ -265,16 +286,16 @@ static void print_msolve_polynomials_ff_32(
                 len = bs->hm[idx][LENGTH];
                 cf  = bs->cf_32[bs->hm[idx][COEFFS]];
                 fprintf(file, "%u", cf[0]);
-                for (k = 1; k <= nv; ++k) {
+                for (k = ebl+1; k < evl; ++k) {
                     if (ht->ev[hm[0]][k] > 0) {
-                        fprintf(file, "*%s^%u",vnames[k-1], ht->ev[hm[0]][k]);
+                        fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
                     }
                 }
                 for (j = 1; j < len; ++j) {
                     fprintf(file, "+%u", cf[j]);
-                    for (k = 1; k <= nv; ++k) {
+                    for (k = ebl+1; k < evl; ++k) {
                         if (ht->ev[hm[j]][k] > 0) {
-                            fprintf(file, "*%s^%u",vnames[k-1], ht->ev[hm[j]][k]);
+                            fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[j]][k]);
                         }
                     }
                 }

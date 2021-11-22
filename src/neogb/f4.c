@@ -149,7 +149,7 @@ static void reduce_basis(
     /* do the linear algebra reduction */
     interreduce_matrix_rows(mat, bs, st);
     /* remap rows to basis elements (keeping their position in bs) */
-    convert_sparse_matrix_rows_to_basis_elements_use_sht(mat, bs, hcm, st);
+    convert_sparse_matrix_rows_to_basis_elements_use_sht(mat, bs, sht, hcm, st);
 
     /* bht becomes sht, so we do not have to convert the hash entries */
     bht   = sht;
@@ -382,15 +382,24 @@ int core_f4(
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
 
-    len_t bsctr = 0;
-    for (int ii = 0; ii < bs->lml; ++ii) {
-        if (bht->ev[bs->hm[bs->lmps[ii]][OFFSET]][0] == 0) {
-            bsctr++;
+    if (st->nev > 0) {
+        j = 0;
+        for (i = 0; i < bs->lml; ++i) {
+            if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+                bs->lm[j]   = bs->lm[i];
+                bs->lmps[j] = bs->lmps[i];
+                ++j;
+            }
         }
+        bs->lml = j;
     }
-    if (st->nev > 0 && st->info_level > 0) {
-        printf("eliminated basis -> %u\n", bsctr);
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = 0; j < bht->evl; ++j) {
+            printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+        }
+        printf("\n");
     }
+
     *bsp  = bs;
     *bhtp = bht;
     *stp  = st;

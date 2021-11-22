@@ -222,11 +222,33 @@ static void select_spairs_by_minimal_degree(
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
     /* get minimal degree */
-    md  = bht->hd[ps[0].lcm].deg;
+    /* md  = bht->hd[ps[0].lcm].deg; */
+    md    = ps[0].deg;
 
     /* select pairs of this degree respecting maximal selection size mnsel */
+#if 0
+    printf("pair set sorted for symbolic preprocessing\n");
+    int pctr = 0;
+    deg_t degtest = 0;
     for (i = 0; i < psl->ld; ++i) {
-        if (bht->hd[ps[i].lcm].deg > md) {
+        if (degtest != ps[i].deg) {
+            printf("%d elements\n", pctr);
+            printf("-- degree %d --\n", ps[i].deg);
+            degtest = ps[i].deg;
+            pctr = 0;
+        }
+        printf("deg %d --> ", ps[i].deg);
+        for (int jj = 0; jj < evl; ++jj) {
+            printf("%d ", bht->ev[ps[i].lcm][jj]);
+        }
+        pctr++;
+        printf("\n");
+    }
+    printf("\n");
+#endif
+    for (i = 0; i < psl->ld; ++i) {
+        if (bht->hd[ps[i].lcm].deg > bht->hd[ps[0].lcm].deg )  {
+        /* if (ps[i].deg > md || bht->ev[ps[i].lcm][0] > edeg) { */
             break;
         }
     }
@@ -670,6 +692,60 @@ static void generate_matrix_from_trace(
     /* meta data for matrix */
     mat->nru  = td.rld/2;
     mat->nrl  = td.tld/2;
+    mat->nr   = mat->sz = mat->nru + mat->nrl;
+    mat->nc   = sht->eld-1;
+
+    /* statistics */
+    st->max_sht_size  = st->max_sht_size > sht->esz ?
+        st->max_sht_size : sht->esz;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->symbol_ctime  +=  ct1 - ct0;
+    st->symbol_rtime  +=  rt1 - rt0;
+}
+
+static void generate_saturation_reducer_rows_from_trace(
+        mat_t *mat,
+        const trace_t * const trace,
+        const len_t idx,
+        const bs_t * const bs,
+        stat_t *st,
+        ht_t *sht,
+        const ht_t * const bht,
+        const ht_t * const tht
+        )
+{
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    len_t i, nr;
+    hm_t *b;
+    exp_t *emul;
+    hi_t h;
+
+    ts_t ts       = trace->ts[idx];
+    mat->rr       = (hm_t **)malloc((unsigned long)ts.rld * sizeof(hm_t *));
+    hm_t **rrows  = mat->rr;
+
+    /* reducer rows, i.e. AB part */
+    i   = 0;
+    nr  = 0;
+    while (i < ts.rld) {
+        b     = bs->hm[ts.rri[i++]];
+        emul  = tht->ev[ts.rri[i]];
+        h     = tht->hd[ts.rri[i++]].val;
+
+        rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
+        sht->hd[rrows[nr][OFFSET]].idx = 2;
+        ++nr;
+
+    }
+    /* meta data for matrix */
+    mat->nru  = ts.rld/2;
     mat->nr   = mat->sz = mat->nru + mat->nrl;
     mat->nc   = sht->eld-1;
 

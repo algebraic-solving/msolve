@@ -49,15 +49,14 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 #define UNROLL  4
 /* we store some more information in the row arrays,
  * real data starts at index OFFSET */
-#define OFFSET  5         /* real data starts at OFFSET */
+#define OFFSET  6         /* real data starts at OFFSET */
 #define LENGTH  OFFSET-1  /* length of the row */
 #define PRELOOP OFFSET-2  /* length of not unrolled loop part */
 #define COEFFS  OFFSET-3  /* index of corresponding coefficient vector */
 #define MULT    OFFSET-4  /* hash of multiplier (for tracing and saturation) */
 #define BINDEX  OFFSET-5  /* basis index of element (for tracing) */
-
-#define DEG 0             /* the first entry in each exponent vector
-                           * stores the degree */
+#define DEG     OFFSET-6  /* the first entry in each exponent vector
+                           * stores the total degree of the polynomial */
 
 /* computational data */
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */
@@ -213,7 +212,27 @@ struct primes_t
     len_t ld;     /* current load of array */
 };
 
-/* represents the trace data of one step of the F4 algorithm */
+/* represents the trace data for one saturation step */
+typedef struct ts_t ts_t;
+struct ts_t
+{
+    len_t *rri;   /* reducer rows information in the format
+                   * basis index1, multiplier1,
+                   * basis index2, multiplier2,... */
+    len_t *tri;   /* to be reduced rows information in the format */
+                  /* basis index1, multiplier1,
+                   * basis index2, multiplier2,... */
+    hm_t *lmh;    /* minimal generators of current leading ideal
+                   * presented in the basis hash table */
+    len_t lml;    /* number of non-redundant elements in basis */
+    deg_t deg;    /* minimal degree to start saturation process */
+    hm_t *nlms;   /* hashes of new leading monomials represented
+                   * in basis hash table */
+    len_t rld;    /* load of reducer rows information*/
+    len_t tld;    /* load of to be reduced rows information*/
+    len_t nlm;    /* number of new leading monomials in this step */
+};
+
 typedef struct td_t td_t;
 struct td_t
 {
@@ -223,8 +242,8 @@ struct td_t
     len_t *tri;   /* to be reduced rows information in the format */
                   /* basis index1, multiplier1,
                    * basis index2, multiplier2,... */
-    hm_t *lms;    /* hashes of new leading monomials represented */
-                  /* in basis hash table */
+    hm_t *nlms;   /* hashes of new leading monomials represented
+                   * in basis hash table */
     rba_t **rba;  /* reducer binary array for each to be reduced row */
     len_t rld;    /* load of reducer rows information*/
     len_t tld;    /* load of to be reduced rows information*/
@@ -235,15 +254,20 @@ typedef struct trace_t trace_t;
 struct trace_t
 {
     td_t *td;     /* array of trace data for each round of F4 */
-    len_t ld;     /* load of trace data */
-    len_t sz;     /* size allocated for trace data */
-    bl_t *lmps;   /* position of non-redundant lead monomials in basis */
-    sdm_t *lm;    /* non-redundant lead monomials as short divmask */
-    bl_t lml;     /* number of lead monomials of non redundant
+    ts_t *ts;     /* array of trace data for each saturation step */
+    len_t ltd;    /* load of trace data td */
+    len_t lts;    /* load of trace data ts */
+    len_t std;    /* size allocated for trace data td */
+    len_t sts;    /* size allocated for trace data ts */
+    sdm_t *lm;    /* final minimal leading ideal represented as
+                     short divisor masks */
+    bl_t *lmps;   /* minimal basis geneator positions */
+    hm_t *lmh;    /* minimal basis leading monomial hashes represented
+                     in basis hash table */
+    bl_t lml;     /* final number of lead monomials of non redundant
                      elements in basis */
     len_t *rd;    /* rounds in which saturation steps lead to
                    * non-trivial kernels */
-    deg_t *deg;   /* degree for multipliers in saturation step */
     len_t rld;    /* load of rounds stored, i.e. how often do saturate */
     len_t rsz;    /* size of rounds stored */
 };

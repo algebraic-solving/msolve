@@ -326,6 +326,20 @@ bs_t *f4_trace_application_phase(
     reduce_basis_no_hash_table_switching(
             bs, mat, &hcm, bht, sht, st);
 
+    /* eliminate variables if accessible */
+    len_t j = 0;
+    if (st->nev > 0) {
+        j = 0;
+        for (i = 0; i < bs->lml; ++i) {
+            if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+                bs->lm[j]   = bs->lm[i];
+                bs->lmps[j] = bs->lmps[i];
+                ++j;
+            }
+        }
+        bs->lml = j;
+    }
+
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
@@ -1084,22 +1098,22 @@ bs_t *f4_trace_learning_phase(
      * thus we need pointers */
     reduce_basis_no_hash_table_switching(bs, mat, &hcm, bht, sht, st);
 
+    /* eliminate variables if accessible */
+    if (st->nev > 0) {
+        j = 0;
+        for (i = 0; i < bs->lml; ++i) {
+            if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+                bs->lm[j]   = bs->lm[i];
+                bs->lmps[j] = bs->lmps[i];
+                ++j;
+            }
+        }
+        bs->lml = j;
+    }
     /* get basis meta data */
     st->size_basis  = bs->lml;
-    len_t bsctr = 0;
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
-        if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
-            bsctr++;
-        }
-        /* printf("bs[%u] = ", i);
-         * for (int ii = 0; ii < bht->evl; ++ii) {
-         * printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][ii]);
-         * }
-         * printf("\n"); */
-    }
-    if (st->nev > 0 && st->info_level > 0) {
-        printf("eliminated basis -> %u\n", bsctr);
     }
     if (st->info_level > 0) {
       print_final_statistics(stderr, st);
@@ -2058,6 +2072,19 @@ bs_t *modular_f4(
         /* reduce_basis_(bs, mat, &hcm, &bht, &sht, st); */
     }
 
+    /* eliminate variables if accessible */
+    if (st->nev > 0) {
+        j = 0;
+        for (i = 0; i < bs->lml; ++i) {
+            if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+                bs->lm[j]   = bs->lm[i];
+                bs->lmps[j] = bs->lmps[i];
+                ++j;
+            }
+        }
+        bs->lml = j;
+    }
+
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
@@ -2066,20 +2093,8 @@ bs_t *modular_f4(
 
     /* get basis meta data */
     st->size_basis  = bs->lml;
-    len_t bsctr = 0;
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
-        if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
-            bsctr++;
-        }
-        /* printf("bs[%u] = ", i);
-         * for (int ii = 0; ii < bht->evl; ++ii) {
-         * printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][ii]);
-         * }
-         * printf("\n"); */
-    }
-    if (st->nev > 0 && st->info_level > 0) {
-        printf("eliminated basis -> %u\n", bsctr);
     }
     if (st->info_level > 0) {
       print_final_statistics(stderr, st);

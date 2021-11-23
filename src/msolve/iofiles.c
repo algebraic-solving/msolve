@@ -181,27 +181,31 @@ static void print_msolve_polynomials_ff_32(
     cf32_t *cf  = NULL;
 
     const len_t nv  = ht->nv;
+    const len_t ebl = ht->ebl;
+    const len_t evl = ht->evl;
+    const len_t off = st->nev > 0 ? 2 : 1;
 
     /* state context if full basis is printed */
     if (from == 0 && to == bs->lml) {
         if (lead_ideal_only != 0) {
-            fprintf(file, "Lead ideal for input in characteristic ");
+            fprintf(file, "#Lead ideal for input in characteristic ");
         } else {
-            fprintf(file, "Reduced Groebner basis for input in characteristic ");
+            fprintf(file, "#Reduced Groebner basis for input in characteristic ");
         }
         fprintf(file, "%u\n", st->fc);
-        fprintf(file, "for variable order ");
+        fprintf(file, "#for variable order ");
         for (i = 0; i < nv-1; ++i) {
             fprintf(file, "%s, ", vnames[i]);
         }
         fprintf(file, "%s\n", vnames[nv-1]);
-        fprintf(file, "w.r.t. grevlex monomial ordering\n");
-        fprintf(file, "consisting of %u elements:\n", bs->lml);
+        fprintf(file, "#w.r.t. grevlex monomial ordering\n");
+        fprintf(file, "#consisting of %u elements:\n", bs->lml);
     }
 
 
     if (lead_ideal_only != 0) {
         int ctr = 0;
+        fprintf(file, "[");
         for (i = from; i < to; ++i) {
             idx = bs->lmps[i];
             if (bs->hm[idx] == NULL) {
@@ -211,27 +215,29 @@ static void print_msolve_polynomials_ff_32(
                 len = bs->hm[idx][LENGTH];
                 cf  = bs->cf_32[bs->hm[idx][COEFFS]];
                 ctr = 0;
-                k = 1;
-                while (ctr == 0 && k <= nv) {
+                k = ebl+1;
+                while (ctr == 0 && k < evl) {
                     if (ht->ev[hm[0]][k] > 0) {
-                        fprintf(file, "%s^%u",vnames[k], ht->ev[hm[0]][k]);
+                        fprintf(file, "%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
                         ctr++;
                     }
                     k++;
                 }
-                for (;k <= nv; ++k) {
+                for (;k < evl; ++k) {
                     if (ht->ev[hm[0]][k] > 0) {
-                        fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[0]][k]);
+                        fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
                     }
                 }
                 if (i < to-1) {
+
                     fprintf(file, ",\n");
                 } else {
-                    fprintf(file, "\n");
+                    fprintf(file, "]:\n");
                 }
             }
         }
     } else {
+        fprintf(file, "[");
         for (i = from; i < to; ++i) {
             idx = bs->lmps[i];
             if (bs->hm[idx] == NULL) {
@@ -241,23 +247,23 @@ static void print_msolve_polynomials_ff_32(
                 len = bs->hm[idx][LENGTH];
                 cf  = bs->cf_32[bs->hm[idx][COEFFS]];
                 fprintf(file, "%u", cf[0]);
-                for (k = 1; k <= nv; ++k) {
+                for (k = ebl+1; k < evl; ++k) {
                     if (ht->ev[hm[0]][k] > 0) {
-                        fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[0]][k]);
+                        fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
                     }
                 }
                 for (j = 1; j < len; ++j) {
                     fprintf(file, "+%u", cf[j]);
-                    for (k = 1; k <= nv; ++k) {
+                    for (k = ebl+1; k < evl; ++k) {
                         if (ht->ev[hm[j]][k] > 0) {
-                            fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[j]][k]);
+                            fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[j]][k]);
                         }
                     }
                 }
                 if (i < to-1) {
                     fprintf(file, ",\n");
                 } else {
-                    fprintf(file, "\n");
+                    fprintf(file, "]:\n");
                 }
             }
         }

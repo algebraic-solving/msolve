@@ -5251,6 +5251,7 @@ restart:
         return 0;
     }
     else{/* characteristic is 0 */
+#if 0
       if (elim_block_len > 0) { /* characteristic is 0 */
             /* timings */
             double ct0, ct1, rt0, rt1;
@@ -5408,6 +5409,7 @@ restart:
             /* } */
             return 0;
         }
+#endif
       /* characteristic is 0 and elim_block = 0 */
       if (saturate == 1) {       /* characteristic is 0 and elim_block = 0 */
             /* timings */

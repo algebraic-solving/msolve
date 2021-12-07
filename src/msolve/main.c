@@ -356,6 +356,15 @@ int main(int argc, char **argv){
             &is_gb, &get_param, &precision, &generate_pbm, &info_level,
             files);
 
+  FILE *fh  = fopen(files->in_file, "r");
+
+  if (fh == NULL) {
+      fprintf(stderr, "File not found.\n");
+      exit(1);
+  }
+  fclose(fh);
+  fh =  NULL;
+
     /* clear out_file if given */
     if(files->out_file != NULL){
         FILE *ofile = fopen(files->out_file, "w");

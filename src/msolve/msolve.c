@@ -5253,6 +5253,7 @@ restart:
         return 0;
     }
     else{/* characteristic is 0 */
+#if 0
       if (elim_block_len > 0) { /* characteristic is 0 */
             /* timings */
             double ct0, ct1, rt0, rt1;
@@ -5276,7 +5277,6 @@ restart:
                 return -3;
             }
 
-            printf("fc %u, ngens %u\n", gens->field_char, gens->ngens);
             /* lucky primes */
             primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
 
@@ -5411,6 +5411,7 @@ restart:
             /* } */
             return 0;
         }
+#endif
       /* characteristic is 0 and elim_block = 0 */
       if (saturate == 1) {       /* characteristic is 0 and elim_block = 0 */
             /* timings */
@@ -5437,7 +5438,6 @@ restart:
                 return -3;
             }
 
-            printf("fc %u, ngens %u\n", gens->field_char, gens->ngens);
             /* lucky primes */
             primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
 
@@ -5504,8 +5504,38 @@ restart:
                 sat_qq->lmps[k]  = k; /* fix input element in tbr */
             }
 
-            /* compute a gb for initial generators */
-            f4sat_trace_learning_phase(
+            printf("LEARNING PHASE -- PART 1\n");
+            f4sat_trace_learning_phase_1(
+                    trace,
+                    tht,
+                    bs_qq,
+                    sat_qq,
+                    &bht,
+                    st,
+                    lp->p[0]);
+
+            /* int64_t nb  = export_results_from_f4(bld, blen, bexp,
+             *         bcf, &bs, &bht, &st); */
+
+            /* timings */
+            ct1 = cputime();
+            rt1 = realtime();
+            st->overall_ctime = ct1 - ct0;
+            st->overall_rtime = rt1 - rt0;
+
+            if (st->info_level > 1) {
+                print_final_statistics(stderr, st);
+            }
+            if(info_level){
+                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+            }
+
+            prime = next_prime(1<<30);
+
+            lp->p[0]  = prime;
+
+            printf("LEARNING PHASE -- PART 2\n");
+            f4sat_trace_learning_phase_2(
                     trace,
                     tht,
                     bs_qq,

@@ -193,12 +193,19 @@ static int spair_degree_cmp(
         void *htp
         )
 {
-    exp_t **ev      = ((ht_t *)htp)->ev;
-    const len_t ebl = ((ht_t *)htp)->ebl;
-    const deg_t da  = ev[((spair_t *)a)->lcm][0] + ev[((spair_t *)a)->lcm][ebl];
-    const deg_t db  = ev[((spair_t *)b)->lcm][0] + ev[((spair_t *)b)->lcm][ebl];
+    ht_t *ht  = htp;
+    const hi_t la   = ((spair_t *)a)->lcm;
+    const hi_t lb   = ((spair_t *)b)->lcm;
+    const exp_t ea  = ht->hd[la].deg;
+    const exp_t eb  = ht->hd[lb].deg;
 
-    return (da-db);
+    if (ea-eb != 0) {
+        return (ea-eb);
+    } else {
+        const deg_t da  = ((spair_t *)a)->deg;
+        const deg_t db  = ((spair_t *)b)->deg;
+        return (da - db);
+    }
 }
 
 
@@ -517,18 +524,18 @@ static int spair_cmp_drl(
 
         /* return mc; */
     }
-    if (((spair_t *)a)->gen1 < ((spair_t *)b)->gen1) {
-        return -1;
-    }
-    if (((spair_t *)a)->gen1 > ((spair_t *)b)->gen1) {
-        return 1;
-    }
-    if (((spair_t *)a)->gen2 < ((spair_t *)b)->gen2) {
-        return -1;
-    }
-    if (((spair_t *)a)->gen2 > ((spair_t *)b)->gen2) {
-        return 1;
-    }
+    /* if (((spair_t *)a)->gen1 < ((spair_t *)b)->gen1) {
+     *     return -1;
+     * }
+     * if (((spair_t *)a)->gen1 > ((spair_t *)b)->gen1) {
+     *     return 1;
+     * }
+     * if (((spair_t *)a)->gen2 < ((spair_t *)b)->gen2) {
+     *     return -1;
+     * }
+     * if (((spair_t *)a)->gen2 > ((spair_t *)b)->gen2) {
+     *     return 1;
+     * } */
     return 0;
 }
 

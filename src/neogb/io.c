@@ -152,19 +152,42 @@ static void import_julia_data_ff_8(
         /* sort terms in polynomial w.r.t. given monomial order */
         sort_terms_ff_8(&cf, &hm, ht);
     }
+    /* set total degree of input polynomials */
     deg_t deg = 0;
-    for (i = 0; i < ngens; ++i) {
-        hm  = bs->hm[i];
-        deg = ht->hd[hm[OFFSET]].deg;
-        k   = hm[LENGTH] + OFFSET;
-        for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->hd[hm[j]].deg) {
-                st->homogeneous = 0;
-                goto done;
+    if (st->nev) {
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg < ht->hd[hm[j]].deg) {
+                    deg = ht->hd[hm[j]].deg;
+                    st->homogeneous = 1;
+                }
             }
+            bs->hm[i][DEG]  = deg;
+        }
+    } else {
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
         }
     }
-    st->homogeneous = 1;
+    if (st->homogeneous == 0) {
+        /* check if input system is homogeneous or not */
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg != ht->hd[hm[j]].deg) {
+                    st->homogeneous = 0;
+                    goto done;
+                }
+            }
+        }
+        st->homogeneous = 1;
+    }
 done:
 
     /* we have to reset the ld value once we have normalized the initial
@@ -269,19 +292,42 @@ static void import_julia_data_ff_16(
         /* sort terms in polynomial w.r.t. given monomial order */
         sort_terms_ff_16(&cf, &hm, ht);
     }
+    /* set total degree of input polynomials */
     deg_t deg = 0;
-    for (i = 0; i < ngens; ++i) {
-        hm  = bs->hm[i];
-        deg = ht->hd[hm[OFFSET]].deg;
-        k   = hm[LENGTH] + OFFSET;
-        for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->hd[hm[j]].deg) {
-                st->homogeneous = 0;
-                goto done;
+    if (st->nev) {
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg < ht->hd[hm[j]].deg) {
+                    deg = ht->hd[hm[j]].deg;
+                    st->homogeneous = 1;
+                }
             }
+            bs->hm[i][DEG]  = deg;
+        }
+    } else {
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
         }
     }
-    st->homogeneous = 1;
+    if (st->homogeneous == 0) {
+        /* check if input system is homogeneous or not */
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg != ht->hd[hm[j]].deg) {
+                    st->homogeneous = 0;
+                    goto done;
+                }
+            }
+        }
+        st->homogeneous = 1;
+    }
 done:
 
     /* we have to reset the ld value once we have normalized the initial
@@ -388,19 +434,42 @@ static void import_julia_data_ff_32(
         /* sort terms in polynomial w.r.t. given monomial order */
         sort_terms_ff_32(&cf, &hm, ht);
     }
+    /* set total degree of input polynomials */
     deg_t deg = 0;
-    for (i = 0; i < ngens; ++i) {
-        hm  = bs->hm[i];
-        deg = ht->hd[hm[OFFSET]].deg;
-        k   = hm[LENGTH] + OFFSET;
-        for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->hd[hm[j]].deg) {
-                st->homogeneous = 0;
-                goto done;
+    if (st->nev) {
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg < ht->hd[hm[j]].deg) {
+                    deg = ht->hd[hm[j]].deg;
+                    st->homogeneous = 1;
+                }
             }
+            bs->hm[i][DEG]  = deg;
+        }
+    } else {
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
         }
     }
-    st->homogeneous = 1;
+    if (st->homogeneous == 0) {
+        /* check if input system is homogeneous or not */
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg != ht->hd[hm[j]].deg) {
+                    st->homogeneous = 0;
+                    goto done;
+                }
+            }
+        }
+        st->homogeneous = 1;
+    }
 done:
 
     /* we have to reset the ld value once we have normalized the initial
@@ -669,19 +738,42 @@ static void import_julia_data_qq(
         /* sort terms in polynomial w.r.t. given monomial order */
         sort_terms_qq(&cf, &hm, ht);
     }
+    /* set total degree of input polynomials */
     deg_t deg = 0;
-    for (i = 0; i < ngens; ++i) {
-        hm  = bs->hm[i];
-        deg = ht->hd[hm[OFFSET]].deg;
-        k   = hm[LENGTH] + OFFSET;
-        for (j = OFFSET+1; j < k; ++j) {
-            if (deg != ht->hd[hm[j]].deg) {
-                st->homogeneous = 0;
-                goto done;
+    if (st->nev) {
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg < ht->hd[hm[j]].deg) {
+                    deg = ht->hd[hm[j]].deg;
+                    st->homogeneous = 1;
+                }
             }
+            bs->hm[i][DEG]  = deg;
+        }
+    } else {
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
         }
     }
-    st->homogeneous = 1;
+    if (st->homogeneous == 0) {
+        /* check if input system is homogeneous or not */
+        for (i = 0; i < ngens; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg != ht->hd[hm[j]].deg) {
+                    st->homogeneous = 0;
+                    goto done;
+                }
+            }
+        }
+        st->homogeneous = 1;
+    }
 done:
 
     /* we have to reset the ld value once we have normalized the initial

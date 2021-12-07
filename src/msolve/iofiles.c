@@ -180,9 +180,10 @@ static void print_msolve_polynomials_ff_32(
     hm_t *hm    = NULL;
     cf32_t *cf  = NULL;
 
-    const len_t nv    = ht->nv;
-    const len_t ebl   = ht->ebl;
-    const len_t evl   = ht->evl;
+    const len_t nv  = ht->nv;
+    const len_t ebl = ht->ebl;
+    const len_t evl = ht->evl;
+    const len_t off = st->nev > 0 ? 2 : 1;
 
     /* state context if full basis is printed */
     if (from == 0 && to == bs->lml) {
@@ -214,48 +215,29 @@ static void print_msolve_polynomials_ff_32(
                 len = bs->hm[idx][LENGTH];
                 cf  = bs->cf_32[bs->hm[idx][COEFFS]];
                 ctr = 0;
-                k = 1;
-                if (ebl > 0) {
-                    while (ctr == 1 && k < ebl) {
-                        if (ht->ev[hm[0]][k] > 0) {
-                            fprintf(file, "%s^%u",vnames[k-1], ht->ev[hm[0]][k]);
-                            ctr++;
-                        }
-                        k++;
+                k = ebl+1;
+                while (ctr == 0 && k < evl) {
+                    if (ht->ev[hm[0]][k] > 0) {
+                        fprintf(file, "%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
+                        ctr++;
                     }
-                    for (k=ebl+1;k <= nv; ++k) {
-                        if (ht->ev[hm[0]][k] > 0) {
-                            fprintf(file, "*%s^%u",vnames[k-2], ht->ev[hm[0]][k]);
-                        }
+                    k++;
+                }
+                for (;k < evl; ++k) {
+                    if (ht->ev[hm[0]][k] > 0) {
+                        fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
                     }
-                    if (i < to-1) {
-                        fprintf(file, ",\n");
-                    } else {
-                        fprintf(file, "\n");
-                    }
+                }
+                if (i < to-1) {
+
+                    fprintf(file, ",\n");
                 } else {
-                    while (ctr == 1 && k < evl) {
-                        if (ht->ev[hm[0]][k] > 0) {
-                            fprintf(file, "%s^%u",vnames[k-1], ht->ev[hm[0]][k]);
-                            ctr++;
-                        }
-                        k++;
-                    }
-                    for (;k < evl; ++k) {
-                        if (ht->ev[hm[0]][k] > 0) {
-                            fprintf(file, "*%s^%u",vnames[k-1], ht->ev[hm[0]][k]);
-                        }
-                    }
-                    if (i < to-1) {
-                        fprintf(file, ",\n");
-                    } else {
-                        fprintf(file, "\n");
-                    }
+                    fprintf(file, "]:\n");
                 }
             }
         }
     } else {
-      fprintf(file, "[");
+        fprintf(file, "[");
         for (i = from; i < to; ++i) {
             idx = bs->lmps[i];
             if (bs->hm[idx] == NULL) {
@@ -265,16 +247,16 @@ static void print_msolve_polynomials_ff_32(
                 len = bs->hm[idx][LENGTH];
                 cf  = bs->cf_32[bs->hm[idx][COEFFS]];
                 fprintf(file, "%u", cf[0]);
-                for (k = 1; k <= nv; ++k) {
+                for (k = ebl+1; k < evl; ++k) {
                     if (ht->ev[hm[0]][k] > 0) {
-                        fprintf(file, "*%s^%u",vnames[k-1], ht->ev[hm[0]][k]);
+                        fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
                     }
                 }
                 for (j = 1; j < len; ++j) {
                     fprintf(file, "+%u", cf[j]);
-                    for (k = 1; k <= nv; ++k) {
+                    for (k = ebl+1; k < evl; ++k) {
                         if (ht->ev[hm[j]][k] > 0) {
-                            fprintf(file, "*%s^%u",vnames[k-1], ht->ev[hm[j]][k]);
+                            fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[j]][k]);
                         }
                     }
                 }
@@ -517,7 +499,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
     size_t len = 0;
     while(getdelim(&line, &len, ',', fh) != -1) {
         for (k = 0, j = 0; j < len; ++j) {
-            if (line[j] != '\n') {
+            if (line[j] != '\n' && line[j] != ' ') {
                 line[k++] = line[j];
             }
         }
@@ -755,10 +737,8 @@ static int get_coefficient_mpz_and_term_from_line(char *line, int32_t nterms,
   return 1;
 }
 
-static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep,
-                                          nelts_t all_nterms,
-                                          int32_t *nr_gens,
-                                          data_gens_ff_t *gens){
+static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep, nelts_t all_nterms,
+        int32_t *nr_gens, data_gens_ff_t *gens){
     int32_t pos = 0;
     size_t len = 0;
 
@@ -774,7 +754,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep,
     for(i = 0; i < *nr_gens; i++){
         if (getdelim(&line, &len, ',', fh) != -1) {
             for (k = 0, j = 0; j < len; ++j) {
-                if (line[j] != '\n') {
+                if (line[j] != '\n' && line[j] != ' ') {
                     line[k++] = line[j];
                 }
             }
@@ -795,10 +775,8 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep,
 }
 
 
-static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep,
-                                         nelts_t all_nterms,
-                                         int32_t *nr_gens,
-                                         data_gens_ff_t *gens){
+static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nterms,
+        int32_t *nr_gens, data_gens_ff_t *gens){
     int32_t pos = 0;
     size_t len = 0;
 
@@ -809,19 +787,19 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep,
     }
 
     gens->cfs = (int32_t*)(malloc(sizeof(int32_t) * all_nterms));
-
-    gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms));
-    for(long i = 0; i < 2 * all_nterms; i++){
-      gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));
-      mpz_init(*(gens->mpz_cfs[i]));
+    if(gens->field_char==0){
+        gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms));
+        for(long i = 0; i < 2 * all_nterms; i++){
+            gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));
+            mpz_init(*(gens->mpz_cfs[i]));
+        }
     }
-
     gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
     long i, j, k;
     for(i = 0; i < *nr_gens; i++){
         if (getdelim(&line, &len, ',', fh) != -1) {
             for (k = 0, j = 0; j < len; ++j) {
-                if (line[j] != '\n') {
+                if (line[j] != '\n' && line[j] != ' ') {
                     line[k++] = line[j];
                 }
             }
@@ -839,9 +817,6 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep,
         pos += 2 * gens->lens[i];
     }
     *linep  = line;
-    if(gens->field_char != 0){
-      fprintf(stderr, "ONE SHOULD CONVERT gens->mpz_cfs??\n");
-    }
 }
 
 
@@ -900,11 +875,10 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                             &nterms, &all_nterms);
 
   fclose(fh);
-  gens->nterms = all_nterms;
+
   fh = fopen(fn, "r");
   if(gens->field_char>0){
-    get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens);
-    /* get_coeffs_and_exponents_ff32(fh, &line, all_nterms, nr_gens, gens); */
+    get_coeffs_and_exponents_ff32(fh, &line, all_nterms, nr_gens, gens);
   }
   else{
     get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens);

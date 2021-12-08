@@ -55,8 +55,8 @@ typedef struct{
   char **vnames;
   int32_t *lens;
   int32_t *exps;
-  int32_t *cfs;
-  mpz_t **mpz_cfs;
+  int32_t *cfs;    /* int32_t coeffs */
+  mpz_t **mpz_cfs; /* mpz_t coeffs */
 } data_gens_ff_t;
 
 typedef struct{

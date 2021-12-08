@@ -593,7 +593,7 @@ static inline void get_term(const char *line, char **prev_pos,
   }
 }
 
-
+/*assumes that coeffs in file fit in word size */
 static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
                                           int32_t field_char,
                                           data_gens_ff_t *gens, int32_t pos){
@@ -875,7 +875,6 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                             &nterms, &all_nterms);
 
   fclose(fh);
-
   fh = fopen(fn, "r");
   if(gens->field_char>0){
     get_coeffs_and_exponents_ff32(fh, &line, all_nterms, nr_gens, gens);
@@ -950,8 +949,7 @@ static void display_gens_mpz(FILE *fh, data_gens_ff_t *gens){
   }
 }
 
-static inline void display_gens(char *file, data_gens_ff_t *gens){
-  FILE *fh = fopen(file, "w");
+static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
   for(int i = 0; i < gens->nvars-1; i++){
     fprintf(fh, "%s, ", gens->vnames[i]);
   }

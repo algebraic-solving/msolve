@@ -642,7 +642,7 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   param->coords = (mpz_upoly_t *)malloc(sizeof(mpz_upoly_t)*(param->nvars - 1));
   if(param->coords != NULL){
     for(long i = 0; i < param->nvars - 1; i++){
-      mpz_upoly_init(param->coords[i], bparam->elim->length - 1);
+      mpz_upoly_init(param->coords[i], MAX(1,bparam->coords[i]->length));
       param->coords[i]->length = bparam->coords[i]->length;
     }
   }
@@ -2491,6 +2491,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         if(is_empty){
             *dquot_ori = 0;
             *dim = 0;
+            print_ff_basis_data(
+                                files->out_file, "a", bs, bht, st, gens, print_gb);
             return NULL;
         }
     }
@@ -2904,8 +2906,13 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
   const uint32_t field_char = 0; /* gens->field_char; */
-  const void *cfs = gens->mpz_cfs;
-
+  const void *cfs;
+  if(gens->field_char){
+    cfs = gens->cfs;
+  }
+  else{
+    cfs = gens->mpz_cfs;
+  }
   const int mon_order = 0;
   const int32_t nr_vars = gens->nvars;
   const int32_t nr_gens = gens->ngens;
@@ -2927,7 +2934,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
-  if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
+  if (check_and_set_meta_data_trace(st, lens, exps, cfs, gens->field_char,
               mon_order, elim_block_len, nr_vars, nr_gens, ht_size,
               nr_threads, max_nr_pairs, reset_ht, la_option, reduce_gb,
               prime_start, nr_primes, pbm_file, info_level)) {
@@ -2962,9 +2969,11 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
           initial_input_cmp, bht);
 
-  remove_content_of_initial_basis(bs_qq);
-  /* generate lucky prime numbers */
-  generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
+  if(gens->field_char==0){
+    remove_content_of_initial_basis(bs_qq);
+    /* generate lucky prime numbers */
+    generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
+  }
 
   /* generate array to store modular bases */
   bs_t **bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
@@ -2984,7 +2993,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   uint32_t primeinit;
   srand(time(0));
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
-  while(is_lucky_prime_ui(prime, bs_qq)){
+  while(gens->field_char==0 && is_lucky_prime_ui(prime, bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
@@ -3148,6 +3157,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   initialize_mpz_param(tmp_mpz_param, nmod_params[0]);
   //attention les longueurs des mpz_param sont fixees par nmod_params[0]
   //dans des cas exceptionnels, ca peut augmenter avec un autre premier. 
+
 
   mpz_t modulus;
   mpz_init_set_ui(modulus, primeinit);
@@ -4739,25 +4749,25 @@ int real_msolve_qq(mpz_param_t mp_param,
         if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
 
           mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
-            for(long i = 0; i < mp_param->elim->length; i++){
-                mpz_init_set(pol[i], mp_param->elim->coeffs[i]);
-            }
-            long maxnbits = mpz_poly_max_bsize_coeffs(mp_param->elim->coeffs,
-                                                   mp_param->elim->length - 1);
-            long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
-                                                      mp_param->elim->length - 1);
-            for(int i = 0; i < mp_param->nvars - 1; i++){
-              long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
-                                        mp_param->coords[i]->length - 1);
-              maxnbits = MAX(cmax, maxnbits);
-            }
-            /* long prec = MAX(precision, 64 + 4*(LOG2(mp_param->elim->length) + LOG2(maxnbits)) ); */
-            long prec = MAX(precision, 64 + 2*(LOG2(mp_param->elim->length) + (maxnbits / 32)) );
-            if(info_level){
-              fprintf(stderr, "Real root isolation starts at precision %ld\n",
-                      prec);
-            }
-            /* if(ilog2_mpz(mp_param->elim->coeffs[0]) > ilog2_mpz(mp_param->elim->coeffs[mp_param->nsols])){ */
+          for(long i = 0; i < mp_param->elim->length; i++){
+            mpz_init_set(pol[i], mp_param->elim->coeffs[i]);
+          }
+          long maxnbits = mpz_poly_max_bsize_coeffs(mp_param->elim->coeffs,
+                                                    mp_param->elim->length - 1);
+          long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
+                                                    mp_param->elim->length - 1);
+          for(int i = 0; i < mp_param->nvars - 1; i++){
+            long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
+                                                  mp_param->coords[i]->length - 1);
+            maxnbits = MAX(cmax, maxnbits);
+          }
+          /* long prec = MAX(precision, 64 + 4*(LOG2(mp_param->elim->length) + LOG2(maxnbits)) ); */
+          long prec = MAX(precision, 64 + 2*(LOG2(mp_param->elim->length) + (maxnbits / 32)) );
+          if(info_level){
+            fprintf(stderr, "Real root isolation starts at precision %ld\n",
+                    prec);
+          }
+          /* if(ilog2_mpz(mp_param->elim->coeffs[0]) > ilog2_mpz(mp_param->elim->coeffs[mp_param->nsols])){ */
             /*   prec += (maxnbits - minnbits) / 2; */
             /* } */
             double st = realtime();
@@ -5973,7 +5983,7 @@ void msolve_julia(
     /* free parametrization */
     free(param);
     mpz_param_clear(mpz_param);
-    
+
     *n_real_sols = nb_real_roots;
 
     free(real_roots);

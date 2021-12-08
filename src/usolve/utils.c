@@ -36,7 +36,8 @@
 #define USOLVE
 #endif
 
-unsigned long int mpz_poly_max_bsize_coeffs(mpz_t *upol, unsigned long int deg){
+unsigned long int mpz_poly_max_bsize_coeffs(mpz_t *upol, long int deg){
+  if(deg<0) return -1;
   unsigned long int max = 0, bs;
   for(int i=0 ; i<=deg; i++){
     bs = ilog2_mpz(upol[i]);
@@ -216,8 +217,8 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
 }
 
 unsigned long int mpz_poly_min_bsize_coeffs(mpz_t *upol,
-                                            unsigned long int deg){
-
+                                            long int deg){
+  if(deg < 0) return 1;
   unsigned long int min = ilog2_mpz(upol[deg]), bs;
   for(long i = deg ; i >= 0; i--){
     bs = ilog2_mpz(upol[i]);

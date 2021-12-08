@@ -4776,7 +4776,9 @@ int real_msolve_qq(mpz_param_t mp_param,
                 }
                 double st = realtime();
                 pts = malloc(sizeof(real_point_t) * nb);
-                fprintf(stderr, "nbvars = %ld\n", mp_param->nvars);
+                if(info_level){
+                    fprintf(stderr, "nbvars = %ld\n", mp_param->nvars);
+                }
                 for(long i = 0; i < nb; i++){
                     real_point_init(pts[i], mp_param->nvars);
                 }
@@ -5994,4 +5996,61 @@ void msolve_julia(
         fprintf(stderr, "-------------------------------------------------\
 -----------------------------------\n");
     }
+}
+
+/* The parameters themselves are handled by julia, thus we only
+ * free what they are pointing to, julia's garbage collector then
+ * takes care of everything leftover. */
+void free_msolve_julia_result_data(
+        void (*freep) (void *),
+        int32_t **res_len,
+        void **res_cf,
+        void **sols_num,
+        int32_t **sols_den,
+        const int64_t res_ld,
+        const int64_t nr_sols,
+        const int64_t field_char
+        )
+{
+    int64_t i;
+
+    int64_t len = 0;
+
+    int32_t *lens  = *res_len;
+    for (i = 0; i < res_ld; ++i) {
+        len += (int64_t)lens[i];
+    }
+
+    (*freep)(lens);
+    lens      = NULL;
+    *res_len  = lens;
+
+    if (field_char > 0) {
+        int32_t *numerators = *(int32_t **)sols_num;
+        (*freep)(numerators);
+        numerators  = NULL;
+        int32_t *cfs= *(int32_t **)res_cf;
+        (*freep)(cfs);
+        cfs = NULL;
+    } else {
+        /* denominators only exist if char == 0 */
+        int32_t *denominators = *sols_den;
+        (*freep)(denominators);
+        denominators  = NULL;
+        *sols_den     = denominators;
+        /* mpz_t **numerators  = (mpz_t **)sols_num;
+         * for (i = 0; i < nr_sols; ++i) {
+         *     (*freep)((*numerators)[i]);
+         * }
+         * (*freep)(*numerators);
+         * *numerators = NULL;
+         * mpz_t **cfs = (mpz_t **)res_cf;
+         * for (i = 0; i < len; ++i) {
+         *     (*freep)((*cfs)[i]);
+         * }
+         * (*freep)(*cfs);
+         * *cfs  = NULL; */
+    }
+    *sols_num = NULL;
+    *res_cf   = NULL;
 }

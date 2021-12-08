@@ -21,7 +21,11 @@
 
 #include "f4.h"
 
-void free_julia_data(
+/* The parameters themselves are handled by julia, thus we only
+ * free what they are pointing to, julia's garbage collector then
+ * takes care of everything leftover. */
+void free_f4_julia_result_data(
+        void (*freep) (void *),
         int32_t **blen, /* length of each poly in basis */
         int32_t **bexp, /* basis exponent vectors */
         void **bcf,      /* coefficients of basis elements */
@@ -38,34 +42,32 @@ void free_julia_data(
         len += (int64_t)lens[i];
     }
 
-    free(lens);
-    lens = NULL;
+    (*freep)(lens);
+    lens  = NULL;
     *blen = lens;
 
     /* exponent vectors */
     int32_t *exps = *bexp;
-    free(exps);
+    (*freep)(exps);
     exps  = NULL;
     *bexp = exps;
-    bexp  = NULL;
 
     /* coefficients */
     if (field_char == 0) {
-        mpz_t **cfs = (mpz_t **)bcf;
-        for (i = 0; i < len; ++i) {
-            mpz_clear((*cfs)[i]);
-        }
-        free(*cfs);
-        free(cfs);
-        cfs = NULL;
+        /* mpz_t **cfs = (mpz_t **)bcf;
+         * for (i = 0; i < len; ++i) {
+         *     mpz_clear((*cfs)[i]);
+         * }
+         * (*freep)(*cfs);
+         * *cfs  = NULL; */
     } else {
         if (field_char > 0) {
             int32_t *cfs  = *((int32_t **)bcf);
-            free(cfs);
+            (*freep)(cfs);
             cfs = NULL;
         }
     }
-    bcf = NULL;
+    *bcf  = NULL;
 }
 
 static void clear_matrix(

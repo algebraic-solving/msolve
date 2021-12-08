@@ -380,6 +380,10 @@ int main(int argc, char **argv){
     data_gens_ff_t *gens = allocate_data_gens();
 
     get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens);
+#ifdef IODEBUG
+    display_gens(stdout, gens);
+#endif
+
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t *)*(nr_vars));
 

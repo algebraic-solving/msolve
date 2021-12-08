@@ -2906,8 +2906,13 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
   const uint32_t field_char = 0; /* gens->field_char; */
-  const void *cfs = gens->mpz_cfs;
-
+  const void *cfs;
+  if(gens->field_char){
+    cfs = gens->cfs;
+  }
+  else{
+    cfs = gens->mpz_cfs;
+  }
   const int mon_order = 0;
   const int32_t nr_vars = gens->nvars;
   const int32_t nr_gens = gens->ngens;
@@ -2929,7 +2934,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
-  if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
+  if (check_and_set_meta_data_trace(st, lens, exps, cfs, gens->field_char,
               mon_order, elim_block_len, nr_vars, nr_gens, ht_size,
               nr_threads, max_nr_pairs, reset_ht, la_option, reduce_gb,
               prime_start, nr_primes, pbm_file, info_level)) {
@@ -2964,9 +2969,11 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
           initial_input_cmp, bht);
 
-  remove_content_of_initial_basis(bs_qq);
-  /* generate lucky prime numbers */
-  generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
+  if(gens->field_char==0){
+    remove_content_of_initial_basis(bs_qq);
+    /* generate lucky prime numbers */
+    generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
+  }
 
   /* generate array to store modular bases */
   bs_t **bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));

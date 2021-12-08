@@ -1093,7 +1093,9 @@ int32_t check_and_set_meta_data(
             || lens == NULL
             || cfs == NULL
             || exps == NULL) {
-        return 1;
+      fprintf(stderr, "Problem with meta data [%d, %d, %d]\n",
+              (lens==NULL),(cfs==NULL),(exps==NULL));
+      return 1;
     }
 
     st->ngens = nr_gens;

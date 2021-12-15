@@ -21,6 +21,17 @@
 #include "../fglm/data_fglm.c"
 #include "../fglm/libfglm.h"
 
+static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
+                                           long nrows,
+                                           bs_t *bs,
+                                           ht_t *ht,
+                                           long idx, long len,
+                                           long start, long pos,
+                                           int32_t *lmb,
+                                           const int nv,
+                                           const long fc);
+
+
 static int is_pure_power(const int32_t *bexp, const int nv){
     int cnt = 0;
     for(int i = 0; i < nv; i++){
@@ -404,7 +415,133 @@ len is the length of the pol
 
  **/
 
-static inline void copy_poly_in_matrix_from_bs(sp_matfglm_t* matrix,
+static inline void copy_poly_in_matrix_from_bs_8(sp_matfglm_t* matrix,
+                                               long nrows,
+                                               bs_t *bs,
+                                               ht_t *ht,
+                                               long idx, long len,
+                                               long start, long pos,
+                                               int32_t *lmb,
+                                               const int nv,
+                                               const long fc){
+  int32_t j;
+  long end = start + pos;
+
+  long N = nrows * (matrix->ncols) - (start + 1);
+  if((len) == matrix->ncols + 1){
+    const bl_t bi = bs->lmps[idx];
+    long k = 0;
+    for(j = start + 1; j < end; j++){
+      long ctmp  = bs->cf_8[bs->hm[bi][COEFFS]][len - k - 1];
+      k++;
+      matrix->dense_mat[N + j] = fc - ctmp;
+    }
+  }
+  else{
+    if(1==0 && is_equal_exponent_dm(bs, ht, idx, 1,
+                            lmb+((end-start-2)*nv),
+                            nv)){
+      const bl_t bi = bs->lmps[idx];
+      long k = 0;
+      for(j = start + 1; j < end; j++){
+        long ctmp  = bs->cf_8[bs->hm[bi][COEFFS]][len - k];
+        k++;
+        matrix->dense_mat[N + j] = fc - ctmp; //bcf[(end + start) - j];
+      }
+    }
+    else{
+      long i;
+      long N = nrows * matrix->ncols ;
+      long k = 0;
+
+      const bl_t bi = bs->lmps[idx];
+
+      for(i = 0; i < matrix->ncols; i++){
+        int boo = is_equal_exponent_dm(bs, ht, idx, len - k - 1, //pos-1-k,
+                                       lmb + i * nv,
+                                       nv);
+        if(boo){
+            long ctmp  = bs->cf_8[bs->hm[bi][COEFFS]][len - k - 1];
+            matrix->dense_mat[N + i] = fc - ctmp; //fc - bcf[end - 1 -  k];
+            k++;
+        }
+      }
+    }
+  }
+}
+
+
+/**
+
+idx is the position in the GB
+len is the length of the pol
+
+ **/
+
+static inline void copy_poly_in_matrix_from_bs_16(sp_matfglm_t* matrix,
+                                               long nrows,
+                                               bs_t *bs,
+                                               ht_t *ht,
+                                               long idx, long len,
+                                               long start, long pos,
+                                               int32_t *lmb,
+                                               const int nv,
+                                               const long fc){
+  int32_t j;
+  long end = start + pos;
+
+  long N = nrows * (matrix->ncols) - (start + 1);
+  if((len) == matrix->ncols + 1){
+    const bl_t bi = bs->lmps[idx];
+    long k = 0;
+    for(j = start + 1; j < end; j++){
+      long ctmp  = bs->cf_16[bs->hm[bi][COEFFS]][len - k - 1];
+      k++;
+      matrix->dense_mat[N + j] = fc - ctmp;
+    }
+  }
+  else{
+    if(1==0 && is_equal_exponent_dm(bs, ht, idx, 1,
+                            lmb+((end-start-2)*nv),
+                            nv)){
+      const bl_t bi = bs->lmps[idx];
+      long k = 0;
+      for(j = start + 1; j < end; j++){
+        long ctmp  = bs->cf_16[bs->hm[bi][COEFFS]][len - k];
+        k++;
+        matrix->dense_mat[N + j] = fc - ctmp; //bcf[(end + start) - j];
+      }
+    }
+    else{
+      long i;
+      long N = nrows * matrix->ncols ;
+      long k = 0;
+
+      const bl_t bi = bs->lmps[idx];
+
+      for(i = 0; i < matrix->ncols; i++){
+        int boo = is_equal_exponent_dm(bs, ht, idx, len - k - 1, //pos-1-k,
+                                       lmb + i * nv,
+                                       nv);
+        if(boo){
+            long ctmp  = bs->cf_16[bs->hm[bi][COEFFS]][len - k - 1];
+            matrix->dense_mat[N + i] = fc - ctmp; //fc - bcf[end - 1 -  k];
+            k++;
+        }
+      }
+    }
+  }
+}
+
+
+/**
+
+idx is the position in the GB
+len is the length of the pol
+
+ **/
+
+static inline void copy_poly_in_matrix_from_bs_32(sp_matfglm_t* matrix,
                                                long nrows,
                                                bs_t *bs,
                                                ht_t *ht,

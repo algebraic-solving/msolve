@@ -27,6 +27,8 @@ void set_function_pointers(
         const stat_t *st
         );
 
+void set_ff_bits(stat_t *st, int32_t fc);
+
 int32_t check_and_set_meta_data(
         stat_t *st,
         const int32_t *lens,

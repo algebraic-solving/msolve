@@ -20,6 +20,7 @@
 
 #include "msolve.h"
 #include "duplicate.c"
+#include "linear.c"
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
@@ -2281,133 +2282,7 @@ static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
 }
 
 
-static inline void set_linear_poly(long nlins, uint32_t *lineqs, uint64_t *linvars,
-        ht_t *bht, int32_t *bexp_lm, bs_t *bs){
 
-    const int nv    = bht->nv;
-    const len_t ebl = bht->ebl;
-    const len_t evl = bht->evl;
-    len_t ctr       = 0;
-    exp_t *etmp   = (exp_t *)calloc((unsigned long)nv, sizeof(exp_t));
-    for(long i = 0; i < nlins*((nv + 1)); i++){
-        lineqs[i] = 0;
-    }
-    /* for(long i = 0; i < nlins*(bht->nv+1); i++){
-     *   lineqs[i] = 0;
-     * } */
-    int cnt = 0;
-
-    for(int i = 0; i < nv; i++){
-        if(linvars[i] != 0){
-
-            long len = bs->hm[bs->lmps[linvars[i] - 1]][LENGTH];
-
-            const bl_t bi = bs->lmps[linvars[i] - 1];
-            if(len==bht->nv+1){
-                for(long j = 0; j<len; j++){
-                    uint32_t coef = bs->cf_32[bs->hm[bi][COEFFS]][j];
-                    lineqs[cnt*(nv+1)+j] = coef;
-                }
-            }
-            else{
-                hm_t *dt = bs->hm[bi] + OFFSET;
-                for(long j = 0; j<len; j++){
-                    uint32_t coef = bs->cf_32[bs->hm[bi][COEFFS]][j];
-                    exp_t *exp = bht->ev[dt[j]];
-                    /* convert to usual exponent vector without block elimination storage structure */
-                    ctr = 0;
-                    for (int k = 1; k < ebl; ++k) {
-                        etmp[ctr++] = (int32_t)exp[k];
-                    }
-                    for (int k = ebl+1; k < evl; ++k) {
-                        etmp[ctr++] = (int32_t)exp[k];
-                    }
-
-                    int isvar = 0;
-                    for(int k = 0; k < nv; k++){
-                        if(etmp[k]==1){
-                            lineqs[cnt*(bht->nv+1)+k] = coef;
-                            isvar=1;
-                        }
-                    }
-                    if(isvar==0){
-                        lineqs[cnt*(bht->nv+1)+bht->nv] = coef;
-                    }
-                }
-                cnt++;
-            }
-        }
-    }
-    free(etmp);
-}
-
-
-static inline void check_and_set_linear_poly(long *nlins_ptr, uint64_t *linvars,
-                                             uint32_t** lineqs_ptr,
-                                             ht_t *bht, int32_t *bexp_lm, bs_t *bs){
-  long nlins = 0;
-  /*
-    la i-ieme entree de linvars est a 0 si il n'y a pas de forme lineaire dont
-    le terme dominant est vars[i].
-    Sinon, on met l'indice du polynome dans la base + 1. 
-  */
-  for(long i = 0; i < bs->lml; i++){
-    long deg = 0;
-    for(int j = 0; j < bht->nv; j++){
-      deg+=bexp_lm[i*bht->nv+j];
-    }
-
-    if(deg == 1){
-      nlins++;
-      for(int k = 0; k < bht->nv; k++){
-        if(bexp_lm[i*bht->nv+k] == 1){
-          linvars[k]=i + 1;
-        }
-      }
-    }
-  }
-
-  *nlins_ptr = nlins;
-
-  //On recupere les coefficients des formes lineaires
-  uint32_t* lineqs = calloc(nlins*(bht->nv + 1), sizeof(uint32_t));
-  int cnt = 0;
-  for(int i = 0; i < bht->nv; i++){
-    if(linvars[i] != 0){
-
-      long len = bs->hm[bs->lmps[linvars[i] - 1]][LENGTH];
-
-      const bl_t bi = bs->lmps[linvars[i] - 1];
-      if(len==bht->nv+1){
-        for(long j = 0; j<len; j++){
-          uint32_t coef = bs->cf_32[bs->hm[bi][COEFFS]][j];
-          lineqs[cnt*(bht->nv+1)+j] = coef;
-        }
-      }
-      else{
-        hm_t *dt = bs->hm[bi] + OFFSET;
-        for(long j = 0; j<len; j++){
-          uint32_t coef = bs->cf_32[bs->hm[bi][COEFFS]][j];
-          exp_t *exp = bht->ev[dt[j]];
-          int isvar = 0;
-          for(int k = 0; k < bht->nv; k++){
-            /* exponent vectors in hash table store the degree
-             * at the first position, thus "+1" */
-            if(exp[k+1]==1){
-              lineqs[cnt*(bht->nv+1)+k] = coef;
-              isvar=1;
-            }
-          }
-          if(isvar==0){
-            lineqs[cnt*(bht->nv+1)+bht->nv] = coef;
-          }
-        }
-        cnt++;
-      }
-    }
-  }
-  lineqs_ptr[0] = lineqs;
-}
 
 
 /**
@@ -2863,6 +2738,46 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
   st->nthrds = nthrds;
 }
 
+/* sets function pointer */
+void set_linear_function_pointer(int32_t fc){
+  int nbits = 0;
+  if(fc < pow(2, 8)) {
+    nbits = 8;
+  }
+  else{
+    if(fc < pow (2, 16)){
+      nbits = 16;
+    }
+    else nbits = 32;
+  }
+  switch (nbits) {
+  case 8:
+    set_linear_poly = set_linear_poly_8;
+    check_and_set_linear_poly = check_and_set_linear_poly_8;
+    copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_8;
+    break;
+  case 16:
+    set_linear_poly = set_linear_poly_16;
+    check_and_set_linear_poly = check_and_set_linear_poly_16;
+    copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_16;
+    break;
+  case 32:
+    set_linear_poly = set_linear_poly_32;
+    check_and_set_linear_poly = check_and_set_linear_poly_32;
+    copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
+    break;
+  case 0:
+    set_linear_poly = set_linear_poly_32;
+    check_and_set_linear_poly = check_and_set_linear_poly_32;
+    copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
+    break;
+  default:
+    set_linear_poly = set_linear_poly_32;
+    check_and_set_linear_poly = check_and_set_linear_poly_32;
+    copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
+  }
+}
+
 
 
 
@@ -2906,13 +2821,14 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
   const uint32_t field_char = 0; /* gens->field_char; */
-  const void *cfs;
-  if(gens->field_char){
-    cfs = gens->cfs;
-  }
-  else{
-    cfs = gens->mpz_cfs;
-  }
+  const void *cfs = gens->mpz_cfs;
+  /* if(gens->field_char){ */
+  /*   cfs = gens->cfs; */
+  /* } */
+  /* else{ */
+  /*   cfs = gens->mpz_cfs; */
+  /* } */
+  cfs = gens->mpz_cfs;
   const int mon_order = 0;
   const int32_t nr_vars = gens->nvars;
   const int32_t nr_gens = gens->ngens;
@@ -2920,13 +2836,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   const uint32_t prime_start = pow(2, 30);
   const int32_t nr_primes = nr_threads;
 
-  /* only for computations over the rationals */
-  if (field_char != 0) {
-      fprintf(stderr, "Tracer only for computations over Q. Call\n");
-      fprintf(stderr, "standard F4 Algorithm for computations over\n");
-      fprintf(stderr, "finite fields.\n");
-      /* return -2; */
-  }
   len_t i;
 
   /* initialize stuff */
@@ -2934,7 +2843,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
-  if (check_and_set_meta_data_trace(st, lens, exps, cfs, gens->field_char,
+  if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
               mon_order, elim_block_len, nr_vars, nr_gens, ht_size,
               nr_threads, max_nr_pairs, reset_ht, la_option, reduce_gb,
               prime_start, nr_primes, pbm_file, info_level)) {
@@ -2969,11 +2878,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
           initial_input_cmp, bht);
 
-  if(gens->field_char==0){
-    remove_content_of_initial_basis(bs_qq);
-    /* generate lucky prime numbers */
-    generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
-  }
+  remove_content_of_initial_basis(bs_qq);
+  /* generate lucky prime numbers */
+  generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
 
   /* generate array to store modular bases */
   bs_t **bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
@@ -3001,6 +2908,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   lp->p[0] = primeinit;
   if(gens->field_char){
     lp->p[0] = gens->field_char;
+    /* st->fc = gens->field_char; */
+    /* set_ff_bits(st, st->fc); */
   }
   sp_matfglm_t **bmatrix = (sp_matfglm_t **)calloc(st->nthrds,
                                                   sizeof(sp_matfglm_t *));
@@ -3030,6 +2939,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   uint64_t *squvars = calloc(nr_vars-1, sizeof(uint64_t));
   bsquvars[0] = squvars;
 
+  set_linear_function_pointer(gens->field_char);
 
   int success = 1;
   int squares = 1;

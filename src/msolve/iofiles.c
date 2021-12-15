@@ -787,14 +787,13 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
     }
 
     gens->cfs = (int32_t*)(malloc(sizeof(int32_t) * all_nterms));
-    fprintf(stderr, "MODIF ICI get_coeffs\n");
-    /* if(gens->field_char==0){ */
-        gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms));
-        for(long i = 0; i < 2 * all_nterms; i++){
-            gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));
-            mpz_init(*(gens->mpz_cfs[i]));
-        }
-    /* } */
+
+    gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms));
+    for(long i = 0; i < 2 * all_nterms; i++){
+      gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));
+      mpz_init(*(gens->mpz_cfs[i]));
+    }
+
     gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
     long i, j, k;
     for(i = 0; i < *nr_gens; i++){
@@ -877,27 +876,8 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
 
   fclose(fh);
   fh = fopen(fn, "r");
-  fprintf(stderr, "ICI\n");
+
   get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens);
-  /* if(gens->field_char>0){ */
-  /*   get_coeffs_and_exponents_ff32(fh, &line, all_nterms, nr_gens, gens); */
-  /* } */
-  /* else{ */
-  /*   get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens); */
-  /* } */
-  fprintf(stderr, "LA\n");
-  /* if(gens->field_char>0){ */
-  /*   gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms)); */
-  /*   for(long i = 0; i < 2 * all_nterms; i++){ */
-  /*     gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t)); */
-  /*     if(i%2==0){ */
-  /*       mpz_init_set_ui(*(gens->mpz_cfs[i]), (gens->cfs[i])); */
-  /*     } */
-  /*     else{ */
-  /*       mpz_init_set_ui(*(gens->mpz_cfs[i]), 1); */
-  /*     } */
-  /*   } */
-  /* } */
 
   free(line);
   fclose(fh);

@@ -368,6 +368,10 @@ int main(int argc, char **argv){
     /* clear out_file if given */
     if(files->out_file != NULL){
         FILE *ofile = fopen(files->out_file, "w");
+        if(ofile == NULL){
+          fprintf(stderr, "Cannot open output file\n");
+          exit(1);
+        }
         fclose(ofile);
     }
     /**

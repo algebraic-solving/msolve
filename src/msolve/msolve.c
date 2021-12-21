@@ -2334,14 +2334,13 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
 {
     double ca0, rt;
     ca0 = realtime();
-    fprintf(stderr, "LINALG OPT = %d\n", st->laopt);
+
     bs_t *bs = NULL;
     if(st->laopt > 40){
       bs = modular_f4(bs_qq, bht, st, fc);
     }
     else{
       bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
-      fprintf(stderr, "ICI\n");
     }
 
     rt = realtime()-ca0;

@@ -1116,9 +1116,6 @@ bs_t *f4_trace_learning_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    if (st->info_level > 0) {
-      print_final_statistics(stderr, st);
-    }
 
     /* timings */
     ct1 = cputime();

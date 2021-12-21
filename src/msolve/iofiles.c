@@ -912,7 +912,12 @@ static inline void display_gens_ff(FILE *fh, data_gens_ff_t *gens){
       }
     }
     pos+=gens->lens[i];
-    fprintf(fh,"\n");
+    if(i < gens->ngens-1){
+      fprintf(fh,",\n");
+    }
+    else{
+      fprintf(fh,"\n");
+    }
   }
 }
 
@@ -942,7 +947,12 @@ static void display_gens_mpz(FILE *fh, data_gens_ff_t *gens){
       }
     }
     pos+=gens->lens[i];
-    fprintf(fh,"\n");
+    if(i < gens->ngens-1){
+      fprintf(fh,",\n");
+    }
+    else{
+      fprintf(fh,"\n");
+    }
   }
 }
 

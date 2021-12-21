@@ -2334,8 +2334,16 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
 {
     double ca0, rt;
     ca0 = realtime();
+    fprintf(stderr, "LINALG OPT = %d\n", st->laopt);
+    bs_t *bs = NULL;
+    if(st->laopt > 40){
+      bs = modular_f4(bs_qq, bht, st, fc);
+    }
+    else{
+      bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
+      fprintf(stderr, "ICI\n");
+    }
 
-    bs_t *bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
     rt = realtime()-ca0;
 
     if(info_level > 1){
@@ -2688,7 +2696,12 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
     private(i) schedule(static)
   for (i = 0; i < st->nprimes; ++i){
     ca0 = realtime();
-    bs[i] = f4_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
+    if(st->laopt > 40){
+      bs[i] = modular_f4(bs_qq, bht[i], st, lp->p[i]);
+    }
+    else{
+      bs[i] = f4_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
+    }
     *stf4 = realtime()-ca0;
     /* printf("F4 trace timing %13.2f\n", *stf4); */
 
@@ -2741,14 +2754,19 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
 /* sets function pointer */
 void set_linear_function_pointer(int32_t fc){
   int nbits = 0;
-  if(fc < pow(2, 8)) {
-    nbits = 8;
+  if(fc==0){
+    nbits = 32;
   }
   else{
-    if(fc < pow (2, 16)){
-      nbits = 16;
+    if(fc < pow(2, 8)) {
+      nbits = 8;
     }
-    else nbits = 32;
+    else{
+      if(fc < pow (2, 16)){
+        nbits = 16;
+      }
+      else nbits = 32;
+    }
   }
   switch (nbits) {
   case 8:
@@ -4617,152 +4635,128 @@ int real_msolve_qq(mpz_param_t mp_param,
                    files_gb *files,
                    int round,
                    int32_t get_param){
-    if(la_option == 2 || la_option == 1){
-      /*
-       0 is comp. is ok
-       1 if comp. failed 
-       2 if more genericity is required
-       -2 if charac is > 0
-       -3 if meta data are corrupted
-       -4 if bad prime
-       */
-        int b = msolve_trace_qq(mp_param,
-                                nmod_param,
-                                dim_ptr,
-                                dquot_ptr,
-                                gens,
-                                ht_size, //initial_hts,
-                                nr_threads,
-                                max_nr_pairs,
-                                elim_block_len,
-                                reset_ht,
-                                la_option,
-                                info_level,
-                                print_gb,
-                                pbm_file,
-                                files,
-                                round);
 
-        long unsigned int nbpos = 0;
-        long unsigned int nbneg = 0;
-        interval *roots   = NULL;
-        real_point_t *pts = NULL;
+  /*
+    0 is comp. is ok
+    1 if comp. failed 
+    2 if more genericity is required
+    -2 if charac is > 0
+    -3 if meta data are corrupted
+    -4 if bad prime
+  */
+  int b = msolve_trace_qq(mp_param,
+                          nmod_param,
+                          dim_ptr,
+                          dquot_ptr,
+                          gens,
+                          ht_size, //initial_hts,
+                          nr_threads,
+                          max_nr_pairs,
+                          elim_block_len,
+                          reset_ht,
+                          la_option,
+                          info_level,
+                          print_gb,
+                          pbm_file,
+                          files,
+                          round);
 
-        if(get_param>1){
-          return b;
-        }
+  long unsigned int nbpos = 0;
+  long unsigned int nbneg = 0;
+  interval *roots   = NULL;
+  real_point_t *pts = NULL;
+  
+  if(get_param>1){
+    return b;
+  }
 
-        if(print_gb){
-          return 0;
-        }
-
-        if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
-
-          mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
-          for(long i = 0; i < mp_param->elim->length; i++){
-            mpz_init_set(pol[i], mp_param->elim->coeffs[i]);
-          }
-          long maxnbits = mpz_poly_max_bsize_coeffs(mp_param->elim->coeffs,
-                                                    mp_param->elim->length - 1);
-          long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
-                                                    mp_param->elim->length - 1);
-          for(int i = 0; i < mp_param->nvars - 1; i++){
-            long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
-                                                  mp_param->coords[i]->length - 1);
-            maxnbits = MAX(cmax, maxnbits);
-          }
-          /* long prec = MAX(precision, 64 + 4*(LOG2(mp_param->elim->length) + LOG2(maxnbits)) ); */
-          long prec = MAX(precision, 64 + 2*(LOG2(mp_param->elim->length) + (maxnbits / 32)) );
-          if(info_level){
-            fprintf(stderr, "Real root isolation starts at precision %ld\n",
-                    prec);
-          }
-          /* if(ilog2_mpz(mp_param->elim->coeffs[0]) > ilog2_mpz(mp_param->elim->coeffs[mp_param->nsols])){ */
-            /*   prec += (maxnbits - minnbits) / 2; */
-            /* } */
-            double st = realtime();
-            roots = real_roots(pol, mp_param->elim->length - 1,
-                               &nbpos, &nbneg, prec, nr_threads, info_level );
-            long nb = nbpos + nbneg;
-            double step = (realtime() - st) / (nb) * 10 * LOG2(precision);
-
-            if(info_level > 0){
-                fprintf(stderr, "Number of real roots: %ld\n", nb);
-            }
-            if(nb){
-                /* */
-                if(info_level){
-                  fprintf(stderr, "Starts real root extraction.\n");
-                }
-                double st = realtime();
-                pts = malloc(sizeof(real_point_t) * nb);
-                if(info_level){
-                    fprintf(stderr, "nbvars = %ld\n", mp_param->nvars);
-                }
-                for(long i = 0; i < nb; i++){
-                    real_point_init(pts[i], mp_param->nvars);
-                }
-
-                real_roots_param(mp_param, roots, nb, pts, precision, maxnbits,
-                                 step, info_level);
-                if(info_level){
-                    fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
-                            realtime() - st);
-                }
-
-                /* If we added a linear form for genericity reasons remove do not
-                 * return the last (new) variable in the solutions later on */
-                if (gens->linear_form_base_coef > 0) {
-                    for (long i = 0; i < nb; ++i) {
-                        pts[i]->nvars--;
-                    }
-                }
-                /* If we changed the variable order for genericity reasons we have
-                 * to rechange the entries in the solution points. */
-                if (gens->change_var_order != -1 &&
-                        gens->change_var_order != mp_param->nvars-1) {
-                    coord_t *tmp = malloc(sizeof(coord_t));
-                    int32_t lidx  = pts[0]->nvars - 1 - gens->change_var_order;
-                    for (long i = 0; i < nb; ++i) {
-                        memcpy(tmp,pts[i]->coords[0], sizeof(coord_t));
-                        memcpy(pts[i]->coords[0], pts[i]->coords[lidx], sizeof(coord_t));
-                        memcpy(pts[i]->coords[lidx], tmp, sizeof(coord_t));
-                    }
-                    free(tmp);
-                }
-            }
-
-            for(long i = 0; i < mp_param->elim->length; i++){
-                mpz_clear(pol[i]);
-            }
-            free(pol);
-            *real_roots_ptr     = roots;
-            *nb_real_roots_ptr  = nb;
-            *real_pts_ptr       = pts;
-        }
-        return b;
-    }
-    else{
-        int b = msolve_probabilistic_qq(mp_param,
-                                        nmod_param,
-                                        dim_ptr,
-                                        dquot_ptr,
-                                        gens,
-                                        ht_size, //initial_hts,
-                                        nr_threads,
-                                        max_nr_pairs,
-                                        elim_block_len,
-                                        reset_ht,
-                                        la_option,
-                                        info_level,
-                                        print_gb,
-                                        pbm_file,
-                                        files,
-                                        round);
-        return b;
-    }
+  if(print_gb){
     return 0;
+  }
+
+  if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
+    
+    mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
+    for(long i = 0; i < mp_param->elim->length; i++){
+      mpz_init_set(pol[i], mp_param->elim->coeffs[i]);
+    }
+    long maxnbits = mpz_poly_max_bsize_coeffs(mp_param->elim->coeffs,
+                                              mp_param->elim->length - 1);
+    long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
+                                              mp_param->elim->length - 1);
+    for(int i = 0; i < mp_param->nvars - 1; i++){
+      long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
+                                            mp_param->coords[i]->length - 1);
+      maxnbits = MAX(cmax, maxnbits);
+    }
+    long prec = MAX(precision, 64 + 2*(LOG2(mp_param->elim->length) + (maxnbits / 32)) );
+    if(info_level){
+      fprintf(stderr, "Real root isolation starts at precision %ld\n",
+              prec);
+    }
+    double st = realtime();
+    roots = real_roots(pol, mp_param->elim->length - 1,
+                       &nbpos, &nbneg, prec, nr_threads, info_level );
+    long nb = nbpos + nbneg;
+    double step = (realtime() - st) / (nb) * 10 * LOG2(precision);
+
+    if(info_level > 0){
+      fprintf(stderr, "Number of real roots: %ld\n", nb);
+    }
+    if(nb){
+      /* */
+      if(info_level){
+        fprintf(stderr, "Starts real root extraction.\n");
+      }
+      double st = realtime();
+      pts = malloc(sizeof(real_point_t) * nb);
+      if(info_level){
+        fprintf(stderr, "nbvars = %ld\n", mp_param->nvars);
+      }
+      for(long i = 0; i < nb; i++){
+        real_point_init(pts[i], mp_param->nvars);
+      }
+
+      real_roots_param(mp_param, roots, nb, pts, precision, maxnbits,
+                       step, info_level);
+      if(info_level){
+        fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
+                realtime() - st);
+      }
+
+      /* If we added a linear form for genericity reasons remove do not
+       * return the last (new) variable in the solutions later on */
+      if (gens->linear_form_base_coef > 0) {
+        for (long i = 0; i < nb; ++i) {
+          pts[i]->nvars--;
+        }
+      }
+      /* If we changed the variable order for genericity reasons we have
+       * to rechange the entries in the solution points. */
+      if (gens->change_var_order != -1 &&
+          gens->change_var_order != mp_param->nvars-1) {
+        coord_t *tmp = malloc(sizeof(coord_t));
+        int32_t lidx  = pts[0]->nvars - 1 - gens->change_var_order;
+        for (long i = 0; i < nb; ++i) {
+          memcpy(tmp,pts[i]->coords[0], sizeof(coord_t));
+          memcpy(pts[i]->coords[0], pts[i]->coords[lidx], sizeof(coord_t));
+          memcpy(pts[i]->coords[lidx], tmp, sizeof(coord_t));
+        }
+        free(tmp);
+      }
+    }
+
+    for(long i = 0; i < mp_param->elim->length; i++){
+      mpz_clear(pol[i]);
+    }
+    free(pol);
+    *real_roots_ptr     = roots;
+    *nb_real_roots_ptr  = nb;
+    *real_pts_ptr       = pts;
+  }
+  return b;
 }
+
 
 int core_msolve(
   int32_t la_option,

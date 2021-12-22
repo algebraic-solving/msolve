@@ -877,7 +877,12 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   fclose(fh);
   fh = fopen(fn, "r");
 
-  get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens);
+  if(gens->field_char){
+    get_coeffs_and_exponents_ff32(fh, &line, all_nterms, nr_gens, gens);
+  }
+  else{
+    get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens);
+  }
 
   free(line);
   fclose(fh);

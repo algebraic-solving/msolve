@@ -408,9 +408,12 @@ int main(int argc, char **argv){
 
     /* main msolve functionality */
     int ret = core_msolve(la_option, nr_threads, info_level, initial_hts,
-                          max_pairs, elim_block_len, update_ht, generate_pbm, reduce_gb,
-                          print_gb, get_param, genericity_handling, saturate, normal_form,
-                          normal_form_matrix, is_gb, precision, files, gens, &param,
+                          max_pairs, elim_block_len, update_ht,
+                          generate_pbm, reduce_gb,
+                          print_gb, get_param, genericity_handling,
+                          saturate, normal_form,
+                          normal_form_matrix, is_gb, precision, files,
+                          gens, &param,
                           &mpz_param, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */

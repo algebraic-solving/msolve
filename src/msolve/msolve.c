@@ -2320,7 +2320,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         param_t **bparam,
                                         trace_t *trace,
                                         ht_t *tht,
-                                        const bs_t *bs_qq,
+                                        bs_t *bs_qq,
                                         ht_t *bht,
                                         stat_t *st,
                                         const int32_t fc,
@@ -2336,18 +2336,30 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     ca0 = realtime();
 
     bs_t *bs = NULL;
-    if(st->laopt > 40){
-      bs = modular_f4(bs_qq, bht, st, fc);
+    if(gens->field_char){
+      bs = bs_qq;
+      int boo = core_f4(&bs, &bht, &st);
+      if (!boo) {
+        printf("Problem with F4, stopped computation.\n");
+        exit(1);
+      }
+      free_shared_hash_data(bht);
     }
     else{
-      bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
+      if(st->laopt > 40){
+        bs = modular_f4(bs_qq, bht, st, fc);
+      }
+      else{
+        bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
+      }
     }
-
     rt = realtime()-ca0;
 
     if(info_level > 1){
         fprintf(stderr, "Learning phase %.2f Gops/sec\n",
                 (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/rt);
+    }
+    if(info_level > 2){
         fprintf(stderr, "------------------------------------------\n");
         fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
         fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
@@ -2379,12 +2391,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         }
     }
 
-    /* set st->fc to finite characteristic for printing */
-    st->fc  = fc;
     print_ff_basis_data(
                         files->out_file, "a", bs, bht, st, gens, print_gb);
-
-    st->fc  = 0;
 
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm, bs);
 
@@ -2837,15 +2845,14 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
-  const uint32_t field_char = 0; /* gens->field_char; */
+  const uint32_t field_char = gens->field_char;
   const void *cfs = gens->mpz_cfs;
-  /* if(gens->field_char){ */
-  /*   cfs = gens->cfs; */
-  /* } */
-  /* else{ */
-  /*   cfs = gens->mpz_cfs; */
-  /* } */
-  cfs = gens->mpz_cfs;
+  if(gens->field_char){
+    cfs = gens->cfs;
+  }
+  else{
+    cfs = gens->mpz_cfs;
+  }
   const int mon_order = 0;
   const int32_t nr_vars = gens->nvars;
   const int32_t nr_gens = gens->ngens;
@@ -2894,10 +2901,17 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* sort initial elements, smallest lead term first */
   sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
           initial_input_cmp, bht);
-
-  remove_content_of_initial_basis(bs_qq);
-  /* generate lucky prime numbers */
-  generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
+  if(gens->field_char == 0){
+    remove_content_of_initial_basis(bs_qq);
+    /* generate lucky prime numbers */
+    generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
+  }
+  else{
+    lp->old = 0;
+    lp->ld = 1;
+    lp->p = calloc(1, sizeof(uint32_t));
+    normalize_initial_basis(bs_qq, st->fc);
+  }
 
   /* generate array to store modular bases */
   bs_t **bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
@@ -2925,8 +2939,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   lp->p[0] = primeinit;
   if(gens->field_char){
     lp->p[0] = gens->field_char;
-    /* st->fc = gens->field_char; */
-    /* set_ff_bits(st, st->fc); */
   }
   sp_matfglm_t **bmatrix = (sp_matfglm_t **)calloc(st->nthrds,
                                                   sizeof(sp_matfglm_t *));
@@ -3002,16 +3014,24 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       /* free_trace(&btrace[i]); */
     }
     free(btrace);
-    free_shared_hash_data(bht);
-    free_hash_table(&bht);
-    free_hash_table(&tht);
-    free(bht);
+    if(gens->field_char==0){
+      free_shared_hash_data(bht);
+      if(bht!=NULL){
+        free_hash_table(&bht);
+      }
+      free(bht);
+    }
+    if(tht!=NULL){
+      free_hash_table(&tht);
+    }
     free(tht);
     /* for (i = 0; i < st->nthrds; ++i) { */
     /*   free_basis(&(bs[i])); */
     /* } */
     free(bs);
-    free(bs_qq);
+    if(gens->field_char==0){
+      free(bs_qq);
+    }
     //here we should clean nmod_params
     free_lucky_primes(&lp);
     free(bad_primes);

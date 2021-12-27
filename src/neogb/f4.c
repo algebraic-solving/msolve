@@ -389,6 +389,7 @@ int core_f4(
         }
         bs->lml = j;
     }
+
     /* reduce final basis? */
     if (st->reduce_gb == 1) {
         /* note: bht will become sht, and sht will become NULL,

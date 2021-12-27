@@ -2993,7 +2993,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                             files,
                                             &success);
 
-
   if(*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0){
     if(nmod_params[0]->elim->length - 1 != *dquot_ptr){
       for(int i = 0; i < nr_vars - 1; i++){
@@ -3038,7 +3037,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(lp);
     free(st);
     free(linvars);
-    free(nmod_params);
     if(nlins){
       free(lineqs_ptr[0]);
     }
@@ -3048,8 +3046,17 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       return 0;
     }
     if(*dim_ptr == 0 && gens->field_char){
+      /* copy of parametrization */
+      param_t *par = allocate_fglm_param(nmod_params[0]->charac, st->nvars);
+      nmod_poly_set(par->elim, nmod_params[0]->elim);
+      nmod_poly_set(par->denom, nmod_params[0]->denom);
+      for(long j = 0; j < st->nvars - 2; j++){
+        nmod_poly_set(par->coords[j], nmod_params[0]->coords[j]);
+      }
+      (*nmod_param) = par;
       return 0;
     }
+    free(nmod_params);
     if(*dim_ptr==1){
       if(info_level){
         fprintf(stderr, "Positive dimensional Grobner basis\n");
@@ -4918,11 +4925,6 @@ restart:
         /* no saturate = 0 */
         if (normal_form == 0) {/* positive characteristic */
 
-            /* b = msolve_ff_alloc(&param, bld, blen, bexp, bcf, */
-            /*         gens, initial_hts, nr_threads, max_pairs, */
-            /*         elim_block_len, update_ht, la_option, */
-            /*         info_level, print_gb, files); */
-
           int dim = - 2;
           long dquot = -1;
           b = real_msolve_qq(*mpz_paramp,
@@ -4941,75 +4943,72 @@ restart:
             return 0;
           }
 
-          if (b == 0 && gens->field_char == 0) {
-                //When dquot = 1
-                if(files->out_file != NULL){
-                    FILE *ofile = fopen(files->out_file, "a");
-                    display_fglm_param_maple(ofile, param);
-                    fclose(ofile);
-                }
-                else{
-                    display_fglm_param_maple(stdout, param);
-                }
+          if (b == 0 && gens->field_char > 0) {
+
+            if(files->out_file != NULL){
+              FILE *ofile = fopen(files->out_file, "a");
+              display_fglm_param_maple(ofile, param);
+              fclose(ofile);
             }
-            if (b == 0 && gens->field_char > 0) {
-              fprintf(stderr, "SOME DATA SHOULD BE DISPLAYED HERE\n");
-              return 0;
+            else{
+              display_fglm_param_maple(stdout, param);
             }
-            if (b == 1) {
-                free(bld);
-                bld = NULL;
-                free(blen);
-                blen  = NULL;
-                free(bexp);
-                bexp  = NULL;
-                free(bcf);
-                bcf = NULL;
-                free(param);
-                param = NULL;
-                if (genericity_handling > 0) {
-                    if (change_variable_order_in_input_system(gens, info_level)) {
-                        goto restart;
-                    }
-                    if (genericity_handling == 2) {
-                        if (add_linear_form_to_input_system(gens, info_level)) {
-                            goto restart;
-                        }
-                    }
+            return 0;
+          }
+          if (b == 1) {
+            free(bld);
+            bld = NULL;
+            free(blen);
+            blen  = NULL;
+            free(bexp);
+            bexp  = NULL;
+            free(bcf);
+            bcf = NULL;
+            free(param);
+            param = NULL;
+            if (genericity_handling > 0) {
+              if (change_variable_order_in_input_system(gens, info_level)) {
+                goto restart;
+              }
+              if (genericity_handling == 2) {
+                if (add_linear_form_to_input_system(gens, info_level)) {
+                  goto restart;
                 }
-                fprintf(stderr, "\n=====> Computation failed <=====\n");
-                fprintf(stderr, "Try to add a random linear form with ");
-                fprintf(stderr, "a new variable\n");
-                fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
-                fprintf(stderr, "This will\n");
-                fprintf(stderr, "be done automatically if you run msolve with option\n");
-                fprintf(stderr, "\"-g2\" which is the default.\n");
+              }
             }
-            if (b == 2) {
-                fprintf(stderr, "The ideal has positive dimension\n");
-                if(files->out_file != NULL){
-                    FILE *ofile2 = fopen(files->out_file, "a+");
-                    //1 because dim is >0
-                    fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
-                    fclose(ofile2);
-                }
-                else{
-                    fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
-                }
+            fprintf(stderr, "\n=====> Computation failed <=====\n");
+            fprintf(stderr, "Try to add a random linear form with ");
+            fprintf(stderr, "a new variable\n");
+            fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
+            fprintf(stderr, "This will\n");
+            fprintf(stderr, "be done automatically if you run msolve with option\n");
+            fprintf(stderr, "\"-g2\" which is the default.\n");
+          }
+          if (b == 2) {
+            fprintf(stderr, "The ideal has positive dimension\n");
+            if(files->out_file != NULL){
+              FILE *ofile2 = fopen(files->out_file, "a+");
+              //1 because dim is >0
+              fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
+              fclose(ofile2);
             }
-            if(b == 3){
-                if(files->out_file != NULL){
-                    FILE *ofile2 = fopen(files->out_file, "a+");
-                    fprintf(ofile2, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
-                    fclose(ofile2);
-                }
-                else{
-                    fprintf(stdout, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
-                }
+            else{
+              fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
             }
-            if (b == 2 || b == -1) {
-                if(b==-1) b = 0;
+          }
+          if(b == 3){
+            if(files->out_file != NULL){
+              FILE *ofile2 = fopen(files->out_file, "a+");
+              fprintf(ofile2, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
+              fclose(ofile2);
             }
+            else{
+              fprintf(stdout, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
+            }
+          }
+          if (b == 2 || b == -1) {
+            if(b==-1) b = 0;
+          }
         } else {
           /* normal_form is 1 */
             /* data structures for basis, hash table and statistics */

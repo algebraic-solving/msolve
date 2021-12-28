@@ -443,7 +443,7 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
 #ifdef HAVE_AVX2
   /* matrix_vector_product(vres, mat->dense_mat, vec, ncols, nrows, prime, RED_32, RED_64); */
   _8mul_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
-                              ncols, nrows, prime, RED_32, RED_64);
+                              ncols, nrows, prime, RED_32, RED_64, preinv);
 #else
   non_avx_matrix_vector_product(vres, mat->dense_mat, vec,
                               ncols, nrows, prime, RED_32, RED_64);

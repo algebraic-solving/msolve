@@ -99,9 +99,11 @@ static inline void mpz_param_init(mpz_param_t param){
 static inline void mpz_param_clear(mpz_param_t param){
   mpz_upoly_clear(param->elim);
   mpz_upoly_clear(param->denom);
-  for(long i = 0; i < param->nvars - 1; i++){
-    mpz_upoly_clear(param->coords[i]);
-    mpz_clear(param->cfs[i]);
+  if(param->coords != NULL){
+    for(long i = 0; i < param->nvars - 1; i++){
+      mpz_upoly_clear(param->coords[i]);
+      mpz_clear(param->cfs[i]);
+    }
   }
   free(param->coords);
   free(param->cfs);
@@ -149,16 +151,18 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
   mpz_upoly_out_str(file, param->denom); //denom. poly
   fprintf(file, ",\n");
   fprintf(file, "[\n");
-  for(int i = 0; i < param->nvars - 1; i++){
-    fprintf(file, "[");
-    mpz_upoly_out_str(file, param->coords[i]); //param. polys
-    fprintf(file, ",\n");
-    mpz_out_str(file, 10, param->cfs[i]);
-    if(i==param->nvars-2){
-      fprintf(file, "]\n");
-    }
-    else{
-      fprintf(file, "],\n");
+  if(param->coords != NULL){
+    for(int i = 0; i < param->nvars - 1; i++){
+      fprintf(file, "[");
+      mpz_upoly_out_str(file, param->coords[i]); //param. polys
+      fprintf(file, ",\n");
+      mpz_out_str(file, 10, param->cfs[i]);
+      if(i==param->nvars-2){
+        fprintf(file, "]\n");
+      }
+      else{
+        fprintf(file, "],\n");
+      }
     }
   }
   /* fprintf(file, "]"); */
@@ -2385,6 +2389,9 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         if(is_empty){
             *dquot_ori = 0;
             *dim = 0;
+            if(info_level){
+              fprintf(stderr, "No solution\n");
+            }
             print_ff_basis_data(
                                 files->out_file, "a", bs, bht, st, gens, print_gb);
             return NULL;
@@ -3265,6 +3272,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
           }
         }
         scrr += realtime()-crr;
+        nprimes++;
       }
       else{
         if(info_level){
@@ -3281,7 +3289,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
           return -4;
         }
       }
-      nprimes++;
     }
     strat += scrr;
 
@@ -5553,12 +5560,13 @@ restart:
                     elim_block_len, update_ht,
                     la_option, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
+
             if(print_gb){
               return 0;
             }
 
             if(b == 0){
-                if(dim == 0 && dquot > 0){
+                if(dim == 0 && dquot >= 0){
                     (*mpz_paramp)->nvars  = gens->nvars;
                     if(files->out_file != NULL){
                         FILE *ofile = fopen(files->out_file, "a+");
@@ -5587,25 +5595,6 @@ restart:
                                     *nb_real_roots_ptr);
                         }
                         fprintf(stdout, ":\n");
-                    }
-                }
-                if(dquot == 0){
-
-                    if(files->out_file != NULL){
-                        FILE *ofile2 = fopen(files->out_file, "a+");
-                        if(get_param == 1){
-                            fprintf(ofile2, "[0, %d, 0, [0, [1]]],", gens->nvars);
-                        }
-                        display_real_points_middle(
-                                ofile2, *real_pts_ptr, *nb_real_roots_ptr);
-                        fclose(ofile2);
-                    }
-                    else{
-                        if(get_param == 1){
-                            fprintf(stdout, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
-                        }
-                        display_real_points_middle(
-                                stdout, *real_pts_ptr, *nb_real_roots_ptr);
                     }
                 }
                 if(dim > 0){

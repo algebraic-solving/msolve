@@ -700,7 +700,8 @@ static inline long make_square_free_elim_poly(param_t *param,
       nmod_poly_mul(param->elim, param->elim, data_bms->sqf->p+i);
     }
     if(info_level){
-      fprintf(stderr, "The ideal is not radical: %ld solutions\n", param->elim->length-1);
+      fprintf(stderr, "Degree of the square-free part: %ld\n",
+              param->elim->length-1);
       fprintf(stderr, "[%ld, %ld, %ld]\n", dimquot, dim, param->elim->length - 1);
     }
   }
@@ -1450,6 +1451,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
             realtime()-st);
   }
   if(param->elim->length-1 != deg_init){
+    fprintf(stderr, "Warning: Degree of elim poly = %ld\n", param->elim->length-1);
     return 1;
   }
 

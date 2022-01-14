@@ -356,6 +356,7 @@ int main(int argc, char **argv){
             &is_gb, &get_param, &precision, &generate_pbm, &info_level,
             files);
 
+
   FILE *fh  = fopen(files->in_file, "r");
 
   if (fh == NULL) {

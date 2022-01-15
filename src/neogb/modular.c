@@ -320,12 +320,6 @@ bs_t *f4_trace_application_phase(
     memcpy(bs->lm, trace->lm,
             (unsigned long)bs->lml * sizeof(sdm_t));
 
-    /* reduce final basis */
-    /* note: bht will become sht, and sht will become NULL,
-     * thus we need pointers */
-    reduce_basis_no_hash_table_switching(
-            bs, mat, &hcm, bht, sht, st);
-
     /* eliminate variables if accessible */
     len_t j = 0;
     if (st->nev > 0) {
@@ -339,6 +333,12 @@ bs_t *f4_trace_application_phase(
         }
         bs->lml = j;
     }
+
+    /* reduce final basis */
+    /* note: bht will become sht, and sht will become NULL,
+     * thus we need pointers */
+    reduce_basis_no_hash_table_switching(
+            bs, mat, &hcm, bht, sht, st);
 
     /* timings */
     ct1 = cputime();
@@ -1093,11 +1093,6 @@ bs_t *f4_trace_learning_phase(
     memcpy(trace->lm, bs->lm,
             (unsigned long)trace->lml * sizeof(sdm_t));
 
-    /* reduce final basis */
-    /* note: bht will become sht, and sht will become NULL,
-     * thus we need pointers */
-    reduce_basis_no_hash_table_switching(bs, mat, &hcm, bht, sht, st);
-
     /* eliminate variables if accessible */
     if (st->nev > 0) {
         j = 0;
@@ -1110,7 +1105,13 @@ bs_t *f4_trace_learning_phase(
         }
         bs->lml = j;
     }
+
+    /* reduce final basis */
+    /* note: bht will become sht, and sht will become NULL,
+     * thus we need pointers */
+    reduce_basis_no_hash_table_switching(bs, mat, &hcm, bht, sht, st);
     /* get basis meta data */
+
     st->size_basis  = bs->lml;
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
@@ -2065,13 +2066,6 @@ bs_t *modular_f4(
     }
     bs->lml = j;
 
-    /* reduce final basis? */
-    if (st->reduce_gb == 1) {
-        reduce_basis_no_hash_table_switching(
-                bs, mat, &hcm, bht, sht, st);
-        /* reduce_basis_(bs, mat, &hcm, &bht, &sht, st); */
-    }
-
     /* eliminate variables if accessible */
     if (st->nev > 0) {
         j = 0;
@@ -2083,6 +2077,13 @@ bs_t *modular_f4(
             }
         }
         bs->lml = j;
+    }
+
+    /* reduce final basis? */
+    if (st->reduce_gb == 1) {
+        reduce_basis_no_hash_table_switching(
+                bs, mat, &hcm, bht, sht, st);
+        /* reduce_basis_(bs, mat, &hcm, &bht, &sht, st); */
     }
 
     /* timings */

@@ -3054,13 +3054,15 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     }
     if(*dim_ptr == 0 && gens->field_char){
       /* copy of parametrization */
-      param_t *par = allocate_fglm_param(nmod_params[0]->charac, st->nvars);
-      nmod_poly_set(par->elim, nmod_params[0]->elim);
-      nmod_poly_set(par->denom, nmod_params[0]->denom);
-      for(long j = 0; j < st->nvars - 2; j++){
-        nmod_poly_set(par->coords[j], nmod_params[0]->coords[j]);
+      if(*dquot_ptr != 0){
+        param_t *par = allocate_fglm_param(gens->field_char, st->nvars);
+        nmod_poly_set(par->elim, nmod_params[0]->elim);
+        nmod_poly_set(par->denom, nmod_params[0]->denom);
+        for(long j = 0; j < st->nvars - 2; j++){
+          nmod_poly_set(par->coords[j], nmod_params[0]->coords[j]);
+        }
+        (*nmod_param) = par;
       }
-      (*nmod_param) = par;
       return 0;
     }
     free(nmod_params);
@@ -4951,16 +4953,25 @@ restart:
           }
 
           if (b == 0 && gens->field_char > 0) {
-
-            if(files->out_file != NULL){
-              FILE *ofile = fopen(files->out_file, "a");
-              display_fglm_param_maple(ofile, param);
-              fclose(ofile);
+            if(dim == 0){
+              if(files->out_file != NULL){
+                FILE *ofile = fopen(files->out_file, "a");
+                if(dquot == 0){
+                  fprintf(ofile, "[-1]:\n");
+                  return 0;
+                }
+                display_fglm_param_maple(ofile, param);
+                fclose(ofile);
+              }
+              else{
+                if(dquot == 0){
+                  fprintf(stdout, "[-1]:\n");
+                  return 0;
+                }
+                display_fglm_param_maple(stdout, param);
+              }
+              return 0;
             }
-            else{
-              display_fglm_param_maple(stdout, param);
-            }
-            return 0;
           }
           if (b == 1) {
             free(bld);
@@ -5570,6 +5581,11 @@ restart:
                     (*mpz_paramp)->nvars  = gens->nvars;
                     if(files->out_file != NULL){
                         FILE *ofile = fopen(files->out_file, "a+");
+                        if(dquot == 0){
+                          fprintf(ofile, "[-1]:\n");
+                          return !(b==0);
+                        }
+                        fprintf(ofile, "[0, ");
                         if (get_param >= 1) {
                             mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
                         }
@@ -5580,10 +5596,15 @@ restart:
                             display_real_points(
                                     ofile, *real_pts_ptr, *nb_real_roots_ptr);
                         }
-                        fprintf(ofile, ":\n");
+                        fprintf(ofile, "]:\n");
                         fclose(ofile);
                     }
                     else{
+                      if(dquot == 0){
+                        fprintf(stdout, "[-1]:\n");
+                        return !(b==0);
+                      }
+                      fprintf(stdout, "[0, ");
                         if (get_param >= 1) {
                             mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
                         }
@@ -5594,7 +5615,7 @@ restart:
                             display_real_points(stdout, *real_pts_ptr,
                                     *nb_real_roots_ptr);
                         }
-                        fprintf(stdout, ":\n");
+                        fprintf(stdout, "]:\n");
                     }
                 }
                 if(dim > 0){

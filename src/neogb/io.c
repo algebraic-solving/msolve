@@ -488,7 +488,7 @@ void import_julia_data_nf_ff_32(
         const void *vcfs
         )
 {
-    int32_t i, j;
+    int32_t i, j, k;
     cf32_t *cf    = NULL;
     int64_t tmpcf = 0;
     hm_t *hm      = NULL;
@@ -534,6 +534,27 @@ void import_julia_data_nf_ff_32(
         off +=  lens[i];
         /* sort terms in polynomial w.r.t. given monomial order */
         sort_terms_ff_32(&cf, &hm, ht);
+    }
+    /* set total degree of input polynomials */
+    deg_t deg = 0;
+    if (st->nev) {
+        for (i = 0; i < stop-start; ++i) {
+            hm  = tbr->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg < ht->hd[hm[j]].deg) {
+                    deg = ht->hd[hm[j]].deg;
+                    st->homogeneous = 1;
+                }
+            }
+            tbr->hm[i][DEG]  = deg;
+        }
+    } else {
+        for (i = 0; i < stop-start; ++i) {
+            hm  = tbr->hm[i];
+            tbr->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
+        }
     }
 }
 

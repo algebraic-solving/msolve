@@ -389,18 +389,19 @@ int core_f4(
         }
         bs->lml = j;
     }
+
     /* reduce final basis? */
     if (st->reduce_gb == 1) {
         /* note: bht will become sht, and sht will become NULL,
          * thus we need pointers */
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = 0; j < bht->evl; ++j) {
-            printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        }
-        printf("\n");
-    }
+    /* for (i = 0; i < bs->lml; ++i) { */
+    /*     for (j = 0; j < bht->evl; ++j) { */
+    /*         printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]); */
+    /*     } */
+    /*     printf("\n"); */
+    /* } */
 
     *bsp  = bs;
     *bhtp = bht;

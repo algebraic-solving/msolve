@@ -1088,6 +1088,24 @@ static int64_t export_julia_data_qq(
     return nterms;
 }
 
+void set_ff_bits(stat_t *st, int32_t fc){
+  if (fc == 0) {
+    st->ff_bits = 0;
+  } else {
+    if (fc < pow(2,8)) {
+      st->ff_bits = 8;
+    } else {
+      if (fc < pow(2,16)) {
+        st->ff_bits = 16;
+      } else {
+        if (fc < pow(2,32)) {
+          st->ff_bits = 32;
+        }
+      }
+    }
+  }
+}
+
 int32_t check_and_set_meta_data(
         stat_t *st,
         const int32_t *lens,
@@ -1124,21 +1142,8 @@ int32_t check_and_set_meta_data(
     /* note: prime check should be done in julia */
     st->fc    = field_char;
 
-    if (st->fc == 0) {
-        st->ff_bits = 0;
-    } else {
-        if (st->fc < pow(2,8)) {
-            st->ff_bits = 8;
-        } else {
-            if (st->fc < pow(2,16)) {
-                st->ff_bits = 16;
-            } else {
-                if (st->fc < pow(2,32)) {
-                    st->ff_bits = 32;
-                }
-            }
-        }
-    }
+    set_ff_bits(st, st->fc);
+
     /* monomial order */
     if (mon_order != 0 && mon_order != 1) {
         st->mo  = 0;

@@ -43,7 +43,7 @@ static stat_t *copy_statistics(
             }
         }
     }
-
+    set_ff_bits(st, st->fc);
     return st;
 }
 

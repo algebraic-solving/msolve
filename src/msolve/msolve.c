@@ -5971,14 +5971,15 @@ void free_msolve_julia_result_data(
         const int64_t field_char
         )
 {
-    int64_t i;
 
-    int64_t len = 0;
 
     int32_t *lens  = *res_len;
-    for (i = 0; i < res_ld; ++i) {
-        len += (int64_t)lens[i];
-    }
+
+    /* int64_t i;
+     * int64_t len = 0;
+     * for (i = 0; i < res_ld; ++i) {
+     *     len += (int64_t)lens[i];
+     * } */
 
     (*freep)(lens);
     lens      = NULL;

@@ -33,14 +33,14 @@ void free_f4_julia_result_data(
         const int64_t field_char
         )
 {
-    int64_t i;
-    int64_t len = 0;
-
     /* lengths resp. nterms */
     int32_t *lens  = *blen;
-    for (i = 0; i < ngens; ++i) {
-        len += (int64_t)lens[i];
-    }
+
+    /* int64_t i;
+     * int64_t len = 0;
+     * for (i = 0; i < ngens; ++i) {
+     *     len += (int64_t)lens[i];
+     * } */
 
     (*freep)(lens);
     lens  = NULL;

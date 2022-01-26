@@ -503,10 +503,6 @@ void import_julia_data_nf_ff_32(
     }
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
 
-    int32_t nterms  = 0;
-    for (i = start; i < stop; ++i) {
-        nterms  +=  lens[i];
-    }
     for (i = start; i < stop; ++i) {
         while (lens[i] >= ht->esz-ht->eld) {
             enlarge_hash_table(ht);
@@ -638,10 +634,6 @@ void import_julia_data_nf_qq(
     * then be made content free by another function. */
     for (i = 0; i < start; ++i) {
         off +=  lens[i];
-    }
-    int32_t nterms  = 0;
-    for (i = start; i < stop; ++i) {
-        nterms  +=  lens[i];
     }
 
     exp_t *e  = ht->ev[0]; /* use as temporary storage */

@@ -314,9 +314,8 @@ static inline void display_monomials_from_array_maple(FILE *file, long length,
  * 0 if all cyclic changes have already been checked
  * and we should go on to add a linear form with a
  * new variable. */
-static int change_variable_order_in_input_system(
-        data_gens_ff_t *gens,
-        int32_t info_level
+static int undo_variable_order_change(
+        data_gens_ff_t *gens
         )
 {
     int32_t i, j;
@@ -355,6 +354,23 @@ static int change_variable_order_in_input_system(
      * a linear form with additional variable afterwards */
     gens->change_var_order++;
     if (gens->change_var_order == nvars-1) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+static int change_variable_order_in_input_system(
+        data_gens_ff_t *gens,
+        int32_t info_level
+        )
+{
+    int32_t i, j;
+    int32_t len, tmp;
+    char *tmp_char      = NULL;
+    const int32_t cvo   = gens->change_var_order;
+    const int32_t nvars = gens->nvars;
+
+    if (undo_variable_order_change(gens) == 0) {
         return 0;
     }
     /* do the current variable change */

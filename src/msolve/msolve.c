@@ -5704,6 +5704,7 @@ restart:
                 free(param);
                 param = NULL;
                 round++;
+                undo_variable_order_change(gens);
                 if (add_random_linear_form_to_input_system(gens, info_level)) {
                     goto restart;
                 }

@@ -297,7 +297,7 @@ static int32_t get_nvars(const char *fn)
 {
   FILE *fh  = fopen(fn,"r");
   /** load lines and store data */
-  const int max_line_size  = 5000;
+  const int max_line_size  = 1073741824;
   char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));
 
   /** get first line (variables) */

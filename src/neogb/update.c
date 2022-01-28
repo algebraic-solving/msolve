@@ -189,7 +189,7 @@ static void insert_and_update_spairs(
         }
     }
     /* sort new pairs by increasing lcm, earlier polys coming first */
-    sort_r(pp, (unsigned long)j, sizeof(spair_t), spair_cmp, uht);
+    sort_r(pp, (unsigned long)j, sizeof(spair_t), spair_cmp_drl, uht);
     for (i = 0; i < j; ++i) {
         plcm[i] = pp[i].lcm;
     }

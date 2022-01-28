@@ -84,7 +84,8 @@ static void insert_and_update_spairs(
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
-    deg_t ndeg  = bht->hd[nch].deg;
+    /* deg_t ndeg  = bht->hd[nch].deg; */
+    deg_t ndeg  = bs->hm[bl][DEG];
     reinitialize_hash_table(uht, bl);
     /* statistics */
     st->max_uht_size  = st->max_uht_size > uht->esz ?

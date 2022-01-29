@@ -148,10 +148,8 @@ static void reduce_basis(
     mat->nc = mat->ncl + mat->ncr;
     /* sort rows */
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
-    /* do the linear algebra reduction */
-    interreduce_matrix_rows(mat, bs, st);
-    /* free old basis elements */
-    free_basis_elements(bs);
+    /* do the linear algebra reduction and free basis data afterwards */
+    interreduce_matrix_rows(mat, bs, st, 1);
     /* remap rows to basis elements (keeping their position in bs) */
     convert_sparse_matrix_rows_to_basis_elements_use_sht(mat, bs, sht, hcm, st);
 
@@ -173,14 +171,12 @@ static void reduce_basis(
      * from the matrix, so we get rid of them. */
     k = 0;
     i = 0;
-    memset(bs->red, 0, (unsigned long)bs->sz * sizeof(int8_t));
 start:
     for (; i < bs->ld; ++i) {
         for (j = 0; j < k; ++j) {
             if (check_monomial_division(
                         bs->hm[bs->ld-1-i][OFFSET],
                         bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->ld-1-i] = 1;
                 ++i;
                 goto start;
             }

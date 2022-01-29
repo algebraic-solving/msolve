@@ -5130,7 +5130,7 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
-            print_msolve_polynomials_ff_32(
+            print_msolve_polynomials_ff(
                     stdout, normal_form, tbr->lml, tbr, bht, st, gens->vnames, 0);
 
             if (normal_form_matrix > 0) {

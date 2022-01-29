@@ -163,7 +163,7 @@ static inline int32_t display_monomial_full(FILE *file, const int nv,
   }
   return b;
 }
-static void print_msolve_polynomials_ff_32(
+static void print_msolve_polynomials_ff(
         FILE *file,
         const bi_t from,
         const bi_t to,
@@ -178,7 +178,6 @@ static void print_msolve_polynomials_ff_32(
 
     len_t len   = 0;
     hm_t *hm    = NULL;
-    cf32_t *cf  = NULL;
 
     const len_t nv  = ht->nv;
     const len_t ebl = ht->ebl;
@@ -213,7 +212,6 @@ static void print_msolve_polynomials_ff_32(
             } else {
                 hm  = bs->hm[idx]+OFFSET;
                 len = bs->hm[idx][LENGTH];
-                cf  = bs->cf_32[bs->hm[idx][COEFFS]];
                 ctr = 0;
                 k = ebl+1;
                 while (ctr == 0 && k < evl) {
@@ -229,7 +227,6 @@ static void print_msolve_polynomials_ff_32(
                     }
                 }
                 if (i < to-1) {
-
                     fprintf(file, ",\n");
                 } else {
                     fprintf(file, "]:\n");
@@ -245,15 +242,34 @@ static void print_msolve_polynomials_ff_32(
             } else {
                 hm  = bs->hm[idx]+OFFSET;
                 len = bs->hm[idx][LENGTH];
-                cf  = bs->cf_32[bs->hm[idx][COEFFS]];
-                fprintf(file, "%u", cf[0]);
+                switch (st->ff_bits) {
+                    case 8:
+                        fprintf(file, "%u", bs->cf_8[bs->hm[idx][COEFFS]][0]);
+                        break;
+                    case 16:
+                        fprintf(file, "%u", bs->cf_16[bs->hm[idx][COEFFS]][0]);
+                        break;
+                    case 32:
+                        fprintf(file, "%u", bs->cf_32[bs->hm[idx][COEFFS]][0]);
+                        break;
+                }
                 for (k = ebl+1; k < evl; ++k) {
                     if (ht->ev[hm[0]][k] > 0) {
                         fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
                     }
                 }
                 for (j = 1; j < len; ++j) {
-                    fprintf(file, "+%u", cf[j]);
+										switch (st->ff_bits) {
+												case 8:
+                            fprintf(file, "+%u", bs->cf_8[bs->hm[idx][COEFFS]][j]);
+														break;
+												case 16:
+                            fprintf(file, "+%u", bs->cf_16[bs->hm[idx][COEFFS]][j]);
+														break;
+												case 32:
+                            fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
+														break;
+										}
                     for (k = ebl+1; k < evl; ++k) {
                         if (ht->ev[hm[j]][k] > 0) {
                             fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[j]][k]);
@@ -282,12 +298,12 @@ static void print_ff_basis_data(
     if (print_gb > 0) {
         if(fn != NULL){
             FILE *ofile = fopen(fn, mode);
-            print_msolve_polynomials_ff_32(ofile, 0, bs->lml, bs, ht,
+            print_msolve_polynomials_ff(ofile, 0, bs->lml, bs, ht,
                     st, gens->vnames, 2-print_gb);
             fclose(ofile);
         }
         else{
-            print_msolve_polynomials_ff_32(stdout, 0, bs->lml, bs, ht,
+            print_msolve_polynomials_ff(stdout, 0, bs->lml, bs, ht,
                     st, gens->vnames, 2-print_gb);
         }
     }

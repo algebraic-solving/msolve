@@ -111,7 +111,8 @@ void (*trace_linear_algebra)(
 void (* interreduce_matrix_rows)(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st
+        stat_t *st,
+        int free_basis
         );
 
 cf32_t *(*reduce_dense_row_by_old_pivots_ff_32)(

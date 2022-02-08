@@ -494,17 +494,17 @@ int core_f4(
     bs->lml = j;
 
 
-    /* if (st->nev > 0) {
-     *     j = 0;
-     *     for (i = 0; i < bs->lml; ++i) {
-     *         if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
-     *             bs->lm[j]   = bs->lm[i];
-     *             bs->lmps[j] = bs->lmps[i];
-     *             ++j;
-     *         }
-     *     }
-     *     bs->lml = j;
-     * } */
+    if (st->nev > 0) {
+        j = 0;
+        for (i = 0; i < bs->lml; ++i) {
+            if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+                bs->lm[j]   = bs->lm[i];
+                bs->lmps[j] = bs->lmps[i];
+                ++j;
+            }
+        }
+        bs->lml = j;
+    }
 
     /* reduce final basis? */
     if (st->reduce_gb == 1) {

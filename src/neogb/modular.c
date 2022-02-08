@@ -153,8 +153,8 @@ void reduce_basis_no_hash_table_switching(
     mat->nc = mat->ncl + mat->ncr;
     /* sort rows */
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
-    /* do the linear algebra reduction */
-    interreduce_matrix_rows(mat, bs, st);
+    /* do the linear algebra reduction and free basis data */
+    interreduce_matrix_rows(mat, bs, st, 1);
     /* remap rows to basis elements (keeping their position in bs) */
     convert_sparse_matrix_rows_to_basis_elements(
         mat, bs, bht, sht, hcm, st);

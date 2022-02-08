@@ -798,7 +798,8 @@ static void exact_sparse_linear_algebra_qq(
 static void interreduce_matrix_rows_qq(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st
+        stat_t *st,
+        int free_basis
         )
 {
     len_t i, j, k, l;
@@ -859,8 +860,10 @@ static void interreduce_matrix_rows_qq(
                         dr, mat, bs, pivs, sc, l);
         }
     }
-    /* free now all polynomials in the basis and reset bs->ld to 0. */
-    free_basis_elements(bs);
+    if (free_basis != 0) {
+        /* free now all polynomials in the basis and reset bs->ld to 0. */
+        free_basis_elements(bs);
+    }
     free(mat->rr);
     mat->rr = NULL;
     mat->np = nrows;

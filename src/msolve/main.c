@@ -150,7 +150,8 @@ static inline void display_help(char *str){
   fprintf(stdout, "-e ELIM  Define an elimination order: msolve supports two\n");
   fprintf(stdout, "         blocks, each block using degree reverse lexicographical\n");
   fprintf(stdout, "         monomial order. ELIM has to be a number between\n");
-  fprintf(stdout, "         1 and #variables-1.\n");
+  fprintf(stdout, "         1 and #variables-1. The basis the first block eliminated\n");
+  fprintf(stdout, "         is then computed.\n");
   fprintf(stdout, "-l LIN   Linear algebra variant to be applied:\n");
   fprintf(stdout, "          1 - exact sparse / dense\n");
   fprintf(stdout, "          2 - exact sparse (default)\n");

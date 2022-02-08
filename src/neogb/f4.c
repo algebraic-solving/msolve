@@ -96,6 +96,124 @@ static void clear_matrix(
     mat->cf_ab_qq  = NULL;
 }
 
+#if 0
+static void intermediate_reduce_basis(
+        bs_t *bs,
+        mat_t *mat,
+        hi_t **hcmp,
+        ht_t **bhtp,
+        ht_t **shtp,
+        stat_t *st
+        )
+{
+    printf("bs->ld %u\n", bs->ld);
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    len_t i, j;
+
+    ht_t *bht   = *bhtp;
+    ht_t *sht   = *shtp;
+    hi_t *hcm   = *hcmp;
+    exp_t *etmp = bht->ev[0];
+    memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
+
+    mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
+    mat->nr = 0;
+    mat->sz = 2 * bs->lml;
+
+    /* add all non-redundant basis elements as matrix rows */
+    for (i = 0; i < bs->lml; ++i) {
+        mat->rr[mat->nr] = multiplied_poly_to_matrix_row(
+                sht, bht, 0, etmp, bs->hm[bs->lmps[i]]);
+        sht->hd[mat->rr[mat->nr][OFFSET]].idx  = 1;
+        mat->nr++;
+    }
+    mat->nc = mat->nr; /* needed for correct counting in symbol */
+    symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+    /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
+    for (i = 0; i < sht->eld; ++i) {
+        sht->hd[i].idx = 1;
+    }
+
+    /* generate hash <-> column mapping */
+    if (st->info_level > 1) {
+        printf("reduce intermediate basis ");
+        fflush(stdout);
+    }
+    convert_hashes_to_columns(&hcm, mat, st, sht);
+    mat->nc = mat->ncl + mat->ncr;
+    /* sort rows */
+    sort_matrix_rows_decreasing(mat->rr, mat->nru);
+    /* do the linear algebra reduction, do NOT free basis data */
+    interreduce_matrix_rows(mat, bs, st, 0);
+    /* remap rows to basis elements (keeping their position in bs) */
+    convert_sparse_matrix_rows_to_basis_elements(mat, bs, bht, sht, hcm, st);
+
+    clear_matrix(mat);
+    clean_hash_table(sht);
+
+    /* printf("bs->lml %u | bs->ld %u | mat->np %u\n", bs->lml, bs->ld, mat->np); */
+    /* we may have added some multiples of reduced basis polynomials
+     * from the matrix, so we get rid of them. */
+    i = 0;
+    for (i = 0; i < bs->ld; ++i) {
+        for (j = 0; j < mat->np; ++j) {
+            if (bs->hm[i][OFFSET] == bs->hm[bs->ld+j][OFFSET]) {
+                free(bs->hm[i]);
+                bs->hm[i] = bs->hm[bs->ld+j];
+                bs->hm[i][COEFFS] = i;
+                switch(st->ff_bits) {
+                    case 8:
+                        free(bs->cf_8[i]);
+                        bs->cf_8[i] = bs->cf_8[bs->ld+j];
+                        break;
+                    case 16:
+                        free(bs->cf_16[i]);
+                        bs->cf_16[i] = bs->cf_16[bs->ld+j];
+                        break;
+                    case 32:
+                        free(bs->cf_32[i]);
+                        bs->cf_32[i] = bs->cf_32[bs->ld+j];
+                        break;
+                }
+            }
+        }
+    }
+    for (i = bs->ld; i < bs->ld+mat->np; ++i) {
+        bs->hm[i] = NULL;
+        switch(st->ff_bits) {
+            case 8:
+                bs->cf_8[i] = NULL;
+                break;
+            case 16:
+                bs->cf_16[i] = NULL;
+                break;
+            case 32:
+                bs->cf_32[i] = NULL;
+                break;
+        }
+    }
+    *hcmp = hcm;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->reduce_gb_ctime = ct1 - ct0;
+    st->reduce_gb_rtime = rt1 - rt0;
+    if (st->info_level > 1) {
+        printf("%13.2f sec\n", rt1-rt0);
+    }
+
+    if (st->info_level > 1) {
+        printf("-------------------------------------------------\
+----------------------------------------\n");
+    }
+}
+#endif
+
 static void reduce_basis(
         bs_t *bs,
         mat_t *mat,
@@ -148,8 +266,8 @@ static void reduce_basis(
     mat->nc = mat->ncl + mat->ncr;
     /* sort rows */
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
-    /* do the linear algebra reduction */
-    interreduce_matrix_rows(mat, bs, st);
+    /* do the linear algebra reduction and free basis data afterwards */
+    interreduce_matrix_rows(mat, bs, st, 1);
     /* remap rows to basis elements (keeping their position in bs) */
     convert_sparse_matrix_rows_to_basis_elements_use_sht(mat, bs, sht, hcm, st);
 

@@ -96,6 +96,7 @@ static void clear_matrix(
     mat->cf_ab_qq  = NULL;
 }
 
+#if 0
 static void intermediate_reduce_basis(
         bs_t *bs,
         mat_t *mat,
@@ -211,6 +212,7 @@ static void intermediate_reduce_basis(
 ----------------------------------------\n");
     }
 }
+#endif
 
 static void reduce_basis(
         bs_t *bs,

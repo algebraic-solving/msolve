@@ -187,6 +187,7 @@ static int pbm_cmp(
     return (ca - cb);
 }
 
+#if 0
 static int spair_degree_cmp(
         const void *a,
         const void *b,
@@ -207,7 +208,7 @@ static int spair_degree_cmp(
         return (da - db);
     }
 }
-
+#endif
 
 
 

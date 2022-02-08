@@ -1883,7 +1883,8 @@ static void probabilistic_sparse_reduced_echelon_form_ff_32(
     const len_t nb  = (len_t)(floor(sqrt(nrl/3)))+1;
     const len_t rem = (nrl % nb == 0) ? 0 : 1;
     const len_t rpb = (nrl / nb) + rem;
-    const int64_t mask  = pow(2,(uint32_t)(ceil(log((double)st->max_uht_size)/log(2))))-1;
+    /* const int64_t mask  = pow(2,(uint32_t)(ceil(log((double)st->max_uht_size)/log(2))))-1; */
+    const int64_t mask  = pow(2,15)-1;
 
     int64_t *dr   = (int64_t *)malloc(
         (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));
@@ -3025,7 +3026,8 @@ static cf32_t **probabilistic_dense_linear_algebra_ff_32(
     const len_t nb  = (len_t)(floor(sqrt(ntr/3)))+1;
     const len_t rem = (ntr % nb == 0) ? 0 : 1;
     const len_t rpb = (ntr / nb) + rem;
-    const int64_t mask  = pow(2,(uint32_t)(ceil(log((double)st->max_uht_size)/log(2))))-1;
+    /* const int64_t mask  = pow(2,(uint32_t)(ceil(log((double)st->max_uht_size)/log(2))))-1; */
+    const int64_t mask  = pow(2,15)-1;
 
     int64_t *dr   = (int64_t *)malloc(
         (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));

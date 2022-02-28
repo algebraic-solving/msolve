@@ -613,7 +613,7 @@ end_sat_step:
         clean_hash_table(sht);
 
         /* saturation step starts here */
-        if (sat_test != 0 || ps->ld == 0) {
+        if ((bs->mltdeg >= sat->hm[0][DEG] && sat_test != 0) || ps->ld == 0) {
         /* if (bs->mltdeg - next_deg == 0 || ps->ld == 0) { */
         /* if (sat_done == 0 && (sat_test % 3 == 0 || ps->ld == 0)) { */
             if (st->nr_kernel_elts > 0 &&

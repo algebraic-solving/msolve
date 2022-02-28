@@ -71,33 +71,33 @@
 #include <inttypes.h>
 #define PRINT_U32(a) printf("%"PRIu32,a);
 
-/*
+/* /\* */
+/* Barrett reduction */
+/*   2^30 < p < 2^31 */
 
-  2^30 < p < 2^31
+/*   r=31 and n=32 */
 
-  r=31 and n=32
+/*   alpha = 2^(n-1) = 2^31, t=n=32, s=r-1=30 */
 
-  alpha = 2^(n-1) = 2^31, t=n=32, s=r-1=30
+/*   preinv = q = floor( 2^(s+t) / p ) */
 
-  preinv = q = floor( 2^(s+t) / p )
+static inline uint32_t MODRED32(const uint64_t n, const uint32_t p, const uint32_t preinv){
+    const uint32_t s = 30;
+    const uint32_t t = 32;
 
- */
-static inline uint32_t Barrett_reduce(const uint32_t n, const uint32_t p,
-                                     const uint32_t preinv){
-  const uint32_t s = 30;
-  const uint32_t t = 32;
+    const uint64_t t1 = n >> s;
+    const uint64_t t2 = (t1 * preinv) >> t;
+    int64_t r = n - t2 * p;
+    (r >= p) ? r -= p : r;
+    (r >= p) ? r -= p : r;
+    return r;
+}
 
-  uint64_t b = n >> s;
-  uint64_t c = (b * preinv) >> t;
-  uint64_t d = n - c * p;
-  while(d >= p) d = d - p;
-
-  /* if(d!= (n % p)){ */
-  /*   fprintf(stderr, "Bug in Barrett\n"); */
-  /*   exit(1); */
-  /* } */
-
-  return d;
+static inline uint32_t ADDMODRED32(uint64_t a, uint64_t b,
+                                   const uint32_t p, const uint32_t preinv)
+{
+  const long neg = p - a;
+  return (neg > b) ? MODRED32((a + b), p, preinv) : MODRED32((b - neg), p, preinv);
 }
 
 static inline uint32_t mul_mod_barrett(const uint32_t x, const uint32_t y,
@@ -660,7 +660,8 @@ static inline void _8mul_matrix_vector_product(uint32_t* vec_res,
                                                const uint32_t nrows,
                                                const uint32_t PRIME,
                                                const uint32_t RED_32,
-                                               const uint32_t RED_64){
+                                               const uint32_t RED_64,
+                                               const uint32_t preinv){
   __m256i acc_low,acc_high,mask,vec8,mat8;
   __m256i prod1,prod2;
   __m256i res1;
@@ -788,7 +789,8 @@ static inline void _8mul_matrix_vector_product(uint32_t* vec_res,
         //acc64+=acc4x64[i];
       }
 
-      *vec_res=acc64%PRIME;
+      /* *vec_res=MODRED32(acc64, PRIME, preinv); */
+      *vec_res=acc64%PRIME; 
 
       long tmp = 0;
       for(long k = 0; k < rem; k++){

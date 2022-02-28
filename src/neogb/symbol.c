@@ -220,7 +220,7 @@ static void select_spairs_by_minimal_degree(
     const len_t evl = bht->evl;
 
     /* sort pair set */
-    sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_degree_cmp, bht);
+    sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_cmp, bht);
     /* get minimal degree */
     /* md  = bht->hd[ps[0].lcm].deg; */
     md    = ps[0].deg;
@@ -247,13 +247,14 @@ static void select_spairs_by_minimal_degree(
     printf("\n");
 #endif
     for (i = 0; i < psl->ld; ++i) {
-        if (bht->hd[ps[i].lcm].deg > bht->hd[ps[0].lcm].deg )  {
+        if (ps[i].deg > md) {
+        /* if (bht->hd[ps[i].lcm].deg > bht->hd[ps[0].lcm].deg )  { */
         /* if (ps[i].deg > md || bht->ev[ps[i].lcm][0] > edeg) { */
             break;
         }
     }
     npd  = i;
-    sort_r(ps, (unsigned long)npd, sizeof(spair_t), spair_cmp, bht);
+    /* sort_r(ps, (unsigned long)npd, sizeof(spair_t), spair_cmp, bht); */
     /* now do maximal selection if it applies */
     
     /* if we stopped due to maximal selection size we still get the following

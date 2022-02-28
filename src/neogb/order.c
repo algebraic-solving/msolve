@@ -187,6 +187,7 @@ static int pbm_cmp(
     return (ca - cb);
 }
 
+#if 0
 static int spair_degree_cmp(
         const void *a,
         const void *b,
@@ -207,7 +208,7 @@ static int spair_degree_cmp(
         return (da - db);
     }
 }
-
+#endif
 
 
 
@@ -774,30 +775,25 @@ static int spair_cmp_be(
         void *htp
         )
 {
-    const hi_t la   = ((spair_t *)a)->lcm;
-    const hi_t lb   = ((spair_t *)b)->lcm;
-    const ht_t *ht  = (ht_t *)htp;
+    const hi_t da   = ((spair_t *)a)->deg;
+    const hi_t db   = ((spair_t *)b)->deg;
 
-    int mc = (int)monomial_cmp(la, lb, ht);
-    if (mc != 0) {
-        if (mc < 0)
-            return -1;
-        else
-            return 1;
+    if (da - db != 0) {
+        return da - db;
+    } else {
 
-        /* return mc; */
-    }
-    if (((spair_t *)a)->gen1 < ((spair_t *)b)->gen1) {
-        return -1;
-    }
-    if (((spair_t *)a)->gen1 > ((spair_t *)b)->gen1) {
-        return 1;
-    }
-    if (((spair_t *)a)->gen2 < ((spair_t *)b)->gen2) {
-        return -1;
-    }
-    if (((spair_t *)a)->gen2 > ((spair_t *)b)->gen2) {
-        return 1;
+        const hi_t la   = ((spair_t *)a)->lcm;
+        const hi_t lb   = ((spair_t *)b)->lcm;
+        const ht_t *ht  = (ht_t *)htp;
+
+        int mc = (int)monomial_cmp(la, lb, ht);
+        if (mc != 0) {
+            if (mc < 0) {
+                return -1;
+            } else {
+                return 1;
+            }
+        }
     }
     return 0;
 }

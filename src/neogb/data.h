@@ -434,7 +434,8 @@ extern void (*trace_linear_algebra)(
 extern void (* interreduce_matrix_rows)(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st
+        stat_t *st,
+        int free_basis
         );
 
 extern cf32_t *(*reduce_dense_row_by_old_pivots_ff_32)(

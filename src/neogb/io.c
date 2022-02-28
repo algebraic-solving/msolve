@@ -488,7 +488,7 @@ void import_julia_data_nf_ff_32(
         const void *vcfs
         )
 {
-    int32_t i, j;
+    int32_t i, j, k;
     cf32_t *cf    = NULL;
     int64_t tmpcf = 0;
     hm_t *hm      = NULL;
@@ -503,10 +503,6 @@ void import_julia_data_nf_ff_32(
     }
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
 
-    int32_t nterms  = 0;
-    for (i = start; i < stop; ++i) {
-        nterms  +=  lens[i];
-    }
     for (i = start; i < stop; ++i) {
         while (lens[i] >= ht->esz-ht->eld) {
             enlarge_hash_table(ht);
@@ -534,6 +530,27 @@ void import_julia_data_nf_ff_32(
         off +=  lens[i];
         /* sort terms in polynomial w.r.t. given monomial order */
         sort_terms_ff_32(&cf, &hm, ht);
+    }
+    /* set total degree of input polynomials */
+    deg_t deg = 0;
+    if (st->nev) {
+        for (i = 0; i < stop-start; ++i) {
+            hm  = tbr->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg < ht->hd[hm[j]].deg) {
+                    deg = ht->hd[hm[j]].deg;
+                    st->homogeneous = 1;
+                }
+            }
+            tbr->hm[i][DEG]  = deg;
+        }
+    } else {
+        for (i = 0; i < stop-start; ++i) {
+            hm  = tbr->hm[i];
+            tbr->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
+        }
     }
 }
 
@@ -617,10 +634,6 @@ void import_julia_data_nf_qq(
     * then be made content free by another function. */
     for (i = 0; i < start; ++i) {
         off +=  lens[i];
-    }
-    int32_t nterms  = 0;
-    for (i = start; i < stop; ++i) {
-        nterms  +=  lens[i];
     }
 
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
@@ -1067,6 +1080,24 @@ static int64_t export_julia_data_qq(
     return nterms;
 }
 
+void set_ff_bits(stat_t *st, int32_t fc){
+  if (fc == 0) {
+    st->ff_bits = 0;
+  } else {
+    if (fc < pow(2,8)) {
+      st->ff_bits = 8;
+    } else {
+      if (fc < pow(2,16)) {
+        st->ff_bits = 16;
+      } else {
+        if (fc < pow(2,32)) {
+          st->ff_bits = 32;
+        }
+      }
+    }
+  }
+}
+
 int32_t check_and_set_meta_data(
         stat_t *st,
         const int32_t *lens,
@@ -1103,21 +1134,8 @@ int32_t check_and_set_meta_data(
     /* note: prime check should be done in julia */
     st->fc    = field_char;
 
-    if (st->fc == 0) {
-        st->ff_bits = 0;
-    } else {
-        if (st->fc < pow(2,8)) {
-            st->ff_bits = 8;
-        } else {
-            if (st->fc < pow(2,16)) {
-                st->ff_bits = 16;
-            } else {
-                if (st->fc < pow(2,32)) {
-                    st->ff_bits = 32;
-                }
-            }
-        }
-    }
+    set_ff_bits(st, st->fc);
+
     /* monomial order */
     if (mon_order != 0 && mon_order != 1) {
         st->mo  = 0;

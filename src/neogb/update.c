@@ -84,10 +84,8 @@ static void insert_and_update_spairs(
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
-    deg_t ndeg  = bht->hd[nch].deg;
-    bs->mltdeg  = bs->mltdeg > ndeg ?
-        bs->mltdeg : ndeg;
-
+    /* deg_t ndeg  = bht->hd[nch].deg; */
+    deg_t ndeg  = bs->hm[bl][DEG];
     reinitialize_hash_table(uht, bl);
     /* statistics */
     st->max_uht_size  = st->max_uht_size > uht->esz ?
@@ -108,6 +106,7 @@ static void insert_and_update_spairs(
                 if (st->nev == 0) {
                     ps[pl].deg = bht->hd[ps[pl].lcm].deg;
                 } else {
+                    /* ps[pl].deg = bht->hd[ps[pl].lcm].deg; */
                     deg1  = bht->hd[ps[pl].lcm].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
                     deg2  = bht->hd[ps[pl].lcm].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
                     ps[pl].deg = deg1 > deg2 ? deg1 : deg2;
@@ -120,11 +119,14 @@ static void insert_and_update_spairs(
             }
         }
     }
+    bs->mltdeg  = bs->mltdeg > ndeg ?
+        bs->mltdeg : ndeg;
 
     hi_t *plcm  = (hi_t *)malloc((unsigned long)(bl+1) * sizeof(hi_t));
     spair_t *pp = ps+pl;
 
     /* create all possible new pairs */
+#if 0
     if (check_redundancy == 1) {
         for (i = 0; i < bl; ++i) {
             plcm[i]   = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
@@ -132,9 +134,10 @@ static void insert_and_update_spairs(
             if (st->nev == 0) {
                 pp[i].deg = uht->hd[plcm[i]].deg;
             } else {
-                deg1  = uht->hd[plcm[i]].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
-                deg2  = uht->hd[plcm[i]].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
-                pp[i].deg = deg1 > deg2 ? deg1 : deg2;
+                pp[i].deg = uht->hd[plcm[i]].deg;
+                /* deg1  = uht->hd[plcm[i]].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
+                 * deg2  = uht->hd[plcm[i]].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
+                 * pp[i].deg = deg1 > deg2 ? deg1 : deg2; */
             }
             if (bs->red[i] == 0) {
                 pp[i].gen1  = i;
@@ -143,12 +146,14 @@ static void insert_and_update_spairs(
             }
         }
     } else {
+#endif
         for (i = 0; i < bl; ++i) {
             plcm[i]     =  get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
             /* compute total degree of pair, not trivial if block order is chosen */
             if (st->nev == 0) {
                 pp[i].deg = uht->hd[plcm[i]].deg;
             } else {
+                /* pp[i].deg = uht->hd[plcm[i]].deg; */
                 deg1  = uht->hd[plcm[i]].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
                 deg2  = uht->hd[plcm[i]].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
                 pp[i].deg = deg1 > deg2 ? deg1 : deg2;
@@ -157,7 +162,9 @@ static void insert_and_update_spairs(
             pp[i].gen2  = bl;
             pp[i].lcm   = plcm[i];
         }
+#if 0
     }
+#endif
 
     len_t nl  = pl+bl;
     /* Gebauer-Moeller: check old pairs first */
@@ -182,7 +189,7 @@ static void insert_and_update_spairs(
         }
     }
     /* sort new pairs by increasing lcm, earlier polys coming first */
-    sort_r(pp, (unsigned long)j, sizeof(spair_t), spair_cmp, uht);
+    sort_r(pp, (unsigned long)j, sizeof(spair_t), spair_cmp_drl, uht);
     for (i = 0; i < j; ++i) {
         plcm[i] = pp[i].lcm;
     }

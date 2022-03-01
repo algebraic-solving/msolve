@@ -1336,15 +1336,6 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
         *success = 0;
       }
       else
-        /* if (right_param == 2) { */
-        /*   if(info_level){ */
-        /*     fprintf(stderr, */
-        /*             "Parametrizations of the radical of the input ideal is not correct\n"); */
-        /*     fprintf (stderr,"(except the first one)\n"); */
-        /*   } */
-        /*   *success = 0; */
-        /* } */
-        /* else */
           if (right_param < nvars) {
             if(info_level){
               fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);

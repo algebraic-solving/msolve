@@ -91,7 +91,6 @@ typedef struct{
   mpz_upoly_t *coords;
   mpz_t *cfs;
 } mpz_param_struct;
-
 typedef mpz_param_struct mpz_param_t[1];
 
 typedef struct{
@@ -102,7 +101,8 @@ typedef struct{
   uint32_t *triv_pos; /*position of '1' in unit vectors */
   uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
   uint32_t *dst; /* blocks of 0's in non-trivial rows */
-} mpq_matfglm_t;
+} mpq_matfglm_struct;
+typedef mpq_matfglm_struct mpq_matfglm_t[1];
 
 typedef struct{
   uint32_t ncols; /* dimension of quotient */
@@ -113,7 +113,8 @@ typedef struct{
   uint32_t *triv_pos; /*position of '1' in unit vectors */
   uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
   uint32_t *dst; /* blocks of 0's in non-trivial rows */
-} mpz_matfglm_t;
+} mpz_matfglm_struct;
+typedef mpz_matfglm_struct mpz_matfglm_t[1];
 
 typedef struct{
   uint32_t ncols; /* dimension of quotient */
@@ -123,7 +124,8 @@ typedef struct{
   uint32_t *triv_pos; /*position of '1' in unit vectors */
   uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
   uint32_t *dst; /* blocks of 0's in non-trivial rows */
-} crt_mpz_matfglm_t;
+} crt_mpz_matfglm_struct;
+typedef crt_mpz_matfglm_struct crt_mpz_matfglm_t[1];
 
 typedef struct{
   mpz_t val_up;

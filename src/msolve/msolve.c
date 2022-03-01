@@ -684,6 +684,7 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   }
 }
 
+
 static inline void reduce_generators(mpz_t **tmp, long nterms,
                                      int32_t * cfs, int32_t prime){
   for(int32_t i = 0; i < 2*nterms; i += 2){

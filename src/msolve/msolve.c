@@ -4733,8 +4733,8 @@ int real_msolve_qq(mpz_param_t mp_param,
     }
     long maxnbits = mpz_poly_max_bsize_coeffs(mp_param->elim->coeffs,
                                               mp_param->elim->length - 1);
-    long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
-                                              mp_param->elim->length - 1);
+    /* long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
+     *                                           mp_param->elim->length - 1); */
     for(int i = 0; i < mp_param->nvars - 1; i++){
       long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
                                             mp_param->coords[i]->length - 1);

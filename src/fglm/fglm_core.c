@@ -104,6 +104,7 @@ static inline void mirror_points(nmod_berlekamp_massey_t B, szmat_t length){
   }
 }
 
+#if 0
 static inline void mirror_poly(nmod_poly_t out, nmod_poly_t in){
   szmat_t mid = in->length / 2;
   for(long i = 0; i <= mid; i++){
@@ -112,6 +113,7 @@ static inline void mirror_poly(nmod_poly_t out, nmod_poly_t in){
   }
   out->length=in->length;
 }
+#endif
 
 static inline void mirror_poly_solve(nmod_poly_t out, nmod_poly_t in, szmat_t length){
 
@@ -311,6 +313,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t deg){
 */
 
 
+#if 0
 static inline void solveHankel(nmod_poly_t param,
                                nmod_poly_t Z1, nmod_poly_t Z2,
                                nmod_poly_t rZ1, nmod_poly_t rZ2,
@@ -356,7 +359,7 @@ static inline void solveHankel(nmod_poly_t param,
   nmod_poly_scalar_mul_nmod(param, param, inv);
 
 }
-
+#endif
 
 /*
  Z1 and Z2 must be arrays of length d + 1
@@ -465,7 +468,7 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
  **/
 
 
-#ifdef DEBUGFGLM
+#if DEBUGFGLM
 static inline void print_vec(FILE *file, CF_t *vec, szmat_t len){
   fprintf(file, "[");
   for(szmat_t i = 0; i < len-1; ++i){
@@ -497,6 +500,7 @@ static inline void mynmod_berlekamp_massey_print_poly(FILE *file,
 }
 #endif
 
+#if 0
 static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
                                      szmat_t block_size, long dimquot,
                                      mod_t prime){
@@ -575,6 +579,7 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
   }
 
 }
+#endif
 
 static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
 					   szmat_t block_size, long dimquot,

@@ -293,7 +293,7 @@ static long mpz_poly_sgn_variations_coeffs_bsize_with_index(mpz_t* upol,
       }
     }
   }
-  int oldnb = nb;
+  /* int oldnb = nb; */
   N = L + 1;
   int c = mpz_cmp_ui(upol[0],0);
   long int l = ilog2_mpz(upol[0]);

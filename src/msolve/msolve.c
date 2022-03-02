@@ -4733,8 +4733,8 @@ int real_msolve_qq(mpz_param_t mp_param,
     }
     long maxnbits = mpz_poly_max_bsize_coeffs(mp_param->elim->coeffs,
                                               mp_param->elim->length - 1);
-    long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
-                                              mp_param->elim->length - 1);
+    /* long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
+     *                                           mp_param->elim->length - 1); */
     for(int i = 0; i < mp_param->nvars - 1; i++){
       long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
                                             mp_param->coords[i]->length - 1);
@@ -5791,27 +5791,29 @@ static void export_julia_rational_parametrization_qq(
         *lens = len;
         *cfs  = (void *)cf;
 
+        const long nb_real_roots_intervall  = 2 * nb_real_roots;
+
         mpz_t *sols_num = (mpz_t *)(*mallocp)(
-                (unsigned long)nb_real_roots * real_pts[0]->nvars * sizeof(mpz_t));
+                (unsigned long)nb_real_roots_intervall * real_pts[0]->nvars * sizeof(mpz_t));
 
         int32_t *sols_den = (int32_t *)(*mallocp)(
-                (unsigned long)nb_real_roots * real_pts[0]->nvars * sizeof(int32_t));
+                (unsigned long)nb_real_roots_intervall * real_pts[0]->nvars * sizeof(int32_t));
 
 
         mpz_t tmp;
         mpz_init(tmp);
 
         ctr = 0;
-        for (i = 0; i < nb_real_roots; ++i) {
+        for (i = 0; i < nb_real_roots_intervall; ++i) {
             for (j = 0; j < real_pts[i]->nvars; ++j) {
                 mpz_add(tmp, real_pts[i]->coords[j]->val_do,
                         real_pts[i]->coords[j]->val_up);
-                mpz_init_set(sols_num[ctr], tmp);
-                sols_den[ctr] = real_pts[i]->coords[j]->k_do + 1;
-                ctr++;
+                mpz_init_set(sols_num[ctr], real_pts[i]->coords[j]->val_do);
+                sols_den[ctr++] = real_pts[i]->coords[j]->k_do;
+                mpz_init_set(sols_num[ctr], real_pts[i]->coords[j]->val_up);
+                sols_den[ctr++] = real_pts[i]->coords[j]->k_up;
             }
         }
-
 
         *real_sols_num = (void *)sols_num;
         *real_sols_den = sols_den;

@@ -23,6 +23,8 @@
 #include "linear.c"
 #include "lifting.c"
 
+#define LIFTMATRIX 1
+
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
 #define ilog2_mpz(a) mpz_sizeinbase(a,2)
@@ -1856,6 +1858,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               param_t *nmod_param,
                                               mpq_matfglm_t mpq_mat,
                                               crt_mpz_matfglm_t crt_mat,
+                                              mpz_matfglm_t mpz_mat,
                                               sp_matfglm_t *mat,
                                               mpz_upoly_t numer,
                                               mpz_upoly_t denom,
@@ -1868,14 +1871,17 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               long *maxrec,
                                               long *matrec,
                                               int *is_lifted,
+                                              int *mat_lifted,
                                               int doit,
                                               int nthrds,
                                               const int info_level){
 
   crt_lift_mpz_param(tmp_mpz_param, nmod_param, *modulus, prime, nthrds);
+#ifdef LIFTMATRIX
   if(*matrec < crt_mat->nrows*crt_mat->ncols){
     crt_lift_mat(crt_mat, mat, *modulus, prime, nthrds);
   }
+#endif
   mpz_mul_ui(*modulus, *modulus, prime);
 
   if(doit==0){
@@ -1887,10 +1893,16 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_set(*guessed_den, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
   mpz_set(recdata->D, *guessed_den);
+#ifdef LIFTMATRIX
   if(*matrec < crt_mat->nrows*crt_mat->ncols){
-    rat_recon_dense_rows(mpq_mat, crt_mat, *modulus, recdata, rnum, rden, matrec);
+    fprintf(stderr, "!");
+    long cnt = rat_recon_dense_rows(mpq_mat, crt_mat, mpz_mat, *modulus, recdata,
+                                    rnum, rden, matrec);
+    fprintf(stderr, "[%ld,%ld]", cnt, *matrec);
     return 0;
   }
+#endif
+  *mat_lifted = 1;
 
   mpz_t denominator;
   mpz_init(denominator);
@@ -3108,11 +3120,13 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   crt_mpz_matfglm_initset(crt_mat, *bmatrix);
   mpq_matfglm_t mpq_mat;
   mpq_matfglm_initset(mpq_mat, *bmatrix);
+  mpz_matfglm_t mpz_mat;
+  mpz_matfglm_initset(mpz_mat, *bmatrix);
   /* display_fglm_matrix(stderr, *bmatrix); */
   /* display_fglm_crt_matrix(stderr, crt_mat); */
   /* display_fglm_mpq_matrix(stderr, mpq_mat); */
   /* fprintf(stderr, "Display matrix needed\n"); */
-  fprintf(stderr, "Lifting of matrix to implement\n");
+
 
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, st, num_gb,
@@ -3190,6 +3204,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   for(int i = 0; i < nr_vars; ++i){
     is_lifted[i] = 0;
   }
+  int mat_lifted = 0;
   int nbdoit = 1;
   int doit = 1;
   int prdone = 0;
@@ -3203,6 +3218,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* measures time spent in rational reconstruction */
   double strat = 0;
+
+  int display = 1;
   while(rerun == 1 || mcheck == 1){
 
     /* controls call to rational reconstruction */
@@ -3291,6 +3308,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            nmod_params[i],
                                            mpq_mat,
                                            crt_mat,
+                                           mpz_mat,
                                            bmatrix[i],
                                            numer, denom,
                                            &modulus, lp->p[i],
@@ -3300,8 +3318,27 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            &maxrec,
                                            &matrec,
                                            is_lifted,
+                                           &mat_lifted,
                                            doit,
                                            st->nthrds, info_level);
+#ifdef LIFTMATRIX
+          if(mat_lifted && display){
+            /* display_fglm_mpq_matrix(stderr, mpq_mat); */
+            /* exit(1); */
+            int maxnum = 0;
+            int maxden = 0;
+            for(long i = 0; i < mpq_mat->nrows; i++){
+              long c = i*mpq_mat->ncols;
+              for(long j = 0; j < mpq_mat->ncols; j++){
+                maxnum = MAX(maxnum, mpz_sizeinbase(mpq_mat->dense_mat[c+2*j], 2));
+                maxden = MAX(maxden, mpz_sizeinbase(mpq_mat->dense_mat[c+2*j+1], 2));
+              }
+            }
+            fprintf(stderr, "BIT SIZE IN MATRIX : %d, %d => %f\n", maxnum, maxden, (((double) maxnum + maxden))/16);
+            fprintf(stderr, "nprimes = %d\n", nprimes);
+            display = 0;
+          }
+#endif
           if(br == 1){
             rerun = 0;
           }

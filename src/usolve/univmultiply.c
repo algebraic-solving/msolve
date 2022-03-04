@@ -20,7 +20,7 @@
 
 
 
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
 #include<omp.h>
 #endif
 #define USEFLINT 1

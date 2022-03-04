@@ -34,12 +34,6 @@ AC_ARG_ENABLE([openmp],
 
 if test x$openmp = xtrue ; then
 		AC_OPENMP
-		AX_OPENMP([
-				HAVE_OPENMP=yes
-				AC_DEFINE(HAVE_OPENMP, 1, [Enable OpenMP support])
-		],[
-				HAVE_OPENMP=no
-		])
 fi
 
 # Checks for header files.

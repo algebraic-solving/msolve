@@ -32,7 +32,7 @@
 #include <math.h>
 
 /* check if OpenMP is available */
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
 #include <omp.h>
 #else
 typedef int omp_int_t;

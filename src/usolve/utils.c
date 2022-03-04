@@ -158,7 +158,7 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th(mpz_t *upol, long int
   long int i;
   if (b > 0) {
     //    j = b;
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
     omp_set_num_threads(nthreads);
 #endif
 #pragma omp parallel for num_threads(nthreads)
@@ -167,7 +167,7 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th(mpz_t *upol, long int
     }
   }
   else{
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
     omp_set_num_threads(nthreads);
 #endif
 #pragma omp parallel for num_threads(nthreads)
@@ -191,7 +191,7 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
   long int i;
   mpz_t coef;mpz_init(coef);mpz_set_si(coef, c);
   if (b > 0) {
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
     omp_set_num_threads(nthreads);
 #endif
 #pragma omp parallel for num_threads(nthreads)
@@ -202,7 +202,7 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
     }
   }
   else{
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
     omp_set_num_threads(nthreads);
 #endif
 #pragma omp parallel for num_threads(nthreads)

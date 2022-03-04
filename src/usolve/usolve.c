@@ -25,7 +25,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<gmp.h>
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
 #include<omp.h>
 #endif
 

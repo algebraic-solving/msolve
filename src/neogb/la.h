@@ -25,7 +25,7 @@
 #include <string.h>
 #include <assert.h>
 #include <math.h>
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
 #include <omp.h>
 #endif
 #include <config.h>

@@ -30,7 +30,7 @@
 /* for timing functions */
 #include "../neogb/tools.h"
 
-#ifdef HAVE_OPENMP
+#ifdef _OPENMP
 #include<omp.h>
 #endif
 

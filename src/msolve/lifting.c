@@ -47,6 +47,38 @@ static inline void crt_mpz_matfglm_initset(crt_mpz_matfglm_t crt_mat,
   }
 }
 
+/* Initialization of sparse mpz fglm matrix  */
+static inline void mpz_matfglm_initset(mpz_matfglm_t mpz_mat,
+                                       sp_matfglm_t *mod_mat){
+  mpz_mat->ncols = mod_mat->ncols;
+  mpz_mat->nrows = mod_mat->nrows;
+  mpz_mat->dense_mat = calloc(mpz_mat->ncols*mpz_mat->nrows,
+                              sizeof(mpz_t));
+  uint64_t sz = mpz_mat->nrows * mpz_mat->ncols;
+  for(uint64_t i = 0; i < sz; i++){
+    mpz_init_set_ui(mpz_mat->dense_mat[i], 0);
+  }
+  mpz_mat->denoms = calloc(mpz_mat->nrows,
+                           sizeof(mpz_t));
+  for(uint64_t i = 0; i < mpz_mat->nrows; i++){
+    mpz_init_set_ui(mpz_mat->denoms[i], 1);
+  }
+  long diff = mpz_mat->ncols - mpz_mat->nrows;
+  mpz_mat->triv_idx = calloc(diff, sizeof(uint32_t));
+  mpz_mat->triv_pos = calloc(diff, sizeof(uint32_t));
+  mpz_mat->dense_idx = calloc(mpz_mat->nrows, sizeof(uint32_t));
+  mpz_mat->dst = calloc(mpz_mat->nrows, sizeof(uint32_t));
+
+  for(long i = 0; i < diff; i++){
+    mpz_mat->triv_idx[i]= mod_mat->triv_idx[i];
+    mpz_mat->triv_pos[i]= mod_mat->triv_pos[i];
+  }
+  for(long i = 0; i < mpz_mat->nrows; i++){
+    mpz_mat->dense_idx[i] = mod_mat->dense_idx[i];
+    mpz_mat->dst[i] = mod_mat->dst[i];
+  }
+}
+
 /* Initialization of sparse fglm matrix for rational reconstruction */
 static inline void mpq_matfglm_initset(mpq_matfglm_t mpq_mat,
                                        sp_matfglm_t *mod_mat){
@@ -110,11 +142,17 @@ static inline void crt_lift_mat(crt_mpz_matfglm_t mat, sp_matfglm_t *mod_mat,
   mpz_clear(prod);
 }
 
+static inline void build_mpz_matrix(mpq_matfglm_t mpq_mat, mpz_matfglm_t mpz_mat){
+  fprintf(stderr, "TODO\n");
+}
+
+
 static inline int64_t rat_recon_dense_rows(mpq_matfglm_t mpq_mat,
-                                            crt_mpz_matfglm_t crt_mat,
-                                            mpz_t modulus, rrec_data_t rdata,
-                                            mpz_t rnum, mpz_t rden,
-                                            long *matrec){
+                                           crt_mpz_matfglm_t crt_mat,
+                                           mpz_matfglm_t mpz_mat,
+                                           mpz_t modulus, rrec_data_t rdata,
+                                           mpz_t rnum, mpz_t rden,
+                                           long *matrec){
   const uint32_t nrows = crt_mat->nrows;
   const uint32_t ncols = crt_mat->ncols;
   int64_t cnt = 0;
@@ -125,6 +163,13 @@ static inline int64_t rat_recon_dense_rows(mpq_matfglm_t mpq_mat,
       if(*matrec <= c+j){
         b = ratrecon(rnum, rden, crt_mat->dense_mat[c+j],
                      modulus, rdata);
+        if(b == 1){
+          mpz_set(mpq_mat->dense_mat[2*c+2*j], rnum);
+          mpz_set(mpq_mat->dense_mat[2*c+2*j+1], rden);
+        }
+      }
+      else{
+        cnt++;
       }
       if(b == 1){
         cnt++;
@@ -134,11 +179,12 @@ static inline int64_t rat_recon_dense_rows(mpq_matfglm_t mpq_mat,
           fprintf(stderr, "<%.2f%%>", (100*(((double)cnt)/ncols))/nrows );
         }
         *matrec = MAX(0, cnt-1);
-        return cnt;
+        return cnt - 1;
       }
     }
   }
   fprintf(stderr, "<100.0%%>\n");
+  build_mpz_matrix(mpq_mat, mpz_mat);
   *matrec = cnt;
   return cnt;
 }

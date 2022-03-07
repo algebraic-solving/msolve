@@ -5737,7 +5737,6 @@ static void export_julia_rational_parametrization_qq(
         const real_point_t *real_pts
         )
 {
-
     int32_t i, j;
     int64_t ctr = 0;
 
@@ -5800,14 +5799,14 @@ static void export_julia_rational_parametrization_qq(
                 (unsigned long)nb_real_roots_intervall * real_pts[0]->nvars * sizeof(int32_t));
 
 
-        mpz_t tmp;
-        mpz_init(tmp);
+        /* mpz_t tmp;
+         * mpz_init(tmp); */
 
         ctr = 0;
-        for (i = 0; i < nb_real_roots_intervall; ++i) {
+        for (i = 0; i < nb_real_roots; ++i) {
             for (j = 0; j < real_pts[i]->nvars; ++j) {
-                mpz_add(tmp, real_pts[i]->coords[j]->val_do,
-                        real_pts[i]->coords[j]->val_up);
+                /* mpz_add(tmp, real_pts[i]->coords[j]->val_do,
+                 *         real_pts[i]->coords[j]->val_up); */
                 mpz_init_set(sols_num[ctr], real_pts[i]->coords[j]->val_do);
                 sols_den[ctr++] = real_pts[i]->coords[j]->k_do;
                 mpz_init_set(sols_num[ctr], real_pts[i]->coords[j]->val_up);
@@ -5976,12 +5975,6 @@ void free_msolve_julia_result_data(
 
 
     int32_t *lens  = *res_len;
-
-    /* int64_t i;
-     * int64_t len = 0;
-     * for (i = 0; i < res_ld; ++i) {
-     *     len += (int64_t)lens[i];
-     * } */
 
     (*freep)(lens);
     lens      = NULL;

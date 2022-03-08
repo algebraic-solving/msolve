@@ -5922,7 +5922,7 @@ void msolve_julia(
     free(gens);
     gens  = NULL;
 
-    if (mpz_param->dim != -1) {
+    if (mpz_param->dim != -1 && nb_real_roots > 0) {
         export_julia_rational_parametrization_qq(
                 mallocp, rp_ld, rp_dim, rp_dquot, rp_lens,
                 rp_cfs, real_sols_num, real_sols_den,

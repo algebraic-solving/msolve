@@ -251,22 +251,21 @@ static inline void display_fglm_mpq_matrix(FILE *file,
   fprintf(file, "%u\n", mat->nrows);
 
   long len1 = (mat->ncols)*(mat->nrows);
-  uint64_t nc = 2*mat->ncols;
+  uint64_t nc = mat->ncols;
 
   fprintf(file, "[");
   for(long i = 0; i < mat->nrows; i++){
     long c = 2*i*mat->ncols;
     fprintf(file, "[");
-    for(long j = 0; j < nc-2; j++){
-      mpz_out_str(file, 10, mat->dense_mat[c+j]);
+    for(long j = 0; j < nc-1; j++){
+      mpz_out_str(file, 10, mat->dense_mat[c+2*j]);
       fprintf(file, "/");
-      j++;
-      mpz_out_str(file, 10, mat->dense_mat[c+j]);
+      mpz_out_str(file, 10, mat->dense_mat[c+2*j+1]);
       fprintf(file, ", ");
     }
-    mpz_out_str(file, 10, mat->dense_mat[c+nc-2]);
+    mpz_out_str(file, 10, mat->dense_mat[c+2*nc-2]);
     fprintf(file, "/");
-    mpz_out_str(file, 10, mat->dense_mat[c+nc-1]);
+    mpz_out_str(file, 10, mat->dense_mat[c+2*nc-1]);
     fprintf(file, "]\n");
   }
   fprintf(file, "]");
@@ -1936,15 +1935,20 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_set(recdata->N, *guessed_num);
   mpz_set(recdata->D, *guessed_den);
 #ifdef LIFTMATRIX
-  if(*matrec < crt_mat->nrows*crt_mat->ncols){
-    fprintf(stderr, "!");
-    long cnt = rat_recon_dense_rows(mpq_mat, crt_mat, mpz_mat, *modulus, recdata,
-                                    rnum, rden, matrec);
-    fprintf(stderr, "[%ld,%ld]", cnt, *matrec);
-    return 0;
+  long cnt = 0;
+  if(*matrec < crt_mat->nrows*crt_mat->ncols && *mat_lifted == 0){
+    cnt = rat_recon_dense_rows(mpq_mat, crt_mat, mpz_mat, *modulus, recdata,
+                               rnum, rden, matrec);
+    /* if(cnt < crt_mat->nrows*crt_mat->ncols){ */
+    /*   return 0; */
+    /* } */
   }
-#endif
+  if(cnt == crt_mat->nrows*crt_mat->ncols || *mat_lifted){
+    *mat_lifted = 1;
+  }
+#else
   *mat_lifted = 1;
+#endif
 
   mpz_t denominator;
   mpz_init(denominator);
@@ -3369,14 +3373,16 @@ int msolve_trace_qq(mpz_param_t mpz_param,
             /* exit(1); */
             int maxnum = 0;
             int maxden = 0;
+            int maxbits = 0;
             for(long i = 0; i < mpq_mat->nrows; i++){
-              long c = i*mpq_mat->ncols;
+              long c = 2*i*mpq_mat->ncols;
               for(long j = 0; j < mpq_mat->ncols; j++){
                 maxnum = MAX(maxnum, mpz_sizeinbase(mpq_mat->dense_mat[c+2*j], 2));
                 maxden = MAX(maxden, mpz_sizeinbase(mpq_mat->dense_mat[c+2*j+1], 2));
+                maxbits = MAX(maxbits, mpz_sizeinbase(mpq_mat->dense_mat[c+2*j], 2) + mpz_sizeinbase(mpq_mat->dense_mat[c+2*j+1], 2));
               }
             }
-            fprintf(stderr, "BIT SIZE IN MATRIX : %d, %d => %f\n", maxnum, maxden, (((double) maxnum + maxden))/16);
+            fprintf(stderr, "BIT SIZE IN MATRIX : %d, %d, %d => %f\n", maxnum, maxden, maxbits, (((double) maxbits))/16);
             fprintf(stderr, "nprimes = %d\n", nprimes);
             display = 0;
           }

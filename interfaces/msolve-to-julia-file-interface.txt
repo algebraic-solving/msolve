@@ -1,4 +1,8 @@
-Inside Julia apply the following steps:
+msolve and its functionality is available via the Computer Algebra System OSCAR 
+in Julia. Running your Julia REPL apply the following steps:
 
 using Pkg
-Pkg.add("GroebnerBasis")
+
+Pkg.add("Oscar") # for stable version of OSCAR
+or
+Pkg.dev("Oscar") # for developer version of OSCAR

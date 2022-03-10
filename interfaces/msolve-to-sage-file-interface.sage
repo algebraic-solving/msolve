@@ -116,7 +116,7 @@ def GetRootsFromMSolve(foutput, param):
 
 
 def MSolveRealRoots(F, fname1="/tmp/in.ms", fname2="/tmp/out.ms",
-        mspath="../binary/msolve", v=1, p=0):
+        mspath="../binary/msolve", v=1, p=1):
     """Computes the a rational approximation of the real roots
     of a system of sage polynomials using msolve. 
 
@@ -133,6 +133,7 @@ def MSolveRealRoots(F, fname1="/tmp/in.ms", fname2="/tmp/out.ms",
 
     """
 
+    print("here")
     ToMSolve(F, fname1)
 
     os.system(mspath +" -v " + str(v) +" -P " + str(p) +  " -f " + fname1 + " -o " + fname2)

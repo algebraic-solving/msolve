@@ -857,18 +857,17 @@ where
 
 \section{Julia interface to \msolve}
 The Julia interface to \msolve is part of the official Julia package
-\texttt{GroebnerBasis.jl}. You can install the package via the following
+\texttt{Oscar.jl}. You can install the package via the following
 commands inside a Julia session:\\[1em]
 \texttt{using Pkg\\
-Pkg.add(“GroebnerBasis”)}\\[1em]
-Once the package is loaded via \texttt{using GroebnerBasis} one can call the function
-\texttt{msolve()} which returns, if any, the solutions of the given input
+Pkg.add(“Oscar”)}\\[1em]
+Once the package is loaded via \texttt{using Oscar} one can call the function
+\texttt{msolve()} which returns, if any, the rational parametrization and the solutions of the given input
 system of multivariate polynomials. The most common calling convention is as follows:\\[1em]
-\texttt{solutions = msolve(I)}.\\[1em]
+\texttt{res = msolve(I)}.\\[1em]
 where
 \begin{itemize}
-    \item \texttt{I} is of type \texttt{Singular.sideal} and
-    \item \texttt{solutions} is of type \texttt{Array\{Array\{Rational\{Int64\},1\},1\}}.
+    \item \texttt{I} is of type \texttt{ideal}.
 \end{itemize}
 The most common options for calling \texttt{msolve()} in Julia are:
 \begin{itemize}
@@ -882,20 +881,11 @@ The most common options for calling \texttt{msolve()} in Julia are:
         with independent modular computations;
     \item \texttt{precision} for the bit precision with which the solutions are
         computed from the rational parametrization. Default is \texttt{64}.
-    \item \texttt{get\_param} for returning, besides the solutions, also the
-        rational parametrization for the solution set. Default is
-        \texttt{false}.
 \end{itemize}
 So using \texttt{msolve()} with probabilistic linear algebra, the most verbose
 information printout and a precision of $80$ one would call\\[1em]
-\texttt{solutions = msolve(I, la\_option=44, info\_level=2,
+\texttt{res = msolve(I, la\_option=44, info\_level=2,
 precision=80)}.\\[1em]
-Returning also the rational parametrization of the solution set one would
-call\\[1em]
-\texttt{param, solutions = msolve(I, get\_param=true)}.\\[1em]
-Having the rational parametrization \texttt{param} one can further solve trying,
-for example, higher precision:\\[1em]
-\texttt{newly\_computed\_solutions = solve\_rational\_parametrization(param)}\\[1em]
 You can get a full list of options for \texttt{msolve()} in Julia by typing
 inside Julia\\[1em]
 \texttt{? msolve()}

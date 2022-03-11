@@ -163,7 +163,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "         Default is 32.\n");
   fprintf(stdout, "-P PAR   Get also rational parametrization of solution set.\n");
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
-  fprintf(stdout, "         format please see the general output data format sectiona\n");
+  fprintf(stdout, "         format please see the general output data format section\n");
   fprintf(stdout, "         above.\n");
   fprintf(stdout, "-r RED   Reduce Groebner basis.\n");
   fprintf(stdout, "         Default: 1 (yes).\n");

@@ -46,8 +46,15 @@ def FormatOutputMSolveOnlySolutions(foutput):
     s = f.read()
     s = s.replace("\n","").replace(":","")
     R = sage_eval(s)
-    S = R
-
+    intervals = R[1][1]
+    S   =   []
+    if len(intervals) > 0:
+        nvars   =   len(intervals[0])
+        for sol in intervals:
+            s = []
+            for i in range(nvars):
+                s.append((sol[i][0]+sol[i][1])/2)
+            S.append(s)
     return S
 
 def FormatOutputMSolve(foutput):
@@ -65,31 +72,47 @@ def FormatOutputMSolve(foutput):
     s = f.read()
     s = s.replace("\n","").replace(":","")
     R = sage_eval(s)
-    L = R[0]
-    S = R[1]
-
     A.<t> = QQ[]
-    dim = L[0]
+    # dimension
+    dim = R[0]
     if dim > 0:
         return A(-1), A(1), [], []
 
-    nvars, degquot, deg = L[1], L[2], L[5][0]
-    varstr      =   L[3]
-    linearform  =   L[4]
+    # parametrization
+    nvars       = R[1][1]
+    qdim        = R[1][2]
+    varstr      = R[1][3]
+    linearform  = R[1][4]
+    elim        = R[1][5][1]
+    den         = R[1][5][2]
+    polys       = R[1][5][3]
+    # solutions
+    intervals   = R[2][1]
 
-    if len(L[5]) > 0:
-        elim = A(L[5][1])
+    #  nvars, degquot, deg = L[1], L[2], L[5][0]
+    #  varstr      =   L[3]
+    #  linearform  =   L[4]
+
+    if len(elim) > 0:
+        pelim = A(elim[1])
     else:
-        return A(-2), A(1), [], []
+        return A(-2), A(1), [], [], []
 
-    den, p, c = A(1), [], []
-    if degquot > 0:
-        den = A(L[6][1])
-        for l in L[7]:
+    pden, p, c = A(1), [], []
+    if qdim > 0:
+        pden = A(den[1])
+        for l in polys:
             p.append(A(l[0][1]))
             c.append( l[1] )
 
-    return [varstr, linearform, elim, den, p, c, S]
+    S   =   []
+    if len(intervals) > 0:
+        for sol in intervals:
+            s = []
+            for i in range(nvars):
+                s.append((sol[i][0]+sol[i][1])/2)
+            S.append(s)
+    return [varstr, linearform, pelim, pden, p, c, S]
 
 def GetRootsFromMSolve(foutput, param):
     """Compute rational approximation roots from an msolve output file
@@ -116,7 +139,7 @@ def GetRootsFromMSolve(foutput, param):
 
 
 def MSolveRealRoots(F, fname1="/tmp/in.ms", fname2="/tmp/out.ms",
-        mspath="../binary/msolve", v=1, p=0):
+        mspath="../binary/msolve", v=0, p=1):
     """Computes the a rational approximation of the real roots
     of a system of sage polynomials using msolve. 
 

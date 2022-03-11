@@ -46,8 +46,15 @@ def FormatOutputMSolveOnlySolutions(foutput):
     s = f.read()
     s = s.replace("\n","").replace(":","")
     R = sage_eval(s)
-    S = R
-
+    intervals = R[1][1]
+    S   =   []
+    if len(intervals) > 0:
+        nvars   =   len(intervals[0])
+        for sol in intervals:
+            s = []
+            for i in range(nvars):
+                s.append((sol[i][0]+sol[i][1])/2)
+            S.append(s)
     return S
 
 def FormatOutputMSolve(foutput):

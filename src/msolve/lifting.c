@@ -113,10 +113,40 @@ static inline void mpq_matfglm_initset(mpq_matfglm_t mpq_mat,
   }
 }
 
+static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
+                                     uint32_t trace_mod, uint32_t det_mod){
+  mpz_init_set_ui(trace_det->trace_crt, trace_mod);
+  mpz_init_set_ui(trace_det->det_crt, det_mod);
+  mpz_init_set_ui(trace_det->trace_num, 0);
+  mpz_init_set_ui(trace_det->trace_den, 1);
+  mpz_init_set_ui(trace_det->det_num, 0);
+  mpz_init_set_ui(trace_det->det_den, 1);
+  trace_det->check = 0;
+}
+
+static inline void trace_det_clear(trace_det_fglm_mat_t trace_det){
+  mpz_clear(trace_det->trace_crt);
+  mpz_clear(trace_det->det_crt);
+  mpz_clear(trace_det->trace_num);
+  mpz_clear(trace_det->trace_den);
+  mpz_clear(trace_det->det_num);
+  mpz_clear(trace_det->det_den);
+}
+
+static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,
+                                      uint32_t trace_mod, uint32_t det_mod,
+                                      mpz_t modulus, mpz_t prod,
+                                      uint32_t prime){
+  mpz_CRT_ui(trace_det->trace_crt, trace_det->trace_crt,
+             modulus, trace_mod, prime, prod, 1);
+  mpz_CRT_ui(trace_det->det_crt, trace_det->det_crt,
+             modulus, trace_mod, prime, prod, 1);
+}
 static inline void crt_lift_dense_rows(mpz_t *rows, uint32_t *mod_rows,
                                        const uint64_t sz,
-                                       mpz_t modulus, int32_t prime,
+                                       mpz_t modulus, 
                                        mpz_t prod,
+                                       int32_t prime,
                                        const int nthrds){
   len_t i;
 
@@ -131,15 +161,13 @@ static inline void crt_lift_dense_rows(mpz_t *rows, uint32_t *mod_rows,
 }
 
 static inline void crt_lift_mat(crt_mpz_matfglm_t mat, sp_matfglm_t *mod_mat,
-                                mpz_t modulus, const int32_t prime,
+                                mpz_t modulus, mpz_t prod_crt,
+                                const int32_t prime,
                                 const int nthrds){
-  mpz_t prod;
-  mpz_init(prod);
-  mpz_mul_ui(prod, modulus, prime);
+  /*assumes prod_crt = modulus * prime */
   const uint64_t sz = mat->nrows * mat->ncols;
   crt_lift_dense_rows(mat->dense_mat, mod_mat->dense_mat,
-                      sz, modulus, prime, prod, nthrds);
-  mpz_clear(prod);
+                      sz, modulus, prod_crt, prime, nthrds);
 }
 
 static inline void build_mpz_matrix(mpq_matfglm_t mpq_mat, mpz_matfglm_t mpz_mat){

@@ -128,6 +128,17 @@ typedef struct{
 typedef crt_mpz_matfglm_struct crt_mpz_matfglm_t[1];
 
 typedef struct{
+  mpz_t trace_crt;
+  mpz_t det_crt;
+  mpz_t trace_num;
+  mpz_t trace_den;
+  mpz_t det_num;
+  mpz_t det_den;
+  int check;
+} trace_det_fglm_mat_struct;
+typedef trace_det_fglm_mat_struct trace_det_fglm_mat_t[1];
+
+typedef struct{
   mpz_t val_up;
   mpz_t val_do;
   long k_up;

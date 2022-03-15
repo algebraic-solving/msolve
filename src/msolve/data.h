@@ -134,7 +134,10 @@ typedef struct{
   mpz_t trace_den;
   mpz_t det_num;
   mpz_t det_den;
-  int check;
+  int done_trace;
+  int done_det;
+  int check_trace;
+  int check_det;
 } trace_det_fglm_mat_struct;
 typedef trace_det_fglm_mat_struct trace_det_fglm_mat_t[1];
 

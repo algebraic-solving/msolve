@@ -121,7 +121,10 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
   mpz_init_set_ui(trace_det->trace_den, 1);
   mpz_init_set_ui(trace_det->det_num, 0);
   mpz_init_set_ui(trace_det->det_den, 1);
-  trace_det->check = 0;
+  trace_det->check_trace = 0;
+  trace_det->check_det = 0;
+  trace_det->done_trace = 0;
+  trace_det->done_det = 0;
 }
 
 static inline void trace_det_clear(trace_det_fglm_mat_t trace_det){
@@ -142,6 +145,7 @@ static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,
   mpz_CRT_ui(trace_det->det_crt, trace_det->det_crt,
              modulus, trace_mod, prime, prod, 1);
 }
+
 static inline void crt_lift_dense_rows(mpz_t *rows, uint32_t *mod_rows,
                                        const uint64_t sz,
                                        mpz_t modulus, 
@@ -172,6 +176,29 @@ static inline void crt_lift_mat(crt_mpz_matfglm_t mat, sp_matfglm_t *mod_mat,
 
 static inline void build_mpz_matrix(mpq_matfglm_t mpq_mat, mpz_matfglm_t mpz_mat){
   fprintf(stderr, "TODO\n");
+}
+
+static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
+                                      rrec_data_t recdata, mpz_t modulus,
+                                      mpz_t rnum, mpz_t rden){
+  int b = ratrecon(rnum, rden, trace_det->trace_crt, modulus, recdata);
+  if(b == 1){
+    mpz_set(trace_det->trace_num, rnum);
+    mpz_set(trace_det->trace_den, rden);
+  }
+  else
+  {
+    return 0;
+  }
+  b = ratrecon(rnum, rden, trace_det->det_crt, modulus, recdata);
+  if(b == 1){
+    mpz_set(trace_det->det_num, rnum);
+    mpz_set(trace_det->det_den, rden);
+  }
+  else{
+    return 0;
+  }
+  return 1;
 }
 
 #define NEW 1

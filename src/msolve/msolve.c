@@ -2895,6 +2895,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
     /* all data is corrupt */
     if (res == -1) {
+        fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
         free(invalid_gens);
         return -3;
     }
@@ -3500,6 +3501,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
 
     /* all data is corrupt */
     if (res == -1) {
+        fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
         free(invalid_gens);
         return -3;
     }
@@ -5428,6 +5430,7 @@ restart:
 
             /* all data is corrupt */
             if (res == -1) {
+                fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
                 free(invalid_gens);
                 return -3;
             }

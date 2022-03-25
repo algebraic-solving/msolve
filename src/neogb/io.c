@@ -1188,10 +1188,9 @@ int validate_input_data(
         fprintf(stderr, "Fixes maximal number of spairs chosen to all possible.\n");
         *max_nr_pairsp  =   0;
     }
-    if (*la_optionp != 1 || *la_optionp != 2 ||
-            *la_optionp != 42 || *la_optionp != 44) {
+    if (*la_optionp != 1 && *la_optionp != 2 &&
+            *la_optionp != 42 && *la_optionp != 44) {
         fprintf(stderr, "Fixes linear algebra option to exact sparse.\n");
-        printf("%d\n", *la_optionp);
         *la_optionp =   2;
     }
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
@@ -1209,7 +1208,6 @@ int validate_input_data(
     if (*field_charp == 0) {
         mpz_t **cf  =   (mpz_t **)cfs;
         for (int i = 0; i < ngens; ++i) {
-            gmp_printf("--> %Zd\n", *(cf[0]));
             if (mpz_cmp_si(*(cf[0]), 0) == 0) {
                 invalid_gens[i]   =   1;
                 ctr++;
@@ -1218,7 +1216,6 @@ int validate_input_data(
     } else {
         int32_t *cf =   (int32_t *)cfs;
         for (int i = 0; i < ngens; ++i) {
-            printf("--> %d\n", cf[0]);
             if (cf[0] == 0) {
                 invalid_gens[i]   =   1;
                 ctr++;

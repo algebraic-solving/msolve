@@ -623,10 +623,16 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
   if(term != NULL){
     int32_t iv_tmp  = (int32_t)strtol(term, NULL, 10);
     if (iv_tmp == 0) {
-      if (term[0] == '-') {
-        iv_tmp = -1;
-      } else {
-        iv_tmp = 1;
+      switch (term[0]) {
+          case '0':
+            iv_tmp = 0;
+            break;
+          case '-':
+            iv_tmp = -1;
+            break;
+          default:
+            iv_tmp = 1;
+            break;
       }
     }
     while (iv_tmp < 0) {

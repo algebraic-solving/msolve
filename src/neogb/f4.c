@@ -350,7 +350,7 @@ int initialize_f4_input_data(
     st  = initialize_statistics();
 
     int *invalid_gens   =   NULL;
-    int res = validate_input_data(&invalid_gens, cfs, &field_char, &mon_order,
+    int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &reduce_gb, &info_level);
 

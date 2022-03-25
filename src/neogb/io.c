@@ -270,6 +270,7 @@ static void import_julia_data_ff_16(
 
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
     for (i = 0; i < ngens_input; ++i) {
+        printf("invalid_gens[%d] = %d\n", i, invalid_gens[i]);
         if (invalid_gens[i] == 0) {
             while (lens[i] >= ht->esz-ht->eld) {
                 enlarge_hash_table(ht);
@@ -1141,6 +1142,7 @@ void set_ff_bits(stat_t *st, int32_t fc){
 int validate_input_data(
         int **invalid_gensp,
         const void *cfs,
+        const int32_t *lens,
         uint32_t *field_charp,
         int32_t *mon_orderp,
         int32_t *elim_block_lenp,
@@ -1201,13 +1203,13 @@ int validate_input_data(
         fprintf(stderr, "Fixes info level to no output.\n");
         *info_levelp    =   0;
     }
-    const int ngens =   *nr_gensp;
-
+    const int ngens     =   *nr_gensp;
     int *invalid_gens   =   (int *)calloc((unsigned long)ngens, sizeof(int));
-    int ctr         =   0;
+    int ctr             =   0;
+    long len            =   0;
     if (*field_charp == 0) {
         mpz_t **cf  =   (mpz_t **)cfs;
-        for (int i = 0; i < ngens; ++i) {
+        for (long i = 0; i < 2*len; ++i) {
             if (mpz_cmp_si(*(cf[0]), 0) == 0) {
                 invalid_gens[i]   =   1;
                 ctr++;
@@ -1216,10 +1218,14 @@ int validate_input_data(
     } else {
         int32_t *cf =   (int32_t *)cfs;
         for (int i = 0; i < ngens; ++i) {
-            if (cf[0] == 0) {
-                invalid_gens[i]   =   1;
-                ctr++;
+            for (int j = 0; j < lens[i]; ++j) {
+                if (cf[j+len] == 0) {
+                    invalid_gens[i]   =   1;
+                    ctr++;
+                    break;
+                }
             }
+            len +=  lens[i];
         }
     }
 

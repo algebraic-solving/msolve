@@ -76,6 +76,7 @@ void import_julia_data_nf_qq(
 int validate_input_data(
         int **invalid_gensp,
         const void *cfs,
+        const int32_t *lens,
         uint32_t *field_charp,
         int32_t *mon_orderp,
         int32_t *elim_block_lenp,

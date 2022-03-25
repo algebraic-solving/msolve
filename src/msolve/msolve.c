@@ -2889,7 +2889,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   stat_t *st  = initialize_statistics();
 
     int *invalid_gens   =   NULL;
-    int res = validate_input_data(&invalid_gens, cfs, &field_char, &mon_order,
+    int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &reduce_gb, &info_level);
 
@@ -3495,7 +3495,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     stat_t *st  = initialize_statistics();
 
     int *invalid_gens   =   NULL;
-    int res = validate_input_data(&invalid_gens, cfs, &field_char, &mon_order,
+    int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &reduce_gb, &info_level);
 
@@ -5423,7 +5423,7 @@ restart:
             int32_t monomial_order  =   0;
             int32_t reduce_gb       =   1;
             int res = validate_input_data(&invalid_gens, gens->mpz_cfs,
-                    &field_char, &monomial_order, &elim_block_len,
+                    gens->lens, &field_char, &monomial_order, &elim_block_len,
                     &gens->nvars, &gens->ngens-saturate, &initial_hts,
                     &nr_threads, &max_pairs, &update_ht, &la_option,
                     &reduce_gb, &info_level);

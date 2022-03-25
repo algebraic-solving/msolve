@@ -419,7 +419,6 @@ int core_f4(
     /* timings for one round */
     double rrt0, rrt1;
 
-    printf("1\n");
     /* initialize update hash table, symbolic hash table */
     ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
@@ -433,7 +432,6 @@ int core_f4(
 
     ps_t *ps = initialize_pairset();
 
-    printf("2\n");
     int32_t round, i, j;
 
     /* reset bs->ld for first update process */
@@ -457,7 +455,6 @@ int core_f4(
         reset_hash_table(bht, bs, ps, st);
         st->num_rht++;
       }
-    printf("3\n");
       rrt0  = realtime();
       st->max_bht_size  = st->max_bht_size > bht->esz ?
         st->max_bht_size : bht->esz;

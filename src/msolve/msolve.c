@@ -3008,7 +3008,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int success = 1;
   int squares = 1;
 
-    printf("1AE\n");
   int32_t *lmb_ori = modular_trace_learning(bmatrix, bdiv_xn, blen_gb_xn,
                                             bstart_cf_gb_xn,
 

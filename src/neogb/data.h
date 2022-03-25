@@ -305,6 +305,8 @@ struct stat_t
     int64_t num_rowsred;
     int64_t num_zerored;
 
+    int32_t ngens_input;
+    int32_t ngens_invalid;
     int32_t ngens;
     int32_t nvars;
     int32_t mnsel;
@@ -397,7 +399,8 @@ extern void (*import_julia_data)(
         stat_t *st,
         const int32_t *lens,
         const int32_t *exps,
-        const void *vcfs
+        const void *vcfs,
+        const int *invalid_gens
         );
 
 extern int64_t (*export_julia_data)(

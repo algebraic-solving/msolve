@@ -41,19 +41,19 @@ int initialize_f4_input_data(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
-        const uint32_t field_char,
-        const int32_t mon_order,
-        const int32_t elim_block_len,
-        const int32_t nr_vars,
-        const int32_t nr_gens,
-        const int32_t ht_size,
-        const int32_t nr_threads,
-        const int32_t max_nr_pairs,
-        const int32_t reset_ht,
-        const int32_t la_option,
-        const int32_t reduce_gb,
-        const int32_t pbm_file,
-        const int32_t info_level
+        uint32_t field_char,
+        int32_t mon_order,
+        int32_t elim_block_len,
+        int32_t nr_vars,
+        int32_t nr_gens,
+        int32_t ht_size,
+        int32_t nr_threads,
+        int32_t max_nr_pairs,
+        int32_t reset_ht,
+        int32_t la_option,
+        int32_t reduce_gb,
+        int32_t pbm_file,
+        int32_t info_level
         );
 
 int64_t f4_julia(

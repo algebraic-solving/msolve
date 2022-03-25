@@ -283,7 +283,7 @@ static inline void display_lead_monomials_from_gb(FILE *file,
   }
 }
 
-static inline void display_monomials_from_array(FILE *file, long length, 
+static inline void display_monomials_from_array(FILE *file, long length,
                                          int32_t *bexp,
                                          const int nv, char **vnames){
   fprintf(file, "[");
@@ -295,7 +295,7 @@ static inline void display_monomials_from_array(FILE *file, long length,
   fprintf(file, "]");
 }
 
-static inline void display_monomials_from_array_maple(FILE *file, long length, 
+static inline void display_monomials_from_array_maple(FILE *file, long length,
                                                       int32_t *bexp, const int nv,
                                                       char **vnames){
   fprintf(file, "[");
@@ -491,14 +491,14 @@ static int add_linear_form_to_input_system(
             gens->cfs[i]  = ((int32_t)(pow(k, bcf - 1)) % gens->field_char);
             k++;
         }
-        gens->cfs[len_new - 1]  = 1; 
+        gens->cfs[len_new - 1]  = 1;
         k++;
     } else {
         for (i = 2*len_old; i < 2*len_new; i += 2) {
             mpz_set_ui(*(gens->mpz_cfs[i]), (int32_t)(pow(k, bcf - 1)));
             k++;
         }
-        mpz_set_ui(*(gens->mpz_cfs[2*(len_new - 1)]), 1); 
+        mpz_set_ui(*(gens->mpz_cfs[2*(len_new - 1)]), 1);
     }
     return 1;
 }
@@ -705,7 +705,7 @@ static inline void check_and_set_linear_poly_non_hashed(long *nlins_ptr,
   /*
     la i-ieme entree de linvars est a 0 si il n'y a pas de forme lineaire dont
     le terme dominant est vars[i].
-    Sinon, on met l'indice du polynome dans la base + 1. 
+    Sinon, on met l'indice du polynome dans la base + 1.
   */
   for(long i = 0; i < bld[0]; i++){
     long deg = 0;
@@ -733,7 +733,7 @@ static inline void check_and_set_linear_poly_non_hashed(long *nlins_ptr,
   for(int i = 0; i < nvars; i++){
     if(linvars[i] != 0){
 
-      long len = (*blen)[linvars[i] - 1]; 
+      long len = (*blen)[linvars[i] - 1];
 
       if(len==nvars+1){
         for(long j = 0; j<len; j++){
@@ -1081,11 +1081,11 @@ int msolve_ff(param_t **bparam,
 Modular computation:
 does as msolve_ff but with bld, blen, etc already allocated.
 
-returns 0 when the ideal has dim. 0 and coordinates are generic enough to obtain the parametrization. 
+returns 0 when the ideal has dim. 0 and coordinates are generic enough to obtain the parametrization.
 returns 1 in case of failure.
 returns 2 when the dimension is > 0
 
-Small hack here: returns -1 when the dimension of the quotient is 1. 
+Small hack here: returns -1 when the dimension of the quotient is 1.
 **/
 
 int msolve_ff_alloc(param_t **bparam,
@@ -2080,7 +2080,7 @@ static inline int check_proportional_mpz_nmod_poly(const long len,
 
 
 /**
-   renvoie 1 si il faut faire le modular check. 
+   renvoie 1 si il faut faire le modular check.
 **/
 
 static inline int check_param_modular(const mpz_param_t mp_param,
@@ -2836,7 +2836,7 @@ void set_linear_function_pointer(int32_t fc){
   => Positive dimension dim > 0
   => Dimension zero + calcul qui a pu etre fait. dim=0 dquot > 0
 
-  - renvoie 1 si le calcul a echoue 
+  - renvoie 1 si le calcul a echoue
   => Dimension 0 => pas en position generique
 
   - renvoie 2 si besoin de plus de genericite.
@@ -2868,7 +2868,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
-  const uint32_t field_char = gens->field_char;
+  uint32_t field_char = gens->field_char;
   const void *cfs = gens->mpz_cfs;
   if(gens->field_char){
     cfs = gens->cfs;
@@ -2876,10 +2876,10 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   else{
     cfs = gens->mpz_cfs;
   }
-  const int mon_order = 0;
-  const int32_t nr_vars = gens->nvars;
-  const int32_t nr_gens = gens->ngens;
-  const int reduce_gb = 1;
+  int mon_order = 0;
+  int32_t nr_vars = gens->nvars;
+  int32_t nr_gens = gens->ngens;
+  int reduce_gb = 1;
   const uint32_t prime_start = pow(2, 30);
   const int32_t nr_primes = nr_threads;
 
@@ -2888,12 +2888,22 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* initialize stuff */
   stat_t *st  = initialize_statistics();
 
+    int *invalid_gens   =   NULL;
+    int res = validate_input_data(&invalid_gens, cfs, &field_char, &mon_order,
+            &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
+            &max_nr_pairs, &reset_ht, &la_option, &reduce_gb, &info_level);
+
+    /* all data is corrupt */
+    if (res == -1) {
+        free(invalid_gens);
+        return -3;
+    }
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
-  if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
-              mon_order, elim_block_len, nr_vars, nr_gens, ht_size,
-              nr_threads, max_nr_pairs, reset_ht, la_option, reduce_gb,
-              prime_start, nr_primes, pbm_file, info_level)) {
+  if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
+              field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+              ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+              reduce_gb, prime_start, nr_primes, pbm_file, info_level)) {
     free(st);
     return -3;
   }
@@ -2911,7 +2921,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     * the basis elements stored in the trace */
   ht_t *tht = initialize_secondary_hash_table(bht, st);
   /* read in ideal, move coefficients to integers */
-  import_julia_data(bs_qq, bht, st, lens, exps, cfs);
+  import_julia_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+  free(invalid_gens);
+  invalid_gens  =   NULL;
 
   if (st->info_level > 0) {
     print_initial_statistics(stderr, st);
@@ -2996,6 +3008,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int success = 1;
   int squares = 1;
 
+    printf("1AE\n");
   int32_t *lmb_ori = modular_trace_learning(bmatrix, bdiv_xn, blen_gb_xn,
                                             bstart_cf_gb_xn,
 
@@ -3135,7 +3148,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   initialize_mpz_param(mpz_param, nmod_params[0]);
   initialize_mpz_param(tmp_mpz_param, nmod_params[0]);
   //attention les longueurs des mpz_param sont fixees par nmod_params[0]
-  //dans des cas exceptionnels, ca peut augmenter avec un autre premier. 
+  //dans des cas exceptionnels, ca peut augmenter avec un autre premier.
 
 
   mpz_t modulus;
@@ -3460,11 +3473,11 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     const int32_t *lens = gens->lens;
     const int32_t *exps = gens->exps;
     const void *cfs = gens->mpz_cfs;
-    const uint32_t field_char = gens->field_char;
-    const int mon_order = 0;
-    const int32_t nr_vars = gens->nvars;
-    const int32_t nr_gens = gens->ngens;
-    const int reduce_gb = 1;
+    uint32_t field_char = gens->field_char;
+    int mon_order = 0;
+    int32_t nr_vars = gens->nvars;
+    int32_t nr_gens = gens->ngens;
+    int reduce_gb = 1;
     const uint32_t prime_start = pow(2, 30);
     const int32_t nr_primes = nr_threads;
 
@@ -3481,12 +3494,23 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     /* initialize stuff */
     stat_t *st  = initialize_statistics();
 
+    int *invalid_gens   =   NULL;
+    int res = validate_input_data(&invalid_gens, cfs, &field_char, &mon_order,
+            &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
+            &max_nr_pairs, &reset_ht, &la_option, &reduce_gb, &info_level);
+
+    /* all data is corrupt */
+    if (res == -1) {
+        free(invalid_gens);
+        return -3;
+    }
+
     /* checks and set all meta data. if a nonzero value is returned then
      * some of the input data is corrupted. */
-    if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
-                mon_order, elim_block_len, nr_vars, nr_gens, ht_size,
-                nr_threads, max_nr_pairs, reset_ht, la_option, reduce_gb,
-                prime_start, nr_primes, pbm_file, info_level)) {
+    if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
+                field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+                ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+                reduce_gb, prime_start, nr_primes, pbm_file, info_level)) {
         free(st);
         return -3;
     }
@@ -3501,7 +3525,9 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     /* initialize basis hash table, update hash table, symbolic hash table */
     ht_t *bht = initialize_basis_hash_table(st);
     /* read in ideal, move coefficients to integers */
-    import_julia_data(bs_qq, bht, st, lens, exps, cfs);
+    import_julia_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+    free(invalid_gens);
+    invalid_gens    =   NULL;
 
     if (st->info_level > 0) {
         print_initial_statistics(stderr, st);
@@ -3649,7 +3675,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
             free(st);
             free(linvars);
             if(nlins){
-                free(lineqs_ptr[0]); 
+                free(lineqs_ptr[0]);
             }
             free(lineqs_ptr);
             free(squvars);
@@ -4214,18 +4240,18 @@ void generate_table_values_full(interval *rt, mpz_t c,
   rr2:=(r+1)/2^k;
   numer(expand(subs(x=1/(x+1),subs(x=x*(rr2-rr1),subs(x=x+rr1, quad)))));
 
-  > numer(subs(x=x+r/2^k, quad)) = 
+  > numer(subs(x=x+r/2^k, quad)) =
   (2^k)^2*a*x^2+((2^k)^2*b+2*2^k*a*r)*x+c*(2^k)^2+2^k*b*r+a*r^2
 
   return 1 if quad has real roots in [0, 1] else it returns 0
  */
-int evalquadric(mpz_t *quad, mpz_t r, long k, 
+int evalquadric(mpz_t *quad, mpz_t r, long k,
                 mpz_t *tmpquad, mpz_t tmp){
 
   /*We start by computing numer(subs(x=x*(rr2-rr1),subs(x=x+rr1, quad))) */
   /* This is  */
   /*a*x^2+(b*2^k+2*a*r)*x+c*(2^k)^2+2^k*b*r+a*r^2*/
-  mpz_set(tmpquad[2], quad[2]); 
+  mpz_set(tmpquad[2], quad[2]);
 
   mpz_set(tmp, quad[2]);
   mpz_mul(tmp, tmp, r);
@@ -4689,7 +4715,7 @@ int real_msolve_qq(mpz_param_t mp_param,
 
   /*
     0 is comp. is ok
-    1 if comp. failed 
+    1 if comp. failed
     2 if more genericity is required
     -2 if charac is > 0
     -3 if meta data are corrupted
@@ -4716,7 +4742,7 @@ int real_msolve_qq(mpz_param_t mp_param,
   long unsigned int nbneg = 0;
   interval *roots   = NULL;
   real_point_t *pts = NULL;
-  
+
   if(get_param>1){
     return b;
   }
@@ -4726,7 +4752,7 @@ int real_msolve_qq(mpz_param_t mp_param,
   }
 
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
-    
+
     mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
     for(long i = 0; i < mp_param->elim->length; i++){
       mpz_init_set(pol[i], mp_param->elim->coeffs[i]);
@@ -5382,8 +5408,9 @@ restart:
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
             rt0 = realtime();
-            const uint32_t prime_start = pow(2, 30);
-            const int32_t nr_primes = nr_threads;
+            uint32_t field_char         = gens->field_char;
+            const uint32_t prime_start  = pow(2, 30);
+            const int32_t nr_primes     = nr_threads;
 
             /* data structures for basis, hash table and statistics */
             bs_t *sat_qq   = NULL;
@@ -5391,13 +5418,29 @@ restart:
             /* initialize stuff */
             stat_t *st  = initialize_statistics();
 
+            int *invalid_gens       =   NULL;
+            int32_t monomial_order  =   0;
+            int32_t reduce_gb       =   1;
+            int res = validate_input_data(&invalid_gens, gens->mpz_cfs,
+                    &field_char, &monomial_order, &elim_block_len,
+                    &gens->nvars, &gens->ngens-saturate, &initial_hts,
+                    &nr_threads, &max_pairs, &update_ht, &la_option,
+                    &reduce_gb, &info_level);
+
+            /* all data is corrupt */
+            if (res == -1) {
+                free(invalid_gens);
+                return -3;
+            }
+
             /* checks and set all meta data. if a nonzero value is returned then
              * some of the input data is corrupted. */
             if (check_and_set_meta_data_trace(st, gens->lens, gens->exps,
-                        (void *)gens->mpz_cfs, gens->field_char, 0,
-                        elim_block_len, gens->nvars, gens->ngens-saturate,
-                        initial_hts, nr_threads, max_pairs, update_ht,
-                        la_option, 1, prime_start, nr_primes, 0, info_level)) {
+                        (void *)gens->mpz_cfs, invalid_gens,
+                        field_char, 0, elim_block_len, gens->nvars,
+                        gens->ngens-saturate, initial_hts, nr_threads,
+                        max_pairs, update_ht, la_option, 1, prime_start,
+                        nr_primes, 0, info_level)) {
                 free(st);
                 return -3;
             }
@@ -5415,7 +5458,10 @@ restart:
              * the basis elements stored in the trace */
             ht_t *tht = initialize_secondary_hash_table(bht, st);
             /* read in ideal, move coefficients to integers */
-            import_julia_data(bs_qq, bht, st, gens->lens, gens->exps, (void *)gens->mpz_cfs);
+            import_julia_data(bs_qq, bht, st, gens->lens, gens->exps,
+                    (void *)gens->mpz_cfs, invalid_gens);
+            free(invalid_gens);
+            invalid_gens    =   NULL;
 
             if (st->info_level > 0) {
                 print_initial_statistics(stderr, st);
@@ -5575,7 +5621,7 @@ restart:
             int dim = - 2;
             long dquot = -1;
 
-            b = real_msolve_qq(*mpz_paramp, 
+            b = real_msolve_qq(*mpz_paramp,
                     &param,
                     &dim,
                     &dquot,
@@ -5583,7 +5629,7 @@ restart:
                     real_roots_ptr,
                     real_pts_ptr,
                     gens,
-                    initial_hts, nr_threads, max_pairs, 
+                    initial_hts, nr_threads, max_pairs,
                     elim_block_len, update_ht,
                     la_option, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);

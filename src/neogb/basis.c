@@ -599,22 +599,24 @@ next_poly:
         mpz_set(content, row[0]);
         const len_t os  = hm[i][PRELOOP];
         const len_t len = hm[i][LENGTH];
-        for (j = 1; j < len; ++j) {
-            mpz_gcd(content, content, row[j]);
-            if (mpz_cmp_si(content, 1) == 0) {
-                i++;
-                goto next_poly;
+        if (mpz_cmp_si(content, 0) != 0) {
+            for (j = 1; j < len; ++j) {
+                mpz_gcd(content, content, row[j]);
+                if (mpz_cmp_si(content, 1) == 0) {
+                    i++;
+                    goto next_poly;
+                }
             }
-        }
-        /* remove content */
-        for (j = 0; j < os; ++j) {
-            mpz_divexact(row[j], row[j], content);
-        }
-        for (; j < len; j += UNROLL) {
-            mpz_divexact(row[j], row[j], content);
-            mpz_divexact(row[j+1], row[j+1], content);
-            mpz_divexact(row[j+2], row[j+2], content);
-            mpz_divexact(row[j+3], row[j+3], content);
+            /* remove content */
+            for (j = 0; j < os; ++j) {
+                mpz_divexact(row[j], row[j], content);
+            }
+            for (; j < len; j += UNROLL) {
+                mpz_divexact(row[j], row[j], content);
+                mpz_divexact(row[j+1], row[j+1], content);
+                mpz_divexact(row[j+2], row[j+2], content);
+                mpz_divexact(row[j+3], row[j+3], content);
+            }
         }
     }
     mpz_clear(content);

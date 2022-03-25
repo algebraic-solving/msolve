@@ -74,7 +74,8 @@ void (*import_julia_data)(
         stat_t *st,
         const int32_t *lens,
         const int32_t *exps,
-        const void *vcfs
+        const void *vcfs,
+        const int *invalid_gens
         );
 
 int64_t (*export_julia_data)(

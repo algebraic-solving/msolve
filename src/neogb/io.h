@@ -34,6 +34,7 @@ int32_t check_and_set_meta_data(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
+        const int *invalid_gens,
         const uint32_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
@@ -72,11 +73,29 @@ void import_julia_data_nf_qq(
         const void *vcfs
         );
 
+int validate_input_data(
+        int **invalid_gensp,
+        const void *cfs,
+        uint32_t *field_charp,
+        int32_t *mon_orderp,
+        int32_t *elim_block_lenp,
+        int32_t *nr_varsp,
+        int32_t *nr_gensp,
+        int32_t *ht_sizep,
+        int32_t *nr_threadsp,
+        int32_t *max_nr_pairsp,
+        int32_t *reset_htp,
+        int32_t *la_optionp,
+        int32_t *reduce_gbp,
+        int32_t *info_levelp
+        );
+
 int32_t check_and_set_meta_data_trace(
         stat_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
+        const int *invalid_gens,
         const uint32_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,

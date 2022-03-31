@@ -3081,7 +3081,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     if(print_gb){
       return 0;
     }
-    if(*dim_ptr == 0 && gens->field_char){
+    if(*dim_ptr == 0 && gens->field_char && success){
       /* copy of parametrization */
       if(*dquot_ptr != 0){
         param_t *par = allocate_fglm_param(gens->field_char, st->nvars);
@@ -4836,6 +4836,102 @@ int real_msolve_qq(mpz_param_t mp_param,
 }
 
 
+
+void display_output(int b, int dim, int dquot,
+                    files_gb *files, data_gens_ff_t *gens,
+                    param_t *param, mpz_param_t *mpz_paramp, int get_param,
+                    long *nb_real_roots_ptr,
+                    interval **real_roots_ptr,
+                    real_point_t **real_pts_ptr,
+                    int info_level){
+  if(dquot == 0){
+    fprintf(stdout, "[-1]:\n");
+    return;
+  }
+
+  if(dim == 0 && dquot >= 0){
+    (*mpz_paramp)->nvars  = gens->nvars;
+    if(files->out_file != NULL){
+      FILE *ofile = fopen(files->out_file, "a+");
+      fprintf(ofile, "[0, ");
+      if (get_param >= 1 || gens->field_char) {
+        if(gens->field_char){
+          display_fglm_param_maple(ofile, param);
+          return;
+        }
+        mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
+      }
+      if(get_param <= 1){
+        if(get_param){
+          fprintf(ofile, ",");
+        }
+        display_real_points(
+                            ofile, *real_pts_ptr, *nb_real_roots_ptr);
+      }
+      fprintf(ofile, "]:\n");
+      fclose(ofile);
+    }
+    else{
+      fprintf(stdout, "[0, ");
+      if (get_param >= 1  || gens->field_char) {
+        if(gens->field_char){
+          display_fglm_param_maple(stdout, param);
+          return;
+        }
+        mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
+      }
+      if(get_param <= 1){
+        if(get_param){
+          fprintf(stdout, ",");
+        }
+        display_real_points(stdout, *real_pts_ptr,
+                            *nb_real_roots_ptr);
+      }
+      fprintf(stdout, "]:\n");
+    }
+  }
+  if(dim > 0){
+    if (info_level > 0) {
+      fprintf(stderr, "The ideal has positive dimension\n");
+    }
+    if(files->out_file != NULL){
+      FILE *ofile2 = fopen(files->out_file, "a+");
+      //1 because dim is >0
+      fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
+      fclose(ofile2);
+    }
+    else{
+      fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
+    }
+  }
+}
+
+void manage_output(int b, int dim, int dquot,
+                   files_gb *files, data_gens_ff_t *gens,
+                   param_t *param, mpz_param_t *mpz_paramp, int get_param,
+                   long *nb_real_roots_ptr,
+                   interval **real_roots_ptr,
+                   real_point_t **real_pts_ptr,
+                   int info_level){
+  if(b == 0){
+    display_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
+                   nb_real_roots_ptr,
+                   real_roots_ptr,
+                   real_pts_ptr,
+                   info_level);
+  }
+  if(b==-2){
+    fprintf(stderr, "Characteristic of the field here shouldn't be positive\n");
+    (*mpz_paramp)->dim = -2;
+  }
+  if(b==-3){
+    fprintf(stderr, "Problem when checking meta data\n");
+    (*mpz_paramp)->dim  = -3;
+  }
+
+}
+
+
 int core_msolve(
   int32_t la_option,
   int32_t nr_threads,
@@ -4995,6 +5091,13 @@ restart:
             return 0;
           }
 
+          manage_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
+                        nb_real_roots_ptr,
+                        real_roots_ptr,
+                        real_pts_ptr,
+                        info_level);
+
+
           if (b == 0 && gens->field_char > 0) {
             if(dim == 0){
               if(files->out_file != NULL){
@@ -5043,32 +5146,24 @@ restart:
             fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
             fprintf(stderr, "This will\n");
             fprintf(stderr, "be done automatically if you run msolve with option\n");
-            fprintf(stderr, "\"-g2\" which is the default.\n");
+            fprintf(stderr, "\"-c2\" which is the default.\n");
           }
-          if (b == 2) {
-            fprintf(stderr, "The ideal has positive dimension\n");
-            if(files->out_file != NULL){
-              FILE *ofile2 = fopen(files->out_file, "a+");
-              //1 because dim is >0
-              fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
-              fclose(ofile2);
+          if(b == 2){
+            free(bld);
+            bld = NULL;
+            free(blen);
+            blen  = NULL;
+            free(bexp);
+            bexp  = NULL;
+            free(bcf);
+            bcf = NULL;
+            free(param);
+            param = NULL;
+            round++;
+            undo_variable_order_change(gens);
+            if (add_random_linear_form_to_input_system(gens, info_level)) {
+              goto restart;
             }
-            else{
-              fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
-            }
-          }
-          if(b == 3){
-            if(files->out_file != NULL){
-              FILE *ofile2 = fopen(files->out_file, "a+");
-              fprintf(ofile2, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
-              fclose(ofile2);
-            }
-            else{
-              fprintf(stdout, "[0, %d, 0, [0, [1]]]:\n", gens->nvars);
-            }
-          }
-          if (b == 2 || b == -1) {
-            if(b==-1) b = 0;
           }
         } else {
           /* normal_form is 1 */
@@ -5620,6 +5715,7 @@ restart:
             /* } */
             return 0;
       } else {       /* characteristic is 0 and elim_block = 0 and saturate = 0 */
+
             int dim = - 2;
             long dquot = -1;
 
@@ -5640,63 +5736,11 @@ restart:
               return 0;
             }
 
-            if(b == 0){
-                if(dim == 0 && dquot >= 0){
-                    (*mpz_paramp)->nvars  = gens->nvars;
-                    if(files->out_file != NULL){
-                        FILE *ofile = fopen(files->out_file, "a+");
-                        if(dquot == 0){
-                          fprintf(ofile, "[-1]:\n");
-                          return !(b==0);
-                        }
-                        fprintf(ofile, "[0, ");
-                        if (get_param >= 1) {
-                            mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
-                        }
-                        if(get_param <= 1){
-                            if(get_param){
-                                fprintf(ofile, ",");
-                            }
-                            display_real_points(
-                                    ofile, *real_pts_ptr, *nb_real_roots_ptr);
-                        }
-                        fprintf(ofile, "]:\n");
-                        fclose(ofile);
-                    }
-                    else{
-                      if(dquot == 0){
-                        fprintf(stdout, "[-1]:\n");
-                        return !(b==0);
-                      }
-                      fprintf(stdout, "[0, ");
-                        if (get_param >= 1) {
-                            mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
-                        }
-                        if(get_param <= 1){
-                            if(get_param){
-                                fprintf(stdout, ",");
-                            }
-                            display_real_points(stdout, *real_pts_ptr,
-                                    *nb_real_roots_ptr);
-                        }
-                        fprintf(stdout, "]:\n");
-                    }
-                }
-                if(dim > 0){
-                    if (info_level > 0) {
-                        fprintf(stderr, "The ideal has positive dimension\n");
-                    }
-                    if(files->out_file != NULL){
-                        FILE *ofile2 = fopen(files->out_file, "a+");
-                        //1 because dim is >0
-                        fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
-                        fclose(ofile2);
-                    }
-                    else{
-                        fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
-                    }
-                }
-            }
+            manage_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
+                          nb_real_roots_ptr,
+                          real_roots_ptr,
+                          real_pts_ptr,
+                          info_level);
             if (b == 1) {
                 free(bld);
                 bld = NULL;
@@ -5724,16 +5768,8 @@ restart:
                 fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
                 fprintf(stderr, "This will\n");
                 fprintf(stderr, "be done automatically if you run msolve with option\n");
-                fprintf(stderr, "\"-g2\" which is the default.\n");
+                fprintf(stderr, "\"-c2\" which is the default.\n");
                 (*mpz_paramp)->dim  = -1;
-            }
-            if(b==-2){
-                fprintf(stderr, "Characteristic of the field here shouldn't be positive\n");
-                (*mpz_paramp)->dim = -2;
-            }
-            if(b==-3){
-                fprintf(stderr, "Problem when checking meta data\n");
-                (*mpz_paramp)->dim  = -3;
             }
             if(b == -4){
                 fprintf(stderr, "Bad prime chosen initially\n");

@@ -663,8 +663,9 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   param->coords = (mpz_upoly_t *)malloc(sizeof(mpz_upoly_t)*(param->nvars - 1));
   if(param->coords != NULL){
     for(long i = 0; i < param->nvars - 1; i++){
-      mpz_upoly_init(param->coords[i], MAX(1,bparam->coords[i]->length));
-      param->coords[i]->length = bparam->coords[i]->length;
+      mpz_upoly_init(param->coords[i], MAX(1,bparam->elim->length - 1));
+      /* param->coords[i]->length = bparam->coords[i]->length; */
+      param->coords[i]->length = bparam->elim->length - 1;
     }
   }
   else{
@@ -1416,7 +1417,10 @@ static inline void set_mpz_param_nmod(mpz_param_t mpz_param, param_t *nmod_param
       mpz_set_ui(mpz_param->coords[j]->coeffs[i],
                  nmod_param->coords[j]->coeffs[i]);
     }
-    mpz_param->coords[j]->length = nmod_param->coords[j]->length;
+    for(long i = nmod_param->coords[j]->length; i < nmod_param->elim->length - 1; i++){
+      mpz_set_ui(mpz_param->coords[j]->coeffs[i], 0);
+    }
+    mpz_param->coords[j]->length = nmod_param->elim->length - 1;
   }
 }
 
@@ -2901,6 +2905,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     }
   /* checks and set all meta data. if a nonzero value is returned then
     * some of the input data is corrupted. */
+
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
               field_char, mon_order, elim_block_len, nr_vars, nr_gens,
               ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
@@ -4751,6 +4756,7 @@ int real_msolve_qq(mpz_param_t mp_param,
   if(print_gb){
     return 0;
   }
+
 
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
 

@@ -609,7 +609,8 @@ static inline void get_term(const char *line, char **prev_pos,
   }
 }
 
-/* assumes that coeffs in file fit in word size */
+
+/*assumes that coeffs in file fit in word size */
 static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
                                           int32_t field_char,
                                           data_gens_ff_t *gens, int32_t pos){

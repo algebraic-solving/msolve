@@ -19,7 +19,7 @@ AC_PROG_CC
 # CAUTION: Order matters for static binary building.
 AC_CHECK_LIB([m], [main], , [AC_MSG_ERROR([Math library not found])])
 AC_CHECK_LIB(gmp, __gmpz_init, , [AC_MSG_ERROR([GNU MP not found, see https://gmplib.org/])])
-# AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
+AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
 AC_CHECK_LIB([flint], [fmpz_add_ui], , [AC_MSG_ERROR([FLINT not found])])
 # AC_CHECK_LIB([pthread], [posix_spawn])
 

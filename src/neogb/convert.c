@@ -455,7 +455,7 @@ static void return_normal_forms_to_basis(
     rt0 = realtime();
 
     /* fix size of basis for entering new elements directly */
-    check_enlarge_basis(bs, mat->np);
+    check_enlarge_basis(bs, mat->np, st);
 
     hm_t **rows = mat->tr;
 
@@ -503,7 +503,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
     rt0 = realtime();
 
     /* fix size of basis for entering new elements directly */
-    check_enlarge_basis(bs, mat->np);
+    check_enlarge_basis(bs, mat->np, st);
 
     hm_t **rows = mat->tr;
 
@@ -585,7 +585,7 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
     rt0 = realtime();
 
     /* fix size of basis for entering new elements directly */
-    check_enlarge_basis(bs, mat->np);
+    check_enlarge_basis(bs, mat->np, st);
 
     hm_t **rows = mat->tr;
 

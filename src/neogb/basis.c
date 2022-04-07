@@ -63,6 +63,12 @@ static void free_basis_elements(
             bs->hm[i] = NULL;
         }
     }
+    /* signatures */
+    free(bs->sm);
+    bs->sm  =   NULL;
+    free(bs->si);
+    bs->si  =   NULL;
+
     bs->ld  = bs->lo  = 0;
 }
 
@@ -123,45 +129,69 @@ void free_basis(
     bs->lm  = NULL;
     free(bs->red);
     bs->red = NULL;
+    /* signatures */
+    free(bs->sm);
+    bs->sm  =   NULL;
+    free(bs->si);
+    bs->si  =   NULL;
+
     free(bs);
     bs    = NULL;
     *bsp  = bs;
 }
-/* finite field stuff  --  8 bit */
-static bs_t *initialize_basis_ff_8(
-        const int32_t ngens
+
+bs_t *initialize_basis(
+        const stat_t *st
         )
 {
-    bs_t *bs  = (bs_t *)malloc(sizeof(bs_t));
+    bs_t *bs  = (bs_t *)calloc(1, sizeof(bs_t));
+    /* initialize meta data */
     bs->lo        = 0;
     bs->ld        = 0;
     bs->lml       = 0;
     bs->constant  = 0;
-    bs->sz        = 2*ngens;
+    bs->sz        = 2 * st->ngens;
     bs->mltdeg    = 0;
 
-    bs->cf_8  = (cf8_t **)malloc((unsigned long)bs->sz * sizeof(cf8_t *));
-    bs->cf_16 = NULL;
-    bs->cf_32 = NULL;
-    bs->cf_qq = NULL;
+    /* initialize basis elements data */
     bs->hm    = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
     bs->lm    = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
+    /* signature-based groebner basis computation? */
+    if (st->use_signatures == 1) {
+        bs->sm  =   (sm_t *)malloc((unsigned long)bs->sz * sizeof(sm_t));
+        bs->si  =   (si_t *)malloc((unsigned long)bs->sz * sizeof(si_t));
+    }
+    /* initialize coefficients depending on ground field */
+    switch (st->ff_bits) {
+        case 8:
+            bs->cf_8  = (cf8_t **)malloc((unsigned long)bs->sz * sizeof(cf8_t *));
+            break;
+        case 16:
+            bs->cf_16  = (cf16_t **)malloc((unsigned long)bs->sz * sizeof(cf16_t *));
+            break;
+        case 32:
+            bs->cf_32  = (cf32_t **)malloc((unsigned long)bs->sz * sizeof(cf32_t *));
+            break;
+        case 0:
+            bs->cf_qq = (mpz_t **)malloc((unsigned long)bs->sz * sizeof(mpz_t *));
+            break;
+        default:
+            exit(1);
+    }
 
     return bs;
 }
 
-static inline void check_enlarge_basis_ff_8(
+void check_enlarge_basis(
         bs_t *bs,
-        const len_t added
+        const len_t added,
+        const stat_t *st
         )
 {
     if (bs->ld + added >= bs->sz) {
         bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        bs->cf_8  = realloc(bs->cf_8,
-                (unsigned long)bs->sz * sizeof(cf8_t *));
-        memset(bs->cf_8+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf8_t *));
         bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
         memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
         bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
@@ -171,9 +201,34 @@ static inline void check_enlarge_basis_ff_8(
         bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
         memset(bs->red+bs->ld, 0,
                 (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
+
+        switch (st->ff_bits) {
+            case 8:
+                bs->cf_8  = realloc(bs->cf_8,
+                        (unsigned long)bs->sz * sizeof(cf8_t *));
+                memset(bs->cf_8+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf8_t *));
+                break;
+            case 16:
+                bs->cf_16  = realloc(bs->cf_16,
+                        (unsigned long)bs->sz * sizeof(cf16_t *));
+                memset(bs->cf_16+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf16_t *));
+                break;
+            case 32:
+                bs->cf_32  = realloc(bs->cf_32,
+                        (unsigned long)bs->sz * sizeof(cf32_t *));
+                memset(bs->cf_32+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf32_t *));
+                break;
+            case 0:
+                bs->cf_qq = realloc(bs->cf_qq,
+                        (unsigned long)bs->sz * sizeof(mpz_t *));
+                break;
+            default:
+                exit(1);
+        }
     }
 }
 
+/* finite field stuff  --  8 bit */
 static inline void normalize_initial_basis_ff_8(
         bs_t *bs,
         const uint32_t fc
@@ -217,52 +272,6 @@ static inline void normalize_initial_basis_ff_8(
 }
 
 /* finite field stuff  --  16 bit */
-static bs_t *initialize_basis_ff_16(
-        const int32_t ngens
-        )
-{
-    bs_t *bs  = (bs_t *)malloc(sizeof(bs_t));
-    bs->lo        = 0;
-    bs->ld        = 0;
-    bs->lml       = 0;
-    bs->constant  = 0;
-    bs->sz        = 2*ngens;
-    bs->mltdeg    = 0;
-
-    bs->cf_8  = NULL;
-    bs->cf_16 = (cf16_t **)malloc((unsigned long)bs->sz * sizeof(cf16_t *));
-    bs->cf_32 = NULL;
-    bs->cf_qq = NULL;
-    bs->hm    = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
-    bs->lm    = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
-    bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
-    bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
-
-    return bs;
-}
-
-static inline void check_enlarge_basis_ff_16(
-        bs_t *bs,
-        const len_t added
-        )
-{
-    if (bs->ld + added >= bs->sz) {
-        bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        bs->cf_16 = realloc(bs->cf_16,
-                (unsigned long)bs->sz * sizeof(cf16_t *));
-        memset(bs->cf_16+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf16_t *));
-        bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
-        memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
-        bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
-        memset(bs->lm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(sdm_t));
-        bs->lmps  = realloc(bs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
-        memset(bs->lmps+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(bl_t));
-        bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
-        memset(bs->red+bs->ld, 0,
-                (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
-    }
-}
-
 static inline void normalize_initial_basis_ff_16(
         bs_t *bs,
         const uint32_t fc
@@ -306,52 +315,6 @@ static inline void normalize_initial_basis_ff_16(
 }
 
 /* finite field stuff  --  32 bit */
-static bs_t *initialize_basis_ff_32(
-        const int32_t ngens
-        )
-{
-    bs_t *bs  = (bs_t *)malloc(sizeof(bs_t));
-    bs->lo        = 0;
-    bs->ld        = 0;
-    bs->lml       = 0;
-    bs->constant  = 0;
-    bs->sz        = 2*ngens;
-    bs->mltdeg    = 0;
-
-    bs->cf_8  = NULL;
-    bs->cf_16 = NULL;
-    bs->cf_32 = (cf32_t **)calloc((unsigned long)bs->sz, sizeof(cf32_t *));
-    bs->cf_qq = NULL;
-    bs->hm    = (hm_t **)calloc((unsigned long)bs->sz, sizeof(hm_t *));
-    bs->lm    = (sdm_t *)calloc((unsigned long)bs->sz, sizeof(sdm_t));
-    bs->lmps  = (bl_t *)calloc((unsigned long)bs->sz, sizeof(bl_t));
-    bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
-
-    return bs;
-}
-
-static inline void check_enlarge_basis_ff_32(
-        bs_t *bs,
-        const len_t added
-        )
-{
-    if (bs->ld + added >= bs->sz) {
-        bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        bs->cf_32 = realloc(bs->cf_32,
-                (unsigned long)bs->sz * sizeof(cf32_t *));
-        memset(bs->cf_32+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf32_t *));
-        bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
-        memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
-        bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
-        memset(bs->lm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(sdm_t));
-        bs->lmps  = realloc(bs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
-        memset(bs->lmps+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(bl_t));
-        bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
-        memset(bs->red+bs->ld, 0,
-                (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
-    }
-}
-
 static inline void normalize_initial_basis_ff_32(
         bs_t *bs,
        const uint32_t fc
@@ -394,51 +357,6 @@ static inline void normalize_initial_basis_ff_32(
 }
 
 /* characteristic zero stuff */
-static bs_t *initialize_basis_qq(
-        const int32_t ngens
-        )
-{
-    bs_t *bs  = (bs_t *)malloc(sizeof(bs_t));
-    bs->lo        = 0;
-    bs->ld        = 0;
-    bs->lml       = 0;
-    bs->constant  = 0;
-    bs->sz        = 2*ngens;
-    bs->mltdeg    = 0;
-
-    bs->cf_8  = NULL;
-    bs->cf_16 = NULL;
-    bs->cf_32 = NULL;
-    bs->cf_qq = (mpz_t **)malloc((unsigned long)bs->sz * sizeof(mpz_t *));
-    bs->hm    = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
-    bs->lm    = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
-    bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
-    bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
-
-    return bs;
-}
-
-static inline void check_enlarge_basis_qq(
-        bs_t *bs,
-        const len_t added
-        )
-{
-    if (bs->ld + added >= bs->sz) {
-        bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        bs->cf_qq = realloc(bs->cf_qq,
-                (unsigned long)bs->sz * sizeof(mpz_t *));
-        bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
-        memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
-        bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
-        memset(bs->lm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(sdm_t));
-        bs->lmps  = realloc(bs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
-        memset(bs->lmps+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(bl_t));
-        bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
-        memset(bs->red+bs->ld, 0,
-                (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
-    }
-}
-
 static inline bs_t *copy_basis_mod_p_8(
         const bs_t * const gbs,
         const stat_t * const st

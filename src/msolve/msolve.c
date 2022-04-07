@@ -1098,6 +1098,7 @@ int msolve_ff_alloc(param_t **bparam,
                     int32_t elim_block_len,
                     int32_t update_ht,
                     int32_t la_option,
+                    int32_t use_signatures,
                     int32_t info_level,
                     int32_t print_gb,
                     files_gb *files){
@@ -1130,11 +1131,11 @@ int msolve_ff_alloc(param_t **bparam,
 
     int success = 0;
 
-    success = initialize_f4_input_data(&bs, &bht, &st,
+    success = initialize_gb_input_data(&bs, &bht, &st,
             gens->lens, gens->exps, (void *)gens->cfs,
             gens->field_char, 0, elim_block_len, gens->nvars,
             gens->ngens, initial_hts, nr_threads, max_pairs,
-            update_ht, la_option, 1, 0, info_level);
+            update_ht, la_option, use_signatures, 1, 0, info_level);
 
     if (!success) {
         printf("Bad input data, stopped computation.\n");
@@ -2864,6 +2865,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                     int32_t elim_block_len,
                     int32_t reset_ht,
                     int32_t la_option,
+                    int32_t use_signatures,
                     int32_t info_level,
                     int32_t print_gb,
                     int32_t pbm_file,
@@ -2895,7 +2897,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
-            &max_nr_pairs, &reset_ht, &la_option, &reduce_gb, &info_level);
+            &max_nr_pairs, &reset_ht, &la_option, &use_signatures,&reduce_gb,
+            &info_level);
 
     /* all data is corrupt */
     if (res == -1) {
@@ -2909,7 +2912,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
               field_char, mon_order, elim_block_len, nr_vars, nr_gens,
               ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
-              reduce_gb, prime_start, nr_primes, pbm_file, info_level)) {
+              use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
+              info_level)) {
     free(st);
     return -3;
   }
@@ -2920,7 +2924,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /*******************
   * initialize basis
   *******************/
-  bs_t *bs_qq = initialize_basis(st->ngens);
+  bs_t *bs_qq = initialize_basis(st);
   /* initialize basis hash table, update hash table, symbolic hash table */
   ht_t *bht = initialize_basis_hash_table(st);
   /* hash table to store the hashes of the multiples of
@@ -3469,6 +3473,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
                             int32_t elim_block_len,
                             int32_t reset_ht,
                             int32_t la_option,
+                            int32_t use_signatures,
                             int32_t info_level,
                             int32_t print_gb,
                             int32_t pbm_file,
@@ -3502,7 +3507,8 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
-            &max_nr_pairs, &reset_ht, &la_option, &reduce_gb, &info_level);
+            &max_nr_pairs, &reset_ht, &la_option, &use_signatures,
+            &reduce_gb, &info_level);
 
     /* all data is corrupt */
     if (res == -1) {
@@ -3516,7 +3522,8 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
                 field_char, mon_order, elim_block_len, nr_vars, nr_gens,
                 ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
-                reduce_gb, prime_start, nr_primes, pbm_file, info_level)) {
+                use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
+                info_level)) {
         free(st);
         return -3;
     }
@@ -3527,7 +3534,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     /*******************
      * initialize basis
      *******************/
-    bs_t *bs_qq = initialize_basis(st->ngens);
+    bs_t *bs_qq = initialize_basis(st);
     /* initialize basis hash table, update hash table, symbolic hash table */
     ht_t *bht = initialize_basis_hash_table(st);
     /* read in ideal, move coefficients to integers */
@@ -3933,6 +3940,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     return 0;
 }
 
+#if 0
 int msolve_qq(mpz_param_t mp_param,
               param_t **nmod_param,
               int *dim_ptr,
@@ -3962,6 +3970,7 @@ int msolve_qq(mpz_param_t mp_param,
                            elim_block_len,
                            reset_ht,
                            la_option,
+
                            info_level,
                            print_gb,
                            pbm_file,
@@ -3988,6 +3997,7 @@ int msolve_qq(mpz_param_t mp_param,
   }
   return 0;
 }
+#endif
 
 void real_point_init(real_point_t pt, long nvars){
   pt->nvars = nvars;
@@ -4711,6 +4721,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                    int32_t elim_block_len,
                    int32_t reset_ht,
                    int32_t la_option,
+                   int32_t use_signatures,
                    int32_t info_level,
                    int32_t print_gb,
                    int32_t pbm_file,
@@ -4738,6 +4749,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                           elim_block_len,
                           reset_ht,
                           la_option,
+                          use_signatures,
                           info_level,
                           print_gb,
                           pbm_file,
@@ -4940,6 +4952,7 @@ void manage_output(int b, int dim, int dquot,
 
 int core_msolve(
   int32_t la_option,
+  int32_t use_signatures,
   int32_t nr_threads,
   int32_t info_level,
   int32_t initial_hts,
@@ -5013,12 +5026,12 @@ restart:
              *             routines are the 32-bit implementations (since nf is at the moment
              *             only implemented for 32-bit elements). Later on we set st-fc by hand
              *             to the correct field characteristic. */
-            success = initialize_f4_input_data(&bs, &bht, &st,
+            success = initialize_gb_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens-saturate, initial_hts, nr_threads, max_pairs,
-                    update_ht, la_option, 1 /* reduce_gb */, 0,
+                    update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
             st->fc  = gens->field_char;
@@ -5039,7 +5052,7 @@ restart:
                     bs->lml     = bs->ld;
                 }
             } else {
-                sat = initialize_basis(2*saturate);
+                sat = initialize_basis(st);
                 import_julia_data_nf_ff_32(
                         sat, bht, st, gens->ngens-saturate, gens->ngens,
                         gens->lens, gens->exps, (void *)gens->cfs);
@@ -5091,7 +5104,7 @@ restart:
                              gens,
                              initial_hts, nr_threads, max_pairs,
                              elim_block_len, update_ht,
-                             la_option, info_level, print_gb,
+                             la_option, use_signatures, info_level, print_gb,
                              generate_pbm, precision, files, round, get_param);
           if(print_gb){
             return 0;
@@ -5200,12 +5213,12 @@ restart:
              *             routines are the 32-bit implementations (since nf is at the moment
              *             only implemented for 32-bit elements). Later on we set st-fc by hand
              *             to the correct field characteristic. */
-            success = initialize_f4_input_data(&bs, &bht, &st,
+            success = initialize_gb_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens-normal_form, initial_hts, nr_threads, max_pairs,
-                    update_ht, la_option, 1 /* reduce_gb */, 0,
+                    update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
             st->fc  = gens->field_char;
@@ -5239,7 +5252,7 @@ restart:
             /* initialize data for elements to be reduced,
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
-            tbr = initialize_basis(2*normal_form);
+            tbr = initialize_basis(st);
             import_julia_data_nf_ff_32(
                     tbr, bht, st, gens->ngens-normal_form, gens->ngens,
                     gens->lens, gens->exps, (void *)gens->cfs);
@@ -5375,7 +5388,7 @@ restart:
             /*******************
              * initialize basis
              *******************/
-            bs_t *bs_qq = initialize_basis(st->ngens);
+            bs_t *bs_qq = initialize_basis(st);
             /* initialize basis hash table, update hash table, symbolic hash table */
             ht_t *bht = initialize_basis_hash_table(st);
             /* hash table to store the hashes of the multiples of
@@ -5527,7 +5540,7 @@ restart:
                     gens->lens, &field_char, &monomial_order, &elim_block_len,
                     &gens->nvars, &gens->ngens-saturate, &initial_hts,
                     &nr_threads, &max_pairs, &update_ht, &la_option,
-                    &reduce_gb, &info_level);
+                    &use_signatures, &reduce_gb, &info_level);
 
             /* all data is corrupt */
             if (res == -1) {
@@ -5542,8 +5555,8 @@ restart:
                         (void *)gens->mpz_cfs, invalid_gens,
                         field_char, 0, elim_block_len, gens->nvars,
                         gens->ngens-saturate, initial_hts, nr_threads,
-                        max_pairs, update_ht, la_option, 1, prime_start,
-                        nr_primes, 0, info_level)) {
+                        max_pairs, update_ht, la_option, use_signatures,
+                        1, prime_start, nr_primes, 0, info_level)) {
                 free(st);
                 return -3;
             }
@@ -5554,7 +5567,7 @@ restart:
             /*******************
              * initialize basis
              *******************/
-            bs_t *bs_qq = initialize_basis(st->ngens);
+            bs_t *bs_qq = initialize_basis(st);
             /* initialize basis hash table, update hash table, symbolic hash table */
             ht_t *bht = initialize_basis_hash_table(st);
             /* hash table to store the hashes of the multiples of
@@ -5607,7 +5620,7 @@ restart:
                     bs_qq->lml     = bs_qq->ld;
                 }
             }
-            sat_qq = initialize_basis(2*saturate);
+            sat_qq = initialize_basis(st);
             import_julia_data_nf_qq(
                     sat_qq, bht, st, gens->ngens-saturate, gens->ngens,
                     gens->lens, gens->exps, (void *)gens->mpz_cfs);
@@ -5735,7 +5748,7 @@ restart:
                     gens,
                     initial_hts, nr_threads, max_pairs,
                     elim_block_len, update_ht,
-                    la_option, info_level, print_gb,
+                    la_option, use_signatures, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
 
             if(print_gb){
@@ -5934,6 +5947,7 @@ void msolve_julia(
         const int32_t max_nr_pairs,
         const int32_t reset_ht,
         const int32_t la_option,
+        const int32_t use_signatures,
         const int32_t print_gb,
         const int32_t get_param,
         const int32_t genericity_handling,
@@ -5998,12 +6012,12 @@ void msolve_julia(
     real_point_t *real_pts  = NULL;
 
     /* main msolve functionality */
-    int ret = core_msolve(la_option, nr_threads, info_level, initial_hts,
-            max_nr_pairs, elim_block_len, reset_ht, 0 /* generate pbm */,
-            1 /* reduce_gb */, print_gb, get_param, genericity_handling,
-            0 /* saturate */, 0 /* normal_form */, 0 /* normal_form_matrix */,
-            0 /* is_gb */, precision, files, gens, &param, &mpz_param,
-            &nb_real_roots, &real_roots, &real_pts);
+    int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
+            initial_hts, max_nr_pairs, elim_block_len, reset_ht,
+            0 /* generate pbm */, 1 /* reduce_gb */, print_gb, get_param,
+            genericity_handling, 0 /* saturate */, 0 /* normal_form */,
+            0 /* normal_form_matrix */, 0 /* is_gb */, precision, files,
+            gens, &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
 
     if (ret == -1) {
         exit(1);

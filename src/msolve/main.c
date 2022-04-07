@@ -165,6 +165,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
   fprintf(stdout, "         format please see the general output data format section\n");
   fprintf(stdout, "         above.\n");
+  fprintf(stdout, "-q QQQ   qqqqqqqqqqq.\n");
   fprintf(stdout, "-r RED   Reduce Groebner basis.\n");
   fprintf(stdout, "         Default: 1 (yes).\n");
   fprintf(stdout, "-s HTS   Initial hash table size given\n");
@@ -187,6 +188,7 @@ static void getoptions(
         int32_t *max_pairs,
         int32_t *elim_block_len,
         int32_t *linear_algebra,
+        int32_t *use_signatures,
         int32_t *update_ht,
         int32_t *reduce_gb,
         int32_t *print_gb,
@@ -223,6 +225,18 @@ static void getoptions(
       *precision = strtol(optarg, NULL, 10);
       if (*precision < 0) {
           *precision = 64;
+      }
+      /* if (*precision > 100) { */
+      /*     *precision = 100; */
+      /* } */
+      break;
+    case 'q':
+      *use_signatures = strtol(optarg, NULL, 10);
+      if (*use_signatures < 5) {
+          *use_signatures = 0;
+      }
+      if (*use_signatures > 5) {
+          *use_signatures = 0;
       }
       /* if (*precision > 100) { */
       /*     *precision = 100; */
@@ -334,6 +348,7 @@ int main(int argc, char **argv){
       We get values from the command line.
      **/
     int32_t la_option             = 2; // by default
+    int32_t use_signatures        = 0;
     int32_t nr_threads            = 1;
     int32_t info_level            = 0;
     int32_t initial_hts           = 17;
@@ -355,10 +370,10 @@ int main(int argc, char **argv){
     files->in_file = NULL;
     files->out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
-            &elim_block_len, &la_option, &update_ht, &reduce_gb, &print_gb,
-            &genericity_handling, &saturate, &normal_form, &normal_form_matrix,
-            &is_gb, &get_param, &precision, &generate_pbm, &info_level,
-            files);
+            &elim_block_len, &la_option, &use_signatures, &update_ht,
+            &reduce_gb, &print_gb, &genericity_handling, &saturate,
+            &normal_form, &normal_form_matrix, &is_gb, &get_param,
+            &precision, &generate_pbm, &info_level, files);
 
 
   FILE *fh  = fopen(files->in_file, "r");
@@ -412,14 +427,11 @@ int main(int argc, char **argv){
     real_point_t *real_pts  = NULL;
 
     /* main msolve functionality */
-    int ret = core_msolve(la_option, nr_threads, info_level, initial_hts,
-                          max_pairs, elim_block_len, update_ht,
-                          generate_pbm, reduce_gb,
-                          print_gb, get_param, genericity_handling,
-                          saturate, normal_form,
-                          normal_form_matrix, is_gb, precision, files,
-                          gens, &param,
-                          &mpz_param, &nb_real_roots, &real_roots, &real_pts);
+    int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
+            initial_hts, max_pairs, elim_block_len, update_ht, generate_pbm,
+            reduce_gb, print_gb, get_param, genericity_handling, saturate,
+            normal_form, normal_form_matrix, is_gb, precision, files, gens,
+            &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
     free(param);

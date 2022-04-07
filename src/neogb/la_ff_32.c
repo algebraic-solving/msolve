@@ -3452,7 +3452,7 @@ static void compute_kernel_sat_ff_32(
     ct0 = cputime();
     rt0 = realtime();
 
-    check_enlarge_basis(kernel, sat->ld);
+    check_enlarge_basis(kernel, sat->ld, st);
 
     exact_sparse_reduced_echelon_form_sat_ff_32(
             sat, mat, kernel, bs, st);

@@ -36,6 +36,7 @@ int msolve_ff_alloc(
         int32_t elim_block_len,
         int32_t update_ht,
         int32_t la_option,
+        int32_t use_signatures,
         int32_t info_level,
         int32_t print_gb,
         files_gb *files
@@ -67,6 +68,7 @@ int msolve_trace_qq(
         int32_t elim_block_len,
         int32_t reset_ht,
         int32_t la_option,
+        int32_t use_signatures,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -86,6 +88,7 @@ int msolve_probabilistic_qq(
         int32_t elim_block_len,
         int32_t reset_ht,
         int32_t la_option,
+        int32_t use_signatures,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -93,6 +96,7 @@ int msolve_probabilistic_qq(
         int round
         );
 
+#if 0
 int msolve_qq(
         mpz_param_t mp_param,
         param_t **nmod_param,
@@ -111,6 +115,7 @@ int msolve_qq(
         files_gb *files,
         int
         );
+#endif
 
 int real_msolve_qq(
         mpz_param_t mp_param,
@@ -127,6 +132,7 @@ int real_msolve_qq(
         int32_t elim_block_len,
         int32_t reset_ht,
         int32_t la_option,
+        int32_t use_signatures,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -138,6 +144,7 @@ int real_msolve_qq(
 
 int core_msolve(
         int32_t la_option,
+        int32_t use_signatures,
         int32_t nr_threads,
         int32_t info_level,
         int32_t initial_hts,
@@ -188,6 +195,7 @@ void msolve_julia(
         const int32_t max_nr_pairs,
         const int32_t reset_ht,
         const int32_t la_option,
+        const int32_t use_signatures,
         const int32_t print_gb,
         const int32_t get_param,
         const int32_t genericity_handling,

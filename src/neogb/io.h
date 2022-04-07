@@ -76,7 +76,7 @@ int32_t check_and_set_meta_data_trace(
         );
 
 /* for normal form input data */
-void import_julia_data_nf_ff_32(
+void import_input_data_nf_ff_32(
         bs_t *tbr,
         ht_t *ht,
         stat_t *st,
@@ -87,7 +87,7 @@ void import_julia_data_nf_ff_32(
         const void *vcfs
         );
 
-void import_julia_data_nf_qq(
+void import_input_data_nf_qq(
         bs_t *tbr,
         ht_t *ht,
         stat_t *st,

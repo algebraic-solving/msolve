@@ -64,7 +64,7 @@ int (*hcm_cmp)(
         void *htp
         );
 
-void (*import_julia_data)(
+void (*import_input_data)(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,

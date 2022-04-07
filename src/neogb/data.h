@@ -394,7 +394,7 @@ extern int (*hcm_cmp)(
         void *htp
         );
 
-extern void (*import_julia_data)(
+extern void (*import_input_data)(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,

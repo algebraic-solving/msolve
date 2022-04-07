@@ -103,7 +103,7 @@ static void sort_terms_ff_8(
   *hmp  = hm;
 }
 
-static void import_julia_data_ff_8(
+static void import_input_data_ff_8(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,
@@ -246,7 +246,7 @@ static void sort_terms_ff_16(
   *hmp  = hm;
 }
 
-static void import_julia_data_ff_16(
+static void import_input_data_ff_16(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,
@@ -390,7 +390,7 @@ static void sort_terms_ff_32(
   *hmp  = hm;
 }
 
-static void import_julia_data_ff_32(
+static void import_input_data_ff_32(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,
@@ -487,7 +487,7 @@ done:
     bs->ld  = st->ngens;
 }
 
-void import_julia_data_nf_ff_32(
+void import_input_data_nf_ff_32(
         bs_t *tbr,
         ht_t *ht,
         stat_t *st,
@@ -614,7 +614,7 @@ static void sort_terms_qq(
 }
 
 
-void import_julia_data_nf_qq(
+void import_input_data_nf_qq(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,
@@ -688,7 +688,7 @@ void import_julia_data_nf_qq(
 }
 
 
-static void import_julia_data_qq(
+static void import_input_data_qq(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,
@@ -1414,7 +1414,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_qq;
       }
       interreduce_matrix_rows = interreduce_matrix_rows_qq;
-      import_julia_data       = import_julia_data_qq;
+      import_input_data       = import_input_data_qq;
       export_julia_data       = export_julia_data_qq;
       break;
 
@@ -1439,7 +1439,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_8;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-      import_julia_data           = import_julia_data_ff_8;
+      import_input_data           = import_input_data_ff_8;
       export_julia_data           = export_julia_data_ff_8;
       normalize_initial_basis     = normalize_initial_basis_ff_8;
       break;
@@ -1465,7 +1465,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_16;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-      import_julia_data           = import_julia_data_ff_16;
+      import_input_data           = import_input_data_ff_16;
       export_julia_data           = export_julia_data_ff_16;
       normalize_initial_basis     = normalize_initial_basis_ff_16;
       break;
@@ -1491,7 +1491,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      import_julia_data           = import_julia_data_ff_32;
+      import_input_data           = import_input_data_ff_32;
       export_julia_data           = export_julia_data_ff_32;
       normalize_initial_basis     = normalize_initial_basis_ff_32;
 
@@ -1549,7 +1549,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      import_julia_data           = import_julia_data_ff_32;
+      import_input_data           = import_input_data_ff_32;
       export_julia_data           = export_julia_data_ff_32;
       normalize_initial_basis     = normalize_initial_basis_ff_32;
 
@@ -1633,7 +1633,7 @@ static inline void reset_function_pointers(
     if (prime < pow(2,8)) {
         copy_basis_mod_p            = copy_basis_mod_p_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        import_julia_data           = import_julia_data_ff_8;
+        import_input_data           = import_input_data_ff_8;
         export_julia_data           = export_julia_data_ff_8;
         normalize_initial_basis     = normalize_initial_basis_ff_8;
         switch (laopt) {
@@ -1659,7 +1659,7 @@ static inline void reset_function_pointers(
         if (prime < pow(2,16)) {
             copy_basis_mod_p            = copy_basis_mod_p_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            import_julia_data           = import_julia_data_ff_16;
+            import_input_data           = import_input_data_ff_16;
             export_julia_data           = export_julia_data_ff_16;
             normalize_initial_basis     = normalize_initial_basis_ff_16;
             switch (laopt) {
@@ -1684,7 +1684,7 @@ static inline void reset_function_pointers(
         } else {
             copy_basis_mod_p            = copy_basis_mod_p_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            import_julia_data           = import_julia_data_ff_32;
+            import_input_data           = import_input_data_ff_32;
             export_julia_data           = export_julia_data_ff_32;
             normalize_initial_basis     = normalize_initial_basis_ff_32;
             switch (laopt) {
@@ -1747,7 +1747,7 @@ static inline void reset_trace_function_pointers(
     if (prime < pow(2,8)) {
         copy_basis_mod_p            = copy_basis_mod_p_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        import_julia_data           = import_julia_data_ff_8;
+        import_input_data           = import_input_data_ff_8;
         export_julia_data           = export_julia_data_ff_8;
         normalize_initial_basis     = normalize_initial_basis_ff_8;
         application_linear_algebra  = exact_application_sparse_linear_algebra_ff_8;
@@ -1756,7 +1756,7 @@ static inline void reset_trace_function_pointers(
         if (prime < pow(2,16)) {
             copy_basis_mod_p            = copy_basis_mod_p_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            import_julia_data           = import_julia_data_ff_16;
+            import_input_data           = import_input_data_ff_16;
             export_julia_data           = export_julia_data_ff_16;
             normalize_initial_basis     = normalize_initial_basis_ff_16;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_16;
@@ -1764,7 +1764,7 @@ static inline void reset_trace_function_pointers(
         } else {
             copy_basis_mod_p            = copy_basis_mod_p_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            import_julia_data           = import_julia_data_ff_32;
+            import_input_data           = import_input_data_ff_32;
             export_julia_data           = export_julia_data_ff_32;
             normalize_initial_basis     = normalize_initial_basis_ff_32;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_32;

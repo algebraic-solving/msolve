@@ -2931,7 +2931,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     * the basis elements stored in the trace */
   ht_t *tht = initialize_secondary_hash_table(bht, st);
   /* read in ideal, move coefficients to integers */
-  import_julia_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+  import_input_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
   free(invalid_gens);
   invalid_gens  =   NULL;
 
@@ -3538,7 +3538,7 @@ int msolve_probabilistic_qq(mpz_param_t mpz_param,
     /* initialize basis hash table, update hash table, symbolic hash table */
     ht_t *bht = initialize_basis_hash_table(st);
     /* read in ideal, move coefficients to integers */
-    import_julia_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+    import_input_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
     free(invalid_gens);
     invalid_gens    =   NULL;
 
@@ -5053,7 +5053,7 @@ restart:
                 }
             } else {
                 sat = initialize_basis(st);
-                import_julia_data_nf_ff_32(
+                import_input_data_nf_ff_32(
                         sat, bht, st, gens->ngens-saturate, gens->ngens,
                         gens->lens, gens->exps, (void *)gens->cfs);
                 sat->ld = sat->lml  =  saturate;
@@ -5253,7 +5253,7 @@ restart:
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
             tbr = initialize_basis(st);
-            import_julia_data_nf_ff_32(
+            import_input_data_nf_ff_32(
                     tbr, bht, st, gens->ngens-normal_form, gens->ngens,
                     gens->lens, gens->exps, (void *)gens->cfs);
             tbr->ld = tbr->lml  =  normal_form;
@@ -5395,7 +5395,7 @@ restart:
              * the basis elements stored in the trace */
             ht_t *tht = initialize_secondary_hash_table(bht, st);
             /* read in ideal, move coefficients to integers */
-            import_julia_data(bs_qq, bht, st, gens->lens, gens->exps, (void *)gens->mpz_cfs);
+            import_input_data(bs_qq, bht, st, gens->lens, gens->exps, (void *)gens->mpz_cfs);
 
             if (st->info_level > 0) {
                 print_initial_statistics(stderr, st);
@@ -5574,7 +5574,7 @@ restart:
              * the basis elements stored in the trace */
             ht_t *tht = initialize_secondary_hash_table(bht, st);
             /* read in ideal, move coefficients to integers */
-            import_julia_data(bs_qq, bht, st, gens->lens, gens->exps,
+            import_input_data(bs_qq, bht, st, gens->lens, gens->exps,
                     (void *)gens->mpz_cfs, invalid_gens);
             free(invalid_gens);
             invalid_gens    =   NULL;
@@ -5621,7 +5621,7 @@ restart:
                 }
             }
             sat_qq = initialize_basis(st);
-            import_julia_data_nf_qq(
+            import_input_data_nf_qq(
                     sat_qq, bht, st, gens->ngens-saturate, gens->ngens,
                     gens->lens, gens->exps, (void *)gens->mpz_cfs);
             sat_qq->ld = sat_qq->lml  =  saturate;

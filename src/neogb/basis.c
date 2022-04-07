@@ -163,8 +163,6 @@ bs_t *initialize_basis(
         bs->sm  =   (sm_t *)malloc((unsigned long)bs->sz * sizeof(sm_t));
         bs->si  =   (si_t *)malloc((unsigned long)bs->sz * sizeof(si_t));
     }
-    printf("use_signatures %d\n", st->use_signatures);
-    printf("basis->sm %p\n", bs->sm);
     /* initialize coefficients depending on ground field */
     switch (st->ff_bits) {
         case 8:

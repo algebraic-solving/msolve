@@ -1153,6 +1153,7 @@ int validate_input_data(
         int32_t *max_nr_pairsp,
         int32_t *reset_htp,
         int32_t *la_optionp,
+        int32_t *use_signaturesp,
         int32_t *reduce_gbp,
         int32_t *info_levelp
         )
@@ -1194,6 +1195,10 @@ int validate_input_data(
             *la_optionp != 42 && *la_optionp != 44) {
         fprintf(stderr, "Fixes linear algebra option to exact sparse.\n");
         *la_optionp =   2;
+    }
+    if (*use_signaturesp < 0) {
+        fprintf(stderr, "Usage of signature not valid, disabled.\n");
+        *use_signaturesp = 0;;
     }
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
         fprintf(stderr, "Fixes reduction of GB to false.\n");
@@ -1261,6 +1266,7 @@ int32_t check_and_set_meta_data(
         const int32_t max_nr_pairs,
         const int32_t reset_hash_table,
         const int32_t la_option,
+        const int32_t use_signatures,
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t info_level
@@ -1269,6 +1275,7 @@ int32_t check_and_set_meta_data(
     if (nr_gens <= 0
             || nr_vars <= 0
             || field_char < 0
+            || use_signatures < 0
             || lens == NULL
             || cfs == NULL
             || exps == NULL) {
@@ -1294,6 +1301,8 @@ int32_t check_and_set_meta_data(
     st->fc    = field_char;
 
     set_ff_bits(st, st->fc);
+
+    st->use_signatures  =   use_signatures > 0 ? 1 : 0;
 
     /* monomial order */
     if (mon_order != 0 && mon_order != 1) {
@@ -1405,7 +1414,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_qq;
       }
       interreduce_matrix_rows = interreduce_matrix_rows_qq;
-      initialize_basis        = initialize_basis_qq;
+      /* initialize_basis        = initialize_basis_qq; */
       import_julia_data       = import_julia_data_qq;
       export_julia_data       = export_julia_data_qq;
       check_enlarge_basis     = check_enlarge_basis_qq;
@@ -1432,7 +1441,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_8;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-      initialize_basis            = initialize_basis_ff_8;
+      /* initialize_basis            = initialize_basis_ff_8; */
       import_julia_data           = import_julia_data_ff_8;
       export_julia_data           = export_julia_data_ff_8;
       check_enlarge_basis         = check_enlarge_basis_ff_8;
@@ -1460,7 +1469,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_16;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-      initialize_basis            = initialize_basis_ff_16;
+      /* initialize_basis            = initialize_basis_ff_16; */
       import_julia_data           = import_julia_data_ff_16;
       export_julia_data           = export_julia_data_ff_16;
       check_enlarge_basis         = check_enlarge_basis_ff_16;
@@ -1488,7 +1497,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      initialize_basis            = initialize_basis_ff_32;
+      /* initialize_basis            = initialize_basis_ff_32; */
       import_julia_data           = import_julia_data_ff_32;
       export_julia_data           = export_julia_data_ff_32;
       check_enlarge_basis         = check_enlarge_basis_ff_32;
@@ -1548,7 +1557,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      initialize_basis            = initialize_basis_ff_32;
+      /* initialize_basis            = initialize_basis_ff_32; */
       import_julia_data           = import_julia_data_ff_32;
       export_julia_data           = export_julia_data_ff_32;
       check_enlarge_basis         = check_enlarge_basis_ff_32;
@@ -1604,6 +1613,7 @@ int32_t check_and_set_meta_data_trace(
         const int32_t max_nr_pairs,
         const int32_t reset_hash_table,
         const int32_t la_option,
+        const int32_t use_signatures,
         const int32_t reduce_gb,
         const uint32_t prime_start,
         const int32_t nr_primes,
@@ -1622,7 +1632,7 @@ int32_t check_and_set_meta_data_trace(
     return check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
             field_char, mon_order, elim_block_len, nr_vars, nr_gens,
             ht_size, nr_threads, max_nr_pairs, reset_hash_table,
-            la_option, reduce_gb, pbm_file, info_level);
+            la_option, use_signatures, reduce_gb, pbm_file, info_level);
 }
 
 static inline void reset_function_pointers(
@@ -1633,7 +1643,7 @@ static inline void reset_function_pointers(
     if (prime < pow(2,8)) {
         copy_basis_mod_p            = copy_basis_mod_p_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        initialize_basis            = initialize_basis_ff_8;
+        /* initialize_basis            = initialize_basis_ff_8; */
         import_julia_data           = import_julia_data_ff_8;
         export_julia_data           = export_julia_data_ff_8;
         check_enlarge_basis         = check_enlarge_basis_ff_8;
@@ -1661,7 +1671,7 @@ static inline void reset_function_pointers(
         if (prime < pow(2,16)) {
             copy_basis_mod_p            = copy_basis_mod_p_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            initialize_basis            = initialize_basis_ff_16;
+            /* initialize_basis            = initialize_basis_ff_16; */
             import_julia_data           = import_julia_data_ff_16;
             export_julia_data           = export_julia_data_ff_16;
             check_enlarge_basis         = check_enlarge_basis_ff_16;
@@ -1688,7 +1698,7 @@ static inline void reset_function_pointers(
         } else {
             copy_basis_mod_p            = copy_basis_mod_p_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            initialize_basis            = initialize_basis_ff_32;
+            /* initialize_basis            = initialize_basis_ff_32; */
             import_julia_data           = import_julia_data_ff_32;
             export_julia_data           = export_julia_data_ff_32;
             check_enlarge_basis         = check_enlarge_basis_ff_32;
@@ -1753,7 +1763,7 @@ static inline void reset_trace_function_pointers(
     if (prime < pow(2,8)) {
         copy_basis_mod_p            = copy_basis_mod_p_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        initialize_basis            = initialize_basis_ff_8;
+        /* initialize_basis            = initialize_basis_ff_8; */
         import_julia_data           = import_julia_data_ff_8;
         export_julia_data           = export_julia_data_ff_8;
         check_enlarge_basis         = check_enlarge_basis_ff_8;
@@ -1764,7 +1774,7 @@ static inline void reset_trace_function_pointers(
         if (prime < pow(2,16)) {
             copy_basis_mod_p            = copy_basis_mod_p_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            initialize_basis            = initialize_basis_ff_16;
+            /* initialize_basis            = initialize_basis_ff_16; */
             import_julia_data           = import_julia_data_ff_16;
             export_julia_data           = export_julia_data_ff_16;
             check_enlarge_basis         = check_enlarge_basis_ff_16;
@@ -1774,7 +1784,7 @@ static inline void reset_trace_function_pointers(
         } else {
             copy_basis_mod_p            = copy_basis_mod_p_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            initialize_basis            = initialize_basis_ff_32;
+            /* initialize_basis            = initialize_basis_ff_32; */
             import_julia_data           = import_julia_data_ff_32;
             export_julia_data           = export_julia_data_ff_32;
             check_enlarge_basis         = check_enlarge_basis_ff_32;

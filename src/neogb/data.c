@@ -22,9 +22,9 @@
 #include "data.h"
 
 /* function pointers */
-bs_t *(*initialize_basis)(
-        const int32_t ngens
-        );
+/* bs_t *(*initialize_basis)(
+ *         const int32_t ngens
+ *         ); */
 void (*check_enlarge_basis)(
         bs_t *bs,
         const len_t added

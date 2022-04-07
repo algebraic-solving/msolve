@@ -349,10 +349,12 @@ int initialize_f4_input_data(
     /* initialize stuff */
     st  = initialize_statistics();
 
-    int *invalid_gens   =   NULL;
+    int *invalid_gens       =   NULL;
+    int32_t use_signatures  =   0;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
-            &max_nr_pairs, &reset_ht, &la_option, &reduce_gb, &info_level);
+            &max_nr_pairs, &reset_ht, &la_option, &use_signatures,
+            &reduce_gb, &info_level);
 
     /* all data is corrupt */
     if (res == -1) {
@@ -365,13 +367,13 @@ int initialize_f4_input_data(
     if (check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
                 field_char, mon_order, elim_block_len, nr_vars, nr_gens,
                 ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
-                reduce_gb, pbm_file, info_level)) {
+                use_signatures, reduce_gb, pbm_file, info_level)) {
         return 0;
     }
 
 
     /* initialize basis */
-    bs  = initialize_basis(st->ngens);
+    bs  = initialize_basis(st);
     /* initialize basis hash table */
     bht = initialize_basis_hash_table(st);
 

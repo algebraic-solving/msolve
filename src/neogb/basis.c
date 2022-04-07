@@ -368,7 +368,7 @@ static inline bs_t *copy_basis_mod_p_8(
     unsigned long prime = (unsigned long)st->fc;
 
     /* initialize basis */
-    bs_t *bs        = (bs_t *)malloc(sizeof(bs_t));
+    bs_t *bs        = (bs_t *)calloc(1, sizeof(bs_t));
     bs->lo          = gbs->lo;
     bs->ld          = gbs->ld;
     bs->lml         = gbs->lml;
@@ -388,6 +388,10 @@ static inline bs_t *copy_basis_mod_p_8(
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
     memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
+    if (st->use_signatures == 1) {
+        memcpy(bs->sm, gbs->sm, (unsigned long)bs->sz * sizeof(sm_t));
+        memcpy(bs->si, gbs->si, (unsigned long)bs->sz * sizeof(si_t));
+    }
 
     for (i = 0; i < bs->ld; ++i) {
         bs->cf_8[i]  =
@@ -414,7 +418,7 @@ static inline bs_t *copy_basis_mod_p_16(
     unsigned long prime = (unsigned long)st->fc;
 
     /* initialize basis */
-    bs_t *bs        = (bs_t *)malloc(sizeof(bs_t));
+    bs_t *bs        = (bs_t *)calloc(1, sizeof(bs_t));
     bs->lo          = gbs->lo;
     bs->ld          = gbs->ld;
     bs->lml         = gbs->lml;
@@ -434,6 +438,10 @@ static inline bs_t *copy_basis_mod_p_16(
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
     memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
+    if (st->use_signatures == 1) {
+        memcpy(bs->sm, gbs->sm, (unsigned long)bs->sz * sizeof(sm_t));
+        memcpy(bs->si, gbs->si, (unsigned long)bs->sz * sizeof(si_t));
+    }
 
     for (i = 0; i < bs->ld; ++i) {
         bs->cf_16[i]  =
@@ -460,7 +468,7 @@ static inline bs_t *copy_basis_mod_p_32(
     unsigned long prime = (unsigned long)st->fc;
 
     /* initialize basis */
-    bs_t *bs        = (bs_t *)malloc(sizeof(bs_t));
+    bs_t *bs        = (bs_t *)calloc(1, sizeof(bs_t));
     bs->lo          = gbs->lo;
     bs->ld          = gbs->ld;
     bs->lml         = gbs->lml;
@@ -480,6 +488,10 @@ static inline bs_t *copy_basis_mod_p_32(
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
     memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
+    if (st->use_signatures == 1) {
+        memcpy(bs->sm, gbs->sm, (unsigned long)bs->sz * sizeof(sm_t));
+        memcpy(bs->si, gbs->si, (unsigned long)bs->sz * sizeof(si_t));
+    }
 
     for (i = 0; i < bs->ld; ++i) {
         idx = gbs->hm[i][COEFFS];

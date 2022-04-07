@@ -1131,7 +1131,7 @@ int msolve_ff_alloc(param_t **bparam,
 
     int success = 0;
 
-    success = initialize_gb_input_data(&bs, &bht, &st,
+    success = initialize_gba_input_data(&bs, &bht, &st,
             gens->lens, gens->exps, (void *)gens->cfs,
             gens->field_char, 0, elim_block_len, gens->nvars,
             gens->ngens, initial_hts, nr_threads, max_pairs,
@@ -1142,13 +1142,13 @@ int msolve_ff_alloc(param_t **bparam,
         exit(1);
     }
 
-    success = core_f4(&bs, &bht, &st);
+    success = core_gba(&bs, &bht, &st);
 
     if (!success) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
     }
-    int64_t nb  = export_results_from_f4(bld, blen, bexp,
+    int64_t nb  = export_results_from_gba(bld, blen, bexp,
             bcf, &malloc, &bs, &bht, &st);
 
     /* timings */
@@ -2363,7 +2363,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     bs_t *bs = NULL;
     if(gens->field_char){
       bs = bs_qq;
-      int boo = core_f4(&bs, &bht, &st);
+      int boo = core_gba(&bs, &bht, &st);
       if (!boo) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
@@ -2375,7 +2375,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         bs = modular_f4(bs_qq, bht, st, fc);
       }
       else{
-        bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
+        bs = gba_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
       }
     }
     rt = realtime()-ca0;
@@ -2735,7 +2735,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
       bs[i] = modular_f4(bs_qq, bht[i], st, lp->p[i]);
     }
     else{
-      bs[i] = f4_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
+      bs[i] = gba_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
     }
     *stf4 = realtime()-ca0;
     /* printf("F4 trace timing %13.2f\n", *stf4); */
@@ -5026,7 +5026,7 @@ restart:
              *             routines are the 32-bit implementations (since nf is at the moment
              *             only implemented for 32-bit elements). Later on we set st-fc by hand
              *             to the correct field characteristic. */
-            success = initialize_gb_input_data(&bs, &bht, &st,
+            success = initialize_gba_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
@@ -5069,7 +5069,7 @@ restart:
                     printf("Problem with f4sat, stopped computation.\n");
                     exit(1);
                 }
-                int64_t nb  = export_results_from_f4(bld, blen, bexp,
+                int64_t nb  = export_results_from_gba(bld, blen, bexp,
                         bcf, &malloc, &bs, &bht, &st);
 
                 /* timings */
@@ -5213,7 +5213,7 @@ restart:
              *             routines are the 32-bit implementations (since nf is at the moment
              *             only implemented for 32-bit elements). Later on we set st-fc by hand
              *             to the correct field characteristic. */
-            success = initialize_gb_input_data(&bs, &bht, &st,
+            success = initialize_gba_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
@@ -5241,7 +5241,7 @@ restart:
             } else {
 
                 /* compute a gb for initial generators */
-                success = core_f4(&bs, &bht, &st);
+                success = core_gba(&bs, &bht, &st);
 
                 if (!success) {
                     printf("Problem with F4, stopped computation.\n");
@@ -5445,7 +5445,7 @@ restart:
 
             st->laopt = 2;
             /* compute a gb for initial generators */
-            f4_trace_learning_phase(
+            gba_trace_learning_phase(
                     trace,
                     tht,
                     bs_qq,
@@ -5453,7 +5453,7 @@ restart:
                     st,
                     lp->p[0]);
 
-            /* int64_t nb  = export_results_from_f4(bld, blen, bexp,
+            /* int64_t nb  = export_results_from_gba(bld, blen, bexp,
              *         bcf, &bs, &bht, &st); */
 
             /* timings */
@@ -5501,7 +5501,7 @@ restart:
 
                 for (i = 0; i < st->nprimes; ++i){
                     ca0 = realtime();
-                    bs[i] = f4_trace_application_phase(
+                    bs[i] = gba_trace_application_phase(
                             trace,
                             tht,
                             bs_qq,
@@ -5640,7 +5640,7 @@ restart:
                     st,
                     lp->p[0]);
 
-            /* int64_t nb  = export_results_from_f4(bld, blen, bexp,
+            /* int64_t nb  = export_results_from_gba(bld, blen, bexp,
              *         bcf, &bs, &bht, &st); */
 
             /* timings */
@@ -5670,7 +5670,7 @@ restart:
                     st,
                     lp->p[0]);
 
-            /* int64_t nb  = export_results_from_f4(bld, blen, bexp,
+            /* int64_t nb  = export_results_from_gba(bld, blen, bexp,
              *         bcf, &bs, &bht, &st); */
 
             /* timings */

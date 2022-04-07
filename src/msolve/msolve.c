@@ -1142,7 +1142,7 @@ int msolve_ff_alloc(param_t **bparam,
         exit(1);
     }
 
-    success = core_f4(&bs, &bht, &st);
+    success = core_gb(&bs, &bht, &st);
 
     if (!success) {
         printf("Problem with F4, stopped computation.\n");
@@ -2363,7 +2363,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     bs_t *bs = NULL;
     if(gens->field_char){
       bs = bs_qq;
-      int boo = core_f4(&bs, &bht, &st);
+      int boo = core_gb(&bs, &bht, &st);
       if (!boo) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
@@ -5241,7 +5241,7 @@ restart:
             } else {
 
                 /* compute a gb for initial generators */
-                success = core_f4(&bs, &bht, &st);
+                success = core_gb(&bs, &bht, &st);
 
                 if (!success) {
                     printf("Problem with F4, stopped computation.\n");

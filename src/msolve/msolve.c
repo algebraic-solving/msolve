@@ -2375,7 +2375,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         bs = modular_f4(bs_qq, bht, st, fc);
       }
       else{
-        bs = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
+        bs = gba_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
       }
     }
     rt = realtime()-ca0;
@@ -2735,7 +2735,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
       bs[i] = modular_f4(bs_qq, bht[i], st, lp->p[i]);
     }
     else{
-      bs[i] = f4_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
+      bs[i] = gba_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
     }
     *stf4 = realtime()-ca0;
     /* printf("F4 trace timing %13.2f\n", *stf4); */
@@ -5445,7 +5445,7 @@ restart:
 
             st->laopt = 2;
             /* compute a gb for initial generators */
-            f4_trace_learning_phase(
+            gba_trace_learning_phase(
                     trace,
                     tht,
                     bs_qq,
@@ -5501,7 +5501,7 @@ restart:
 
                 for (i = 0; i < st->nprimes; ++i){
                     ca0 = realtime();
-                    bs[i] = f4_trace_application_phase(
+                    bs[i] = gba_trace_application_phase(
                             trace,
                             tht,
                             bs_qq,

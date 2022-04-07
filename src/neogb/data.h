@@ -355,10 +355,6 @@ struct stat_t
 /* extern bs_t *(*initialize_basis)(
  *         const int32_t ngens
  *         ); */
-extern void (*check_enlarge_basis)(
-        bs_t *bs,
-        const len_t added
-        );
 extern void (*normalize_initial_basis)(
         bs_t *bs,
         const uint32_t fc

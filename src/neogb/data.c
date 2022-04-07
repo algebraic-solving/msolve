@@ -25,10 +25,6 @@
 /* bs_t *(*initialize_basis)(
  *         const int32_t ngens
  *         ); */
-void (*check_enlarge_basis)(
-        bs_t *bs,
-        const len_t added
-        );
 void (*normalize_initial_basis)(
         bs_t *bs,
         const uint32_t fc

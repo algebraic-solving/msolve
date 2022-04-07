@@ -179,23 +179,19 @@ bs_t *initialize_basis(
             break;
         default:
             exit(1);
-            break;
     }
 
     return bs;
 }
 
-/* finite field stuff  --  8 bit */
-static inline void check_enlarge_basis_ff_8(
+void check_enlarge_basis(
         bs_t *bs,
-        const len_t added
+        const len_t added,
+        const stat_t *st
         )
 {
     if (bs->ld + added >= bs->sz) {
         bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        bs->cf_8  = realloc(bs->cf_8,
-                (unsigned long)bs->sz * sizeof(cf8_t *));
-        memset(bs->cf_8+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf8_t *));
         bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
         memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
         bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
@@ -205,9 +201,34 @@ static inline void check_enlarge_basis_ff_8(
         bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
         memset(bs->red+bs->ld, 0,
                 (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
+
+        switch (st->ff_bits) {
+            case 8:
+                bs->cf_8  = realloc(bs->cf_8,
+                        (unsigned long)bs->sz * sizeof(cf8_t *));
+                memset(bs->cf_8+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf8_t *));
+                break;
+            case 16:
+                bs->cf_16  = realloc(bs->cf_16,
+                        (unsigned long)bs->sz * sizeof(cf16_t *));
+                memset(bs->cf_16+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf16_t *));
+                break;
+            case 32:
+                bs->cf_32  = realloc(bs->cf_32,
+                        (unsigned long)bs->sz * sizeof(cf32_t *));
+                memset(bs->cf_32+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf32_t *));
+                break;
+            case 0:
+                bs->cf_qq = realloc(bs->cf_qq,
+                        (unsigned long)bs->sz * sizeof(mpz_t *));
+                break;
+            default:
+                exit(1);
+        }
     }
 }
 
+/* finite field stuff  --  8 bit */
 static inline void normalize_initial_basis_ff_8(
         bs_t *bs,
         const uint32_t fc
@@ -251,28 +272,6 @@ static inline void normalize_initial_basis_ff_8(
 }
 
 /* finite field stuff  --  16 bit */
-static inline void check_enlarge_basis_ff_16(
-        bs_t *bs,
-        const len_t added
-        )
-{
-    if (bs->ld + added >= bs->sz) {
-        bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        bs->cf_16 = realloc(bs->cf_16,
-                (unsigned long)bs->sz * sizeof(cf16_t *));
-        memset(bs->cf_16+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf16_t *));
-        bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
-        memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
-        bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
-        memset(bs->lm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(sdm_t));
-        bs->lmps  = realloc(bs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
-        memset(bs->lmps+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(bl_t));
-        bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
-        memset(bs->red+bs->ld, 0,
-                (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
-    }
-}
-
 static inline void normalize_initial_basis_ff_16(
         bs_t *bs,
         const uint32_t fc
@@ -316,28 +315,6 @@ static inline void normalize_initial_basis_ff_16(
 }
 
 /* finite field stuff  --  32 bit */
-static inline void check_enlarge_basis_ff_32(
-        bs_t *bs,
-        const len_t added
-        )
-{
-    if (bs->ld + added >= bs->sz) {
-        bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        bs->cf_32 = realloc(bs->cf_32,
-                (unsigned long)bs->sz * sizeof(cf32_t *));
-        memset(bs->cf_32+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf32_t *));
-        bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
-        memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
-        bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
-        memset(bs->lm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(sdm_t));
-        bs->lmps  = realloc(bs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
-        memset(bs->lmps+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(bl_t));
-        bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
-        memset(bs->red+bs->ld, 0,
-                (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
-    }
-}
-
 static inline void normalize_initial_basis_ff_32(
         bs_t *bs,
        const uint32_t fc
@@ -380,27 +357,6 @@ static inline void normalize_initial_basis_ff_32(
 }
 
 /* characteristic zero stuff */
-static inline void check_enlarge_basis_qq(
-        bs_t *bs,
-        const len_t added
-        )
-{
-    if (bs->ld + added >= bs->sz) {
-        bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
-        bs->cf_qq = realloc(bs->cf_qq,
-                (unsigned long)bs->sz * sizeof(mpz_t *));
-        bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
-        memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
-        bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
-        memset(bs->lm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(sdm_t));
-        bs->lmps  = realloc(bs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
-        memset(bs->lmps+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(bl_t));
-        bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
-        memset(bs->red+bs->ld, 0,
-                (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
-    }
-}
-
 static inline bs_t *copy_basis_mod_p_8(
         const bs_t * const gbs,
         const stat_t * const st

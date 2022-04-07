@@ -108,7 +108,7 @@ static int is_already_saturated(
     ht_t *uht = *uhtp;
 
     /* add phi to basis and generate pairs with phi */
-    check_enlarge_basis(bs, 1);
+    check_enlarge_basis(bs, 1, st);
 
     int is_constant = 0;
 
@@ -392,7 +392,7 @@ static void update_multipliers(
 
     bl_t ctr  = 0;
 
-    check_enlarge_basis(sat, qdim);
+    check_enlarge_basis(sat, qdim, st);
 
     hm_t *qb  = *qdp;
     exp_t *etmp = bht->ev[0];

@@ -33,29 +33,6 @@ void free_f4_julia_result_data(
         const int64_t field_char
         );
 
-int initialize_f4_input_data(
-        bs_t **bsp,
-        ht_t **bhtp,
-        stat_t **stp,
-        /* input values */
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *cfs,
-        uint32_t field_char,
-        int32_t mon_order,
-        int32_t elim_block_len,
-        int32_t nr_vars,
-        int32_t nr_gens,
-        int32_t ht_size,
-        int32_t nr_threads,
-        int32_t max_nr_pairs,
-        int32_t reset_ht,
-        int32_t la_option,
-        int32_t reduce_gb,
-        int32_t pbm_file,
-        int32_t info_level
-        );
-
 int64_t f4_julia(
         void *(*mallocp) (size_t),
         int32_t *bld,   /* basis load */

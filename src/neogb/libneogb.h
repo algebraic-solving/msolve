@@ -24,6 +24,7 @@
 
 #include "data.h"
 #include "basis.h"
+#include "engine.h"
 #include "f4.h"
 #include "hash.h"
 #include "io.h"

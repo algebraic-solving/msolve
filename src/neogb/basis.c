@@ -159,7 +159,7 @@ bs_t *initialize_basis(
     bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
     /* signature-based groebner basis computation? */
-    if (st->use_signatures == 1) {
+    if (st->use_signatures > 0) {
         bs->sm  =   (sm_t *)malloc((unsigned long)bs->sz * sizeof(sm_t));
         bs->si  =   (si_t *)malloc((unsigned long)bs->sz * sizeof(si_t));
     }
@@ -384,7 +384,7 @@ bs_t *copy_basis_mod_p(
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
     memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
-    if (st->use_signatures == 1) {
+    if (st->use_signatures > 0) {
         memcpy(bs->sm, gbs->sm, (unsigned long)bs->sz * sizeof(sm_t));
         memcpy(bs->si, gbs->si, (unsigned long)bs->sz * sizeof(si_t));
     }

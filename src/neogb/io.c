@@ -384,6 +384,9 @@ void import_input_data(
         default:
             exit(1);
     }
+
+    if (st->use_signatures > 0) {
+    }
             
     /* set total degree of input polynomials */
     deg_t deg = 0;
@@ -967,9 +970,9 @@ int validate_input_data(
         fprintf(stderr, "Fixes linear algebra option to exact sparse.\n");
         *la_optionp =   2;
     }
-    if (*use_signaturesp < 0) {
+    if (*use_signaturesp < 0 || *use_signaturesp > 3) {
         fprintf(stderr, "Usage of signature not valid, disabled.\n");
-        *use_signaturesp = 0;;
+        *use_signaturesp = 0;
     }
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
         fprintf(stderr, "Fixes reduction of GB to false.\n");
@@ -1073,7 +1076,7 @@ int32_t check_and_set_meta_data(
 
     set_ff_bits(st, st->fc);
 
-    st->use_signatures  =   use_signatures > 0 ? 1 : 0;
+    st->use_signatures  =   use_signatures;
 
     /* monomial order */
     if (mon_order != 0 && mon_order != 1) {

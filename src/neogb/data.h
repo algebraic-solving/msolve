@@ -318,7 +318,6 @@ struct stat_t
     uint32_t fc;
     int32_t nev; /* number of elimination variables */
     int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
-    int32_t mmo; /* module monomial ordering: 0=SCHREYER, 1=POT, 2=DPOT */
     int32_t laopt;
     int32_t init_hts;
     int32_t nthrds;
@@ -331,7 +330,11 @@ struct stat_t
     int64_t nterms_basis;
     int32_t size_basis;
     int32_t ff_bits;
-    int32_t use_signatures;
+    int32_t use_signatures; /* module monomial ordering:
+                               0 = off,
+                               1=SCHREYER,
+                               2=POT,
+                               3=DPOT */
     int32_t reduce_gb;
 
     uint32_t prime_start;

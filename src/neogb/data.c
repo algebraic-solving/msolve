@@ -60,16 +60,6 @@ int (*hcm_cmp)(
         void *htp
         );
 
-void (*import_input_data)(
-        bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs,
-        const int *invalid_gens
-        );
-
 int64_t (*export_julia_data)(
         int32_t *bload,
         int32_t **blen,

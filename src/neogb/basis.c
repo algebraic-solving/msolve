@@ -357,107 +357,7 @@ static inline void normalize_initial_basis_ff_32(
 }
 
 /* characteristic zero stuff */
-static inline bs_t *copy_basis_mod_p_8(
-        const bs_t * const gbs,
-        const stat_t * const st
-        )
-{
-    len_t i, j;
-
-    /* set field characteristic */
-    unsigned long prime = (unsigned long)st->fc;
-
-    /* initialize basis */
-    bs_t *bs        = (bs_t *)calloc(1, sizeof(bs_t));
-    bs->lo          = gbs->lo;
-    bs->ld          = gbs->ld;
-    bs->lml         = gbs->lml;
-    bs->sz          = gbs->sz;
-    bs->constant    = gbs->constant;
-    bs->mltdeg      = 0;
-    bs->cf_8        = (cf8_t **)malloc((unsigned long)bs->sz * sizeof(cf8_t *));
-    bs->cf_32       = NULL;
-    bs->cf_16       = NULL;
-    bs->cf_qq       = NULL;
-    bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
-    bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
-    bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
-    bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
-
-    /* copy data */
-    memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
-    memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
-    memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
-    if (st->use_signatures == 1) {
-        memcpy(bs->sm, gbs->sm, (unsigned long)bs->sz * sizeof(sm_t));
-        memcpy(bs->si, gbs->si, (unsigned long)bs->sz * sizeof(si_t));
-    }
-
-    for (i = 0; i < bs->ld; ++i) {
-        bs->cf_8[i]  =
-            (cf8_t *)malloc((unsigned long)(gbs->hm[i][LENGTH]) * sizeof(cf8_t));
-        for (j = 0; j < gbs->hm[i][LENGTH]; ++j) {
-            bs->cf_8[i][j] = (cf8_t)mpz_fdiv_ui(gbs->cf_qq[i][j], prime);
-        }
-        bs->hm[i] =
-            (hm_t *)malloc(((unsigned long)gbs->hm[i][LENGTH]+OFFSET) * sizeof(hm_t));
-        memcpy(bs->hm[i], gbs->hm[i],
-                ((unsigned long)gbs->hm[i][LENGTH]+OFFSET) * sizeof(hm_t));
-    }
-
-    return bs;
-}
-static inline bs_t *copy_basis_mod_p_16(
-        const bs_t * const gbs,
-        const stat_t * const st
-        )
-{
-    len_t i, j;
-
-    /* set field characteristic */
-    unsigned long prime = (unsigned long)st->fc;
-
-    /* initialize basis */
-    bs_t *bs        = (bs_t *)calloc(1, sizeof(bs_t));
-    bs->lo          = gbs->lo;
-    bs->ld          = gbs->ld;
-    bs->lml         = gbs->lml;
-    bs->sz          = gbs->sz;
-    bs->constant    = gbs->constant;
-    bs->mltdeg      = 0;
-    bs->cf_8        = NULL;
-    bs->cf_16       = (cf16_t **)malloc((unsigned long)bs->sz * sizeof(cf16_t *));
-    bs->cf_32       = NULL;
-    bs->cf_qq       = NULL;
-    bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
-    bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
-    bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
-    bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
-
-    /* copy data */
-    memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
-    memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
-    memcpy(bs->red, gbs->red, (unsigned long)bs->sz * sizeof(int8_t));
-    if (st->use_signatures == 1) {
-        memcpy(bs->sm, gbs->sm, (unsigned long)bs->sz * sizeof(sm_t));
-        memcpy(bs->si, gbs->si, (unsigned long)bs->sz * sizeof(si_t));
-    }
-
-    for (i = 0; i < bs->ld; ++i) {
-        bs->cf_16[i]  =
-            (cf16_t *)malloc((unsigned long)(gbs->hm[i][LENGTH]) * sizeof(cf16_t));
-        for (j = 0; j < gbs->hm[i][LENGTH]; ++j) {
-            bs->cf_16[i][j] = (cf16_t)mpz_fdiv_ui(gbs->cf_qq[i][j], prime);
-        }
-        bs->hm[i] =
-            (hm_t *)malloc(((unsigned long)gbs->hm[i][LENGTH]+OFFSET) * sizeof(hm_t));
-        memcpy(bs->hm[i], gbs->hm[i],
-                ((unsigned long)gbs->hm[i][LENGTH]+OFFSET) * sizeof(hm_t));
-    }
-
-    return bs;
-}
-static inline bs_t *copy_basis_mod_p_32(
+bs_t *copy_basis_mod_p(
         const bs_t * const gbs,
         const stat_t * const st
         )
@@ -474,16 +374,12 @@ static inline bs_t *copy_basis_mod_p_32(
     bs->lml         = gbs->lml;
     bs->sz          = gbs->sz;
     bs->constant    = gbs->constant;
-    bs->mltdeg      = 0;
-    bs->cf_8        = NULL;
-    bs->cf_16       = NULL;
-    bs->cf_32       = (cf32_t **)malloc((unsigned long)bs->sz * sizeof(cf32_t *));
-    bs->cf_qq       = NULL;
     bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
     bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
 
+    printf("st->ff_bits %d\n", st->ff_bits);
     /* copy data */
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
@@ -492,18 +388,50 @@ static inline bs_t *copy_basis_mod_p_32(
         memcpy(bs->sm, gbs->sm, (unsigned long)bs->sz * sizeof(sm_t));
         memcpy(bs->si, gbs->si, (unsigned long)bs->sz * sizeof(si_t));
     }
-
+    /* copy monomials */
     for (i = 0; i < bs->ld; ++i) {
-        idx = gbs->hm[i][COEFFS];
-        bs->cf_32[idx]  =
-            (cf32_t *)malloc((unsigned long)(gbs->hm[i][LENGTH]) * sizeof(cf32_t));
-        for (j = 0; j < gbs->hm[i][LENGTH]; ++j) {
-            bs->cf_32[idx][j] = (cf32_t)mpz_fdiv_ui(gbs->cf_qq[idx][j], prime);
-        }
         bs->hm[i] =
             (hm_t *)malloc(((unsigned long)gbs->hm[i][LENGTH]+OFFSET) * sizeof(hm_t));
         memcpy(bs->hm[i], gbs->hm[i],
                 ((unsigned long)gbs->hm[i][LENGTH]+OFFSET) * sizeof(hm_t));
+    }
+    /* copy coefficients */
+    switch (st->ff_bits) {
+        case 8:
+            bs->cf_8    = (cf8_t **)malloc((unsigned long)bs->sz * sizeof(cf8_t *));
+            for (i = 0; i < bs->ld; ++i) {
+                idx = gbs->hm[i][COEFFS];
+                bs->cf_8[idx]  =
+                    (cf8_t *)malloc((unsigned long)(gbs->hm[i][LENGTH]) * sizeof(cf8_t));
+                for (j = 0; j < gbs->hm[i][LENGTH]; ++j) {
+                    bs->cf_8[idx][j] = (cf8_t)mpz_fdiv_ui(gbs->cf_qq[idx][j], prime);
+                }
+            }
+            break;
+        case 16:
+            bs->cf_16   = (cf16_t **)malloc((unsigned long)bs->sz * sizeof(cf16_t *));
+            for (i = 0; i < bs->ld; ++i) {
+                idx = gbs->hm[i][COEFFS];
+                bs->cf_16[idx]  =
+                    (cf16_t *)malloc((unsigned long)(gbs->hm[i][LENGTH]) * sizeof(cf16_t));
+                for (j = 0; j < gbs->hm[i][LENGTH]; ++j) {
+                    bs->cf_16[idx][j] = (cf16_t)mpz_fdiv_ui(gbs->cf_qq[idx][j], prime);
+                }
+            }
+            break;
+        case 32:
+            bs->cf_32   = (cf32_t **)malloc((unsigned long)bs->sz * sizeof(cf32_t *));
+            for (i = 0; i < bs->ld; ++i) {
+                idx = gbs->hm[i][COEFFS];
+                bs->cf_32[idx]  =
+                    (cf32_t *)malloc((unsigned long)(gbs->hm[i][LENGTH]) * sizeof(cf32_t));
+                for (j = 0; j < gbs->hm[i][LENGTH]; ++j) {
+                    bs->cf_32[idx][j] = (cf32_t)mpz_fdiv_ui(gbs->cf_qq[idx][j], prime);
+                }
+            }
+            break;
+        default:
+            exit(1);
     }
 
     return bs;

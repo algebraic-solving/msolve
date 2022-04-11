@@ -317,7 +317,8 @@ struct stat_t
     int32_t homogeneous;
     uint32_t fc;
     int32_t nev; /* number of elimination variables */
-    int32_t mo;
+    int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
+    int32_t mmo; /* module monomial ordering: 0=SCHREYER, 1=POT, 2=DPOT */
     int32_t laopt;
     int32_t init_hts;
     int32_t nthrds;
@@ -358,10 +359,6 @@ struct stat_t
 extern void (*normalize_initial_basis)(
         bs_t *bs,
         const uint32_t fc
-        );
-extern bs_t *(*copy_basis_mod_p)(
-        const bs_t * const gbs,
-        const stat_t * const st
         );
 
 extern int (*initial_input_cmp)(

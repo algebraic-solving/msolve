@@ -29,10 +29,6 @@ void (*normalize_initial_basis)(
         bs_t *bs,
         const uint32_t fc
         );
-bs_t *(*copy_basis_mod_p)(
-        const bs_t * const gbs,
-        const stat_t * const st
-        );
 
 int (*initial_input_cmp)(
         const void *a,

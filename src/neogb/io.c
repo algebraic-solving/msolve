@@ -1631,7 +1631,6 @@ static inline void reset_function_pointers(
         )
 {
     if (prime < pow(2,8)) {
-        copy_basis_mod_p            = copy_basis_mod_p_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
         import_input_data           = import_input_data_ff_8;
         export_julia_data           = export_julia_data_ff_8;
@@ -1657,7 +1656,6 @@ static inline void reset_function_pointers(
         }
     } else {
         if (prime < pow(2,16)) {
-            copy_basis_mod_p            = copy_basis_mod_p_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
             import_input_data           = import_input_data_ff_16;
             export_julia_data           = export_julia_data_ff_16;
@@ -1682,7 +1680,6 @@ static inline void reset_function_pointers(
                 linear_algebra  = exact_sparse_linear_algebra_ff_16;
             }
         } else {
-            copy_basis_mod_p            = copy_basis_mod_p_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
             import_input_data           = import_input_data_ff_32;
             export_julia_data           = export_julia_data_ff_32;
@@ -1745,7 +1742,6 @@ static inline void reset_trace_function_pointers(
         )
 {
     if (prime < pow(2,8)) {
-        copy_basis_mod_p            = copy_basis_mod_p_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
         import_input_data           = import_input_data_ff_8;
         export_julia_data           = export_julia_data_ff_8;
@@ -1754,7 +1750,6 @@ static inline void reset_trace_function_pointers(
         trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_8;
     } else {
         if (prime < pow(2,16)) {
-            copy_basis_mod_p            = copy_basis_mod_p_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
             import_input_data           = import_input_data_ff_16;
             export_julia_data           = export_julia_data_ff_16;
@@ -1762,7 +1757,6 @@ static inline void reset_trace_function_pointers(
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_16;
             trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_16;
         } else {
-            copy_basis_mod_p            = copy_basis_mod_p_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
             import_input_data           = import_input_data_ff_32;
             export_julia_data           = export_julia_data_ff_32;

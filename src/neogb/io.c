@@ -384,9 +384,6 @@ void import_input_data(
         default:
             exit(1);
     }
-
-    if (st->use_signatures > 0) {
-    }
             
     /* set total degree of input polynomials */
     deg_t deg = 0;

@@ -143,7 +143,7 @@ static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,
   mpz_CRT_ui(trace_det->trace_crt, trace_det->trace_crt,
              modulus, trace_mod, prime, prod, 1);
   mpz_CRT_ui(trace_det->det_crt, trace_det->det_crt,
-             modulus, trace_mod, prime, prod, 1);
+             modulus, det_mod, prime, prod, 1);
 }
 
 static inline void crt_lift_dense_rows(mpz_t *rows, uint32_t *mod_rows,

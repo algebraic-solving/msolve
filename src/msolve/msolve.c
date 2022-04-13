@@ -23,7 +23,7 @@
 #include "linear.c"
 #include "lifting.c"
 
-#define LIFTMATRIX 1
+#define LIFTMATRIX 0
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
@@ -1950,6 +1950,9 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #else
   *mat_lifted = 1;
 #endif
+  if(rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden)){
+    fprintf(stderr, "DONE\n");
+  }
 
   mpz_t denominator;
   mpz_init(denominator);

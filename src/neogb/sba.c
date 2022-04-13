@@ -19,22 +19,4 @@
  * Mohab Safey El Din */
 
 
-#ifndef LIBNEOGB_H
-#define LIBNEOGB_H
-
-#include "data.h"
-#include "basis.h"
-#include "engine.h"
-#include "f4.h"
 #include "sba.h"
-#include "hash.h"
-#include "io.h"
-#include "modular.h"
-#include "nf.h"
-#include "f4sat.h"
-#include "stat.h"
-#include "sort_r.h"
-#include "tools.h"
-#include "update.h"
-
-#endif

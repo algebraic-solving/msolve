@@ -206,7 +206,7 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:v:l:t:e:o:u:i:p:P:g:c:s:Sr:m:M:n:";
+  char options[] = "hf:v:l:t:e:o:u:i:p:P:q:g:c:s:Sr:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'h':
@@ -232,15 +232,12 @@ static void getoptions(
       break;
     case 'q':
       *use_signatures = strtol(optarg, NULL, 10);
-      if (*use_signatures < 5) {
+      if (*use_signatures < 0) {
           *use_signatures = 0;
       }
-      if (*use_signatures > 5) {
+      if (*use_signatures > 3) {
           *use_signatures = 0;
       }
-      /* if (*precision > 100) { */
-      /*     *precision = 100; */
-      /* } */
       break;
     case 'i':
       *is_gb = strtol(optarg, NULL, 10);

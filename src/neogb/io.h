@@ -29,6 +29,40 @@ void set_function_pointers(
 
 void set_ff_bits(stat_t *st, int32_t fc);
 
+void sort_terms_ff_8(
+    cf8_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void sort_terms_ff_16(
+    cf16_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void sort_terms_ff_32(
+    cf32_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void sort_terms_qq(
+    mpz_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void import_input_data(
+        bs_t *bs,
+        ht_t *ht,
+        stat_t *st,
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *vcfs,
+        const int *invalid_gens
+        );
+
 int32_t check_and_set_meta_data(
         stat_t *st,
         const int32_t *lens,
@@ -76,7 +110,7 @@ int32_t check_and_set_meta_data_trace(
         );
 
 /* for normal form input data */
-void import_julia_data_nf_ff_32(
+void import_input_data_nf_ff_32(
         bs_t *tbr,
         ht_t *ht,
         stat_t *st,
@@ -87,7 +121,7 @@ void import_julia_data_nf_ff_32(
         const void *vcfs
         );
 
-void import_julia_data_nf_qq(
+void import_input_data_nf_qq(
         bs_t *tbr,
         ht_t *ht,
         stat_t *st,

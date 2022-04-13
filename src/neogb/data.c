@@ -29,10 +29,6 @@ void (*normalize_initial_basis)(
         bs_t *bs,
         const uint32_t fc
         );
-bs_t *(*copy_basis_mod_p)(
-        const bs_t * const gbs,
-        const stat_t * const st
-        );
 
 int (*initial_input_cmp)(
         const void *a,
@@ -62,16 +58,6 @@ int (*hcm_cmp)(
         const void *a,
         const void *b,
         void *htp
-        );
-
-void (*import_julia_data)(
-        bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs,
-        const int *invalid_gens
         );
 
 int64_t (*export_julia_data)(

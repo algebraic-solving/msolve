@@ -9,6 +9,7 @@ EXTRA_DIST	=		basis.h \
 								data.h \
 								engine.h \
 								f4.h \
+								sba.h \
 								hash.h \
 								io.h \
 								modular.h \
@@ -23,6 +24,7 @@ EXTRA_DIST	=		basis.h \
 								data.c \
 								engine.c \
 								f4.c \
+								sba.c \
 								hash.c \
 								io.c \
 								la_ff_16.c \

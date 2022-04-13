@@ -1877,7 +1877,11 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_mul_ui(prod_crt, *modulus, prime);
   crt_lift_mpz_param(tmp_mpz_param, nmod_param, *modulus, prod_crt,
                      prime, nthrds);
-#ifdef LIFTMATRIX
+  crt_lift_trace_det(trace_det,
+                     nmod_param->elim->coeffs[nmod_param->elim->length-2],
+                     nmod_param->elim->coeffs[0],
+                     *modulus, prod_crt, prime);
+#if LIFTMATRIX == 1
   if(*matrec < crt_mat->nrows*crt_mat->ncols){
     crt_lift_mat(crt_mat, mat, *modulus, prod_crt, prime, nthrds);
   }
@@ -1893,7 +1897,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_set(*guessed_den, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
   mpz_set(recdata->D, *guessed_den);
-#ifdef LIFTMATRIX
+#if LIFTMATRIX == 1
   long cnt = 0;
   if(*matrec < crt_mat->nrows*crt_mat->ncols && *mat_lifted == 0){
     cnt = rat_recon_dense_rows(mpq_mat, crt_mat, mpz_mat, *modulus, recdata,
@@ -1910,6 +1914,10 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #endif
   if(rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden)){
     fprintf(stderr, "DONE\n");
+    mpz_out_str(stderr, 10, trace_det->trace_num); fprintf(stderr, " / ");
+    mpz_out_str(stderr, 10, trace_det->trace_den); fprintf(stderr, "\n");
+    mpz_out_str(stderr, 10, trace_det->det_num); fprintf(stderr, " / ");
+    mpz_out_str(stderr, 10, trace_det->det_den); fprintf(stderr, "\n");
   }
 
   mpz_t denominator;
@@ -3005,16 +3013,11 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpq_matfglm_t mpq_mat;
   mpz_matfglm_t mpz_mat;
 
-#ifdef LIFTMATRIX
+#if LIFTMATRIX == 1
   crt_mpz_matfglm_initset(crt_mat, *bmatrix);
   mpq_matfglm_initset(mpq_mat, *bmatrix);
   mpz_matfglm_initset(mpz_mat, *bmatrix);
 #endif
-
-  trace_det_fglm_mat_t trace_det;
-  trace_det_initset(trace_det,
-                    nmod_params[0]->elim->coeffs[nmod_params[0]->elim->length-2],
-                    nmod_params[0]->elim->coeffs[0]);
 
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, st, num_gb,
@@ -3053,6 +3056,11 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   initialize_mpz_param(tmp_mpz_param, nmod_params[0]);
   //attention les longueurs des mpz_param sont fixees par nmod_params[0]
   //dans des cas exceptionnels, ca peut augmenter avec un autre premier.
+
+  trace_det_fglm_mat_t trace_det;
+  trace_det_initset(trace_det,
+                    nmod_params[0]->elim->coeffs[nmod_params[0]->elim->length-2],
+                    nmod_params[0]->elim->coeffs[0]);
 
 
   mpz_t modulus;
@@ -3213,7 +3221,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            &mat_lifted,
                                            doit,
                                            st->nthrds, info_level);
-#ifdef LIFTMATRIX
+#if LIFTMATRIX == 1
           if(mat_lifted && display){
             /* display_fglm_mpq_matrix(stderr, mpq_mat); */
             /* exit(1); */

@@ -1912,7 +1912,8 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #else
   *mat_lifted = 1;
 #endif
-  if(rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden)){
+  int td = rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden);
+  if(td){
     fprintf(stderr, "DONE\n");
     mpz_out_str(stderr, 10, trace_det->trace_num); fprintf(stderr, " / ");
     mpz_out_str(stderr, 10, trace_det->trace_den); fprintf(stderr, "\n");

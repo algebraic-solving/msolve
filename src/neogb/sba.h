@@ -24,8 +24,9 @@
 
 #include "data.h"
 
-void set_signature_schreyer(
-        bs_t *bs,
-        const len_t idx
+int core_sba_schreyer(
+        bs_t **bsp,
+        ht_t **bhtp,
+        stat_t **stp
         );
 #endif

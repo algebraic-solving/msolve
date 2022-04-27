@@ -139,7 +139,7 @@ static int is_already_saturated(
     hm[COEFFS]        = bs->ld;
     bs->hm[bs->ld]    = hm;
 
-    update_basis(ps, bs, bht, uht, st, 1, 1);
+    update_basis_f4(ps, bs, bht, uht, st, 1, 1);
     
     /* suppress infolevel printing in the test step */
     int32_t infolevel = st->info_level;
@@ -165,7 +165,7 @@ static int is_already_saturated(
         clear_matrix(mat); // does not reset mat->np
         clean_hash_table(sht);
 
-        update_basis(ps, bs, bht, uht, st, mat->np, 1);
+        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         if (bs->constant  == 1) {
@@ -553,7 +553,7 @@ int core_f4sat(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -597,7 +597,7 @@ end_sat_step:
         clear_matrix(mat);
 
         /* check redundancy only if input is not homogeneous */
-        update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -679,7 +679,7 @@ end_sat_step:
                         st->nr_kernel_elts  +=  kernel->ld;
                         sat_test  = 0;
                         free_kernel_coefficients(kernel);
-                        update_basis(ps, bs, bht, uht, st, mat->np, 1);
+                        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
                         kernel->ld  = 0;
                         if (st->info_level > 1) {
                             printf("   ");

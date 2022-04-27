@@ -439,7 +439,7 @@ bs_t *f4sat_trace_application_test_phase(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
 
     if(st->info_level>1){
         printf("Application phase with prime p = %d, overall there are %u rounds\n",
@@ -485,7 +485,7 @@ bs_t *f4sat_trace_application_test_phase(
          * so we do not need the rows anymore */
         clear_matrix(mat); // does not reset mat->np
 
-        update_basis(ps, bs, bht, uht, st, mat->np, 1);
+        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -557,7 +557,7 @@ bs_t *f4sat_trace_application_test_phase(
                     }
                     st->nr_kernel_elts  +=  kernel->ld;
                     free_kernel_coefficients(kernel);
-                    update_basis(ps, bs, bht, uht, st, mat->np, 1);
+                    update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
                     kernel->ld  = 0;
                     if (st->info_level > 1) {
                         printf("   ");
@@ -1012,7 +1012,7 @@ bs_t *f4_trace_learning_phase(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1054,7 +1054,7 @@ bs_t *f4_trace_learning_phase(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
 
       /* if we found a constant we are done, so remove all remaining pairs */
       if (bs->constant  == 1) {
@@ -1235,7 +1235,7 @@ bs_t *f4sat_trace_learning_phase_1(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1274,7 +1274,7 @@ end_sat_step:
         clear_matrix(mat);
 
         /* check redundancy only if input is not homogeneous */
-        update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -1365,7 +1365,7 @@ end_sat_step:
                         st->nr_kernel_elts  +=  kernel->ld;
                         sat_test  = 0;
                         free_kernel_coefficients(kernel);
-                        update_basis(ps, bs, bht, uht, st, mat->np, 1);
+                        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
                         kernel->ld  = 0;
                         if (st->info_level > 1) {
                             printf("   ");
@@ -1576,7 +1576,7 @@ bs_t *f4sat_trace_learning_phase_2(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1626,7 +1626,7 @@ bs_t *f4sat_trace_learning_phase_2(
         clear_matrix(mat);
 
         /* check redundancy only if input is not homogeneous */
-        update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -1695,7 +1695,7 @@ bs_t *f4sat_trace_learning_phase_2(
 
                 st->nr_kernel_elts  +=  kernel->ld;
                 free_kernel_coefficients(kernel);
-                update_basis(ps, bs, bht, uht, st, mat->np, 1);
+                update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
                 kernel->ld  = 0;
                 if (st->info_level > 1) {
                     printf("   ");
@@ -2018,7 +2018,7 @@ bs_t *modular_f4(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -2057,7 +2057,7 @@ bs_t *modular_f4(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
 
       rrt1 = realtime();
       if (st->info_level > 1) {

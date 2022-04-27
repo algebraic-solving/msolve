@@ -294,7 +294,70 @@ nextj:
     st->num_redundant_old = st->num_redundant;
 }
 
-static void update_basis(
+static void update_basis_f4(
+        ps_t *ps,
+        bs_t *bs,
+        ht_t *bht,
+        ht_t *uht,
+        stat_t *st,
+        const len_t npivs,
+        const int32_t check_redundancy
+        )
+{
+    len_t i;
+
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    /* compute number of new pairs we need to handle at most */
+    len_t np  = bs->ld * npivs;
+    for (i = 1; i < npivs; ++i) {
+        np  = np + i;
+    }
+    check_enlarge_pairset(ps, np);
+
+    for (i = 0; i < npivs; ++i) {
+        insert_and_update_spairs(ps, bs, bht, uht, st, check_redundancy);
+    }
+
+    const bl_t lml          = bs->lml;
+    const bl_t * const lmps = bs->lmps;
+
+    len_t k = 0;
+    if (st->mo == 0 && st->num_redundant_old < st->num_redundant) {
+        const sdm_t *lms  = bs->lm;
+        for (i = 0; i < lml; ++i) {
+            if (bs->red[lmps[i]] == 0) {
+                bs->lm[k]   = lms[i];
+                bs->lmps[k] = lmps[i];
+                k++;
+            }
+        }
+        bs->lml = k;
+    }
+    k = bs->lml;
+    for (i = bs->lo; i < bs->ld; ++i) {
+        if (bs->red[i] == 0) {
+            bs->lm[k]   = bht->hd[bs->hm[i][OFFSET]].sdm;
+            bs->lmps[k] = i;
+            k++;
+        }
+    }
+    bs->lml = k;
+    bs->lo  = bs->ld;
+
+    st->num_redundant_old = st->num_redundant;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->update_ctime  +=  ct1 - ct0;
+    st->update_rtime  +=  rt1 - rt0;
+}
+
+static void update_basis_sba_schreyer(
         ps_t *ps,
         bs_t *bs,
         ht_t *bht,

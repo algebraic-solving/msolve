@@ -114,7 +114,8 @@ static inline void mpq_matfglm_initset(mpq_matfglm_t mpq_mat,
 }
 
 static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
-                                     uint32_t trace_mod, uint32_t det_mod){
+                                     uint32_t trace_mod, uint32_t det_mod,
+                                     uint32_t tridx, uint32_t detidx){
   mpz_init_set_ui(trace_det->trace_crt, trace_mod);
   mpz_init_set_ui(trace_det->det_crt, det_mod);
   mpz_init_set_ui(trace_det->trace_num, 0);
@@ -125,6 +126,8 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
   trace_det->check_det = 0;
   trace_det->done_trace = 0;
   trace_det->done_det = 0;
+  trace_det->trace_idx = tridx;
+  trace_det->det_idx = detidx;
 }
 
 static inline void trace_det_clear(trace_det_fglm_mat_t trace_det){
@@ -200,6 +203,36 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
   }
   return 1;
 }
+
+
+static inline int check_trace(trace_det_fglm_mat_t trace_det,
+                              uint32_t trace_mod,
+                              uint32_t prime){
+
+  uint32_t lc = mpz_fdiv_ui(trace_det->trace_den, prime);
+  lc = mod_p_inverse_32(lc, prime);
+
+  uint64_t c = mpz_fdiv_ui(trace_det->trace_num, prime);
+  c *= lc;
+  c = c % prime;
+
+  return (c == trace_mod);
+}
+
+static inline int check_det(trace_det_fglm_mat_t trace_det,
+                            uint32_t det_mod,
+                            uint32_t prime){
+
+  uint32_t lc = mpz_fdiv_ui(trace_det->det_den, prime);
+  lc = mod_p_inverse_32(lc, prime);
+
+  uint64_t c = mpz_fdiv_ui(trace_det->det_num, prime);
+  c *= lc;
+  c = c % prime;
+
+  return (c==det_mod);
+}
+
 
 #define NEW 1
 

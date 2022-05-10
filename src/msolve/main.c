@@ -309,10 +309,17 @@ int main(int argc, char **argv){
     files->in_file = NULL;
     files->out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
+<<<<<<< HEAD
             &elim_block_len, &la_option, &use_signatures, &update_ht,
             &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
             &normal_form, &normal_form_matrix, &is_gb, &get_param,
             &precision, &generate_pbm, &info_level, files);
+=======
+	    &elim_block_len, &la_option, &update_ht, &reduce_gb, &print_gb,
+	    &genericity_handling, &saturate, &colon, &normal_form, &normal_form_matrix,
+            &is_gb, &get_param, &precision, &generate_pbm, &info_level,
+            files);
+>>>>>>> de1c302 (option -C)
 
 
   FILE *fh  = fopen(files->in_file, "r");

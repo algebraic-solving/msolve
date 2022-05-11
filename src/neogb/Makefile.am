@@ -7,7 +7,9 @@ libneogb_la_CFLAGS	= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS)
 
 EXTRA_DIST	=		basis.h \
 								data.h \
+								engine.h \
 								f4.h \
+								sba.h \
 								hash.h \
 								io.h \
 								modular.h \
@@ -20,7 +22,9 @@ EXTRA_DIST	=		basis.h \
 								basis.c \
 								convert.c \
 								data.c \
+								engine.c \
 								f4.c \
+								sba.c \
 								hash.c \
 								io.c \
 								la_ff_16.c \

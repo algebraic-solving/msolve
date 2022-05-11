@@ -22,20 +22,12 @@
 #include "data.h"
 
 /* function pointers */
-bs_t *(*initialize_basis)(
-        const int32_t ngens
-        );
-void (*check_enlarge_basis)(
-        bs_t *bs,
-        const len_t added
-        );
+/* bs_t *(*initialize_basis)(
+ *         const int32_t ngens
+ *         ); */
 void (*normalize_initial_basis)(
         bs_t *bs,
         const uint32_t fc
-        );
-bs_t *(*copy_basis_mod_p)(
-        const bs_t * const gbs,
-        const stat_t * const st
         );
 
 int (*initial_input_cmp)(
@@ -66,15 +58,6 @@ int (*hcm_cmp)(
         const void *a,
         const void *b,
         void *htp
-        );
-
-void (*import_julia_data)(
-        bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
         );
 
 int64_t (*export_julia_data)(

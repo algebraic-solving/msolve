@@ -29,11 +29,46 @@ void set_function_pointers(
 
 void set_ff_bits(stat_t *st, int32_t fc);
 
+void sort_terms_ff_8(
+    cf8_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void sort_terms_ff_16(
+    cf16_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void sort_terms_ff_32(
+    cf32_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void sort_terms_qq(
+    mpz_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void import_input_data(
+        bs_t *bs,
+        ht_t *ht,
+        stat_t *st,
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *vcfs,
+        const int *invalid_gens
+        );
+
 int32_t check_and_set_meta_data(
         stat_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
+        const int *invalid_gens,
         const uint32_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
@@ -44,32 +79,10 @@ int32_t check_and_set_meta_data(
         const int32_t max_nr_pairs,
         const int32_t reset_hash_table,
         const int32_t la_option,
+        const int32_t use_signatures,
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t info_level
-        );
-
-/* for normal form input data */
-void import_julia_data_nf_ff_32(
-        bs_t *tbr,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t start,
-        const int32_t stop,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
-        );
-
-void import_julia_data_nf_qq(
-        bs_t *tbr,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t start,
-        const int32_t stop,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
         );
 
 int32_t check_and_set_meta_data_trace(
@@ -77,6 +90,7 @@ int32_t check_and_set_meta_data_trace(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
+        const int *invalid_gens,
         const uint32_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
@@ -87,10 +101,53 @@ int32_t check_and_set_meta_data_trace(
         const int32_t max_nr_pairs,
         const int32_t reset_hash_table,
         const int32_t la_option,
+        const int32_t use_signatures,
         const int32_t reduce_gb,
         const uint32_t prime_start,
         const int32_t nr_primes,
         const int32_t pbm_file,
         const int32_t info_level
+        );
+
+/* for normal form input data */
+void import_input_data_nf_ff_32(
+        bs_t *tbr,
+        ht_t *ht,
+        stat_t *st,
+        const int32_t start,
+        const int32_t stop,
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *vcfs
+        );
+
+void import_input_data_nf_qq(
+        bs_t *tbr,
+        ht_t *ht,
+        stat_t *st,
+        const int32_t start,
+        const int32_t stop,
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *vcfs
+        );
+
+int validate_input_data(
+        int **invalid_gensp,
+        const void *cfs,
+        const int32_t *lens,
+        uint32_t *field_charp,
+        int32_t *mon_orderp,
+        int32_t *elim_block_lenp,
+        int32_t *nr_varsp,
+        int32_t *nr_gensp,
+        int32_t *ht_sizep,
+        int32_t *nr_threadsp,
+        int32_t *max_nr_pairsp,
+        int32_t *reset_htp,
+        int32_t *la_optionp,
+        int32_t *use_signaturesp,
+        int32_t *reduce_gbp,
+        int32_t *info_levelp
         );
 #endif

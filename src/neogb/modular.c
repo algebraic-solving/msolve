@@ -432,7 +432,7 @@ bs_t *f4sat_trace_application_test_phase(
     ht_t *uht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(10);
+    bs_t *kernel  = initialize_basis(st);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
@@ -723,7 +723,7 @@ bs_t *f4sat_trace_application_phase(
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(10);
+    bs_t *kernel  = initialize_basis(st);
 
     bs->ld  = st->ngens;
 
@@ -1227,7 +1227,7 @@ bs_t *f4sat_trace_learning_phase_1(
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(10);
+    bs_t *kernel  = initialize_basis(st);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
@@ -1568,7 +1568,7 @@ bs_t *f4sat_trace_learning_phase_2(
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(10);
+    bs_t *kernel  = initialize_basis(st);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
@@ -1846,21 +1846,21 @@ int64_t f4_trace_julia(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
-        const uint32_t field_char,
-        const int32_t mon_order,
-        const int32_t elim_block_len,
-        const int32_t nr_vars,
-        const int32_t nr_gens,
-        const int32_t ht_size,
-        const int32_t nr_threads,
-        const int32_t max_nr_pairs,
-        const int32_t reset_ht,
-        const int32_t la_option,
-        const int32_t reduce_gb,
-        const uint32_t prime_start,
-        const int32_t nr_primes,
-        const int32_t pbm_file,
-        const int32_t info_level
+        uint32_t field_char,
+        int32_t mon_order,
+        int32_t elim_block_len,
+        int32_t nr_vars,
+        int32_t nr_gens,
+        int32_t ht_size,
+        int32_t nr_threads,
+        int32_t max_nr_pairs,
+        int32_t reset_ht,
+        int32_t la_option,
+        int32_t reduce_gb,
+        uint32_t prime_start,
+        int32_t nr_primes,
+        int32_t pbm_file,
+        int32_t info_level
         )
 {
     /* only for computations over the rationals */
@@ -1882,26 +1882,43 @@ int64_t f4_trace_julia(
     /* initialize stuff */
     stat_t *st  = initialize_statistics();
 
+    int *invalid_gens       =   NULL;
+    int32_t use_signatures  =   0;
+    int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
+            &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
+            &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
+            &info_level);
+
+    /* all data is corrupt */
+    if (res == -1) {
+        free(invalid_gens);
+        return res;
+    }
+
     /* checks and set all meta data. if a nonzero value is returned then
      * some of the input data is corrupted. */
-    if (check_and_set_meta_data_trace(st, lens, exps, cfs, field_char,
-                mon_order, elim_block_len, nr_vars, nr_gens, ht_size, nr_threads,
-                max_nr_pairs, reset_ht, la_option, reduce_gb, prime_start,
-                nr_primes, pbm_file, info_level)) {
+    if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
+                field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+                ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+                use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
+                info_level)) {
         return 0;
     }
 
     /*******************
     * initialize basis
     *******************/
-    bs_t *bs_qq = initialize_basis(st->ngens);
+    bs_t *bs_qq = initialize_basis(st);
     /* initialize basis hash table, update hash table, symbolic hash table */
     ht_t *bht = initialize_basis_hash_table(st);
     /* hash table to store the hashes of the multiples of
      * the basis elements stored in the trace */
     ht_t *tht = initialize_secondary_hash_table(bht, st);
     /* read in ideal, move coefficients to integers */
-    import_julia_data(bs_qq, bht, st, lens, exps, cfs);
+    import_input_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+
+    free(invalid_gens);
+    invalid_gens = NULL;
 
     if (st->info_level > 0) {
       print_initial_statistics(stderr, st);

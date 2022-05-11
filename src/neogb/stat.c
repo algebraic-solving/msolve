@@ -65,8 +65,10 @@ void print_initial_statistics(
     fprintf(file, "\n--------------- INPUT DATA ---------------\n");
     fprintf(file, "#variables             %11d\n", st->nvars);
     fprintf(file, "#equations             %11d\n", st->ngens);
+    fprintf(file, "#invalid equations     %11d\n", st->ngens_invalid);
     fprintf(file, "field characteristic   %11u\n", st->fc);
     fprintf(file, "homogeneous input?     %11d\n", st->homogeneous);
+    fprintf(file, "signature-based computation %6d\n", st->use_signatures);
     if (st->mo == 0 && st->nev == 0) {
         fprintf(file, "monomial order                 DRL\n");
     }

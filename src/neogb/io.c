@@ -55,7 +55,7 @@ static inline void set_exponent_vector(
 /* note that depending on the input data we set the corresponding
  * function pointers for monomial resp. spair comparisons, taking
  * spairs by a given minimal property for symbolic preprocessing, etc. */
-static void sort_terms_ff_8(
+void sort_terms_ff_8(
     cf8_t **cfp,
     hm_t **hmp,
     ht_t *ht
@@ -103,99 +103,7 @@ static void sort_terms_ff_8(
   *hmp  = hm;
 }
 
-static void import_julia_data_ff_8(
-        bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
-        )
-{
-    int32_t i, j;
-    len_t k;
-    cf8_t *cf;
-    hm_t *hm;
-
-    int32_t *cfs  = (int32_t *)vcfs;
-
-    int32_t off       = 0; /* offset in arrays */
-    const len_t ngens = st->ngens;
-    const len_t fc    = st->fc;
-
-    exp_t *e  = ht->ev[0]; /* use as temporary storage */
-    for (i = 0; i < ngens; ++i) {
-        while (lens[i] >= ht->esz-ht->eld) {
-            enlarge_hash_table(ht);
-            e  = ht->ev[0]; /* reset e if enlarging */
-        }
-        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
-        cf  = (cf8_t *)malloc((unsigned long)(lens[i]) * sizeof(cf8_t));
-        bs->hm[i]   = hm;
-        bs->cf_8[i] = cf;
-
-        hm[COEFFS]  = i; /* link to matcf entry */
-        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
-        hm[LENGTH]  = lens[i]; /* length */
-
-        bs->red[i] = 0;
-
-        for (j = off; j < off+lens[i]; ++j) {
-            set_exponent_vector(e, exps, j, ht, st);
-            hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
-            /* make coefficient positive */
-            cfs[j]            +=  (cfs[j] >> 31) & fc;
-            cf[j-off]         =   (cf8_t)cfs[j];
-        }
-        /* mark initial generators, they have to be added to the basis first */
-        off +=  lens[i];
-        /* sort terms in polynomial w.r.t. given monomial order */
-        sort_terms_ff_8(&cf, &hm, ht);
-    }
-    /* set total degree of input polynomials */
-    deg_t deg = 0;
-    if (st->nev) {
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg < ht->hd[hm[j]].deg) {
-                    deg = ht->hd[hm[j]].deg;
-                    st->homogeneous = 1;
-                }
-            }
-            bs->hm[i][DEG]  = deg;
-        }
-    } else {
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
-        }
-    }
-    if (st->homogeneous == 0) {
-        /* check if input system is homogeneous or not */
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg != ht->hd[hm[j]].deg) {
-                    st->homogeneous = 0;
-                    goto done;
-                }
-            }
-        }
-        st->homogeneous = 1;
-    }
-done:
-
-    /* we have to reset the ld value once we have normalized the initial
-     * elements in order to start update correctly */
-    bs->ld  = st->ngens;
-}
-
-static void sort_terms_ff_16(
+void sort_terms_ff_16(
     cf16_t **cfp,
     hm_t **hmp,
     ht_t *ht
@@ -243,99 +151,7 @@ static void sort_terms_ff_16(
   *hmp  = hm;
 }
 
-static void import_julia_data_ff_16(
-        bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
-        )
-{
-    int32_t i, j;
-    len_t k;
-    cf16_t *cf;
-    hm_t *hm;
-
-    int32_t *cfs  = (int32_t *)vcfs;
-
-    int32_t off       = 0; /* offset in arrays */
-    const len_t ngens = st->ngens;
-    const len_t fc    = st->fc;
-
-    exp_t *e  = ht->ev[0]; /* use as temporary storage */
-    for (i = 0; i < ngens; ++i) {
-        while (lens[i] >= ht->esz-ht->eld) {
-            enlarge_hash_table(ht);
-            e  = ht->ev[0]; /* reset e if enlarging */
-        }
-        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
-        cf  = (cf16_t *)malloc((unsigned long)(lens[i]) * sizeof(cf16_t));
-        bs->hm[i]     = hm;
-        bs->cf_16[i]  = cf;
-
-        hm[COEFFS]  = i; /* link to matcf entry */
-        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
-        hm[LENGTH]  = lens[i]; /* length */
-
-        bs->red[i] = 0;
-
-        for (j = off; j < off+lens[i]; ++j) {
-            set_exponent_vector(e, exps, j, ht, st);
-            hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
-            /* make coefficient positive */
-            cfs[j]            +=  (cfs[j] >> 31) & fc;
-            cf[j-off]         =   (cf16_t)cfs[j];
-        }
-        /* mark initial generators, they have to be added to the basis first */
-        off +=  lens[i];
-        /* sort terms in polynomial w.r.t. given monomial order */
-        sort_terms_ff_16(&cf, &hm, ht);
-    }
-    /* set total degree of input polynomials */
-    deg_t deg = 0;
-    if (st->nev) {
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg < ht->hd[hm[j]].deg) {
-                    deg = ht->hd[hm[j]].deg;
-                    st->homogeneous = 1;
-                }
-            }
-            bs->hm[i][DEG]  = deg;
-        }
-    } else {
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
-        }
-    }
-    if (st->homogeneous == 0) {
-        /* check if input system is homogeneous or not */
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg != ht->hd[hm[j]].deg) {
-                    st->homogeneous = 0;
-                    goto done;
-                }
-            }
-        }
-        st->homogeneous = 1;
-    }
-done:
-
-    /* we have to reset the ld value once we have normalized the initial
-     * elements in order to start update correctly */
-    bs->ld  = st->ngens;
-}
-
-static void sort_terms_ff_32(
+void sort_terms_ff_32(
     cf32_t **cfp,
     hm_t **hmp,
     ht_t *ht
@@ -383,57 +199,192 @@ static void sort_terms_ff_32(
   *hmp  = hm;
 }
 
-static void import_julia_data_ff_32(
+void sort_terms_qq(
+    mpz_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    )
+{
+  mpz_t *cf = *cfp;
+  hm_t *hm  = *hmp;
+  hm_t *hmo = hm+OFFSET;
+
+  const len_t len = hm[LENGTH];
+
+  len_t i, j, k;
+
+  hm_t tmphm  = 0;
+  mpz_t tmpcf;
+  mpz_init(tmpcf);
+
+  /* generate array of pointers to hm entries */
+  hm_t *phm[len];
+  for (i = 0; i < len; ++i) {
+    phm[i]  = &hmo[i];
+  }
+
+  /* sort pointers to hm entries -> getting permutations */
+  sort_r(phm, (unsigned long)len, sizeof(phm[0]), initial_gens_cmp, ht);
+
+  /* sort cf and hm using permutations stored in phm */
+  for (i = 0; i < len; ++i) {
+    if (i != phm[i]-hmo) {
+      mpz_swap(tmpcf, cf[i]);
+      tmphm = hmo[i];
+      k     = i;
+      while (i != (j = phm[k]-hmo)) {
+        mpz_swap(cf[k], cf[j]);
+        hmo[k]  = hmo[j];
+        phm[k]  = &hmo[k];
+        k       = j;
+      }
+      mpz_swap(cf[k], tmpcf);
+      hmo[k]  = tmphm;
+      phm[k]  = &hmo[k];
+    }
+  }
+
+  *cfp  = cf;
+  *hmp  = hm;
+}
+
+void import_input_data(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,
         const int32_t *lens,
         const int32_t *exps,
-        const void *vcfs
+        const void *vcfs,
+        const int *invalid_gens
         )
 {
     int32_t i, j;
     len_t k;
-    cf32_t *cf    = NULL;
-    int64_t tmpcf = 0;
-    hm_t *hm      = NULL;
+    hm_t *hm;
 
-    int32_t *cfs  = (int32_t *)vcfs;
+    cf8_t *cf8      =   NULL;
+    cf16_t *cf16    =   NULL;
+    cf32_t *cf32    =   NULL;
+    mpz_t *cfq      =   NULL;
+    int32_t *cfs_ff =   NULL;
+    mpz_t **cfs_qq  =   NULL;
 
-    int32_t off       = 0; /* offset in arrays */
-    const len_t ngens = st->ngens;
-    const len_t fc    = st->fc;
+    int32_t off             = 0; /* offset in arrays */
+    const len_t ngens       = st->ngens;
+    const len_t ngens_input = st->ngens_input;
+    const len_t fc          = st->fc;
 
+    /* import monomials */
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
-    for (i = 0; i < ngens; ++i) {
-        while (lens[i] >= ht->esz-ht->eld) {
-            enlarge_hash_table(ht);
-            e  = ht->ev[0]; /* reset e if enlarging */
+    for (i = 0; i < ngens_input; ++i) {
+        if (invalid_gens[i] == 0) {
+            while (lens[i] >= ht->esz-ht->eld) {
+                enlarge_hash_table(ht);
+                e  = ht->ev[0]; /* reset e if enlarging */
+            }
+            hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
+            bs->hm[i]   = hm;
+
+            hm[COEFFS]  = i; /* link to matcf entry */
+            hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
+            hm[LENGTH]  = lens[i]; /* length */
+
+            bs->red[i] = 0;
+
+            for (j = off; j < off+lens[i]; ++j) {
+                set_exponent_vector(e, exps, j, ht, st);
+                hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
+            }
         }
-        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
-        cf  = (cf32_t *)malloc((unsigned long)(lens[i]) * sizeof(cf32_t));
-        bs->hm[i]     = hm;
-        bs->cf_32[i]  = cf;
-
-        hm[COEFFS]  = i; /* link to matcf entry */
-        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
-        hm[LENGTH]  = lens[i]; /* length */
-
-        bs->red[i] = 0;
-
-        for (j = off; j < off+lens[i]; ++j) {
-            set_exponent_vector(e, exps, j, ht, st);
-            hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
-            /* make coefficient positive */
-            tmpcf             =   (int64_t)cfs[j];
-            tmpcf             +=  (tmpcf >> 63) & fc;
-            cf[j-off]         =   (cf32_t)tmpcf;
-        }
-        /* mark initial generators, they have to be added to the basis first */
         off +=  lens[i];
-        /* sort terms in polynomial w.r.t. given monomial order */
-        sort_terms_ff_32(&cf, &hm, ht);
     }
+    /* import coefficients */
+    off =   0;
+    switch (st->ff_bits) {
+        case 8:
+            cfs_ff  =   (int32_t *)vcfs;
+            for (i = 0; i < ngens_input; ++i) {
+                if (invalid_gens[i] == 0) {
+                    cf8 = (cf8_t *)malloc((unsigned long)(lens[i]) * sizeof(cf8_t));
+                    bs->cf_8[i] = cf8;
+
+                    for (j = off; j < off+lens[i]; ++j) {
+                        /* make coefficient positive */
+                        cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
+                        cf8[j-off]  =   (cf8_t)cfs_ff[j];
+                    }
+                    sort_terms_ff_8(&(bs->cf_8[i]), &(bs->hm[i]), ht);
+                }
+                off +=  lens[i];
+            }
+            break;
+        case 16:
+            cfs_ff  =   (int32_t *)vcfs;
+            for (i = 0; i < ngens_input; ++i) {
+                if (invalid_gens[i] == 0) {
+                    cf16    = (cf16_t *)malloc((unsigned long)(lens[i]) * sizeof(cf16_t));
+                    bs->cf_16[i] = cf16;
+
+                    for (j = off; j < off+lens[i]; ++j) {
+                        /* make coefficient positive */
+                        cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
+                        cf16[j-off] =   (cf16_t)cfs_ff[j];
+                    }
+                    sort_terms_ff_16(&(bs->cf_16[i]), &(bs->hm[i]), ht);
+                }
+                off +=  lens[i];
+            }
+            break;
+        case 32:
+            cfs_ff  =   (int32_t *)vcfs;
+            for (i = 0; i < ngens_input; ++i) {
+                if (invalid_gens[i] == 0) {
+                    cf32    = (cf32_t *)malloc((unsigned long)(lens[i]) * sizeof(cf32_t));
+                    bs->cf_32[i] = cf32;
+
+                    for (j = off; j < off+lens[i]; ++j) {
+                        /* make coefficient positive */
+                        cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
+                        cf32[j-off] =   (cf32_t)cfs_ff[j];
+                    }
+                    sort_terms_ff_32(&(bs->cf_32[i]), &(bs->hm[i]), ht);
+                }
+                off +=  lens[i];
+            }
+            break;
+        case 0:
+            cfs_qq  =   (mpz_t **)vcfs;
+            mpz_t prod_den, mul;
+            mpz_inits(prod_den, mul, NULL);
+            for (i = 0; i < ngens_input; ++i) {
+                if (invalid_gens[i] == 0) {
+                    mpz_set_si(prod_den, 1);
+
+                    for (j = off; j < off+lens[i]; ++j) {
+                        /* printf("i %u | j %u\n", i, j);
+                         * gmp_printf("%Zd\n", *(cfs[2*j+1])); */
+                        mpz_mul(prod_den, prod_den, *(cfs_qq[2*j+1]));
+                    }
+                    cfq = (mpz_t *)malloc((unsigned long)(lens[i]) * sizeof(mpz_t));
+
+                    bs->cf_qq[i]  = cfq;
+
+                    for (j = 0; j < lens[i]; ++j) {
+                        mpz_init(cfq[j]);
+                    }
+                    for (j = off; j < off+lens[i]; ++j) {
+                        mpz_divexact(mul, prod_den, *(cfs_qq[2*j+1]));
+                        mpz_mul(cfq[j-off], mul, *(cfs_qq[2*j]));
+                    }
+                    sort_terms_qq(&(bs->cf_qq[i]), &(bs->hm[i]), ht);
+                }
+                off +=  lens[i];
+            }
+            break;
+        default:
+            exit(1);
+    }
+            
     /* set total degree of input polynomials */
     deg_t deg = 0;
     if (st->nev) {
@@ -477,7 +428,7 @@ done:
     bs->ld  = st->ngens;
 }
 
-void import_julia_data_nf_ff_32(
+void import_input_data_nf_ff_32(
         bs_t *tbr,
         ht_t *ht,
         stat_t *st,
@@ -554,57 +505,9 @@ void import_julia_data_nf_ff_32(
     }
 }
 
-static void sort_terms_qq(
-    mpz_t **cfp,
-    hm_t **hmp,
-    ht_t *ht
-    )
-{
-  mpz_t *cf = *cfp;
-  hm_t *hm  = *hmp;
-  hm_t *hmo = hm+OFFSET;
-
-  const len_t len = hm[LENGTH];
-
-  len_t i, j, k;
-
-  hm_t tmphm  = 0;
-  mpz_t tmpcf;
-  mpz_init(tmpcf);
-
-  /* generate array of pointers to hm entries */
-  hm_t *phm[len];
-  for (i = 0; i < len; ++i) {
-    phm[i]  = &hmo[i];
-  }
-
-  /* sort pointers to hm entries -> getting permutations */
-  sort_r(phm, (unsigned long)len, sizeof(phm[0]), initial_gens_cmp, ht);
-
-  /* sort cf and hm using permutations stored in phm */
-  for (i = 0; i < len; ++i) {
-    if (i != phm[i]-hmo) {
-      mpz_swap(tmpcf, cf[i]);
-      tmphm = hmo[i];
-      k     = i;
-      while (i != (j = phm[k]-hmo)) {
-        mpz_swap(cf[k], cf[j]);
-        hmo[k]  = hmo[j];
-        phm[k]  = &hmo[k];
-        k       = j;
-      }
-      mpz_swap(cf[k], tmpcf);
-      hmo[k]  = tmphm;
-      phm[k]  = &hmo[k];
-    }
-  }
-
-  *cfp  = cf;
-  *hmp  = hm;
-}
 
 
-void import_julia_data_nf_qq(
+void import_input_data_nf_qq(
         bs_t *bs,
         ht_t *ht,
         stat_t *st,
@@ -677,123 +580,31 @@ void import_julia_data_nf_qq(
     mpz_clears(prod_den, mul, NULL);
 }
 
-
-static void import_julia_data_qq(
-        bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
+/* return zero generator if all input generators are invalid */
+static void return_zero(
+        int32_t *bload,
+        int32_t **blen,
+        int32_t **bexp,
+        void **bcf,
+        const int32_t nr_vars,
+        const uint32_t field_char,
+        void *(*mallocp) (size_t)
         )
 {
-    int32_t i, j;
-    len_t k;
-    mpz_t *cf;
-    hm_t *hm;
-    mpz_t prod_den, mul;
-    mpz_inits(prod_den, mul, NULL);
 
-    /* these coefficients are numerator, denominator, numerator, denominator, ...
-     * i.e. the array has length 2*nterms */
-    mpz_t **cfs  = (mpz_t **)vcfs;
-
-    int32_t off       = 0; /* offset in arrays */
-    const len_t ngens = st->ngens;
-
-    /* we want to get rid of denominators, i.e. we want to handle
-     * the coefficients as integers resp. mpz_t numbers. for this we
-     * first get the product of all denominators of a polynomial and
-     * then multiply with this product each term. the polynomials are
-    * then be made content free by another function. */
-
-    exp_t *e  = ht->ev[0]; /* use as temporary storage */
-    for (i = 0; i < ngens; ++i) {
-        while (lens[i] >= ht->esz) {
-            enlarge_hash_table(ht);
-            e  = ht->ev[0]; /* reset e if enlarging */
-        }
-        mpz_set_si(prod_den, 1);
-
-        for (j = off; j < off+lens[i]; ++j) {
-            /* printf("i %u | j %u\n", i, j);
-             * gmp_printf("%Zd\n", *(cfs[2*j+1])); */
-            mpz_mul(prod_den, prod_den, *(cfs[2*j+1]));
-        }
-
-        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
-        cf  = (mpz_t *)malloc((unsigned long)(lens[i]) * sizeof(mpz_t));
-
-        bs->hm[i]     = hm;
-        bs->cf_qq[i]  = cf;
-
-        for (j = 0; j < lens[i]; ++j) {
-          mpz_init(cf[j]);
-        }
-        hm[COEFFS]  = i; /* link to matcf entry */
-        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
-        hm[LENGTH]  = lens[i]; /* length */
-
-        bs->red[i] = 0;
-
-        for (j = off; j < off+lens[i]; ++j) {
-            set_exponent_vector(e, exps, j, ht, st);
-            /* for (int ii = 0; ii < ht->evl; ++ii) {
-             *     printf("%d ", e[ii]);
-             * }
-             * printf("\n"); */
-            hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
-            mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
-            mpz_mul(cf[j-off], mul, *(cfs[2*j]));
-        }
-        /* mark initial generators, they have to be added to the basis first */
-        off +=  lens[i];
-        /* sort terms in polynomial w.r.t. given monomial order */
-        sort_terms_qq(&cf, &hm, ht);
-    }
-    /* set total degree of input polynomials */
-    deg_t deg = 0;
-    if (st->nev) {
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg < ht->hd[hm[j]].deg) {
-                    deg = ht->hd[hm[j]].deg;
-                    st->homogeneous = 1;
-                }
-            }
-            bs->hm[i][DEG]  = deg;
-        }
+    int32_t *len  = (int32_t *)(*mallocp)(
+            (unsigned long)1 * sizeof(int32_t));
+    len[0]  =   1;
+    int32_t *exp  = (int32_t *)(*mallocp)(
+            (unsigned long)1 * (unsigned long)(nr_vars) * sizeof(int32_t));
+    memset(exp, 0, (unsigned long)nr_vars * sizeof(int32_t));
+    if (field_char > 0) {
+    int32_t *cf   = (int32_t *)(*mallocp)(
+            (unsigned long)1 * sizeof(int32_t));
+    cf[0]   =   0;
     } else {
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
-        }
+        fprintf(stderr, "We only support finite fields.\n");
     }
-    if (st->homogeneous == 0) {
-        /* check if input system is homogeneous or not */
-        for (i = 0; i < ngens; ++i) {
-            hm  = bs->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg != ht->hd[hm[j]].deg) {
-                    st->homogeneous = 0;
-                    goto done;
-                }
-            }
-        }
-        st->homogeneous = 1;
-    }
-done:
-
-    /* we have to reset the ld value once we have normalized the initial
-     * elements in order to start update correctly */
-    bs->ld  = st->ngens;
-
-    mpz_clears(prod_den, mul, NULL);
 }
 
 static int64_t export_julia_data_ff_8(
@@ -1098,11 +909,124 @@ void set_ff_bits(stat_t *st, int32_t fc){
   }
 }
 
+/* return 1 if validation was possible, zero otherwise */
+int validate_input_data(
+        int **invalid_gensp,
+        const void *cfs,
+        const int32_t *lens,
+        uint32_t *field_charp,
+        int32_t *mon_orderp,
+        int32_t *elim_block_lenp,
+        int32_t *nr_varsp,
+        int32_t *nr_gensp,
+        int32_t *ht_sizep,
+        int32_t *nr_threadsp,
+        int32_t *max_nr_pairsp,
+        int32_t *reset_htp,
+        int32_t *la_optionp,
+        int32_t *use_signaturesp,
+        int32_t *reduce_gbp,
+        int32_t *info_levelp
+        )
+{
+    /* biggest prime msovle can handle */
+    if (*field_charp > 4294967291) {
+        fprintf(stderr, "Field characteristic not valid.\n");
+        return 0;
+    }
+    if (*nr_varsp < 0) {
+        fprintf(stderr, "Number of variables not valid.\n");
+        return 0;
+    }
+    if (*nr_gensp < 1) {
+        fprintf(stderr, "Number of generators not valid.\n");
+        return 0;
+    }
+    if (*mon_orderp < 0) {
+        fprintf(stderr, "Fixes monomial order to DRL.\n");
+        *mon_orderp =   0;
+    }
+    if (*elim_block_lenp < 0) {
+        fprintf(stderr, "Fixes elim block order length to 0.\n");
+        *elim_block_lenp =   0;
+    }
+    if (*ht_sizep < 0) {
+        fprintf(stderr, "Fixes initial hash table size to 2^17.\n");
+        *ht_sizep   =   17;
+    }
+    if (*nr_threadsp < 0) {
+        fprintf(stderr, "Fixes number of threads to 1.\n");
+        *nr_threadsp    =   1;
+    }
+    if (*max_nr_pairsp < 0) {
+        fprintf(stderr, "Fixes maximal number of spairs chosen to all possible.\n");
+        *max_nr_pairsp  =   0;
+    }
+    if (*la_optionp != 1 && *la_optionp != 2 &&
+            *la_optionp != 42 && *la_optionp != 44) {
+        fprintf(stderr, "Fixes linear algebra option to exact sparse.\n");
+        *la_optionp =   2;
+    }
+    if (*use_signaturesp < 0 || *use_signaturesp > 3) {
+        fprintf(stderr, "Usage of signature not valid, disabled.\n");
+        *use_signaturesp = 0;
+    }
+    if (*reduce_gbp < 0 || *reduce_gbp > 1) {
+        fprintf(stderr, "Fixes reduction of GB to false.\n");
+        *reduce_gbp =   0;
+    }
+    if (*info_levelp < 0 || *info_levelp > 2) {
+        fprintf(stderr, "Fixes info level to no output.\n");
+        *info_levelp    =   0;
+    }
+    const int ngens     =   *nr_gensp;
+    int *invalid_gens   =   (int *)calloc((unsigned long)ngens, sizeof(int));
+    int ctr             =   0;
+    long len            =   0;
+    if (*field_charp == 0) {
+        mpz_t **cf  =   (mpz_t **)cfs;
+        for (long i = 0; i < 2*len; ++i) {
+            if (mpz_cmp_si(*(cf[0]), 0) == 0) {
+                invalid_gens[i]   =   1;
+                ctr++;
+            }
+        }
+    } else {
+        int32_t *cf =   (int32_t *)cfs;
+        for (int i = 0; i < ngens; ++i) {
+            for (int j = 0; j < lens[i]; ++j) {
+                if (cf[j+len] == 0) {
+                    invalid_gens[i]   =   1;
+                    ctr++;
+                    break;
+                }
+            }
+            len +=  lens[i];
+        }
+    }
+
+    *invalid_gensp  =   invalid_gens;
+
+    if (ctr == 0) {
+        return 1;
+    }
+
+    *nr_gensp   -=  ctr;
+    /* recheck number of generators, if the input was only (0) then
+     * no more generators are left over. */
+    if (*nr_gensp < 1) {
+        return -1;
+    }
+
+    return 1;
+}
+
 int32_t check_and_set_meta_data(
         stat_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
+        const int *invalid_gens,
         const uint32_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
@@ -1113,6 +1037,7 @@ int32_t check_and_set_meta_data(
         const int32_t max_nr_pairs,
         const int32_t reset_hash_table,
         const int32_t la_option,
+        const int32_t use_signatures,
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t info_level
@@ -1121,6 +1046,7 @@ int32_t check_and_set_meta_data(
     if (nr_gens <= 0
             || nr_vars <= 0
             || field_char < 0
+            || use_signatures < 0
             || lens == NULL
             || cfs == NULL
             || exps == NULL) {
@@ -1129,12 +1055,25 @@ int32_t check_and_set_meta_data(
       return 1;
     }
 
-    st->ngens = nr_gens;
+    long ctr    =   0;
+    for (int i = 0; i < nr_gens; ++i) {
+        ctr +=  invalid_gens[i];
+    }
+
+    /* number of generators given from input file */
+    st->ngens_input     = nr_gens;
+    /* number of generators from input which are invalid */
+    st->ngens_invalid   = ctr;
+    /* number of valid generators */
+    st->ngens           = nr_gens - ctr;
+
     st->nvars = nr_vars;
     /* note: prime check should be done in julia */
     st->fc    = field_char;
 
     set_ff_bits(st, st->fc);
+
+    st->use_signatures  =   use_signatures;
 
     /* monomial order */
     if (mon_order != 0 && mon_order != 1) {
@@ -1246,10 +1185,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_qq;
       }
       interreduce_matrix_rows = interreduce_matrix_rows_qq;
-      initialize_basis        = initialize_basis_qq;
-      import_julia_data       = import_julia_data_qq;
       export_julia_data       = export_julia_data_qq;
-      check_enlarge_basis     = check_enlarge_basis_qq;
       break;
 
     case 8:
@@ -1273,10 +1209,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_8;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-      initialize_basis            = initialize_basis_ff_8;
-      import_julia_data           = import_julia_data_ff_8;
       export_julia_data           = export_julia_data_ff_8;
-      check_enlarge_basis         = check_enlarge_basis_ff_8;
       normalize_initial_basis     = normalize_initial_basis_ff_8;
       break;
 
@@ -1301,10 +1234,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_16;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-      initialize_basis            = initialize_basis_ff_16;
-      import_julia_data           = import_julia_data_ff_16;
       export_julia_data           = export_julia_data_ff_16;
-      check_enlarge_basis         = check_enlarge_basis_ff_16;
       normalize_initial_basis     = normalize_initial_basis_ff_16;
       break;
 
@@ -1329,10 +1259,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      initialize_basis            = initialize_basis_ff_32;
-      import_julia_data           = import_julia_data_ff_32;
       export_julia_data           = export_julia_data_ff_32;
-      check_enlarge_basis         = check_enlarge_basis_ff_32;
       normalize_initial_basis     = normalize_initial_basis_ff_32;
 
       /* if coeffs are smaller than 17 bit we can optimize reductions */
@@ -1389,10 +1316,7 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      initialize_basis            = initialize_basis_ff_32;
-      import_julia_data           = import_julia_data_ff_32;
       export_julia_data           = export_julia_data_ff_32;
-      check_enlarge_basis         = check_enlarge_basis_ff_32;
       normalize_initial_basis     = normalize_initial_basis_ff_32;
 
       /* if coeffs are smaller than 17 bit we can optimize reductions */
@@ -1434,6 +1358,7 @@ int32_t check_and_set_meta_data_trace(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
+        const int *invalid_gens,
         const uint32_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
@@ -1444,6 +1369,7 @@ int32_t check_and_set_meta_data_trace(
         const int32_t max_nr_pairs,
         const int32_t reset_hash_table,
         const int32_t la_option,
+        const int32_t use_signatures,
         const int32_t reduce_gb,
         const uint32_t prime_start,
         const int32_t nr_primes,
@@ -1459,10 +1385,10 @@ int32_t check_and_set_meta_data_trace(
     if (st->nprimes <= 0) {
         st->nprimes = 10;
     }
-    return check_and_set_meta_data(st, lens, exps,
-            cfs, field_char, mon_order, elim_block_len, nr_vars,
-            nr_gens, ht_size, nr_threads, max_nr_pairs, reset_hash_table,
-            la_option, reduce_gb, pbm_file, info_level);
+    return check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
+            field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+            ht_size, nr_threads, max_nr_pairs, reset_hash_table,
+            la_option, use_signatures, reduce_gb, pbm_file, info_level);
 }
 
 static inline void reset_function_pointers(
@@ -1471,12 +1397,8 @@ static inline void reset_function_pointers(
         )
 {
     if (prime < pow(2,8)) {
-        copy_basis_mod_p            = copy_basis_mod_p_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        initialize_basis            = initialize_basis_ff_8;
-        import_julia_data           = import_julia_data_ff_8;
         export_julia_data           = export_julia_data_ff_8;
-        check_enlarge_basis         = check_enlarge_basis_ff_8;
         normalize_initial_basis     = normalize_initial_basis_ff_8;
         switch (laopt) {
           case 1:
@@ -1499,12 +1421,8 @@ static inline void reset_function_pointers(
         }
     } else {
         if (prime < pow(2,16)) {
-            copy_basis_mod_p            = copy_basis_mod_p_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            initialize_basis            = initialize_basis_ff_16;
-            import_julia_data           = import_julia_data_ff_16;
             export_julia_data           = export_julia_data_ff_16;
-            check_enlarge_basis         = check_enlarge_basis_ff_16;
             normalize_initial_basis     = normalize_initial_basis_ff_16;
             switch (laopt) {
               case 1:
@@ -1526,12 +1444,8 @@ static inline void reset_function_pointers(
                 linear_algebra  = exact_sparse_linear_algebra_ff_16;
             }
         } else {
-            copy_basis_mod_p            = copy_basis_mod_p_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            initialize_basis            = initialize_basis_ff_32;
-            import_julia_data           = import_julia_data_ff_32;
             export_julia_data           = export_julia_data_ff_32;
-            check_enlarge_basis         = check_enlarge_basis_ff_32;
             normalize_initial_basis     = normalize_initial_basis_ff_32;
             switch (laopt) {
               case 1:
@@ -1591,33 +1505,21 @@ static inline void reset_trace_function_pointers(
         )
 {
     if (prime < pow(2,8)) {
-        copy_basis_mod_p            = copy_basis_mod_p_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        initialize_basis            = initialize_basis_ff_8;
-        import_julia_data           = import_julia_data_ff_8;
         export_julia_data           = export_julia_data_ff_8;
-        check_enlarge_basis         = check_enlarge_basis_ff_8;
         normalize_initial_basis     = normalize_initial_basis_ff_8;
         application_linear_algebra  = exact_application_sparse_linear_algebra_ff_8;
         trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_8;
     } else {
         if (prime < pow(2,16)) {
-            copy_basis_mod_p            = copy_basis_mod_p_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            initialize_basis            = initialize_basis_ff_16;
-            import_julia_data           = import_julia_data_ff_16;
             export_julia_data           = export_julia_data_ff_16;
-            check_enlarge_basis         = check_enlarge_basis_ff_16;
             normalize_initial_basis     = normalize_initial_basis_ff_16;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_16;
             trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_16;
         } else {
-            copy_basis_mod_p            = copy_basis_mod_p_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            initialize_basis            = initialize_basis_ff_32;
-            import_julia_data           = import_julia_data_ff_32;
             export_julia_data           = export_julia_data_ff_32;
-            check_enlarge_basis         = check_enlarge_basis_ff_32;
             normalize_initial_basis     = normalize_initial_basis_ff_32;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_32;
             trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_32;

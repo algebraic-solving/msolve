@@ -319,79 +319,6 @@ start:
     }
 }
 
-int initialize_f4_input_data(
-        bs_t **bsp,
-        ht_t **bhtp,
-        stat_t **stp,
-        /* input values */
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *cfs,
-        const uint32_t field_char,
-        const int32_t mon_order,
-        const int32_t elim_block_len,
-        const int32_t nr_vars,
-        const int32_t nr_gens,
-        const int32_t ht_size,
-        const int32_t nr_threads,
-        const int32_t max_nr_pairs,
-        const int32_t reset_ht,
-        const int32_t la_option,
-        const int32_t reduce_gb,
-        const int32_t pbm_file,
-        const int32_t info_level
-        )
-{
-    bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
-
-    /* initialize stuff */
-    st  = initialize_statistics();
-
-    /* checks and set all meta data. if a nonzero value is returned then
-     * some of the input data is corrupted. */
-    if (check_and_set_meta_data(st, lens, exps, cfs, field_char, mon_order,
-                elim_block_len, nr_vars, nr_gens, ht_size, nr_threads,
-                max_nr_pairs, reset_ht, la_option, reduce_gb, pbm_file,
-                info_level)) {
-        return 0;
-    }
-
-    /* initialize basis */
-    bs  = initialize_basis(st->ngens);
-    /* initialize basis hash table */
-    bht = initialize_basis_hash_table(st);
-
-    import_julia_data(bs, bht, st, lens, exps, cfs);
-
-    if (st->info_level > 0) {
-      print_initial_statistics(stderr, st);
-    }
-
-    /* for faster divisibility checks, needs to be done after we have
-     * read some input data for applying heuristics */
-    calculate_divmask(bht);
-
-    /* sort initial elements, smallest lead term first */
-    sort_r(bs->hm, (unsigned long)bs->ld, sizeof(hm_t *),
-            initial_input_cmp, bht);
-    /* normalize input generators */
-    if (st->fc > 0) {
-        normalize_initial_basis(bs, st->fc);
-    } else {
-        if (st->fc == 0) {
-            remove_content_of_initial_basis(bs);
-        }
-    }
-
-    *bsp  = bs;
-    *bhtp = bht;
-    *stp  = st;
-
-    return 1;
-}
-
 int core_f4(
         bs_t **bsp,
         ht_t **bhtp,
@@ -615,12 +542,19 @@ int64_t f4_julia(
 
     int success = 0;
 
-    success = initialize_f4_input_data(&bs, &bht, &st,
+    const int32_t use_signatures    =   0;
+    success = initialize_gba_input_data(&bs, &bht, &st,
             lens, exps, cfs, field_char, mon_order, elim_block_len,
             nr_vars, nr_gens, ht_size, nr_threads, max_nr_pairs,
-            reset_ht, la_option, reduce_gb, pbm_file, info_level);
+            reset_ht, la_option, use_signatures, reduce_gb, pbm_file,
+            info_level);
 
-    if (!success) {
+    /* all input generators are invalid */
+    if (success == -1) {
+        return_zero(bld, blen, bexp, bcf, nr_vars, field_char, mallocp);
+        return 1;
+    }
+    if (success == 0) {
         printf("Bad input data, stopped computation.\n");
         exit(1);
     }

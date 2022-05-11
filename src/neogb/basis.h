@@ -30,4 +30,19 @@ void free_basis(
 void remove_content_of_initial_basis(
         bs_t *bs
         );
+
+bs_t *initialize_basis(
+        const stat_t *st
+        );
+
+bs_t *copy_basis_mod_p(
+        const bs_t * const gbs,
+        const stat_t * const st
+        );
+
+void check_enlarge_basis(
+        bs_t *bs,
+        const len_t added,
+        const stat_t *st
+        );
 #endif

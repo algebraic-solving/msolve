@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([msolve], [0.2.3], [ederc@mathematik.uni-kl.de])
+AC_INIT([msolve], [0.2.4], [ederc@mathematik.uni-kl.de])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign silent-rules subdir-objects color-tests parallel-tests])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_MACRO_DIR([m4])
@@ -19,7 +19,7 @@ AC_PROG_CC
 # CAUTION: Order matters for static binary building.
 AC_CHECK_LIB([m], [main], , [AC_MSG_ERROR([Math library not found])])
 AC_CHECK_LIB(gmp, __gmpz_init, , [AC_MSG_ERROR([GNU MP not found, see https://gmplib.org/])])
-# AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
+AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
 AC_CHECK_LIB([flint], [fmpz_add_ui], , [AC_MSG_ERROR([FLINT not found])])
 # AC_CHECK_LIB([pthread], [posix_spawn])
 

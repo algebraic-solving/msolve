@@ -62,20 +62,22 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */
 typedef uint16_t cf16_t; /* coefficient type finite field (16 bit) */
 typedef uint32_t cf32_t; /* coefficient type finite field (32 bit) */
-typedef uint32_t val_t; /* core values like hashes */
-typedef val_t hi_t;     /* index of hash table entries*/
-typedef hi_t hm_t;      /* hashed monomials for polynomial entries */
-typedef uint64_t hl_t;  /* hash table length (maybe >= 2^32) */
+typedef uint32_t val_t;  /* core values like hashes */
+typedef val_t hi_t;      /* index of hash table entries*/
+typedef hi_t hm_t;       /* hashed monomials for polynomial entries */
+typedef hm_t sm_t;       /* hashed monomial of signature */
+typedef uint16_t si_t;   /* index of signature */
+typedef uint64_t hl_t;   /* hash table length (maybe >= 2^32) */
 /* like exponent hashes, etc. */
-typedef uint32_t rba_t; /* reducer binary array */
-typedef uint32_t ind_t; /* index in hash table structure */
+typedef uint32_t rba_t;  /* reducer binary array */
+typedef uint32_t ind_t;  /* index in hash table structure */
 typedef uint32_t sdm_t;  /* short divmask for faster divisibility checks */
-typedef uint32_t len_t; /* length type for different structures */
-typedef int16_t exp_t;  /* exponent type */
-typedef int16_t deg_t;  /* (total) degree of polynomial */
-typedef len_t bi_t;     /* basis index of element */
-typedef len_t bl_t;     /* basis load */
-typedef len_t pl_t;     /* pair set load */
+typedef uint32_t len_t;  /* length type for different structures */
+typedef int16_t exp_t;   /* exponent type */
+typedef int16_t deg_t;   /* (total) degree of polynomial */
+typedef len_t bi_t;      /* basis index of element */
+typedef len_t bl_t;      /* basis load */
+typedef len_t pl_t;      /* pair set load */
 
 /* hash data structure */
 typedef struct hd_t hd_t;
@@ -165,6 +167,8 @@ struct bs_t
                        elements in basis */
     int8_t *red;    /* tracks redundancy of basis elements */
     hm_t **hm;      /* hashed monomials representing exponents */
+    sm_t *sm;       /* signatures for F5-style computations */
+    si_t *si;       /* signatures index for F5-style computations */
     cf8_t **cf_8;   /* coefficients for finite fields (8 bit) */
     cf16_t **cf_16; /* coefficients for finite fields (16 bit) */
     cf32_t **cf_32; /* coefficients for finite fields (32 bit) */
@@ -305,13 +309,15 @@ struct stat_t
     int64_t num_rowsred;
     int64_t num_zerored;
 
+    int32_t ngens_input;
+    int32_t ngens_invalid;
     int32_t ngens;
     int32_t nvars;
     int32_t mnsel;
     int32_t homogeneous;
     uint32_t fc;
     int32_t nev; /* number of elimination variables */
-    int32_t mo;
+    int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
     int32_t laopt;
     int32_t init_hts;
     int32_t nthrds;
@@ -324,6 +330,11 @@ struct stat_t
     int64_t nterms_basis;
     int32_t size_basis;
     int32_t ff_bits;
+    int32_t use_signatures; /* module monomial ordering:
+                               0 = off,
+                               1=SCHREYER,
+                               2=POT,
+                               3=DPOT */
     int32_t reduce_gb;
 
     uint32_t prime_start;
@@ -345,20 +356,12 @@ struct stat_t
 };
 
 /* function pointers */
-extern bs_t *(*initialize_basis)(
-        const int32_t ngens
-        );
-extern void (*check_enlarge_basis)(
-        bs_t *bs,
-        const len_t added
-        );
+/* extern bs_t *(*initialize_basis)(
+ *         const int32_t ngens
+ *         ); */
 extern void (*normalize_initial_basis)(
         bs_t *bs,
         const uint32_t fc
-        );
-extern bs_t *(*copy_basis_mod_p)(
-        const bs_t * const gbs,
-        const stat_t * const st
         );
 
 extern int (*initial_input_cmp)(
@@ -389,15 +392,6 @@ extern int (*hcm_cmp)(
         const void *a,
         const void *b,
         void *htp
-        );
-
-extern void (*import_julia_data)(
-        bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
         );
 
 extern int64_t (*export_julia_data)(

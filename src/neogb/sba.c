@@ -393,6 +393,9 @@ int core_sba_schreyer(
 
     /* free and clean up */
     free(hcm);
+    free_signature_criteria(&syz, st);
+    free_signature_criteria(&rew, st);
+    /* TODO: free signature matrices! */
 
     return 1;
 }

@@ -593,6 +593,72 @@ restart:
     return pos;
 }
 
+static inline hi_t insert_multiplied_signature_in_hash_table(
+    const hm_t h1,
+    const hm_t h2,
+    ht_t *ht
+    )
+{
+    hl_t i;
+    hi_t k, pos;
+    len_t j;
+    exp_t *e;
+    exp_t *a = ht->ev[0];;
+    hd_t *d;
+    val_t h = 0;
+    const len_t evl = ht->evl;
+    const hl_t hsz = ht->hsz;
+    /* ht->hsz <= 2^32 => mod is always uint32_t */
+    const hi_t mod = (hi_t)(ht->hsz - 1);
+
+    h   =   h1 + h2;
+
+    /* generate exponent vector */
+    for (j = 0; j < evl; ++j) {
+        a[i] = ht->ev[h1][j] + ht->ev[h2][j];
+    }
+    /* probing */
+    k = h;
+    i = 0;
+restart:
+    for (; i < hsz; ++i) {
+        k = (hi_t)((k+i) & mod);
+        const hi_t hm = ht->hmap[k];
+        if (!hm) {
+            break;
+        }
+        if (ht->hd[hm].val != h) {
+            continue;
+        }
+        const exp_t * const ehm = ht->ev[hm];
+        for (j = 0; j < evl-1; j += 2) {
+            if (a[j] != ehm[j] || a[j+1] != ehm[j+1]) {
+                i++;
+                goto restart;
+            }
+        }
+        if (a[evl-1] != ehm[evl-1]) {
+            i++;
+            goto restart;
+        }
+        return hm;
+    }
+
+    /* add element to hash table */
+    ht->hmap[k]  = pos = (hi_t)ht->eld;
+    e   = ht->ev[pos];
+    d   = ht->hd + pos;
+    memcpy(e, a, (unsigned long)evl * sizeof(exp_t));
+    d->sdm  =   generate_short_divmask(e, ht);
+    d->deg  =   e[0];
+    d->deg  +=  ht->ebl > 0 ? e[ht->ebl] : 0;
+    d->val  =   h;
+
+    ht->eld++;
+
+    return pos;
+}
+
 static inline hi_t insert_in_hash_table(
     const exp_t *a,
     ht_t *ht

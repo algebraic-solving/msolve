@@ -21,13 +21,111 @@
 
 #include "sba.h"
 
+static int is_signature_needed(
+        const smat_t * const smat,
+        const syz_t *syz,
+        const smat_t *psmat,
+        const len_t idx,
+        const len_t var_idx,
+        ht_t *ht
+        ) {
+    /* get exponent vector and increment entry for var_idx */
+    exp_t *ev   =   ht->ev[0];
+    ev          =   ht->ev[psmat->cols[idx][SM_SMON]];
+    len_t shift =   var_idx > ht->ebl ? 2 : 1;
+    ev[var_idx+shift]++;
+
+    const len_t sig_idx =   psmat->cols[idx][SM_SIDX];
+    const hm_t hm       =   insert_in_hash_table(ev, ht);
+    const sdm_t nsdm    =   ~ht->hd[hm].sdm;
+
+    const len_t evl     =   ht->evl;
+
+    const syz_t syz_idx =   syz[sig_idx];
+    for (len_t i = 0; i < syz_idx.ld; ++i) {
+        if (nsdm & syz_idx.dm[i]) {
+            continue;
+        }
+        const exp_t *sev    =   ht->ev[syz_idx.hm[i]];
+        for (len_t j = 0; j < evl; ++j) {
+            if (sev[j] > ev[j]) {
+                continue;
+            }
+        }
+        return 1;
+    }
+    return 0;
+}
+
+
+static void add_multiples_of_previous_degree_row(
+        smat_t *smat,
+        smat_t *psmat,
+        const len_t idx,
+        const syz_t * const syz,
+        ht_t *ht,
+        stat_t *st)
+{
+    const len_t nv  =   ht->nv;
+
+    for (len_t i = 0; i < nv; ++i) {
+        /* check syzygy and rewrite criterion */
+        if (is_signature_needed(smat, syz, psmat, idx, i, ht) == 1) {
+        }
+    }
+}
+
+static inline void add_row_with_signature(
+        smat_t *mat,
+        const bs_t * const bs,
+        const len_t pos
+        )
+{
+    const len_t nr          =   mat->nr;
+    const unsigned long len =   bs->hm[pos][LENGTH];
+    mat->cols[nr]           =   (hm_t *)malloc(
+            (len + SM_OFFSET) * sizeof(hm_t));
+    /* copy polynomial data */
+    memcpy(mat->cols[nr]+SM_CFS,bs->hm[pos]+COEFFS,
+            len + OFFSET - COEFFS);
+    mat->prev_cf32[nr]      =   bs->cf_32[bs->hm[pos][COEFFS]];
+    mat->cols[nr][SM_CFS]   =   nr;
+    /* store also signature data */
+    mat->cols[nr][SM_SMON]  =   bs->sm[pos];
+    mat->cols[nr][SM_SIDX]  =   bs->si[pos];
+    mat->nr++;
+}
+
+static inline syz_t *initialize_syzygies_schreyer(
+        const bs_t * const bs,
+        ht_t *ht
+        )
+{
+    /* when initializing syzygies we assume that bs->ld == st->ngens */
+    syz_t *syz  =   calloc((unsigned long)bs->ld, sizeof(syz_t));
+    syz[0].ld   =   0;
+    syz[0].sz   =   0;
+    for (len_t i = 1; i < bs->ld; ++i) {
+        syz[i].hm   =   calloc((unsigned long)i, sizeof(hm_t));
+        syz[i].dm   =   calloc((unsigned long)i, sizeof(sdm_t));
+        syz[i].ld   =   0;
+        syz[i].sz   =   i;
+        for (len_t j = 0; j < i; ++j) {
+            syz[i].hm[j] = insert_multiplied_signature_in_hash_table(
+                    bs->hm[j][OFFSET], bs->sm[i], ht);
+            syz[i].dm[j] = ht->hd[syz[i].hm[j]].sdm;
+        }
+    }
+    return syz;
+}
+
 static inline void initialize_signatures_schreyer(
         bs_t *bs
         )
 {
     for (len_t i = 0; i < bs->ld; ++i) {
         bs->si[i]   =   i;
-        bs->sm[i]   =   bs->hm[i][OFFSET];;
+        bs->sm[i]   =   bs->hm[i][OFFSET];
     }
 }
 
@@ -43,114 +141,107 @@ static inline void initialize_signatures_not_schreyer(
 
 int core_sba_schreyer(
         bs_t **bsp,
-        ht_t **bhtp,
+        ht_t **htp,
         stat_t **stp
         )
 {
-    bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
+    bs_t *in    = *bsp;
+    ht_t *ht    = *htp;
     stat_t *st  = *stp;
 
     /* timings for one round */
     double rrt0, rrt1;
 
-    int32_t round, i, j;
-
-    /* initialize update hash table, symbolic hash table */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
-    ht_t *sht = initialize_secondary_hash_table(bht, st);
-
+    int try_termination =   0;
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
     hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
-    /* matrix holding sparse information generated
-     * during symbolic preprocessing */
-    mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
-    ps_t *ps = initialize_pairset();
+    /* signature matrix and previous degree signature matrix */
+    smat_t *smat = NULL, *psmat = NULL;
 
-    initialize_signatures_schreyer(bs);
+    /* initialize signature related information */
+    initialize_signatures_schreyer(in);
+    syz_t *syz  =   initialize_syzygies_schreyer(in, ht);
 
-    /* reset bs->ld for first update process */
-    bs->ld  = 0;
+    /* initialize an empty basis for keeping the real basis elements */
+    bs_t *bs    =   initialize_basis(st);
 
-    /* move input generators to basis and generate first spairs.
-     * always check redundancy since input generators may be redundant
-     * even so they are homogeneous. */
-    update_basis_sba_schreyer(ps, bs, bht, uht, st, st->ngens, 1);
+    /* sort initial elements, highest lead term first */
+    sort_r(in->hm, (unsigned long)in->ld, sizeof(hm_t *),
+            initial_input_cmp_sig, ht);
 
-    /* let's start the f4 rounds,  we are done when no more spairs
-     * are left in the pairset */
+    int32_t next_degree =   in->hm[in->ld-1][DEG];
     if (st->info_level > 1) {
         printf("\ndeg     sel   pairs        mat          density \
-          new data             time(rd)\n");
+                new data             time(rd)\n");
         printf("-------------------------------------------------\
-----------------------------------------\n");
+                ----------------------------------------\n");
     }
-    for (round = 1; ps->ld > 0; ++round) {
-      if (round % st->reset_ht == 0) {
-        reset_hash_table(bht, bs, ps, st);
-        st->num_rht++;
-      }
-      rrt0  = realtime();
-      st->max_bht_size  = st->max_bht_size > bht->esz ?
-        st->max_bht_size : bht->esz;
-      st->current_rd  = round;
+    st->current_rd  =   0;
 
-      /* preprocess data for next reduction round */
-      select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
-      symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
-      convert_hashes_to_columns(&hcm, mat, st, sht);
-      sort_matrix_rows_decreasing(mat->rr, mat->nru);
-      sort_matrix_rows_increasing(mat->tr, mat->nrl);
-      /* print pbm files of the matrices */
-      if (st->gen_pbm_file != 0) {
-        write_pbm_file(mat, st);
-      }
-      /* linear algebra, depending on choice, see set_function_pointers() */
-      linear_algebra(mat, bs, st);
-      /* columns indices are mapped back to exponent hashes */
-      if (mat->np > 0) {
-        convert_sparse_matrix_rows_to_basis_elements(
-            mat, bs, bht, sht, hcm, st);
-      }
-      clean_hash_table(sht);
-      /* all rows in mat are now polynomials in the basis,
-       * so we do not need the rows anymore */
-      clear_matrix(mat);
+    while (!try_termination) {
+        rrt0  = realtime();
+        st->max_bht_size    = st->max_bht_size > ht->esz ?
+            st->max_bht_size : ht->esz;
+        st->current_rd++;
 
-      /* check redundancy only if input is not homogeneous */
-      update_basis_sba_schreyer(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        /* prepare signature matrix for next degree */
+        psmat   =   smat;
+        smat    =   (smat_t *)calloc(1, sizeof(smat_t));
 
-      /* if we found a constant we are done, so remove all remaining pairs */
-      if (bs->constant  == 1) {
-          ps->ld  = 0;
-      }
-      rrt1 = realtime();
-      if (st->info_level > 1) {
-        printf("%13.2f sec\n", rrt1-rrt0);
-      }
+        smat->sz        =   psmat->nr * st->nvars + in->ld;
+        smat->cols      =   (hm_t **)calloc(
+                (unsigned long)smat->sz,sizeof(hm_t *));
+        smat->prev_cf32 =   (cf32_t **)calloc(
+                (unsigned long)psmat->nr,sizeof(cf32_t *));
+
+        /* check if we have initial generators not handled in lower degree
+         * until now */
+        while (in->ld > 0 && in->hm[in->ld-1][DEG] == next_degree) {
+            add_row_with_signature(smat, in, in->ld-1);
+            in->ld--;
+        }
+        /* generate rows from previous degree matrix */
+        for (len_t i = 0; i < psmat->nr; ++i) {
+            add_multiples_of_previous_degree_row(smat, psmat, i, syz, ht, st);
+        }
+
+        /* map hashes to columns */
+
+        /* signature-reduce matrix */
+
+        /* flag rows with new leading terms, i.e. non-multiples of
+         * already known leading terms */
+
+        /* fully reduce elements with new leading terms */
+
+        /* maps columns to hashes */
+
+        /* add new elements to basis */
+
+
+
+
+        /* if we found a constant we are done, so remove all remaining pairs */
+        if (bs->constant  == 1) {
+            try_termination =   1;
+        }
+        rrt1 = realtime();
+        if (st->info_level > 1) {
+            printf("%13.2f sec\n", rrt1-rrt0);
+        }
+
+        /* TODO: termination check, like no new elements the last rounds, etc. */
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\
-----------------------------------------\n");
+                ----------------------------------------\n");
     }
-    /* remove possible redudant elements */
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
-
-
     if (st->nev > 0) {
-        j = 0;
-        for (i = 0; i < bs->lml; ++i) {
-            if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+        len_t j = 0;
+        for (len_t i = 0; i < bs->lml; ++i) {
+            if (ht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
                 bs->lm[j]   = bs->lm[i];
                 bs->lmps[j] = bs->lmps[i];
                 ++j;
@@ -159,38 +250,12 @@ int core_sba_schreyer(
         bs->lml = j;
     }
 
-    /* reduce final basis? */
-    if (st->reduce_gb == 1) {
-        /* note: bht will become sht, and sht will become NULL,
-         * thus we need pointers */
-        reduce_basis(bs, mat, &hcm, &bht, &sht, st);
-    }
-    /* for (i = 0; i < bs->lml; ++i) { */
-    /*     for (j = 0; j < bht->evl; ++j) { */
-    /*         printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]); */
-    /*     } */
-    /*     printf("\n"); */
-    /* } */
-
-    *bsp  = bs;
-    *bhtp = bht;
-    *stp  = st;
+    *bsp    = bs;
+    *htp    = ht;
+    *stp    = st;
 
     /* free and clean up */
     free(hcm);
-    /* note that all rows kept from mat during the overall computation are
-     * basis elements and thus we do not need to free the rows itself, but
-     * just the matrix structure */
-    free(mat);
-    if (sht != NULL) {
-        free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
-    }
-    if (ps != NULL) {
-        free_pairset(&ps);
-    }
 
     return 1;
 }

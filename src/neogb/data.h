@@ -161,12 +161,12 @@ struct ps_t
     spair_t *p;
 };
 
-/* szyzgy structure,
+/* signature criteria structure,
  * at the moment we only store the lead terms (i e. signatures) */
-typedef struct syz_t syz_t;
-struct syz_t
+typedef struct crit_t crit_t;
+struct crit_t
 {
-    sdm_t *dm;
+    sdm_t *sdm;
     hm_t *hm;
     len_t ld;
     len_t sz;

@@ -357,6 +357,8 @@ static void update_basis_f4(
     st->update_rtime  +=  rt1 - rt0;
 }
 
+/* not needed right now, maybe in a later iteration of sba implementations */
+#if 0
 static void update_basis_sba_schreyer(
         ps_t *ps,
         bs_t *bs,
@@ -419,3 +421,4 @@ static void update_basis_sba_schreyer(
     st->update_ctime  +=  ct1 - ct0;
     st->update_rtime  +=  rt1 - rt0;
 }
+#endif

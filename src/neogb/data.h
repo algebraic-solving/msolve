@@ -234,7 +234,7 @@ struct smat_t
     hm_t **cols;        // monomial resp. column data of polynomials
     cf32_t **curr_cf32; // coefficients of currently reduced rows
     cf32_t **prev_cf32; // coefficients from previous degree matrix
-    cf32_t **gb_cf32;   // coefficients after full reduction for polynomials
+    cf32_t **bs_cf32;   // coefficients after full reduction for polynomials
                         // added to Groebner basis
     len_t sz;
     len_t nr;

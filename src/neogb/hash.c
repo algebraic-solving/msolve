@@ -603,7 +603,7 @@ static inline hi_t insert_multiplied_signature_in_hash_table(
     hi_t k, pos;
     len_t j;
     exp_t *e;
-    exp_t *a = ht->ev[0];;
+    exp_t *a = ht->ev[0];
     hd_t *d;
     val_t h = 0;
     const len_t evl = ht->evl;
@@ -615,7 +615,7 @@ static inline hi_t insert_multiplied_signature_in_hash_table(
 
     /* generate exponent vector */
     for (j = 0; j < evl; ++j) {
-        a[i] = ht->ev[h1][j] + ht->ev[h2][j];
+        a[j] = ht->ev[h1][j] + ht->ev[h2][j];
     }
     /* probing */
     k = h;

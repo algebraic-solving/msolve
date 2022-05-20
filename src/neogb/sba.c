@@ -131,7 +131,7 @@ static inline void add_rewrite_rule(
         const ht_t * const ht
         )
 {
-    const len_t sidx    =   smat->cols[smat->nr-1][SM_SIDX];
+    const len_t sidx    =   smat->cols[smat->ld-1][SM_SIDX];
     if (rew[sidx].ld >= rew[sidx].sz) {
         rew[sidx].sz    *=  2;
         rew[sidx].sdm   =   realloc(rew[sidx].sdm,
@@ -139,8 +139,8 @@ static inline void add_rewrite_rule(
         rew[sidx].hm    =   realloc(rew[sidx].hm,
                 (unsigned long)rew[sidx].sz * sizeof(hm_t));
     }
-    rew[sidx].hm[rew[sidx].ld]  =   smat->cols[smat->nr-1][SM_SMON];
-    rew[sidx].sdm[rew[sidx].ld] =   ht->hd[smat->cols[smat->nr-1][SM_SMON]].sdm;
+    rew[sidx].hm[rew[sidx].ld]  =   smat->cols[smat->ld-1][SM_SMON];
+    rew[sidx].sdm[rew[sidx].ld] =   ht->hd[smat->cols[smat->ld-1][SM_SMON]].sdm;
     rew[sidx].ld++;
 }
 
@@ -152,21 +152,21 @@ static void add_row_to_signature_matrix(
         ht_t *ht
         )
 {
-    if (smat->nr >= smat->sz) {
+    if (smat->ld >= smat->sz) {
         enlarge_signature_matrix(smat);
     }
-    const len_t nr      =   smat->nr;
-    smat->prev_cf32[nr] =   psmat->curr_cf32[idx];
-    smat->curr_cf32[nr] =   NULL;
-    smat->bs_cf32[nr]   =   NULL;
+    const len_t ld      =   smat->ld;
+    smat->prev_cf32[ld] =   psmat->curr_cf32[idx];
+    smat->curr_cf32[ld] =   NULL;
+    smat->bs_cf32[ld]   =   NULL;
     /* copy monomial entries in row */
-    smat->cols[nr]  =   malloc(
+    smat->cols[ld]  =   malloc(
             ((unsigned long)psmat->cols[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
-    memcpy(smat->cols[nr], psmat->cols[idx],
+    memcpy(smat->cols[ld], psmat->cols[idx],
             ((unsigned long)psmat->cols[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
 
     /* now multiply each column entry with the corresponding variable */
-    hm_t *cols          =   smat->cols[nr];
+    hm_t *cols          =   smat->cols[ld];
     exp_t *ev           =   ht->ev[0];
     const len_t shift   =   var_idx > ht->ebl ? 2 : 1;
 
@@ -182,7 +182,7 @@ static void add_row_to_signature_matrix(
         ev[var_idx+shift]++;
         cols[i] =   insert_in_hash_table(ev, ht);
     }
-    smat->nr++;
+    smat->ld++;
 }
 
 static void add_multiples_of_previous_degree_row(
@@ -213,19 +213,19 @@ static inline void add_row_with_signature(
         const len_t pos
         )
 {
-    const len_t nr          =   mat->nr;
+    const len_t ld          =   mat->ld;
     const unsigned long len =   bs->hm[pos][LENGTH];
-    mat->cols[nr]           =   (hm_t *)malloc(
+    mat->cols[ld]           =   (hm_t *)malloc(
             (len + SM_OFFSET) * sizeof(hm_t));
     /* copy polynomial data */
-    memcpy(mat->cols[nr]+SM_CFS,bs->hm[pos]+COEFFS,
+    memcpy(mat->cols[ld]+SM_CFS,bs->hm[pos]+COEFFS,
             len + OFFSET - COEFFS);
-    mat->prev_cf32[nr]      =   bs->cf_32[bs->hm[pos][COEFFS]];
-    mat->cols[nr][SM_CFS]   =   nr;
+    mat->prev_cf32[ld]      =   bs->cf_32[bs->hm[pos][COEFFS]];
+    mat->cols[ld][SM_CFS]   =   ld;
     /* store also signature data */
-    mat->cols[nr][SM_SMON]  =   bs->sm[pos];
-    mat->cols[nr][SM_SIDX]  =   bs->si[pos];
-    mat->nr++;
+    mat->cols[ld][SM_SMON]  =   bs->sm[pos];
+    mat->cols[ld][SM_SIDX]  =   bs->si[pos];
+    mat->ld++;
 }
 
 static inline crit_t *initialize_syzygies_schreyer(
@@ -323,11 +323,11 @@ int core_sba_schreyer(
         psmat   =   smat;
         smat    =   (smat_t *)calloc(1, sizeof(smat_t));
 
-        smat->sz        =   psmat->nr * st->nvars + in->ld;
+        smat->sz        =   psmat->ld * st->nvars + in->ld;
         smat->cols      =   (hm_t **)calloc(
                 (unsigned long)smat->sz,sizeof(hm_t *));
         smat->prev_cf32 =   (cf32_t **)calloc(
-                (unsigned long)psmat->nr,sizeof(cf32_t *));
+                (unsigned long)psmat->ld,sizeof(cf32_t *));
 
         /* check if we have initial generators not handled in lower degree
          * until now */
@@ -337,7 +337,7 @@ int core_sba_schreyer(
         }
         /* generate rows from previous degree matrix, start with the highest
          * signatures in order to get an efficient rewrite criterion test */
-        for (len_t i = psmat->nr; i > 0 ; --i) {
+        for (len_t i = psmat->ld; i > 0 ; --i) {
             add_multiples_of_previous_degree_row(
                     smat, psmat, i-1, syz, rew, ht, st);
             free(psmat->cols[i-1]);
@@ -345,6 +345,7 @@ int core_sba_schreyer(
         }
 
         /* sort matrix rows by increasing signature */
+        sort_matrix_rows_by_increasing_signature(smat, ht);
 
 
         /* map hashes to columns */

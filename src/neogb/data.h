@@ -236,8 +236,8 @@ struct smat_t
     cf32_t **prev_cf32; // coefficients from previous degree matrix
     cf32_t **bs_cf32;   // coefficients after full reduction for polynomials
                         // added to Groebner basis
-    len_t sz;
-    len_t nr;
+    len_t sz;           // number of rows memory is allocated for
+    len_t ld;           // number of rows stored
     len_t nc;
 };
 

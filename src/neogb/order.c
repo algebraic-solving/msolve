@@ -21,7 +21,7 @@
 
 #include "data.h"
 
-/* 
+/*
  * IMPLEMENTATIONS OF ORDER FUNCTIONIONALITY INDEPENDENT
  * OF CHOSEN MONOMIAL ORDER
  *  */
@@ -212,7 +212,7 @@ static int spair_degree_cmp(
 
 
 
-/* 
+/*
  * IMPLEMENTATIONS FOR LEXICOGRAPHICAL ORDER
  *  */
 
@@ -353,7 +353,7 @@ static int spair_cmp_deglex(
 
 
 
-/* 
+/*
  * IMPLEMENTATIONS FOR DEGREE REVERSE LEXICOGRAPHICAL ORDER
  *  */
 
@@ -543,7 +543,7 @@ static int spair_cmp_drl(
 
 
 
-/* 
+/*
  * IMPLEMENTATIONS FOR BLOCK ELIMINATION ORDER:
  * 2 blocks, each block handled by the degree
  * reverse lexicographical order
@@ -798,7 +798,7 @@ static int spair_cmp_be(
     return 0;
 }
 
-/* 
+/*
  * IMPLEMENTATIONS FOR SIGNATURE BASED ALGORITHMS
  *  */
 static int initial_input_cmp_sig(
@@ -831,5 +831,40 @@ static int initial_input_cmp_sig(
         --i;
     }
     return ea[i] - eb[i];
+}
+
+static int matrix_row_cmp_by_increasing_signature(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    const ht_t *ht  = (ht_t *)htp;
+
+    hm_t sig_a, sig_b;
+    /* compare pivot resp. column index */
+    sig_a   = ((hm_t **)a)[0][SM_SMON];
+    sig_b   = ((hm_t **)b)[0][SM_SMON];
+
+    int diff = (int)monomial_cmp(sig_a, sig_b, ht);
+    if (diff != 0) {
+        return diff;
+    } else {
+        int sidx_a, sidx_b;
+        sidx_a  = (int)((hm_t **)a)[0][SM_SIDX];
+        sidx_b  = (int)((hm_t **)b)[0][SM_SIDX];
+
+        return sidx_a - sidx_b;
+    }
+}
+
+static inline void sort_matrix_rows_by_increasing_signature(
+        smat_t *smat,
+        void *htp
+        )
+{
+    hm_t **cols = smat->cols;
+    sort_r(cols, (unsigned long)smat->ld, sizeof(hm_t *),
+            &matrix_row_cmp_by_increasing_signature, htp);
 }
 

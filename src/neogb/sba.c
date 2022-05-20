@@ -335,13 +335,16 @@ int core_sba_schreyer(
             add_row_with_signature(smat, in, in->ld-1);
             in->ld--;
         }
-        /* generate rows from previous degree matrix */
-        for (len_t i = 0; i < psmat->nr; ++i) {
+        /* generate rows from previous degree matrix, start with the highest
+         * signatures in order to get an efficient rewrite criterion test */
+        for (len_t i = psmat->nr; i > 0 ; --i) {
             add_multiples_of_previous_degree_row(
-                    smat, psmat, i, syz, rew, ht, st);
-            free(psmat->cols[i]);
-            psmat->cols[i]  =   NULL;
+                    smat, psmat, i-1, syz, rew, ht, st);
+            free(psmat->cols[i-1]);
+            psmat->cols[i-1]  =   NULL;
         }
+
+        /* sort matrix rows by increasing signature */
 
 
         /* map hashes to columns */

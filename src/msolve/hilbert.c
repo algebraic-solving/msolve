@@ -1378,9 +1378,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 #endif
   
   printf ("Number of zero normal forms: %ld\n",count_zero);
-  
   /* lengths of the polys which we need to build the matrix */
-
   int32_t *len_gb_xn = malloc(sizeof(int32_t) * len_xn);
   int32_t *start_cf_gb_xn = malloc(sizeof(int32_t) * len_xn);
   long pos = 0, k = 0;
@@ -1396,20 +1394,19 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
 
-#if 0>0
+#if 1>0
   fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
-  for(long i = 0; i < len_xn-1; i++){
-    fprintf(stderr, "%u, ", len_gb_xn[i]);
+  for(long i = 0; i < len_xn; i++){
+    fprintf(stderr, "%d, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "%u\n", len_gb_xn[len_xn-1]);
+  fprintf(stderr, "\n");
 #endif
-  sp_matfglmcol_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglmcol_t));
+  sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
   matrix->ncols = dquot;
-  matrix->nzero = count_zero;
-  matrix->nrows = len_xn + count_not_lm;
-  long len1 = dquot * (len_xn + count_not_lm);
-  long len2 = dquot - (len_xn + count_not_lm + count_zero);
+  matrix->nrows = len_xn;
+  long len1 = dquot * len_xn;
+  long len2 = dquot - len_xn;
 
   if(posix_memalign((void **)&(matrix->dense_mat), 32, sizeof(CF_t)*len1)){
     fprintf(stderr, "Problem when allocating matrix->dense_mat\n");

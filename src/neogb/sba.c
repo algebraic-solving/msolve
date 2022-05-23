@@ -347,7 +347,6 @@ int core_sba_schreyer(
         /* sort matrix rows by increasing signature */
         sort_matrix_rows_by_increasing_signature(smat, ht);
 
-
         /* map hashes to columns */
 
         /* signature-reduce matrix */
@@ -357,7 +356,8 @@ int core_sba_schreyer(
 
         /* fully reduce elements with new leading terms */
 
-        /* maps columns to hashes */
+        /* maps columns to hashes
+         * NOTE: Reset hash table indices to zero in here! */
 
         /* add new elements to basis */
 
@@ -374,6 +374,7 @@ int core_sba_schreyer(
         }
 
         /* TODO: termination check, like no new elements the last rounds, etc. */
+
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\

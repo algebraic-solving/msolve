@@ -5893,6 +5893,11 @@ static void export_julia_rational_parametrization_qq(
         *lens = len;
         *cfs  = (void *)cf;
 
+        /* if there are no real solutions return the parametrization at least */
+        if (nb_real_roots <= 0) {
+            return;
+        }
+
         const long nb_real_roots_intervall  = 2 * nb_real_roots;
 
         mpz_t *sols_num = (mpz_t *)(*mallocp)(
@@ -6028,7 +6033,7 @@ void msolve_julia(
 
     *rp_dim =   mpz_param->dim;
 
-    if (mpz_param->dim != -1 && nb_real_roots > 0) {
+    if (mpz_param->dim != -1) {
         export_julia_rational_parametrization_qq(
                 mallocp, rp_ld, rp_dim, rp_dquot, rp_lens,
                 rp_cfs, real_sols_num, real_sols_den,

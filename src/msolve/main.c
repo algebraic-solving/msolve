@@ -212,7 +212,7 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:v:l:t:e:o:u:i:p:P:q:g:c:s:Sr:m:M:n:";
+  char options[] = "hf:v:l:t:e:o:u:i:p:P:q:g:c:s:SCr:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'h':
@@ -278,10 +278,10 @@ static void getoptions(
     case 'l':
       *linear_algebra = strtol(optarg, NULL, 10);
       break;
-		case 'f':
+    case 'f':
       fflag = 0;
       filename = optarg;
-			break;
+      break;
     case 'o':
       out_fname = optarg;
       break;

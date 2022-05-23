@@ -259,22 +259,22 @@ static void print_msolve_polynomials_ff(
                     }
                 }
                 for (j = 1; j < len; ++j) {
-										switch (st->ff_bits) {
-												case 8:
-                            fprintf(file, "+%u", bs->cf_8[bs->hm[idx][COEFFS]][j]);
-														break;
-												case 16:
-                            fprintf(file, "+%u", bs->cf_16[bs->hm[idx][COEFFS]][j]);
-														break;
-												case 32:
-                            fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
-														break;
-										}
-                    for (k = ebl+1; k < evl; ++k) {
-                        if (ht->ev[hm[j]][k] > 0) {
-                            fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[j]][k]);
-                        }
-                    }
+		     switch (st->ff_bits) {
+		     case 8:
+		         fprintf(file, "+%u", bs->cf_8[bs->hm[idx][COEFFS]][j]);
+			 break;
+		     case 16:
+		         fprintf(file, "+%u", bs->cf_16[bs->hm[idx][COEFFS]][j]);
+			 break;
+		     case 32:
+		         fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
+			 break;
+		     }
+		     for (k = ebl+1; k < evl; ++k) {
+		         if (ht->ev[hm[j]][k] > 0) {
+			     fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[j]][k]);
+			 }
+		     }
                 }
                 if (i < to-1) {
                     fprintf(file, ",\n");

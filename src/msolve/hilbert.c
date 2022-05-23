@@ -224,6 +224,101 @@ static inline int32_t *monomial_basis(long length, long nvars,
   return basis;
 }
 
+/** nvars is the number of variables
+    sht is a secondary htable of the monomials
+    dquot is a integer representing the dimension of the
+    subspace
+*/
+#if 0
+static inline int32_t *monomial_basis_colon(long nvars,
+					    ht_t* sht,
+					    hi_t* hcm,
+					    long dquot){
+  int32_t *basis = calloc(nvars, sizeof(int32_t)*dquot);
+  for (len_t k = 0; k < dquot; ++k) {
+    for (len_t l = 0; l < nvars; ++l) {
+      basis[nvars*k+l]= sht->ev[hcm[k]][l+1];
+    }
+  }
+  return basis;
+}
+#else
+static inline int32_t *monomial_basis_colon(long length, long nvars, 
+					    int32_t *bexp_lm, long *dquot,
+					    long maxdeg){
+  int32_t *basis = calloc(nvars, sizeof(int32_t)); 
+  (*dquot) = 0;
+
+  if(is_divisible_lexp(nvars, length, (basis), bexp_lm)){
+    fprintf(stderr, "Stop\n");
+    free(basis);
+    return NULL;
+  }
+  else{
+    (*dquot)++;
+  }
+  printf ("dquot is at least %ld\n",*dquot);
+  long *ind = calloc(nvars, sizeof(long) * nvars);
+  printf ("ind is %ld\n",*ind);
+
+#ifdef DEBUGHILBERT
+  fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+#endif
+
+  int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars)); 
+  long new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
+                                            basis, new_basis, bexp_lm);
+#ifdef DEBUGHILBERT
+  display_monomials_from_array(stderr, new_length, new_basis, gens);
+  fprintf(stderr, "%ld new elements.\n", new_length);
+#endif
+  long deg = 1;
+  while(new_length>0 && deg <= maxdeg){
+    int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t *));
+    if(basis2==NULL){
+      fprintf(stderr, "Issue with realloc\n");
+      exit(1);
+    }
+
+    basis = basis2;
+    for(long i = 0; i < new_length; i++){
+      for(long k = 0; k < nvars; k++){
+        (basis)[((*dquot) + i)*nvars+k] = (new_basis)[i*nvars+k];
+      }
+    }
+
+    update_indices(ind, basis, *dquot, new_length, nvars);
+    (*dquot) += new_length;
+
+#ifdef DEBUGHILBERT
+    fprintf(stderr, "Update indices\n");
+    for(long i = 0; i < nvars; i++) fprintf(stderr, "%ld ", ind[i]);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+#endif
+
+    int32_t *new_basis2 = realloc(new_basis,
+                                 sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
+    if(new_basis==NULL){
+      fprintf(stderr, "Issue with realloc\n");
+      exit(1);
+    }
+    new_basis=new_basis2;
+    new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
+                                         basis, new_basis, bexp_lm);
+#ifdef DEBUGHILBERT
+    fprintf(stderr, "%ld new elements.\n", new_length);
+#endif
+    deg++;
+  }
+
+  free(new_basis);
+  free(ind);
+  return basis;
+}
+#endif
+
+
 static inline long get_div_xn(int32_t *bexp_lm, long length, long nvars,
                              int32_t *div_xn){
   long l = 0;
@@ -732,6 +827,212 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
     else{
       /* we get now outside the basis */
 #if DEBUGBUILDMATRIX > 0
+      fprintf(stderr, " => does NOT remain in monomial basis\n");
+#endif
+      matrix->dense_idx[l_dens] = i;
+      l_dens++;
+      if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
+        copy_poly_in_matrix(matrix, nrows, bcf, bexp, blen,
+                            start_cf_gb_xn[count], len_gb_xn[count], lmb,
+                            nv, fc);
+        nrows++;
+        count++;
+        if(len_xn < count && i < dquot){
+          fprintf(stderr, "One should not arrive here (build_matrix)\n");
+          free(matrix->dense_mat);
+          free(matrix->dense_idx);
+          free(matrix->triv_idx);
+          free(matrix->triv_pos);
+          free(matrix);
+
+          free(len_gb_xn);
+          free(start_cf_gb_xn);
+          free(div_xn);
+          return NULL;
+        }
+      }
+      else{
+        fprintf(stderr, "\nStaircase is not generic\n");
+        fprintf(stderr, "Multiplication by ");
+        display_monomial_full(stderr, nv, NULL, 0, exp);
+        fprintf(stderr, " gets outside the staircase\n");
+        free(matrix->dense_mat);
+        free(matrix->dense_idx);
+        free(matrix->triv_idx);
+        free(matrix->triv_pos);
+        free(matrix->dst);
+        free(matrix);
+        matrix  = NULL;
+
+        free(len_gb_xn);
+        free(start_cf_gb_xn);
+        free(div_xn);
+        return matrix;
+      }
+    }
+  }
+
+  /* assumes the entries of matrix->dst are 0 */
+  for(long i = 0; i < matrix->nrows; i++){
+    for(long j = matrix->ncols - 1; j >= 0; j--){
+      if(matrix->dense_mat[i*matrix->ncols + j] == 0){
+        matrix->dst[i]++;
+      }
+      else{
+        break;
+      }
+    }
+  }
+
+  free(len_gb_xn);
+  free(start_cf_gb_xn);
+  free(div_xn);
+
+  return matrix;
+}
+
+/**
+
+   lmb is the monommial basis (of the subscpace of the quotient ring)
+   given by ascending order.
+
+   dquo is the dimension of this subspace.
+
+   data of gb are given by ascending order.
+
+   bexp_lm is the leading monomials of gb ; there are bld[0] of them.
+
+ **/
+static inline sp_matfglm_t * build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
+                                           int32_t **blen, int32_t **bexp,
+                                           int32_t *bcf,
+                                           int32_t *bexp_lm,
+                                           const int nv, const long fc){
+
+
+  /* takes monomials in bexp_lm which are reducible by xn */
+  /*div_xn contains the indices of those monomials*/
+  int32_t *div_xn = calloc(bld, sizeof(int32_t));
+  printf ("calloc\n");
+  
+  /* len_xn is the number of those monomials. */
+  long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn);
+  printf ("get_div\n");
+  printf ("leading monomials divisible by xn in the Gb: %ld\n",
+	  len_xn);
+
+  
+
+#if 1>0
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Number of monomials (in the Gb) which are divisible by x_n = %ld\n", len_xn);
+  for(long i=0; i < len_xn; i++){
+    fprintf(stderr, "%d, ", div_xn[i]);
+  }
+  fprintf(stderr, "\n");
+#endif
+
+  /* lengths of the polys which we need to build the matrix */
+
+  int32_t *len_gb_xn = malloc(sizeof(int32_t) * len_xn);
+  int32_t *start_cf_gb_xn = malloc(sizeof(int32_t) * len_xn);
+  long pos = 0, k = 0;
+  for(long i = 0; i < bld; i++){
+    if(i==div_xn[k]){
+      len_gb_xn[k]=(*blen)[i];
+      start_cf_gb_xn[k]=pos;
+      pos+=(*blen)[i];
+      k++;
+    }
+    else{
+      pos+=(*blen)[i];
+    }
+  }
+
+#if 1>0
+  fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
+  for(long i = 0; i < len_xn; i++){
+    fprintf(stderr, "%d, ", len_gb_xn[i]);
+  }
+  fprintf(stderr, "\n");
+#endif
+  sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
+  matrix->charac = fc;
+  matrix->ncols = dquot;
+  matrix->nrows = len_xn;
+  long len1 = dquot * len_xn;
+  long len2 = dquot - len_xn;
+
+  if(posix_memalign((void **)&(matrix->dense_mat), 32, sizeof(CF_t)*len1)){
+    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i < len1; i++){
+      matrix->dense_mat[i] = 0;
+    }
+  }
+  if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
+    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i < len2; i++){
+      matrix->triv_idx[i] = 0;
+    }
+  }
+  if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
+    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i <len2; i++){
+      matrix->triv_pos[i] = 0;
+    }
+  }
+  if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len_xn)){
+    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i < len_xn; i++){
+      matrix->dense_idx[i] = 0;
+    }
+  }
+  if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len_xn)){
+    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i < len_xn; i++){
+      matrix->dst[i] = 0;
+    }
+  }
+
+  long l_triv = 0;
+  long l_dens = 0;
+  long nrows = 0;
+  long count = 0;
+  for(long i = 0; i < dquot; i++){
+
+    long pos = -1;
+    int32_t *exp = lmb + (i * nv);
+#if 1 > 0
+    display_monomial_full(stderr, nv, NULL, 0, exp);
+#endif
+    if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
+#if 1 > 0
+      fprintf(stderr, " => remains in monomial basis\n");
+#endif
+      /* mult by xn stays in the basis */
+      matrix->triv_idx[l_triv] = i;
+      matrix->triv_pos[l_triv] = pos + i;
+
+      l_triv++;
+    }
+    else{
+      /* we get now outside the basis */
+#if 1 > 0
       fprintf(stderr, " => does NOT remain in monomial basis\n");
 #endif
       matrix->dense_idx[l_dens] = i;

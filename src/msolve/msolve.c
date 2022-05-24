@@ -4735,7 +4735,7 @@ restart:
 						/* gens->field_char,
 						 * 0 [> DRL order <],
 						 * gens->nvars, */
-						gens->ngens-1,
+						gens->ngens, 1,
 						initial_hts,
 						nr_threads, max_pairs,
 						update_ht, la_option,
@@ -4771,23 +4771,13 @@ restart:
             }
 	    int64_t nb  = export_results_from_gba(bld, blen, bexp,
 						  bcf, &malloc, &bs, &bht, &st);
-<<<<<<< HEAD
             printf("size of basis: %u\n", bs->lml);
-=======
-            printf("size of basis %u\n", bs->lml);
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
             /* initialize data for elements to be reduced,
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
             tbr = initialize_basis(st);
-<<<<<<< HEAD
             import_input_data_nf_ff_32(tbr, bht, st, gens->ngens-1, gens->ngens,
 				       gens->lens, gens->exps, (void *)gens->cfs);
-=======
-            import_input_data_nf_ff_32(
-                    tbr, bht, st, gens->ngens-1, gens->ngens,
-                    gens->lens, gens->exps, (void *)gens->cfs);
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
             tbr->ld = tbr->lml  =  1;
             /* normalize_initial_basis(tbr, st->fc); */
             for (int k = 0; k < 1; ++k) {
@@ -4803,7 +4793,6 @@ restart:
             }
             /* print all reduced elements in tbr, first  one
              * is the input element */
-<<<<<<< HEAD
             /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
 	    /* 				st, gens->vnames, 0); */
 	    /* printf("\n"); */
@@ -4812,22 +4801,12 @@ restart:
 	    long suppsize= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
 	    printf("Length of the support of phi: %lu\n",
 		   suppsize);
-=======
-            print_msolve_polynomials_ff(
-                    stdout, 1, tbr->lml, tbr, bht, st, gens->vnames, 0);
-	    /* list of monomials */
-	    /* size of the list */
-	    long dquot= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
-	    printf("\n\nLength of the support of phi: %lu\n",
-		   dquot);
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
 	    
 	    /* sht and hcm will store the support of the normal form in tbr. */
 	    ht_t *sht   = initialize_secondary_hash_table(bht, st);
 	    hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
 	    mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 	    
-<<<<<<< HEAD
 	    printf("Starts computation of normal form matrix\n");
 	    get_normal_form_matrix(tbr, bht, 1,
 				   st, &sht, &hcm, &mat);
@@ -4844,10 +4823,6 @@ restart:
 
 	    int32_t *bcf_ff = (int32_t *)(*bcf);
 	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
-	    
-	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
-						 form */
-	    printf ("degree of the nf: %ld\n",maxdeg);
 	    
 	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
 						 form */
@@ -4881,43 +4856,11 @@ restart:
 	      leftvectorsparam[i] = calloc(dquot,sizeof (uint32_t));
 	    }
 
-=======
-	    printf("\nStarts computation of normal form matrix\n");
-	    get_normal_form_matrix(tbr, bht, 1,
-				   st, &sht, &hcm, &mat);
-	    printf("\n\nLength of union of support of all normal forms: %u\n",
-		   mat->nc);
-	    
-	    printf("\nUnion of support, sorted by decreasing monomial order:\n");
-	    for (len_t k = 0; k < mat->nc; ++k) {
-	      for (len_t l = 1; l <= sht->nv; ++l) {
-		printf("%2u ", sht->ev[hcm[k]][l]);
-	      }
-	      printf("\n");
-	    }
-
-	    int32_t *bcf_ff = (int32_t *)(*bcf);
-	    printf ("get lead monomials\n");
-	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
-	    printf ("degree %d\n",sht->ev[hcm[0]][0]);
-	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot, sht->ev[hcm[0]][0]);
-	    printf("\nMonomial basis:\n");
-	    for (len_t k = 0; k < dquot; ++k) {
-	      for (len_t l = 0; l < gens->nvars; ++l){
-		printf("%2u ", lmb[k*gens->nvars+l]);
-	      }
-	      printf("\n");
-	    }
-	    printf("\nSubspace has dimension: %ld\n",dquot);
-	    
-
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
 	    /* we assume that the support of phi is enough to encode
 	     * the multiplication matrix */
 	    /* we need the nf of sigma x_n for all sigma is this
 	       support */
 	    printf ("call buildmatrix\n");
-<<<<<<< HEAD
 	    sp_matfglmcol_t  *matrix = build_matrixn_colon(lmb, dquot, bld[0],
 							   blen, bexp, bcf_ff,
 							   bexp_lm,
@@ -4953,63 +4896,35 @@ restart:
 	    free(bcf_ff);
 	    free(hcm);
 	    free (mul);
-=======
-	    sp_matfglm_t  *matrix = build_matrixn_colon(lmb, dquot, bld[0],
-							blen, bexp, bcf_ff,
-							bexp_lm, gens->nvars,
-							gens->field_char);
-	    
-	    
-	    free(hcm);
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
 	    hcm = NULL;
 	    if (sht != NULL) {
 	      free_hash_table(&sht);
 	    }
 	    
-<<<<<<< HEAD
-=======
-	    
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
             /* free and clean up */
             if (bs != NULL) {
 	      free_basis(&bs);
             }
             if (tbr != NULL) {
 	      free_basis(&tbr);
-<<<<<<< HEAD
 	    }
-=======
-            }
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
             free(st);
             st  = NULL;
             free_shared_hash_data(bht);
             if (bht != NULL) {
 	      free_hash_table(&bht);
             }
-<<<<<<< HEAD
 	    return 0;
-=======
-	    
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
 	}
 	/* no saturate = 0 */
 	/* no colon    = 0 */
 	if (normal_form == 0) {/* positive characteristic */
 
-<<<<<<< HEAD
           int dim = - 2;
           long dquot = -1;
 
           b = real_msolve_qq(*mpz_paramp,
                              &param,
-=======
-	  int dim = - 2;
-	  long dquot = -1;
-	  b = real_msolve_qq(*mpz_paramp,
-			     &param,
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
                              &dim,
                              &dquot,
                              nb_real_roots_ptr,

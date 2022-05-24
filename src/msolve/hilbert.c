@@ -240,29 +240,9 @@ static inline int32_t *monomial_basis(long length, long nvars,
     dquot is a integer representing the dimension of the
     subspace
 */
-<<<<<<< HEAD
 static inline int32_t *monomial_basis_colon(long length, long nvars, 
 					    int32_t *bexp_lm, long *dquot,
 					    const long maxdeg){
-=======
-#if 0
-static inline int32_t *monomial_basis_colon(long nvars,
-					    ht_t* sht,
-					    hi_t* hcm,
-					    long dquot){
-  int32_t *basis = calloc(nvars, sizeof(int32_t)*dquot);
-  for (len_t k = 0; k < dquot; ++k) {
-    for (len_t l = 0; l < nvars; ++l) {
-      basis[nvars*k+l]= sht->ev[hcm[k]][l+1];
-    }
-  }
-  return basis;
-}
-#else
-static inline int32_t *monomial_basis_colon(long length, long nvars, 
-					    int32_t *bexp_lm, long *dquot,
-					    long maxdeg){
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
   int32_t *basis = calloc(nvars, sizeof(int32_t)); 
   (*dquot) = 0;
 
@@ -274,13 +254,7 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   else{
     (*dquot)++;
   }
-<<<<<<< HEAD
   long *ind = calloc(nvars, sizeof(long) * nvars);
-=======
-  printf ("dquot is at least %ld\n",*dquot);
-  long *ind = calloc(nvars, sizeof(long) * nvars);
-  printf ("ind is %ld\n",*ind);
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
@@ -337,10 +311,6 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   free(ind);
   return basis;
 }
-<<<<<<< HEAD
-=======
-#endif
->>>>>>> f67f5bc (monomial basis for quotient subspace in sparse fglm col)
 
 
 static inline long get_div_xn(int32_t *bexp_lm, long length, long nvars,
@@ -632,24 +602,8 @@ static inline void copy_poly_in_matrixcol(sp_matfglmcol_t* matrix,
   fprintf(stderr, "\n");
 #endif
 
-#if 0
-  long i;
-  long N = nrows * matrix->ncols ;
-  long k = 0;
-  printf("[");
-  for(i = 0; i < matrix->ncols; i++){
-    if(is_equal_exponent((*bexp) + (end - 1 - k) * nv,
-			 lmb + i * nv,
-			 nv)){
-      matrix->dense_mat[N + i] = fc - bcf[end - 1 -  k];
-      printf("%d, ",matrix->dense_mat[N + i]);
-      k++;
-    }
-  }
-  printf("]\n");
-#else
   long N = nrows * (matrix->ncols) - (start + 1);
-  
+
   if((end-start) == matrix->ncols + 1){
     for(j = start + 1; j < end; j++){
       matrix->dense_mat[N + j] = fc - bcf[(end + start) - j];
@@ -665,8 +619,7 @@ static inline void copy_poly_in_matrixcol(sp_matfglmcol_t* matrix,
     }
     else{
       long i;
-      
-      long N = nrows * matrix->ncols ;
+        long N = nrows * matrix->ncols ;
       long k = 0;
       for(i = 0; i < matrix->ncols; i++){
 	if(is_equal_exponent((*bexp) + (end - 1 - k) * nv,
@@ -677,7 +630,6 @@ static inline void copy_poly_in_matrixcol(sp_matfglmcol_t* matrix,
       }
     }
   }
-#endif
 }
 
 static inline void
@@ -726,54 +678,6 @@ copy_extrapoly_in_vector(uint32_t* vector,
   }
   /* printf("\b\b]\n"); */
 }
-
-static inline void
-copy_extrapoly_in_vector(uint32_t* vector,
-			 long ncols,
-			 int32_t *lmb,
-			 len_t pos,
-			 const bs_t * const tbr,
-			 const ht_t * const bht,
-			 int32_t* evi,
-			 const stat_t *st,
-			 const int nv,
-			 const long maxdeg){
-
-  len_t idx = tbr->lmps[pos];
-  /* printf ("idx=%d\n",idx); */
-  /* if (tbr->hm[idx] == NULL) {*/
-  len_t * hm  = tbr->hm[idx]+OFFSET;
-  len_t len = tbr->hm[idx][LENGTH];
-  /* printf ("len=%d\n",len); */
-  long i;
-  long k = 0;
-  /* to remove monomials outside the vector space, we just look at the
-   * leading ones */
-  uint32_t deglm = 0;
-  for (long j = 0; j < nv; j++) {
-    deglm += lmb[k*nv + j];
-  }
-  while (deglm > maxdeg) {
-    k++;
-    deglm = 0;
-    for (long j = 0; j < nv; j++) {
-      deglm += lmb[k*nv + j];
-    }
-  }
-  printf ("starts at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]);
-  printf ("ends at  k=%ld with coeff %d\n",len-1-k,
-	  tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k]);
-  printf ("[");
-  for(i = 0; i < ncols; i++){
-    if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
-      vector[i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
-      /* printf ("%u, ",vector[i]); */
-      k++;
-    }
-  }
-  /* printf("\b\b]\n"); */
-}
-
 
 static inline void
 copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix,
@@ -1412,8 +1316,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       }
       exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
     }
-    exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
-    /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
   tbr = initialize_basis(st);
 #if POSTPONED_REDUCTION /* only the pure monomials are reduced */

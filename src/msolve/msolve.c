@@ -599,7 +599,6 @@ static int add_random_linear_form_to_input_system(
     }
     else {
       int j = 0;
-
       for (i = 2*len_old; i < 2*len_new; i += 2) {
         gens->random_linear_form[j] = ((int16_t)(rand()));
         mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
@@ -5179,7 +5178,9 @@ restart:
             free(param);
             param = NULL;
             round++;
-            undo_variable_order_change(gens);
+            if(gens->change_var_order >= 0){
+              undo_variable_order_change(gens);
+            }
             if (add_random_linear_form_to_input_system(gens, info_level)) {
               goto restart;
             }
@@ -5807,7 +5808,11 @@ restart:
                 free(param);
                 param = NULL;
                 round++;
-                undo_variable_order_change(gens);
+                fprintf(stderr, "TEST TEST\n");
+                if(gens->change_var_order >= 0){
+                  fprintf(stderr, "ICI\n\n");
+                  undo_variable_order_change(gens);
+                }
                 if (add_random_linear_form_to_input_system(gens, info_level)) {
                     goto restart;
                 }

@@ -63,6 +63,20 @@ typedef struct{
   szmat_t *dst; //pour la gestion des lignes "denses" mais avec un bloc de zero a la fin
 } sp_matfglm_t;
 
+typedef struct{
+  CF_t charac;
+  szmat_t ncols; //dimension du sev du quotient
+  szmat_t nrows; //nbre de lignes non triviales
+  CF_t *dense_mat; // matrice nrows lignes et ncols colonnes (elements donnes par lignes)
+  szmat_t *triv_idx; //tableau d'indices des lignes ne contenant que des 0 et un 1
+  szmat_t *triv_pos; //position des 1
+  szmat_t *dense_idx; //position des lignes non triviales (qui constituent donc
+                      //dense_mat)
+  szmat_t *zero_idx; //tableau d'indices des lignes ne contenant que des 0
+  szmat_t *dst; //pour la gestion des lignes "denses" mais avec un bloc de zero a la fin
+} sp_matfglmcol_t;
+
+
 #ifndef ALIGNED32
 #define ALIGNED32 __attribute__((aligned(32)))
 #endif

@@ -1401,12 +1401,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   fprintf(stderr, "\n");
 #endif
-  sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
+  sp_matfglmcol_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglmcol_t));
   matrix->charac = fc;
   matrix->ncols = dquot;
-  matrix->nrows = len_xn;
-  long len1 = dquot * len_xn;
-  long len2 = dquot - len_xn;
+  matrix->nrows = len_xn + count_not_lm;
+  long len1 = dquot * (len_xn + count_not_lm);
+  long len2 = dquot - (len_xn + count_not_lm + count_zero);
 
   if(posix_memalign((void **)&(matrix->dense_mat), 32, sizeof(CF_t)*len1)){
     fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
@@ -1489,7 +1489,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 #if 0 > 0
       display_monomial_full(stderr, nv, NULL, 0, exp);
       fprintf(stderr, " => remains in monomial basis\n");
-#endif
       /* mult by xn stays in the basis */
       matrix->triv_idx[l_triv] = i;
       matrix->triv_pos[l_triv] = pos + i;

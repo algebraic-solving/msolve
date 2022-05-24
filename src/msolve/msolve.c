@@ -4804,8 +4804,11 @@ restart:
 	    int32_t *bcf_ff = (int32_t *)(*bcf);
 	    printf ("get lead monomials\n");
 	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
-	    printf ("degree %d\n",sht->ev[hcm[0]][0]);
-	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot, sht->ev[hcm[0]][0]);
+	    long maxdeg = sht->ev[hcm[0]][0]; // degree of the normal form
+	    printf ("degree %ld\n",maxdeg);
+	    
+	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot,
+						maxdeg);
 	    printf("\nMonomial basis:\n");
 	    for (len_t k = 0; k < dquot; ++k) {
 	      for (len_t l = 0; l < gens->nvars; ++l){
@@ -4814,17 +4817,17 @@ restart:
 	      printf("\n");
 	    }
 	    printf("\nSubspace has dimension: %ld\n",dquot);
-	    
 
 	    /* we assume that the support of phi is enough to encode
 	     * the multiplication matrix */
 	    /* we need the nf of sigma x_n for all sigma is this
 	       support */
 	    printf ("call buildmatrix\n");
-	    sp_matfglm_t  *matrix = build_matrixn_colon(lmb, dquot, bld[0],
-							blen, bexp, bcf_ff,
-							bexp_lm, gens->nvars,
-							gens->field_char);
+	    sp_matfglmcol_t  *matrix = build_matrixn_colon(lmb, dquot, bld[0],
+							   blen, bexp, bcf_ff,
+							   bexp_lm, gens->nvars,
+							   gens->field_char,
+							   maxdeg);
 	    
 	    
 	    free(hcm);

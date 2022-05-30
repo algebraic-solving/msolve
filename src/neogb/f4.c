@@ -353,7 +353,7 @@ int core_f4(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -396,7 +396,7 @@ int core_f4(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
 
       /* if we found a constant we are done, so remove all remaining pairs */
       if (bs->constant  == 1) {

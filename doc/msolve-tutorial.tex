@@ -914,7 +914,18 @@ The polynomials $v_1$ and $v_2$ are respectively
 
   \hfill \verb+Default value:0+
 
-\item The flag \verb+-g <int>+ tells \msolve how to handle genericity
+\item The flag \verb+-P <int>+ tells \msolve to output the 
+rational parametrization computed for solving zero-dimensional polynomial 
+systems (those with finitely many solutions in an algebraic closure of the base field).
+When +\verb+-P 0+ is set, such a parametrization is not returned, when \verb+-P 1+ is
+set, the parametrization is returned and, in the charactersitic zero case (rational 
+coefficients), real solutions are returned, when +\verb+-P 2+ is set, only the 
+rational parametrization is returned.
+
+  \hfill \verb+Default value:0+
+
+
+\item The flag \verb+-c <int>+ tells \msolve how to handle genericity
   requirements: when \verb+<int>+ is \verb+0+ \msolve quits when these
   requirements are not satisfied, when \verb+<int>+ is \verb+1+ \msolve is
   allowed to change the order of the variables if needed and quits if after

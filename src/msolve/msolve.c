@@ -143,9 +143,15 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
       }
       fprintf(file, "%d", (int32_t)(1));
     }
+    else{
+      for (int i = 0; i < param->nvars-1; ++i) {
+        fprintf(file, "%d, ", (int32_t)(0));
+      }
+      fprintf(file, "%d", (int32_t)(1));
+    }
   }
   fprintf(file, "],\n");
-  fprintf(file, "[1,"); /*at the moment, a single param is returned */
+  fprintf(file, "[1,\n["); /*at the moment, a single param is returned */
   mpz_upoly_out_str(file, param->elim); //elim. poly
   fprintf(file, ",\n");
   mpz_upoly_out_str(file, param->denom); //denom. poly
@@ -167,7 +173,7 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
   }
   /* fprintf(file, "]"); */
   fprintf(file, "]");
-  fprintf(file, "]");
+  fprintf(file, "]]");
 }
 
 static inline void mpz_param_out_str_maple(FILE *file,
@@ -591,7 +597,10 @@ static int add_random_linear_form_to_input_system(
     if (gens->field_char > 0) {
       int j = 0;
       for (i = len_old; i < len_new; ++i) {
-        gens->random_linear_form[j] = ((int16_t)(rand()) % gens->field_char);
+        gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+        while(gens->random_linear_form[j] == 0){
+            gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+       }
         gens->cfs[i]  = gens->random_linear_form[j];
         k++;
         j++;
@@ -600,8 +609,11 @@ static int add_random_linear_form_to_input_system(
     else {
       int j = 0;
       for (i = 2*len_old; i < 2*len_new; i += 2) {
-        gens->random_linear_form[j] = ((int16_t)(rand()));
-        mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
+        gens->random_linear_form[j] = ((int8_t)(rand()));
+        while(gens->random_linear_form[j] == 0){
+            gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+       }
+       mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
         k++;
         j++;
       }

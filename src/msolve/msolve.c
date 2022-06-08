@@ -112,9 +112,10 @@ static inline void mpz_param_clear(mpz_param_t param){
 }
 
 static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
-        const long dquot, mpz_param_t param){
+                                     const long dquot, mpz_param_t param,
+                                     param_t *mod_param){
   fprintf(file, "[");
-  fprintf(file, "0, \n"); //dimension of input ideal
+  fprintf(file, "%d, \n", gens->field_char); /* field charac */
   fprintf(file, "%ld, \n", param->nvars); //nvars
   fprintf(file, "%ld, \n", dquot); //dim quotient
   /* Print all variables:
@@ -152,17 +153,32 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
   }
   fprintf(file, "],\n");
   fprintf(file, "[1,\n["); /*at the moment, a single param is returned */
-  mpz_upoly_out_str(file, param->elim); //elim. poly
+  if(gens->field_char){
+    display_nmod_poly(file, mod_param->elim);
+  }
+  else{
+    mpz_upoly_out_str(file, param->elim); //elim. poly
+  }
   fprintf(file, ",\n");
+  if(gens->field_char){
+    display_nmod_poly(file, mod_param->denom);
+  }
+  else{
   mpz_upoly_out_str(file, param->denom); //denom. poly
+  }
   fprintf(file, ",\n");
   fprintf(file, "[\n");
   if(param->coords != NULL){
     for(int i = 0; i < param->nvars - 1; i++){
       fprintf(file, "[");
+      if(gens->field_char){
+        display_nmod_poly(file, mod_param->coords[i]);
+      }
+      else{
       mpz_upoly_out_str(file, param->coords[i]); //param. polys
       fprintf(file, ",\n");
       mpz_out_str(file, 10, param->cfs[i]);
+      }
       if(i==param->nvars-2){
         fprintf(file, "]\n");
       }
@@ -177,8 +193,9 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
 }
 
 static inline void mpz_param_out_str_maple(FILE *file,
-        const data_gens_ff_t *gens,const long dquot, mpz_param_t param){
-  mpz_param_out_str(file, gens, dquot, param);
+        const data_gens_ff_t *gens,const long dquot,
+                                           mpz_param_t param, param_t *mod_param){
+  mpz_param_out_str(file, gens, dquot, param, mod_param);
   fprintf(file, "]");
 }
 
@@ -4884,11 +4901,11 @@ void display_output(int b, int dim, int dquot,
       FILE *ofile = fopen(files->out_file, "a+");
       fprintf(ofile, "[0, ");
       if (get_param >= 1 || gens->field_char) {
-        if(gens->field_char){
-          display_fglm_param_maple(ofile, param);
-          return;
-        }
-        mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
+        /* if(gens->field_char){ */
+        /*   display_fglm_param_maple(ofile, param); */
+        /*   return; */
+        /* } */
+        mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp, param);
       }
       if(get_param <= 1){
         if(get_param){
@@ -4903,11 +4920,11 @@ void display_output(int b, int dim, int dquot,
     else{
       fprintf(stdout, "[0, ");
       if (get_param >= 1  || gens->field_char) {
-        if(gens->field_char){
-          display_fglm_param_maple(stdout, param);
-          return;
-        }
-        mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
+        /* if(gens->field_char){ */
+        /*   display_fglm_param_maple(stdout, param); */
+        /*   return; */
+        /* } */
+        mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp, param);
       }
       if(get_param <= 1){
         if(get_param){

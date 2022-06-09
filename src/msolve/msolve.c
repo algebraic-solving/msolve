@@ -4825,9 +4825,13 @@ restart:
 	    printf ("call buildmatrix\n");
 	    sp_matfglmcol_t  *matrix = build_matrixn_colon(lmb, dquot, bld[0],
 							   blen, bexp, bcf_ff,
-							   bexp_lm, gens->nvars,
+							   bexp_lm,
+							   /*&tbr,*/
+							   bht,st,mul,bs,
+							   gens->nvars,
 							   gens->field_char,
-							   maxdeg);
+							   maxdeg,
+							   gens);
 	    
 	    
 	    free(hcm);

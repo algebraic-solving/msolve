@@ -412,7 +412,6 @@ int core_f4(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    j = 0;
     for (i = 0; i < bs->lml; ++i) {
         for (j = i+1; j < bs->lml; ++j) {
             if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {

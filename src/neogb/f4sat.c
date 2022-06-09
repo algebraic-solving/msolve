@@ -158,7 +158,7 @@ static int is_already_saturated(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -582,7 +582,7 @@ end_sat_step:
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
             sat_test++;
         }
         clean_hash_table(sht);
@@ -725,6 +725,14 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {

@@ -388,7 +388,7 @@ int core_f4(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            mat, bs, bht, sht, hcm, st);
+            -1, mat, bs, bht, sht, hcm, st);
       }
       clean_hash_table(sht);
       /* all rows in mat are now polynomials in the basis,
@@ -414,6 +414,15 @@ int core_f4(
     /* remove possible redudant elements */
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
+    j = 0;
+    for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
             bs->lm[j]   = bs->lm[i];
             bs->lmps[j] = bs->lmps[i];
@@ -422,7 +431,9 @@ int core_f4(
     }
     bs->lml = j;
 
-
+    /* At the moment we do not directly remove the eliminated polynomials from
+     * the resulting basis. */
+#if 0
     if (st->nev > 0) {
         j = 0;
         for (i = 0; i < bs->lml; ++i) {
@@ -434,6 +445,7 @@ int core_f4(
         }
         bs->lml = j;
     }
+#endif
 
     /* reduce final basis? */
     if (st->reduce_gb == 1) {
@@ -441,12 +453,6 @@ int core_f4(
          * thus we need pointers */
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
-    /* for (i = 0; i < bs->lml; ++i) { */
-    /*     for (j = 0; j < bht->evl; ++j) { */
-    /*         printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]); */
-    /*     } */
-    /*     printf("\n"); */
-    /* } */
 
     *bsp  = bs;
     *bhtp = bht;

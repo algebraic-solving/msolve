@@ -61,16 +61,38 @@ void free_pairset(
     *psp  = ps;
 }
 
+static int new_spair_cmp(
+        const void *a,
+        const void *b,
+        void *htp)
+{
+    const spair_t *sa   =   ((spair_t *)a);
+    const spair_t *sb   =   ((spair_t *)b);
+    const ht_t *ht      =   (ht_t *)htp;
+    if (sa->lcm != sb->lcm) {
+        return (int)monomial_cmp(sa->lcm, sb->lcm, ht);
+    } else {
+        if (sa->deg != sb->deg) {
+            return (sa->deg < sb->deg) ? -1 : 1;
+        } else {
+            if (sa->gen1 != sb->gen1) {
+                return (sa->gen1 < sb->gen1) ? -1 : 1;
+            } else {
+                return 0;
+            }
+        }
+    }
+}
+
 static void insert_and_update_spairs(
         ps_t *psl,
         bs_t *bs,
         ht_t *bht,
-        ht_t *uht,
         stat_t *st,
         const int32_t check_redundancy
         )
 {
-    len_t i, j, l;
+    int i, j, l;
     deg_t deg1, deg2;
 
     spair_t *ps = psl->p;
@@ -79,92 +101,42 @@ static void insert_and_update_spairs(
     const int max_nthrds = 4 <= st->nthrds ? 4 : st->nthrds;
 #endif
 
-    const len_t pl  = psl->ld;
-    const len_t bl  = bs->ld;
+    const int pl  = psl->ld;
+    const int bl  = bs->ld;
 
     const hm_t nch = bs->hm[bl][OFFSET];
 
-    /* deg_t ndeg  = bht->hd[nch].deg; */
     deg_t ndeg  = bs->hm[bl][DEG];
-    reinitialize_hash_table(uht, bl);
-    /* statistics */
-    st->max_uht_size  = st->max_uht_size > uht->esz ?
-        st->max_uht_size : uht->esz;
 
-    /* only other lead terms from the matrix may render
-     * the current element useless */
-    if (check_redundancy == 1) {
-        for (i = bs->lo; i < bl; ++i) {
-            if (bs->red[i]) {
-                continue;
-            }
-            if (check_monomial_division(nch, bs->hm[i][OFFSET], bht)) {
-                ps[pl].gen1 = i;
-                ps[pl].gen2 = bl;
-                ps[pl].lcm  = get_lcm(bs->hm[i][OFFSET], nch, bht, bht);
-                /* compute total degree of pair, not trivial if block order is chosen */
-                if (st->nev == 0) {
-                    ps[pl].deg = bht->hd[ps[pl].lcm].deg;
-                } else {
-                    /* ps[pl].deg = bht->hd[ps[pl].lcm].deg; */
-                    deg1  = bht->hd[ps[pl].lcm].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
-                    deg2  = bht->hd[ps[pl].lcm].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
-                    ps[pl].deg = deg1 > deg2 ? deg1 : deg2;
-                }
-                bs->red[bl] = 1;
-                st->num_redundant++;
-                bs->ld++;
-                psl->ld++;
-                return;
-            }
-        }
-    }
     bs->mltdeg  = bs->mltdeg > ndeg ?
         bs->mltdeg : ndeg;
 
-    hi_t *plcm  = (hi_t *)malloc((unsigned long)(bl+1) * sizeof(hi_t));
     spair_t *pp = ps+pl;
 
-    /* create all possible new pairs */
-#if 0
-    if (check_redundancy == 1) {
-        for (i = 0; i < bl; ++i) {
-            plcm[i]   = get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            /* compute total degree of pair, not trivial if block order is chosen */
-            if (st->nev == 0) {
-                pp[i].deg = uht->hd[plcm[i]].deg;
-            } else {
-                pp[i].deg = uht->hd[plcm[i]].deg;
-                /* deg1  = uht->hd[plcm[i]].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
-                 * deg2  = uht->hd[plcm[i]].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
-                 * pp[i].deg = deg1 > deg2 ? deg1 : deg2; */
-            }
-            if (bs->red[i] == 0) {
-                pp[i].gen1  = i;
-                pp[i].gen2  = bl;
-                pp[i].lcm   = plcm[i];
-            }
-        }
-    } else {
-#endif
-        for (i = 0; i < bl; ++i) {
-            plcm[i]     =  get_lcm(bs->hm[i][OFFSET], nch, bht, uht);
-            /* compute total degree of pair, not trivial if block order is chosen */
-            if (st->nev == 0) {
-                pp[i].deg = uht->hd[plcm[i]].deg;
-            } else {
-                /* pp[i].deg = uht->hd[plcm[i]].deg; */
-                deg1  = uht->hd[plcm[i]].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
-                deg2  = uht->hd[plcm[i]].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
-                pp[i].deg = deg1 > deg2 ? deg1 : deg2;
-            }
-            pp[i].gen1  = i;
-            pp[i].gen2  = bl;
-            pp[i].lcm   = plcm[i];
-        }
-#if 0
+    while (bht->esz - bht->eld < bl) {
+        enlarge_hash_table(bht);
     }
-#endif
+    for (i = 0; i < bl; ++i) {
+        pp[i].lcm   =  get_lcm(bs->hm[i][OFFSET], nch, bht, bht);
+        pp[i].gen1  = i;
+        pp[i].gen2  = bl;
+        if (bs->red[i] != 0) {
+            pp[i].deg   =   -1;
+        } else {
+            if (prime_monomials(bs->hm[pp[i].gen1][OFFSET], bs->hm[pp[i].gen2][OFFSET], bht)) {
+                pp[i].deg   =   -2;
+            } else {
+                /* compute total degree of pair, not trivial if block order is chosen */
+                if (st->nev == 0) {
+                    pp[i].deg = bht->hd[pp[i].lcm].deg;
+                } else {
+                    deg1  = bht->hd[pp[i].lcm].deg - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
+                    deg2  = bht->hd[pp[i].lcm].deg - bht->hd[nch].deg + bs->hm[bl][DEG];
+                    pp[i].deg = deg1 > deg2 ? deg1 : deg2;
+                }
+            }
+        }
+    }
 
     len_t nl  = pl+bl;
     /* Gebauer-Moeller: check old pairs first */
@@ -174,58 +146,72 @@ static void insert_and_update_spairs(
     for (i = 0; i < pl; ++i) {
         j = ps[i].gen1;
         l = ps[i].gen2;
-        const int32_t m = uht->hd[pp[l].lcm].deg > uht->hd[pp[j].lcm].deg ? uht->hd[pp[l].lcm].deg : uht->hd[pp[j].lcm].deg;
-        if (check_monomial_division(ps[i].lcm, nch, bht)
-                && bht->hd[ps[i].lcm].deg > m
-           ) {
-            ps[i].lcm = 0;
-        }
-    }
-    /* check new pairs for redundancy */
-    j = 0;
-    for (i = 0; i < bl; ++i) {
-        if (bs->red[i] == 0) {
-            pp[j++] = pp[i];
+        if (pp[j].lcm != ps[i].lcm && pp[l].lcm != ps[i].lcm && check_monomial_division(ps[i].lcm, nch, bht)) {
+            ps[i].deg   =   -1;
         }
     }
     /* sort new pairs by increasing lcm, earlier polys coming first */
-    sort_r(pp, (unsigned long)j, sizeof(spair_t), spair_cmp_drl, uht);
-    for (i = 0; i < j; ++i) {
-        plcm[i] = pp[i].lcm;
-    }
-    plcm[j]  = 0;
-    const len_t pc  = j;
+    sort_r(pp, (unsigned long)bl, sizeof(spair_t), new_spair_cmp, bht);
 
-#pragma omp parallel for num_threads(max_nthrds) \
-    private(j)
-    for (j = 0; j < pc; ++j) {
-        if (plcm[j] > 0) {
-            const hi_t plcmj = plcm[j];
-            check_monomial_division_in_update(plcm, j, pc, plcmj, uht);
+    /* Gebauer-Moeller: remove real multiples of new spairs */
+    for (i = pl; i < nl; ++i) {
+        if (ps[i].deg < 0) {
+            continue;
+        }
+        for (j = pl; j < i; ++j) {
+            if (i == j || ps[j].deg == -1) {
+                continue;
+            }
+            if (ps[i].lcm != ps[j].lcm && check_monomial_division(ps[i].lcm, ps[j].lcm, bht)) {
+                ps[i].deg   =   -1;
+                break;
+            }
         }
     }
+
+
+    /* Gebauer-Moeller: remove same lcm spairs from the new ones */
+    for (i = pl; i < nl; ++i) {
+        if (ps[i].deg == -1) {
+            continue;
+        }
+        /* try to remove all others if product criterion applies */
+        if (ps[i].deg == -2) {
+            for (j = pl; j < nl; ++j) {
+                if (ps[j].lcm == ps[i].lcm) {
+                    ps[j].deg   =   -1;
+                }
+            }
+            /* try to eliminate this spair with earlier ones */
+        } else { 
+            for (j = i-1; j >= pl; --j) {
+                /* printf("i %d | j %d | pl %d\n", i, j, pl); */
+                if (ps[j].deg != -1 && ps[i].lcm == ps[j].lcm) {
+                    ps[i].deg   =   -1;
+                    break;
+                }
+            }
+        }
+    }
+
 
     /* remove useless pairs from pairset */
     j = 0;
     /* old pairs */
-    for (i = 0; i < psl->ld; ++i) {
-        if (ps[i].lcm == 0) {
+    for (i = 0; i < nl; ++i) {
+        if (ps[i].deg < 0) {
             continue;
         }
         ps[j++] = ps[i];
     }
-    if (bht->esz - bht->eld <= pc) {
-        enlarge_hash_table(bht);
-    }
-    /* new pairs, wee need to add the lcm to the basis hash table */
-    insert_plcms_in_basis_hash_table(psl, pp, bht, uht, bs, plcm, j, pc);
-    free(plcm);
+
+    psl->ld =   j;
 
     const bl_t lml          = bs->lml;
     const bl_t * const lmps = bs->lmps;
 
+    /* mark redundant elements in basis */
     if (bs->mltdeg > ndeg) {
-        /* mark redundant elements in basis */
         for (i = 0; i < lml; ++i) {
             if (bs->red[lmps[i]] == 0
                     && check_monomial_division(bs->hm[lmps[i]][OFFSET], nch, bht)) {
@@ -298,7 +284,6 @@ static void update_basis_f4(
         ps_t *ps,
         bs_t *bs,
         ht_t *bht,
-        ht_t *uht,
         stat_t *st,
         const len_t npivs,
         const int32_t check_redundancy
@@ -319,13 +304,27 @@ static void update_basis_f4(
     check_enlarge_pairset(ps, np);
 
     for (i = 0; i < npivs; ++i) {
-        insert_and_update_spairs(ps, bs, bht, uht, st, check_redundancy);
+        insert_and_update_spairs(ps, bs, bht, st, check_redundancy);
     }
 
     const bl_t lml          = bs->lml;
     const bl_t * const lmps = bs->lmps;
 
     len_t k = 0;
+
+    /* Check new elements on redundancy:
+     * Only elements coming from the same matrix are possible leading
+     * monomial divisors, thus we only check down to bs->lo */
+    for (int l = bs->lo; l < bs->ld; ++l) {
+        for (int m = l+1; m < bs->ld; ++m) {
+            hm_t lm =   bs->hm[l][OFFSET];
+            if (check_monomial_division(lm, bs->hm[m][OFFSET], bht) == 1
+                && bs->hm[l][DEG] > bs->hm[m][DEG]) {
+                bs->red[l]  =   1;
+                st->num_redundant++;
+            }
+        }
+    }
     if (st->mo == 0 && st->num_redundant_old < st->num_redundant) {
         const sdm_t *lms  = bs->lm;
         for (i = 0; i < lml; ++i) {

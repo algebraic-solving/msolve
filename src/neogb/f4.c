@@ -333,7 +333,6 @@ int core_f4(
     double rrt0, rrt1;
 
     /* initialize update hash table, symbolic hash table */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* hashes-to-columns map, initialized with length 1, is reallocated
@@ -353,7 +352,7 @@ int core_f4(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -388,7 +387,7 @@ int core_f4(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            mat, bs, bht, sht, hcm, st);
+            -1, mat, bs, bht, sht, hcm, st);
       }
       clean_hash_table(sht);
       /* all rows in mat are now polynomials in the basis,
@@ -396,7 +395,7 @@ int core_f4(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
       /* if we found a constant we are done, so remove all remaining pairs */
       if (bs->constant  == 1) {
@@ -412,6 +411,14 @@ int core_f4(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -422,7 +429,9 @@ int core_f4(
     }
     bs->lml = j;
 
-
+    /* At the moment we do not directly remove the eliminated polynomials from
+     * the resulting basis. */
+#if 0
     if (st->nev > 0) {
         j = 0;
         for (i = 0; i < bs->lml; ++i) {
@@ -434,6 +443,7 @@ int core_f4(
         }
         bs->lml = j;
     }
+#endif
 
     /* reduce final basis? */
     if (st->reduce_gb == 1) {
@@ -441,12 +451,6 @@ int core_f4(
          * thus we need pointers */
         reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
-    /* for (i = 0; i < bs->lml; ++i) { */
-    /*     for (j = 0; j < bht->evl; ++j) { */
-    /*         printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]); */
-    /*     } */
-    /*     printf("\n"); */
-    /* } */
 
     *bsp  = bs;
     *bhtp = bht;
@@ -460,9 +464,6 @@ int core_f4(
     free(mat);
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);

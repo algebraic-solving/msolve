@@ -157,7 +157,7 @@ void reduce_basis_no_hash_table_switching(
     interreduce_matrix_rows(mat, bs, st, 1);
     /* remap rows to basis elements (keeping their position in bs) */
     convert_sparse_matrix_rows_to_basis_elements(
-        mat, bs, bht, sht, hcm, st);
+        1, mat, bs, bht, sht, hcm, st);
 
     bs->ld  = mat->np;
 
@@ -280,7 +280,7 @@ bs_t *f4_trace_application_phase(
               goto stop;
           }
           convert_sparse_matrix_rows_to_basis_elements(
-                  mat, bs, bht, sht, hcm, st);
+                  -1, mat, bs, bht, sht, hcm, st);
           for (i = 0; i < mat->np; ++i) {
               if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
                   fprintf(stderr, "Wrong leading term for new element %u/%u.",
@@ -320,6 +320,7 @@ bs_t *f4_trace_application_phase(
     memcpy(bs->lm, trace->lm,
             (unsigned long)bs->lml * sizeof(sdm_t));
 
+#if 0
     /* eliminate variables if accessible */
     len_t j = 0;
     if (st->nev > 0) {
@@ -333,6 +334,7 @@ bs_t *f4_trace_application_phase(
         }
         bs->lml = j;
     }
+#endif
 
     /* reduce final basis */
     /* note: bht will become sht, and sht will become NULL,
@@ -429,7 +431,6 @@ bs_t *f4sat_trace_application_test_phase(
 
     /* initialize specialized hash table */
     ht_t *sht = initialize_secondary_hash_table(bht, st);
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
     bs_t *kernel  = initialize_basis(st);
@@ -439,7 +440,7 @@ bs_t *f4sat_trace_application_test_phase(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     if(st->info_level>1){
         printf("Application phase with prime p = %d, overall there are %u rounds\n",
@@ -479,13 +480,13 @@ bs_t *f4sat_trace_application_test_phase(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
         clear_matrix(mat); // does not reset mat->np
 
-        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
+        update_basis_f4(ps, bs, bht, st, mat->np, 1);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -557,7 +558,7 @@ bs_t *f4sat_trace_application_test_phase(
                     }
                     st->nr_kernel_elts  +=  kernel->ld;
                     free_kernel_coefficients(kernel);
-                    update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
+                    update_basis_f4(ps, bs, bht, st, mat->np, 1);
                     kernel->ld  = 0;
                     if (st->info_level > 1) {
                         printf("   ");
@@ -601,6 +602,14 @@ bs_t *f4sat_trace_application_test_phase(
                 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -771,7 +780,7 @@ bs_t *f4sat_trace_application_phase(
                 goto stop;
             }
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
             for (i = 0; i < mat->np; ++i) {
                 if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
                     fprintf(stderr, "Wrong leading term for new element %u/%u.",
@@ -1003,7 +1012,6 @@ bs_t *f4_trace_learning_phase(
     normalize_initial_basis(bs, fc);
 
     /* initialize specialized hash tables */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* reset bs->ld for first update process */
@@ -1012,7 +1020,7 @@ bs_t *f4_trace_learning_phase(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1040,7 +1048,7 @@ bs_t *f4_trace_learning_phase(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            mat, bs, bht, sht, hcm, st);
+            -1, mat, bs, bht, sht, hcm, st);
       }
       clean_hash_table(sht);
       /* add lead monomials to trace, stores hashes in basis hash
@@ -1054,7 +1062,7 @@ bs_t *f4_trace_learning_phase(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
       /* if we found a constant we are done, so remove all remaining pairs */
       if (bs->constant  == 1) {
@@ -1071,6 +1079,14 @@ bs_t *f4_trace_learning_phase(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -1093,6 +1109,7 @@ bs_t *f4_trace_learning_phase(
     memcpy(trace->lm, bs->lm,
             (unsigned long)trace->lml * sizeof(sdm_t));
 
+#if 0
     /* eliminate variables if accessible */
     if (st->nev > 0) {
         j = 0;
@@ -1105,12 +1122,31 @@ bs_t *f4_trace_learning_phase(
         }
         bs->lml = j;
     }
+#endif
+    for (i = 0; i < bs->lml; ++i) {
+        printf("[%d] ", i);
+        for (j = 0; j < bht->evl; ++j) {
+            printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+        }
+        printf("\n");
+    }
+
+    printf("bs->lml %u\n ---- \n", bs->lml);
 
     /* reduce final basis */
     /* note: bht will become sht, and sht will become NULL,
      * thus we need pointers */
     reduce_basis_no_hash_table_switching(bs, mat, &hcm, bht, sht, st);
     /* get basis meta data */
+    for (i = 0; i < bs->lml; ++i) {
+        printf("[%d] ", i);
+        for (j = 0; j < bht->evl; ++j) {
+            printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+        }
+        printf("\n");
+    }
+
+    printf("bs->lml %u\n", bs->lml);
 
     st->size_basis  = bs->lml;
     for (i = 0; i < bs->lml; ++i) {
@@ -1135,9 +1171,6 @@ bs_t *f4_trace_learning_phase(
     free(hcm);
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);
@@ -1223,7 +1256,6 @@ bs_t *f4sat_trace_learning_phase_1(
     normalize_initial_basis(bs, fc);
 
     /* initialize specialized hash tables */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
@@ -1235,7 +1267,7 @@ bs_t *f4sat_trace_learning_phase_1(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1265,7 +1297,7 @@ end_sat_step:
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
             sat_test++;
         }
         clean_hash_table(sht);
@@ -1274,7 +1306,7 @@ end_sat_step:
         clear_matrix(mat);
 
         /* check redundancy only if input is not homogeneous */
-        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -1297,7 +1329,7 @@ end_sat_step:
                     ps->ld == 0 &&
                     is_zero_dimensional(bs, bht) &&
                     is_already_saturated(
-                        bs, sat, mat, &hcm, &bht, &sht, &uht, st)) {
+                        bs, sat, mat, &hcm, &bht, &sht, st)) {
                 /* sat_done  = 1; */
                 goto end_sat_step;
             }
@@ -1365,7 +1397,7 @@ end_sat_step:
                         st->nr_kernel_elts  +=  kernel->ld;
                         sat_test  = 0;
                         free_kernel_coefficients(kernel);
-                        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
+                        update_basis_f4(ps, bs, bht, st, mat->np, 1);
                         kernel->ld  = 0;
                         if (st->info_level > 1) {
                             printf("   ");
@@ -1412,6 +1444,14 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -1471,9 +1511,6 @@ end_sat_step:
 
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);
@@ -1564,7 +1601,6 @@ bs_t *f4sat_trace_learning_phase_2(
     normalize_initial_basis(bs, fc);
 
     /* initialize specialized hash tables */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
@@ -1576,7 +1612,7 @@ bs_t *f4sat_trace_learning_phase_2(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1611,7 +1647,7 @@ bs_t *f4sat_trace_learning_phase_2(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
             sat_test++;
         }
         clean_hash_table(sht);
@@ -1626,7 +1662,7 @@ bs_t *f4sat_trace_learning_phase_2(
         clear_matrix(mat);
 
         /* check redundancy only if input is not homogeneous */
-        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -1695,7 +1731,7 @@ bs_t *f4sat_trace_learning_phase_2(
 
                 st->nr_kernel_elts  +=  kernel->ld;
                 free_kernel_coefficients(kernel);
-                update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
+                update_basis_f4(ps, bs, bht, st, mat->np, 1);
                 kernel->ld  = 0;
                 if (st->info_level > 1) {
                     printf("   ");
@@ -1740,6 +1776,14 @@ bs_t *f4sat_trace_learning_phase_2(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -1802,9 +1846,6 @@ bs_t *f4sat_trace_learning_phase_2(
 
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);
@@ -2009,7 +2050,6 @@ bs_t *modular_f4(
     normalize_initial_basis(bs, fc);
 
     /* initialize specialized hash table */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* reset bs->ld for first update process */
@@ -2018,7 +2058,7 @@ bs_t *modular_f4(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -2049,7 +2089,7 @@ bs_t *modular_f4(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            mat, bs, bht, sht, hcm, st);
+            -1, mat, bs, bht, sht, hcm, st);
       }
       clean_hash_table(sht);
       /* all rows in mat are now polynomials in the basis,
@@ -2057,7 +2097,7 @@ bs_t *modular_f4(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
       rrt1 = realtime();
       if (st->info_level > 1) {
@@ -2070,6 +2110,14 @@ bs_t *modular_f4(
     }
 
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -2080,6 +2128,7 @@ bs_t *modular_f4(
     }
     bs->lml = j;
 
+#if 0
     /* eliminate variables if accessible */
     if (st->nev > 0) {
         j = 0;
@@ -2092,6 +2141,7 @@ bs_t *modular_f4(
         }
         bs->lml = j;
     }
+#endif
 
     /* reduce final basis? */
     if (st->reduce_gb == 1) {
@@ -2119,9 +2169,6 @@ bs_t *modular_f4(
     free(hcm);
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);

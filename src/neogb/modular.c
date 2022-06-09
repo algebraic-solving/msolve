@@ -1123,31 +1123,12 @@ bs_t *f4_trace_learning_phase(
         bs->lml = j;
     }
 #endif
-    for (i = 0; i < bs->lml; ++i) {
-        printf("[%d] ", i);
-        for (j = 0; j < bht->evl; ++j) {
-            printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        }
-        printf("\n");
-    }
-
-    printf("bs->lml %u\n ---- \n", bs->lml);
 
     /* reduce final basis */
     /* note: bht will become sht, and sht will become NULL,
      * thus we need pointers */
     reduce_basis_no_hash_table_switching(bs, mat, &hcm, bht, sht, st);
     /* get basis meta data */
-    for (i = 0; i < bs->lml; ++i) {
-        printf("[%d] ", i);
-        for (j = 0; j < bht->evl; ++j) {
-            printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
-        }
-        printf("\n");
-    }
-
-    printf("bs->lml %u\n", bs->lml);
-
     st->size_basis  = bs->lml;
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];

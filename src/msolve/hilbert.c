@@ -602,7 +602,10 @@ static inline void copy_poly_in_matrixcol(sp_matfglmcol_t* matrix,
   fprintf(stderr, "\n");
 #endif
 
-  long N = nrows * (matrix->ncols) - (start + 1);
+  long i;
+  long N = nrows * matrix->ncols ;
+  long k = 0;
+  for(i = 0; i < matrix->ncols; i++){
 
   if((end-start) == matrix->ncols + 1){
     for(j = start + 1; j < end; j++){
@@ -1158,6 +1161,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       evi[i-2]    =   i;
     }
   }
+#if 0
   for (long i = 1; i < tbr->lml; i++) {
     len_t idx = tbr->lmps[i];
     /* printf ("idx=%d\n",idx); */
@@ -1174,6 +1178,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
     /* printf ("\n"); */
   }
+#endif
   copy_extrapoly_in_vector(leftvector, dquot, lmb, 1,
 			   tbr, bht, evi, st, nv, maxdeg);
   /* printf("leftvector:\n["); */

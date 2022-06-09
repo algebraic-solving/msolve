@@ -61,29 +61,6 @@ void free_pairset(
     *psp  = ps;
 }
 
-static int new_spair_cmp(
-        const void *a,
-        const void *b,
-        void *htp)
-{
-    const spair_t *sa   =   ((spair_t *)a);
-    const spair_t *sb   =   ((spair_t *)b);
-    const ht_t *ht      =   (ht_t *)htp;
-    if (sa->lcm != sb->lcm) {
-        return (int)monomial_cmp(sa->lcm, sb->lcm, ht);
-    } else {
-        if (sa->deg != sb->deg) {
-            return (sa->deg < sb->deg) ? -1 : 1;
-        } else {
-            if (sa->gen1 != sb->gen1) {
-                return (sa->gen1 < sb->gen1) ? -1 : 1;
-            } else {
-                return 0;
-            }
-        }
-    }
-}
-
 static void insert_and_update_spairs(
         ps_t *psl,
         bs_t *bs,
@@ -151,7 +128,7 @@ static void insert_and_update_spairs(
         }
     }
     /* sort new pairs by increasing lcm, earlier polys coming first */
-    sort_r(pp, (unsigned long)bl, sizeof(spair_t), new_spair_cmp, bht);
+    sort_r(pp, (unsigned long)bl, sizeof(spair_t), spair_cmp_update, bht);
 
     /* Gebauer-Moeller: remove real multiples of new spairs */
     for (i = pl; i < nl; ++i) {

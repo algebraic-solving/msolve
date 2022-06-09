@@ -168,28 +168,42 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
   }
   fprintf(file, ",\n");
   fprintf(file, "[\n");
-  if(param->coords != NULL){
-    for(int i = 0; i < param->nvars - 1; i++){
-      fprintf(file, "[");
-      if(gens->field_char){
-        display_nmod_poly(file, mod_param->coords[i]);
+  if(gens->field_char){/* positive characteristic */
+    if(mod_param->coords != NULL){
+      for(int i = 0; i < mod_param->nvars - 1; i++){
+        fprintf(file, "[");
+        if(gens->field_char){
+          display_nmod_poly(file, mod_param->coords[i]);
+        }
+        if(i == mod_param->nvars - 2){
+          fprintf(file, "]\n");
+        }
+        else{
+          fprintf(file, "],\n");
+        }
       }
-      else{
-      mpz_upoly_out_str(file, param->coords[i]); //param. polys
-      fprintf(file, ",\n");
-      mpz_out_str(file, 10, param->cfs[i]);
-      }
-      if(i==param->nvars-2){
-        fprintf(file, "]\n");
-      }
-      else{
-        fprintf(file, "],\n");
+    }
+  }
+  else{
+    if(param->coords != NULL){
+      for(int i = 0; i < param->nvars - 1; i++){
+        fprintf(file, "[");
+        mpz_upoly_out_str(file, param->coords[i]); //param. polys
+        fprintf(file, ",\n");
+        mpz_out_str(file, 10, param->cfs[i]);
+        if(i==param->nvars-2){
+          fprintf(file, "]\n");
+        }
+        else{
+          fprintf(file, "],\n");
+        }
       }
     }
   }
   /* fprintf(file, "]"); */
   fprintf(file, "]");
   fprintf(file, "]]");
+
 }
 
 static inline void mpz_param_out_str_maple(FILE *file,
@@ -3124,10 +3138,11 @@ int msolve_trace_qq(mpz_param_t mpz_param,
         param_t *par = allocate_fglm_param(gens->field_char, st->nvars);
         nmod_poly_set(par->elim, nmod_params[0]->elim);
         nmod_poly_set(par->denom, nmod_params[0]->denom);
-        for(long j = 0; j < st->nvars - 2; j++){
+        for(long j = 0; j <= st->nvars - 2; j++){
           nmod_poly_set(par->coords[j], nmod_params[0]->coords[j]);
         }
         (*nmod_param) = par;
+
       }
       return 0;
     }
@@ -3173,7 +3188,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   }
 
   normalize_nmod_param(nmod_params[0]);
-
 
   if(info_level){
     fprintf(stderr, "\nStarts trace based multi-modular computations\n");
@@ -4907,7 +4921,7 @@ void display_output(int b, int dim, int dquot,
         /* } */
         mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp, param);
       }
-      if(get_param <= 1){
+      if(get_param <= 1 && gens->field_char == 0){
         if(get_param){
           fprintf(ofile, ",");
         }
@@ -4919,14 +4933,14 @@ void display_output(int b, int dim, int dquot,
     }
     else{
       fprintf(stdout, "[0, ");
-      if (get_param >= 1  || gens->field_char) {
+      if (get_param >= 1  || gens->field_char == 0) {
         /* if(gens->field_char){ */
         /*   display_fglm_param_maple(stdout, param); */
         /*   return; */
         /* } */
         mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp, param);
       }
-      if(get_param <= 1){
+      if(get_param <= 1 && gens->field_char == 0){
         if(get_param){
           fprintf(stdout, ",");
         }
@@ -5122,6 +5136,7 @@ restart:
 
           int dim = - 2;
           long dquot = -1;
+
           b = real_msolve_qq(*mpz_paramp,
                              &param,
                              &dim,
@@ -5145,27 +5160,27 @@ restart:
                         info_level);
 
 
-          if (b == 0 && gens->field_char > 0) {
-            if(dim == 0){
-              if(files->out_file != NULL){
-                FILE *ofile = fopen(files->out_file, "a");
-                if(dquot == 0){
-                  fprintf(ofile, "[-1]:\n");
-                  return 0;
-                }
-                display_fglm_param_maple(ofile, param);
-                fclose(ofile);
-              }
-              else{
-                if(dquot == 0){
-                  fprintf(stdout, "[-1]:\n");
-                  return 0;
-                }
-                display_fglm_param_maple(stdout, param);
-              }
-              return 0;
-            }
-          }
+          /* if (b == 0 && gens->field_char > 0) { */
+          /*   if(dim == 0){ */
+          /*     if(files->out_file != NULL){ */
+          /*       FILE *ofile = fopen(files->out_file, "a"); */
+          /*       if(dquot == 0){ */
+          /*         fprintf(ofile, "[-1]:\n"); */
+          /*         return 0; */
+          /*       } */
+          /*       display_fglm_param_maple(ofile, param); */
+          /*       fclose(ofile); */
+          /*     } */
+          /*     else{ */
+          /*       if(dquot == 0){ */
+          /*         fprintf(stdout, "[-1]:\n"); */
+          /*         return 0; */
+          /*       } */
+          /*       display_fglm_param_maple(stdout, param); */
+          /*     } */
+          /*     return 0; */
+          /*   } */
+          /* } */
           if (b == 1) {
             free(bld);
             bld = NULL;

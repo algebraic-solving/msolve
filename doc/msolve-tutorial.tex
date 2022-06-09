@@ -363,6 +363,9 @@ zero. Finally, \cref{sec:flags} summarizes some options which can be used ration
 parametrizations of solutions to polynomial systems which have dimension at most 
 zero. Finally, \cref{sec:flags} summarizes some options which can be used. 
 
+The \msolve library is described in \cite{msolve} with implementation details on 
+the algorithms used therein. 
+
 \section{Input file format}\label{sec:input}
 
 \msolve allows you to solve polynomial systems either with coefficients
@@ -670,12 +673,12 @@ z1^2-z2^2
 the command
 \begin{tcolorbox}
 \begin{verbatim}
-./msolve -f in.ms
+./msolve -P 2 -f in.ms
 \end{verbatim}
 \end{tcolorbox}
 \msolve outputs
 \begin{verbatim}
- [0, [0, nvars, nbsols, vars, form, [1,[lw, lwp, param]]]]
+ [0, [0, nvars, nbsols, vars, form, [1,[lw, lwp, param]]]]:
 \end{verbatim}
 where
 \begin{itemize}
@@ -714,19 +717,20 @@ where {\tt A} is a new variable.
 
     The first one corresponds to the first variable in \verb+vars+, the 
     second parametrization corresponds to the second variable in \verb+vars+ 
-    and so on.
+    and so on. Hence, the variable which is used to parametrize the solution 
+    set is always the last one.
 \end{itemize}
-We illustrate now how the output looks like on input file
+We illustrate now how the output looks like on input file \verb+in.ms+
 \begin{tcolorbox}
 \begin{verbatim}
 z1, z2, z3
 0
-z1^2-z2^2+z3^2-1,
-z1*z2+2*z2*z3+3*z3*z1-2,
-z1+2*z2+3*z3-3
+z1^2-z2^2+z3^2-4,
+z1*z2+2*z2*z3-3*z3*z1-1,
+z1+2*z2+3*z3-1
 \end{verbatim}
 \end{tcolorbox}
-The output is 
+Using \verb+./msolve -P 2 -f in.ms+ The output is 
 \begin{tcolorbox}
 \begin{verbatim}
 [0, [0, 
@@ -735,12 +739,12 @@ The output is
 ['z1', 'z2', 'z3'],
 [0, 0, 1],
 [1,
-[[4, [100, -510, 907, -624, 163]],
-[3, [-510, 1814, -1872, 652]],
+[[4, [-116, -210, 1484, -344, 53]],
+[3, [-210, 2968, -1032, 212]],
 [
-[[3, [530, -1896, 1846, -432]],
+[[3, [1894, 162, -1636, 192]],
 1],
-[[3, [-100, 522, -836, 174]],
+[[3, [-146, -620, -3118, 314]],
 1]
 ]]]]]:
 \end{verbatim}
@@ -750,9 +754,61 @@ On this example, all variables are parametrized by the variable \verb+z3+.
 The polynomial $w$ is $100-510z_3 + 907z_3^2 -624z_3^3+ 163z_3^4$. 
 The polynomials $v_1$ and $v_2$ are respectively 
 \[
-    v_1 = 530-1896 z_3 + 1846 z_3^2 -432 z_3^3 \quad \text{ and } 
-    \quad v_2 = -100+ 522 z_3 -836 z_3^2+ 174 z_3^3.
+    v_1 = 1894 + 162 z_3 -1636 z_3^2+ 192 z_3^3 \quad \text{ and } 
+    \quad v_2 = -146 -620 z_3 -3118 z_3^2+ 314 z_3^3.
 \]
+
+Note that we can get both the parametrization and the real roots. Using 
+\verb+./msolve -P 1 -f in.ms+ one obtains
+
+\begin{verbatim}
+[0, [0, 
+3, 
+4, 
+['z1', 'z2', 'z3'],
+[0, 0, 1],
+[1,
+[[4, [-116, -210, 1484, -344, 53]],
+[3, [-210, 2968, -1032, 212]],
+[
+[[3, [1894, 162, -1636, 192]],
+1],
+[[3, [-146, -620, -3118, 314]],
+1]
+]]]],[1,
+[[[589264465040874410081 / 2^68, 589264465040874410090 / 2^68], [-52505887472883547753 / 2^68, -52505887472883547749 / 2^68], [-63034928305251496244 / 2^68, -63034928305251496243 / 2^68]], [[-1312605070920472138202 / 2^69, -1312605070920472138192 / 2^69], [615798372420437543070 / 2^69, 615798372420437543079 / 2^69], [223768045479434234588 / 2^69, 223768045479434234589 / 2^69]]]
+]]:
+\end{verbatim}
+
+We end this section with the same example as above but seeing the coefficients in 
+\(\Z/65521\Z\).
+\begin{verbatim}
+z1, z2, z3
+65521
+z1^2-z2^2+z3^2-4,
+z1*z2+2*z2*z3-3*z3*z1-1,
+z1+2*z2+3*z3-1
+\end{verbatim}
+The call \verb+./msolve -P 2 -f in.ms+ then outputs
+\begin{verbatim}
+[0, [65521, 
+3, 
+4, 
+['z1', 'z2', 'z3'],
+[0, 0, 1],
+[1,
+[[4,
+[16069, 9886, 28, 2466, 1]],
+[0,
+[1]],
+[
+[[3,
+[6276, 37054, 57744, 4959]]],
+[[3,
+[29622, 14235, 36649, 30281]]]
+]]]]]:
+\end{verbatim}
+
 
 % \section{Preliminaries}
 
@@ -1007,6 +1063,7 @@ You can get a full list of options for \texttt{msolve()} in Julia by typing
 inside Julia\\[1em]
 \texttt{? msolve()}
 \section{Maple interface to \msolve}
+
 The Maple interface to \msolve is a file interface which can be found on the
 \msolve homepage or in the \msolve binary package. Having loaded the interface
 one can call the function
@@ -1022,26 +1079,38 @@ You may consult the source code for optional arguments which allow you to better
 control the output format, the names of used files, verbosity, etc.
 
 \section{Sage interface to \msolve}
-The Sage interface to \msolve can be found on the \msolve homepage or in the
-\msolve binary package. Starting
-Sage we load the interface:\\[1em]
-\texttt{load(“msolve-to-sage-file-interface.sage”)}.\\[1em]
-Defining a multivariate polynomial ring \texttt{R} and a list \texttt{F} of
-polynomials in \texttt{R} one can solve the multivariate polynomial system
-defined by \texttt{F} via calling\\[1em]
-\texttt{results = MSolveRealRoots(}\\
-\texttt{F, mspath=“/path/to/msolve/binary”,
-v=verbosity, p=get\_parametrization)}\\[1em]
-Parameter \texttt{mspath} states the path to the msolve binary (default is
-\texttt{“../binary/msolve”}).
-The verbosity level can be set to \texttt{0} (no information printing; default),
-\texttt{1} (slight information printing on computational status) or \texttt{2}
-(full information printing also on intermediate steps).
-The \texttt{p} parameter can be set to \texttt{0} (rational parametrization of
-solution set is not returned) or \texttt{1} (returns also the rational
-parametrization of the solution set). Depending on parameter \texttt{p}
-\texttt{results} consists only of the solutions or it is an array consisting of
-the rational parametrization as first entry and the solutions as second entry.
+
+There is now an interface between \href{https://www.sagemath.org/}{SageMath} 
+and \msolve. 
+
+You can have a look at 
+\url{https://github.com/sagemath/sage/blob/develop/src/sage/rings/polynomial/msolve.py}
+and 
+\url{https://github.com/sagemath/sage/blob/develop/src/sage/rings/polynomial/multi_polynomial_ideal.py}
+
+\hfill Many thanks to the SageMath development team
+
+%The Sage interface to \msolve can be found on the \msolve homepage or in the
+%\msolve binary package. Starting
+%Sage we load the interface:\\[1em]
+%\texttt{load(“msolve-to-sage-file-interface.sage”)}.\\[1em]
+%Defining a multivariate polynomial ring \texttt{R} and a list \texttt{F} of
+%polynomials in \texttt{R} one can solve the multivariate polynomial system
+%defined by \texttt{F} via calling\\[1em]
+%\texttt{results = MSolveRealRoots(}\\
+%\texttt{F, mspath=“/path/to/msolve/binary”,
+%v=verbosity, p=get\_parametrization)}\\[1em]
+%Parameter \texttt{mspath} states the path to the msolve binary (default is
+%\texttt{“../binary/msolve”}).
+%The verbosity level can be set to \texttt{0} (no information printing; default),
+%\texttt{1} (slight information printing on computational status) or \texttt{2}
+%(full information printing also on intermediate steps).
+%The \texttt{p} parameter can be set to \texttt{0} (rational parametrization of
+%solution set is not returned) or \texttt{1} (returns also the rational
+%parametrization of the solution set). Depending on parameter \texttt{p}
+%\texttt{results} consists only of the solutions or it is an array consisting of
+%the rational parametrization as first entry and the solutions as second entry.
+
 \section{Credits}
 
 The main developers of \msolve~are J\'er\'emy Berthomieu, Christian Eder and
@@ -1052,6 +1121,23 @@ García Fontán for a
 preliminary version of the Maple interface as well as Rémi Prébet for a
 preliminary version of the Sage interface.  
 
+If you use \msolve, you may cite:
+\begin{verbatim}
+@inproceedings{msolve,
+  TITLE = {{msolve: A Library for Solving Polynomial Systems}},
+  AUTHOR = {Berthomieu, J{\'e}r{\'e}my and Eder, Christian and {Safey El Din}, Mohab},
+  URL = {https://hal.sorbonne-universite.fr/hal-03191666},
+  BOOKTITLE = {{2021 International Symposium on Symbolic and Algebraic Computation}},
+  ADDRESS = {Saint Petersburg, Russia},
+  SERIES = {46th International Symposium on Symbolic and Algebraic Computation},
+  YEAR = {2021},
+  MONTH = Jul,
+  DOI = {10.1145/3452143.3465545},
+  PDF = {https://hal.sorbonne-universite.fr/hal-03191666v2/file/main.pdf},
+  HAL_ID = {hal-03191666},
+  HAL_VERSION = {v2},
+}
+\end{verbatim}
 \renewcommand*{\bibfont}{\small}
   \printbibliography
 \end{document}

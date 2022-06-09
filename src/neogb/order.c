@@ -21,7 +21,7 @@
 
 #include "data.h"
 
-/* 
+/*
  * IMPLEMENTATIONS OF ORDER FUNCTIONIONALITY INDEPENDENT
  * OF CHOSEN MONOMIAL ORDER
  *  */
@@ -212,7 +212,7 @@ static int spair_degree_cmp(
 
 
 
-/* 
+/*
  * IMPLEMENTATIONS FOR LEXICOGRAPHICAL ORDER
  *  */
 
@@ -353,7 +353,7 @@ static int spair_cmp_deglex(
 
 
 
-/* 
+/*
  * IMPLEMENTATIONS FOR DEGREE REVERSE LEXICOGRAPHICAL ORDER
  *  */
 
@@ -374,10 +374,10 @@ static int initial_input_cmp_drl(
 
     /* DRL */
     if (ea[DEG] < eb[DEG]) {
-        return -1;
+        return 1;
     } else {
         if (ea[DEG] != eb[DEG]) {
-            return 1;
+            return -1;
         }
     }
 
@@ -386,7 +386,7 @@ static int initial_input_cmp_drl(
     while (i > 1 && ea[i] == eb[i]) {
         --i;
     }
-    return eb[i] - ea[i];
+    return ea[i] - eb[i];
 }
 
 static int initial_gens_cmp_drl(
@@ -506,6 +506,29 @@ static int hcm_cmp_pivots_drl(
     return monomial_cmp_pivots_drl(ma, mb, ht);
 }
 
+static int spair_cmp_update(
+        const void *a,
+        const void *b,
+        void *htp)
+{
+    const spair_t *sa   =   ((spair_t *)a);
+    const spair_t *sb   =   ((spair_t *)b);
+    const ht_t *ht      =   (ht_t *)htp;
+    if (sa->lcm != sb->lcm) {
+        return (int)monomial_cmp(sa->lcm, sb->lcm, ht);
+    } else {
+        if (sa->deg != sb->deg) {
+            return (sa->deg < sb->deg) ? -1 : 1;
+        } else {
+            if (sa->gen1 != sb->gen1) {
+                return (sa->gen1 < sb->gen1) ? -1 : 1;
+            } else {
+                return 0;
+            }
+        }
+    }
+}
+
 static int spair_cmp_drl(
         const void *a,
         const void *b,
@@ -543,7 +566,7 @@ static int spair_cmp_drl(
 
 
 
-/* 
+/*
  * IMPLEMENTATIONS FOR BLOCK ELIMINATION ORDER:
  * 2 blocks, each block handled by the degree
  * reverse lexicographical order
@@ -797,3 +820,74 @@ static int spair_cmp_be(
     }
     return 0;
 }
+
+/*
+ * IMPLEMENTATIONS FOR SIGNATURE BASED ALGORITHMS
+ *  */
+static int initial_input_cmp_sig(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    len_t i;
+    ht_t *ht  = htp;
+
+    const hm_t ha  = ((hm_t **)a)[0][OFFSET];
+    const hm_t hb  = ((hm_t **)b)[0][OFFSET];
+
+    const exp_t * const ea  = ht->ev[ha];
+    const exp_t * const eb  = ht->ev[hb];
+
+    /* DRL */
+    if (ea[DEG] < eb[DEG]) {
+        return 1;
+    } else {
+        if (ea[DEG] != eb[DEG]) {
+            return -1;
+        }
+    }
+
+    /* note: reverse lexicographical */
+    i = ht->evl-1;
+    while (i > 1 && ea[i] == eb[i]) {
+        --i;
+    }
+    return ea[i] - eb[i];
+}
+
+static int matrix_row_cmp_by_increasing_signature(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    const ht_t *ht  = (ht_t *)htp;
+
+    hm_t sig_a, sig_b;
+    /* compare pivot resp. column index */
+    sig_a   = ((hm_t **)a)[0][SM_SMON];
+    sig_b   = ((hm_t **)b)[0][SM_SMON];
+
+    int diff = (int)monomial_cmp(sig_a, sig_b, ht);
+    if (diff != 0) {
+        return diff;
+    } else {
+        int sidx_a, sidx_b;
+        sidx_a  = (int)((hm_t **)a)[0][SM_SIDX];
+        sidx_b  = (int)((hm_t **)b)[0][SM_SIDX];
+
+        return sidx_a - sidx_b;
+    }
+}
+
+static inline void sort_matrix_rows_by_increasing_signature(
+        smat_t *smat,
+        void *htp
+        )
+{
+    hm_t **cols = smat->cols;
+    sort_r(cols, (unsigned long)smat->ld, sizeof(hm_t *),
+            &matrix_row_cmp_by_increasing_signature, htp);
+}
+

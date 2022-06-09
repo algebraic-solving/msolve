@@ -222,8 +222,7 @@ static void select_spairs_by_minimal_degree(
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_cmp, bht);
     /* get minimal degree */
-    /* md  = bht->hd[ps[0].lcm].deg; */
-    md    = ps[0].deg;
+    md  = ps[0].deg;
 
     /* select pairs of this degree respecting maximal selection size mnsel */
 #if 0
@@ -237,7 +236,7 @@ static void select_spairs_by_minimal_degree(
             degtest = ps[i].deg;
             pctr = 0;
         }
-        printf("deg %d --> ", ps[i].deg);
+        printf("%d --> deg %d --> [%u,%u]", i, ps[i].deg, ps[i].gen1, ps[i].gen2);
         for (int jj = 0; jj < evl; ++jj) {
             printf("%d ", bht->ev[ps[i].lcm][jj]);
         }
@@ -248,12 +247,11 @@ static void select_spairs_by_minimal_degree(
 #endif
     for (i = 0; i < psl->ld; ++i) {
         if (ps[i].deg > md) {
-        /* if (bht->hd[ps[i].lcm].deg > bht->hd[ps[0].lcm].deg )  { */
-        /* if (ps[i].deg > md || bht->ev[ps[i].lcm][0] > edeg) { */
             break;
         }
     }
     npd  = i;
+    /* printf("npd %d\n", npd); */
     /* sort_r(ps, (unsigned long)npd, sizeof(spair_t), spair_cmp, bht); */
     /* now do maximal selection if it applies */
     
@@ -344,11 +342,6 @@ static void select_spairs_by_minimal_degree(
              * row in the matrix, thus we have to reset elcm inside the for loop */
             elcm  = bht->ev[lcm];
             if (elcm[0] > 0) {
-                /* printf("pair with lcm ");
-                 * for (int ii = 0; ii < nv; ++ii) {
-                 *     printf("%u ", elcm[ii]);
-                 * }
-                 * printf("\n"); */
             }
             b     = bs->hm[prev];
             eb    = bht->ev[b[OFFSET]];
@@ -522,27 +515,12 @@ start:
         const exp_t * const f = evb[b[OFFSET]];
         for (k=0; k < evl; ++k) {
             etmp[k] = (exp_t)(e[k]-f[k]);
-            /* printf("etmp[%u] = %d\n", k, etmp[k]); */
             if (etmp[k] < 0) {
                 i++;
                 goto start;
             }
         }
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
-        /* printf("reducer found %u | %u --> ", lmps[i], b[LENGTH]);
-         * printf("boffset %u\n", b[OFFSET]);
-         * for (int ii = 0; ii < bht->evl; ++ii) {
-         *     printf("%d ", e[ii]);
-         * }
-         * printf("\n");
-         * for (int ii = 0; ii < bht->evl; ++ii) {
-         *     printf("%d ", f[ii]);
-         * }
-         * printf("\n");
-         * for (int ii = 0; ii < bht->evl; ++ii) {
-         *     printf("%d ", etmp[ii]);
-         * }
-         * printf("\n"); */
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
         if (tht != NULL) {

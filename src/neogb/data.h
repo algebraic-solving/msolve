@@ -58,6 +58,15 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 #define DEG     OFFSET-6  /* the first entry in each exponent vector
                            * stores the total degree of the polynomial */
 
+/* there is a different prelude with meta data for signature based matrices */
+#define SM_OFFSET  5          /* real data starts at SIGOFFSET for signature
+                                 * based comptutations */
+#define SM_LEN   SM_OFFSET-1  /* basis index of element (for tracing) */
+#define SM_PRE   SM_OFFSET-2  /* basis index of element (for tracing) */
+#define SM_CFS   SM_OFFSET-3  /* basis index of element (for tracing) */
+#define SM_SIDX  SM_OFFSET-4  /* basis index of element (for tracing) */
+#define SM_SMON  SM_OFFSET-5  /* basis index of element (for tracing) */
+
 /* computational data */
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */
 typedef uint16_t cf16_t; /* coefficient type finite field (16 bit) */
@@ -152,6 +161,17 @@ struct ps_t
     spair_t *p;
 };
 
+/* signature criteria structure,
+ * at the moment we only store the lead terms (i e. signatures) */
+typedef struct crit_t crit_t;
+struct crit_t
+{
+    sdm_t *sdm;
+    hm_t *hm;
+    len_t ld;
+    len_t sz;
+};
+
 /* basis stuff */
 typedef struct bs_t bs_t;
 struct bs_t
@@ -205,6 +225,20 @@ struct mat_t
     len_t ncl;          /* number of left columns (in ABCD splicing) */
     len_t ncr;          /* number of right columns (in ABCD splicing) */
     len_t rbal;         /* length of reducer binary array */
+};
+
+/* signature matrix stuff */
+typedef struct smat_t smat_t;
+struct smat_t
+{
+    hm_t **cols;        // monomial resp. column data of polynomials
+    cf32_t **curr_cf32; // coefficients of currently reduced rows
+    cf32_t **prev_cf32; // coefficients from previous degree matrix
+    cf32_t **bs_cf32;   // coefficients after full reduction for polynomials
+                        // added to Groebner basis
+    len_t sz;           // number of rows memory is allocated for
+    len_t ld;           // number of rows stored
+    len_t nc;
 };
 
 /* tracer stuff */

@@ -182,7 +182,6 @@ static void print_msolve_polynomials_ff(
     const len_t nv  = ht->nv;
     const len_t ebl = ht->ebl;
     const len_t evl = ht->evl;
-    const len_t off = st->nev > 0 ? 2 : 1;
 
     /* state context if full basis is printed */
     if (from == 0 && to == bs->lml) {
@@ -202,6 +201,20 @@ static void print_msolve_polynomials_ff(
     }
 
 
+    int *evi    =   (int *)malloc((unsigned long)ht->nv * sizeof(int));
+    if (ebl == 0) {
+        for (i = 1; i < evl; ++i) {
+            evi[i-1]    =   i;
+        }
+    } else {
+        for (i = 1; i < ebl; ++i) {
+            evi[i-1]    =   i;
+        }
+        for (i = ebl+1; i < evl; ++i) {
+            evi[i-2]    =   i;
+        }
+    }
+
     if (lead_ideal_only != 0) {
         int ctr = 0;
         fprintf(file, "[");
@@ -213,17 +226,17 @@ static void print_msolve_polynomials_ff(
                 hm  = bs->hm[idx]+OFFSET;
                 len = bs->hm[idx][LENGTH];
                 ctr = 0;
-                k = ebl+1;
-                while (ctr == 0 && k < evl) {
-                    if (ht->ev[hm[0]][k] > 0) {
-                        fprintf(file, "%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
+                k = 0;
+                while (ctr == 0 && k < nv) {
+                    if (ht->ev[hm[0]][evi[k]] > 0) {
+                        fprintf(file, "%s^%u",vnames[k], ht->ev[hm[0]][evi[k]]);
                         ctr++;
                     }
                     k++;
                 }
-                for (;k < evl; ++k) {
-                    if (ht->ev[hm[0]][k] > 0) {
-                        fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
+                for (;k < nv; ++k) {
+                    if (ht->ev[hm[0]][evi[k]] > 0) {
+                        fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[0]][evi[k]]);
                     }
                 }
                 if (i < to-1) {
@@ -253,28 +266,28 @@ static void print_msolve_polynomials_ff(
                         fprintf(file, "%u", bs->cf_32[bs->hm[idx][COEFFS]][0]);
                         break;
                 }
-                for (k = ebl+1; k < evl; ++k) {
-                    if (ht->ev[hm[0]][k] > 0) {
-                        fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[0]][k]);
+                for (k = 0; k < nv; ++k) {
+                    if (ht->ev[hm[0]][evi[k]] > 0) {
+                        fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[0]][evi[k]]);
                     }
                 }
                 for (j = 1; j < len; ++j) {
-		     switch (st->ff_bits) {
-		     case 8:
-		         fprintf(file, "+%u", bs->cf_8[bs->hm[idx][COEFFS]][j]);
-			 break;
-		     case 16:
-		         fprintf(file, "+%u", bs->cf_16[bs->hm[idx][COEFFS]][j]);
-			 break;
-		     case 32:
-		         fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
-			 break;
-		     }
-		     for (k = ebl+1; k < evl; ++k) {
-		         if (ht->ev[hm[j]][k] > 0) {
-			     fprintf(file, "*%s^%u",vnames[k-off], ht->ev[hm[j]][k]);
-			 }
-		     }
+										switch (st->ff_bits) {
+												case 8:
+                            fprintf(file, "+%u", bs->cf_8[bs->hm[idx][COEFFS]][j]);
+														break;
+												case 16:
+                            fprintf(file, "+%u", bs->cf_16[bs->hm[idx][COEFFS]][j]);
+														break;
+												case 32:
+                            fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
+														break;
+										}
+                    for (k = 0; k < nv; ++k) {
+                        if (ht->ev[hm[j]][evi[k]] > 0) {
+                            fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[j]][evi[k]]);
+                        }
+                    }
                 }
                 if (i < to-1) {
                     fprintf(file, ",\n");
@@ -284,6 +297,7 @@ static void print_msolve_polynomials_ff(
             }
         }
     }
+    free(evi);
 }
 
 static void print_ff_basis_data(

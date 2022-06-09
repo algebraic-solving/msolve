@@ -92,7 +92,6 @@ static int is_already_saturated(
         hi_t **hcmp,
         ht_t **bhtp,
         ht_t **shtp,
-        ht_t **uhtp,
         stat_t *st
         )
 {
@@ -105,7 +104,6 @@ static int is_already_saturated(
     hi_t *hcm = *hcmp;
     ht_t *bht = *bhtp;
     ht_t *sht = *shtp;
-    ht_t *uht = *uhtp;
 
     /* add phi to basis and generate pairs with phi */
     check_enlarge_basis(bs, 1, st);
@@ -139,7 +137,7 @@ static int is_already_saturated(
     hm[COEFFS]        = bs->ld;
     bs->hm[bs->ld]    = hm;
 
-    update_basis(ps, bs, bht, uht, st, 1, 1);
+    update_basis_f4(ps, bs, bht, st, 1, 1);
     
     /* suppress infolevel printing in the test step */
     int32_t infolevel = st->info_level;
@@ -158,14 +156,14 @@ static int is_already_saturated(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
         clear_matrix(mat); // does not reset mat->np
         clean_hash_table(sht);
 
-        update_basis(ps, bs, bht, uht, st, mat->np, 1);
+        update_basis_f4(ps, bs, bht, st, mat->np, 1);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         if (bs->constant  == 1) {
@@ -206,7 +204,6 @@ static int is_already_saturated(
     *hcmp = hcm;
     *bhtp = bht;
     *shtp = sht;
-    *uhtp = uht;
 
     if (is_constant == 1) {
         printf("yes.");
@@ -529,7 +526,6 @@ int core_f4sat(
     double rrt0, rrt1;
 
     /* initialize update hash table, symbolic hash table */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* hashes-to-columns map, initialized with length 1, is reallocated
@@ -553,7 +549,7 @@ int core_f4sat(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -582,7 +578,7 @@ end_sat_step:
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
             sat_test++;
         }
         clean_hash_table(sht);
@@ -597,7 +593,7 @@ end_sat_step:
         clear_matrix(mat);
 
         /* check redundancy only if input is not homogeneous */
-        update_basis(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -620,7 +616,7 @@ end_sat_step:
                     ps->ld == 0 &&
                     is_zero_dimensional(bs, bht) &&
                     is_already_saturated(
-                        bs, sat, mat, &hcm, &bht, &sht, &uht, st)) {
+                        bs, sat, mat, &hcm, &bht, &sht, st)) {
                 /* sat_done  = 1; */
                 goto end_sat_step;
             }
@@ -679,7 +675,7 @@ end_sat_step:
                         st->nr_kernel_elts  +=  kernel->ld;
                         sat_test  = 0;
                         free_kernel_coefficients(kernel);
-                        update_basis(ps, bs, bht, uht, st, mat->np, 1);
+                        update_basis_f4(ps, bs, bht, st, mat->np, 1);
                         kernel->ld  = 0;
                         if (st->info_level > 1) {
                             printf("   ");
@@ -725,6 +721,14 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -769,9 +773,6 @@ end_sat_step:
     free(mat);
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);

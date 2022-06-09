@@ -112,9 +112,10 @@ static inline void mpz_param_clear(mpz_param_t param){
 }
 
 static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
-        const long dquot, mpz_param_t param){
+                                     const long dquot, mpz_param_t param,
+                                     param_t *mod_param){
   fprintf(file, "[");
-  fprintf(file, "0, \n"); //dimension of input ideal
+  fprintf(file, "%d, \n", gens->field_char); /* field charac */
   fprintf(file, "%ld, \n", param->nvars); //nvars
   fprintf(file, "%ld, \n", dquot); //dim quotient
   /* Print all variables:
@@ -143,36 +144,72 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
       }
       fprintf(file, "%d", (int32_t)(1));
     }
+    else{
+      for (int i = 0; i < param->nvars-1; ++i) {
+        fprintf(file, "%d, ", (int32_t)(0));
+      }
+      fprintf(file, "%d", (int32_t)(1));
+    }
   }
   fprintf(file, "],\n");
-  fprintf(file, "[1,"); /*at the moment, a single param is returned */
-  mpz_upoly_out_str(file, param->elim); //elim. poly
+  fprintf(file, "[1,\n["); /*at the moment, a single param is returned */
+  if(gens->field_char){
+    display_nmod_poly(file, mod_param->elim);
+  }
+  else{
+    mpz_upoly_out_str(file, param->elim); //elim. poly
+  }
   fprintf(file, ",\n");
+  if(gens->field_char){
+    display_nmod_poly(file, mod_param->denom);
+  }
+  else{
   mpz_upoly_out_str(file, param->denom); //denom. poly
+  }
   fprintf(file, ",\n");
   fprintf(file, "[\n");
-  if(param->coords != NULL){
-    for(int i = 0; i < param->nvars - 1; i++){
-      fprintf(file, "[");
-      mpz_upoly_out_str(file, param->coords[i]); //param. polys
-      fprintf(file, ",\n");
-      mpz_out_str(file, 10, param->cfs[i]);
-      if(i==param->nvars-2){
-        fprintf(file, "]\n");
+  if(gens->field_char){/* positive characteristic */
+    if(mod_param->coords != NULL){
+      for(int i = 0; i < mod_param->nvars - 1; i++){
+        fprintf(file, "[");
+        if(gens->field_char){
+          display_nmod_poly(file, mod_param->coords[i]);
+        }
+        if(i == mod_param->nvars - 2){
+          fprintf(file, "]\n");
+        }
+        else{
+          fprintf(file, "],\n");
+        }
       }
-      else{
-        fprintf(file, "],\n");
+    }
+  }
+  else{
+    if(param->coords != NULL){
+      for(int i = 0; i < param->nvars - 1; i++){
+        fprintf(file, "[");
+        mpz_upoly_out_str(file, param->coords[i]); //param. polys
+        fprintf(file, ",\n");
+        mpz_out_str(file, 10, param->cfs[i]);
+        if(i==param->nvars-2){
+          fprintf(file, "]\n");
+        }
+        else{
+          fprintf(file, "],\n");
+        }
       }
     }
   }
   /* fprintf(file, "]"); */
   fprintf(file, "]");
-  fprintf(file, "]");
+  fprintf(file, "]]");
+
 }
 
 static inline void mpz_param_out_str_maple(FILE *file,
-        const data_gens_ff_t *gens,const long dquot, mpz_param_t param){
-  mpz_param_out_str(file, gens, dquot, param);
+        const data_gens_ff_t *gens,const long dquot,
+                                           mpz_param_t param, param_t *mod_param){
+  mpz_param_out_str(file, gens, dquot, param, mod_param);
   fprintf(file, "]");
 }
 
@@ -591,7 +628,10 @@ static int add_random_linear_form_to_input_system(
     if (gens->field_char > 0) {
       int j = 0;
       for (i = len_old; i < len_new; ++i) {
-        gens->random_linear_form[j] = ((int16_t)(rand()) % gens->field_char);
+        gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+        while(gens->random_linear_form[j] == 0){
+            gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+       }
         gens->cfs[i]  = gens->random_linear_form[j];
         k++;
         j++;
@@ -599,10 +639,12 @@ static int add_random_linear_form_to_input_system(
     }
     else {
       int j = 0;
-
       for (i = 2*len_old; i < 2*len_new; i += 2) {
-        gens->random_linear_form[j] = ((int16_t)(rand()));
-        mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
+        gens->random_linear_form[j] = ((int8_t)(rand()));
+        while(gens->random_linear_form[j] == 0){
+            gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+       }
+       mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
         k++;
         j++;
       }
@@ -3094,10 +3136,11 @@ int msolve_trace_qq(mpz_param_t mpz_param,
         param_t *par = allocate_fglm_param(gens->field_char, st->nvars);
         nmod_poly_set(par->elim, nmod_params[0]->elim);
         nmod_poly_set(par->denom, nmod_params[0]->denom);
-        for(long j = 0; j < st->nvars - 2; j++){
+        for(long j = 0; j <= st->nvars - 2; j++){
           nmod_poly_set(par->coords[j], nmod_params[0]->coords[j]);
         }
         (*nmod_param) = par;
+
       }
       return 0;
     }
@@ -3143,7 +3186,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   }
 
   normalize_nmod_param(nmod_params[0]);
-
 
   if(info_level){
     fprintf(stderr, "\nStarts trace based multi-modular computations\n");
@@ -4871,13 +4913,13 @@ void display_output(int b, int dim, int dquot,
       FILE *ofile = fopen(files->out_file, "a+");
       fprintf(ofile, "[0, ");
       if (get_param >= 1 || gens->field_char) {
-        if(gens->field_char){
-          display_fglm_param_maple(ofile, param);
-          return;
-        }
-        mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp);
+        /* if(gens->field_char){ */
+        /*   display_fglm_param_maple(ofile, param); */
+        /*   return; */
+        /* } */
+        mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp, param);
       }
-      if(get_param <= 1){
+      if(get_param <= 1 && gens->field_char == 0){
         if(get_param){
           fprintf(ofile, ",");
         }
@@ -4889,14 +4931,14 @@ void display_output(int b, int dim, int dquot,
     }
     else{
       fprintf(stdout, "[0, ");
-      if (get_param >= 1  || gens->field_char) {
-        if(gens->field_char){
-          display_fglm_param_maple(stdout, param);
-          return;
-        }
-        mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp);
+      if (get_param >= 1  || gens->field_char == 0) {
+        /* if(gens->field_char){ */
+        /*   display_fglm_param_maple(stdout, param); */
+        /*   return; */
+        /* } */
+        mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp, param);
       }
-      if(get_param <= 1){
+      if(get_param <= 1 && gens->field_char == 0){
         if(get_param){
           fprintf(stdout, ",");
         }
@@ -5288,27 +5330,27 @@ restart:
                         info_level);
 
 
-          if (b == 0 && gens->field_char > 0) {
-            if(dim == 0){
-              if(files->out_file != NULL){
-                FILE *ofile = fopen(files->out_file, "a");
-                if(dquot == 0){
-                  fprintf(ofile, "[-1]:\n");
-                  return 0;
-                }
-                display_fglm_param_maple(ofile, param);
-                fclose(ofile);
-              }
-              else{
-                if(dquot == 0){
-                  fprintf(stdout, "[-1]:\n");
-                  return 0;
-                }
-                display_fglm_param_maple(stdout, param);
-              }
-              return 0;
-            }
-          }
+          /* if (b == 0 && gens->field_char > 0) { */
+          /*   if(dim == 0){ */
+          /*     if(files->out_file != NULL){ */
+          /*       FILE *ofile = fopen(files->out_file, "a"); */
+          /*       if(dquot == 0){ */
+          /*         fprintf(ofile, "[-1]:\n"); */
+          /*         return 0; */
+          /*       } */
+          /*       display_fglm_param_maple(ofile, param); */
+          /*       fclose(ofile); */
+          /*     } */
+          /*     else{ */
+          /*       if(dquot == 0){ */
+          /*         fprintf(stdout, "[-1]:\n"); */
+          /*         return 0; */
+          /*       } */
+          /*       display_fglm_param_maple(stdout, param); */
+          /*     } */
+          /*     return 0; */
+          /*   } */
+          /* } */
           if (b == 1) {
             free(bld);
             bld = NULL;
@@ -5350,7 +5392,9 @@ restart:
             free(param);
             param = NULL;
             round++;
-            undo_variable_order_change(gens);
+            if(gens->change_var_order >= 0){
+              undo_variable_order_change(gens);
+            }
             if (add_random_linear_form_to_input_system(gens, info_level)) {
               goto restart;
             }
@@ -5978,7 +6022,11 @@ restart:
                 free(param);
                 param = NULL;
                 round++;
-                undo_variable_order_change(gens);
+                fprintf(stderr, "TEST TEST\n");
+                if(gens->change_var_order >= 0){
+                  fprintf(stderr, "ICI\n\n");
+                  undo_variable_order_change(gens);
+                }
                 if (add_random_linear_form_to_input_system(gens, info_level)) {
                     goto restart;
                 }
@@ -6063,6 +6111,11 @@ static void export_julia_rational_parametrization_qq(
         }
         *lens = len;
         *cfs  = (void *)cf;
+
+        /* if there are no real solutions return the parametrization at least */
+        if (nb_real_roots <= 0) {
+            return;
+        }
 
         const long nb_real_roots_intervall  = 2 * nb_real_roots;
 
@@ -6202,7 +6255,7 @@ void msolve_julia(
 
     *rp_dim =   mpz_param->dim;
 
-    if (mpz_param->dim != -1 && nb_real_roots > 0) {
+    if (mpz_param->dim != -1) {
         export_julia_rational_parametrization_qq(
                 mallocp, rp_ld, rp_dim, rp_dquot, rp_lens,
                 rp_cfs, real_sols_num, real_sols_den,

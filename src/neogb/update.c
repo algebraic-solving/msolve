@@ -153,7 +153,6 @@ static void insert_and_update_spairs(
     /* sort new pairs by increasing lcm, earlier polys coming first */
     sort_r(pp, (unsigned long)bl, sizeof(spair_t), new_spair_cmp, bht);
 
-
     /* Gebauer-Moeller: remove real multiples of new spairs */
     for (i = pl; i < nl; ++i) {
         if (ps[i].deg < 0) {
@@ -187,7 +186,7 @@ static void insert_and_update_spairs(
         } else { 
             for (j = i-1; j >= pl; --j) {
                 /* printf("i %d | j %d | pl %d\n", i, j, pl); */
-                if (ps[i].lcm == ps[j].lcm) {
+                if (ps[j].deg != -1 && ps[i].lcm == ps[j].lcm) {
                     ps[i].deg   =   -1;
                     break;
                 }
@@ -211,11 +210,11 @@ static void insert_and_update_spairs(
     const bl_t lml          = bs->lml;
     const bl_t * const lmps = bs->lmps;
 
+    /* mark redundant elements in basis */
     if (bs->mltdeg > ndeg) {
-        /* mark redundant elements in basis */
         for (i = 0; i < lml; ++i) {
             if (bs->red[lmps[i]] == 0
-                && check_monomial_division(bs->hm[lmps[i]][OFFSET], nch, bht)) {
+                    && check_monomial_division(bs->hm[lmps[i]][OFFSET], nch, bht)) {
                 bs->red[lmps[i]]  = 1;
                 st->num_redundant++;
             }

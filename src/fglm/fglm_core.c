@@ -60,18 +60,19 @@ void display_nmod_poly(FILE *file, nmod_poly_t pol){
 
 
 void display_fglm_param(FILE * file, param_t *param){
-  fprintf(file, "%ld\n", param->charac);
-  fprintf(file, "%ld\n", param->nvars);
+  fprintf(file, "%ld,\n", param->charac);
+  fprintf(file, "%ld,\n", param->nvars);
 
   display_nmod_poly(file, param->elim);
-  fprintf(file, "\n");
+  fprintf(file, ",\n");
   display_nmod_poly(file, param->denom);
-  fprintf(file, "\n");
-
+  fprintf(file, ",\n");
+  fprintf(file, "[");
   for(int c = param->nvars-2; c >= 0; c--){
     display_nmod_poly(file, param->coords[c]);
     fprintf(file, "\n");
   }
+  fprintf(file, "]");
 }
 
 void display_fglm_param_maple(FILE * file, param_t *param){
@@ -83,7 +84,7 @@ void display_fglm_param_maple(FILE * file, param_t *param){
   display_nmod_poly(file, param->denom);
   fprintf(file, ", \n");
 
-  for(int c = param->nvars-2; c > 0; c--){
+  for(int c = param->nvars-2; c >= 0; c--){
     display_nmod_poly(file, param->coords[c]);
     fprintf(file, ", \n");
   }

@@ -554,35 +554,16 @@ static inline void copy_poly_in_matrixcol(sp_matfglmcol_t* matrix,
   fprintf(stderr, "\n");
 #endif
 
-  long N = nrows * (matrix->ncols) - (start + 1);
+  long i;
+  long N = nrows * matrix->ncols ;
+  long k = 0;
+  for(i = 0; i < matrix->ncols; i++){
 
-  if((end-start) == matrix->ncols + 1){
-    for(j = start + 1; j < end; j++){
-      matrix->dense_mat[N + j] = fc - bcf[(end + start) - j];
-    }
-  }
-  else{
-    if(is_equal_exponent((*bexp) + (start+1)*nv,
-                         lmb+((end-start-2)*nv),
-                         nv)){
-      for(j = start + 1; j < end; j++){
-        matrix->dense_mat[N + j] = fc - bcf[(end + start) - j];
-      }
-    }
-    else{
-      long i;
-
-      long N = nrows * matrix->ncols ;
-      long k = 0;
-      for(i = 0; i < matrix->ncols; i++){
-
-          if(is_equal_exponent((*bexp) + (end - 1 - k) * nv,
-                      lmb + i * nv,
-                      nv)){
-            matrix->dense_mat[N + i] = fc - bcf[end - 1 -  k];
-            k++;
-        }
-      }
+    if(is_equal_exponent((*bexp) + (end - 1 - k) * nv,
+			 lmb + i * nv,
+			 nv)){
+      matrix->dense_mat[N + i] = bcf[end - 1 -  k];
+      k++;
     }
   }
 }
@@ -993,8 +974,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 		    int32_t **blen, int32_t **bexp,
 		    int32_t *bcf,
 		    int32_t *bexp_lm,
+		    /*bs_t **tbr */
+		    ht_t *bht, stat_t *st,
+		    const exp_t * const mul, const bs_t * const bs,
 		    const int nv, const long fc,
-		    const long maxdeg){
+		    const long maxdeg,
+		    const data_gens_ff_t *gens){
   
 
   /* takes monomials in bexp_lm which are reducible by xn */
@@ -1073,6 +1058,44 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   
   printf ("Number of extra normal forms to compute %ld\n",count_not_lm);
+  /* Computation of the extra normal forms */
+  bs_t *tbr   = NULL;
+  /* 1 monomial each */
+  int32_t* lens=(int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
+  int32_t* exps = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm * nv));
+  int32_t* cfs = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
+  printf ("malloc nf\n");
+  for (long i = 0; i < count_not_lm;i++){
+    lens[i]=1;
+    cfs[i]=1;
+    long j= extranf[i];
+    for (long k = 0; k < nv; k++) {
+      exps[i*nv+k]=lmb[i*nv+k];
+    }
+  }
+  printf ("init nf\n");
+  tbr = initialize_basis(st);
+  tbr->ld = tbr->lml  =  count_not_lm;
+  printf ("init basis\n");
+  import_input_data_nf_ff_32(tbr, bht, st, 0, count_not_lm,
+			     lens, exps, (void *)cfs);
+  printf ("import\n");
+  for (int k = 0; k < 1; ++k) {
+    tbr->lmps[k]  = k; /* fix input element in tbr */
+  }
+  
+  /* compute normal form of last element in tbr */
+  int success = core_nf(&tbr, &bht, &st, mul, bs);
+  
+  if (!success) {
+    printf("Problem with normalform, stopped computation.\n");
+    exit(1);
+  }
+  print_msolve_polynomials_ff(stdout, count_not_lm, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
+
+
+  
   printf ("Number of zero normal forms %ld\n",count_zero);
   
   /* lengths of the polys which we need to build the matrix */
@@ -1195,6 +1218,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  copy_poly_in_matrixcol(matrix, nrows, bcf, bexp, blen,
 				 start_cf_gb_xn[count_lm2], len_gb_xn[count_lm2], lmb,
 				 nv, fc); //TODO
+	  nrows++;
 	  l_nf++;
 	
 	}
@@ -1240,7 +1264,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   free(len_gb_xn);
   free(start_cf_gb_xn);
   free(div_xn);
-
+  free(div_not_xn);
   return matrix;
 }
 

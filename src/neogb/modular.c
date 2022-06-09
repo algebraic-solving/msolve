@@ -157,7 +157,7 @@ void reduce_basis_no_hash_table_switching(
     interreduce_matrix_rows(mat, bs, st, 1);
     /* remap rows to basis elements (keeping their position in bs) */
     convert_sparse_matrix_rows_to_basis_elements(
-        mat, bs, bht, sht, hcm, st);
+        1, mat, bs, bht, sht, hcm, st);
 
     bs->ld  = mat->np;
 
@@ -280,7 +280,7 @@ bs_t *f4_trace_application_phase(
               goto stop;
           }
           convert_sparse_matrix_rows_to_basis_elements(
-                  mat, bs, bht, sht, hcm, st);
+                  -1, mat, bs, bht, sht, hcm, st);
           for (i = 0; i < mat->np; ++i) {
               if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
                   fprintf(stderr, "Wrong leading term for new element %u/%u.",
@@ -320,6 +320,7 @@ bs_t *f4_trace_application_phase(
     memcpy(bs->lm, trace->lm,
             (unsigned long)bs->lml * sizeof(sdm_t));
 
+#if 0
     /* eliminate variables if accessible */
     len_t j = 0;
     if (st->nev > 0) {
@@ -333,6 +334,7 @@ bs_t *f4_trace_application_phase(
         }
         bs->lml = j;
     }
+#endif
 
     /* reduce final basis */
     /* note: bht will become sht, and sht will become NULL,
@@ -479,7 +481,7 @@ bs_t *f4sat_trace_application_test_phase(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -601,6 +603,14 @@ bs_t *f4sat_trace_application_test_phase(
                 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -771,7 +781,7 @@ bs_t *f4sat_trace_application_phase(
                 goto stop;
             }
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
             for (i = 0; i < mat->np; ++i) {
                 if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
                     fprintf(stderr, "Wrong leading term for new element %u/%u.",
@@ -1040,7 +1050,7 @@ bs_t *f4_trace_learning_phase(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            mat, bs, bht, sht, hcm, st);
+            -1, mat, bs, bht, sht, hcm, st);
       }
       clean_hash_table(sht);
       /* add lead monomials to trace, stores hashes in basis hash
@@ -1071,6 +1081,14 @@ bs_t *f4_trace_learning_phase(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -1093,6 +1111,7 @@ bs_t *f4_trace_learning_phase(
     memcpy(trace->lm, bs->lm,
             (unsigned long)trace->lml * sizeof(sdm_t));
 
+#if 0
     /* eliminate variables if accessible */
     if (st->nev > 0) {
         j = 0;
@@ -1105,12 +1124,31 @@ bs_t *f4_trace_learning_phase(
         }
         bs->lml = j;
     }
+#endif
+    for (i = 0; i < bs->lml; ++i) {
+        printf("[%d] ", i);
+        for (j = 0; j < bht->evl; ++j) {
+            printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+        }
+        printf("\n");
+    }
+
+    printf("bs->lml %u\n ---- \n", bs->lml);
 
     /* reduce final basis */
     /* note: bht will become sht, and sht will become NULL,
      * thus we need pointers */
     reduce_basis_no_hash_table_switching(bs, mat, &hcm, bht, sht, st);
     /* get basis meta data */
+    for (i = 0; i < bs->lml; ++i) {
+        printf("[%d] ", i);
+        for (j = 0; j < bht->evl; ++j) {
+            printf("%d ", bht->ev[bs->hm[bs->lmps[i]][OFFSET]][j]);
+        }
+        printf("\n");
+    }
+
+    printf("bs->lml %u\n", bs->lml);
 
     st->size_basis  = bs->lml;
     for (i = 0; i < bs->lml; ++i) {
@@ -1265,7 +1303,7 @@ end_sat_step:
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
             sat_test++;
         }
         clean_hash_table(sht);
@@ -1412,6 +1450,14 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -1611,7 +1657,7 @@ bs_t *f4sat_trace_learning_phase_2(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, hcm, st);
             sat_test++;
         }
         clean_hash_table(sht);
@@ -1740,6 +1786,14 @@ bs_t *f4sat_trace_learning_phase_2(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -2049,7 +2103,7 @@ bs_t *modular_f4(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            mat, bs, bht, sht, hcm, st);
+            -1, mat, bs, bht, sht, hcm, st);
       }
       clean_hash_table(sht);
       /* all rows in mat are now polynomials in the basis,
@@ -2070,6 +2124,14 @@ bs_t *modular_f4(
     }
 
     /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
     j = 0;
     for (i = 0; i < bs->lml; ++i) {
         if (bs->red[bs->lmps[i]] == 0) {
@@ -2080,6 +2142,7 @@ bs_t *modular_f4(
     }
     bs->lml = j;
 
+#if 0
     /* eliminate variables if accessible */
     if (st->nev > 0) {
         j = 0;
@@ -2092,6 +2155,7 @@ bs_t *modular_f4(
         }
         bs->lml = j;
     }
+#endif
 
     /* reduce final basis? */
     if (st->reduce_gb == 1) {

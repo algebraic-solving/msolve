@@ -431,7 +431,6 @@ bs_t *f4sat_trace_application_test_phase(
 
     /* initialize specialized hash table */
     ht_t *sht = initialize_secondary_hash_table(bht, st);
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
     bs_t *kernel  = initialize_basis(st);
@@ -441,7 +440,7 @@ bs_t *f4sat_trace_application_test_phase(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     if(st->info_level>1){
         printf("Application phase with prime p = %d, overall there are %u rounds\n",
@@ -487,7 +486,7 @@ bs_t *f4sat_trace_application_test_phase(
          * so we do not need the rows anymore */
         clear_matrix(mat); // does not reset mat->np
 
-        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
+        update_basis_f4(ps, bs, bht, st, mat->np, 1);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -559,7 +558,7 @@ bs_t *f4sat_trace_application_test_phase(
                     }
                     st->nr_kernel_elts  +=  kernel->ld;
                     free_kernel_coefficients(kernel);
-                    update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
+                    update_basis_f4(ps, bs, bht, st, mat->np, 1);
                     kernel->ld  = 0;
                     if (st->info_level > 1) {
                         printf("   ");
@@ -1013,7 +1012,6 @@ bs_t *f4_trace_learning_phase(
     normalize_initial_basis(bs, fc);
 
     /* initialize specialized hash tables */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* reset bs->ld for first update process */
@@ -1022,7 +1020,7 @@ bs_t *f4_trace_learning_phase(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1064,7 +1062,7 @@ bs_t *f4_trace_learning_phase(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
       /* if we found a constant we are done, so remove all remaining pairs */
       if (bs->constant  == 1) {
@@ -1174,9 +1172,6 @@ bs_t *f4_trace_learning_phase(
     if (sht != NULL) {
         free_hash_table(&sht);
     }
-    if (uht != NULL) {
-        free_hash_table(&uht);
-    }
     if (ps != NULL) {
         free_pairset(&ps);
     }
@@ -1261,7 +1256,6 @@ bs_t *f4sat_trace_learning_phase_1(
     normalize_initial_basis(bs, fc);
 
     /* initialize specialized hash tables */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
@@ -1273,7 +1267,7 @@ bs_t *f4sat_trace_learning_phase_1(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1312,7 +1306,7 @@ end_sat_step:
         clear_matrix(mat);
 
         /* check redundancy only if input is not homogeneous */
-        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -1335,7 +1329,7 @@ end_sat_step:
                     ps->ld == 0 &&
                     is_zero_dimensional(bs, bht) &&
                     is_already_saturated(
-                        bs, sat, mat, &hcm, &bht, &sht, &uht, st)) {
+                        bs, sat, mat, &hcm, &bht, &sht, st)) {
                 /* sat_done  = 1; */
                 goto end_sat_step;
             }
@@ -1403,7 +1397,7 @@ end_sat_step:
                         st->nr_kernel_elts  +=  kernel->ld;
                         sat_test  = 0;
                         free_kernel_coefficients(kernel);
-                        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
+                        update_basis_f4(ps, bs, bht, st, mat->np, 1);
                         kernel->ld  = 0;
                         if (st->info_level > 1) {
                             printf("   ");
@@ -1518,9 +1512,6 @@ end_sat_step:
     if (sht != NULL) {
         free_hash_table(&sht);
     }
-    if (uht != NULL) {
-        free_hash_table(&uht);
-    }
     if (ps != NULL) {
         free_pairset(&ps);
     }
@@ -1610,7 +1601,6 @@ bs_t *f4sat_trace_learning_phase_2(
     normalize_initial_basis(bs, fc);
 
     /* initialize specialized hash tables */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
@@ -1622,7 +1612,7 @@ bs_t *f4sat_trace_learning_phase_2(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -1672,7 +1662,7 @@ bs_t *f4sat_trace_learning_phase_2(
         clear_matrix(mat);
 
         /* check redundancy only if input is not homogeneous */
-        update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+        update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
@@ -1741,7 +1731,7 @@ bs_t *f4sat_trace_learning_phase_2(
 
                 st->nr_kernel_elts  +=  kernel->ld;
                 free_kernel_coefficients(kernel);
-                update_basis_f4(ps, bs, bht, uht, st, mat->np, 1);
+                update_basis_f4(ps, bs, bht, st, mat->np, 1);
                 kernel->ld  = 0;
                 if (st->info_level > 1) {
                     printf("   ");
@@ -1856,9 +1846,6 @@ bs_t *f4sat_trace_learning_phase_2(
 
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);
@@ -2063,7 +2050,6 @@ bs_t *modular_f4(
     normalize_initial_basis(bs, fc);
 
     /* initialize specialized hash table */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* reset bs->ld for first update process */
@@ -2072,7 +2058,7 @@ bs_t *modular_f4(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -2111,7 +2097,7 @@ bs_t *modular_f4(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
       rrt1 = realtime();
       if (st->info_level > 1) {
@@ -2183,9 +2169,6 @@ bs_t *modular_f4(
     free(hcm);
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);

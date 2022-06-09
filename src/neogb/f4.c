@@ -333,7 +333,6 @@ int core_f4(
     double rrt0, rrt1;
 
     /* initialize update hash table, symbolic hash table */
-    ht_t *uht = initialize_secondary_hash_table(bht, st);
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* hashes-to-columns map, initialized with length 1, is reallocated
@@ -353,7 +352,7 @@ int core_f4(
     /* move input generators to basis and generate first spairs.
      * always check redundancy since input generators may be redundant
      * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, uht, st, st->ngens, 1);
+    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -396,7 +395,7 @@ int core_f4(
       clear_matrix(mat);
 
       /* check redundancy only if input is not homogeneous */
-      update_basis_f4(ps, bs, bht, uht, st, mat->np, 1-st->homogeneous);
+      update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
 
       /* if we found a constant we are done, so remove all remaining pairs */
       if (bs->constant  == 1) {
@@ -465,9 +464,6 @@ int core_f4(
     free(mat);
     if (sht != NULL) {
         free_hash_table(&sht);
-    }
-    if (uht != NULL) {
-        free_hash_table(&uht);
     }
     if (ps != NULL) {
         free_pairset(&ps);

@@ -1936,11 +1936,13 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                      prime, nthrds);
   uint32_t trace_mod = nmod_param->elim->coeffs[trace_det->trace_idx];
   uint32_t det_mod = nmod_param->elim->coeffs[trace_det->det_idx];
-
+  int b = 1;
   if(trace_det->done_trace == 0){
+    b = 0;
     if(check_trace(trace_det, trace_mod, prime)){
       if(trace_det->check_trace == 0){
         trace_det->check_trace = 1;
+        fprintf(stderr, "[+]");
       }
       else{
         trace_det->done_trace = 1;
@@ -1949,9 +1951,11 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     }
   }
   if(trace_det->done_det == 0){
+    b = 0;
     if(check_det(trace_det, det_mod, prime)){
       if(trace_det->check_det == 0){
         trace_det->check_det = 1;
+        fprintf(stderr, "[++]");
       }
       else{
         trace_det->done_det = 1;
@@ -1994,7 +1998,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #endif
   int td = rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden);
 
-  if(trace_det->done_trace == 1 || trace_det->done_det == 1){
+  if(b && trace_det->done_trace == 1 && trace_det->done_det == 1){
     mpz_t denominator;
     mpz_init(denominator);
     mpz_t lcm;
@@ -2257,6 +2261,7 @@ static inline int check_param_modular(const mpz_param_t mp_param,
                                       const param_t *bparam,
                                       const int32_t prime,
                                       int *is_lifted,
+                                      trace_det_fglm_mat_t trace_det,
                                       const int info_level){
 
   long len = mp_param->nsols + 1;
@@ -2272,6 +2277,10 @@ static inline int check_param_modular(const mpz_param_t mp_param,
     for(int i = 0; i<mp_param->nvars-1; i++){
       is_lifted[i+1] = 0;
     }
+    trace_det->done_trace = 0;
+    trace_det->check_trace = 0;
+    trace_det->done_det = 0;
+    trace_det->check_det = 0;
     return 1;
   }
 
@@ -3218,10 +3227,10 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   while(nmod_params[0]->elim->coeffs[tridx] == 0 && tridx > 0){
     tridx--;
   }
+  detidx = 3 * nmod_params[0]->elim->length / 4;
   while(nmod_params[0]->elim->coeffs[detidx] == 0 && detidx < nmod_params[0]->elim->length-2){
     detidx++;
   }
-  detidx = 3 * nmod_params[0]->elim->length / 4;
   trace_det_initset(trace_det,
                     nmod_params[0]->elim->coeffs[tridx],
                     nmod_params[0]->elim->coeffs[detidx],
@@ -3362,7 +3371,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       if(bad_primes[i] == 0){
         if(rerun == 0){
           mcheck = check_param_modular(mpz_param, nmod_params[i], lp->p[i],
-                                       is_lifted, info_level);
+                                       is_lifted, trace_det, info_level);
         }
         crr = realtime();
         if(mcheck==1){
@@ -3386,6 +3395,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            &mat_lifted,
                                            doit,
                                            st->nthrds, info_level);
+          if(trace_det->done_trace){
+            fprintf(stderr, "[%d]", nprimes);
+          }
 #if LIFTMATRIX == 1
           if(mat_lifted && display){
             /* display_fglm_mpq_matrix(stderr, mpq_mat); */

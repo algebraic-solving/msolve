@@ -4424,7 +4424,14 @@ void display_output(int b, int dim, int dquot,
                     real_point_t **real_pts_ptr,
                     int info_level){
   if(dquot == 0){
-    fprintf(stdout, "[-1]:\n");
+    if(files->out_file != NULL){
+      FILE *ofile = fopen(files->out_file, "a+");
+      fprintf(ofile, "[-1]:\n");
+      fclose(ofile);
+    }
+    else{
+      fprintf(stdout, "[-1]:\n");
+    }
     return;
   }
 
@@ -4452,15 +4459,16 @@ void display_output(int b, int dim, int dquot,
     }
     else{
       fprintf(stdout, "[0, ");
-      if (get_param >= 1  || gens->field_char == 0) {
+      if (get_param >= 1  || gens->field_char) {
         /* if(gens->field_char){ */
         /*   display_fglm_param_maple(stdout, param); */
         /*   return; */
         /* } */
+        fprintf(stderr, "ICI\n");
         mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp, param);
       }
       if(get_param <= 1 && gens->field_char == 0){
-        if(get_param){
+        if(get_param <= 1 &&gens->field_char == 0){
           fprintf(stdout, ",");
         }
         display_real_points(stdout, *real_pts_ptr,

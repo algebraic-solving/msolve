@@ -4464,7 +4464,6 @@ void display_output(int b, int dim, int dquot,
         /*   display_fglm_param_maple(stdout, param); */
         /*   return; */
         /* } */
-        fprintf(stderr, "ICI\n");
         mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp, param);
       }
       if(get_param <= 1 && gens->field_char == 0){

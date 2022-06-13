@@ -16,10 +16,23 @@ If you are working on a distriubtion (downloaded *.tar.gz)
 3. Run `make install` in order to globally install the library and the binary
    of msolve.
 
+NOTE TO MAC OS users
+====================
+You need to proceed slightly differently by modifying the `Makefile` file as follows
+- add to the `LIBS` variable the `-fopenmp` option
+```
+LIBS = -lflint -lmpfr -lgmp -lm -fopenmp
+```
+- change the `CC` variable to your actual `gcc` compiler 
+```
+CC = gcc-11
+```
+since `gcc` seems to be linked to `clang`.
+
 If you want to generate a distribution
 ======================================
 Run `make dist`.
 
 If you want to generate a static binary
 =======================================
-Add `-all-static` to your LDFLAGS.
+Add `-all-static` to your LDFLAGS as follows `make LDFLAGS="all-static"`.

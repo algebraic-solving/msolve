@@ -105,6 +105,31 @@ More generally, using `-e k` will eliminate the `k` first variables.
 
 # Solving over the real numbers
 
+When the input polynomial system has rational coefficients and when 
+*it has finitely many complex solutions*, `msolve` will, by default, 
+compute the real solutions to the input system. Those are encoded with 
+isolating boxes for all coordinates to all real solutions.  
+
+For instance, on input file `in.ms` as follows
+```
+x, y
+0
+x^2+y^2-4,
+x*y-1
+``` 
+the call `./msolve -f in.ms -o out.ms` will display in the file `out.ms` the following 
+output
+```
+[0, ,[1,
+[[[-41011514734338452707966945920 / 2^96, -41011514734338452707966945917 / 2^96], [-153057056683910732545430822374 / 2^96, -153057056683910732545430822373 / 2^96]], 
+[[-612228226735642930181723289497 / 2^98, -612228226735642930181723289492 / 2^98], [-164046058937353810831867783675 / 2^98, -164046058937353810831867783674 / 2^98]], 
+[[612228226735642930181723289492 / 2^98, 612228226735642930181723289497 / 2^98], [164046058937353810831867783674 / 2^98, 164046058937353810831867783675 / 2^98]], 
+[[41011514734338452707966945917 / 2^96, 41011514734338452707966945920 / 2^96], [153057056683910732545430822373 / 2^96, 153057056683910732545430822374 / 2^96]]]
+]]:
+```
+which are the 4 isolating boxes of the exact roots
+$\left ( \frac{\sqrt{2}(\sqrt{3}-1)}{2}\right)$
+
 # Citing msolve
 
 If you have used `msolve` in the preparation of some paper, we are grateful that you 

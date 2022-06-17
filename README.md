@@ -1,6 +1,6 @@
 # MSOLVE: Multivariate polynomial system solver 
 
-| ** Documentation **                                                       |
+| **Documentation**                                                       |
 |:-------------------------------------------------------------------------:|
 | [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] |
 

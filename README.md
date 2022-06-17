@@ -128,7 +128,7 @@ output
 ]]:
 ```
 which are the 4 isolating boxes of the exact roots
-$\left ( \frac{\sqrt{2}(\sqrt{3}-1)}{2}\right)$
+\( \left ( \frac{\sqrt{2}(\sqrt{3}-1)}{2}\right) \)
 
 # Citing msolve
 

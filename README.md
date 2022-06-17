@@ -112,7 +112,8 @@ cite it as follows:
 ```
 msolve: A Library for Solving Polynomial Systems, 
 J. Berthomieu, C. Eder, M. Safey El Din, Proceedings of the  
-46th International Symposium on Symbolic and Algebraic Computation (ISSAC), 2021.
+46th International Symposium on Symbolic and Algebraic Computation (ISSAC), 
+pp. 51-58, ACM, 2021.
 ```
 or, if you use BibTeX entries: 
 ```
@@ -122,6 +123,8 @@ or, if you use BibTeX entries:
   BOOKTITLE = {{2021 International Symposium on Symbolic and Algebraic Computation}},
   ADDRESS = {Saint Petersburg, Russia},
   SERIES = {46th International Symposium on Symbolic and Algebraic Computation},
+  PAGES     = {51--58},
+  PUBLISHER = {{ACM}},  
   YEAR = {2021},
   MONTH = Jul,
   DOI = {10.1145/3452143.3465545},

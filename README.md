@@ -131,6 +131,18 @@ which are the 4 isolating boxes of the 4 exact roots whose numerical approximati
 `(-0.5176380902, -1.931851653)`, `(-1.931851653, -0.5176380902)`, 
 `(1.931851653, 0.5176380902)` and `(0.5176380902, 1.931851653)`.
 
+# `msolve` in [Oscar](https://oscar-system.github.io/Oscar.jl)
+
+`msolve` is used in [Oscar](https://oscar-system.github.io/Oscar.jl) to *solve* 
+polynomial systems with rational coefficients. 
+
+It will detect if the input system has finitely many complex solutions, in which case 
+it will output a rational parametrization of the solution set as well as the 
+real solutions to the input system (see `msolve`'s 
+tutorial [here](https://msolve.lip6.fr/downloads/msolve-tutorial.pdf)).
+
+You can have a look at [this](https://github.com/oscar-system/Oscar.jl/blob/master/src/Rings/msolve/msolve.jl) and the documentation of [Oscar](https://oscar-system.github.io/Oscar.jl).
+
 # Citing msolve
 
 If you have used `msolve` in the preparation of some paper, we are grateful that you 

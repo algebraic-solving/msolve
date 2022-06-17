@@ -127,8 +127,9 @@ output
 [[41011514734338452707966945917 / 2^96, 41011514734338452707966945920 / 2^96], [153057056683910732545430822373 / 2^96, 153057056683910732545430822374 / 2^96]]]
 ]]:
 ```
-which are the 4 isolating boxes of the exact roots
-\( \left ( \frac{\sqrt{2}(\sqrt{3}-1)}{2}\right) \)
+which are the 4 isolating boxes of the 4 exact roots whose numerical approximations are 
+`(-0.5176380902, -1.931851653)`, `(-1.931851653, -0.5176380902)`, 
+`(1.931851653, 0.5176380902)` and `(0.5176380902, 1.931851653)`.
 
 # Citing msolve
 

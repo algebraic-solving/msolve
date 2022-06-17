@@ -4,7 +4,7 @@
 |:-------------------------------------------------------------------------:|
 | [![][docs-stable-img]][docs-stable-url] [![][docs-dev-img]][docs-dev-url] |
 
-[https://msolve.lip6.fr](https://msolve.lip6.fr)
+[https://msolve.lip6.fr/](https://msolve.lip6.fr)
 
 `msolve` is an open source C library implementing computer algebra algorithms 
 for solving polynomial systems (with rational coefficients or coefficients in a 
@@ -18,11 +18,11 @@ This encompasses:
 and many other things you can do using msolve.
 
 A tutorial is available at 
-[https://msolve.lip6.fr](https://msolve.lip6.fr)
+[here](https://msolve.lip6.fr/downloads/msolve-tutorial.pdf)
 
-Some of the functionalities of [https://msolve.lip6.fr](msolve) are already available 
-in the computer algebra systems [https://oscar-system.github.io/Oscar.jl](Oscar) 
-and [https://trac.sagemath.org](SageMath). See below for some more information about 
+Some of the functionalities of [msolve](https://msolve.lip6.fr) are already available 
+in the computer algebra systems [Oscar](https://oscar-system.github.io/Oscar.jl) 
+and [SageMath](https://trac.sagemath.org). See below for some more information about 
 this.
 
 # Install Instructions

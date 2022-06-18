@@ -22,7 +22,7 @@ A tutorial is available at
 
 Some of the functionalities of [msolve](https://msolve.lip6.fr) are already available 
 in the computer algebra systems [Oscar](https://oscar-system.github.io/Oscar.jl) 
-and [SageMath](https://trac.sagemath.org). See below for some more information about 
+and [SageMath](https://sagemath.org). See below for some more information about 
 this.
 
 # Install Instructions
@@ -120,7 +120,7 @@ x*y-1
 the call `./msolve -f in.ms -o out.ms` will display in the file `out.ms` the following 
 output
 ```
-[0, ,[1,
+[0, [1,
 [[[-41011514734338452707966945920 / 2^96, -41011514734338452707966945917 / 2^96], [-153057056683910732545430822374 / 2^96, -153057056683910732545430822373 / 2^96]], 
 [[-612228226735642930181723289497 / 2^98, -612228226735642930181723289492 / 2^98], [-164046058937353810831867783675 / 2^98, -164046058937353810831867783674 / 2^98]], 
 [[612228226735642930181723289492 / 2^98, 612228226735642930181723289497 / 2^98], [164046058937353810831867783674 / 2^98, 164046058937353810831867783675 / 2^98]], 
@@ -153,7 +153,25 @@ julia> msolve(I)
 ((84*x^4 - 40*x^3 + x^2 + x, 336*x^3 - 120*x^2 + 2*x + 1, PolyElem[-184*x^3 + 80*x^2 - 4*x - 1, -36*x^3 + 18*x^2 - 2*x], fmpz[-1, -1]), Vector{fmpq}[[744483363399261433351//1180591620717411303424, 372241681699630716673//1180591620717411303424, -154187553040555781639//1180591620717411303424], [1, 0, 0], [71793683196126133110381699745//316912650057057350374175801344, 71793683196126133110381699745//633825300114114700748351602688, 173325283664805084153412401855//633825300114114700748351602688], [196765270119568550571//590295810358705651712, 1//590295810358705651712, 196765270119568550571//590295810358705651712]])
 ```
 
-# Citing msolve
+# `msolve` in [SageMath](https://sagemath.org)
+
+When you have `msolve` installed, it is used by [SageMath](https://sagemath.org) 
+when you call the `Variety` function for solving polynomial systems with real 
+coefficients. 
+
+You can have a look 
+[here](https://github.com/sagemath/sage/blob/develop/src/sage/rings/polynomial/msolve.py) 
+and 
+[here](https://github.com/sagemath/sage/blob/develop/src/sage/rings/polynomial/multi_polynomial_ideal.py) 
+
+We are grateful to Marc Mezzarobba who initiated the usage of 
+`msolve`in [SageMath](https://sagemath.org)
+and the whole development team of [SageMath](https://sagemath.org), 
+in particular those involed 
+in this [ticket](https://trac.sagemath.org/ticket/33734)
+
+
+# Citing `msolve`
 
 If you have used `msolve` in the preparation of some paper, we are grateful that you 
 cite it as follows: 

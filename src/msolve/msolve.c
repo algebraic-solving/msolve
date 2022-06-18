@@ -4475,7 +4475,7 @@ void display_output(int b, int dim, int dquot,
         /* } */
         mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp, param);
       }
-      if(get_param <= 1 && gens->field_char == 0){
+      if(get_param == 1 && gens->field_char == 0){
         if(get_param){
           fprintf(ofile, ",");
         }

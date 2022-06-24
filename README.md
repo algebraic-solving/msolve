@@ -17,7 +17,7 @@ This encompasses:
 * the computation of the dimension and the degree of the solution set
 and many other things you can do using msolve.
 
-A tutorial is available at 
+A tutorial is available 
 [here](https://msolve.lip6.fr/downloads/msolve-tutorial.pdf)
 
 Some of the functionalities of [msolve](https://msolve.lip6.fr) are already available 
@@ -130,6 +130,20 @@ output
 which are the 4 isolating boxes of the 4 exact roots whose numerical approximations are 
 `(-0.5176380902, -1.931851653)`, `(-1.931851653, -0.5176380902)`, 
 `(1.931851653, 0.5176380902)` and `(0.5176380902, 1.931851653)`.
+
+# Multi-threading
+
+Several components of `msolve` are parallelized through multi-threading. 
+Typing 
+```
+./msolve -t 4 -f in.ms -o out.ms
+```
+tells `msolve` to use 4 threads. Multi-threading in `msolve` is used in 
+- linear algebra algorithms used for Groebner bases computations over 
+prime fields
+- multi-modular computations for solving over the reals (all intermediate 
+and independent prime computations are run in parallel)
+- algorithms for real root isolation.
 
 # `msolve` in [Oscar](https://oscar-system.github.io/Oscar.jl)
 

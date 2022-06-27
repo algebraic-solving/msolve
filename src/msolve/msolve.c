@@ -4335,7 +4335,6 @@ int real_msolve_qq(mpz_param_t mp_param,
     -3 if meta data are corrupted
     -4 if bad prime
   */
-
   int b = msolve_trace_qq(mp_param,
                           nmod_param,
                           dim_ptr,
@@ -4358,7 +4357,7 @@ int real_msolve_qq(mpz_param_t mp_param,
   long unsigned int nbneg = 0;
   interval *roots   = NULL;
   real_point_t *pts = NULL;
-
+  printf ("get param:%d\n",get_param);
   if(get_param>1){
     return b;
   }

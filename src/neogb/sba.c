@@ -126,13 +126,11 @@ static inline void enlarge_signature_matrix(
                 smat->bs_cf32, (unsigned long)smat->sz * sizeof(cf32_t *));
 }
 
-static inline void add_rewrite_rule(
+static inline void check_enlarge_rewrite_rule_array(
         crit_t *rew,
-        const smat_t * const smat,
-        const ht_t * const ht
+        const len_t sidx
         )
 {
-    const len_t sidx    =   smat->cols[smat->ld-1][SM_SIDX];
     if (rew[sidx].ld >= rew[sidx].sz) {
         rew[sidx].sz    *=  2;
         rew[sidx].sdm   =   realloc(rew[sidx].sdm,
@@ -140,6 +138,16 @@ static inline void add_rewrite_rule(
         rew[sidx].hm    =   realloc(rew[sidx].hm,
                 (unsigned long)rew[sidx].sz * sizeof(hm_t));
     }
+}
+
+static inline void add_rewrite_rule(
+        crit_t *rew,
+        const smat_t * const smat,
+        const ht_t * const ht
+        )
+{
+    const len_t sidx    =   smat->cols[smat->ld-1][SM_SIDX];
+    check_enlarge_rewrite_rule_array(rw, sidx);
     rew[sidx].hm[rew[sidx].ld]  =   smat->cols[smat->ld-1][SM_SMON];
     rew[sidx].sdm[rew[sidx].ld] =   ht->hd[smat->cols[smat->ld-1][SM_SMON]].sdm;
     rew[sidx].ld++;

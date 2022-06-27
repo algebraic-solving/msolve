@@ -91,8 +91,57 @@ typedef struct{
   mpz_upoly_t *coords;
   mpz_t *cfs;
 } mpz_param_struct;
-
 typedef mpz_param_struct mpz_param_t[1];
+
+typedef struct{
+  uint32_t ncols; /* dimension of quotient */
+  uint32_t nrows; /* number of non trivial lines */
+  mpz_t *dense_mat; /*array of nrows*ncols*2 mpz_t coefficients (num, den)*/
+  uint32_t *triv_idx; /*array of indices of rows which are unit vectors*/
+  uint32_t *triv_pos; /*position of '1' in unit vectors */
+  uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
+  uint32_t *dst; /* blocks of 0's in non-trivial rows */
+} mpq_matfglm_struct;
+typedef mpq_matfglm_struct mpq_matfglm_t[1];
+
+typedef struct{
+  uint32_t ncols; /* dimension of quotient */
+  uint32_t nrows; /* number of non trivial lines */
+  mpz_t *dense_mat; /*array of nrows*ncols mpz_t coefficients*/
+  mpz_t *denoms; /*denominators for rows which are not unit vectors*/
+  uint32_t *triv_idx; /*array of indices of rows which are unit vectors*/
+  uint32_t *triv_pos; /*position of '1' in unit vectors */
+  uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
+  uint32_t *dst; /* blocks of 0's in non-trivial rows */
+} mpz_matfglm_struct;
+typedef mpz_matfglm_struct mpz_matfglm_t[1];
+
+typedef struct{
+  uint32_t ncols; /* dimension of quotient */
+  uint32_t nrows; /* number of non trivial lines */
+  mpz_t *dense_mat; /*array of nrows*ncols*2 mpz_t coefficients (num, den)*/
+  uint32_t *triv_idx; /*array of indices of rows which are unit vectors*/
+  uint32_t *triv_pos; /*position of '1' in unit vectors */
+  uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
+  uint32_t *dst; /* blocks of 0's in non-trivial rows */
+} crt_mpz_matfglm_struct;
+typedef crt_mpz_matfglm_struct crt_mpz_matfglm_t[1];
+
+typedef struct{
+  uint32_t trace_idx;
+  uint32_t det_idx;
+  mpz_t trace_crt;
+  mpz_t det_crt;
+  mpz_t trace_num;
+  mpz_t trace_den;
+  mpz_t det_num;
+  mpz_t det_den;
+  int done_trace;
+  int done_det;
+  int check_trace;
+  int check_det;
+} trace_det_fglm_mat_struct;
+typedef trace_det_fglm_mat_struct trace_det_fglm_mat_t[1];
 
 typedef struct{
   mpz_t val_up;

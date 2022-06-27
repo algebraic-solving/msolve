@@ -364,7 +364,13 @@ parametrizations of solutions to polynomial systems which have dimension at most
 zero. Finally, \cref{sec:flags} summarizes some options which can be used. 
 
 The \msolve library is described in \cite{msolve} with implementation details on 
-the algorithms used therein. 
+the algorithms used therein. All computations performed over the rational numbers 
+(e.g. for computing real roots) are based on multi-modular computations with a 
+probabilistic stopping criterion. Unless explicitely requested by the user (see the 
+\verb+-l+ flag in \cref{sec:flags}), all computations of Gr\"obner bases 
+in prime fields use deterministic 
+algorithms. Change of order algorithms which are used are deterministic 
+when the input ideal is radical.
 
 \section{Input file format}\label{sec:input}
 
@@ -655,9 +661,6 @@ the array of its coefficients in the monomial basis by increasing degree and
 [2, [-2, 3, 1]]
 \end{verbatim}
 
-The encoding of such rational parametrizations differ when \msolve tackles 
-polynomial systems with coefficients in a prime field or in the field of rational 
-numbers.
 
 We first explain \msolve's output in the case where the input coefficients are 
 rational numbers (the characteristic zero case).
@@ -730,7 +733,7 @@ z1*z2+2*z2*z3-3*z3*z1-1,
 z1+2*z2+3*z3-1
 \end{verbatim}
 \end{tcolorbox}
-Using \verb+./msolve -P 2 -f in.ms+ The output is 
+Using \verb+./msolve -P 2 -f in.ms+ the output is 
 \begin{tcolorbox}
 \begin{verbatim}
 [0, [0, 
@@ -1088,7 +1091,8 @@ You can have a look at
 and 
 \url{https://github.com/sagemath/sage/blob/develop/src/sage/rings/polynomial/multi_polynomial_ideal.py}
 
-\hfill Many thanks to the SageMath development team
+\hfill Many thanks to the SageMath development team, in particular to Marc 
+Mezzarobba who initiated this interface.
 
 %The Sage interface to \msolve can be found on the \msolve homepage or in the
 %\msolve binary package. Starting

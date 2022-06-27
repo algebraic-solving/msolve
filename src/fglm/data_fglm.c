@@ -24,7 +24,7 @@
 #include <flint/nmod_poly.h>
 
 
-typedef unsigned int szmat_t;
+typedef uint32_t szmat_t;
 typedef uint32_t CF_t;
 typedef uint64_t CF_l_t;
 typedef uint32_t mod_t;

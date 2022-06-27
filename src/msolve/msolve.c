@@ -4335,6 +4335,7 @@ int real_msolve_qq(mpz_param_t mp_param,
     -3 if meta data are corrupted
     -4 if bad prime
   */
+  printf ("real_qq\n");
   int b = msolve_trace_qq(mp_param,
                           nmod_param,
                           dim_ptr,
@@ -4357,7 +4358,7 @@ int real_msolve_qq(mpz_param_t mp_param,
   long unsigned int nbneg = 0;
   interval *roots   = NULL;
   real_point_t *pts = NULL;
-
+  printf ("get param:%d\n",get_param);
   if(get_param>1){
     return b;
   }
@@ -4832,7 +4833,12 @@ restart:
 							   gens->field_char,
 							   maxdeg,
 							   gens);
-	    
+
+	    /* param_t * param = nmod_fglm_guess_colon(matrix, gens-field_char, */
+	    /* 					    vector, nvars, 0, */
+	    /* 					    linvars, */
+	    /* 					    lineqs, squvars, 1); */
+    
 	    
 	    free(hcm);
 	    hcm = NULL;
@@ -4955,7 +4961,8 @@ restart:
               goto restart;
             }
           }
-        } else {
+        }
+	else {
           /* normal_form is 1 */
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;

@@ -70,7 +70,8 @@ static int is_signature_needed(
     /* get exponent vector and increment entry for var_idx */
     exp_t *ev   =   ht->ev[0];
     ev          =   ht->ev[psmat->cols[idx][SM_SMON]];
-    len_t shift =   var_idx > ht->ebl ? 2 : 1;
+    /* Note: ht->ebl = #elimination variables + 1 */
+    len_t shift =   var_idx < ht->ebl - 1 ? 1: 2;
     ev[var_idx+shift]++;
 
     const len_t sig_idx =   psmat->cols[idx][SM_SIDX];

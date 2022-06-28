@@ -391,11 +391,11 @@ static inline int is_equal_exponent_xxn(int32_t *exp1, int32_t *exp2, const long
 static inline int is_divisible_exponent_xxn(int32_t *exp1, int32_t *exp2,
 					    const long nvars){
   for(long i = 0; i < nvars - 1; i++){
-    if(exp1[i]>exp2[i]){
+    if(exp1[i]<exp2[i]){
       return 0;
     }
   }
-  return ((exp1[nvars-1]+1) == exp2[nvars-1]);
+  return ((exp1[nvars-1]+1) >= exp2[nvars-1]);
 }
 
 static inline int member_xxn(int32_t *exp, int32_t *bexp_lm, int len,
@@ -1039,7 +1039,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  }
 	  else{
 	    int is_divisible = 0;
-	    for(long j = 0; j < count_lm; j++) {
+	    for(long j = 0; j < len_xn; j++) {
 	      if(is_divisible_exponent_xxn(exp, bexp_lm+(div_xn[j])*nv, nv)){
 		extranf[count_not_lm]=i;
 		count_not_lm++;

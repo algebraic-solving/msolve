@@ -4374,7 +4374,8 @@ int real_msolve_qq(mpz_param_t mp_param,
   if(get_param>1){
     return b;
   }
-
+  printf ("b = %d\n",b);
+  printf ("print_gb = %d\n",print_gb);
   if(print_gb){
     return 0;
   }
@@ -4458,6 +4459,7 @@ int real_msolve_qq(mpz_param_t mp_param,
     *nb_real_roots_ptr  = nb;
     *real_pts_ptr       = pts;
   }
+  printf ("return b\n");
   return b;
 }
 
@@ -4939,7 +4941,7 @@ restart:
           if(print_gb){
             return 0;
           }
-
+	  printf ("going to manage\n");
           manage_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
                         nb_real_roots_ptr,
                         real_roots_ptr,

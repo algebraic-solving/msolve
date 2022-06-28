@@ -61,11 +61,11 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 /* there is a different prelude with meta data for signature based matrices */
 #define SM_OFFSET  5          /* real data starts at SIGOFFSET for signature
                                  * based comptutations */
-#define SM_LEN   SM_OFFSET-1  /* basis index of element (for tracing) */
-#define SM_PRE   SM_OFFSET-2  /* basis index of element (for tracing) */
-#define SM_CFS   SM_OFFSET-3  /* basis index of element (for tracing) */
-#define SM_SIDX  SM_OFFSET-4  /* basis index of element (for tracing) */
-#define SM_SMON  SM_OFFSET-5  /* basis index of element (for tracing) */
+#define SM_LEN   SM_OFFSET-1  /* signature meta data length of polynomial */
+#define SM_PRE   SM_OFFSET-2  /* signature meta data preloop of polynomial */
+#define SM_CFS   SM_OFFSET-3  /* index of corresponding coefficient array */
+#define SM_SIDX  SM_OFFSET-4  /* index of signautre */
+#define SM_SMON  SM_OFFSET-5  /* hash value of signature monomial */
 
 /* computational data */
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */
@@ -166,10 +166,10 @@ struct ps_t
 typedef struct crit_t crit_t;
 struct crit_t
 {
-    sdm_t *sdm;
-    hm_t *hm;
-    len_t ld;
-    len_t sz;
+    sdm_t *sdm; // array of shot divisor mask of signature monomial
+    hm_t *hm;   // array of hash value of the of the signature monomial
+    len_t ld;   // load of the corresponding arrays
+    len_t sz;   // allocated memory / size of the corresponding arrays
 };
 
 /* basis stuff */

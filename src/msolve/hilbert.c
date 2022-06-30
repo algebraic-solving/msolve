@@ -1338,7 +1338,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
     }
     exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
-    printf ("%d\n", exps[i*nv+nv-1]);
+    /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
   /* free(tbr); */
   /* tbr = NULL; */
@@ -1491,6 +1491,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 #if 0 > 0
       display_monomial_full(stderr, nv, NULL, 0, exp);
       fprintf(stderr, " => remains in monomial basis\n");
+#endif
       /* mult by xn stays in the basis */
       matrix->triv_idx[l_triv] = i;
       matrix->triv_pos[l_triv] = pos + i;
@@ -1562,12 +1563,14 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   printf ("matrix finished\n");
   /* assumes the entries of matrix->dst are 0 */
   for(long i = 0; i < matrix->nrows; i++){
+    /* printf ("%d\n",matrix->dst[i]); */
     for(long j = matrix->ncols - 1; j >= 0; j--){
       if(matrix->dense_mat[i*matrix->ncols + j] == 0){
         matrix->dst[i]++;
 	/* printf ("%d, ",matrix->dst[i]); */
       }
       else{
+	/* printf("\n"); */
         break;
       }
     }

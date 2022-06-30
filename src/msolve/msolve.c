@@ -1943,7 +1943,6 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     if(check_trace(trace_det, trace_mod, prime)){
       if(trace_det->check_trace == 0){
         trace_det->check_trace = 1;
-        fprintf(stderr, "[+]");
       }
       else{
         trace_det->done_trace = 1;
@@ -1956,7 +1955,6 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     if(check_det(trace_det, det_mod, prime)){
       if(trace_det->check_det == 0){
         trace_det->check_det = 1;
-        fprintf(stderr, "[++]");
       }
       else{
         trace_det->done_det = 1;
@@ -5406,9 +5404,7 @@ restart:
                 free(param);
                 param = NULL;
                 round++;
-                fprintf(stderr, "TEST TEST\n");
                 if(gens->change_var_order >= 0){
-                  fprintf(stderr, "ICI\n\n");
                   undo_variable_order_change(gens);
                 }
                 if (add_random_linear_form_to_input_system(gens, info_level)) {
@@ -5611,7 +5607,7 @@ void msolve_julia(
     }
 
     /* data structures for parametrization */
-    param_t *param;
+    param_t *param  = NULL;
     mpz_param_t mpz_param;
     mpz_param_init(mpz_param);
 

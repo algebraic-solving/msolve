@@ -1337,6 +1337,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       }
       exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
     }
+    exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
+    printf ("%d\n", exps[i*nv+nv-1]);
   }
   /* free(tbr); */
   /* tbr = NULL; */

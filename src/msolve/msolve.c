@@ -4325,7 +4325,7 @@ int real_msolve_qq(mpz_param_t mp_param,
     -3 if meta data are corrupted
     -4 if bad prime
   */
-  printf ("real_qq\n");
+
   int b = msolve_trace_qq(mp_param,
                           nmod_param,
                           dim_ptr,
@@ -4348,12 +4348,11 @@ int real_msolve_qq(mpz_param_t mp_param,
   long unsigned int nbneg = 0;
   interval *roots   = NULL;
   real_point_t *pts = NULL;
-  printf ("get param:%d\n",get_param);
+
   if(get_param>1){
     return b;
   }
-  printf ("b = %d\n",b);
-  printf ("print_gb = %d\n",print_gb);
+
   if(print_gb){
     return 0;
   }
@@ -4439,7 +4438,6 @@ int real_msolve_qq(mpz_param_t mp_param,
     *nb_real_roots_ptr  = nb;
     *real_pts_ptr       = pts;
   }
-  printf ("return b\n");
   return b;
 }
 
@@ -4717,14 +4715,23 @@ restart:
              * only implemented for 32-bit elements). Later on we set st-fc by hand
              * to the correct field characteristic. */
             success = initialize_gba_input_data(&bs, &bht, &st,
-                    gens->lens, gens->exps, (void *)gens->cfs,
-                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
-                    /* gens->field_char, 0 [> DRL order <], gens->nvars, */
-                    gens->ngens-1, initial_hts, nr_threads, max_pairs,
-                    update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
-                    info_level);
-
-            st->fc  = gens->field_char;
+						gens->lens,
+						gens->exps,
+						(void *)gens->cfs,
+						1073741827, 0 /* DRL
+							       * order */,
+						elim_block_len, gens->nvars,
+						/* gens->field_char,
+						 * 0 [> DRL order <],
+						 * gens->nvars, */
+						gens->ngens-1,
+						initial_hts,
+						nr_threads, max_pairs,
+						update_ht, la_option,
+						use_signatures,
+						1 /* reduce_gb */, 0,
+						info_level);
+	    st->fc  = gens->field_char;
             if(info_level){
                 fprintf(stderr,
                         "NOTE: Field characteristic is now corrected to %u\n",
@@ -4776,8 +4783,8 @@ restart:
             }
             /* print all reduced elements in tbr, first  one
              * is the input element */
-            print_msolve_polynomials_ff(
-                    stdout, 1, tbr->lml, tbr, bht, st, gens->vnames, 0);
+            print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht,
+					st, gens->vnames, 0);
 	    /* list of monomials */
 	    /* size of the list */
 	    long dquot= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
@@ -4792,32 +4799,32 @@ restart:
 	    printf("\nStarts computation of normal form matrix\n");
 	    get_normal_form_matrix(tbr, bht, 1,
 				   st, &sht, &hcm, &mat);
-	    printf("\n\nLength of union of support of all normal forms: %u\n",
+	    printf("\nLength of union of support of all normal forms: %u\n",
 		   mat->nc);
 	    
-	    printf("\nUnion of support, sorted by decreasing monomial order:\n");
-	    for (len_t k = 0; k < mat->nc; ++k) {
-	      for (len_t l = 1; l <= sht->nv; ++l) {
-		printf("%2u ", sht->ev[hcm[k]][l]);
-	      }
-	      printf("\n");
-	    }
+	    /* printf("\nUnion of support, sorted by decreasing monomial order:\n"); */
+	    /* for (len_t k = 0; k < mat->nc; ++k) { */
+	    /*   for (len_t l = 1; l <= sht->nv; ++l) { */
+	    /* 	printf("%2u ", sht->ev[hcm[k]][l]); */
+	    /*   } */
+	    /*   printf("\n"); */
+	    /* } */
 
 	    int32_t *bcf_ff = (int32_t *)(*bcf);
 	    printf ("get lead monomials\n");
 	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
 	    long maxdeg = sht->ev[hcm[0]][0]; // degree of the normal form
-	    printf ("degree %ld\n",maxdeg);
+	    printf ("degree of the nf: %ld\n",maxdeg);
 	    
 	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot,
 						maxdeg);
-	    printf("\nMonomial basis:\n");
-	    for (len_t k = 0; k < dquot; ++k) {
-	      for (len_t l = 0; l < gens->nvars; ++l){
-		printf("%2u ", lmb[k*gens->nvars+l]);
-	      }
-	      printf("\n");
-	    }
+	    /* printf("\nMonomial basis:\n"); */
+	    /* for (len_t k = 0; k < dquot; ++k) { */
+	    /*   for (len_t l = 0; l < gens->nvars; ++l){ */
+	    /* 	printf("%2u ", lmb[k*gens->nvars+l]); */
+	    /*   } */
+	    /*   printf("\n"); */
+	    /* } */
 	    printf("\nSubspace has dimension: %ld\n",dquot);
 
 	    /* we assume that the support of phi is enough to encode
@@ -4869,7 +4876,7 @@ restart:
 
 	  int dim = - 2;
 	  long dquot = -1;
-	  printf ("going to real_qq\n");
+
 	  b = real_msolve_qq(*mpz_paramp,
 			     &param,
                              &dim,
@@ -4885,7 +4892,7 @@ restart:
           if(print_gb){
             return 0;
           }
-	  printf ("going to manage\n");
+
           manage_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
                         nb_real_roots_ptr,
                         real_roots_ptr,
@@ -5050,9 +5057,9 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
-            print_msolve_polynomials_ff(
-                    stdout, normal_form, tbr->lml, tbr, bht, st, gens->vnames, 0);
-
+	    printf ("normal form:\n");
+            print_msolve_polynomials_ff(stdout, normal_form,
+					tbr->lml, tbr, bht, st, gens->vnames, 0);
             if (normal_form_matrix > 0) {
                 /* sht and hcm will store the union of the support
                  * of all normal forms in tbr. */

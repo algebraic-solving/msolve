@@ -976,7 +976,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 		    int32_t *bexp_lm,
 		    /*bs_t **tbr */
 		    ht_t *bht, stat_t *st,
-		    const exp_t * const mul, const bs_t * const bs,
+		    const exp_t * const mul,
+		    const bs_t * const bs,
 		    const int nv, const long fc,
 		    const long maxdeg,
 		    const data_gens_ff_t *gens){
@@ -995,17 +996,20 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   
 #if 1>0
   fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the Gb) which are divisible by x_n and with bounded degree= %ld\n",
-	  len_xn);
-  for(long i=0; i < len_xn; i++){
+  fprintf(stderr, "Number of monomials (in the Gb) "
+	  "which are divisible by x_n "
+	  "and with bounded degree= %ld\n", len_xn);
+  for(long i=0; i < len_xn-1; i++){
     fprintf(stderr, "%d, ", div_xn[i]);
   }
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the Gb) which are not divisible by x_n and with bounded degree= %ld\n", len_not_xn);
-  for(long i=0; i < len_not_xn; i++){
+  fprintf(stderr, "%d\n", div_xn[len_xn-1]);
+  fprintf(stderr, "Number of monomials (in the Gb) "
+	  "which are not divisible by x_n "
+	  "and with bounded degree= %ld\n", len_not_xn);
+  for(long i=0; i < len_not_xn-1; i++){
     fprintf(stderr, "%d, ", div_not_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(stderr, "%d\n\n", div_not_xn[len_not_xn-1]);
 #endif
   long count_lm = 0;
   /* list of monomials in the staircase that leave the staircase after
@@ -1021,16 +1025,18 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
         long pos = -1;
 	int32_t *exp = lmb + (i * nv);
 #if 1 > 0
-	display_monomial_full(stderr, nv, NULL, 0, exp);
+	/* display_monomial_full(stderr, nv, NULL, 0, exp); */
 #endif
 	if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
-#if 1 > 0
+#if 0 > 0
+	  display_monomial_full(stderr, nv, NULL, 0, exp);
 	  fprintf(stderr, " => remains in monomial basis\n");
 #endif
 	}
 	else{
 	  /* we get now outside the basis */
-#if 1 > 0
+	  display_monomial_full(stderr, nv, NULL, 0, exp);
+#if 0 > 0
 	  fprintf(stderr, " => does NOT remain in monomial basis");
 #endif
 	  if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count_lm])*nv, nv)){
@@ -1057,9 +1063,10 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	}
   }
   
-  printf ("Number of extra normal forms to compute %ld\n",count_not_lm);
+  printf ("\nNumber of extra normal forms to compute %ld\n",count_not_lm);
   /* Computation of the extra normal forms */
   bs_t *tbr   = NULL;
+  /* exp_t *mul  = (exp_t *)calloc(nv, sizeof(exp_t)); */
   /* 1 monomial each */
   int32_t* lens=(int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
   int32_t* exps = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm * nv));
@@ -1069,17 +1076,21 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     lens[i]=1;
     cfs[i]=1;
     long j= extranf[i];
-    for (long k = 0; k < nv; k++) {
-      exps[i*nv+k]=lmb[i*nv+k];
+    for (long k = 0; k < nv-1; k++) {
+      exps[i*nv+k]=lmb[j*nv+k];
+      printf ("%d, ", exps[i*nv+k]);
     }
+    exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
+    printf ("%d\n", exps[i*nv+nv-1]);
   }
+  printf("size of basis %u\n", bs->lml);
   printf ("init nf\n");
   tbr = initialize_basis(st);
-  tbr->ld = tbr->lml  =  count_not_lm;
   printf ("init basis\n");
   import_input_data_nf_ff_32(tbr, bht, st, 0, count_not_lm,
 			     lens, exps, (void *)cfs);
   printf ("import\n");
+  tbr->ld = tbr->lml  =  count_not_lm;
   for (int k = 0; k < 1; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
@@ -1093,7 +1104,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   print_msolve_polynomials_ff(stdout, count_not_lm, tbr->lml, tbr, bht,
 			      st, gens->vnames, 0);
-
+  exit(1);
 
   
   printf ("Number of zero normal forms %ld\n",count_zero);

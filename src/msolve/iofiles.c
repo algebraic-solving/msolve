@@ -276,9 +276,12 @@ static void print_msolve_polynomials_ff(
                 }
                 for (j = 1; j < len; ++j) {
 		  switch (st->ff_bits) {
+<<<<<<< HEAD
 		  case 0:
 		    fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
 		    break;
+=======
+>>>>>>> 4bfc2b8 (multmat finished)
 		  case 8:
 		    fprintf(file, "+%u", bs->cf_8[bs->hm[idx][COEFFS]][j]);
 		    break;

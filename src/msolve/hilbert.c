@@ -730,6 +730,83 @@ copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix,
   /* printf("\b\b]\n"); */
 }
 
+static inline void
+copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix,
+			    long nrows,
+			    int32_t *lmb,
+			    len_t pos,
+			    const bs_t * const tbr,
+			    const ht_t * const bht,
+			    int32_t* evi,
+			    const stat_t *st,
+			    const int nv){
+
+  len_t idx = tbr->lmps[pos];
+  printf ("idx=%d\n",idx);
+  /* if (tbr->hm[idx] == NULL) {*/
+  len_t * hm  = tbr->hm[idx]+OFFSET;
+  len_t len = tbr->hm[idx][LENGTH];
+  printf ("len=%d\n",len);
+  long i;
+  long N = nrows * matrix->ncols ;
+  long k = 0;
+  /* while (is_larger_exponent_bs (bht,hm[k],evi,lmb + (matrix->ncols-1)*nv,nv)>0) { */
+  /*   /\* largest monomials of the nf are out of range *\/ */
+  /*   k++; */
+  /* } */
+  /* printf ("start at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]); */
+  for(i = 0; i < matrix->ncols; i++){
+    /* printf ("%ld",i); */
+    if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
+      matrix->dense_mat[N + i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
+      /* printf (", %d",matrix->dense_mat[N+i]); */
+      k++;
+    }
+    /* printf("\n"); */
+  }
+
+  /*}*/
+ 
+}
+#if 0
+/* remove monomials outside the considered set of monomials */
+static inline void
+clean_nf(bs_t tbr, ht_t bht, const int nv, const long start){
+  for (long i = start; i  < tbr->lml; i++) {
+    len_t idx = tbr->lmps[i];
+    printf ("idx=%d\n",idx);
+    len_t * hm  = tbr->hm[idx]+OFFSET;
+    len_t len = tbr->hm[idx][LENGTH];
+    printf ("len=%d\n",len);
+    /* long k = dquot-1; */
+    long k = 0;
+    for (long j = 0; j < len; j++) {
+      int32_t larger = is_larger_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv);
+      while (larger > 0) {
+	k++;
+	larger = is_larger_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv);
+      }
+      if (larger < 0) {
+	k++;
+      }
+      if (larger 
+      /* printf ("tbr[%ld][%ld]=%u, ",i,j,tbr->cf_32[tbr->hm[idx][COEFFS]][j]); */
+      /* while (!is_equal_exponent_bs (bht,hm[j],evi,lmb+k*nv,nv)) { */
+      /* 	k--; */
+      /* } */
+      printf ("tbr[%ld][%ld]=%u, ",i,j,tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-j]);
+      while (!is_equal_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv)) {
+	k++;
+      }
+    }
+    printf ("\n");
+
+
+  }
+
+}
+#endif
+
 /**
 
 idx is the position in the GB
@@ -1322,7 +1399,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
     }
     exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
-    printf ("%d\n", exps[i*nv+nv-1]);
+    /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
   tbr = initialize_basis(st);
 #if POSTPONED_REDUCTION /* only the pure monomials are reduced */
@@ -1547,11 +1624,14 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   printf ("matrix finished\n");
   /* assumes the entries of matrix->dst are 0 */
   for(long i = 0; i < matrix->nrows; i++){
+    /* printf ("%d\n",matrix->dst[i]); */
     for(long j = matrix->ncols - 1; j >= 0; j--){
       if(matrix->dense_mat[i*matrix->ncols + j] == 0){
         matrix->dst[i]++;
+	/* printf ("%d, ",matrix->dst[i]); */
       }
       else{
+	/* printf("\n"); */
         break;
       }
     }

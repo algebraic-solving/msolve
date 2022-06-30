@@ -4818,13 +4818,13 @@ restart:
 	    
 	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot,
 						maxdeg);
-	    /* printf("\nMonomial basis:\n"); */
-	    /* for (len_t k = 0; k < dquot; ++k) { */
-	    /*   for (len_t l = 0; l < gens->nvars; ++l){ */
-	    /* 	printf("%2u ", lmb[k*gens->nvars+l]); */
-	    /*   } */
-	    /*   printf("\n"); */
-	    /* } */
+	    printf("\nMonomial basis:\n");
+	    for (len_t k = 0; k < dquot; ++k) {
+	      for (len_t l = 0; l < gens->nvars; ++l){
+		printf("%2u ", lmb[k*gens->nvars+l]);
+	      }
+	      printf("\n");
+	    }
 	    printf("\nSubspace has dimension: %ld\n",dquot);
 
 	    /* we assume that the support of phi is enough to encode

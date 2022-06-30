@@ -4347,7 +4347,7 @@ int real_msolve_qq(mpz_param_t mp_param,
     -3 if meta data are corrupted
     -4 if bad prime
   */
-  printf ("real_qq\n");
+
   int b = msolve_trace_qq(mp_param,
                           nmod_param,
                           dim_ptr,
@@ -4370,12 +4370,11 @@ int real_msolve_qq(mpz_param_t mp_param,
   long unsigned int nbneg = 0;
   interval *roots   = NULL;
   real_point_t *pts = NULL;
-  printf ("get param:%d\n",get_param);
+
   if(get_param>1){
     return b;
   }
-  printf ("b = %d\n",b);
-  printf ("print_gb = %d\n",print_gb);
+
   if(print_gb){
     return 0;
   }
@@ -4459,7 +4458,6 @@ int real_msolve_qq(mpz_param_t mp_param,
     *nb_real_roots_ptr  = nb;
     *real_pts_ptr       = pts;
   }
-  printf ("return b\n");
   return b;
 }
 
@@ -4941,7 +4939,7 @@ restart:
           if(print_gb){
             return 0;
           }
-	  printf ("going to manage\n");
+
           manage_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
                         nb_real_roots_ptr,
                         real_roots_ptr,

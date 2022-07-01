@@ -1416,7 +1416,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	}
 	else if (i == extranf[count_nf]){
 	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
-	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb, count_not_lm+count_nf, tbr, bht, evi, st, nv);
+	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb, count_not_lm+count_nf,
+				      tbr, bht, evi, st, nv);
 	  nrows++;
 	  count_nf++;
 	}
@@ -1425,17 +1426,17 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   printf ("finished\n[");
   for (long i = 0; i < matrix->nrows; i++){
-    printf ("[");
+    /* printf ("["); */
     for (long j = 0; j < matrix->ncols; j++){
-      printf ("%d, ",matrix->dense_mat[i*matrix->ncols + j]);
+      /* printf ("%d, ",matrix->dense_mat[i*matrix->ncols + j]); */
     }
-    printf("],\n");
+    /* printf("],\n"); */
   }
-  printf("]\nZero\n[");
+  /* printf("]\nZero\n["); */
   for (long i = 0; i < count_zero; i++){
-    printf("%d, ",matrix->zero_idx[i]);
+    /* printf("%d, ",matrix->zero_idx[i]); */
   }
-  printf("]\n");
+  /* printf("]\n"); */
   /* assumes the entries of matrix->dst are 0 */
   for(long i = 0; i < matrix->nrows; i++){
     /* printf ("%d\n",matrix->dst[i]); */

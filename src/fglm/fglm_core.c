@@ -457,6 +457,36 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
     }
 }
 
+static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *mat,
+						  CF_t *vec,
+						  CF_t *vres,
+						  const mod_t prime,
+						  //cf_l_t *vec_cache, //obsolete
+						  const uint32_t RED_32,
+						  const uint64_t RED_64,
+						  const uint32_t preinv,
+						  const uint32_t pi1,
+						  const uint32_t pi2){
+
+  szmat_t ncols = mat->ncols;
+  szmat_t nrows = mat->nrows;
+  szmat_t ntriv = ncols - nrows;
+  for(szmat_t i = 0; i < ntriv; i++){
+    res[mat->triv_idx[i]] = vec[mat->triv_pos[i]];
+  }
+  /* printf("ncols %u\n", ncols); */
+#ifdef HAVE_AVX2
+  /* matrix_vector_product(vres, mat->dense_mat, vec, ncols, nrows, prime, RED_32, RED_64); */
+  _8mul_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
+                              ncols, nrows, prime, RED_32, RED_64, preinv);
+#else
+  non_avx_matrix_vector_product(vres, mat->dense_mat, vec,
+                              ncols, nrows, prime, RED_32, RED_64);
+#endif
+    for(szmat_t i = 0; i < nrows; i++){
+      res[mat->dense_idx[i]] = vres[i];
+    }
+}
 
 
 
@@ -1084,6 +1114,31 @@ static inline long initialize_fglm_data(sp_matfglm_t *matrix,
   return nb;
 }
 
+static inline long initialize_fglm_colon_data(sp_matfglmcol_t *matrix,
+					      fglm_data_t *data,
+					      const mod_t prime,
+					      const long sz,
+					      const szmat_t block_size){
+  long nb = 0;
+  for(long i = 0; i < sz; i++){
+    if(matrix->dense_mat[i]==0)
+      nb++;
+  }
+  srand(time(NULL));
+  for(szmat_t i = 0; i < matrix->ncols; i++){
+    data->vecinit[i] = (CF_t)rand() % prime;
+    data->vecinit[i] += (CF_t)rand() % prime;
+    /* data->vecinit[i] = (CF_t)(i+1) % prime; */
+  }
+  data->res[0] = data->vecinit[0];
+  for(szmat_t i = 1; i < block_size; i++){
+    data->res[i] = data->vecinit[i+1];
+  }
+
+  return nb;
+}
+
+
 param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long nvars,
                            const long nlins,
                            uint64_t *linvars,
@@ -1502,7 +1557,7 @@ static inline void guess_minpoly(param_t *param,
   }
 }
 
-static inline void guess_sequence_colon(sp_matfglm_t *matrix,
+static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
 					fglm_data_t * data,
 					CF_t * leftvec,
 					szmat_t block_size, long dimquot,
@@ -1552,9 +1607,9 @@ static inline void guess_sequence_colon(sp_matfglm_t *matrix,
   szmat_t tentative_degree =  MIN (4,matrix->ncols);
   
   while (i <= 2*tentative_degree-1) {
-    sparse_mat_fglm_mult_vec(data->vvec, matrix,
-			     data->vecinit, data->vecmult,
-			     prime, RED_32, RED_64, preinv, pi1, pi2);
+    sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
+				   data->vecinit, data->vecmult,
+				   prime, RED_32, RED_64, preinv, pi1, pi2);
 #if DEBUGFGLM > 1
     print_vec(stderr, data->vvec, matrix->ncols);
 #endif
@@ -1600,8 +1655,8 @@ static inline void guess_sequence_colon(sp_matfglm_t *matrix,
 }
 
 
-
-static inline void generate_sequence_colon(sp_matfglm_t *matrix,
+//TODO 0 rows
+static inline void generate_sequence_colon(sp_matfglmcol_t *matrix,
 					   fglm_data_t * data,
 					   CF_t * leftvec,
 					   szmat_t block_size, long dimquot,
@@ -1631,9 +1686,9 @@ static inline void generate_sequence_colon(sp_matfglm_t *matrix,
   data->res[0]= acc;
   
   for(szmat_t i = 1; i < matrix->ncols; i++){
-    sparse_mat_fglm_mult_vec(data->vvec, matrix,
-			     data->vecinit, data->vecmult,
-			     prime, RED_32, RED_64, preinv, pi1, pi2);
+    sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
+				   data->vecinit, data->vecmult,
+				   prime, RED_32, RED_64, preinv, pi1, pi2);
 #if DEBUGFGLM > 1
     print_vec(stderr, data->vvec, matrix->ncols);
 #endif
@@ -1663,9 +1718,9 @@ static inline void generate_sequence_colon(sp_matfglm_t *matrix,
 #endif
   }
   for(szmat_t i = matrix->ncols; i < 2*matrix->ncols; i++){
-    sparse_mat_fglm_mult_vec(data->vvec, matrix,
-			     data->vecinit, data->vecmult,
-			     prime, RED_32, RED_64, preinv, pi1, pi2);
+    sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
+				   data->vecinit, data->vecmult,
+				   prime, RED_32, RED_64, preinv, pi1, pi2);
 #if DEBUGFGLM > 1
     print_vec(stderr, data->vvec, matrix->ncols);
 #endif
@@ -1702,7 +1757,7 @@ static inline void generate_sequence_colon(sp_matfglm_t *matrix,
 
 }
 
-param_t *nmod_fglm_compute_colon(sp_matfglm_t *matrix,
+param_t *nmod_fglm_compute_colon(sp_matfglmcol_t *matrix,
 				 const mod_t prime,
 				 CF_t *leftvec,
 				 const long nvars,
@@ -1734,7 +1789,7 @@ param_t *nmod_fglm_compute_colon(sp_matfglm_t *matrix,
   param_t *param = allocate_fglm_param(prime, nvars);
 
   long sz = matrix->ncols * matrix->nrows;
-  long nb = initialize_fglm_data(matrix, data, prime, sz, block_size);
+  long nb = initialize_fglm_colon_data(matrix, data, prime, sz, block_size);
 
   if(info_level){
     fprintf(stderr, "[%u, %u], Non trivial / Trivial = %.2f%%\n",
@@ -1861,7 +1916,7 @@ param_t *nmod_fglm_compute_colon(sp_matfglm_t *matrix,
   return param;
 }
 
-param_t *nmod_fglm_guess_colon(sp_matfglm_t *matrix,
+param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 			       const mod_t prime,
 			       CF_t *leftvec,
 			       const long nvars,
@@ -1894,7 +1949,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglm_t *matrix,
 
 
   long sz = matrix->ncols * matrix->nrows;
-  long nb = initialize_fglm_data(matrix, data, prime, sz, block_size);
+  long nb = initialize_fglm_colon_data(matrix, data, prime, sz, block_size);
 
   if(info_level){
     fprintf(stderr, "[%u, %u], Non trivial / Trivial = %.2f%%\n",

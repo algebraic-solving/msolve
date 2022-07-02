@@ -4787,9 +4787,9 @@ restart:
 					st, gens->vnames, 0);
 	    /* list of monomials */
 	    /* size of the list */
-	    long dquot= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
+	    long suppsize= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
 	    printf("\n\nLength of the support of phi: %lu\n",
-		   dquot);
+		   suppsize);
 	    
 	    /* sht and hcm will store the support of the normal form in tbr. */
 	    ht_t *sht   = initialize_secondary_hash_table(bht, st);
@@ -4815,17 +4815,26 @@ restart:
 	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
 	    long maxdeg = sht->ev[hcm[0]][0]; // degree of the normal form
 	    printf ("degree of the nf: %ld\n",maxdeg);
-	    
+
+	    long dquot;
 	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot,
 						maxdeg);
-	    printf("\nMonomial basis:\n");
-	    for (len_t k = 0; k < dquot; ++k) {
-	      for (len_t l = 0; l < gens->nvars; ++l){
-		printf("%2u ", lmb[k*gens->nvars+l]);
-	      }
-	      printf("\n");
-	    }
+	    /* printf("\nMonomial basis:\n"); */
+	    /* for (len_t k = 0; k < dquot; ++k) { */
+	    /*   for (len_t l = 0; l < gens->nvars; ++l){ */
+	    /* 	printf("%2u ", lmb[k*gens->nvars+l]); */
+	    /*   } */
+	    /*   printf("\n"); */
+	    /* } */
 	    printf("\nSubspace has dimension: %ld\n",dquot);
+	    uint32_t * leftvector = calloc(dquot,sizeof (uint32_t));
+	    /* for (long i = 0; i < dquot; i++) { */
+	    /*   vector[i] = (uint32_t)rand() % gens->field_char; */
+	    /* } */
+	    uint32_t ** leftvectorsparam = calloc(2*(gens->nvars)-2,sizeof (uint32_t *));
+	    for (long i = 0; i < 2*(gens->nvars)-2; i++) {
+	      leftvectorsparam[i] = calloc(dquot,sizeof (uint32_t));
+	    }
 
 	    /* we assume that the support of phi is enough to encode
 	     * the multiplication matrix */
@@ -4835,12 +4844,15 @@ restart:
 	    sp_matfglmcol_t  *matrix = build_matrixn_colon(lmb, dquot, bld[0],
 							   blen, bexp, bcf_ff,
 							   bexp_lm,
-							   /*&tbr,*/
+							   tbr,
 							   bht,st,mul,bs,
 							   gens->nvars,
 							   gens->field_char,
 							   maxdeg,
-							   gens);
+							   gens,
+							   leftvector,
+							   leftvectorsparam,
+							   suppsize);
 	    uint64_t *linvars = calloc(gens->nvars, sizeof(uint64_t));
 	    uint32_t *lineqs = calloc(gens->nvars,sizeof(uint32_t));
 	    /*
@@ -4854,18 +4866,14 @@ restart:
 	    check_and_set_vars_squared_in_monomial_basis(squvars, lmb,
 							 dquot, gens->nvars);
 	    */
-	    uint32_t * vector = malloc(sizeof (uint32_t) * dquot);
-	    for (long i = 0; i < dquot; i++) {
-	      vector[i] = (uint32_t)rand() % gens->field_char;
-	    }
 	    param_t * param = nmod_fglm_guess_colon(matrix, gens->field_char,
-						    vector, gens->nvars,
+						    leftvector, gens->nvars,
 						    0 /* nlins */,
 						    linvars,
 						    lineqs, squvars, 1);
 	    display_fglm_param(stdout, param);
 	    free(param);
-	    free(vector);
+	    free(leftvector);
 	    free(matrix);
 	    free(hcm);
 	    hcm = NULL;

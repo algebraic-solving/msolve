@@ -697,6 +697,44 @@ copy_extrapoly_in_vector(uint32_t* vector,
   /* printf("\b\b]\n"); */
 }
 
+static inline void
+copy_extrapoly_in_vector(uint32_t* vector,
+			    long ncols,
+			    int32_t *lmb,
+			    len_t pos,
+			    const bs_t * const tbr,
+			    const ht_t * const bht,
+			    int32_t* evi,
+			    const stat_t *st,
+			    const int nv){
+
+  len_t idx = tbr->lmps[pos];
+  printf ("idx=%d\n",idx);
+  /* if (tbr->hm[idx] == NULL) {*/
+  len_t * hm  = tbr->hm[idx]+OFFSET;
+  len_t len = tbr->hm[idx][LENGTH];
+  printf ("len=%d\n",len);
+  long i;
+  long k = 0;
+  /* while (is_larger_exponent_bs (bht,hm[k],evi,lmb + (matrix->ncols-1)*nv,nv)>0) { */
+  /*   /\* largest monomials of the nf are out of range *\/ */
+  /*   k++; */
+  /* } */
+  /* printf ("start at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]); */
+  for(i = 0; i < ncols; i++){
+    /* printf ("%ld",i); */
+    if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
+      vector[i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
+      /* printf (", %d",matrix->dense_mat[N+i]); */
+      k++;
+    }
+    /* printf("\n"); */
+  }
+
+  /*}*/
+ 
+}
+
 
 static inline void
 copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix,
@@ -1406,6 +1444,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   sp_matfglmcol_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglmcol_t));
   matrix->charac = fc;
   matrix->ncols = dquot;
+  matrix->nzero = count_zero;
   matrix->nrows = len_xn + count_not_lm;
   long len1 = dquot * (len_xn + count_not_lm);
   long len2 = dquot - (len_xn + count_not_lm + count_zero);

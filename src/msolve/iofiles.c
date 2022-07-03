@@ -284,10 +284,10 @@ static void print_msolve_polynomials_ff(
 		    break;
 		  }
 		  for (k = 0; k < nv; ++k) {
-                        if (ht->ev[hm[j]][evi[k]] > 0) {
-                            fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[j]][evi[k]]);
-                        }
-                    }
+		    if (ht->ev[hm[j]][evi[k]] > 0) {
+		      fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[j]][evi[k]]);
+		    }
+		  }
                 }
                 if (i < to-1) {
                     fprintf(file, ",\n");

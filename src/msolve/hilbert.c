@@ -709,11 +709,11 @@ copy_extrapoly_in_vector(uint32_t* vector,
 			    const int nv){
 
   len_t idx = tbr->lmps[pos];
-  printf ("idx=%d\n",idx);
+  /* printf ("idx=%d\n",idx); */
   /* if (tbr->hm[idx] == NULL) {*/
   len_t * hm  = tbr->hm[idx]+OFFSET;
   len_t len = tbr->hm[idx][LENGTH];
-  printf ("len=%d\n",len);
+  /* printf ("len=%d\n",len); */
   long i;
   long k = 0;
   /* while (is_larger_exponent_bs (bht,hm[k],evi,lmb + (matrix->ncols-1)*nv,nv)>0) { */

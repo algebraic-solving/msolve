@@ -629,11 +629,11 @@ copy_extrapoly_in_vector(uint32_t* vector,
 			    const int nv){
 
   len_t idx = tbr->lmps[pos];
-  printf ("idx=%d\n",idx);
+  /* printf ("idx=%d\n",idx); */
   /* if (tbr->hm[idx] == NULL) {*/
   len_t * hm  = tbr->hm[idx]+OFFSET;
   len_t len = tbr->hm[idx][LENGTH];
-  printf ("len=%d\n",len);
+  /* printf ("len=%d\n",len); */
   long i;
   long k = 0;
   /* while (is_larger_exponent_bs (bht,hm[k],evi,lmb + (matrix->ncols-1)*nv,nv)>0) { */
@@ -668,11 +668,11 @@ copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix,
 			    const int nv){
 
   len_t idx = tbr->lmps[pos];
-  printf ("idx=%d\n",idx);
+  /* printf ("idx=%d\n",idx); */
   /* if (tbr->hm[idx] == NULL) {*/
   len_t * hm  = tbr->hm[idx]+OFFSET;
   len_t len = tbr->hm[idx][LENGTH];
-  printf ("len=%d\n",len);
+  /* printf ("len=%d\n",len); */
   long i;
   long N = nrows * matrix->ncols ;
   long k = 0;
@@ -1238,9 +1238,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* Computation of the extra normal forms */
   /* bs_t *tbr   = NULL; */
   /* exp_t *mul  = (exp_t *)calloc(nv, sizeof(exp_t)); */
-  /* 1 monomial each */
 
-#if 1
+  /* count_not_lm monomials to reduce
+   * each has length 1 */
+  /* 2*(nv-1) shifts of phi to reduce
+   * each has the same length as phi */
+#if 0
   long tobereduced = count_not_lm;
   int32_t* lens=(int32_t *) (malloc(sizeof(int32_t) * tobereduced));
   int32_t* exps = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm * nv));
@@ -1249,11 +1252,11 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   long tobereduced = count_not_lm + 2*nv-2;
   int32_t* lens=(int32_t *) (malloc(sizeof(int32_t) * tobereduced));
   int32_t* exps = (int32_t *) (malloc(sizeof(int32_t) * (count_not_lm +
-							 suppsize * (2*nv-2))* nv));
+							 suppsize * (2*nv-2)) * nv));
   int32_t* cfs = (int32_t *) (malloc(sizeof(int32_t) * (count_not_lm +
 							suppsize * (2*nv-2))));
 #endif
-  /* pure monomials need to be reduced */
+  /* pure monomials to be reduced */
   for (long i = 0; i < count_not_lm;i++){
     lens[i]=1;
     cfs[i]=1;
@@ -1265,25 +1268,17 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
     /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
-  /* monomial time phi to be reduced */
+#if 1
+  /* shifts of to be reduced */
   len_t idx = tbr->lmps[1];
   printf ("idx=%d\n",idx);
   len_t * hm  = tbr->hm[idx]+OFFSET;
   len_t len = tbr->hm[idx][LENGTH];
-  #if 0
-  printf ("len=%d\n",len);
   for (long i = 0; i < 2*nv-2;i++){
-    printf ("\ni=%ld, ",i);
     lens[count_not_lm + i]=suppsize;
-    long jj = 0;
     for (long j = 0; j < suppsize; j++) {
-      printf ("j=%ld, ",j);
       cfs[count_not_lm + i*suppsize + j]=tbr->cf_32[tbr->hm[idx][COEFFS]][j];
-      /* while (!is_equal_exponent_bs (bht,hm[j],evi,lmb+jj*nv,nv)) { */
-      /* 	jj++; */
-      /* } */
-      printf ("jj=%ld, ",jj);
-      for (long k = 0; k < nv; k++) {
+      for (long k = 0; k < nv-1; k++) {
 	int32_t cpt = 0;
 	if (i == k) {
 	  cpt = 1;
@@ -1291,25 +1286,35 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	else if (i == nv - 1 + k) {
 	  cpt = 2;
 	}
-	exps[(count_not_lm + i*suppsize+j)*nv+k]=lmb[jj*nv+k] + cpt;
-	/* printf ("%d, ", exps[i*nv+k]); */
+	exps[(count_not_lm + i*suppsize+j)*nv+k]=bht->ev[hm[j]][evi[k]] + cpt;
       }
-      printf("\n   , ");
+      exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
     }
   }
-  #endif
+#endif
   printf("size of basis %u\n", bs->lml);
   tbr = initialize_basis(st);
+#if 1
+  import_input_data_nf_ff_32(tbr, bht, st, 0, count_not_lm,
+			     lens, exps, (void *)cfs);
+  tbr->ld = tbr->lml  =  count_not_lm;
+  printf ("%ld imported\n",count_not_lm);
+  for (int k = 0; k < count_not_lm; ++k) {
+    tbr->lmps[k]  = k; /* fix input element in tbr */
+  }
+#else
   import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  tobereduced;
+  printf ("%ld imported\n",tobereduced);
   for (int k = 0; k < tobereduced; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
-  
+#endif
+  print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
   /* compute normal form of last element in tbr */
   int success = core_nf(&tbr, &bht, &st, mul, bs);
-  
   if (!success) {
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
@@ -1551,6 +1556,26 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
 
+  import_input_data_nf_ff_32(tbr, bht, st, count_not_lm, tobereduced,
+			     lens, exps, (void *)cfs);
+  tbr->ld = tbr->lml  =  2*nv-2;
+  printf ("%d imported\n",2*nv-2);
+  for (int k = 0; k < 2*nv-2; ++k) {
+    tbr->lmps[k]  = k; /* fix input element in tbr */
+  }
+  print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
+  /* compute normal form of last element in tbr */
+  success = core_nf(&tbr, &bht, &st, mul, bs);
+  if (!success) {
+    printf("Problem with normalform, stopped computation.\n");
+    exit(1);
+  }
+  print_msolve_polynomials_ff(stdout, 2*nv-2, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
+
+
+  
   free(len_gb_xn);
   free(start_cf_gb_xn);
   free(div_xn);

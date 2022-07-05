@@ -4467,13 +4467,9 @@ void display_output(int b, int dim, int dquot,
       FILE *ofile = fopen(files->out_file, "a+");
       fprintf(ofile, "[0, ");
       if (get_param >= 1 || gens->field_char) {
-        /* if(gens->field_char){ */
-        /*   display_fglm_param_maple(ofile, param); */
-        /*   return; */
-        /* } */
         mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp, param);
       }
-      if(get_param == 1 && gens->field_char == 0){
+      if(get_param <= 1 && gens->field_char == 0){
         if(get_param){
           fprintf(ofile, ",");
         }
@@ -4486,14 +4482,10 @@ void display_output(int b, int dim, int dquot,
     else{
       fprintf(stdout, "[0, ");
       if (get_param >= 1  || gens->field_char) {
-        /* if(gens->field_char){ */
-        /*   display_fglm_param_maple(stdout, param); */
-        /*   return; */
-        /* } */
         mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp, param);
       }
       if(get_param <= 1 && gens->field_char == 0){
-        if(get_param <= 1 &&gens->field_char == 0){
+        if(get_param){
           fprintf(stdout, ",");
         }
         display_real_points(stdout, *real_pts_ptr,

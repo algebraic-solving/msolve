@@ -967,12 +967,13 @@ int validate_input_data(
         fprintf(stderr, "Fixes linear algebra option to exact sparse.\n");
         *la_optionp =   2;
     }
+    printf("%d\n", *use_signaturesp);
     if (*use_signaturesp < 0 || *use_signaturesp > 3) {
         fprintf(stderr, "Usage of signature not valid, disabled.\n");
         *use_signaturesp = 0;
     }
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
-        fprintf(stderr, "Fixes reduction of GB to false.\n");
+        fprintf(stderr, "Fixes reduction of GB to 0 (false).\n");
         *reduce_gbp =   0;
     }
     if (*info_levelp < 0 || *info_levelp > 2) {

@@ -4772,7 +4772,7 @@ restart:
             }
 	    int64_t nb  = export_results_from_gba(bld, blen, bexp,
 						  bcf, &malloc, &bs, &bht, &st);
-            printf("size of basis %u\n", bs->lml);
+            printf("size of basis: %u\n", bs->lml);
             /* initialize data for elements to be reduced,
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
@@ -4794,12 +4794,13 @@ restart:
             }
             /* print all reduced elements in tbr, first  one
              * is the input element */
-            print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht,
-					st, gens->vnames, 0);
+            /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
+	    /* 				st, gens->vnames, 0); */
+	    /* printf("\n"); */
 	    /* list of monomials */
 	    /* size of the list */
 	    long suppsize= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
-	    printf("\n\nLength of the support of phi: %lu\n",
+	    printf("Length of the support of phi: %lu\n",
 		   suppsize);
 	    
 	    /* sht and hcm will store the support of the normal form in tbr. */
@@ -4807,10 +4808,10 @@ restart:
 	    hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
 	    mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 	    
-	    printf("\nStarts computation of normal form matrix\n");
+	    printf("Starts computation of normal form matrix\n");
 	    get_normal_form_matrix(tbr, bht, 1,
 				   st, &sht, &hcm, &mat);
-	    printf("\nLength of union of support of all normal forms: %u\n",
+	    printf("Length of union of support of all normal forms: %u\n",
 		   mat->nc);
 	    
 	    /* printf("\nUnion of support, sorted by decreasing monomial order:\n"); */
@@ -4822,10 +4823,19 @@ restart:
 	    /* } */
 
 	    int32_t *bcf_ff = (int32_t *)(*bcf);
-	    printf ("get lead monomials\n");
 	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
-	    long maxdeg = sht->ev[hcm[0]][0]; // degree of the normal form
+	    
+	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
+						 form */
 	    printf ("degree of the nf: %ld\n",maxdeg);
+	    for (long i = 0; i < bld[0]; i++) {
+	      long degi = 0;
+	      for (long k = 0; k < gens->nvars; k++) {
+		degi += bexp_lm[i*gens->nvars+k];
+	      }
+	      maxdeg = MAX(maxdeg,degi);
+	    }
+	    printf ("maximal degree of the truncated staircase: %ld\n",maxdeg);
 
 	    long dquot;
 	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot,
@@ -4837,13 +4847,13 @@ restart:
 	    /*   } */
 	    /*   printf("\n"); */
 	    /* } */
-	    printf("\nSubspace has dimension: %ld\n",dquot);
+	    printf("Subspace has dimension: %ld\n",dquot);
 	    uint32_t * leftvector = calloc(dquot,sizeof (uint32_t));
 	    /* for (long i = 0; i < dquot; i++) { */
 	    /*   vector[i] = (uint32_t)rand() % gens->field_char; */
 	    /* } */
-	    uint32_t ** leftvectorsparam = calloc(2*(gens->nvars)-2,sizeof (uint32_t *));
-	    for (long i = 0; i < 2*(gens->nvars)-2; i++) {
+	    uint32_t ** leftvectorsparam = malloc(2*(gens->nvars-1)*sizeof (uint32_t *));
+	    for (long i = 0; i < 2*(gens->nvars-1); i++) {
 	      leftvectorsparam[i] = calloc(dquot,sizeof (uint32_t));
 	    }
 

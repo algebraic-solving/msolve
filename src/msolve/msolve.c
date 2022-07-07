@@ -4823,7 +4823,9 @@ restart:
 
 	    int32_t *bcf_ff = (int32_t *)(*bcf);
 	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
-	    long maxdeg = sht->ev[hcm[0]][0]; // degree of the normal form
+	    
+	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
+						 form */
 	    printf ("degree of the nf: %ld\n",maxdeg);
 	    
 	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal

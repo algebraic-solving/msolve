@@ -699,14 +699,15 @@ copy_extrapoly_in_vector(uint32_t* vector,
 
 static inline void
 copy_extrapoly_in_vector(uint32_t* vector,
-			    long ncols,
-			    int32_t *lmb,
-			    len_t pos,
-			    const bs_t * const tbr,
-			    const ht_t * const bht,
-			    int32_t* evi,
-			    const stat_t *st,
-			    const int nv){
+			 long ncols,
+			 int32_t *lmb,
+			 len_t pos,
+			 const bs_t * const tbr,
+			 const ht_t * const bht,
+			 int32_t* evi,
+			 const stat_t *st,
+			 const int nv,
+			 const long maxdeg){
 
   len_t idx = tbr->lmps[pos];
   /* printf ("idx=%d\n",idx); */
@@ -716,23 +717,31 @@ copy_extrapoly_in_vector(uint32_t* vector,
   /* printf ("len=%d\n",len); */
   long i;
   long k = 0;
-  /* while (is_larger_exponent_bs (bht,hm[k],evi,lmb + (matrix->ncols-1)*nv,nv)>0) { */
-  /*   /\* largest monomials of the nf are out of range *\/ */
-  /*   k++; */
-  /* } */
-  /* printf ("start at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]); */
+  /* to remove monomials outside the vector space, we just look at the
+   * leading ones */
+  uint32_t deglm = 0;
+  for (long j = 0; j < nv; j++) {
+    deglm += lmb[k*nv + j];
+  }
+  while (deglm > maxdeg) {
+    k++;
+    deglm = 0;
+    for (long j = 0; j < nv; j++) {
+      deglm += lmb[k*nv + j];
+    }
+  }
+  printf ("starts at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]);
+  printf ("ends at  k=%ld with coeff %d\n",len-1-k,
+	  tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k]);
+  printf ("[");
   for(i = 0; i < ncols; i++){
-    /* printf ("%ld",i); */
     if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
       vector[i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
-      /* printf (", %d",matrix->dense_mat[N+i]); */
+      printf ("%u, ",vector[i]);
       k++;
     }
-    /* printf("\n"); */
   }
-
-  /*}*/
- 
+  printf("\b\b]\n");
 }
 
 
@@ -1436,10 +1445,10 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 
 #if 1>0
   fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
-  for(long i = 0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", len_gb_xn[i]);
+  for(long i = 0; i < len_xn-1; i++){
+    fprintf(stderr, "%u, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(stderr, "%u\n", len_gb_xn[len_xn-1]);
 #endif
   sp_matfglmcol_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglmcol_t));
   matrix->charac = fc;
@@ -1539,12 +1548,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
     else{
       /* we get now outside the basis */
-#if 0 > 0
+#if 1 > 0
       display_monomial_full(stderr, nv, NULL, 0, exp);
       fprintf(stderr, " => does NOT remain in monomial basis");
 #endif
       if (i == zeronf[l_zero]){
-#if 0 > 0
+#if 1 > 0
 	fprintf(stderr, " => land on 0\n");
 	printf ("zero row #%ld in row #%ld\n",l_zero,i);
 #endif
@@ -1555,7 +1564,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	matrix->dense_idx[l_dens] = i;
 	l_dens++;
 	if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
-#if 0 > 0
+#if 1 > 0
 	  fprintf(stderr, " => land on a leading monomial\n");
 #endif
 	  copy_poly_in_matrixcol(matrix, nrows, bcf, bexp, blen,
@@ -1583,7 +1592,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  }
 	}
 	else if (i == extranf[count_nf]){
-#if 0 > 0
+#if 1 > 0
 	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
@@ -1602,14 +1611,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   printf ("matrix finished\n");
   /* assumes the entries of matrix->dst are 0 */
   for(long i = 0; i < matrix->nrows; i++){
-    /* printf ("%d\n",matrix->dst[i]); */
     for(long j = matrix->ncols - 1; j >= 0; j--){
       if(matrix->dense_mat[i*matrix->ncols + j] == 0){
         matrix->dst[i]++;
 	/* printf ("%d, ",matrix->dst[i]); */
       }
       else{
-	/* printf("\n"); */
         break;
       }
     }

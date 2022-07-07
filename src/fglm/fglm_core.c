@@ -748,15 +748,6 @@ static void set_param_linear_vars(param_t *param,
 
   int cnt = 1;
   const uint32_t fc = param->charac;
-  /* fprintf(stderr, "\n"); */
-  /* fprintf(stderr, "nvars = %ld\n", nvars); */
-  /* fprintf(stderr, "nlins = %ld\n", nlins); */
-  /* for(int i = 0; i < nlins; i++){ */
-  /*   for(int j = 0; j < nvars + 1; j++){ */
-  /*     fprintf(stderr, "%d, ", lineqs[j + i*(nvars+1)]); */
-  /*   } */
-  /*   fprintf(stderr, "\n"); */
-  /* } */
 
   int nr = 0;
   if(nlins==nvars){
@@ -768,19 +759,20 @@ static void set_param_linear_vars(param_t *param,
   else{
     nr = nlins;
   }
-  /* for(int nc = 0; nc <= nvars-2; nc++){ */
   for(int nc = nvars - 2; nc >= 0; nc--){
-    int ind = nvars - 2 - nc;
-    ind = nc;
+    /* int ind = nvars - 2 - nc; */
+    int ind = nc;
+
     if(linvars[nc] != 0){
       int64_t lc = lineqs[nc +(nvars+1)*(nr-1 - (cnt-1))];
       if(lc != 1){
-        fprintf(stderr, "There should be a bug\n");
+        fprintf(stderr, "LC is not 1. There should be a bug\n");
         exit(1);
       }
-      for(int k = nc + 1; k < nvars - 1; k++){
+      for(int k = nc + 1; k < nvars - 1 ; k++){
         int32_t c = lineqs[k+(nvars+1)*(nr-(cnt-1)-1)];
         if(c){
+
           for(int i = 0; i < param->coords[k]->length; i++){
             int64_t tmp = (fc-c) * param->coords[k]->coeffs[i];
             tmp = tmp % fc;
@@ -788,6 +780,7 @@ static void set_param_linear_vars(param_t *param,
             tmp = tmp % fc;
             param->coords[ind]->coeffs[i] = tmp;
           }
+
         }
       }
 
@@ -796,7 +789,6 @@ static void set_param_linear_vars(param_t *param,
 
       int32_t c0 = lineqs[nvars+(nvars+1)*(nr-(cnt-1)-1)];
       param->coords[ind]->coeffs[0] = ((int64_t)(param->coords[ind]->coeffs[0] + c0)) % fc;
-
       for(long k = param->coords[ind]->length - 1; k >= 0; k--){
         if(param->coords[ind]->coeffs[k] == 0){
           param->coords[ind]->length--;
@@ -828,6 +820,7 @@ static int compute_parametrizations(param_t *param,
                                     uint64_t *linvars,
                                     uint32_t *lineqs,
                                     long nvars){
+
   nmod_poly_one(param->denom);
 
   if(invert_hankel_matrix(data_bms, dim)){
@@ -837,6 +830,7 @@ static int compute_parametrizations(param_t *param,
     fprintf(stdout, "Z2 = "); nmod_poly_fprint_pretty(stdout, data_bms->Z2, "x");fprintf(stdout, "\n");
 #endif
     long dec = 0;
+
     for(long nc = 0; nc < nvars - 1 ; nc++){
       if(linvars[nvars - 2- nc] == 0){
         solve_hankel(data_bms, dimquot, dim, block_size, data->res,
@@ -853,11 +847,14 @@ static int compute_parametrizations(param_t *param,
 #endif
       }
       else{
+
         if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
           nmod_poly_fit_length(param->coords[nvars-2-nc],
-                               param->elim->alloc );
+                               param->elim->length-1 );
         }
+
         param->coords[nvars-2-nc]->length = param->elim->length-1 ;
+
         for(long i = 0; i < param->elim->length-1 ; i++){
           param->coords[nvars-2-nc]->coeffs[i] = 0;
         }

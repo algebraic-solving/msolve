@@ -29,39 +29,39 @@
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
 #define ilog2_mpz(a) mpz_sizeinbase(a,2)
 
-static void mpz_upoly_init(mpz_upoly_t poly, long length){
+static void mpz_upoly_init(mpz_upoly_t poly, long alloc){
   mpz_t *tmp = NULL;
-  if(length){
-    tmp = (mpz_t *)(malloc(length * sizeof(mpz_t)));
+  if(alloc){
+    tmp = (mpz_t *)(malloc(alloc * sizeof(mpz_t)));
     if(tmp==NULL){
       fprintf(stderr, "Unable to allocate in mpz_upoly_init\n");
       exit(1);
     }
-    for(long i = 0; i < length; i++){
+    for(long i = 0; i < alloc; i++){
       mpz_init(tmp[i]);
       mpz_set_ui(tmp[i], 0);
     }
   }
   poly->coeffs = tmp;
-  poly->alloc = length;
+  poly->alloc = alloc;
   poly->length = -1;
 }
 
-static void mpz_upoly_init2(mpz_upoly_t poly, long length, long nbits){
+static void mpz_upoly_init2(mpz_upoly_t poly, long alloc, long nbits){
   mpz_t *tmp = NULL;
-  if(length){
-    tmp = (mpz_t *)(malloc(length * sizeof(mpz_t)));
-    //    tmp = (mpz_t *)(calloc(length, sizeof(mpz_t)));
+  if(alloc){
+    tmp = (mpz_t *)(malloc(alloc * sizeof(mpz_t)));
+    //    tmp = (mpz_t *)(calloc(alloc, sizeof(mpz_t)));
     if(tmp==NULL){
       fprintf(stderr, "Unable to allocate in mpz_upoly_init\n");
       exit(1);
     }
-    for(long i = 0; i < length; i++){
+    for(long i = 0; i < alloc; i++){
       mpz_init2(tmp[i], nbits);
     }
   }
   poly->coeffs = tmp;
-  poly->alloc = length;
+  poly->alloc = alloc;
   poly->length = -1;
 }
 
@@ -770,14 +770,14 @@ static inline void print_msolve_message(FILE * file, int n){
 static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   param->nvars = bparam->nvars;
   param->nsols = bparam->elim->length - 1;
-  mpz_upoly_init2(param->elim, bparam->elim->length, 2*32*(bparam->elim->length));
-  mpz_upoly_init(param->denom, bparam->elim->length - 1);
+  mpz_upoly_init2(param->elim, bparam->elim->alloc, 2*32*(bparam->elim->length));
+  mpz_upoly_init(param->denom, bparam->elim->alloc - 1);
   param->elim->length = bparam->elim->length;
 
   param->coords = (mpz_upoly_t *)malloc(sizeof(mpz_upoly_t)*(param->nvars - 1));
   if(param->coords != NULL){
     for(long i = 0; i < param->nvars - 1; i++){
-      mpz_upoly_init(param->coords[i], MAX(1,bparam->elim->length - 1));
+      mpz_upoly_init(param->coords[i], MAX(1,bparam->elim->alloc - 1));
       /* param->coords[i]->length = bparam->coords[i]->length; */
       param->coords[i]->length = bparam->elim->length - 1;
     }
@@ -1503,10 +1503,10 @@ static inline void normalize_nmod_param(param_t *nmod_param){
       nmod_param->denom->coeffs[i] = (inv * nmod_param->denom->coeffs[i]) % prime;
     }
 
-
     for(int j = 0; j < nmod_param->nvars - 1; j++){
       nmod_poly_mul(nmod_param->coords[j], nmod_param->coords[j],
                     nmod_param->denom);
+
       nmod_poly_rem(nmod_param->coords[j], nmod_param->coords[j],
                     nmod_param->elim);
     }
@@ -1690,6 +1690,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
                                                   int info_level){
 
   mpz_set(guessed_num, pol[*maxrec]);
+
   if(ratreconwden(rnum, rden, guessed_num, modulus, guessed_den, rdata) == 0){
     return 0;
   }
@@ -1931,7 +1932,6 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               int nthrds,
                                               const int info_level){
 
-
   mpz_mul_ui(prod_crt, *modulus, prime);
   crt_lift_mpz_param(tmp_mpz_param, nmod_param, *modulus, prod_crt,
                      prime, nthrds);
@@ -2096,7 +2096,6 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     mpz_sqrt(recdata->D, *guessed_num);
     mpz_set(recdata->N, recdata->D);
 
-
     for(int i = 0; i < nc; i++){
       *maxrec = trace_det->det_idx;
 
@@ -2124,6 +2123,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
           mpz_mul_2exp(recdata->D, recdata->D, nc);
           mpz_fdiv_q_2exp(recdata->N, *modulus, 1);
           mpz_fdiv_q(recdata->N, recdata->N, recdata->D);
+
           b = rational_reconstruction_upoly_with_denom(mpz_param->coords[i],
                                         denominator,
                                         tmp_mpz_param->coords[i],
@@ -3278,6 +3278,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpz_init(rnum);
   mpz_init(rden);
   set_mpz_param_nmod(tmp_mpz_param, nmod_params[0]);
+
+
   long nsols = tmp_mpz_param->nsols;
 
   mpz_upoly_t numer;
@@ -3424,6 +3426,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            &mat_lifted,
                                            doit,
                                            st->nthrds, info_level);
+
 #if LIFTMATRIX == 1
           if(mat_lifted && display){
             /* display_fglm_mpq_matrix(stderr, mpq_mat); */

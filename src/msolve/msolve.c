@@ -1543,7 +1543,7 @@ static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
                                       mpz_t modulus, int32_t prime,
                                       mpz_t prod,
                                       int nthrds){
-  len_t i;
+  long i;
 
 #pragma omp parallel for num_threads(nthrds)    \
   private(i) schedule(static)
@@ -2097,7 +2097,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     mpz_set(recdata->N, recdata->D);
 
     for(int i = 0; i < nc; i++){
-      *maxrec = trace_det->det_idx;
+      *maxrec = MAX(0, trace_det->det_idx-1);
 
       if(is_lifted[0]>0 && is_lifted[i+1]==0){
 

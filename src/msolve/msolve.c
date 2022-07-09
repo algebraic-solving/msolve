@@ -4866,22 +4866,11 @@ restart:
 							   suppsize);
 	    uint64_t *linvars = calloc(gens->nvars, sizeof(uint64_t));
 	    uint32_t *lineqs = calloc(gens->nvars,sizeof(uint32_t));
-	    /*
-	    long nlins = 0;
-	    check_and_set_linear_poly_non_hashed(&nlins, linvars, lineqs_ptr,
-						 bld, bexp_lm,
-						 blen, bexp, bcf_ff, gens->nvars);
-	    */
 	    uint64_t *squvars = calloc(gens->nvars-1, sizeof(uint64_t));
-	    /*
-	    check_and_set_vars_squared_in_monomial_basis(squvars, lmb,
-							 dquot, gens->nvars);
-	    */
 	    param_t * param = nmod_fglm_guess_colon(matrix, gens->field_char,
-						    leftvector, gens->nvars,
-						    0 /* nlins */,
-						    linvars,
-						    lineqs, squvars, 1);
+						    leftvector, leftvectorsparam,
+						    gens->nvars,
+						    0, linvars, lineqs, squvars, 1);
 	    display_fglm_param(stdout, param);
 	    free(param);
 	    free(leftvector);
@@ -4906,7 +4895,7 @@ restart:
             if (bht != NULL) {
 	      free_hash_table(&bht);
             }
-	    
+	    return 0;
 	}
 	/* no saturate = 0 */
 	/* no colon    = 0 */

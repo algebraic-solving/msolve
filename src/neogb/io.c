@@ -967,7 +967,6 @@ int validate_input_data(
         fprintf(stderr, "Fixes linear algebra option to exact sparse.\n");
         *la_optionp =   2;
     }
-    printf("%d\n", *use_signaturesp);
     if (*use_signaturesp < 0 || *use_signaturesp > 3) {
         fprintf(stderr, "Usage of signature not valid, disabled.\n");
         *use_signaturesp = 0;

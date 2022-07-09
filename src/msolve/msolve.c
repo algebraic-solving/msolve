@@ -2497,10 +2497,19 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
             return NULL;
         }
     }
-
-    print_ff_basis_data(
-                        files->out_file, "a", bs, bht, st, gens, print_gb);
-
+    if(print_gb){
+      if(st->fc == 0){
+        /* to fix display inconsistency when gens->fc = 0 */
+        st->fc = fc;
+        print_ff_basis_data(
+                            files->out_file, "a", bs, bht, st, gens, print_gb);
+        st->fc = 0;
+      }
+      else{
+        print_ff_basis_data(
+                            files->out_file, "a", bs, bht, st, gens, print_gb);
+      }
+    }
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm, bs);
 
     if(has_dimension_zero(bs->lml, bht->nv, bexp_lm)){
@@ -2985,8 +2994,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
         free(invalid_gens);
         return -3;
     }
-  /* checks and set all meta data. if a nonzero value is returned then
-    * some of the input data is corrupted. */
+    /* checks and set all meta data. if a nonzero value is returned then
+     * some of the input data is corrupted. */
 
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
               field_char, mon_order, elim_block_len, nr_vars, nr_gens,

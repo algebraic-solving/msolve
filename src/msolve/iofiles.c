@@ -256,15 +256,18 @@ static void print_msolve_polynomials_ff(
                 hm  = bs->hm[idx]+OFFSET;
                 len = bs->hm[idx][LENGTH];
                 switch (st->ff_bits) {
-                    case 8:
-                        fprintf(file, "%u", bs->cf_8[bs->hm[idx][COEFFS]][0]);
-                        break;
-                    case 16:
-                        fprintf(file, "%u", bs->cf_16[bs->hm[idx][COEFFS]][0]);
-                        break;
-                    case 32:
-                        fprintf(file, "%u", bs->cf_32[bs->hm[idx][COEFFS]][0]);
-                        break;
+                case 0 :
+                  fprintf(file, "%u", bs->cf_32[bs->hm[idx][COEFFS]][0]);
+                  break;
+                case 8:
+                  fprintf(file, "%u", bs->cf_8[bs->hm[idx][COEFFS]][0]);
+                  break;
+                case 16:
+                  fprintf(file, "%u", bs->cf_16[bs->hm[idx][COEFFS]][0]);
+                  break;
+                case 32:
+                  fprintf(file, "%u", bs->cf_32[bs->hm[idx][COEFFS]][0]);
+                  break;
                 }
                 for (k = 0; k < nv; ++k) {
                     if (ht->ev[hm[0]][evi[k]] > 0) {
@@ -273,6 +276,9 @@ static void print_msolve_polynomials_ff(
                 }
                 for (j = 1; j < len; ++j) {
 										switch (st->ff_bits) {
+                    case 0:
+                      fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
+                      break;
 												case 8:
                             fprintf(file, "+%u", bs->cf_8[bs->hm[idx][COEFFS]][j]);
 														break;

@@ -1580,6 +1580,7 @@ static inline void guess_minpoly(param_t *param,
 static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
 					fglm_data_t * data,
 					CF_t * leftvec,
+					CF_t ** leftvecparam,
 					szmat_t block_size, long dimquot,
 					mod_t prime,
 					param_t * param,
@@ -1616,15 +1617,22 @@ static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
   uint64_t * data_backup = (uint64_t *) malloc (2 * matrix->ncols * sizeof(uint64_t));
   
   uint64_t acc = 0;
+  uint64_t * accparam = (uint64_t *) calloc (2 * (nvars-1),sizeof(uint64_t));
   for(szmat_t j = 0; j < matrix->ncols; j++){
     acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
+    for (szmat_t k = 0; k < 2*(nvars-1); k++) {
+      accparam[k] = (accparam[k] + (((uint64_t)leftvecparam[k][j]) * data->vecinit[j])) % prime;
+    }
   }
   data->res[0] = acc;
+  for (szmat_t k = 0; k < block_size; k++) {
+    data->res[k] = accparam[k];
+  }
   data->pts[0] = acc;
   data_backup[0] = acc;
 
   szmat_t i = 1;
-  szmat_t tentative_degree =  36/*MIN (4,matrix->ncols)*/;
+  szmat_t tentative_degree =  MIN (4,matrix->ncols);
   printf ("tentative degree = %d\n",tentative_degree);
   while (i <= 2*tentative_degree-1) {
     sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
@@ -1640,17 +1648,22 @@ static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
     data->vvec = tmp;
     /* data->res[i*block_size] = data->vecinit[0]; */
     acc = 0;
+    for (long k = 0; k < 2*(nvars-1); k++) {
+      accparam[k] = 0;
+    }
     for(szmat_t j = 0; j < matrix->ncols; j++){
       acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
+      for (long k = 0; k < 2*(nvars-1); k++) {
+	accparam[k] = (accparam[k] + (((uint64_t)leftvecparam[k][j]) * data->vecinit[j])) % prime;
+      }
     }
     data->res[i*block_size]= acc;
+    for (szmat_t k = 0; k < block_size; k++) {
+      data->res[i*block_size + k] = accparam[k];
+    }
     data->pts[i] = acc;
     data_backup[i] = acc;
     
-    for(szmat_t j = 1; j < block_size; j++){
-      data->res[j+i*block_size] = data->vecinit[j+1];
-    }
-
 #if DEBUGFGLM > 1
     print_vec(stdout, data->res, 2*block_size * matrix->ncols);
 #endif
@@ -1675,8 +1688,7 @@ static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
   }
 }
 
-
-//TODO 0 rows
+#if 0
 static inline void generate_sequence_colon(sp_matfglmcol_t *matrix,
 					   fglm_data_t * data,
 					   CF_t * leftvec,
@@ -1777,169 +1789,12 @@ static inline void generate_sequence_colon(sp_matfglmcol_t *matrix,
   }
 
 }
-
-param_t *nmod_fglm_compute_colon(sp_matfglmcol_t *matrix,
-				 const mod_t prime,
-				 CF_t *leftvec,
-				 const long nvars,
-				 const long nlins,
-				 uint64_t *linvars,
-				 uint32_t *lineqs,
-				 uint64_t *squvars,
-				 const int info_level){
-#if DEBUGFGLM > 0
-  fprintf(stderr, "prime = %u\n", prime);
 #endif
-
-#if DEBUGFGLM >= 1
-  FILE *fmat = fopen("/tmp/matrix.fglm", "w");
-  display_fglm_colon_matrix(fmat, matrix);
-  fclose(fmat);
-#endif
-  /* 1147878294 */
-    if(prime>=1518500213){
-    fprintf(stderr, "Prime %u is too large.\n", prime);
-    fprintf(stderr, "One needs to use update linear algebra fglm functions\n");
-    return NULL;
-  }
-
-  szmat_t block_size = nvars-nlins; //taille de bloc dans data->res
-  //pour le stockage des termes de la suite qu'on a besoin de garder
-  fglm_data_t *data = allocate_fglm_data(matrix->nrows, matrix->ncols, nvars);
-
-  param_t *param = allocate_fglm_param(prime, nvars);
-
-  long sz = matrix->ncols * matrix->nrows;
-  long nb = initialize_fglm_colon_data(matrix, data, prime, sz, block_size);
-
-  if(info_level){
-    fprintf(stderr, "[%u, %u], Non trivial / Trivial = %.2f%%\n",
-            matrix->ncols, matrix->nrows,
-            100*((double)matrix->nrows / (double)matrix->ncols));
-    fprintf(stderr, "Density of non-trivial part %.2f%%\n",
-            100-100*(float)nb/(float)sz);
-  }
-  ulong dimquot = (matrix->ncols);
-
-#if DEBUGFGLM > 1
-  print_vec(stderr, data->vecinit, matrix->ncols);
-  print_vec(stderr, data->res, 2 * block_size * matrix->ncols);
-  fprintf(stderr, "\n");
-#endif
-
-  double st = omp_get_wtime();
-
-  //////////////////////////////////////////////////////////////////
-  /* generate_sequence(matrix, data, block_size, dimquot, prime); */
-  /* generate_sequence_verif(matrix, data, block_size, dimquot, */
-  /* 			  squvars, linvars, nvars, prime); */
-  generate_sequence_colon(matrix, data, leftvec, block_size, dimquot, prime);
-
-  //////////////////////////////////////////////////////////////////
-
-  if(info_level){
-    double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
-    double rt = omp_get_wtime()-st;
-    fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt, nops / rt);
-  }
-
-  st = omp_get_wtime();
-
-  //Berlekamp-Massey data
-  fglm_bms_data_t *data_bms = allocate_fglm_bms_data(dimquot, prime);
-
-  //////////////////////////////////////////////////////////////////
-
-  // Now we compute the elimination polynomial
-  /* compute_elim_poly(data, data_bms, dimquot); */
-  /* long dim = make_square_free_elim_poly(param, data_bms, dimquot, info_level); */
-
-  long dim = 0;
-  compute_minpoly(param, data, data_bms, dimquot, linvars, lineqs, nvars, &dim,
-                  info_level);
-  //////////////////////////////////////////////////////////////////
-
-  if(info_level){
-    fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
-            omp_get_wtime()-st);
-    fprintf(stderr, "Elimination done.\n");
-  }
-
-
-
-  /* nmod_poly_fprint_pretty(stderr, param->elim, "x"); fprintf (stdout,"\n"); */
-
-  //////////////////////////////////////////////////////////////////
-
-  // Now we compute parametriations
-  if (dimquot == dim) { 
-  //////////////////////////////////////////////////////////////////
-    // Parametrization of the ideal
-    if(info_level){
-      fprintf(stderr, "Elimination polynomial is squarefree.\n");
-    }
-
-    /*
-    st = omp_get_wtime();
-    if(compute_parametrizations(param, data, data_bms,
-                                dim, dimquot, block_size,
-                                nlins, linvars, lineqs,
-                                nvars) == 0){
-
-      fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
-      free_fglm_bms_data(data_bms);
-      free_fglm_data(data);
-      return NULL;
-
-    }
-    */
-  //////////////////////////////////////////////////////////////////
-  } else {
-    // Parametrization of the radical
-    fprintf(stderr, "Elimination polynomial is not squarefree.\n");
-
-    /*
-    int right_param= compute_parametrizations_non_shape_position_case(param,
-								      data,
-								      data_bms,
-								      dimquot,
-								      block_size,
-								      nlins, linvars,
-								      lineqs, squvars,
-								      nvars, prime,
-								      1);
-    if (right_param == 0) {
-      fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
-      free_fglm_bms_data(data_bms);
-      free_fglm_data(data);
-      return NULL;
-    } else if (right_param == 1) {
-      fprintf(stderr, "Radical ideal might have no correct parametrization\n");
-    } else if (right_param == 2) {
-      fprintf(stderr, "Only the first parametrization of ");
-      fprintf (stderr,"the radical ideal seems correct\n");
-    } else if (right_param < nvars) {
-      fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-      fprintf(stderr, "the radical ideal seem correct\n");
-    } else {
-      fprintf(stderr, "All the parametrizations of ");
-      fprintf(stderr, "the radical ideal seem correct\n");
-    }
-    */
-  }
-  /* if(info_level){ */
-  /*   fprintf(stderr, "Time spent to compute parametrizations (elapsed): %.2f sec\n", */
-  /*           omp_get_wtime()-st); */
-  /*   fprintf(stderr, "Parametrizations done.\n"); */
-  /* } */
-  free_fglm_bms_data(data_bms);
-  free_fglm_data(data);
-  return param;
-}
 
 param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 			       const mod_t prime,
 			       CF_t *leftvec,
+			       CF_t **leftvecparam,
 			       const long nvars,
 			       const long nlins,
 			       uint64_t *linvars,
@@ -1962,7 +1817,8 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
     return NULL;
   }
 
-  szmat_t block_size = nvars-nlins; //taille de bloc dans data->res
+  /* szmat_t block_size = nvars-nlins; //taille de bloc dans data->res */
+  szmat_t block_size = 2*nvars-1; //taille de bloc dans data->res
   //pour le stockage des termes de la suite qu'on a besoin de garder
   fglm_data_t *data = allocate_fglm_data(matrix->nrows, matrix->ncols, nvars);
 
@@ -1995,7 +1851,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   /* generate_sequence_verif(matrix, data, block_size, dimquot, */
   /* 			  squvars, linvars, nvars, prime); */
   printf ("guess\n");
-  guess_sequence_colon(matrix, data, leftvec, block_size, dimquot,
+  guess_sequence_colon(matrix, data, leftvec, leftvecparam, block_size, dimquot,
 		       prime,
 		       param, data_bms, linvars, lineqs, nvars,
 		       &dim, info_level);
@@ -2013,61 +1869,33 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 
   //////////////////////////////////////////////////////////////////
 
-  // Now we compute parametriations
-  if (dimquot == dim) { 
-  //////////////////////////////////////////////////////////////////
-    // Parametrization of the ideal
-    if(info_level){
-      fprintf(stderr, "Elimination polynomial is squarefree.\n");
-    }
-
-    /*
-    st = omp_get_wtime();
-    if(compute_parametrizations(param, data, data_bms,
-                                dim, dimquot, block_size,
-                                nlins, linvars, lineqs,
-                                nvars) == 0){
-
-      fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
-      free_fglm_bms_data(data_bms);
-      free_fglm_data(data);
-      return NULL;
-
-    }
-    */
-  //////////////////////////////////////////////////////////////////
+  // Now we compute the parametrizations of the radical
+  fprintf(stderr, "Elimination polynomial is not squarefree.\n");
+  int right_param= compute_parametrizations_non_shape_position_case(param,
+								    data,
+								    data_bms,
+								    dimquot,
+								    block_size,
+								    nlins, linvars,
+								    lineqs, squvars,
+								    nvars, prime,
+								    1);
+  if (right_param == 0) {
+    fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
+    free_fglm_bms_data(data_bms);
+    free_fglm_data(data);
+    return NULL;
+  } else if (right_param == 1) {
+    fprintf(stderr, "Radical ideal might have no correct parametrization\n");
+  } else if (right_param == 2) {
+    fprintf(stderr, "Only the first parametrization of ");
+    fprintf (stderr,"the radical ideal seems correct\n");
+  } else if (right_param < nvars) {
+    fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
+    fprintf(stderr, "the radical ideal seem correct\n");
   } else {
-    // Parametrization of the radical
-    fprintf(stderr, "Elimination polynomial is not squarefree.\n");
-
-    /*
-    int right_param= compute_parametrizations_non_shape_position_case(param,
-								      data,
-								      data_bms,
-								      dimquot,
-								      block_size,
-								      nlins, linvars,
-								      lineqs, squvars,
-								      nvars, prime,
-								      1);
-    if (right_param == 0) {
-      fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
-      free_fglm_bms_data(data_bms);
-      free_fglm_data(data);
-      return NULL;
-    } else if (right_param == 1) {
-      fprintf(stderr, "Radical ideal might have no correct parametrization\n");
-    } else if (right_param == 2) {
-      fprintf(stderr, "Only the first parametrization of ");
-      fprintf (stderr,"the radical ideal seems correct\n");
-    } else if (right_param < nvars) {
-      fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-      fprintf(stderr, "the radical ideal seem correct\n");
-    } else {
-      fprintf(stderr, "All the parametrizations of ");
-      fprintf(stderr, "the radical ideal seem correct\n");
-    }
-    */
+    fprintf(stderr, "All the parametrizations of ");
+    fprintf(stderr, "the radical ideal seem correct\n");
   }
   if(info_level){
     fprintf(stderr, "Time spent to compute parametrizations (elapsed): %.2f sec\n",

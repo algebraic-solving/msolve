@@ -1991,8 +1991,6 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
     return NULL;
   }
 
-  
-  
   /* szmat_t block_size = nvars-nlins; //taille de bloc dans data->res */
   szmat_t block_size = 2*nvars-1; //taille de bloc dans data->res
   //pour le stockage des termes de la suite qu'on a besoin de garder
@@ -2027,11 +2025,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   /* generate_sequence_verif(matrix, data, block_size, dimquot, */
   /* 			  squvars, linvars, nvars, prime); */
   printf ("guess\n");
-<<<<<<< HEAD
   guess_sequence_colon(matrix, data, leftvec, leftvecparam, block_size, dimquot,
-=======
-  guess_sequence_colon(matrix, data, leftvec, block_size, dimquot,
->>>>>>> b4a3daa (bug in nf of multiples of phi)
 		       prime,
 		       param, data_bms, linvars, lineqs, nvars,
 		       &dim, info_level);

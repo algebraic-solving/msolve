@@ -1950,6 +1950,12 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
     fprintf(stderr, "One needs to use update linear algebra fglm functions\n");
     return NULL;
   }
+  printf("phi\n");
+  print_vec (stderr, leftvec, matrix->ncols);
+  for (long k = 0; k < nvars-1; k++) {
+    printf("phi*x%ld\n",k+1);
+    print_vec (stderr, leftvecparam[k], matrix->ncols);
+  }
 
   
   

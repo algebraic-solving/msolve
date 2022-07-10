@@ -528,8 +528,7 @@ static inline void print_vec(FILE *file, CF_t *vec, szmat_t len){
   fprintf(file, "%u]\n",vec[len-1]);
 }
 
-static inline void mynmod_berlekamp_massey_print(
-                                                 const nmod_berlekamp_massey_t B)
+static inline void mynmod_berlekamp_massey_print(const nmod_berlekamp_massey_t B)
 {
   slong i;
   nmod_poly_fprint_pretty(stderr, B->V1, "x");
@@ -1620,13 +1619,13 @@ static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
   uint64_t * accparam = (uint64_t *) calloc (2 * (nvars-1),sizeof(uint64_t));
   for(szmat_t j = 0; j < matrix->ncols; j++){
     acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
-    for (szmat_t k = 0; k < 2*(nvars-1); k++) {
+    for (szmat_t k = 0; k < block_size-1 /*2*(nvars-1)*/; k++) {
       accparam[k] = (accparam[k] + (((uint64_t)leftvecparam[k][j]) * data->vecinit[j])) % prime;
     }
   }
   data->res[0] = acc;
-  for (szmat_t k = 0; k < block_size; k++) {
-    data->res[k] = accparam[k];
+  for (szmat_t k = 1; k < block_size; k++) {
+    data->res[k] = accparam[k-1];
   }
   data->pts[0] = acc;
   data_backup[0] = acc;
@@ -1653,13 +1652,13 @@ static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
     }
     for(szmat_t j = 0; j < matrix->ncols; j++){
       acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
-      for (long k = 0; k < 2*(nvars-1); k++) {
+      for (long k = 0; k < block_size-1 /*2*(nvars-1)*/; k++) {
 	accparam[k] = (accparam[k] + (((uint64_t)leftvecparam[k][j]) * data->vecinit[j])) % prime;
       }
     }
     data->res[i*block_size]= acc;
-    for (szmat_t k = 0; k < block_size; k++) {
-      data->res[i*block_size + k] = accparam[k];
+    for (szmat_t k = 1; k < block_size-1; k++) {
+      data->res[i*block_size + k] = accparam[k-1];
     }
     data->pts[i] = acc;
     data_backup[i] = acc;
@@ -1811,12 +1810,20 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   fclose(fmat);
 #endif
   /* 1147878294 */
-    if(prime>=1518500213){
+  if(prime>=1518500213){
     fprintf(stderr, "Prime %u is too large.\n", prime);
     fprintf(stderr, "One needs to use update linear algebra fglm functions\n");
     return NULL;
   }
+  printf("phi\n");
+  print_vec (stderr, leftvec, matrix->ncols);
+  for (long k = 0; k < nvars-1; k++) {
+    printf("phi*x%ld\n",k+1);
+    print_vec (stderr, leftvecparam[k], matrix->ncols);
+  }
 
+  
+  
   /* szmat_t block_size = nvars-nlins; //taille de bloc dans data->res */
   szmat_t block_size = 2*nvars-1; //taille de bloc dans data->res
   //pour le stockage des termes de la suite qu'on a besoin de garder

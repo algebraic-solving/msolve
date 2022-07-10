@@ -1499,12 +1499,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
     else{
       /* we get now outside the basis */
-#if 1 > 0
+#if 0 > 0
       display_monomial_full(stderr, nv, NULL, 0, exp);
       fprintf(stderr, " => does NOT remain in monomial basis");
 #endif
       if (i == zeronf[l_zero]){
-#if 1 > 0
+#if 0 > 0
 	fprintf(stderr, " => land on 0\n");
 	printf ("zero row #%ld in row #%ld\n",l_zero,i);
 #endif
@@ -1515,7 +1515,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	matrix->dense_idx[l_dens] = i;
 	l_dens++;
 	if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
-#if 1 > 0
+#if 0 > 0
 	  fprintf(stderr, " => land on a leading monomial\n");
 #endif
 	  copy_poly_in_matrixcol(matrix, nrows, bcf, bexp, blen,

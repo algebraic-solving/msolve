@@ -1040,6 +1040,42 @@ static inline void divide_table_polynomials (param_t *param,
 
 }
 
+static inline void divide_table_polynomials_colon (param_t *param,
+						   fglm_data_t *data,
+						   fglm_bms_data_t *data_bms,
+						   ulong dimquot,
+						   szmat_t block_size,
+						   mod_t prime,
+						   int ncoord,
+						   const long nvars,
+						   uint64_t lambda) {
+
+  szmat_t length= data_bms->BMS->V1->length-1;
+  nmod_poly_zero (data_bms->BMS->R0);
+  nmod_poly_fit_length(data_bms->BMS->R0, length);
+
+  for (long i = 0; i < length; i++){
+    if (lambda == 0) {
+      nmod_poly_set_coeff_ui (data_bms->BMS->R0,i,
+			      data->res[(length-i-1)*block_size+ncoord]);
+
+    }
+    else {
+      uint64_t coeff= (lambda*data->res[(length-i-1)*block_size+ncoord]) % prime;
+      coeff= (data->res[(length-i-1)*block_size+(nvars-1)+ncoord] + coeff) % prime;
+      nmod_poly_set_coeff_ui (data_bms->BMS->R0,i,
+			      coeff);
+    }
+  }
+
+  nmod_poly_mul (data_bms->BMS->R1,data_bms->BMS->R0,data_bms->BMS->V1);
+  nmod_poly_shift_right (data_bms->BMS->R1,data_bms->BMS->R1,length);
+  nmod_poly_mul (data_bms->BMS->R1,data_bms->BMS->R1,data_bms->Z2);
+  nmod_poly_rem (data_bms->BMS->R1,data_bms->BMS->R1,param->elim);
+
+}
+
+
 
 
 static
@@ -1144,6 +1180,108 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
     return 0;
   }
 }
+
+static int compute_parametrizations_colon(param_t *param,
+					  fglm_data_t *data,
+					  fglm_bms_data_t *data_bms,
+					  ulong dimquot,
+					  szmat_t block_size,
+					  long nlins,
+					  uint64_t *linvars,
+					  uint32_t *lineqs,
+					  uint64_t *squvars,
+					  long nvars,
+					  mod_t prime,
+					  int verif){
+
+  int nr_fail_param=-1;
+  if (invert_table_polynomial (param, data, data_bms, dimquot, block_size,
+                               prime, 0, 0)) {
+#if DEBUGFGLM > 0
+    fprintf (stdout,"C1=");
+    nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
+    fprintf(stdout, "invC1=");
+    nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+#endif
+    long dec = 0;
+    for(long nc = 0; nc < nvars - 1 ; nc++){
+      if(linvars[nvars - 2 - nc] == 0){
+        divide_table_polynomials_colon(param,data,data_bms, dimquot, block_size, prime,
+				       nc + 1-dec,nvars,0);
+        nmod_poly_neg(param->coords[nvars-2-nc], data_bms->BMS->R1);
+#if DEBUGFGLM > 0
+        nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
+        fprintf(stdout, "\n");
+#endif
+      }
+      else{
+        dec++;
+      }
+    }
+
+    /* parametrizations verification */
+    if (verif) {
+      dec = 0;
+      for(long nc = 0; nc < nvars - 1 ; nc++){
+        if(linvars[nvars - 2 - nc] == 0
+           && squvars[nvars - 2 - nc] != 0){
+
+          uint64_t lambda= 1 + ((uint64_t) rand() % (prime-1));
+          /* needed for verification */
+
+          invert_table_polynomial (param, data, data_bms, dimquot, block_size,
+                                   prime, nc+1-dec, lambda);
+#if DEBUGFGLM > 1
+          fprintf (stdout,"C2=");
+          nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
+          fprintf(stdout, "invC2=");
+          nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+#endif
+
+          divide_table_polynomials_colon(param,data,data_bms, dimquot, block_size,
+					 prime, nc+1-dec,nvars,lambda);
+          nmod_poly_neg(data_bms->BMS->R1, data_bms->BMS->R1);
+
+#if DEBUGFGLM > 1
+          nmod_poly_fprint_pretty(stdout, data_bms->BMS->R1, "X");
+          fprintf(stdout, "\n");
+#endif
+          if (! nmod_poly_equal (param->coords[nvars-2-nc],data_bms->BMS->R1)) {
+            if (nr_fail_param == -1) {
+              nr_fail_param= nvars-2-nc;
+            }
+          }
+        }
+        else{
+          if(linvars[nvars -2 - nc] != 0){
+            if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
+              nmod_poly_fit_length(param->coords[nvars-2-nc],
+                                   param->elim->alloc );
+            }
+            param->coords[nvars-2-nc]->length = param->elim->length-1 ;
+            for(long i = 0; i < param->elim->length-1 ; i++){
+              param->coords[nvars-2-nc]->coeffs[i] = 0;
+            }
+          }
+        }
+        if(linvars[nvars - 2 - nc] != 0){
+          dec++;
+        }
+      }
+    }
+
+    set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
+
+#if DEBUGFGLM>0
+    display_fglm_param_maple(stderr, param);
+#endif
+
+    return nvars-1-nr_fail_param;
+  } else {
+    return 0;
+  }
+}
+
 
 
 
@@ -1857,7 +1995,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   
   /* szmat_t block_size = nvars-nlins; //taille de bloc dans data->res */
   /* szmat_t block_size = 2*nvars-1; //taille de bloc dans data->res */
-  szmat_t block_size = nvars+1; //taille de bloc dans data->res
+  szmat_t block_size = 2*nvars-1; //taille de bloc dans data->res
   //pour le stockage des termes de la suite qu'on a besoin de garder
   fglm_data_t *data = allocate_fglm_data(matrix->nrows, matrix->ncols, nvars);
 
@@ -1910,31 +2048,31 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 
   // Now we compute the parametrizations of the radical
   fprintf(stderr, "Elimination polynomial is not squarefree.\n");
-  int right_param= compute_parametrizations_non_shape_position_case(param,
-								    data,
-								    data_bms,
-								    dimquot,
-								    block_size,
-								    nlins, linvars,
-								    lineqs, squvars,
-								    nvars, prime,
-								    1);
+  int right_param= compute_parametrizations_colon(param,
+						  data,
+						  data_bms,
+						  dimquot,
+						  block_size,
+						  nlins, linvars,
+						  lineqs, squvars,
+						  nvars, prime,
+						  1);
   if (right_param == 0) {
     fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
     free_fglm_bms_data(data_bms);
     free_fglm_data(data);
     return NULL;
   } else if (right_param == 1) {
-    fprintf(stderr, "Radical ideal might have no correct parametrization\n");
+    fprintf(stderr, "Ideal might have no correct parametrization\n");
   } else if (right_param == 2) {
     fprintf(stderr, "Only the first parametrization of ");
-    fprintf (stderr,"the radical ideal seems correct\n");
+    fprintf (stderr,"the ideal seems correct\n");
   } else if (right_param < nvars) {
     fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-    fprintf(stderr, "the radical ideal seem correct\n");
+    fprintf(stderr, "the ideal seem correct\n");
   } else {
     fprintf(stderr, "All the parametrizations of ");
-    fprintf(stderr, "the radical ideal seem correct\n");
+    fprintf(stderr, "the ideal seem correct\n");
   }
   if(info_level){
     fprintf(stderr, "Time spent to compute parametrizations (elapsed): %.2f sec\n",

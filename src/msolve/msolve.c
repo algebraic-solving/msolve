@@ -4703,7 +4703,6 @@ restart:
             /* for (int ii = 0; ii<gens->nvars; ++ii) {
              *     mul[ii] = 1;
              * } */
-
             int success = 0;
 
             /* initialize generators of ideal, note the "gens->ngens-1_form" which
@@ -4912,11 +4911,208 @@ restart:
 	/* no colon    = 0 */
 	if (normal_form == 0) {/* positive characteristic */
 
-          int dim = - 2;
-          long dquot = -1;
+            int success = 0;
 
-          b = real_msolve_qq(*mpz_paramp,
-                             &param,
+            /* initialize generators of ideal, note the "gens->ngens-1_form" which
+             * means that we only take the first nr_gens-1 generators from
+             * the input file, the last polynomial in the file will
+             * be reduced w.r.t. the basis
+             *
+             * NOTE: There is a little hack here, instead of gens->field_char we
+             * give 1073741827 as parameter, which ensures that all F4 internal
+             * routines are the 32-bit implementations (since nf is at the moment
+             * only implemented for 32-bit elements). Later on we set st-fc by hand
+             * to the correct field characteristic. */
+            success = initialize_gba_input_data(&bs, &bht, &st,
+						gens->lens,
+						gens->exps,
+						(void *)gens->cfs,
+						1073741827, 0 /* DRL
+							       * order */,
+						elim_block_len, gens->nvars,
+						/* gens->field_char,
+						 * 0 [> DRL order <],
+						 * gens->nvars, */
+						gens->ngens-1,
+						initial_hts,
+						nr_threads, max_pairs,
+						update_ht, la_option,
+						use_signatures,
+						1 /* reduce_gb */, 0,
+						info_level);
+	    st->fc  = gens->field_char;
+            if(info_level){
+                fprintf(stderr,
+                        "NOTE: Field characteristic is now corrected to %u\n",
+                        st->fc);
+            }
+            if (!success) {
+                printf("Bad input data, stopped computation.\n");
+                exit(1);
+            }
+
+            if (is_gb == 1) {
+                for (len_t k = 0; k < bs->ld; ++k) {
+                    bs->lmps[k] = k;
+                    bs->lm[k]   = bht->hd[bs->hm[k][OFFSET]].sdm;
+                    bs->lml     = bs->ld;
+                }
+            } else {
+
+                /* compute a gb for initial generators */
+                success = core_f4(&bs, &bht, &st);
+
+                if (!success) {
+                    printf("Problem with F4, stopped computation.\n");
+                    exit(1);
+                }
+            }
+	    int64_t nb  = export_results_from_gba(bld, blen, bexp,
+						  bcf, &malloc, &bs, &bht, &st);
+            printf("size of basis: %u\n", bs->lml);
+            /* initialize data for elements to be reduced,
+             * NOTE: Don't initialize BEFORE running core_f4, bht may
+             * change, so hash values of tbr may become wrong. */
+            tbr = initialize_basis(st);
+            import_input_data_nf_ff_32(tbr, bht, st, gens->ngens-1, gens->ngens,
+				       gens->lens, gens->exps, (void *)gens->cfs);
+            tbr->ld = tbr->lml  =  1;
+            /* normalize_initial_basis(tbr, st->fc); */
+            for (int k = 0; k < 1; ++k) {
+                tbr->lmps[k]  = k; /* fix input element in tbr */
+            }
+
+            /* compute normal form of last element in tbr */
+            success = core_nf(&tbr, &bht, &st, mul, bs);
+
+            if (!success) {
+                printf("Problem with normalform, stopped computation.\n");
+                exit(1);
+            }
+            /* print all reduced elements in tbr, first  one
+             * is the input element */
+            /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
+	    /* 				st, gens->vnames, 0); */
+	    /* printf("\n"); */
+	    /* list of monomials */
+	    /* size of the list */
+	    long suppsize= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
+	    printf("Length of the support of phi: %lu\n",
+		   suppsize);
+	    
+	    /* sht and hcm will store the support of the normal form in tbr. */
+	    ht_t *sht   = initialize_secondary_hash_table(bht, st);
+	    hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
+	    mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
+	    
+	    printf("Starts computation of normal form matrix\n");
+	    get_normal_form_matrix(tbr, bht, 1,
+				   st, &sht, &hcm, &mat);
+	    printf("Length of union of support of all normal forms: %u\n",
+		   mat->nc);
+	    
+	    /* printf("\nUnion of support, sorted by decreasing monomial order:\n"); */
+	    /* for (len_t k = 0; k < mat->nc; ++k) { */
+	    /*   for (len_t l = 1; l <= sht->nv; ++l) { */
+	    /* 	printf("%2u ", sht->ev[hcm[k]][l]); */
+	    /*   } */
+	    /*   printf("\n"); */
+	    /* } */
+
+	    int32_t *bcf_ff = (int32_t *)(*bcf);
+	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
+	    
+	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
+						 form */
+	    printf ("degree of the nf: %ld\n",maxdeg);
+	    for (long i = 0; i < bld[0]; i++) {
+	      long degi = 0;
+	      for (long k = 0; k < gens->nvars; k++) {
+		degi += bexp_lm[i*gens->nvars+k];
+	      }
+	      maxdeg = MAX(maxdeg,degi);
+	    }
+	    printf ("maximal degree of the truncated staircase: %ld\n",maxdeg);
+
+	    long dquot;
+	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot,
+						maxdeg);
+	    /* printf("\nMonomial basis:\n"); */
+	    /* for (len_t k = 0; k < dquot; ++k) { */
+	    /*   for (len_t l = 0; l < gens->nvars; ++l){ */
+	    /* 	printf("%2u ", lmb[k*gens->nvars+l]); */
+	    /*   } */
+	    /*   printf("\n"); */
+	    /* } */
+	    printf("Subspace has dimension: %ld\n",dquot);
+	    uint32_t * leftvector = calloc(dquot,sizeof (uint32_t));
+	    /* for (long i = 0; i < dquot; i++) { */
+	    /*   vector[i] = (uint32_t)rand() % gens->field_char; */
+	    /* } */
+	    uint32_t ** leftvectorsparam = malloc(2*(gens->nvars-1)*sizeof (uint32_t *));
+	    for (long i = 0; i < 2*(gens->nvars-1); i++) {
+	      leftvectorsparam[i] = calloc(dquot,sizeof (uint32_t));
+	    }
+
+	    /* we assume that the support of phi is enough to encode
+	     * the multiplication matrix */
+	    /* we need the nf of sigma x_n for all sigma is this
+	       support */
+	    printf ("call buildmatrix\n");
+	    sp_matfglmcol_t  *matrix = build_matrixn_colon(lmb, dquot, bld[0],
+							   blen, bexp, bcf_ff,
+							   bexp_lm,
+							   tbr,
+							   bht,st,mul,bs,
+							   gens->nvars,
+							   gens->field_char,
+							   maxdeg,
+							   gens,
+							   leftvector,
+							   leftvectorsparam,
+							   suppsize);
+	    uint64_t *linvars = calloc(gens->nvars, sizeof(uint64_t));
+	    uint32_t *lineqs = calloc(gens->nvars,sizeof(uint32_t));
+	    uint64_t *squvars = calloc(gens->nvars-1, sizeof(uint64_t));
+	    param_t * param = nmod_fglm_guess_colon(matrix, gens->field_char,
+						    leftvector, leftvectorsparam,
+						    gens->nvars,
+						    0, linvars, lineqs, squvars, 1);
+	    display_fglm_param(stdout, param);
+	    free(param);
+	    free(leftvector);
+	    free(matrix);
+	    free(hcm);
+	    hcm = NULL;
+	    if (sht != NULL) {
+	      free_hash_table(&sht);
+	    }
+	    
+	    
+            /* free and clean up */
+            if (bs != NULL) {
+	      free_basis(&bs);
+            }
+            if (tbr != NULL) {
+	      free_basis(&tbr);
+            }
+            free(st);
+            st  = NULL;
+            free_shared_hash_data(bht);
+            if (bht != NULL) {
+	      free_hash_table(&bht);
+            }
+	    return 0;
+	}
+	/* no saturate = 0 */
+	/* no colon    = 0 */
+	if (normal_form == 0) {/* positive characteristic */
+
+	  int dim = - 2;
+	  long dquot = -1;
+
+	  b = real_msolve_qq(*mpz_paramp,
+			     &param,
                              &dim,
                              &dquot,
                              nb_real_roots_ptr,

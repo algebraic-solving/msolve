@@ -1136,7 +1136,11 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
 
 /**
 
+<<<<<<< HEAD
    lmb is the monomial basis (of the subscpace of the quotient ring)
+=======
+   lmb is the monommial basis (of the subscpace of the quotient ring)
+>>>>>>> 1a0b3a14c4e5a04da5dd886a686526c6b9b1f536
    given by ascending order.
 
    dquo is the dimension of this subspace.
@@ -1527,16 +1531,23 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  count++;
 	  if(len_xn < count && i < dquot){
 	    fprintf(stderr, "One should not arrive here (build_matrix)\n");
+<<<<<<< HEAD
 	    free(lens);
 	    free(exps);
 	    free(cfs);
+=======
+>>>>>>> 1a0b3a14c4e5a04da5dd886a686526c6b9b1f536
 	    free(matrix->dense_mat);
 	    free(matrix->dense_idx);
 	    free(matrix->triv_idx);
 	    free(matrix->triv_pos);
 	    free(matrix->zero_idx);
 	    free(matrix);
+<<<<<<< HEAD
 	    free(evi);
+=======
+
+>>>>>>> 1a0b3a14c4e5a04da5dd886a686526c6b9b1f536
 	    free(len_gb_xn);
 	    free(start_cf_gb_xn);
 	    free(div_xn);
@@ -1549,6 +1560,13 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
+<<<<<<< HEAD
+=======
+				      /* count_not_lm+count_nf */
+				      /* to
+				      change if new polynomials are
+				      reduced */
+>>>>>>> 1a0b3a14c4e5a04da5dd886a686526c6b9b1f536
 #if POSTPONED_REDUCTION
 				      count_not_lm + count_nf,
 #else
@@ -1603,10 +1621,14 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     copy_extrapoly_in_vector(leftvectorsparam[i], dquot, lmb, 2*nv-2+i,
 			     tbr, bht, evi, st, nv, maxdeg);
   }
+<<<<<<< HEAD
   free(lens);
   free(exps);
   free(cfs);
   free(evi);
+=======
+  
+>>>>>>> 1a0b3a14c4e5a04da5dd886a686526c6b9b1f536
   free(len_gb_xn);
   free(start_cf_gb_xn);
   free(div_xn);

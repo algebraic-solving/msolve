@@ -309,39 +309,39 @@ int main(int argc, char **argv){
     files->in_file = NULL;
     files->out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
-            &elim_block_len, &la_option, &use_signatures, &update_ht,
-            &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
-            &normal_form, &normal_form_matrix, &is_gb, &get_param,
-            &precision, &generate_pbm, &info_level, files);
+	       &elim_block_len, &la_option, &use_signatures, &update_ht,
+	       &reduce_gb, &print_gb, &genericity_handling, &saturate,
+	       &colon,
+	       &normal_form, &normal_form_matrix, &is_gb, &get_param,
+	       &precision, &generate_pbm, &info_level, files);
+    
+    FILE *fh  = fopen(files->in_file, "r");
 
-
-  FILE *fh  = fopen(files->in_file, "r");
-
-  if (fh == NULL) {
+    if (fh == NULL) {
       fprintf(stderr, "File not found.\n");
       exit(1);
-  }
-  fclose(fh);
-  fh =  NULL;
-
+    }
+    fclose(fh);
+    fh =  NULL;
+    
     /* clear out_file if given */
     if(files->out_file != NULL){
-        FILE *ofile = fopen(files->out_file, "w");
-        if(ofile == NULL){
-          fprintf(stderr, "Cannot open output file\n");
-          exit(1);
-        }
-        fclose(ofile);
+      FILE *ofile = fopen(files->out_file, "w");
+      if(ofile == NULL){
+	fprintf(stderr, "Cannot open output file\n");
+	exit(1);
+      }
+      fclose(ofile);
     }
     /**
-      We get from files the requested data. 
-     **/
+       We get from files the requested data. 
+    **/
     //  int32_t mon_order   = 0;
     int32_t nr_vars     = 0;
     int32_t field_char  = 9001;
     int32_t nr_gens     = 0;
     data_gens_ff_t *gens = allocate_data_gens();
-
+    
     get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens);
 #ifdef IODEBUG
     display_gens(stdout, gens);
@@ -349,28 +349,31 @@ int main(int argc, char **argv){
 
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t *)*(nr_vars));
-
+    
     if(0 < field_char && field_char < pow(2, 15) && la_option > 2){
       fprintf(stderr, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
       fprintf(stderr, "\t linear algebra option set to 2\n");
       la_option = 2;
     }
-
+    
     /* data structures for parametrization */
     param_t *param  = NULL;
     mpz_param_t mpz_param;
     mpz_param_init(mpz_param);
-
+    
     long nb_real_roots      = 0;
     interval *real_roots    = NULL;
     real_point_t *real_pts  = NULL;
 
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
-            initial_hts, max_pairs, elim_block_len, update_ht, generate_pbm,
-            reduce_gb, print_gb, get_param, genericity_handling, saturate,
-	    colon, normal_form, normal_form_matrix, is_gb, precision, files, gens,
-            &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
+			  initial_hts, max_pairs, elim_block_len, update_ht,
+                          generate_pbm,
+			  reduce_gb, print_gb, get_param, genericity_handling,
+                          saturate, colon,
+			  normal_form, normal_form_matrix, is_gb, precision, files,
+                          gens,
+			  &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
     free(param);

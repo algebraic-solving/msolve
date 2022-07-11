@@ -937,7 +937,7 @@ static inline void copy_poly_in_matrix_from_bs_32(sp_matfglm_t* matrix,
 
 /**
 
-   lmb is the monommial basis (of the quotient ring) given by ascending order.
+   lmb is the monomial basis (of the quotient ring) given by ascending order.
 
    dquo is the dimension of the quotient.
 
@@ -1136,7 +1136,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
 
 /**
 
-   lmb is the monommial basis (of the subscpace of the quotient ring)
+   lmb is the monomial basis (of the subscpace of the quotient ring)
    given by ascending order.
 
    dquo is the dimension of this subspace.
@@ -1164,7 +1164,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 
   const len_t ebl = bht->ebl;
   const len_t evl = bht->evl;
-  int32_t *evi    =   (int *)malloc((unsigned long)nv * sizeof(int));
+  int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
   if (ebl == 0) {
     for (long i = 1; i < evl; ++i) {
       evi[i-1]    =   i;
@@ -1527,13 +1527,16 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  count++;
 	  if(len_xn < count && i < dquot){
 	    fprintf(stderr, "One should not arrive here (build_matrix)\n");
+	    free(lens);
+	    free(exps);
+	    free(cfs);
 	    free(matrix->dense_mat);
 	    free(matrix->dense_idx);
 	    free(matrix->triv_idx);
 	    free(matrix->triv_pos);
 	    free(matrix->zero_idx);
 	    free(matrix);
-
+	    free(evi);
 	    free(len_gb_xn);
 	    free(start_cf_gb_xn);
 	    free(div_xn);
@@ -1546,10 +1549,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
-				      /* count_not_lm+count_nf */
-				      /* to
-				      change if new polynomials are
-				      reduced */
 #if POSTPONED_REDUCTION
 				      count_not_lm + count_nf,
 #else
@@ -1604,7 +1603,10 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     copy_extrapoly_in_vector(leftvectorsparam[i], dquot, lmb, 2*nv-2+i,
 			     tbr, bht, evi, st, nv, maxdeg);
   }
-  
+  free(lens);
+  free(exps);
+  free(cfs);
+  free(evi);
   free(len_gb_xn);
   free(start_cf_gb_xn);
   free(div_xn);
@@ -1615,7 +1617,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 
 /**
 
-   lmb is the monommial basis (of the quotient ring) given by ascending order.
+   lmb is the monomial basis (of the quotient ring) given by ascending order.
 
    dquo is the dimension of the quotient.
 

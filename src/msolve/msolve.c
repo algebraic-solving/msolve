@@ -4873,9 +4873,20 @@ restart:
 						    0, linvars, lineqs, squvars, 1);
 	    display_fglm_param(stdout, param);
 	    free(param);
-	    free(leftvector);
+	    free(squvars);
+	    free(lineqs);
+	    free(linvars);
 	    free(matrix);
+	    for (long i = 0; i < 2*(gens->nvars-1); i++) {
+	      free(leftvectorsparam[i]);
+	    }
+	    free(leftvectorsparam);
+	    free(leftvector);
+	    free(lmb);
+	    free(bexp_lm);
+	    free(bcf_ff);
 	    free(hcm);
+	    free (mul);
 	    hcm = NULL;
 	    if (sht != NULL) {
 	      free_hash_table(&sht);

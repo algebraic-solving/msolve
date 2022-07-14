@@ -173,9 +173,12 @@ int core_msolve(
 void msolve_julia(
         void *(*mallocp) (size_t),
         int32_t *rp_ld,
+        int32_t *rp_nr_vars,
         int32_t *rp_dim,
         int32_t *rp_dquot,
         int32_t **rp_lens,
+        char ***rp_var_namesp,
+        void **rp_cfs_linear_form,
         void **rp_cfs,
         int32_t *n_real_sols,
         void **real_sols_num,

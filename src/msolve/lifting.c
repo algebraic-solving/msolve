@@ -86,7 +86,6 @@ static inline void mpq_matfglm_initset(mpq_matfglm_t mpq_mat,
   mpq_mat->nrows = mod_mat->nrows;
   mpq_mat->dense_mat = calloc(2*mpq_mat->ncols*mpq_mat->nrows,
                               sizeof(mpz_t));
-  uint64_t sz = mpq_mat->nrows * mpq_mat->ncols;
   uint64_t nc = 2*mpq_mat->ncols;
 
   for(uint32_t i = 0; i < mpq_mat->nrows; i++){

@@ -250,7 +250,6 @@ static inline void display_fglm_mpq_matrix(FILE *file,
   fprintf(file, "%u\n", mat->ncols);
   fprintf(file, "%u\n", mat->nrows);
 
-  long len1 = (mat->ncols)*(mat->nrows);
   uint64_t nc = mat->ncols;
 
   fprintf(file, "[");
@@ -1995,8 +1994,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #else
   *mat_lifted = 1;
 #endif
-  int td = rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden);
-
+  rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden);
   if(b && trace_det->done_trace == 1 && trace_det->done_det == 1){
 
     mpz_t denominator;
@@ -2561,6 +2559,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     }
 }
 
+#if 0
 static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
                                              int32_t **bdiv_xn,
                                              int32_t **blen_gb_xn,
@@ -2662,8 +2661,7 @@ static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
         return NULL;
     }
 }
-
-
+#endif
 
 static inline int equal_staircase(int32_t *lmb, int32_t *lmb_ori,
                                   long dquot, long dquot_ori,
@@ -2682,7 +2680,7 @@ return 1;
 }
 
 
-
+#if 0
 static void modular_probabilistic_apply(sp_matfglm_t **bmatrix,
                                int32_t **div_xn,
                                int32_t **len_gb_xn,
@@ -2767,6 +2765,7 @@ for (i = 0; i < st->nprimes; ++i){
   }
  }
 }
+#endif
 
 static void modular_trace_application(sp_matfglm_t **bmatrix,
                                    int32_t **div_xn,
@@ -3331,7 +3330,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* measures time spent in rational reconstruction */
   double strat = 0;
 
-  int display = 1;
   while(rerun == 1 || mcheck == 1){
 
     /* controls call to rational reconstruction */

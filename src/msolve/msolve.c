@@ -1994,6 +1994,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #else
   *mat_lifted = 1;
 #endif
+  rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden);
   if(b && trace_det->done_trace == 1 && trace_det->done_det == 1){
 
     mpz_t denominator;

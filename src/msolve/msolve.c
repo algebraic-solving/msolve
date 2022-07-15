@@ -250,7 +250,6 @@ static inline void display_fglm_mpq_matrix(FILE *file,
   fprintf(file, "%u\n", mat->ncols);
   fprintf(file, "%u\n", mat->nrows);
 
-  long len1 = (mat->ncols)*(mat->nrows);
   uint64_t nc = mat->ncols;
 
   fprintf(file, "[");
@@ -1995,8 +1994,6 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #else
   *mat_lifted = 1;
 #endif
-  int td = rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden);
-
   if(b && trace_det->done_trace == 1 && trace_det->done_det == 1){
 
     mpz_t denominator;
@@ -3331,7 +3328,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* measures time spent in rational reconstruction */
   double strat = 0;
 
-  int display = 1;
   while(rerun == 1 || mcheck == 1){
 
     /* controls call to rational reconstruction */

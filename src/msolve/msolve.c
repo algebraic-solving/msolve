@@ -696,10 +696,12 @@ static int add_random_linear_form_to_input_system(
     }
     srand(time(0));
     gens->random_linear_form = malloc(sizeof(int32_t *)*(nvars_new));
+
     if (gens->field_char > 0) {
       int j = 0;
       for (i = len_old; i < len_new; ++i) {
         gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+
         while(gens->random_linear_form[j] == 0){
             gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
        }
@@ -713,8 +715,9 @@ static int add_random_linear_form_to_input_system(
       for (i = 2*len_old; i < 2*len_new; i += 2) {
         gens->random_linear_form[j] = ((int8_t)(rand()));
         while(gens->random_linear_form[j] == 0){
-            gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+            gens->random_linear_form[j] = ((int8_t)(rand()));
         }
+
         mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
         k++;
         j++;
@@ -767,8 +770,10 @@ static inline void print_msolve_message(FILE * file, int n){
 }
 
 static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
+
   param->nvars = bparam->nvars;
   param->nsols = bparam->elim->length - 1;
+
   mpz_upoly_init2(param->elim, bparam->elim->alloc, 2*32*(bparam->elim->length));
   mpz_upoly_init(param->denom, bparam->elim->alloc - 1);
   param->elim->length = bparam->elim->length;
@@ -776,9 +781,11 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   param->coords = (mpz_upoly_t *)malloc(sizeof(mpz_upoly_t)*(param->nvars - 1));
   if(param->coords != NULL){
     for(long i = 0; i < param->nvars - 1; i++){
+
       mpz_upoly_init(param->coords[i], MAX(1,bparam->elim->alloc - 1));
       /* param->coords[i]->length = bparam->coords[i]->length; */
       param->coords[i]->length = bparam->elim->length - 1;
+
     }
   }
   else{
@@ -1547,11 +1554,11 @@ static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
 #pragma omp parallel for num_threads(nthrds)    \
   private(i) schedule(static)
   for(i = 0; i < pol->length; i++){
-
     mpz_CRT_ui(pol->coeffs[i], pol->coeffs[i], modulus,
                nmod_pol->coeffs[i], prime, prod, 1);
-
   }
+
+
 }
 
 
@@ -2076,6 +2083,8 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
         fprintf(stderr, "[0]");
       }
     }
+
+    exit(1);
 
     long nsols = mpz_param->nsols;
     mpz_t lc;
@@ -3240,6 +3249,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   for(int i = 1; i < st->nthrds; i++){
     btht[i] = copy_hash_table(tht, st);
   }
+
 
   normalize_nmod_param(nmod_params[0]);
 

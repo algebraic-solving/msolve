@@ -4702,7 +4702,6 @@ restart:
             /* for (int ii = 0; ii<gens->nvars; ++ii) {
              *     mul[ii] = 1;
              * } */
-
             int success = 0;
 
             /* initialize generators of ideal, note the "gens->ngens-1_form" which
@@ -4816,11 +4815,6 @@ restart:
 	    
 	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
 						 form */
-	    printf ("degree of the nf: %ld\n",maxdeg);
-	    
-	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
-						 form */
-	    printf ("degree of the nf: %ld\n",maxdeg);
 	    for (long i = 0; i < bld[0]; i++) {
 	      long degi = 0;
 	      for (long k = 0; k < gens->nvars; k++) {
@@ -4914,11 +4908,11 @@ restart:
 	/* no colon    = 0 */
 	if (normal_form == 0) {/* positive characteristic */
 
-          int dim = - 2;
-          long dquot = -1;
+	  int dim = - 2;
+	  long dquot = -1;
 
-          b = real_msolve_qq(*mpz_paramp,
-                             &param,
+	  b = real_msolve_qq(*mpz_paramp,
+			     &param,
                              &dim,
                              &dquot,
                              nb_real_roots_ptr,

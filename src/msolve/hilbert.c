@@ -698,54 +698,6 @@ copy_extrapoly_in_vector(uint32_t* vector,
 }
 
 static inline void
-copy_extrapoly_in_vector(uint32_t* vector,
-			 long ncols,
-			 int32_t *lmb,
-			 len_t pos,
-			 const bs_t * const tbr,
-			 const ht_t * const bht,
-			 int32_t* evi,
-			 const stat_t *st,
-			 const int nv,
-			 const long maxdeg){
-
-  len_t idx = tbr->lmps[pos];
-  /* printf ("idx=%d\n",idx); */
-  /* if (tbr->hm[idx] == NULL) {*/
-  len_t * hm  = tbr->hm[idx]+OFFSET;
-  len_t len = tbr->hm[idx][LENGTH];
-  /* printf ("len=%d\n",len); */
-  long i;
-  long k = 0;
-  /* to remove monomials outside the vector space, we just look at the
-   * leading ones */
-  uint32_t deglm = 0;
-  for (long j = 0; j < nv; j++) {
-    deglm += lmb[k*nv + j];
-  }
-  while (deglm > maxdeg) {
-    k++;
-    deglm = 0;
-    for (long j = 0; j < nv; j++) {
-      deglm += lmb[k*nv + j];
-    }
-  }
-  printf ("starts at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]);
-  printf ("ends at  k=%ld with coeff %d\n",len-1-k,
-	  tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k]);
-  printf ("[");
-  for(i = 0; i < ncols; i++){
-    if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
-      vector[i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
-      /* printf ("%u, ",vector[i]); */
-      k++;
-    }
-  }
-  /* printf("\b\b]\n"); */
-}
-
-
-static inline void
 copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix,
 			    long nrows,
 			    int32_t *lmb,
@@ -1360,6 +1312,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       exps[i*nv+k]=lmb[j*nv+k];
     }
     exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
+    /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
   /* shifts of to be reduced */
   len_t idx = tbr->lmps[1];
@@ -1382,8 +1335,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       }
       exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
     }
-    exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
-    /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
   tbr = initialize_basis(st);
 #if POSTPONED_REDUCTION /* only the pure monomials are reduced */

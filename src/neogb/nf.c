@@ -88,13 +88,14 @@ int core_nf(
     /* linear algebra, depending on choice, see set_function_pointers() */
     exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, st);
     /* columns indices are mapped back to exponent hashes */
+    printf ("before return normal form\n");
     return_normal_forms_to_basis(
             mat, tbr, bht, sht, hcm, st);
-
+    printf ("after return nf\n");
     /* all rows in mat are now polynomials in the basis,
      * so we do not need the rows anymore */
     clear_matrix(mat);
-
+    printf ("after clear matrix\n");
     rt1 = realtime();
     if (st->info_level > 1) {
         printf("%13.2f sec\n", rt1-rt0);

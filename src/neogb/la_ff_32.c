@@ -2415,6 +2415,7 @@ static void exact_sparse_reduced_echelon_form_nf_ff_32(
     private(i, j, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {
+      /* printf ("loop %d/%d\n",i,nrl-1); */
         int64_t *drl  = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
         cf32_t *cfs     = tbr->cf_32[npiv[COEFFS]];
@@ -2422,15 +2423,27 @@ static void exact_sparse_reduced_echelon_form_nf_ff_32(
         const len_t len = npiv[LENGTH];
         const hm_t * const ds = npiv + OFFSET;
         memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
+	/* if (cfs == NULL) { */
+	/*   printf ("cfs NULL!!!\n"); */
+	/* } */
         for (j = 0; j < os; ++j) {
+	  /* printf ("\tsubloop %d/%d index  %d\n",j,os-1,ds[j]); */
+          /* printf ("\t              coeffs %ld\n",(int64_t)cfs[j]); */
             drl[ds[j]]  = (int64_t)cfs[j];
         }
+	/* printf ("\tsubloop %d/%d ended\n",os-1,os-1); */
         for (; j < len; j += UNROLL) {
+	  /* printf ("\tsubloop %d/%d indices %d, %d, %d and %d\n", */
+	  /* 	  j,len-1,ds[j],ds[j+1],ds[j+2],ds[j+3]); */
+          /* printf ("\t              coeffs  %ld, %ld, %ld and %ld\n", */
+	  /* 	  (int64_t)cfs[j],(int64_t)cfs[j+1], */
+	  /* 	  (int64_t)cfs[j+2],(int64_t)cfs[j+3]); */
             drl[ds[j]]    = (int64_t)cfs[j];
             drl[ds[j+1]]  = (int64_t)cfs[j+1];
             drl[ds[j+2]]  = (int64_t)cfs[j+2];
             drl[ds[j+3]]  = (int64_t)cfs[j+3];
         }
+	/* printf ("\tsubloop %d/%d ended\n",len-1,len-1); */
         cfs = NULL;
         sc  = npiv[OFFSET];
         free(npiv);
@@ -2453,6 +2466,7 @@ static void exact_sparse_reduced_echelon_form_nf_ff_32(
         /* k   = __sync_bool_c#csompare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv); */
         cfs = mat->cf_32[npiv[COEFFS]];
     }
+    /* printf ("loop %d/%d ended\n",nrl-1,nrl-1); */
     /* we do not need the old pivots anymore */
     for (i = 0; i < ncl; ++i) {
         free(pivs[i]);
@@ -3477,10 +3491,12 @@ static void exact_sparse_linear_algebra_nf_ff_32(
 
     len_t i;
 
+    /* printf ("before realloc\n"); */
     /* allocate temporary storage space for sparse
      * coefficients of new pivot rows */
     mat->cf_32  = realloc(mat->cf_32,
             (unsigned long)mat->nrl * sizeof(cf32_t *));
+    /* printf ("before exact sparse_reduced\n"); */
     exact_sparse_reduced_echelon_form_nf_ff_32(mat, tbr, bs, st);
 
     /* timings */
@@ -3492,10 +3508,12 @@ static void exact_sparse_linear_algebra_nf_ff_32(
     st->num_zerored += (mat->nrl - mat->np);
     uint32_t zeroes = 0;
     for (i = 0; i < mat->nrl; ++i) {
+        /* printf ("before mat->tr[%d]\n",i); */
         if (mat->tr[i] == NULL) {
 	    zeroes  +=  1;
         }
     }
+    /* printf ("after mat->tr[%d]\n",mat->nrl-1); */
     if (st->info_level > 1) {
         printf("%7d new    %4d zero", mat->np, zeroes);
         fflush(stdout);

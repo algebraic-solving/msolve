@@ -191,16 +191,26 @@ void check_enlarge_basis(
         )
 {
     if (bs->ld + added >= bs->sz) {
+      printf ("enlarged\n");
         bs->sz    = bs->sz * 2 > bs->ld + added ? bs->sz * 2 : bs->ld + added;
+	printf ("1\n");
         bs->hm    = realloc(bs->hm, (unsigned long)bs->sz * sizeof(hm_t *));
+	printf ("2\n");
         memset(bs->hm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(hm_t *));
+	printf ("3\n");
         bs->lm    = realloc(bs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
+	printf ("4\n");
         memset(bs->lm+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(sdm_t));
+	printf ("5 %lu\n",(unsigned long) bs->sz);
         bs->lmps  = realloc(bs->lmps, (unsigned long)bs->sz * sizeof(bl_t));
+	printf ("6\n");
         memset(bs->lmps+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(bl_t));
+	printf ("7\n");
         bs->red   = realloc(bs->red, (unsigned long)bs->sz * sizeof(int8_t));
+	printf ("8\n");
         memset(bs->red+bs->ld, 0,
                 (unsigned long)(bs->sz-bs->ld) * sizeof(int8_t));
+	printf ("9\n");
 
         switch (st->ff_bits) {
             case 8:
@@ -225,6 +235,9 @@ void check_enlarge_basis(
             default:
                 exit(1);
         }
+    }
+    else {
+      printf ("not enlarged\n");
     }
 }
 

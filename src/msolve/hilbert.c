@@ -1232,7 +1232,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   long len_xn = get_div_xn_bounded(bexp_lm, bld, nv, div_xn,div_not_xn,
 				   &len_not_xn,maxdeg+1);
   
-#if 1>0
+#if 1 > 0
   fprintf(stderr, "\n");
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
@@ -1263,20 +1263,20 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
         long pos = -1;
 	int32_t *exp = lmb + (i * nv);
 	if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
-#if 0 > 0
+#if DEBUGBUILDMATRIX > 0
 	  display_monomial_full(stderr, nv, NULL, 0, exp);
 	  fprintf(stderr, " => remains in monomial basis\n");
 #endif
 	}
 	else{
 	  /* we get now outside the basis */
-#if 0 > 0
+#if DEBUGBUILDMATRIX > 0
 	  display_monomial_full(stderr, nv, NULL, 0, exp);
 	  fprintf(stderr, " => does NOT remain in monomial basis");
 #endif
 	  if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count_lm])*nv, nv)){
 	    count_lm++;
-#if 0 > 0
+#if DEBUGBUILDMATRIX > 0
 	    fprintf(stderr, " => land on a leading monomial\n");
 #endif
 	  }
@@ -1286,7 +1286,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	      if(is_divisible_exponent_xxn(exp, bexp_lm+(div_xn[j])*nv, nv)){
 		extranf[count_not_lm]=i;
 		count_not_lm++;
-#if 0 > 0
+#if DEBUGBUILDMATRIX > 0
 		fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
 		is_divisible = 1;
@@ -1294,7 +1294,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	      }
 	    }
 	    if (!is_divisible) {
-#if 0 > 0
+#if DEBUGBUILDMATRIX > 0
 	      fprintf(stderr, " => land on 0\n");
 #endif
 	      zeronf[count_zero]=i;
@@ -1360,7 +1360,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  tobereduced;
-  /* printf ("%ld imported\n",tobereduced); */
+  printf ("%ld imported\n",tobereduced);
   for (int k = 0; k < tobereduced; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
@@ -1487,7 +1487,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     int32_t *exp = lmb + (i * nv);
     /* display_monomial_full(stderr, nv, NULL, 0, exp); */
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
-#if 1 > 0
+#if DEBUGBUILDMATRIX > 0
       display_monomial_full(stderr, nv, NULL, 0, exp);
       fprintf(stderr, " => remains in monomial basis\n");
 #endif
@@ -1499,12 +1499,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
     else{
       /* we get now outside the basis */
-#if 0 > 0
+#if DEBUGBUILDMATRIX > 0
       display_monomial_full(stderr, nv, NULL, 0, exp);
       fprintf(stderr, " => does NOT remain in monomial basis");
 #endif
       if (i == zeronf[l_zero]){
-#if 0 > 0
+#if DEBUGBUILDMATRIX > 0
 	fprintf(stderr, " => land on 0\n");
 	printf ("zero row #%ld in row #%ld\n",l_zero,i);
 #endif
@@ -1515,7 +1515,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	matrix->dense_idx[l_dens] = i;
 	l_dens++;
 	if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
-#if 0 > 0
+#if DEBUGBUILDMATRIX > 0
 	  fprintf(stderr, " => land on a leading monomial\n");
 #endif
 	  copy_poly_in_matrixcol(matrix, nrows, bcf, bexp, blen,
@@ -1605,7 +1605,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   import_input_data_nf_ff_32(tbr, bht, st, count_not_lm, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  2*nv-2;
-  /* printf ("%d imported\n",2*nv-2); */
+  printf ("%d imported\n",2*nv-2);
   for (int k = 0; k < 2*nv-2; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }

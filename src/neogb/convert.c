@@ -448,12 +448,13 @@ static void return_normal_forms_to_basis(
     len_t i;
 
     const len_t np  = mat->np;
+    printf ("np %u\n",np);
 
     /* timings */
     double ct0, ct1, rt0, rt1;
     ct0 = cputime();
     rt0 = realtime();
-
+    printf ("before check\n");
     /* fix size of basis for entering new elements directly */
     check_enlarge_basis(bs, mat->np, st);
 
@@ -461,6 +462,7 @@ static void return_normal_forms_to_basis(
 
     /* only for 32 bit at the moment */
     for (i = 0; i < np; ++i) {
+      printf ("row #%u\n",i);
         if (rows[i] != NULL) {
             insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
             bs->cf_32[bs->ld] = mat->cf_32[rows[i][COEFFS]];

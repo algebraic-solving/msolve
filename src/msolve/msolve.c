@@ -5036,16 +5036,16 @@ restart:
 
             int success = 0;
 
-            /*             initialize generators of ideal, note the "gens->ngens-normal_form" which
-             *             means that we only take the first nr_gens-normal_form generators from
-             *             the input file, the last normal_form polynomial in the file will
-             *             be reduced w.r.t. the basis
+            /* initialize generators of ideal, note the "gens->ngens-normal_form" which
+             * means that we only take the first nr_gens-normal_form generators from
+             * the input file, the last normal_form polynomial in the file will
+             * be reduced w.r.t. the basis
              *
-             *             NOTE: There is a little hack here, instead of gens->field_char we
-             *             give 1073741827 as parameter, which ensures that all F4 internal
-             *             routines are the 32-bit implementations (since nf is at the moment
-             *             only implemented for 32-bit elements). Later on we set st-fc by hand
-             *             to the correct field characteristic. */
+             * NOTE: There is a little hack here, instead of gens->field_char we
+             * give 1073741827 as parameter, which ensures that all F4 internal
+             * routines are the 32-bit implementations (since nf is at the moment
+             * only implemented for 32-bit elements). Later on we set st-fc by hand
+             * to the correct field characteristic. */
             success = initialize_gba_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,

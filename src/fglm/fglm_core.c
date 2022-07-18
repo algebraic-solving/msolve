@@ -737,6 +737,7 @@ static inline long make_square_free_elim_poly(param_t *param,
                                               long dimquot,
                                               int info_level){
   long dim = data_bms->BMS->V1->length - 1;
+  
   int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
 
   if(boo && dim == dimquot){
@@ -764,6 +765,42 @@ static inline long make_square_free_elim_poly(param_t *param,
   data_bms->sqf->num=0;
   return param->elim->length - 1;
 }
+
+static inline long make_square_free_elim_poly_colon(param_t *param,
+						    fglm_bms_data_t *data_bms,
+						    long dimquot,
+						    int info_level){
+  nmod_poly_fprint_pretty(stdout, data_bms->BMS->V1, "x");
+  printf ("\n");
+  fflush(stdout);
+  long dim = data_bms->BMS->V1->length - 1;
+  printf ("dim =%ld\n",dim);
+  
+  int boo = 1; /*nmod_poly_is_squarefree(data_bms->BMS->V1);*/
+
+  if(boo){
+    nmod_poly_set(param->elim, data_bms->BMS->V1);
+  }
+  else{
+    if(info_level){
+      fprintf(stderr, "Mininimal polynomial is not square-free\n");
+    }
+    nmod_poly_factor_squarefree(data_bms->sqf, data_bms->BMS->V1);
+    nmod_poly_one(param->elim);
+    for(ulong i = 0; i < data_bms->sqf->num; i++){
+      nmod_poly_mul(param->elim, param->elim, data_bms->sqf->p+i);
+    }
+    if(info_level){
+      fprintf(stderr, "Degree of the square-free part: %ld\n",
+              param->elim->length-1);
+      fprintf(stderr, "[%ld, %ld, %ld]\n", dimquot, dim, param->elim->length - 1);
+    }
+  }
+
+  data_bms->sqf->num=0;
+  return param->elim->length - 1;
+}
+
 
 static inline void compute_minpoly(param_t *param,
                                    fglm_data_t *data,
@@ -1688,19 +1725,19 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   return 0;
 }
 
-static inline void guess_minpoly(param_t *param,
-				 fglm_data_t *data,
-				 fglm_bms_data_t *data_bms,
-				 long dimquot,
-				 long tentative_degree,
-				 uint64_t *linvars,
-				 uint32_t *lineqs,
-				 long nvars,
-				 long *dim,
-				 int info_level){
+static inline void guess_minpoly_colon(param_t *param,
+				       fglm_data_t *data,
+				       fglm_bms_data_t *data_bms,
+				       long dimquot,
+				       long tentative_degree,
+				       uint64_t *linvars,
+				       uint32_t *lineqs,
+				       long nvars,
+				       long *dim,
+				       int info_level){
   compute_elim_poly(data, data_bms, tentative_degree);
   if(dimquot > 1){
-    *dim = make_square_free_elim_poly(param, data_bms, dimquot, info_level);
+    *dim = make_square_free_elim_poly_colon(param, data_bms, dimquot, info_level);
   }
   else{
     nmod_poly_fit_length(param->elim, 2);
@@ -1807,15 +1844,18 @@ static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
     print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
 #endif
     if (i == 2*tentative_degree-1) {
-      guess_minpoly(param, data, data_bms, dimquot, tentative_degree,
-		    linvars, lineqs, nvars, dim_ptr, info_level);
+      printf ("gessing min poly\n");
+      guess_minpoly_colon(param, data, data_bms, dimquot, tentative_degree,
+			  linvars, lineqs, nvars, dim_ptr, info_level);
       if (*dim_ptr < tentative_degree) {
+	printf ("degree ok!\n");
 	free (data_backup);
 	break;
       } else {
 	nmod_berlekamp_massey_set_prime (data_bms->BMS,prime);
 	memcpy (data->pts,data_backup,i * sizeof(CF_t));
 	tentative_degree = MIN (3 * (*dim_ptr),matrix->ncols);
+	printf ("tentative degree = %d\n",tentative_degree);
       }
     }
     i++;
@@ -2007,7 +2047,6 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   //////////////////////////////////////////////////////////////////
 
   // Now we compute the parametrizations of the radical
-  fprintf(stderr, "Elimination polynomial is not squarefree.\n");
   int right_param= compute_parametrizations_colon(param,
 						  data,
 						  data_bms,

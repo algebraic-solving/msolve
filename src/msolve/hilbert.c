@@ -1216,17 +1216,17 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
 	  "and with bounded degree: %ld\n", len_xn);
-  for(long i=0; i < len_xn-1; i++){
-    fprintf(stderr, "%d, ", div_xn[i]);
-  }
-  fprintf(stderr, "%d\n", div_xn[len_xn-1]);
+  /* for(long i=0; i < len_xn-1; i++){ */
+  /*   fprintf(stderr, "%d, ", div_xn[i]); */
+  /* } */
+  /* fprintf(stderr, "%d\n", div_xn[len_xn-1]); */
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are not divisible by x_n "
 	  "and with bounded degree: %ld\n", len_not_xn);
-  for(long i=0; i < len_not_xn-1; i++){
-    fprintf(stderr, "%d, ", div_not_xn[i]);
-  }
-  fprintf(stderr, "%d\n", div_not_xn[len_not_xn-1]);
+  /* for(long i=0; i < len_not_xn-1; i++){ */
+  /*   fprintf(stderr, "%d, ", div_not_xn[i]); */
+  /* } */
+  /* fprintf(stderr, "%d\n", div_not_xn[len_not_xn-1]); */
 #endif
   long count_lm = 0;
   /* list of monomials in the staircase that leave the staircase after
@@ -1290,19 +1290,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
    * each has length 1 */
   /* 2*(nv-1) shifts of phi to reduce
    * each has the same length as phi */
-#if 0
-  long tobereduced = count_not_lm;
-  int32_t* lens=(int32_t *) (malloc(sizeof(int32_t) * tobereduced));
-  int32_t* exps = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm * nv));
-  int32_t* cfs = (int32_t *) (malloc(sizeof(int32_t) * (count_not_lm)));
-#else
   long tobereduced = count_not_lm + 2*nv-2;
   int32_t* lens=(int32_t *) (malloc(sizeof(int32_t) * tobereduced));
   int32_t* exps = (int32_t *) (malloc(sizeof(int32_t) * (count_not_lm +
 							 suppsize * (2*nv-2)) * nv));
   int32_t* cfs = (int32_t *) (malloc(sizeof(int32_t) * (count_not_lm +
 							suppsize * (2*nv-2))));
-#endif
   /* pure monomials to be reduced */
   for (long i = 0; i < count_not_lm;i++){
     lens[i]=1;
@@ -1314,6 +1307,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
     /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
+
   /* shifts of to be reduced */
   len_t idx = tbr->lmps[1];
   /* printf ("idx=%d\n",idx); */
@@ -1373,7 +1367,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
 #endif
-#else
+#elif 0 /* reductions one by one */
   long nb = MIN(19,tobereduced);
   printf ("nb: %ld\n",nb);
   int success;
@@ -1423,8 +1417,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* 				st, gens->vnames, 0); */
   
 #endif
-  /* printf ("end reductions\n"); */
-  /* exit (1); */
   printf ("Number of zero normal forms: %ld\n",count_zero);
   /* lengths of the polys which we need to build the matrix */
   int32_t *len_gb_xn = malloc(sizeof(int32_t) * len_xn);
@@ -1442,7 +1434,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
 
-#if 1 > 0
+#if DEBUGBUILDMATRIX > 0
   fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
   for(long i = 0; i < len_xn-1; i++){
     fprintf(stderr, "%u, ", len_gb_xn[i]);
@@ -1595,6 +1587,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 #if DEBUGBUILDMATRIX > 0
 	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
+#if 0
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
 #if POSTPONED_REDUCTION
 				      count_not_lm + count_nf,
@@ -1602,6 +1595,28 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 				      tobereduced + count_nf,
 #endif
 				      tbr, bht, evi, st, nv, maxdeg);
+#else /* reduction one by one */
+	  int success;
+	  import_input_data_nf_ff_32(tbr, bht, st, count_nf, count_nf+1,
+				     lens, exps, (void *)cfs);
+	  tbr->ld = tbr->lml  =  1;
+	  for (int k = 0; k < 1; ++k) {
+	    tbr->lmps[k]  = k; /* fix input element in tbr */
+	  }
+	  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
+	  /* 				st, gens->vnames, 0); */
+	  /* compute normal forms of last element2 in tbr */
+	  success = core_nf(&tbr, &bht, &st, mul, bs);
+	  if (!success) {
+	    printf("Problem with normalform, stopped computation.\n");
+	    exit(1);
+	  }
+	  /* print_msolve_polynomials_ff(stdout, nb, tbr->lml, tbr, bht, */
+	  /* 				st, gens->vnames, 0); */
+	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
+				      1,
+				      tbr, bht, evi, st, nv, maxdeg);
+#endif
 	  nrows++;
 	  count_nf++;
 	}
@@ -1627,7 +1642,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   import_input_data_nf_ff_32(tbr, bht, st, count_not_lm, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  2*nv-2;
-  printf ("%d imported\n",2*nv-2);
+  /* printf ("%d imported\n",2*nv-2); */
   for (int k = 0; k < 2*nv-2; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
@@ -1635,7 +1650,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
   /* compute normal forms of last elements in tbr */
-  success = core_nf(&tbr, &bht, &st, mul, bs);
+  int success = core_nf(&tbr, &bht, &st, mul, bs);
   if (!success) {
     printf("Problem with normalform, stopped computation.\n");
     exit(1);

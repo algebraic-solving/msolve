@@ -4905,14 +4905,13 @@ restart:
 	      free_hash_table(&sht);
 	    }
 	    
-	    
             /* free and clean up */
             if (bs != NULL) {
 	      free_basis(&bs);
             }
             if (tbr != NULL) {
 	      free_basis(&tbr);
-            }
+	    }
             free(st);
             st  = NULL;
             free_shared_hash_data(bht);
@@ -5098,7 +5097,6 @@ restart:
             for (int k = 0; k < normal_form; ++k) {
                 tbr->lmps[k]  = k; /* fix input element in tbr */
             }
-
             /* compute normal form of last element in tbr */
             success = core_nf(&tbr, &bht, &st, mul, bs);
 

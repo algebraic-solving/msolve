@@ -1358,10 +1358,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     long j= extranf[i];
     for (long k = 0; k < nv-1; k++) {
       exps[i*nv+k]=lmb[j*nv+k];
-      /* printf ("%d, ", exps[i*nv+k]); */
     }
     exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
-    /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
   /* shifts of to be reduced */
   len_t idx = tbr->lmps[1];
@@ -1387,18 +1385,16 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
     /* printf ("%d\n", exps[i*nv+nv-1]); */
   }
-  /* free(tbr); */
-  /* tbr = NULL; */
   tbr = initialize_basis(st);
 #if POSTPONED_REDUCTION /* only the pure monomials are reduced */
   import_input_data_nf_ff_32(tbr, bht, st, 0, count_not_lm,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  count_not_lm;
-  /* printf ("%ld imported\n",count_not_lm); */
+  printf ("%ld imported\n",count_not_lm);
   for (int k = 0; k < count_not_lm; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
-  /* printf ("pure monomials to be reduced\n"); */
+  printf ("pure monomials to be reduced\n");
 #else
   import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
 			     lens, exps, (void *)cfs);
@@ -1419,8 +1415,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   /* printf ("reductions\n"); */
 #if POSTPONED_REDUCTION
-  /* print_msolve_polynomials_ff(stdout, count_not_lm, tbr->lml, tbr, bht, */
-  /* 			      st, gens->vnames, 0); */
+  print_msolve_polynomials_ff(stdout, count_not_lm, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
 #else
   /* print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
@@ -1443,7 +1439,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
 
-#if 0>0
+#if 1 > 0
   fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
   for(long i = 0; i < len_xn-1; i++){
     fprintf(stderr, "%u, ", len_gb_xn[i]);
@@ -1494,7 +1490,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       matrix->zero_idx[i] = 0;
     }
   }
-  if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*(len_xn + count_not_lm))){
+  if(posix_memalign((void **)&matrix->dense_idx, 32,
+		    sizeof(CF_t)*(len_xn + count_not_lm))){
     fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
@@ -1536,7 +1533,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     int32_t *exp = lmb + (i * nv);
     /* display_monomial_full(stderr, nv, NULL, 0, exp); */
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
-#if 0 > 0
+#if 1 > 0
       display_monomial_full(stderr, nv, NULL, 0, exp);
       fprintf(stderr, " => remains in monomial basis\n");
 #endif
@@ -1548,12 +1545,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
     else{
       /* we get now outside the basis */
-#if 0 > 0
+#if 1 > 0
       display_monomial_full(stderr, nv, NULL, 0, exp);
       fprintf(stderr, " => does NOT remain in monomial basis");
 #endif
       if (i == zeronf[l_zero]){
-#if 0 > 0
+#if 1 > 0
 	fprintf(stderr, " => land on 0\n");
 	printf ("zero row #%ld in row #%ld\n",l_zero,i);
 #endif
@@ -1564,7 +1561,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	matrix->dense_idx[l_dens] = i;
 	l_dens++;
 	if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
-#if 0 > 0
+#if 1 > 0
 	  fprintf(stderr, " => land on a leading monomial\n");
 #endif
 	  copy_poly_in_matrixcol(matrix, nrows, bcf, bexp, blen,
@@ -1592,7 +1589,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  }
 	}
 	else if (i == extranf[count_nf]){
-#if 0 > 0
+#if 1 > 0
 	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
@@ -1623,8 +1620,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
 
 #if POSTPONED_REDUCTION /* the shifts of phi are now reduced */
-  free(tbr);
-  tbr = NULL;
+  /* free(tbr); */
+  /* tbr = NULL; */
   tbr = initialize_basis(st);
   import_input_data_nf_ff_32(tbr, bht, st, count_not_lm, tobereduced,
 			     lens, exps, (void *)cfs);

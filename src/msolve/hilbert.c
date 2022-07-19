@@ -1202,7 +1202,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 				   &len_not_xn,maxdeg+1);
   
 #if 1 > 0
-  fprintf(stderr, "\n");
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
 	  "and with bounded degree: %ld\n", len_xn);
@@ -2347,4 +2346,4 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   return matrix;
 }
 
-#undef REDUCTION_ALLINONE 0
+#undef REDUCTION_ALLINONE

@@ -58,6 +58,7 @@ static void mpz_upoly_init2(mpz_upoly_t poly, long alloc, long nbits){
     }
     for(long i = 0; i < alloc; i++){
       mpz_init2(tmp[i], nbits);
+      mpz_set_ui(tmp[i], 0);
     }
   }
   poly->coeffs = tmp;
@@ -696,10 +697,12 @@ static int add_random_linear_form_to_input_system(
     }
     srand(time(0));
     gens->random_linear_form = malloc(sizeof(int32_t *)*(nvars_new));
+
     if (gens->field_char > 0) {
       int j = 0;
       for (i = len_old; i < len_new; ++i) {
         gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+
         while(gens->random_linear_form[j] == 0){
             gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
        }
@@ -713,8 +716,9 @@ static int add_random_linear_form_to_input_system(
       for (i = 2*len_old; i < 2*len_new; i += 2) {
         gens->random_linear_form[j] = ((int8_t)(rand()));
         while(gens->random_linear_form[j] == 0){
-            gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
+            gens->random_linear_form[j] = ((int8_t)(rand()));
         }
+
         mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
         k++;
         j++;
@@ -767,8 +771,10 @@ static inline void print_msolve_message(FILE * file, int n){
 }
 
 static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
+
   param->nvars = bparam->nvars;
   param->nsols = bparam->elim->length - 1;
+
   mpz_upoly_init2(param->elim, bparam->elim->alloc, 2*32*(bparam->elim->length));
   mpz_upoly_init(param->denom, bparam->elim->alloc - 1);
   param->elim->length = bparam->elim->length;
@@ -776,9 +782,11 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   param->coords = (mpz_upoly_t *)malloc(sizeof(mpz_upoly_t)*(param->nvars - 1));
   if(param->coords != NULL){
     for(long i = 0; i < param->nvars - 1; i++){
+
       mpz_upoly_init(param->coords[i], MAX(1,bparam->elim->alloc - 1));
       /* param->coords[i]->length = bparam->coords[i]->length; */
       param->coords[i]->length = bparam->elim->length - 1;
+
     }
   }
   else{
@@ -1527,6 +1535,7 @@ static inline void set_mpz_param_nmod(mpz_param_t mpz_param, param_t *nmod_param
   }
   mpz_param->denom->length = nmod_param->denom->length;
   for(int j = 0; j < mpz_param->nvars - 1; j++){
+
     for(long i = 0 ; i < nmod_param->coords[j]->length; i++){
       mpz_set_ui(mpz_param->coords[j]->coeffs[i],
                  nmod_param->coords[j]->coeffs[i]);
@@ -1547,11 +1556,11 @@ static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
 #pragma omp parallel for num_threads(nthrds)    \
   private(i) schedule(static)
   for(i = 0; i < pol->length; i++){
-
     mpz_CRT_ui(pol->coeffs[i], pol->coeffs[i], modulus,
                nmod_pol->coeffs[i], prime, prod, 1);
-
   }
+
+
 }
 
 
@@ -1563,6 +1572,7 @@ static inline void crt_lift_mpz_param(mpz_param_t mpz_param, param_t *nmod_param
   /*assumes prod_crt = modulus * prime */
   crt_lift_mpz_upoly(mpz_param->elim, nmod_param->elim, modulus, prime,
                      prod_crt, nthrds);
+
   for(long i = 0; i < mpz_param->nvars - 1; i++){
     crt_lift_mpz_upoly(mpz_param->coords[i], nmod_param->coords[i],
                        modulus, prime, prod_crt, nthrds);
@@ -2100,21 +2110,21 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
       if(is_lifted[0]>0 && is_lifted[i+1]==0){
 
         b = rational_reconstruction_upoly_with_denom(mpz_param->coords[i],
-                                                   denominator,
-                                                   tmp_mpz_param->coords[i],
-                                                   nmod_param->coords[i]->length,
-                                                   *modulus,
-                                                   maxrec,
-                                                   coef,
-                                                   rnum,
-                                                   rden,
-                                                   numer,
-                                                   denom,
-                                                   lcm,
-                                                   *guessed_num,
-                                                   *guessed_den,
-                                                   recdata,
-                                                   info_level);
+                                                     denominator,
+                                                     tmp_mpz_param->coords[i],
+                                                     nmod_param->coords[i]->length,
+                                                     *modulus,
+                                                     maxrec,
+                                                     coef,
+                                                     rnum,
+                                                     rden,
+                                                     numer,
+                                                     denom,
+                                                     lcm,
+                                                     *guessed_num,
+                                                     *guessed_den,
+                                                     recdata,
+                                                     info_level);
 
         if(b == 0){
           mpz_set_ui(recdata->D, 1);
@@ -4403,9 +4413,7 @@ int real_msolve_qq(mpz_param_t mp_param,
       }
       double st = realtime();
       pts = malloc(sizeof(real_point_t) * nb);
-      if(info_level){
-        fprintf(stderr, "nbvars = %ld\n", mp_param->nvars);
-      }
+
       for(long i = 0; i < nb; i++){
         real_point_init(pts[i], mp_param->nvars);
       }

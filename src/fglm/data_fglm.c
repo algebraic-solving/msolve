@@ -224,6 +224,7 @@ static inline fglm_bms_data_t *allocate_fglm_bms_data(long dim, mp_limb_t prime)
 
   nmod_poly_init(data_bms->B, prime);
   nmod_poly_init(data_bms->Z1, prime);
+
   nmod_poly_init2(data_bms->rZ1, prime, dim+1);
 
   nmod_poly_init(data_bms->Z2, prime);
@@ -231,6 +232,14 @@ static inline fglm_bms_data_t *allocate_fglm_bms_data(long dim, mp_limb_t prime)
   nmod_poly_init2(data_bms->V, prime, dim+1);
 
   nmod_poly_init2(data_bms->param, prime, dim+1);
+
+  for(long i = 0; i < dim + 1; i++){
+    data_bms->rZ1->coeffs[i] = 0;
+    data_bms->rZ2->coeffs[i] = 0;
+    data_bms->V->coeffs[i] = 0;
+    data_bms->param->coeffs[i] = 0;
+  }
+
   nmod_berlekamp_massey_init(data_bms->BMS, (mp_limb_t)prime);
 
   nmod_poly_factor_init(data_bms->sqf);

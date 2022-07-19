@@ -38,8 +38,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "-f FILE  File name (mandatory).\n\n");
   fprintf(stdout, "-h       Prints this help.\n");
   fprintf(stdout, "-o FILE  Name of output file.\n");
-  fprintf(stdout, "-t THR   [NOT ACTIVE YET]\n");
-  fprintf(stdout, "         Number of threads to be used.\n");
+  fprintf(stdout, "-t THR   Number of threads to be used.\n");
   fprintf(stdout, "         Default: 1.\n");
   fprintf(stdout, "-v n     Level of verbosity, 0 - 2\n");
   fprintf(stdout, "         0 - no output (default).\n");

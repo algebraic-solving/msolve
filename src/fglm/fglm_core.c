@@ -84,7 +84,7 @@ void display_fglm_param_maple(FILE * file, param_t *param){
   display_nmod_poly(file, param->denom);
   fprintf(file, ", \n");
 
-  for(int c = param->nvars-2; c >= 0; c--){
+  for(int c = param->nvars-2; c > 0; c--){
     display_nmod_poly(file, param->coords[c]);
     fprintf(file, ", \n");
   }
@@ -742,6 +742,7 @@ static inline long make_square_free_elim_poly(param_t *param,
 
   if(boo && dim == dimquot){
     nmod_poly_set(param->elim, data_bms->BMS->V1);
+    nmod_poly_one(param->denom);
   }
   else{
 
@@ -750,8 +751,10 @@ static inline long make_square_free_elim_poly(param_t *param,
         fprintf(stderr, "Mininimal polynomial is not square-free\n");
       }
     }
+
     nmod_poly_factor_squarefree(data_bms->sqf, data_bms->BMS->V1);
     nmod_poly_one(param->elim);
+    nmod_poly_one(param->denom);
     for(ulong i = 0; i < data_bms->sqf->num; i++){
       nmod_poly_mul(param->elim, param->elim, data_bms->sqf->p+i);
     }
@@ -809,7 +812,7 @@ static inline void compute_minpoly(param_t *param,
                                    int info_level){
   compute_elim_poly(data, data_bms, dimquot);
 
-  if(dimquot > 1){
+  if(dimquot >= 1){
     *dim = make_square_free_elim_poly(param, data_bms, dimquot, info_level);
   }
   else{
@@ -827,7 +830,6 @@ static void set_param_linear_vars(param_t *param,
                                   uint32_t *lineqs,
                                   long nvars){
 
-
   int cnt = 1;
   const uint32_t fc = param->charac;
 
@@ -841,22 +843,37 @@ static void set_param_linear_vars(param_t *param,
   else{
     nr = nlins;
   }
+
   for(int nc = nvars - 2; nc >= 0; nc--){
-    /* int ind = nvars - 2 - nc; */
+
     int ind = nc;
 
     if(linvars[nc] != 0){
-      int64_t lc = lineqs[nc +(nvars+1)*(nr-1 - (cnt-1))];
-      if(lc != 1){
-        fprintf(stderr, "LC is not 1. There should be a bug\n");
-        exit(1);
+      /* int64_t lc = lineqs[nc +(nvars+1)*(nr-1 - (cnt-1))]; */
+      nmod_poly_fit_length(param->coords[ind], param->elim->length);
+      param->coords[ind]->coeffs[param->coords[ind]->length-1] = 0;
+      param->coords[ind]->length = param->elim->length;
+      for(long i = 0; i < param->coords[ind]->length; i++){
+        param->coords[ind]->coeffs[i] = 0;
       }
-      for(int k = nc + 1; k < nvars - 1 ; k++){
+
+      int64_t lc = lineqs[nr - 1 - (cnt-1) +(nvars+1)*(nr-1 - (cnt-1))];
+
+      /* if(lc != 1){ */
+      /*   fprintf(stderr, "LC is not 1. There should be a bug\n"); */
+      /*   exit(1); */
+      /* } */
+      /* for(int k = nc + 1; k < nvars - 1 ; k++){ */
+      for(int k = 1; k < nvars - 1 ; k++){
         int32_t c = lineqs[k+(nvars+1)*(nr-(cnt-1)-1)];
+
         if(c){
+          /* one multiplies param->coords[k] by fc -c */
+          /* and adds this to param->coords[ind] */
+          uint32_t cc = (fc - c);
 
           for(int i = 0; i < param->coords[k]->length; i++){
-            int64_t tmp = (fc-c) * param->coords[k]->coeffs[i];
+            int64_t tmp = cc * param->coords[k]->coeffs[i];
             tmp = tmp % fc;
             tmp += param->coords[ind]->coeffs[i];
             tmp = tmp % fc;
@@ -866,11 +883,13 @@ static void set_param_linear_vars(param_t *param,
         }
       }
 
-      int32_t c1 = lineqs[nvars-1+(nvars+1)*(nr-(cnt-1)-1)];
+      int32_t c1 = lineqs[nvars - 1 +(nvars+1)*(nr-(cnt-1)-1)];
       param->coords[ind]->coeffs[1] = ((int64_t)(param->coords[ind]->coeffs[1] + c1)) % fc;
 
-      int32_t c0 = lineqs[nvars+(nvars+1)*(nr-(cnt-1)-1)];
+
+      int32_t c0 = lineqs[nvars +(nvars+1)*(nr-(cnt-1)-1)];
       param->coords[ind]->coeffs[0] = ((int64_t)(param->coords[ind]->coeffs[0] + c0)) % fc;
+
       for(long k = param->coords[ind]->length - 1; k >= 0; k--){
         if(param->coords[ind]->coeffs[k] == 0){
           param->coords[ind]->length--;
@@ -882,6 +901,15 @@ static void set_param_linear_vars(param_t *param,
 
       nmod_poly_rem(param->coords[ind], param->coords[ind],
                     param->elim);
+
+      for(long k = param->coords[ind]->length - 1; k >= 0; k--){
+        if(param->coords[ind]->coeffs[k] == 0){
+          param->coords[ind]->length--;
+        }
+        else{
+          break;
+        }
+      }
 
       cnt++;
     }
@@ -914,6 +942,7 @@ static int compute_parametrizations(param_t *param,
     long dec = 0;
 
     for(long nc = 0; nc < nvars - 1 ; nc++){
+
       if(linvars[nvars - 2- nc] == 0){
         solve_hankel(data_bms, dimquot, dim, block_size, data->res,
                      nc + 2 - dec);
@@ -1114,6 +1143,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
     if (verif) {
       dec = 0;
       for(long nc = 0; nc < nvars - 1 ; nc++){
+
         if(linvars[nvars - 2 - nc] == 0
            && squvars[nvars - 2 - nc] != 0){
 
@@ -1144,16 +1174,16 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           }
         }
         else{
-          if(linvars[nvars -2 - nc] != 0){
-            if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
-              nmod_poly_fit_length(param->coords[nvars-2-nc],
-                                   param->elim->alloc );
-            }
-            param->coords[nvars-2-nc]->length = param->elim->length-1 ;
-            for(long i = 0; i < param->elim->length-1 ; i++){
-              param->coords[nvars-2-nc]->coeffs[i] = 0;
-            }
+
+          if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc ){
+            nmod_poly_fit_length(param->coords[nvars-2-nc],
+                                 param->elim->alloc  );
           }
+          param->coords[nvars-2-nc]->length = param->elim->length ;
+          for(long i = 0; i < param->elim->length ; i++){
+            param->coords[nvars-2-nc]->coeffs[i] = 0;
+          }
+
         }
         if(linvars[nvars - 2 - nc] != 0){
           dec++;

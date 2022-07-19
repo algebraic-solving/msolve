@@ -20,7 +20,7 @@
 
 #include "../fglm/data_fglm.c"
 #include "../fglm/libfglm.h"
-#define POSTPONED_REDUCTION 1
+#define REDUCTION_ALLINONE 0
 
 static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
                                            long nrows,
@@ -1198,28 +1198,18 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 #if 0
   for (long i = 1; i < tbr->lml; i++) {
     len_t idx = tbr->lmps[i];
-    /* printf ("idx=%d\n",idx); */
     len_t * hm  = tbr->hm[idx]+OFFSET;
     len_t len = tbr->hm[idx][LENGTH];
-    /* printf ("len=%d\n",len); */
-    /* long k = dquot-1; */
     long k = 0;
     for (long j = 0; j < 5; j++) {
-      /* printf ("tbr[%ld][%ld]=%u, ",i,j,tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-j]); */
       while (!is_equal_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv)) {
 	k++;
       }
     }
-    /* printf ("\n"); */
   }
 #endif
   copy_extrapoly_in_vector(leftvector, dquot, lmb, 1,
 			   tbr, bht, evi, st, nv, maxdeg);
-  /* printf("leftvector:\n["); */
-  /* for (long i = 0; i < dquot-1; i++) { */
-  /*   printf ("%u, ",leftvector[i]); */
-  /* } */
-  /* printf("%u]\n",leftvector[dquot-1]); */
 
   /* takes monomials in bexp_lm which are reducible by xn */
   /* div_xn contains the indices of those monomials*/
@@ -1237,17 +1227,9 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
 	  "and with bounded degree: %ld\n", len_xn);
-  /* for(long i=0; i < len_xn-1; i++){ */
-  /*   fprintf(stderr, "%d, ", div_xn[i]); */
-  /* } */
-  /* fprintf(stderr, "%d\n", div_xn[len_xn-1]); */
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are not divisible by x_n "
 	  "and with bounded degree: %ld\n", len_not_xn);
-  /* for(long i=0; i < len_not_xn-1; i++){ */
-  /*   fprintf(stderr, "%d, ", div_not_xn[i]); */
-  /* } */
-  /* fprintf(stderr, "%d\n", div_not_xn[len_not_xn-1]); */
 #endif
   long count_lm = 0;
   /* list of monomials in the staircase that leave the staircase after

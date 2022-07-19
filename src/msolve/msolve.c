@@ -58,6 +58,7 @@ static void mpz_upoly_init2(mpz_upoly_t poly, long alloc, long nbits){
     }
     for(long i = 0; i < alloc; i++){
       mpz_init2(tmp[i], nbits);
+      mpz_set_ui(tmp[i], 0);
     }
   }
   poly->coeffs = tmp;
@@ -1534,6 +1535,7 @@ static inline void set_mpz_param_nmod(mpz_param_t mpz_param, param_t *nmod_param
   }
   mpz_param->denom->length = nmod_param->denom->length;
   for(int j = 0; j < mpz_param->nvars - 1; j++){
+
     for(long i = 0 ; i < nmod_param->coords[j]->length; i++){
       mpz_set_ui(mpz_param->coords[j]->coeffs[i],
                  nmod_param->coords[j]->coeffs[i]);
@@ -1570,6 +1572,7 @@ static inline void crt_lift_mpz_param(mpz_param_t mpz_param, param_t *nmod_param
   /*assumes prod_crt = modulus * prime */
   crt_lift_mpz_upoly(mpz_param->elim, nmod_param->elim, modulus, prime,
                      prod_crt, nthrds);
+
   for(long i = 0; i < mpz_param->nvars - 1; i++){
     crt_lift_mpz_upoly(mpz_param->coords[i], nmod_param->coords[i],
                        modulus, prime, prod_crt, nthrds);
@@ -2084,8 +2087,6 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
       }
     }
 
-    exit(1);
-
     long nsols = mpz_param->nsols;
     mpz_t lc;
     mpz_init(lc);
@@ -2109,21 +2110,21 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
       if(is_lifted[0]>0 && is_lifted[i+1]==0){
 
         b = rational_reconstruction_upoly_with_denom(mpz_param->coords[i],
-                                                   denominator,
-                                                   tmp_mpz_param->coords[i],
-                                                   nmod_param->coords[i]->length,
-                                                   *modulus,
-                                                   maxrec,
-                                                   coef,
-                                                   rnum,
-                                                   rden,
-                                                   numer,
-                                                   denom,
-                                                   lcm,
-                                                   *guessed_num,
-                                                   *guessed_den,
-                                                   recdata,
-                                                   info_level);
+                                                     denominator,
+                                                     tmp_mpz_param->coords[i],
+                                                     nmod_param->coords[i]->length,
+                                                     *modulus,
+                                                     maxrec,
+                                                     coef,
+                                                     rnum,
+                                                     rden,
+                                                     numer,
+                                                     denom,
+                                                     lcm,
+                                                     *guessed_num,
+                                                     *guessed_den,
+                                                     recdata,
+                                                     info_level);
 
         if(b == 0){
           mpz_set_ui(recdata->D, 1);
@@ -3249,7 +3250,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   for(int i = 1; i < st->nthrds; i++){
     btht[i] = copy_hash_table(tht, st);
   }
-
 
   normalize_nmod_param(nmod_params[0]);
 
@@ -4413,9 +4413,7 @@ int real_msolve_qq(mpz_param_t mp_param,
       }
       double st = realtime();
       pts = malloc(sizeof(real_point_t) * nb);
-      if(info_level){
-        fprintf(stderr, "nbvars = %ld\n", mp_param->nvars);
-      }
+
       for(long i = 0; i < nb; i++){
         real_point_init(pts[i], mp_param->nvars);
       }

@@ -84,7 +84,7 @@ void display_fglm_param_maple(FILE * file, param_t *param){
   display_nmod_poly(file, param->denom);
   fprintf(file, ", \n");
 
-  for(int c = param->nvars-2; c >= 0; c--){
+  for(int c = param->nvars-2; c > 0; c--){
     display_nmod_poly(file, param->coords[c]);
     fprintf(file, ", \n");
   }
@@ -768,6 +768,12 @@ static void set_param_linear_vars(param_t *param,
 
     if(linvars[nc] != 0){
       /* int64_t lc = lineqs[nc +(nvars+1)*(nr-1 - (cnt-1))]; */
+      nmod_poly_fit_length(param->coords[ind], param->elim->length);
+      param->coords[ind]->coeffs[param->coords[ind]->length-1] = 0;
+      param->coords[ind]->length = param->elim->length;
+      for(long i = 0; i < param->coords[ind]->length; i++){
+        param->coords[ind]->coeffs[i] = 0;
+      }
 
       int64_t lc = lineqs[nr - 1 - (cnt-1) +(nvars+1)*(nr-1 - (cnt-1))];
 
@@ -776,13 +782,14 @@ static void set_param_linear_vars(param_t *param,
       /*   exit(1); */
       /* } */
       /* for(int k = nc + 1; k < nvars - 1 ; k++){ */
-      for(int k = 1; k < nvars-1 ; k++){
+      for(int k = 1; k < nvars - 1 ; k++){
         int32_t c = lineqs[k+(nvars+1)*(nr-(cnt-1)-1)];
 
         if(c){
           /* one multiplies param->coords[k] by fc -c */
           /* and adds this to param->coords[ind] */
           uint32_t cc = (fc - c);
+
           for(int i = 0; i < param->coords[k]->length; i++){
             int64_t tmp = cc * param->coords[k]->coeffs[i];
             tmp = tmp % fc;
@@ -793,16 +800,14 @@ static void set_param_linear_vars(param_t *param,
 
         }
       }
-      nmod_poly_fit_length(param->coords[ind], param->elim->length);
-      param->coords[ind]->coeffs[param->coords[ind]->length-1] = 0;
-      param->coords[ind]->length = param->elim->length;
 
-      int32_t c1 = lineqs[nvars-1+(nvars+1)*(nr-(cnt-1)-1)];
-
+      int32_t c1 = lineqs[nvars - 1 +(nvars+1)*(nr-(cnt-1)-1)];
       param->coords[ind]->coeffs[1] = ((int64_t)(param->coords[ind]->coeffs[1] + c1)) % fc;
 
-      int32_t c0 = lineqs[nvars+(nvars+1)*(nr-(cnt-1)-1)];
+
+      int32_t c0 = lineqs[nvars +(nvars+1)*(nr-(cnt-1)-1)];
       param->coords[ind]->coeffs[0] = ((int64_t)(param->coords[ind]->coeffs[0] + c0)) % fc;
+
       for(long k = param->coords[ind]->length - 1; k >= 0; k--){
         if(param->coords[ind]->coeffs[k] == 0){
           param->coords[ind]->length--;
@@ -1266,8 +1271,6 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     return NULL;
   }
 
-  fprintf(stderr, "In nmod_fglm_compute_trace_data\n");
-  fprintf(stderr, "nvars = %ld\n", nvars);
   /* to store the terms we need */
   *bdata = allocate_fglm_data(matrix->nrows, matrix->ncols, nvars);
 

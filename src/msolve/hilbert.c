@@ -2346,3 +2346,5 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
 
   return matrix;
 }
+
+#undef REDUCTION_ALLINONE 0

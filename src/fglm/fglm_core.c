@@ -772,13 +772,9 @@ static inline long make_square_free_elim_poly_colon(param_t *param,
 						    fglm_bms_data_t *data_bms,
 						    long dimquot,
 						    int info_level){
-  nmod_poly_fprint_pretty(stdout, data_bms->BMS->V1, "x");
-  printf ("\n");
-  fflush(stdout);
   long dim = data_bms->BMS->V1->length - 1;
-  printf ("dim =%ld\n",dim);
   
-  int boo = 1; /*nmod_poly_is_squarefree(data_bms->BMS->V1);*/
+  int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
 
   if(boo){
     nmod_poly_set(param->elim, data_bms->BMS->V1);
@@ -1945,7 +1941,7 @@ static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
 
   szmat_t i = 1;
   szmat_t tentative_degree =  MIN (4,matrix->ncols);
-  printf ("tentative degree = %d\n",tentative_degree);
+  /* printf ("tentative degree = %d\n",tentative_degree); */
   while (i <= 2*tentative_degree-1) {
     sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
 				   data->vecinit, data->vecmult,
@@ -1985,18 +1981,18 @@ static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
     print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
 #endif
     if (i == 2*tentative_degree-1) {
-      printf ("gessing min poly\n");
+      /* printf ("guessing min poly\n"); */
       guess_minpoly_colon(param, data, data_bms, dimquot, tentative_degree,
 			  linvars, lineqs, nvars, dim_ptr, info_level);
       if (*dim_ptr < tentative_degree) {
-	printf ("degree ok!\n");
+	/* printf ("degree ok!\n"); */
 	free (data_backup);
 	break;
       } else {
 	nmod_berlekamp_massey_set_prime (data_bms->BMS,prime);
 	memcpy (data->pts,data_backup,i * sizeof(CF_t));
 	tentative_degree = MIN (3 * (*dim_ptr),matrix->ncols);
-	printf ("tentative degree = %d\n",tentative_degree);
+	/* printf ("tentative degree = %d\n",tentative_degree); */
       }
     }
     i++;
@@ -2135,10 +2131,9 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   
   
   /* szmat_t block_size = nvars-nlins; //taille de bloc dans data->res */
-  /* szmat_t block_size = 2*nvars-1; //taille de bloc dans data->res */
   szmat_t block_size = 2*nvars-1; //taille de bloc dans data->res
-  //pour le stockage des termes de la suite qu'on a besoin de garder
-  fglm_data_t *data = allocate_fglm_data(matrix->nrows, matrix->ncols, nvars);
+  /* for storing sequences terms we need to keep */
+  fglm_data_t *data = allocate_fglm_data(matrix->nrows, matrix->ncols, 2*nvars-1);
 
   param_t *param = allocate_fglm_param(prime, nvars);
 
@@ -2197,6 +2192,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 						  lineqs, squvars,
 						  nvars, prime,
 						  1);
+  printf ("right param = %d\n",right_param);
   if (right_param == 0) {
     fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
     free_fglm_bms_data(data_bms);
@@ -2221,6 +2217,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   }
   free_fglm_bms_data(data_bms);
   free_fglm_data(data);
+  printf ("free fglm\n");
   return param;
 }
 

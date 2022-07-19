@@ -4705,6 +4705,10 @@ restart:
             ht_t *bht   = NULL;
             stat_t *st  = NULL;
 
+	    double ct0, rt0, ct0p, rt0p, ct1, rt1, ct2, rt2, ct3, rt3, ct4, rt4;
+	    ct0 = cputime();
+	    rt0 = realtime();
+
             /* generate array for storing multiplier for polynomial
              * to be reduced by basis */
 
@@ -4754,6 +4758,16 @@ restart:
                 exit(1);
             }
 
+	    ct0p = cputime();
+	    rt0p = realtime();
+	    if (info_level) {
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	      fprintf(stderr, "INIT   TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+		      rt0p-rt0, ct0p-ct0);
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	    }
             if (is_gb == 1) {
                 for (len_t k = 0; k < bs->ld; ++k) {
                     bs->lmps[k] = k;
@@ -4773,6 +4787,17 @@ restart:
 	    int64_t nb  = export_results_from_gba(bld, blen, bexp,
 						  bcf, &malloc, &bs, &bht, &st);
             printf("size of basis: %u\n", bs->lml);
+	    ct1 = cputime();
+	    rt1 = realtime();
+	    if (info_level) {
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	      fprintf(stderr, "F4     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+		      rt1-rt0p, ct1-ct0p);
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	    }
+
             /* initialize data for elements to be reduced,
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
@@ -4792,6 +4817,16 @@ restart:
                 printf("Problem with normalform, stopped computation.\n");
                 exit(1);
             }
+	    ct2 = cputime();
+	    rt2 = realtime();
+	    if (info_level) {
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	      fprintf(stderr, "NF     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+		      rt2-rt1, ct2-ct1);
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	    }
             /* print all reduced elements in tbr, first  one
              * is the input element */
             /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
@@ -4874,6 +4909,16 @@ restart:
 							   leftvector,
 							   leftvectorsparam,
 							   suppsize);
+	    ct3 = cputime();
+	    rt3 = realtime();
+	    if (info_level) {
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	      fprintf(stderr, "MATRIX TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+		      rt3-rt2, ct3-ct2);
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	    }
 	    uint64_t *linvars = calloc(gens->nvars, sizeof(uint64_t));
 	    uint32_t *lineqs = calloc(gens->nvars,sizeof(uint32_t));
 	    uint64_t *squvars = calloc(gens->nvars-1, sizeof(uint64_t));
@@ -4881,7 +4926,37 @@ restart:
 						    leftvector, leftvectorsparam,
 						    gens->nvars,
 						    0, linvars, lineqs, squvars, 1);
+	    ct4 = cputime();
+	    rt4 = realtime();
+	    if (info_level) {
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	      fprintf(stderr, "FGLM  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+		      rt4-rt3, ct4-ct3);
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	    }
 	    display_fglm_param(stdout, param);
+	    if (info_level) {
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	      fprintf(stderr, "TOTAL  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+		      rt4-rt0, ct4-ct0);
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	      fprintf(stderr, "INIT   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+		      100*(rt0p-rt0)/(rt4-rt0), 100*(ct0p-ct0)/(ct4-ct0));
+	      fprintf(stderr, "F4     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+		      100*(rt1-rt0p)/(rt4-rt0), 100*(ct1-ct0p)/(ct4-ct0));
+	      fprintf(stderr, "NF     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+		      100*(rt2-rt1)/(rt4-rt0), 100*(ct2-ct1)/(ct4-ct0));
+	      fprintf(stderr, "MATRIX PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+		      100*(rt3-rt2)/(rt4-rt0), 100*(ct3-ct2)/(ct4-ct0));
+	      fprintf(stderr, "FGLM   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+		      100*(rt4-rt3)/(rt4-rt0), 100*(ct4-ct3)/(ct4-ct0));
+	      fprintf(stderr, "-------------------------------------------------\
+----------------------------------------\n");
+	    }
 	    free(param);
 	    free(squvars);
 	    free(lineqs);

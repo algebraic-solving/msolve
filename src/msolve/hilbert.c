@@ -20,7 +20,7 @@
 
 #include "../fglm/data_fglm.c"
 #include "../fglm/libfglm.h"
-#define POSTPONED_REDUCTION 1
+#define REDUCTION_ALLINONE 0
 
 static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
                                            long nrows,
@@ -1178,27 +1178,17 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   for (long i = 1; i < tbr->lml; i++) {
     len_t idx = tbr->lmps[i];
-    /* printf ("idx=%d\n",idx); */
     len_t * hm  = tbr->hm[idx]+OFFSET;
     len_t len = tbr->hm[idx][LENGTH];
-    /* printf ("len=%d\n",len); */
-    /* long k = dquot-1; */
     long k = 0;
     for (long j = 0; j < 5; j++) {
-      /* printf ("tbr[%ld][%ld]=%u, ",i,j,tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-j]); */
       while (!is_equal_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv)) {
 	k++;
       }
     }
-    /* printf ("\n"); */
   }
   copy_extrapoly_in_vector(leftvector, dquot, lmb, 1,
 			   tbr, bht, evi, st, nv, maxdeg);
-  /* printf("leftvector:\n["); */
-  /* for (long i = 0; i < dquot-1; i++) { */
-  /*   printf ("%u, ",leftvector[i]); */
-  /* } */
-  /* printf("%u]\n",leftvector[dquot-1]); */
 
   /* takes monomials in bexp_lm which are reducible by xn */
   /* div_xn contains the indices of those monomials*/
@@ -1216,17 +1206,9 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
 	  "and with bounded degree: %ld\n", len_xn);
-  /* for(long i=0; i < len_xn-1; i++){ */
-  /*   fprintf(stderr, "%d, ", div_xn[i]); */
-  /* } */
-  /* fprintf(stderr, "%d\n", div_xn[len_xn-1]); */
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are not divisible by x_n "
 	  "and with bounded degree: %ld\n", len_not_xn);
-  /* for(long i=0; i < len_not_xn-1; i++){ */
-  /*   fprintf(stderr, "%d, ", div_not_xn[i]); */
-  /* } */
-  /* fprintf(stderr, "%d\n", div_not_xn[len_not_xn-1]); */
 #endif
   long count_lm = 0;
   /* list of monomials in the staircase that leave the staircase after
@@ -1331,17 +1313,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   tbr = initialize_basis(st);
-#if 0
-#if POSTPONED_REDUCTION /* only the pure monomials are reduced */
-  import_input_data_nf_ff_32(tbr, bht, st, 0, count_not_lm,
-			     lens, exps, (void *)cfs);
-  tbr->ld = tbr->lml  =  count_not_lm;
-  printf ("%ld imported\n",count_not_lm);
-  for (int k = 0; k < count_not_lm; ++k) {
-    tbr->lmps[k]  = k; /* fix input element in tbr */
-  }
-  printf ("pure monomials to be reduced\n");
-#else
+#if REDUCTION_ALLINONE
   import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  tobereduced;
@@ -1350,72 +1322,16 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
   /* printf ("polynomials to be reduced\n"); */
-#endif
-  print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht,
-			      st, gens->vnames, 0);
-  /* compute normal forms of last element2 in tbr */
+  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
+  /* 			      st, gens->vnames, 0); */
   int success = core_nf(&tbr, &bht, &st, mul, bs);
   if (!success) {
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
   }
-  printf ("reductions\n");
-#if POSTPONED_REDUCTION
-  print_msolve_polynomials_ff(stdout, count_not_lm, tbr->lml, tbr, bht,
-			      st, gens->vnames, 0);
-#else
+  /* printf ("reductions\n"); */
   /* print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
-#endif
-#elif 0 /* reductions one by one */
-  long nb = MIN(19,tobereduced);
-  printf ("nb: %ld\n",nb);
-  int success;
-  long ii;
-  for (ii = 0; ii < tobereduced-nb+1; ii+=nb) {
-    printf ("ii=%ld\n",ii);
-    import_input_data_nf_ff_32(tbr, bht, st, ii, ii+nb,
-			       lens, exps, (void *)cfs);
-    tbr->ld = tbr->lml  =  nb;
-    printf ("%ld imported\n",nb);
-    for (int k = 0; k < nb; ++k) {
-      tbr->lmps[k]  = k; /* fix input element in tbr */
-    }
-    printf ("input elements fixed\n");
-    /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
-    /* 				st, gens->vnames, 0); */
-    /* compute normal forms of last element2 in tbr */
-    success = core_nf(&tbr, &bht, &st, mul, bs);
-    if (!success) {
-      printf("Problem with normalform, stopped computation.\n");
-      exit(1);
-    }
-    printf ("reductions\n");
-    /* print_msolve_polynomials_ff(stdout, nb, tbr->lml, tbr, bht, */
-    /* 				st, gens->vnames, 0); */
-  }
-  printf ("ii=%ld\n",ii);
-  nb = tobereduced-ii;
-  printf ("nb: %ld\n",nb);
-  import_input_data_nf_ff_32(tbr, bht, st, ii, nb,
-			     lens, exps, (void *)cfs);
-  tbr->ld = tbr->lml  =  nb;
-  printf ("%ld imported\n",nb);
-  for (int k = 0; k < nb; ++k) {
-    tbr->lmps[k]  = k; /* fix input element in tbr */
-  }
-    /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
-    /* 				st, gens->vnames, 0); */
-    /* compute normal forms of last element2 in tbr */
-  success = core_nf(&tbr, &bht, &st, mul, bs);
-  if (!success) {
-    printf("Problem with normalform, stopped computation.\n");
-    exit(1);
-  }
-  printf ("reductions\n");
-  /* print_msolve_polynomials_ff(stdout, nb, tbr->lml, tbr, bht, */
-  /* 				st, gens->vnames, 0); */
-  
 #endif
   printf ("Number of zero normal forms: %ld\n",count_zero);
   /* lengths of the polys which we need to build the matrix */
@@ -1587,32 +1503,30 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 #if DEBUGBUILDMATRIX > 0
 	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
-#if 0
+#if REDUCTION_ALLINONE
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
-#if POSTPONED_REDUCTION
-				      count_not_lm + count_nf,
-#else
 				      tobereduced + count_nf,
-#endif
 				      tbr, bht, evi, st, nv, maxdeg);
 #else /* reduction one by one */
 	  int success;
 	  import_input_data_nf_ff_32(tbr, bht, st, count_nf, count_nf+1,
 				     lens, exps, (void *)cfs);
 	  tbr->ld = tbr->lml  =  1;
+	  /* printf ("1 imported\n"); */
 	  for (int k = 0; k < 1; ++k) {
 	    tbr->lmps[k]  = k; /* fix input element in tbr */
 	  }
+	  /* printf ("mononomial to be reduced\n"); */
 	  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
-	  /* 				st, gens->vnames, 0); */
-	  /* compute normal forms of last element2 in tbr */
+	  /* 		      st, gens->vnames, 0); */
 	  success = core_nf(&tbr, &bht, &st, mul, bs);
 	  if (!success) {
 	    printf("Problem with normalform, stopped computation.\n");
 	    exit(1);
 	  }
-	  /* print_msolve_polynomials_ff(stdout, nb, tbr->lml, tbr, bht, */
-	  /* 				st, gens->vnames, 0); */
+	  /* printf ("reduction\n"); */
+	  /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
+	  /* 		      st, gens->vnames, 0); */
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
 				      1,
 				      tbr, bht, evi, st, nv, maxdeg);
@@ -1637,7 +1551,13 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
 
-#if POSTPONED_REDUCTION /* the shifts of phi are now reduced */
+#if REDUCTION_ALLINONE
+  for (long i = 0; i < 2*nv - 2; i++) {
+    copy_extrapoly_in_vector(leftvectorsparam[i], dquot, lmb,
+			     tobereduced + count_not_lm + i,
+			     tbr, bht, evi, st, nv, maxdeg);
+  }
+#else /* the shifts of phi are now reduced */
   tbr = initialize_basis(st);
   import_input_data_nf_ff_32(tbr, bht, st, count_not_lm, tobereduced,
 			     lens, exps, (void *)cfs);
@@ -1649,7 +1569,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* printf ("shifts of phi to be reduced\n"); */
   /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
-  /* compute normal forms of last elements in tbr */
   int success = core_nf(&tbr, &bht, &st, mul, bs);
   if (!success) {
     printf("Problem with normalform, stopped computation.\n");
@@ -1658,11 +1577,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* printf ("reductions\n"); */
   /* print_msolve_polynomials_ff(stdout, 2*nv-2, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
-#endif
   for (long i = 0; i < 2*nv - 2; i++) {
-    copy_extrapoly_in_vector(leftvectorsparam[i], dquot, lmb, 2*nv-2+i,
+    copy_extrapoly_in_vector(leftvectorsparam[i], dquot, lmb,
+			     2*nv-2+i,
 			     tbr, bht, evi, st, nv, maxdeg);
   }
+#endif
   free(lens);
   free(exps);
   free(cfs);

@@ -115,22 +115,22 @@ static inline int is_divisible_lexp_without_last_variable(long nvars, long lengt
 
 /*ind is an array of long of length length
   adds entries of ind  */
-static inline long sum(long *ind, long length){
-  long s= 0;
-  for(long i = 0; i < length; i++){
+static inline int32_t sum(int32_t *ind, int32_t length){
+  int32_t s= 0;
+  for(int32_t i = 0; i < length; i++){
     s += ind[i];
   }
   return s;
 }
 
-static inline long generate_new_elts_basis(long nvars, long *ind,
+static inline int32_t generate_new_elts_basis(int32_t nvars, int32_t *ind,
                                            long len1, long len_lm,
                                            int32_t *basis1, int32_t *new_basis,
                                            int32_t *bexp_lm){
   long c = 0;
-  for(long n = nvars-1; n >=0; n--){
-    for(long i = ind[nvars-1-n]; i < len1; i++){
-      for(long k = 0; k < nvars; k++){
+  for(int32_t n = nvars-1; n >=0; n--){
+    for(int32_t i = ind[nvars-1-n]; i < len1; i++){
+      for(int32_t k = 0; k < nvars; k++){
         new_basis[c*nvars+k] = basis1[i*nvars+k];
       }
       new_basis[c*nvars+n]++;
@@ -146,7 +146,7 @@ static inline int degree_prev_var(int32_t *exp, long n){
   return(exp[n+1]);
 }
 
-static inline void update_indices(long *ind, int32_t *basis,
+static inline void update_indices(int32_t *ind, int32_t *basis,
                                   long dquot, long new_length, long nvars){
   ind[0] = dquot;
   for(long n = nvars - 2; n >= 0 ; n--){
@@ -166,9 +166,12 @@ static inline void update_indices(long *ind, int32_t *basis,
     nvars is the number of variables
     bexp_lm encodes the leading monomials
     dquot is a pointer to an integer that will be the dimension of the quotient
+
+    assumes bexp_lm is for grevlex ordering
  */
 static inline int32_t *monomial_basis(long length, long nvars, 
                                       int32_t *bexp_lm, long *dquot){
+  /* basis will contain the monomial basis */
   int32_t *basis = calloc(nvars, sizeof(int32_t)); 
   (*dquot) = 0;
 
@@ -180,21 +183,22 @@ static inline int32_t *monomial_basis(long length, long nvars,
   else{
     (*dquot)++;
   }
-  long *ind = calloc(nvars, sizeof(long) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
   int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
-  long new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
+  int32_t new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
                                             basis, new_basis, bexp_lm);
 #ifdef DEBUGHILBERT
   //  display_monomials_from_array(stderr, new_length, new_basis, gens);
   fprintf(stderr, "%ld new elements.\n", new_length);
 #endif
   while(new_length>0){
-    int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t *));
+    int32_t *basis2 = realloc(basis,
+                              ((*dquot) + new_length) * nvars * sizeof(int32_t *));
     if(basis2==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);
@@ -236,6 +240,7 @@ static inline int32_t *monomial_basis(long length, long nvars,
   return basis;
 }
 
+
 /** nvars is the number of variables
     sht is a secondary htable of the monomials
     dquot is a integer representing the dimension of the
@@ -255,11 +260,12 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   else{
     (*dquot)++;
   }
-  long *ind = calloc(nvars, sizeof(long) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
+
 
   int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars)); 
   long new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
@@ -312,6 +318,7 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   free(ind);
   return basis;
 }
+
 
 /** nvars is the number of variables
     sht is a secondary htable of the monomials

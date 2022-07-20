@@ -2353,7 +2353,6 @@ static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
   /* counters for lengths, exponents and coefficients */
   int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
 
-
   for (long i = 0; i < nelts; ++i) {
     const bl_t bi = bs->lmps[i];
     //    len[cl] = bs->hm[bi][LENGTH];
@@ -2511,6 +2510,19 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
       if(st->fc == 0){
         /* to fix display inconsistency when gens->fc = 0 */
         st->fc = fc;
+        long dquot = 0;
+        int32_t *lmb = monomial_basis_enlarged(bs->lml, bht->nv,
+                                               bexp_lm, &dquot);
+        fprintf(stderr, "nvars = %d\n", st->nvars);
+        for(int32_t i = 0; i < dquot; i++){
+          fprintf(stderr, "[");
+          for(int32_t j = 0; j < st->nvars - 1; j++){
+            fprintf(stderr, "%d, ", lmb[j+i*st->nvars]);
+          }
+          fprintf(stderr, "%d], ", lmb[st->nvars - 1 + i*st->nvars]);
+        }
+        fprintf(stderr, "\n");
+
         print_ff_basis_data(
                             files->out_file, "a", bs, bht, st, gens, print_gb);
         st->fc = 0;
@@ -2523,8 +2535,9 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm, bs);
 
     if(has_dimension_zero(bs->lml, bht->nv, bexp_lm)){
-        long dquot = 0;
-        int32_t *lmb = monomial_basis(bs->lml, bht->nv, bexp_lm, &dquot);
+
+      long dquot = 0;
+      int32_t *lmb = monomial_basis(bs->lml, bht->nv, bexp_lm, &dquot);
 
         if(info_level){
             fprintf(stderr, "Dimension of quotient: %ld\n", dquot);

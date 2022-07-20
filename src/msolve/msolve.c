@@ -22,6 +22,7 @@
 #include "duplicate.c"
 #include "linear.c"
 #include "lifting.c"
+#include "lifting-gb.c"
 
 #define LIFTMATRIX 0
 

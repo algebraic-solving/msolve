@@ -776,7 +776,7 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   param->nsols = bparam->elim->length - 1;
 
   mpz_upoly_init2(param->elim, bparam->elim->alloc, 2*32*(bparam->elim->length));
-  mpz_upoly_init(param->denom, bparam->elim->alloc - 1);
+  mpz_upoly_init2(param->denom, bparam->elim->alloc - 1, 2*32*(bparam->elim->length));
   param->elim->length = bparam->elim->length;
 
   param->coords = (mpz_upoly_t *)malloc(sizeof(mpz_upoly_t)*(param->nvars - 1));
@@ -1530,10 +1530,12 @@ static inline void set_mpz_param_nmod(mpz_param_t mpz_param, param_t *nmod_param
     mpz_set_ui(mpz_param->elim->coeffs[i], (nmod_param)->elim->coeffs[i]);
   }
   mpz_param->elim->length = nmod_param->elim->length;
+
   for(long i = 0; i < nmod_param->denom->length; i++){
     mpz_set_ui(mpz_param->denom->coeffs[i], nmod_param->denom->coeffs[i]);
   }
   mpz_param->denom->length = nmod_param->denom->length;
+
   for(int j = 0; j < mpz_param->nvars - 1; j++){
 
     for(long i = 0 ; i < nmod_param->coords[j]->length; i++){

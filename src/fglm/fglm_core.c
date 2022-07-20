@@ -730,7 +730,7 @@ static inline void compute_minpoly(param_t *param,
                                    int info_level){
   compute_elim_poly(data, data_bms, dimquot);
 
-  if(dimquot >= 1){
+  if(dimquot > 1){
     *dim = make_square_free_elim_poly(param, data_bms, dimquot, info_level);
   }
   else{
@@ -1311,7 +1311,6 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   long dim = 0;
   compute_minpoly(param, *bdata, *bdata_bms, dimquot, linvars, lineqs, nvars, &dim,
                   info_level);
-
 
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",

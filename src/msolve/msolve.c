@@ -2510,6 +2510,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
       if(st->fc == 0){
         /* to fix display inconsistency when gens->fc = 0 */
         st->fc = fc;
+        /**************************************************/
         long dquot = 0;
         int32_t *lmb = monomial_basis_enlarged(bs->lml, bht->nv,
                                                bexp_lm, &dquot);

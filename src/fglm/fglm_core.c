@@ -173,7 +173,6 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t deg){
 
   if(data_bms->BMS->V1->coeffs[0]!=0){
     //Compute Z1 = LC(R1)^{-1} * V1
-
     mp_limb_t inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
                              (data_bms->BMS->R1->mod).n);
     nmod_poly_scalar_mul_nmod(data_bms->Z1, data_bms->BMS->V1, inv);
@@ -688,6 +687,7 @@ static inline long make_square_free_elim_poly(param_t *param,
                                               long dimquot,
                                               int info_level){
   long dim = data_bms->BMS->V1->length - 1;
+
   int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
 
   if(boo && dim == dimquot){
@@ -729,17 +729,23 @@ static inline void compute_minpoly(param_t *param,
                                    long *dim,
                                    int info_level){
   compute_elim_poly(data, data_bms, dimquot);
-
-  if(dimquot > 1){
-    *dim = make_square_free_elim_poly(param, data_bms, dimquot, info_level);
+  if(data_bms->BMS->V1->length == 1){
+    nmod_poly_fit_length(data_bms->BMS->V1, 2);
+    data_bms->BMS->V1->length = 2;
+    data_bms->BMS->V1->coeffs[0] = 0;
+    data_bms->BMS->V1->coeffs[1] = 1;
   }
-  else{
-    nmod_poly_fit_length(param->elim, 2);
-    param->elim->length = 2;
-    param->elim->coeffs[1] = 1;
-    param->elim->coeffs[0] = lineqs[nvars*(nvars+1)-1];
-    *dim = 1;
-  }
+  *dim = make_square_free_elim_poly(param, data_bms, dimquot, info_level);
+  /* if(dimquot > 1){ */
+  /*   *dim = make_square_free_elim_poly(param, data_bms, dimquot, info_level); */
+  /* } */
+  /* else{ */
+  /*   nmod_poly_fit_length(param->elim, 2); */
+  /*   param->elim->length = 2; */
+  /*   param->elim->coeffs[1] = 1; */
+  /*   param->elim->coeffs[0] = lineqs[nvars*(nvars+1)-1]; */
+  /*   *dim = 1; */
+  /* } */
 
 }
 static void set_param_linear_vars(param_t *param,
@@ -851,12 +857,17 @@ static int compute_parametrizations(param_t *param,
 
   nmod_poly_one(param->denom);
 
-  if(invert_hankel_matrix(data_bms, dim)){
-
+  int b = 1;
+  if(nlins != nvars){
+    b = invert_hankel_matrix(data_bms, dim);
 #if DEBUGFGLM > 0
     fprintf(stdout, "Z1 = "); nmod_poly_fprint_pretty(stdout, data_bms->Z1, "x");fprintf(stdout, "\n");
     fprintf(stdout, "Z2 = "); nmod_poly_fprint_pretty(stdout, data_bms->Z2, "x");fprintf(stdout, "\n");
 #endif
+  }
+
+  if(b){
+
     long dec = 0;
 
     for(long nc = 0; nc < nvars - 1 ; nc++){
@@ -1309,8 +1320,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   *bdata_bms = allocate_fglm_bms_data(dimquot, prime);
 
   long dim = 0;
-  compute_minpoly(param, *bdata, *bdata_bms, dimquot, linvars, lineqs, nvars, &dim,
-                  info_level);
+  compute_minpoly(param, *bdata, *bdata_bms, dimquot, linvars, lineqs,
+                  nvars, &dim, info_level);
 
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",

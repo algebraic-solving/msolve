@@ -3498,7 +3498,7 @@ static void exact_sparse_linear_algebra_nf_ff_32(
         }
     }
     if (st->info_level > 1) {
-        printf("%7d new w/ %4d zero", mat->np, zeroes);
+        printf("%7d new    %4d zero", mat->np, zeroes);
         fflush(stdout);
     }
 }

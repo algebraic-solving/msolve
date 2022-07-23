@@ -454,7 +454,6 @@ void import_input_data_nf_ff_32(
     }
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
 
-    printf("start %d -> %d stop\n", start, stop);
     for (i = start; i < stop; ++i) {
         while (lens[i] >= ht->esz-ht->eld) {
             enlarge_hash_table(ht);
@@ -944,7 +943,7 @@ int validate_input_data(
         fprintf(stderr, "Number of generators not valid.\n");
         return 0;
     }
-    if (*nr_nfp < 0) {
+    if (*nr_nfp < 0 || *nr_nfp >= *nr_gensp) {
         fprintf(stderr, "Number of normal forms not valid.\n");
         return 0;
     }

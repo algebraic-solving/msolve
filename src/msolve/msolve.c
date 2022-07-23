@@ -1255,8 +1255,9 @@ int msolve_ff_alloc(param_t **bparam,
     success = initialize_gba_input_data(&bs, &bht, &st,
             gens->lens, gens->exps, (void *)gens->cfs,
             gens->field_char, 0, elim_block_len, gens->nvars,
-            gens->ngens, initial_hts, nr_threads, max_pairs,
-            update_ht, la_option, use_signatures, 1, 0, info_level);
+            gens->ngens, 0 /* # normal forms */, initial_hts,
+            nr_threads, max_pairs, update_ht, la_option,
+            use_signatures, 1, 0, info_level);
 
     if (!success) {
         printf("Bad input data, stopped computation.\n");
@@ -2985,6 +2986,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int32_t nr_vars = gens->nvars;
   int32_t nr_gens = gens->ngens;
   int reduce_gb = 1;
+  int32_t nr_nf = 0;
   const uint32_t prime_start = pow(2, 30);
   const int32_t nr_primes = nr_threads;
 
@@ -2995,8 +2997,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
-            &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
-            &max_nr_pairs, &reset_ht, &la_option, &use_signatures,&reduce_gb,
+            &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
+            &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
             &info_level);
 
     /* all data is corrupt */
@@ -3010,7 +3012,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
               field_char, mon_order, elim_block_len, nr_vars, nr_gens,
-              ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+              nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
               use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
               info_level)) {
     free(st);
@@ -4636,7 +4638,7 @@ restart:
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
-                    gens->ngens-saturate, initial_hts, nr_threads, max_pairs,
+                    gens->ngens, saturate, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
@@ -4826,7 +4828,7 @@ restart:
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
-                    gens->ngens-normal_form, initial_hts, nr_threads, max_pairs,
+                    gens->ngens, normal_form, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
@@ -5147,7 +5149,7 @@ restart:
             int32_t reduce_gb       =   1;
             int res = validate_input_data(&invalid_gens, gens->mpz_cfs,
                     gens->lens, &field_char, &monomial_order, &elim_block_len,
-                    &gens->nvars, &gens->ngens-saturate, &initial_hts,
+                    &gens->nvars, &gens->ngens, &saturate, &initial_hts,
                     &nr_threads, &max_pairs, &update_ht, &la_option,
                     &use_signatures, &reduce_gb, &info_level);
 
@@ -5163,7 +5165,7 @@ restart:
             if (check_and_set_meta_data_trace(st, gens->lens, gens->exps,
                         (void *)gens->mpz_cfs, invalid_gens,
                         field_char, 0, elim_block_len, gens->nvars,
-                        gens->ngens-saturate, initial_hts, nr_threads,
+                        gens->ngens, saturate, initial_hts, nr_threads,
                         max_pairs, update_ht, la_option, use_signatures,
                         1, prime_start, nr_primes, 0, info_level)) {
                 free(st);

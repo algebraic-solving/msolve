@@ -346,6 +346,7 @@ struct stat_t
     int32_t ngens_input;
     int32_t ngens_invalid;
     int32_t ngens;
+    int32_t init_bs_sz;
     int32_t nvars;
     int32_t mnsel;
     int32_t homogeneous;

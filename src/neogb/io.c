@@ -454,6 +454,7 @@ void import_input_data_nf_ff_32(
     }
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
 
+    printf("start %d -> %d stop\n", start, stop);
     for (i = start; i < stop; ++i) {
         while (lens[i] >= ht->esz-ht->eld) {
             enlarge_hash_table(ht);
@@ -919,6 +920,7 @@ int validate_input_data(
         int32_t *elim_block_lenp,
         int32_t *nr_varsp,
         int32_t *nr_gensp,
+        int32_t *nr_nfp,
         int32_t *ht_sizep,
         int32_t *nr_threadsp,
         int32_t *max_nr_pairsp,
@@ -940,6 +942,10 @@ int validate_input_data(
     }
     if (*nr_gensp < 1) {
         fprintf(stderr, "Number of generators not valid.\n");
+        return 0;
+    }
+    if (*nr_nfp < 0) {
+        fprintf(stderr, "Number of normal forms not valid.\n");
         return 0;
     }
     if (*mon_orderp < 0) {
@@ -1032,6 +1038,7 @@ int32_t check_and_set_meta_data(
         const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
+        const int32_t nr_nf,
         const int32_t ht_size,
         const int32_t nr_threads,
         const int32_t max_nr_pairs,
@@ -1044,6 +1051,7 @@ int32_t check_and_set_meta_data(
         )
 {
     if (nr_gens <= 0
+            || nr_nf < 0
             || nr_vars <= 0
             || field_char < 0
             || use_signatures < 0
@@ -1061,11 +1069,12 @@ int32_t check_and_set_meta_data(
     }
 
     /* number of generators given from input file */
-    st->ngens_input     = nr_gens;
+    st->ngens_input     = nr_gens - nr_nf;
     /* number of generators from input which are invalid */
     st->ngens_invalid   = ctr;
     /* number of valid generators */
-    st->ngens           = nr_gens - ctr;
+    st->ngens           = st->ngens_input - ctr;
+    st->init_bs_sz      = 2 * nr_gens;
 
     st->nvars = nr_vars;
     /* note: prime check should be done in julia */
@@ -1364,6 +1373,7 @@ int32_t check_and_set_meta_data_trace(
         const int32_t elim_block_len,
         const int32_t nr_vars,
         const int32_t nr_gens,
+        const int32_t nr_nf,
         const int32_t ht_size,
         const int32_t nr_threads,
         const int32_t max_nr_pairs,
@@ -1387,7 +1397,7 @@ int32_t check_and_set_meta_data_trace(
     }
     return check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
             field_char, mon_order, elim_block_len, nr_vars, nr_gens,
-            ht_size, nr_threads, max_nr_pairs, reset_hash_table,
+            nr_nf, ht_size, nr_threads, max_nr_pairs, reset_hash_table,
             la_option, use_signatures, reduce_gb, pbm_file, info_level);
 }
 

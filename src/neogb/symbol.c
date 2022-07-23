@@ -458,6 +458,7 @@ static void select_tbr(
     mat->nc = mat->ncl = mat->ncr = 0;
     mat->nr = 0;
 
+    printf("tbr->ld %d\n", tbr->ld);
     /* always take all elements in tbr and
      * multiply them by the given multiple */
     for (i = start; i < tbr->ld; ++i) {

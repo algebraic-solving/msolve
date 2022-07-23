@@ -144,13 +144,14 @@ bs_t *initialize_basis(
         const stat_t *st
         )
 {
+    printf("what is st->ngens? %d\n", st->init_bs_sz);
     bs_t *bs  = (bs_t *)calloc(1, sizeof(bs_t));
     /* initialize meta data */
     bs->lo        = 0;
     bs->ld        = 0;
     bs->lml       = 0;
     bs->constant  = 0;
-    bs->sz        = 2 * st->ngens;
+    bs->sz        = st->init_bs_sz;
     bs->mltdeg    = 0;
 
     /* initialize basis elements data */

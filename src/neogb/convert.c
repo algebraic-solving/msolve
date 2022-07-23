@@ -587,6 +587,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
 }
 
 static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
+        const int sort,
         mat_t *mat,
         bs_t *bs,
         const ht_t * const sht,
@@ -594,7 +595,7 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
         stat_t *st
         )
 {
-    len_t i, j;
+    len_t i, j, k;
     deg_t deg;
     hm_t *row;
 
@@ -611,7 +612,15 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
 
     hm_t **rows = mat->tr;
 
-    for (i = 0; i < np; ++i) {
+    for (k = 0; k < np; ++k) {
+        /* We first insert the highest leading monomial element to the basis
+         * for a better Gebauer-Moeller application when updating the pair
+         * set later on. */
+        if (sort == -1) {
+            i   =   np - 1 - k;
+        } else {
+            i = k;
+        }
         row = rows[i];
         deg = sht->hd[hcm[rows[i][OFFSET]]].deg;
         const len_t len = rows[i][LENGTH]+OFFSET;
@@ -629,24 +638,24 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
         }
         switch (st->ff_bits) {
             case 0:
-                bs->cf_qq[bl+i] = mat->cf_qq[row[COEFFS]];
+                bs->cf_qq[bl+k] = mat->cf_qq[rows[i][COEFFS]];
                 break;
             case 8:
-                bs->cf_8[bl+i]  = mat->cf_8[row[COEFFS]];
+                bs->cf_8[bl+k]  = mat->cf_8[rows[i][COEFFS]];
                 break;
             case 16:
-                bs->cf_16[bl+i] = mat->cf_16[row[COEFFS]];
+                bs->cf_16[bl+k] = mat->cf_16[rows[i][COEFFS]];
                 break;
             case 32:
-                bs->cf_32[bl+i] = mat->cf_32[row[COEFFS]];
+                bs->cf_32[bl+k] = mat->cf_32[rows[i][COEFFS]];
                 break;
             default:
-                bs->cf_32[bl+i] = mat->cf_32[row[COEFFS]];
+                bs->cf_32[bl+k] = mat->cf_32[rows[i][COEFFS]];
                 break;
         }
-        rows[i][COEFFS]   = bl+i;
-        bs->hm[bl+i]      = rows[i];
-        bs->hm[bl+i][DEG] = deg;
+        rows[i][COEFFS]   = bl+k;
+        bs->hm[bl+k]      = rows[i];
+        bs->hm[bl+k][DEG] = deg;
         if (deg == 0) {
             bs->constant  = 1;
         }

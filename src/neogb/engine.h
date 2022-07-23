@@ -37,6 +37,7 @@ int initialize_gba_input_data(
         int32_t elim_block_len,
         int32_t nr_vars,
         int32_t nr_gens,
+        int32_t nr_nf,
         int32_t ht_size,
         int32_t nr_threads,
         int32_t max_nr_pairs,

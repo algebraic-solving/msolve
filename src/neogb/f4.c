@@ -269,7 +269,7 @@ static void reduce_basis(
     /* do the linear algebra reduction and free basis data afterwards */
     interreduce_matrix_rows(mat, bs, st, 1);
     /* remap rows to basis elements (keeping their position in bs) */
-    convert_sparse_matrix_rows_to_basis_elements_use_sht(mat, bs, sht, hcm, st);
+    convert_sparse_matrix_rows_to_basis_elements_use_sht(1, mat, bs, sht, hcm, st);
 
     /* bht becomes sht, so we do not have to convert the hash entries */
     bht   = sht;
@@ -546,9 +546,9 @@ int64_t f4_julia(
     const int32_t use_signatures    =   0;
     success = initialize_gba_input_data(&bs, &bht, &st,
             lens, exps, cfs, field_char, mon_order, elim_block_len,
-            nr_vars, nr_gens, ht_size, nr_threads, max_nr_pairs,
-            reset_ht, la_option, use_signatures, reduce_gb, pbm_file,
-            info_level);
+            nr_vars, nr_gens, 0 /* # normal forms */, ht_size,
+            nr_threads, max_nr_pairs, reset_ht, la_option, use_signatures,
+            reduce_gb, pbm_file, info_level);
 
     /* all input generators are invalid */
     if (success == -1) {

@@ -1,8 +1,18 @@
-msolve and its functionality is available via the Computer Algebra System OSCAR 
-in Julia. Running your Julia REPL apply the following steps:
+msolve and its functionality is available in Julia via the package 
+AlgebraicSolving.jl. Running your Julia REPL apply the following steps:
 
 using Pkg
 
-Pkg.add("Oscar") # for stable version of OSCAR
+Pkg.add("AlgebraicSolving") # for stable version
 or
-Pkg.dev("Oscar") # for developer version of OSCAR
+Pkg.dev("AlgebraicSolving") # for developer version
+
+Moreover, msolve functionality is available via the Computer
+Algebra System OSCAR in Julia. Running your Julia REPL apply
+the following steps:
+
+using Pkg
+
+Pkg.add("Oscar") # for stable version
+or
+Pkg.dev("Oscar") # for developer version

@@ -34,6 +34,7 @@ int initialize_gba_input_data(
         int32_t elim_block_len,
         int32_t nr_vars,
         int32_t nr_gens,
+        int32_t nr_nf,
         int32_t ht_size,
         int32_t nr_threads,
         int32_t max_nr_pairs,
@@ -54,7 +55,7 @@ int initialize_gba_input_data(
 
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
-            &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
+            &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &use_signatures,
             &reduce_gb, &info_level);
 
@@ -68,7 +69,7 @@ int initialize_gba_input_data(
      * some of the input data is corrupted. */
     if (check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
                 field_char, mon_order, elim_block_len, nr_vars, nr_gens,
-                ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+                nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
                 use_signatures, reduce_gb, pbm_file, info_level)) {
         return 0;
     }

@@ -776,7 +776,7 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   param->nsols = bparam->elim->length - 1;
 
   mpz_upoly_init2(param->elim, bparam->elim->alloc, 2*32*(bparam->elim->length));
-  mpz_upoly_init(param->denom, bparam->elim->alloc - 1);
+  mpz_upoly_init2(param->denom, bparam->elim->alloc - 1, 2*32*(bparam->elim->length));
   param->elim->length = bparam->elim->length;
 
   param->coords = (mpz_upoly_t *)malloc(sizeof(mpz_upoly_t)*(param->nvars - 1));
@@ -1255,8 +1255,9 @@ int msolve_ff_alloc(param_t **bparam,
     success = initialize_gba_input_data(&bs, &bht, &st,
             gens->lens, gens->exps, (void *)gens->cfs,
             gens->field_char, 0, elim_block_len, gens->nvars,
-            gens->ngens, initial_hts, nr_threads, max_pairs,
-            update_ht, la_option, use_signatures, 1, 0, info_level);
+            gens->ngens, 0 /* # normal forms */, initial_hts,
+            nr_threads, max_pairs, update_ht, la_option,
+            use_signatures, 1, 0, info_level);
 
     if (!success) {
         printf("Bad input data, stopped computation.\n");
@@ -1530,10 +1531,12 @@ static inline void set_mpz_param_nmod(mpz_param_t mpz_param, param_t *nmod_param
     mpz_set_ui(mpz_param->elim->coeffs[i], (nmod_param)->elim->coeffs[i]);
   }
   mpz_param->elim->length = nmod_param->elim->length;
+
   for(long i = 0; i < nmod_param->denom->length; i++){
     mpz_set_ui(mpz_param->denom->coeffs[i], nmod_param->denom->coeffs[i]);
   }
   mpz_param->denom->length = nmod_param->denom->length;
+
   for(int j = 0; j < mpz_param->nvars - 1; j++){
 
     for(long i = 0 ; i < nmod_param->coords[j]->length; i++){
@@ -2981,6 +2984,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int32_t nr_vars = gens->nvars;
   int32_t nr_gens = gens->ngens;
   int reduce_gb = 1;
+  int32_t nr_nf = 0;
   const uint32_t prime_start = pow(2, 30);
   const int32_t nr_primes = nr_threads;
 
@@ -2991,8 +2995,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
-            &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
-            &max_nr_pairs, &reset_ht, &la_option, &use_signatures,&reduce_gb,
+            &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
+            &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
             &info_level);
 
     /* all data is corrupt */
@@ -3006,7 +3010,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
               field_char, mon_order, elim_block_len, nr_vars, nr_gens,
-              ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+              nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
               use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
               info_level)) {
     free(st);
@@ -4633,7 +4637,7 @@ restart:
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
-                    gens->ngens-saturate, initial_hts, nr_threads, max_pairs,
+                    gens->ngens, saturate, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
@@ -5118,7 +5122,7 @@ restart:
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
-                    gens->ngens-normal_form, initial_hts, nr_threads, max_pairs,
+                    gens->ngens, normal_form, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
@@ -5411,7 +5415,7 @@ restart:
 
                     stf4 = realtime()-ca0;
                     printf("F4 trace timing %13.2f\n", stf4);
-                    printf("bs[%u]->lml = %u\n", i, bs[i]->lml);
+                    /* printf("bs[%u]->lml = %u\n", i, bs[i]->lml); */
                 }
             /* } */
             return 0;
@@ -5438,7 +5442,7 @@ restart:
             int32_t reduce_gb       =   1;
             int res = validate_input_data(&invalid_gens, gens->mpz_cfs,
                     gens->lens, &field_char, &monomial_order, &elim_block_len,
-                    &gens->nvars, &gens->ngens-saturate, &initial_hts,
+                    &gens->nvars, &gens->ngens, &saturate, &initial_hts,
                     &nr_threads, &max_pairs, &update_ht, &la_option,
                     &use_signatures, &reduce_gb, &info_level);
 
@@ -5454,7 +5458,7 @@ restart:
             if (check_and_set_meta_data_trace(st, gens->lens, gens->exps,
                         (void *)gens->mpz_cfs, invalid_gens,
                         field_char, 0, elim_block_len, gens->nvars,
-                        gens->ngens-saturate, initial_hts, nr_threads,
+                        gens->ngens, saturate, initial_hts, nr_threads,
                         max_pairs, update_ht, la_option, use_signatures,
                         1, prime_start, nr_primes, 0, info_level)) {
                 free(st);
@@ -5629,7 +5633,7 @@ restart:
 
                     stf4 = realtime()-ca0;
                     printf("F4 trace timing %13.2f\n", stf4);
-                    printf("bs[%u]->lml = %u\n", i, bs[i]->lml);
+                    /* printf("bs[%u]->lml = %u\n", i, bs[i]->lml); */
                 }
             /* } */
             return 0;

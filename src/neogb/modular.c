@@ -554,7 +554,7 @@ bs_t *f4sat_trace_application_test_phase(
                     /* columns indices are mapped back to exponent hashes */
                     if (mat->np > 0) {
                         convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                mat, bs, bht, hcmm, st);
+                                -1, mat, bs, bht, hcmm, st);
                     }
                     st->nr_kernel_elts  +=  kernel->ld;
                     free_kernel_coefficients(kernel);
@@ -866,7 +866,7 @@ bs_t *f4sat_trace_application_phase(
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                            mat, bs, bht, hcmm, st);
+                            -1, mat, bs, bht, hcmm, st);
                     bs->ld  +=  mat->np;
                     update_lm(bs, bht, st);
                 }
@@ -1363,7 +1363,7 @@ end_sat_step:
                         /* columns indices are mapped back to exponent hashes */
                         if (mat->np > 0) {
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                    mat, bs, bht, hcmm, st);
+                                    -1, mat, bs, bht, hcmm, st);
                             add_minimal_lmh_to_trace(trace, bs);
                             trace->ts[trace->lts].deg = ii;
                             trace->lts++;
@@ -1697,7 +1697,7 @@ bs_t *f4sat_trace_learning_phase_2(
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                            mat, bs, bht, hcmm, st);
+                            -1, mat, bs, bht, hcmm, st);
                 }
                 /* track round in which kernel computation is not trivial */
                 if (trace->rld == trace->rsz) {
@@ -1906,8 +1906,9 @@ int64_t f4_trace_julia(
 
     int *invalid_gens       =   NULL;
     int32_t use_signatures  =   0;
+    int32_t nr_nf           =   0;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
-            &elim_block_len, &nr_vars, &nr_gens, &ht_size, &nr_threads,
+            &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
             &info_level);
 
@@ -1921,7 +1922,7 @@ int64_t f4_trace_julia(
      * some of the input data is corrupted. */
     if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
                 field_char, mon_order, elim_block_len, nr_vars, nr_gens,
-                ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+                nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
                 use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
                 info_level)) {
         return 0;

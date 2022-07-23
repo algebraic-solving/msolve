@@ -150,7 +150,7 @@ bs_t *initialize_basis(
     bs->ld        = 0;
     bs->lml       = 0;
     bs->constant  = 0;
-    bs->sz        = 2 * st->ngens;
+    bs->sz        = st->init_bs_sz;
     bs->mltdeg    = 0;
 
     /* initialize basis elements data */

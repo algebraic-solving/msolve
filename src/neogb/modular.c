@@ -554,7 +554,7 @@ bs_t *f4sat_trace_application_test_phase(
                     /* columns indices are mapped back to exponent hashes */
                     if (mat->np > 0) {
                         convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                mat, bs, bht, hcmm, st);
+                                -1, mat, bs, bht, hcmm, st);
                     }
                     st->nr_kernel_elts  +=  kernel->ld;
                     free_kernel_coefficients(kernel);
@@ -866,7 +866,7 @@ bs_t *f4sat_trace_application_phase(
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                            mat, bs, bht, hcmm, st);
+                            -1, mat, bs, bht, hcmm, st);
                     bs->ld  +=  mat->np;
                     update_lm(bs, bht, st);
                 }
@@ -1363,7 +1363,7 @@ end_sat_step:
                         /* columns indices are mapped back to exponent hashes */
                         if (mat->np > 0) {
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                    mat, bs, bht, hcmm, st);
+                                    -1, mat, bs, bht, hcmm, st);
                             add_minimal_lmh_to_trace(trace, bs);
                             trace->ts[trace->lts].deg = ii;
                             trace->lts++;
@@ -1697,7 +1697,7 @@ bs_t *f4sat_trace_learning_phase_2(
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                            mat, bs, bht, hcmm, st);
+                            -1, mat, bs, bht, hcmm, st);
                 }
                 /* track round in which kernel computation is not trivial */
                 if (trace->rld == trace->rsz) {

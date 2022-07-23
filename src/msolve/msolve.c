@@ -5122,7 +5122,7 @@ restart:
 
                     stf4 = realtime()-ca0;
                     printf("F4 trace timing %13.2f\n", stf4);
-                    printf("bs[%u]->lml = %u\n", i, bs[i]->lml);
+                    /* printf("bs[%u]->lml = %u\n", i, bs[i]->lml); */
                 }
             /* } */
             return 0;
@@ -5340,7 +5340,7 @@ restart:
 
                     stf4 = realtime()-ca0;
                     printf("F4 trace timing %13.2f\n", stf4);
-                    printf("bs[%u]->lml = %u\n", i, bs[i]->lml);
+                    /* printf("bs[%u]->lml = %u\n", i, bs[i]->lml); */
                 }
             /* } */
             return 0;

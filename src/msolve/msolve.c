@@ -2514,6 +2514,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         long dquot = 0;
         int32_t *lmb = monomial_basis_enlarged(bs->lml, bht->nv,
                                                bexp_lm, &dquot);
+
+        /************************************************/
         /************************************************/
         fprintf(stderr, "nvars = %d\n", st->nvars);
         for(int32_t i = 0; i < dquot; i++){
@@ -2525,16 +2527,32 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         }
         fprintf(stderr, "\n");
         /************************************************/
+        /************************************************/
+
         int nb = 0;
         int32_t *ldeg = array_nbdegrees(bexp_lm, bs->lml, bht->nv, &nb);
         fprintf(stderr, "nb = %d => ldeg = [", nb);
+
+        /************************************************/
         /************************************************/
         for(int i = 0; i < nb; i++){
           fprintf(stderr, "%d, ", ldeg[i]);
         }
         fprintf(stderr, "]\n");
         /************************************************/
+        /************************************************/
 
+        int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
+
+        /************************************************/
+        /************************************************/
+        fprintf(stderr, "lens = [");
+        for(int32_t i = 0; i < bs->lml; i++){
+          fprintf(stderr, "%d, ", lens[i]);
+        }
+        fprintf(stderr, "\n");
+        /************************************************/
+        /************************************************/
 
         print_ff_basis_data(
                             files->out_file, "a", bs, bht, st, gens, print_gb);

@@ -63,3 +63,20 @@ static inline int32_t *array_nbdegrees(int32_t *bexp_lm, int len,
   }
   return ldeg;
 }
+
+static inline int32_t compute_length(int32_t *mon, int nv,
+                                     int32_t *basis, int dquot){
+  
+}
+
+/*
+ *
+ */
+static inline int32_t *array_of_lengths(int32_t *bexp_lm, int len,
+                                        int32_t *basis, int dquot, int nv){
+  int32_t *lens = calloc(sizeof(int32_t), lens);
+  for(int i = 0; i < len; i++){
+    lens[i] = compute_length(bexp + (i * nv), nv, basis, quot);
+  }
+  return lens;
+}

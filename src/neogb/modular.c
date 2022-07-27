@@ -180,6 +180,8 @@ start:
         }
         bs->lmps[k++] = bs->ld-1-i;
     }
+    bs->lml = k;
+
     *hcmp = hcm;
 
     /* timings */

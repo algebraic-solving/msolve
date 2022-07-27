@@ -357,6 +357,7 @@ int core_sba_schreyer(
         sort_matrix_rows_by_increasing_signature(smat, ht);
 
         /* map hashes to columns */
+        convert_hashes_to_columns_sba(&hcm, smat, st, ht);
 
         /* signature-reduce matrix */
 

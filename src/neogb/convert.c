@@ -206,6 +206,101 @@ static void convert_hashes_to_columns_sat(
 }
 
 
+static void convert_hashes_to_columns_sba(
+        hi_t **hcmp,
+        smat_t *smat,
+        stat_t *st,
+        ht_t *ht
+        )
+{
+    len_t i, j, k;
+
+    hm_t *row;
+    int64_t nterms = 0;
+
+    hi_t *hcm = *hcmp;
+
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    len_t hi;
+
+    const len_t nr  = smat->ld;
+    const hl_t eld  = ht->eld;
+    hd_t *hd        = ht->hd;
+    hm_t **cols     = smat->cols;
+
+    /* all elements in the sht hash table represent
+     * exactly one column of the matrix */
+    hcm = realloc(hcm, (unsigned long)eld * sizeof(hi_t));
+    k = 0;
+    for (i = 0; i < nr; ++i) {
+        len = SM_OFFSET + cols[i][SM_LEN];
+        for (j = SM_OFFSET; j < len; ++j) {
+            if (hd[cols[j]].idx != 0) {
+                hd[cols[j]].idx = 1;
+                hcm[k++] = cols[j];
+            }
+        }
+    }
+
+    hcm = realloc(hcm, (unsigned long)k * sizeof(hi_t));
+    sort_r(hcm, (unsigned long)k, sizeof(hi_t), hcm_cmp, ht);
+
+    smat->nc = k;
+
+    /* printf("hcm\n");
+     * for (int ii=0; ii<j; ++ii) {
+     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, sht->ev[hcm[ii]][DEG]+sht->ev[hcm[ii]][sht->ebl]);
+     *     for (int jj = 0; jj < sht->evl; ++jj) {
+     *         printf("%d ", sht->ev[hcm[ii]][jj]);
+     *     }
+     *     printf("\n");
+     * } */
+
+    /* store the other direction (hash -> column) */
+    const hi_t ld = k
+    for (i = 0; i < ld; ++i) {
+        hd[hcm[i]].idx = (hi_t)i;
+    }
+
+    /* map column positions to matrix rows */
+#pragma omp parallel for num_threads(st->nthrds) private(k, j)
+    for (i = 0; i < nr; ++i) {
+        const len_t os  = cols[i][SM_PRE];
+        const len_t len = cols[i][SM_LEN];
+        row = rrows[k] + SM_OFFSET;
+        for (j = 0; j < os; ++j) {
+            row[j]  = hd[row[j]].idx;
+        }
+        for (; j < len; j += UNROLL) {
+            row[j]    = hd[row[j]].idx;
+            row[j+1]  = hd[row[j+1]].idx;
+            row[j+2]  = hd[row[j+2]].idx;
+            row[j+3]  = hd[row[j+3]].idx;
+        }
+        nterms += len;
+    }
+
+    /* compute density of matrix */
+    nterms  *=  100; /* for percentage */
+    double density = (double)nterms / (double)mnr / (double)mat->nc;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->convert_ctime +=  ct1 - ct0;
+    st->convert_rtime +=  rt1 - rt0;
+    if (st->info_level > 1) {
+        printf(" %7d x %-7d %8.2f%%", smat->ld, smat->nc, density);
+        fflush(stdout);
+    }
+    *hcmp = hcm;
+}
+
+
 static void convert_hashes_to_columns(
         hi_t **hcmp,
         mat_t *mat,

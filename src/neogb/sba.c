@@ -185,15 +185,11 @@ static void add_row_to_signature_matrix(
     cols[SM_SMON]   =   insert_in_hash_table(ev, ht);
 
     /* multiply monomials in corresp. polnoymial */
-    const len_t len =   cols[SM_LEN] * SM_OFFSET;
+    const len_t len =   cols[SM_LEN] + SM_OFFSET;
     for (len_t i = SM_OFFSET; i < len; ++i) {
         ev      =   ht->ev[cols[i]];
         ev[var_idx+shift]++;
         cols[i] =   insert_in_hash_table(ev, ht);
-        if (ht->hd[cols[i]].idx == 0) {
-            ht->hd[cols[i]].idx = 1; /* mark monomial for current matrix */
-            ht->ncc++; /* number of columns of current matrix */
-        }
     }
     smat->ld++;
 }
@@ -371,7 +367,7 @@ int core_sba_schreyer(
 
         /* maps columns to hashes
          * NOTE: Reset hash table indices to zero in here! */
-        ht->ncc = 0; /* reset number of columns of current matrix */
+        ht->elo = ht->eld;
 
         /* add new elements to basis */
 

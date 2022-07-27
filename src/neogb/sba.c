@@ -360,6 +360,7 @@ int core_sba_schreyer(
         convert_hashes_to_columns_sba(&hcm, smat, st, ht);
 
         /* signature-reduce matrix */
+        sba_linear_algebra_for_sba(smat, bs, st);
 
         /* flag rows with new leading terms, i.e. non-multiples of
          * already known leading terms */

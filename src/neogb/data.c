@@ -72,6 +72,11 @@ int64_t (*export_julia_data)(
         );
 
 /* linear algebra routines */
+void (*sba_linear_algebra)(
+        smat_t *smat,
+        const bs_t * const bs,
+        stat_t *st
+        );
 void (*linear_algebra)(
         mat_t *mat,
         const bs_t * const bs,

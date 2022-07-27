@@ -1279,6 +1279,7 @@ void set_function_pointers(
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
       export_julia_data           = export_julia_data_ff_32;
       normalize_initial_basis     = normalize_initial_basis_ff_32;
+      sba_linear_algebra          = sba_linear_algebra_ff_32;
 
       /* if coeffs are smaller than 17 bit we can optimize reductions */
       if (st->fc < pow(2, 18)) {

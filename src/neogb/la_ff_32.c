@@ -3400,7 +3400,6 @@ static void probabilistic_sparse_linear_algebra_ff_32(
 
 static void sba_linear_algebra_ff_32(
         smat_t *smat,
-        const smat_t * const psmat,
         stat_t *st
         )
 {
@@ -3409,11 +3408,10 @@ static void sba_linear_algebra_ff_32(
     ct0 = cputime();
     rt0 = realtime();
 
-    /* allocate temporary storage space for sparse
-     * coefficients of new pivot rows */
-    /* mat->cf_32  = realloc(mat->cf_32,
-     *         (unsigned long)mat->nrl * sizeof(cf32_t *));
-     * exact_sparse_reduced_echelon_form_ff_32(mat, bs, st); */
+    smat->curr_cf32 = realloc(smat->curr_cf32,
+            (unsigned long)mat->ld * sizeof(cf32_t *));
+
+    sba_echelon_form_ff_32(smat, st);
 
     /* timings */
     ct1 = cputime();
@@ -3427,6 +3425,7 @@ static void sba_linear_algebra_ff_32(
         fflush(stdout);
     }
 }
+
 static void exact_sparse_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * const bs,

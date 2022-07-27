@@ -302,6 +302,8 @@ start:
         bs->lmps[k] = bs->ld-1-i;
         bs->lm[k++] = bht->hd[bs->hm[bs->ld-1-i][OFFSET]].sdm;
     }
+    bs->lml = k;
+
     *hcmp = hcm;
 
     /* timings */

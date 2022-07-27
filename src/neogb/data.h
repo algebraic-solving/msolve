@@ -126,6 +126,7 @@ struct ht_t
     hl_t eld;     /* load of exponent vector */
     hl_t esz;     /* size of exponent vector */
     hl_t hsz;     /* size of hash map, might be 2^32 */
+    len_t ncc;    /* number of columns of current matrix */
     len_t ebl;    /* elimination block length:
                    * degree + #elimination variables,
                    * 0 if no elimination order */

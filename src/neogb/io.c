@@ -274,6 +274,9 @@ void import_input_data(
     const len_t ngens_input = st->ngens_input;
     const len_t fc          = st->fc;
 
+    /* check basis size first */
+    check_enlarge_basis(bs, ngens_input, st);
+
     /* import monomials */
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
     for (i = 0; i < ngens_input; ++i) {
@@ -452,6 +455,10 @@ void import_input_data_nf_ff_32(
     for (i = 0; i < start; ++i) {
         off +=  lens[i];
     }
+
+    /* check basis size first */
+    check_enlarge_basis(tbr, stop-start, st);
+
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
 
     for (i = start; i < stop; ++i) {
@@ -541,6 +548,9 @@ void import_input_data_nf_qq(
     for (i = 0; i < start; ++i) {
         off +=  lens[i];
     }
+
+    /* check basis size first */
+    check_enlarge_basis(bs, stop-start, st);
 
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
     for (i = start; i < stop; ++i) {

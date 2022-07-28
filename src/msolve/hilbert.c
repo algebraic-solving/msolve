@@ -20,7 +20,7 @@
 
 #include "../fglm/data_fglm.c"
 #include "../fglm/libfglm.h"
-#define REDUCTION_ALLINONE 0
+#define REDUCTION_ALLINONE 1
 
 static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
                                            long nrows,
@@ -1350,13 +1350,13 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  tobereduced;
-  printf ("%ld imported\n",tobereduced);
+  /* printf ("%ld imported\n",tobereduced); */
   for (int k = 0; k < tobereduced; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
-  printf ("polynomials to be reduced\n");
-  print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht,
-			      st, gens->vnames, 0);
+  /* printf ("polynomials to be reduced\n"); */
+  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
+  /* 			      st, gens->vnames, 0); */
   int success = core_nf(&tbr, &bht, &st, mul, bs);
   if (!success) {
     printf("Problem with normalform, stopped computation.\n");

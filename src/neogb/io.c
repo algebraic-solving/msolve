@@ -455,6 +455,7 @@ void import_input_data_nf_ff_32(
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
 
     for (i = start; i < stop; ++i) {
+      /* printf ("polynomial number: %d\n",i); */
         while (lens[i] >= ht->esz-ht->eld) {
             enlarge_hash_table(ht);
             e  = ht->ev[0]; /* reset e if enlarging */
@@ -500,6 +501,8 @@ void import_input_data_nf_ff_32(
     } else {
         for (i = 0; i < stop-start; ++i) {
             hm  = tbr->hm[i];
+	    /* printf ("polynomial: %d\n",i); */
+	    /* printf ("%d\n",ht->hd[hm[OFFSET]].deg); */
             tbr->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
         }
     }

@@ -59,7 +59,7 @@ static int is_pure_power(const int32_t *bexp, const int nv){
 
 
 static int32_t *get_lead_monomials(const int32_t *bld, int32_t **blen, int32_t **bexp,
-                                    data_gens_ff_t *gens){
+				   data_gens_ff_t *gens){
   long ngens = bld[0];
   long nvars = gens->nvars;
   int32_t *bexp_lm = malloc(sizeof(int32_t)*ngens*nvars);
@@ -1147,19 +1147,16 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
  **/
 static inline sp_matfglmcol_t *
 build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
-		    int32_t **blen, int32_t **bexp,
-		    int32_t *bcf,
-		    int32_t *bexp_lm,
-		    bs_t *tbr,
-		    ht_t *bht, stat_t *st,
-		    const exp_t * const mul,
-		    const bs_t * const bs,
-		    const int nv, const long fc,
-		    const long maxdeg,
-		    const data_gens_ff_t *gens,
-		    uint32_t * leftvector,
-		    uint32_t ** leftvectorsparam,
-		    long suppsize){
+		    int32_t **blen, int32_t **bexp, int32_t *bcf, int32_t *bexp_lm,
+		    bs_t *tbr, ht_t *bht, stat_t *st,
+		    const exp_t * const mul, bs_t * bs,
+		    const int nv, const long fc, const long maxdeg,
+		    const data_gens_ff_t *gens, uint32_t * leftvector,
+		    uint32_t ** leftvectorsparam, long suppsize/* , */
+		    /* int32_t la_option, int32_t use_signatures, int32_t nr_threads, */
+		    /* int32_t info_level, int32_t initial_hts, int32_t max_pairs, */
+		    /* int32_t elim_block_len, int32_t update_ht */
+		    ){
 
   const len_t ebl = bht->ebl;
   const len_t evl = bht->evl;
@@ -1313,6 +1310,23 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   tbr = initialize_basis(st);
 #if REDUCTION_ALLINONE
+  /* int success = initialize_gba_input_data(&bs, &bht, &st, */
+  /*                   lens, exps, (void *)cfs, */
+  /*                   1073741827, 0 /\* DRL order *\/, elim_block_len, nv, */
+  /*                   /\* gens->field_char, 0 [> DRL order <], gens->nvars, *\/ */
+  /*                   bld, tobereduced, initial_hts, nr_threads, max_pairs, */
+  /*                   update_ht, la_option, use_signatures, 1 /\* reduce_gb *\/, 0, */
+  /*                   info_level); */
+  /* st->fc  = fc; */
+  /* if(info_level){ */
+  /*   fprintf(stderr, */
+  /* 	    "NOTE: Field characteristic is now corrected to %u\n", */
+  /* 	    st->fc); */
+  /* } */
+  /* if (!success) { */
+  /*   printf("Bad input data, stopped computation.\n"); */
+  /*   exit(1); */
+  /* } */
   import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  tobereduced;
@@ -1320,17 +1334,17 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   for (int k = 0; k < tobereduced; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
-  /* printf ("polynomials to be reduced\n"); */
-  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
-  /* 			      st, gens->vnames, 0); */
+  printf ("polynomials to be reduced\n");
+  print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
   int success = core_nf(&tbr, &bht, &st, mul, bs);
   if (!success) {
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
   }
-  /* printf ("reductions\n"); */
-  /* print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht, */
-  /* 			      st, gens->vnames, 0); */
+  printf ("reductions\n");
+  print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
 #endif
   printf ("Number of zero normal forms: %ld\n",count_zero);
   /* lengths of the polys which we need to build the matrix */

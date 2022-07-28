@@ -2061,12 +2061,12 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   /* generate_sequence(matrix, data, block_size, dimquot, prime); */
   /* generate_sequence_verif(matrix, data, block_size, dimquot, */
   /* 			  squvars, linvars, nvars, prime); */
-  printf ("guess\n");
+  /* printf ("guess\n"); */
   guess_sequence_colon(matrix, data, leftvec, leftvecparam, block_size, dimquot,
 		       prime,
 		       param, data_bms, linvars, lineqs, nvars,
 		       &dim, info_level);
-  printf ("guessed\n");
+  /* printf ("guessed\n"); */
   //////////////////////////////////////////////////////////////////
 
   if(info_level){
@@ -2090,7 +2090,6 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 						  lineqs, squvars,
 						  nvars, prime,
 						  1);
-  printf ("right param = %d\n",right_param);
   if (right_param == 0) {
     fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
     free_fglm_bms_data(data_bms);
@@ -2115,7 +2114,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   }
   free_fglm_bms_data(data_bms);
   free_fglm_data(data);
-  printf ("free fglm\n");
+  /* printf ("free fglm\n"); */
   return param;
 }
 

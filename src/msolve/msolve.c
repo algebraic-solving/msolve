@@ -4871,7 +4871,6 @@ restart:
 	      maxdeg = MAX(maxdeg,degi);
 	    }
 	    printf ("maximal degree of the truncated staircase: %ld\n",maxdeg);
-
 	    long dquot;
 	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot,
 						maxdeg);
@@ -4883,6 +4882,13 @@ restart:
 	    /*   printf("\n"); */
 	    /* } */
 	    printf("Subspace has dimension: %ld\n",dquot);
+	    /* initialize_gba_input_data(&bs, &bht, &st, */
+            /*         gens->lens, gens->exps, (void *)gens->cfs, */
+            /*         1073741827, 0 /\* DRL order *\/, elim_block_len, gens->nvars, */
+            /*         /\* gens->field_char, 0 [> DRL order <], gens->nvars, *\/ */
+            /*         gens->ngens, dquot, initial_hts, nr_threads, max_pairs, */
+            /*         update_ht, la_option, use_signatures, 1 /\* reduce_gb *\/, 0, */
+            /*         info_level); */
 	    uint32_t * leftvector = calloc(dquot,sizeof (uint32_t));
 	    /* for (long i = 0; i < dquot; i++) { */
 	    /*   vector[i] = (uint32_t)rand() % gens->field_char; */
@@ -4908,7 +4914,14 @@ restart:
 							   gens,
 							   leftvector,
 							   leftvectorsparam,
-							   suppsize);
+							   suppsize/* , */
+							   /* la_option, */
+							   /* use_signatures, */
+							   /* nr_threads, info_level, */
+							   /* initial_hts, */
+							   /* max_pairs, */
+							   /* elim_block_len, update_ht */
+							   );
 	    ct3 = cputime();
 	    rt3 = realtime();
 	    if (info_level) {

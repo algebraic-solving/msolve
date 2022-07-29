@@ -4843,7 +4843,7 @@ restart:
 	    hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
 	    mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 	    
-	    printf("Starts computation of normal form matrix\n");
+	    /* printf("Starts computation of normal form matrix\n"); */
 	    get_normal_form_matrix(tbr, bht, 1,
 				   st, &sht, &hcm, &mat);
 	    printf("Length of union of support of all normal forms: %u\n",
@@ -4872,27 +4872,25 @@ restart:
 	    }
 	    printf ("maximal degree of the truncated staircase: %ld\n",maxdeg);
 	    long dquot;
-	    int32_t *lmb= monomial_basis_colon (bld[0], gens->nvars, bexp_lm, &dquot,
-						maxdeg);
-	    /* printf("\nMonomial basis:\n"); */
-	    /* for (len_t k = 0; k < dquot; ++k) { */
-	    /*   for (len_t l = 0; l < gens->nvars; ++l){ */
-	    /* 	printf("%2u ", lmb[k*gens->nvars+l]); */
-	    /*   } */
-	    /*   printf("\n"); */
-	    /* } */
+#define ZERO 1
+#if ZERO
+	    int32_t *lmb= monomial_basis_colon (bld[0],
+						gens->nvars, bexp_lm,
+						&dquot, maxdeg);
+#else
+	    int32_t *lmb= monomial_basis_colon_no_zero (bld[0],
+						 gens->nvars, bexp_lm,
+						 &dquot, maxdeg);
+#endif
+	    printf("\nMonomial basis:\n");
+	    for (len_t k = 0; k < dquot; ++k) {
+	      for (len_t l = 0; l < gens->nvars; ++l){
+		printf("%2u ", lmb[k*gens->nvars+l]);
+	      }
+	      printf("\n");
+	    }
 	    printf("Subspace has dimension: %ld\n",dquot);
-	    /* initialize_gba_input_data(&bs, &bht, &st, */
-            /*         gens->lens, gens->exps, (void *)gens->cfs, */
-            /*         1073741827, 0 /\* DRL order *\/, elim_block_len, gens->nvars, */
-            /*         /\* gens->field_char, 0 [> DRL order <], gens->nvars, *\/ */
-            /*         gens->ngens, dquot, initial_hts, nr_threads, max_pairs, */
-            /*         update_ht, la_option, use_signatures, 1 /\* reduce_gb *\/, 0, */
-            /*         info_level); */
 	    uint32_t * leftvector = calloc(dquot,sizeof (uint32_t));
-	    /* for (long i = 0; i < dquot; i++) { */
-	    /*   vector[i] = (uint32_t)rand() % gens->field_char; */
-	    /* } */
 	    uint32_t ** leftvectorsparam = malloc(2*(gens->nvars-1)*sizeof (uint32_t *));
 	    for (long i = 0; i < 2*(gens->nvars-1); i++) {
 	      leftvectorsparam[i] = calloc(dquot,sizeof (uint32_t));
@@ -4902,26 +4900,24 @@ restart:
 	     * the multiplication matrix */
 	    /* we need the nf of sigma x_n for all sigma is this
 	       support */
-	    printf ("call buildmatrix\n");
-	    sp_matfglmcol_t  *matrix = build_matrixn_colon(lmb, dquot, bld[0],
-							   blen, bexp, bcf_ff,
-							   bexp_lm,
-							   tbr,
-							   bht,st,mul,bs,
-							   gens->nvars,
-							   gens->field_char,
-							   maxdeg,
-							   gens,
-							   leftvector,
-							   leftvectorsparam,
-							   suppsize/* , */
-							   /* la_option, */
-							   /* use_signatures, */
-							   /* nr_threads, info_level, */
-							   /* initial_hts, */
-							   /* max_pairs, */
-							   /* elim_block_len, update_ht */
-							   );
+#if ZERO
+	    sp_matfglmcol_t  *matrix
+	      = build_matrixn_colon(lmb, dquot, bld[0], blen, bexp, bcf_ff,
+				    bexp_lm, tbr, bht, st, mul, bs,
+				    gens->nvars, gens->field_char,
+				    maxdeg, gens,
+				    leftvector, leftvectorsparam,
+				    suppsize);
+#else
+	    sp_matfglmcol_t  *matrix
+	      = build_matrixn_colon_no_zero(lmb, dquot, bld[0], blen, bexp, bcf_ff,
+					    bexp_lm, tbr, bht, st, mul, bs,
+					    gens->nvars, gens->field_char,
+					    maxdeg, gens,
+					    leftvector, leftvectorsparam,
+					    suppsize);
+#endif
+#undef ZERO
 	    ct3 = cputime();
 	    rt3 = realtime();
 	    if (info_level) {

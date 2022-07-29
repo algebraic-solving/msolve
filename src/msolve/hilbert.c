@@ -2945,4 +2945,78 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   return matrix;
 }
 
+
 #undef REDUCTION_ALLINONE
+
+static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
+  hm_t *dt;
+  const len_t nelts = bs->lml;
+  const int nv    = ht->nv;
+  const len_t ebl = ht->ebl;
+  const len_t evl = ht->evl;
+  int32_t *exp  = (int32_t *)malloc(
+                                    (unsigned long)(nelts) * (unsigned long)(nv) * sizeof(int32_t));
+  /* counters for lengths, exponents and coefficients */
+  int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
+
+  for (long i = 0; i < nelts; ++i) {
+    const bl_t bi = bs->lmps[i];
+    //    len[cl] = bs->hm[bi][LENGTH];
+
+    dt  = bs->hm[bi] + OFFSET;
+    for (int k = 1; k < ebl; ++k) {
+      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
+    }
+    for (int k = ebl+1; k < evl; ++k) {
+      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
+    }
+    //    cc  +=  len[cl];
+    cl++;
+  }
+  return exp;
+}
+
+
+static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
+  hm_t *dt;
+  const len_t nelts = bs->lml;
+  const len_t ebl = ht->ebl;
+  const len_t evl = ht->evl;
+
+  /* counters for lengths, exponents and coefficients */
+  int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
+
+  for (long i = 0; i < nelts; ++i) {
+    const bl_t bi = bs->lmps[i];
+    //    len[cl] = bs->hm[bi][LENGTH];
+
+    dt  = bs->hm[bi] + OFFSET;
+    for (int k = 1; k < ebl; ++k) {
+      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
+    }
+    for (int k = ebl+1; k < evl; ++k) {
+      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
+    }
+    //    cc  +=  len[cl];
+    cl++;
+  }
+}
+
+
+static inline int equal_staircase(int32_t *lmb, int32_t *lmb_ori,
+                                  long dquot, long dquot_ori,
+                                  int32_t nv){
+  if(dquot != dquot_ori){
+    return 0;
+  }
+  for(long i = 0; i < dquot; i++){
+    for(int32_t j = 0; j < nv; j++){
+      if(lmb[i*nv+j] != lmb_ori[i*nv+j]){
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
+

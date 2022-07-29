@@ -2342,61 +2342,6 @@ static inline int check_param_modular(const mpz_param_t mp_param,
 
 
 
-static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
-  hm_t *dt;
-  const len_t nelts = bs->lml;
-  const int nv    = ht->nv;
-  const len_t ebl = ht->ebl;
-  const len_t evl = ht->evl;
-  int32_t *exp  = (int32_t *)malloc(
-                                    (unsigned long)(nelts) * (unsigned long)(nv) * sizeof(int32_t));
-  /* counters for lengths, exponents and coefficients */
-  int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
-
-  for (long i = 0; i < nelts; ++i) {
-    const bl_t bi = bs->lmps[i];
-    //    len[cl] = bs->hm[bi][LENGTH];
-
-    dt  = bs->hm[bi] + OFFSET;
-    for (int k = 1; k < ebl; ++k) {
-      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
-    }
-    for (int k = ebl+1; k < evl; ++k) {
-      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
-    }
-    //    cc  +=  len[cl];
-    cl++;
-  }
-  return exp;
-}
-
-
-static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
-  hm_t *dt;
-  const len_t nelts = bs->lml;
-  const len_t ebl = ht->ebl;
-  const len_t evl = ht->evl;
-
-  /* counters for lengths, exponents and coefficients */
-  int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
-
-  for (long i = 0; i < nelts; ++i) {
-    const bl_t bi = bs->lmps[i];
-    //    len[cl] = bs->hm[bi][LENGTH];
-
-    dt  = bs->hm[bi] + OFFSET;
-    for (int k = 1; k < ebl; ++k) {
-      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
-    }
-    for (int k = ebl+1; k < evl; ++k) {
-      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
-    }
-    //    cc  +=  len[cl];
-    cl++;
-  }
-}
-
-
 
 /**
 
@@ -2410,7 +2355,6 @@ static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
 
    Dans ce cas, on appelle alors un algorithme de changement d'ordre et on renvoie
    un tableau contenant la base monomiale.
-
 
 **/
 
@@ -2510,53 +2454,13 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
       if(st->fc == 0){
         /* to fix display inconsistency when gens->fc = 0 */
         st->fc = fc;
-        /**************************************************/
+
         long dquot = 0;
-        int32_t *lmb = monomial_basis_enlarged(bs->lml, bht->nv,
-                                               bexp_lm, &dquot);
-
-        /************************************************/
-        /************************************************/
-        fprintf(stderr, "nvars = %d\n", st->nvars);
-        for(int32_t i = 0; i < dquot; i++){
-          fprintf(stderr, "[");
-          for(int32_t j = 0; j < st->nvars - 1; j++){
-            fprintf(stderr, "%d, ", lmb[j+i*st->nvars]);
-          }
-          fprintf(stderr, "%d], ", lmb[st->nvars - 1 + i*st->nvars]);
-        }
-        fprintf(stderr, "\n");
-        /************************************************/
-        /************************************************/
-
-        int nb = 0;
-        int32_t *ldeg = array_nbdegrees(bexp_lm, bs->lml, bht->nv, &nb);
-        fprintf(stderr, "nb = %d => ldeg = [", nb);
-
-        /************************************************/
-        /************************************************/
-        for(int i = 0; i < nb; i++){
-          fprintf(stderr, "%d, ", ldeg[i]);
-        }
-        fprintf(stderr, "]\n");
-        /************************************************/
-        /************************************************/
-
-        int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
-
-        /************************************************/
-        /************************************************/
-        fprintf(stderr, "lens = [");
-        for(int32_t i = 0; i < bs->lml; i++){
-          fprintf(stderr, "%d, ", lens[i]);
-        }
-        fprintf(stderr, "\n");
-        /************************************************/
-        /************************************************/
 
         print_ff_basis_data(
                             files->out_file, "a", bs, bht, st, gens, print_gb);
         st->fc = 0;
+
       }
       else{
         print_ff_basis_data(
@@ -2718,22 +2622,6 @@ static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
     }
 }
 #endif
-
-static inline int equal_staircase(int32_t *lmb, int32_t *lmb_ori,
-                                  long dquot, long dquot_ori,
-                                  int32_t nv){
-if(dquot != dquot_ori){
-  return 0;
-}
-for(long i = 0; i < dquot; i++){
-  for(int32_t j = 0; j < nv; j++){
-    if(lmb[i*nv+j] != lmb_ori[i*nv+j]){
-      return 0;
-    }
-  }
-}
-return 1;
-}
 
 
 #if 0
@@ -2976,6 +2864,348 @@ void set_linear_function_pointer(int32_t fc){
 
 
 
+
+
+/*
+
+  - renvoie 0 si le calcul est ok.
+  => GB = [1] dim =0 dquot = 0
+  => Positive dimension dim > 0
+  => Dimension zero + calcul qui a pu etre fait. dim=0 dquot > 0
+
+  - renvoie 1 si le calcul a echoue
+  => Dimension 0 => pas en position generique
+
+  - renvoie 2 si besoin de plus de genericite.
+  => (tous les carres ne sont pas sous l'escalier)
+
+  - renvoie -2 si la carac est > 0
+
+  - renvoie -3 si meta data pas bonnes
+
+  - renvoie -4 si bad prime
+*/
+
+int msolve_gbtrace_qq(mpz_param_t mpz_param,
+                      param_t **nmod_param,
+                      int *dim_ptr,
+                      long *dquot_ptr,
+                      data_gens_ff_t *gens,
+                      int32_t ht_size, //initial_hts,
+                      int32_t nr_threads,
+                      int32_t max_nr_pairs,
+                      int32_t elim_block_len,
+                      int32_t reset_ht,
+                      int32_t la_option,
+                      int32_t use_signatures,
+                      int32_t info_level,
+                      int32_t print_gb,
+                      int32_t pbm_file,
+                      files_gb *files,
+                      int round){
+
+  const int32_t *lens = gens->lens;
+  const int32_t *exps = gens->exps;
+  uint32_t field_char = gens->field_char;
+  const void *cfs = gens->mpz_cfs;
+  if(gens->field_char){
+    cfs = gens->cfs;
+  }
+  else{
+    cfs = gens->mpz_cfs;
+  }
+  int mon_order = 0;
+  int32_t nr_vars = gens->nvars;
+  int32_t nr_gens = gens->ngens;
+  int reduce_gb = 1;
+  int32_t nr_nf = 0;
+  const uint32_t prime_start = pow(2, 30);
+  const int32_t nr_primes = nr_threads;
+
+  len_t i;
+
+  /* initialize stuff */
+  stat_t *st  = initialize_statistics();
+
+  int *invalid_gens   =   NULL;
+  int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
+                                &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
+                                &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
+                                &info_level);
+
+  /* all data is corrupt */
+  if (res == -1) {
+    fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
+    free(invalid_gens);
+    return -3;
+  }
+  /* checks and set all meta data. if a nonzero value is returned then
+   * some of the input data is corrupted. */
+
+  if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
+              field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+              nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+              use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
+              info_level)) {
+    free(st);
+    return -3;
+  }
+
+  /* lucky primes */
+  primes_t *lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t));
+
+  /*******************
+  * initialize basis
+  *******************/
+  bs_t *bs_qq = initialize_basis(st);
+  /* initialize basis hash table, update hash table, symbolic hash table */
+  ht_t *bht = initialize_basis_hash_table(st);
+  /* hash table to store the hashes of the multiples of
+    * the basis elements stored in the trace */
+  ht_t *tht = initialize_secondary_hash_table(bht, st);
+  /* read in ideal, move coefficients to integers */
+  import_input_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+  free(invalid_gens);
+  invalid_gens  =   NULL;
+
+  if (st->info_level > 0) {
+    print_initial_statistics(stderr, st);
+  }
+
+  /* for faster divisibility checks, needs to be done after we have
+    * read some input data for applying heuristics */
+  calculate_divmask(bht);
+
+  /* sort initial elements, smallest lead term first */
+  sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
+          initial_input_cmp, bht);
+  if(gens->field_char == 0){
+    remove_content_of_initial_basis(bs_qq);
+    /* generate lucky prime numbers */
+    generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
+  }
+  else{
+    lp->old = 0;
+    lp->ld = 1;
+    lp->p = calloc(1, sizeof(uint32_t));
+    normalize_initial_basis(bs_qq, st->fc);
+  }
+
+  /* generate array to store modular bases */
+  bs_t **bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
+
+  int *bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
+
+  /* initialize tracers */
+  trace_t **btrace = (trace_t **)calloc(st->nthrds,
+                                       sizeof(trace_t *));
+  btrace[0]  = initialize_trace();
+  /* initialization of other tracers is done through duplication */
+
+  uint32_t prime = next_prime(1<<30);
+  uint32_t primeinit;
+  srand(time(0));
+  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  while(gens->field_char==0 && is_lucky_prime_ui(prime, bs_qq)){
+    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  }
+
+  primeinit = prime;
+  lp->p[0] = primeinit;
+  if(gens->field_char){
+    lp->p[0] = gens->field_char;
+  }
+  int32_t **blen_gb_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
+  int32_t **bstart_cf_gb_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
+
+  int32_t *num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));
+  int32_t **leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
+  int32_t **leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
+
+  int success = 1;
+  int squares = 1;
+
+  int32_t *lmb_ori = gb_modular_trace_learning(num_gb, leadmons_ori,
+                                               btrace[0],
+                                               tht, bs_qq, bht, st,
+                                               lp->p[0], //prime,
+                                               info_level,
+                                               print_gb,
+                                               dim_ptr, dquot_ptr,
+                                               gens,
+                                               files,
+                                               &success);
+
+
+  if(lmb_ori == NULL || success == 0 || gens->field_char) {
+      /* print_msolve_message(stderr, 1); */
+    for(int i = 0; i < st->nthrds; i++){
+      /* free_trace(&btrace[i]); */
+    }
+    free(btrace);
+    if(gens->field_char==0){
+      free_shared_hash_data(bht);
+      if(bht!=NULL){
+        free_hash_table(&bht);
+      }
+      free(bht);
+    }
+    if(tht!=NULL){
+      free_hash_table(&tht);
+    }
+    free(tht);
+    /* for (i = 0; i < st->nthrds; ++i) { */
+    /*   free_basis(&(bs[i])); */
+    /* } */
+    free(bs);
+    if(gens->field_char==0){
+      free(bs_qq);
+    }
+    //here we should clean nmod_params
+    free_lucky_primes(&lp);
+    free(bad_primes);
+    free(lp);
+    free(st);
+  }
+
+  /* duplicate data for multi-threaded multi-mod computation */
+  /* duplicate_data_mthread_trace(st->nthrds, st, num_gb, */
+  /*                              leadmons_ori, leadmons_current, */
+  /*                              btrace, */
+  /*                              bdata_bms, bdata_fglm, */
+  /*                              bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix, */
+  /*                              nmod_params, nlins, bnlins, */
+  /*                              blinvars, lineqs_ptr, */
+  /*                              bsquvars); */
+
+  /* copy of hash tables for tracer application */
+  ht_t **blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
+  blht[0] = bht;
+  for(int i = 1; i < st->nthrds; i++){
+    ht_t *lht = copy_hash_table(bht, st);
+    blht[i] = lht;
+  }
+  ht_t **btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
+  btht[0] = tht;
+  for(int i = 1; i < st->nthrds; i++){
+    btht[i] = copy_hash_table(tht, st);
+  }
+
+
+  if(info_level){
+    fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+  }
+
+
+  mpz_t modulus;
+  mpz_init_set_ui(modulus, primeinit);
+  mpz_t prod_crt;
+  mpz_init_set_ui(prod_crt, primeinit);
+
+  int rerun = 1, nprimes = 1, mcheck =1;
+
+  long nbadprimes = 0;
+
+  prime = next_prime(1<<30);
+
+  /* measures time spent in rational reconstruction */
+  double strat = 0;
+
+  while(rerun == 1 || mcheck == 1){
+
+    /* generate lucky prime numbers */
+    prime = next_prime(prime);
+    lp->p[0] = prime;
+    while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+      prime = next_prime(prime);
+      lp->p[0] = prime;
+    }
+
+    for(len_t i = 1; i < st->nthrds; i++){
+      prime = next_prime(prime);
+      lp->p[i] = prime;
+      while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+        prime = next_prime(prime);
+        lp->p[i] = prime;
+      }
+    }
+    prime = lp->p[st->nthrds - 1];
+
+    double ca0 = realtime();
+
+    double stf4 = 0;
+    gb_modular_trace_application(num_gb,
+                                 leadmons_ori,
+                                 leadmons_current,
+                                 btrace,
+                                 btht, bs_qq, blht, st,
+                                 field_char, 0, /* info_level, */
+                                 bs, lmb_ori, *dquot_ptr, lp,
+                                 gens, &stf4, bad_primes);
+    double ca1 = realtime() - ca0;
+
+    if(nprimes==1){
+      if(info_level>2){
+        fprintf(stderr, "------------------------------------------\n");
+        fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
+        fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
+        fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
+        fprintf(stderr, "------------------------------------------\n");
+      }
+      if(info_level>1){
+        fprintf(stderr, "Application phase %.2f Gops/sec\n",
+                (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
+        fprintf(stderr, "Tracer + fglm time (elapsed): %.2f sec\n",
+                (ca1) );
+      }
+    }
+
+    for(int i = 0; i < st->nthrds; i++){
+      if(bad_primes[i] == 0){
+        fprintf(stderr, "badprimes[i] is 0\n");
+      }
+    }
+
+  }
+
+
+  /* free and clean up */
+  free_shared_hash_data(bht);
+  for(int i = 0; i < st->nthrds; i++){
+    free_hash_table(blht+i);
+    free_hash_table(btht+i);
+  }
+  /* free_hash_table(&bht); */
+  /* free_hash_table(&tht); */
+
+  //here we should clean nmod_params
+
+  for(i = 0; i < st->nthrds; ++i){
+    if (bs[i] != NULL) {
+      free_basis(&(bs[i]));
+    }
+    free(blen_gb_xn[i]);
+    free(bstart_cf_gb_xn[i]);
+
+    free(leadmons_ori[i]);
+    free(leadmons_current[i]);
+    free_trace(&btrace[i]);
+  }
+
+  free_basis(&(bs_qq));
+  free(bs);
+  free(leadmons_ori);
+  free(leadmons_current);
+
+  free_lucky_primes(&lp);
+  free(st);
+  free(bad_primes);
+
+  free(num_gb);
+  free(btrace);
+
+  return 0;
+}
 
 /*
 

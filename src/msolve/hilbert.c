@@ -32,17 +32,6 @@ static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
                                            const int nv,
                                            const long fc);
 
-static void (*copy_poly_in_matrix_col_from_bs)(sp_matfglmcol_t* matrix,
-					       long nrows,
-					       bs_t *bs,
-					       ht_t *ht,
-					       long idx, long len,
-					       long start, long pos,
-					       int32_t *lmb,
-					       const int nv,
-					       const long fc);
-
-
 static int is_pure_power(const int32_t *bexp, const int nv){
     int cnt = 0;
     for(int i = 0; i < nv; i++){
@@ -56,7 +45,6 @@ static int is_pure_power(const int32_t *bexp, const int nv){
     return 0;
 
 }
-
 
 static int32_t *get_lead_monomials(const int32_t *bld, int32_t **blen, int32_t **bexp,
 				   data_gens_ff_t *gens){
@@ -113,6 +101,17 @@ static inline int is_divisible_lexp(long nvars, long length,
   return 0;
 }
 
+static inline int is_divisible_lexp_without_last_variable(long nvars, long length,
+							  int32_t
+							  *exp1,
+							  int32_t *bexp){
+  for(long i = 0; i < length; i++){
+    if(is_divisible_exp(nvars-1, exp1, (bexp+i*nvars))){
+      return 1;
+    }
+  }
+  return 0;
+}
 
 static inline long sum(long *ind, long length){
   long s= 0;
@@ -139,7 +138,6 @@ static inline long generate_new_elts_basis(long nvars, long *ind, long len1, lon
   }
   return c;
 }
-
 
 static inline int degree_prev_var(int32_t *exp, long n){
   return(exp[n+1]);
@@ -312,6 +310,102 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   return basis;
 }
 
+/** nvars is the number of variables
+    sht is a secondary htable of the monomials
+    dquot is a integer representing the dimension of the
+    subspace
+*/
+static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars, 
+						    int32_t *bexp_lm, long *dquot,
+						    const long maxdeg){
+  int32_t *basis = calloc(nvars, sizeof(int32_t)); 
+  (*dquot) = 0;
+
+  if(is_divisible_lexp(nvars, length, (basis), bexp_lm)){
+    fprintf(stderr, "Stop\n");
+    free(basis);
+    return NULL;
+  }
+  else{
+    (*dquot)++;
+  }
+  long *ind = calloc(nvars, sizeof(long) * nvars);
+
+#ifdef DEBUGHILBERT
+  fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+#endif
+
+  int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars)); 
+  long new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
+                                            basis, new_basis, bexp_lm);
+#ifdef DEBUGHILBERT
+  display_monomials_from_array(stderr, new_length, new_basis, gens);
+  fprintf(stderr, "%ld new elements.\n", new_length);
+#endif
+  long deg = 1;
+  while(new_length>0 && deg <= maxdeg){
+    int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t *));
+    if(basis2==NULL){
+      fprintf(stderr, "Issue with realloc\n");
+      exit(1);
+    }
+
+    basis = basis2;
+    for(long i = 0; i < new_length; i++){
+      for(long k = 0; k < nvars; k++){
+        (basis)[((*dquot) + i)*nvars+k] = (new_basis)[i*nvars+k];
+      }
+    }
+
+    update_indices(ind, basis, *dquot, new_length, nvars);
+    (*dquot) += new_length;
+
+#ifdef DEBUGHILBERT
+    fprintf(stderr, "Update indices\n");
+    for(long i = 0; i < nvars; i++) fprintf(stderr, "%ld ", ind[i]);
+    fprintf(stderr, "\n");
+    fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+#endif
+
+    int32_t *new_basis2 = realloc(new_basis,
+                                 sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
+    if(new_basis==NULL){
+      fprintf(stderr, "Issue with realloc\n");
+      exit(1);
+    }
+    new_basis=new_basis2;
+    new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
+                                         basis, new_basis, bexp_lm);
+#ifdef DEBUGHILBERT
+    fprintf(stderr, "%ld new elements.\n", new_length);
+#endif
+    deg++;
+  }
+  free(new_basis);
+  free(ind);
+
+  /* cleanup by removing monomials that will be sent to 0 after
+     iterative multiplication by xn */
+  long new_dquot=0;
+  for (long i = 0; i < *dquot; i++) {
+    if (is_divisible_lexp_without_last_variable(nvars,length,
+						(basis+i*nvars),bexp_lm)) {
+      /* keep this monomial */
+      for (long k = 0; k < nvars; k++) {
+	basis[new_dquot*nvars+k]= basis[i*nvars+k];
+      }
+      new_dquot++;
+    }
+  }
+  if (new_dquot == 0) {
+    fprintf(stderr, "Vector space is too small\n");
+    exit(1);
+  }
+  *dquot= new_dquot;
+  basis= realloc (basis, new_dquot * nvars * sizeof(int32_t));
+  return basis;
+}
+
 
 static inline long get_div_xn(int32_t *bexp_lm, long length, long nvars,
                              int32_t *div_xn){
@@ -398,6 +492,36 @@ static inline int is_equal_exponent_bs(const ht_t const *exp1, int32_t hmj,
  * return 0 if they are the same
  * returns 1 if exp1 is larger
  */
+static inline int is_larger_exponent(int32_t *exp1, int32_t *exp2, const long nvars){
+  int32_t deg1 = 0;
+  int32_t deg2 = 0;
+  for(long i = 0; i < nvars; i++){
+    deg1 += exp1[i];
+    deg2 += exp2[i];
+  }
+  /* printf ("deg1= %d, deg2=%d\n",deg1,deg2); */
+  if (deg1 < deg2){
+    return -1;
+  }
+  if (deg1 > deg2){
+    return 1;
+  }
+  for (long i = nvars-1; i>1; i--) {
+    /* printf ("x[%ld]: %d, %d\n",i,exp1[i],exp2[i]); */
+    if(exp1[i]<exp2[i]){
+      return 1;
+    }
+    if(exp1[i]>exp2[i]){
+      return -1;
+    }
+  }
+  return 0;
+}
+
+/* returns -1 if exp1 is smaller
+ * return 0 if they are the same
+ * returns 1 if exp1 is larger
+ */
 static inline int is_larger_exponent_bs(const ht_t const *exp1, int32_t hmj,
 					int32_t *evi,
 					int32_t *exp2,
@@ -408,7 +532,7 @@ static inline int is_larger_exponent_bs(const ht_t const *exp1, int32_t hmj,
     deg1 += exp1->ev[hmj][evi[i]];
     deg2 += exp2[i];
   }
-  printf ("deg1= %d, deg2=%d\n",deg1,deg2);
+  /* printf ("deg1= %d, deg2=%d\n",deg1,deg2); */
   if (deg1 < deg2){
     return -1;
   }
@@ -416,7 +540,7 @@ static inline int is_larger_exponent_bs(const ht_t const *exp1, int32_t hmj,
     return 1;
   }
   for (long i = nvars-1; i>1; i--) {
-    printf ("x[%ld]: %d, %d\n",i,exp1->ev[hmj][evi[i]],exp2[i]);
+    /* printf ("x[%ld]: %d, %d\n",i,exp1->ev[hmj][evi[i]],exp2[i]); */
     if(exp1->ev[hmj][evi[i]]<exp2[i]){
       return 1;
     }
@@ -580,13 +704,11 @@ static inline void copy_poly_in_matrix(sp_matfglm_t* matrix,
   }
 }
 
-static inline void copy_poly_in_matrixcol(sp_matfglmcol_t* matrix,
-					  long nrows,
-					  int32_t *bcf, int32_t **bexp,
-					  int32_t **blen, long start, long pos,
-					  int32_t *lmb,
-					  const int nv,
-					  const long fc){
+static inline void
+copy_poly_in_matrixcol(sp_matfglmcol_t* matrix, long nrows,
+		       int32_t *bcf, int32_t **bexp, int32_t **blen,
+		       long start, long pos, int32_t *lmb,
+		       const int nv, const long fc){
   int32_t j;
   long end = start + pos;//(*blen)[pos];
 
@@ -601,23 +723,6 @@ static inline void copy_poly_in_matrixcol(sp_matfglmcol_t* matrix,
   }
   fprintf(stderr, "\n");
 #endif
-
-#if 0
-  long i;
-  long N = nrows * matrix->ncols ;
-  long k = 0;
-  printf("[");
-  for(i = 0; i < matrix->ncols; i++){
-    if(is_equal_exponent((*bexp) + (end - 1 - k) * nv,
-			 lmb + i * nv,
-			 nv)){
-      matrix->dense_mat[N + i] = fc - bcf[end - 1 -  k];
-      printf("%d, ",matrix->dense_mat[N + i]);
-      k++;
-    }
-  }
-  printf("]\n");
-#else
   long N = nrows * (matrix->ncols) - (start + 1);
   
   if((end-start) == matrix->ncols + 1){
@@ -647,21 +752,51 @@ static inline void copy_poly_in_matrixcol(sp_matfglmcol_t* matrix,
       }
     }
   }
-#endif
 }
 
 static inline void
-copy_extrapoly_in_vector(uint32_t* vector,
-			 long ncols,
-			 int32_t *lmb,
-			 len_t pos,
-			 const bs_t * const tbr,
-			 const ht_t * const bht,
-			 int32_t* evi,
-			 const stat_t *st,
-			 const int nv,
-			 const long maxdeg){
+copy_poly_in_matrixcol_no_zero(sp_matfglmcol_t* matrix, long nrows,
+			       int32_t *bcf, int32_t **bexp, int32_t **blen,
+			       long start, long pos, int32_t *lmb,
+			       const int nv, const long fc){
+  int32_t j;
+  long end = start + pos;//(*blen)[pos];
 
+#if DEBUGBUILDMATRIX > 0
+  fprintf(stderr, "\nstart = %ld, end = %ld\n", start, end);
+  for(j = start; j < end; j++){
+    //    display_term(stderr, j, gens, blen, bcf, bexp);
+    if(j < end - 1){
+    //    if(j < (*blen)[pos] - 1){
+      fprintf(stderr, "+");
+    }
+  }
+  fprintf(stderr, "\n");
+#endif
+  long i;
+  long N = nrows * matrix->ncols ;
+  long k = 0;
+  printf("[");
+  for(i = 0; i < matrix->ncols; i++){
+    int b = is_larger_exponent((*bexp) + (end - 1 - k) * nv, lmb + i * nv, nv);
+    while (b > 0) {
+      k++;
+      b = is_larger_exponent((*bexp) + (end - 1 - k) * nv, lmb + i *  nv, nv);
+    }
+    if(!b){ /* equal exponent */
+      matrix->dense_mat[N + i] = fc - bcf[end - 1 -  k];
+      printf("%u, ",matrix->dense_mat[N + i]);
+      k++;
+    }
+  }
+  printf("]\n");
+}
+
+static inline void
+copy_extrapoly_in_vector(uint32_t* vector, long ncols, int32_t *lmb,
+			 len_t pos, const bs_t * const tbr,
+			 const ht_t * const bht, int32_t* evi,
+			 const stat_t *st, const int nv, const long maxdeg){
   len_t idx = tbr->lmps[pos];
   /* printf ("idx=%d\n",idx); */
   /* if (tbr->hm[idx] == NULL) {*/
@@ -698,17 +833,42 @@ copy_extrapoly_in_vector(uint32_t* vector,
 }
 
 static inline void
-copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix,
-			    long nrows,
-			    int32_t *lmb,
-			    len_t pos,
-			    const bs_t * const tbr,
-			    const ht_t * const bht,
-			    int32_t* evi,
-			    const stat_t *st,
-			    const int nv,
-			    const long maxdeg){
+copy_extrapoly_in_vector_no_zero(uint32_t* vector, long ncols,
+				 int32_t *lmb, len_t pos, const bs_t * const tbr,
+				 const ht_t * const bht, int32_t* evi,
+				 const stat_t *st, const int nv,
+				 const long maxdeg){
 
+  len_t idx = tbr->lmps[pos];
+  /* printf ("idx=%d\n",idx); */
+  /* if (tbr->hm[idx] == NULL) {*/
+  len_t * hm  = tbr->hm[idx]+OFFSET;
+  len_t len = tbr->hm[idx][LENGTH];
+  /* printf ("len=%d\n",len); */
+  long i;
+  long k = 0;
+  printf ("[");
+  for(i = 0; i < ncols; i++){
+    int b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
+    while (b > 0) {
+      k++;
+      b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
+    }
+    if(!b){ /* equal_exponent */
+      vector[i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
+      printf ("%u, ",vector[i]);
+      k++;
+    }
+  }
+  printf("\b\b]\n");
+}
+
+static inline void
+copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix, long nrows,
+			    int32_t *lmb, len_t pos, const bs_t * const tbr,
+			    const ht_t * const bht, int32_t* evi,
+			    const stat_t *st, const int nv,
+			    const long maxdeg){
   len_t idx = tbr->lmps[pos];
   /* printf ("idx=%d\n",idx); */
   /* if (tbr->hm[idx] == NULL) {*/
@@ -744,6 +904,37 @@ copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix,
   }
   /* printf("\b\b]\n"); */
 }
+
+static inline void
+copy_extrapoly_in_matrixcol_no_zero(sp_matfglmcol_t* matrix, long nrows,
+				    int32_t *lmb, len_t pos, const bs_t * const tbr,
+				    const ht_t * const bht, int32_t* evi,
+				    const stat_t *st, const int nv,
+				    const long maxdeg){
+
+  len_t idx = tbr->lmps[pos];
+  len_t * hm  = tbr->hm[idx]+OFFSET;
+  len_t len = tbr->hm[idx][LENGTH];
+  /* printf ("len=%d\n",len); */
+  long i;
+  long N = nrows * matrix->ncols ;
+  long k = 0;
+  printf("[");
+  for(i = 0; i < matrix->ncols; i++){
+    int b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
+    while (b > 0) {
+      k++;
+      b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
+    }
+    if(!b){ /* equal_exponent */
+      matrix->dense_mat[N + i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
+      printf("%u, ",matrix->dense_mat[N + i]);
+      k++;
+    }
+  }
+  printf("]\n");
+}
+
 
 /**
 
@@ -1151,12 +1342,9 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 		    bs_t *tbr, ht_t *bht, stat_t *st,
 		    const exp_t * const mul, bs_t * bs,
 		    const int nv, const long fc, const long maxdeg,
-		    const data_gens_ff_t *gens, uint32_t * leftvector,
-		    uint32_t ** leftvectorsparam, long suppsize/* , */
-		    /* int32_t la_option, int32_t use_signatures, int32_t nr_threads, */
-		    /* int32_t info_level, int32_t initial_hts, int32_t max_pairs, */
-		    /* int32_t elim_block_len, int32_t update_ht */
-		    ){
+		    const data_gens_ff_t *gens,
+		    uint32_t * leftvector,
+		    uint32_t ** leftvectorsparam, long suppsize){
 
   const len_t ebl = bht->ebl;
   const len_t evl = bht->evl;
@@ -1198,13 +1386,22 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   long len_xn = get_div_xn_bounded(bexp_lm, bld, nv, div_xn,div_not_xn,
 				   &len_not_xn,maxdeg+1);
   
-#if 1 > 0
+#if DEBUGBUILDMATRIX>0
+  fprintf(stderr, "\n");
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
 	  "and with bounded degree: %ld\n", len_xn);
+  for(long i=0; i < len_xn; i++){
+    fprintf(stderr, "%d, ", div_xn[i]);
+  }
+  fprintf(stderr, "\n");
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are not divisible by x_n "
 	  "and with bounded degree: %ld\n", len_not_xn);
+  for(long i=0; i < len_not_xn; i++){
+    fprintf(stderr, "%d, ", div_not_xn[i]);
+  }
+  fprintf(stderr, "\n");
 #endif
   long count_lm = 0;
   /* list of monomials in the staircase that leave the staircase after
@@ -1220,7 +1417,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
         long pos = -1;
 	int32_t *exp = lmb + (i * nv);
 	if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
-#if DEBUGBUILDMATRIX > 0
+#if DEBUGBUILDMATRIX>0
 	  display_monomial_full(stderr, nv, NULL, 0, exp);
 	  fprintf(stderr, " => remains in monomial basis\n");
 #endif
@@ -1310,23 +1507,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   tbr = initialize_basis(st);
 #if REDUCTION_ALLINONE
-  /* int success = initialize_gba_input_data(&bs, &bht, &st, */
-  /*                   lens, exps, (void *)cfs, */
-  /*                   1073741827, 0 /\* DRL order *\/, elim_block_len, nv, */
-  /*                   /\* gens->field_char, 0 [> DRL order <], gens->nvars, *\/ */
-  /*                   bld, tobereduced, initial_hts, nr_threads, max_pairs, */
-  /*                   update_ht, la_option, use_signatures, 1 /\* reduce_gb *\/, 0, */
-  /*                   info_level); */
-  /* st->fc  = fc; */
-  /* if(info_level){ */
-  /*   fprintf(stderr, */
-  /* 	    "NOTE: Field characteristic is now corrected to %u\n", */
-  /* 	    st->fc); */
-  /* } */
-  /* if (!success) { */
-  /*   printf("Bad input data, stopped computation.\n"); */
-  /*   exit(1); */
-  /* } */
   import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  tobereduced;
@@ -1550,7 +1730,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       }
     }
   }
-  printf ("matrix finished\n");
+  /* printf ("matrix finished\n[\n"); */
   /* assumes the entries of matrix->dst are 0 */
   for(long i = 0; i < matrix->nrows; i++){
     for(long j = matrix->ncols - 1; j >= 0; j--){
@@ -1607,6 +1787,424 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   return matrix;
 }
 
+/**
+
+   lmb is the monomial basis (of the subscpace of the quotient ring)
+   given by ascending order.
+
+   dquo is the dimension of this subspace.
+
+   data of gb are given by ascending order.
+
+   bexp_lm is the leading monomials of gb ; there are bld[0] of them.
+
+ **/
+static inline sp_matfglmcol_t *
+build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
+			    int32_t **blen, int32_t **bexp,
+			    int32_t *bcf, int32_t *bexp_lm, bs_t *tbr,
+			    ht_t *bht, stat_t *st,
+			    const exp_t * const mul, bs_t * bs,
+			    const int nv, const long fc, const long maxdeg,
+			    const data_gens_ff_t *gens,
+			    uint32_t * leftvector,
+			    uint32_t ** leftvectorsparam, long suppsize){
+
+  const len_t ebl = bht->ebl;
+  const len_t evl = bht->evl;
+  int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
+  if (ebl == 0) {
+    for (long i = 1; i < evl; ++i) {
+      evi[i-1]    =   i;
+    }
+  } else {
+    for (long i = 1; i < ebl; ++i) {
+      evi[i-1]    =   i;
+    }
+    for (long i = ebl+1; i < evl; ++i) {
+      evi[i-2]    =   i;
+    }
+  }
+  for (long i = 1; i < tbr->lml; i++) {
+    len_t idx = tbr->lmps[i];
+    len_t * hm  = tbr->hm[idx]+OFFSET;
+    len_t len = tbr->hm[idx][LENGTH];
+    long k = 0;
+    for (long j = 0; j < 5; j++) {
+      while (!is_equal_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv)) {
+	k++;
+      }
+    }
+  }
+  copy_extrapoly_in_vector_no_zero(leftvector, dquot, lmb, 1,
+				   tbr, bht, evi, st, nv, maxdeg);
+
+  /* takes monomials in bexp_lm which are reducible by xn */
+  /* div_xn contains the indices of those monomials*/
+  int32_t *div_xn = calloc(bld, sizeof(int32_t));
+  /* div_xn contains the indices of those not reducible by xn*/
+  int32_t *div_not_xn = calloc(bld, sizeof(int32_t));
+  
+  /* len_xn is the number of those monomials of degree at most maxdeg+1. */
+  long len_not_xn = 0;
+  long len_xn = get_div_xn_bounded(bexp_lm, bld, nv, div_xn,div_not_xn,
+				   &len_not_xn,maxdeg+1);
+  
+#if DEBUGBUILDMATRIX>0
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Number of monomials (in the Gb) "
+	  "which are divisible by x_n "
+	  "and with bounded degree: %ld\n", len_xn);
+  for(long i=0; i < len_xn; i++){
+    fprintf(stderr, "%d, ", div_xn[i]);
+  }
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Number of monomials (in the Gb) "
+	  "which are not divisible by x_n "
+	  "and with bounded degree: %ld\n", len_not_xn);
+  for(long i=0; i < len_not_xn; i++){
+    fprintf(stderr, "%d, ", div_not_xn[i]);
+  }
+  fprintf(stderr, "\n");
+#endif
+  long count_lm = 0;
+  /* list of monomials in the staircase that leave the staircase after
+     multiplication by xn and land on a multiple of a leading monomial of
+     the Gb */
+  long *extranf= calloc (dquot, sizeof(long));
+  long count_not_lm = 0;
+  /* list of monomials in the staircase that leave the staircase after
+     multiplication by xn and land on zero */
+  /* long *zeronf= calloc (dquot, sizeof(long)); */
+  /* long count_zero = 0; */
+  for (long i = 0; i < dquot; i++) {
+        long pos = -1;
+	int32_t *exp = lmb + (i * nv);
+	if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
+#if DEBUGBUILDMATRIX > 0
+	  display_monomial_full(stderr, nv, NULL, 0, exp);
+	  fprintf(stderr, " => remains in monomial basis\n");
+#endif
+	}
+	else{
+	  /* we get now outside the basis */
+#if DEBUGBUILDMATRIX > 0
+	  display_monomial_full(stderr, nv, NULL, 0, exp);
+	  fprintf(stderr, " => does NOT remain in monomial basis");
+#endif
+	  if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count_lm])*nv, nv)){
+	    count_lm++;
+#if DEBUGBUILDMATRIX > 0
+	    fprintf(stderr, " => land on a leading monomial\n");
+#endif
+	  }
+	  else{
+	    int is_divisible = 0;
+	    for(long j = 0; j < len_xn; j++) {
+	      if(is_divisible_exponent_xxn(exp, bexp_lm+(div_xn[j])*nv, nv)){
+		extranf[count_not_lm]=i;
+		count_not_lm++;
+#if DEBUGBUILDMATRIX > 0
+		fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
+#endif
+		is_divisible = 1;
+		break;
+	      }
+	    }
+/* 	    if (!is_divisible) { */
+/* #if DEBUGBUILDMATRIX > 0 */
+/* 	      fprintf(stderr, " => land on 0\n"); */
+/* #endif */
+/* 	      zeronf[count_zero]=i; */
+/* 	      count_zero++; */
+/* 	    } */
+	  }
+	}
+  }
+  
+  printf ("Number of extra normal forms for the matrix to compute: %ld\n",count_not_lm);
+  printf ("Number of extra normal forms for the vectors to compute: %d\n",2*nv-2);
+  /* Computation of the extra normal forms */
+  /* count_not_lm monomials to reduce
+   * each has length 1 */
+  /* 2*(nv-1) shifts of phi to reduce
+   * each has the same length as phi */
+  long tobereduced = count_not_lm + 2*nv-2;
+  int32_t* lens=(int32_t *) (malloc(sizeof(int32_t) * tobereduced));
+  int32_t* exps = (int32_t *) (malloc(sizeof(int32_t) * (count_not_lm +
+							 suppsize * (2*nv-2)) * nv));
+  int32_t* cfs = (int32_t *) (malloc(sizeof(int32_t) * (count_not_lm +
+							suppsize * (2*nv-2))));
+  /* pure monomials to be reduced */
+  for (long i = 0; i < count_not_lm;i++){
+    lens[i]=1;
+    cfs[i]=1;
+    long j= extranf[i];
+    for (long k = 0; k < nv-1; k++) {
+      exps[i*nv+k]=lmb[j*nv+k];
+    }
+    exps[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
+  }
+
+  /* shifts of to be reduced */
+  len_t idx = tbr->lmps[1];
+  len_t * hm  = tbr->hm[idx]+OFFSET;
+  len_t len = tbr->hm[idx][LENGTH];
+  for (long i = 0; i < 2*nv-2;i++){
+    lens[count_not_lm + i]=suppsize;
+    for (long j = 0; j < suppsize; j++) {
+      cfs[count_not_lm + i*suppsize + j]=tbr->cf_32[tbr->hm[idx][COEFFS]][j];
+      for (long k = 0; k < nv-1; k++) {
+	int32_t cpt = 0;
+	if (i == k) {
+	  cpt = 1;
+	}
+	else if (i == nv - 1 + k) {
+	  cpt = 2;
+	}
+	exps[(count_not_lm + i*suppsize+j)*nv+k]=bht->ev[hm[j]][evi[k]] + cpt;
+      }
+      exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
+    }
+  }
+  tbr = initialize_basis(st);
+  import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
+			     lens, exps, (void *)cfs);
+  tbr->ld = tbr->lml  =  tobereduced;
+  printf ("%ld imported\n",tobereduced);
+  for (int k = 0; k < tobereduced; ++k) {
+    tbr->lmps[k]  = k; /* fix input element in tbr */
+  }
+  printf ("polynomials to be reduced\n");
+  print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
+  int success = core_nf(&tbr, &bht, &st, mul, bs);
+  if (!success) {
+    printf("Problem with normalform, stopped computation.\n");
+    exit(1);
+  }
+  printf ("reductions\n");
+  print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht,
+			      st, gens->vnames, 0);
+  /* printf ("Number of zero normal forms: %ld\n",count_zero); */
+  /* lengths of the polys which we need to build the matrix */
+  int32_t *len_gb_xn = malloc(sizeof(int32_t) * len_xn);
+  int32_t *start_cf_gb_xn = malloc(sizeof(int32_t) * len_xn);
+  long pos = 0, k = 0;
+  for(long i = 0; i < bld; i++){
+    if(i==div_xn[k]){
+      len_gb_xn[k]=(*blen)[i];
+      start_cf_gb_xn[k]=pos;
+      pos+=(*blen)[i];
+      k++;
+    }
+    else{
+      pos+=(*blen)[i];
+    }
+  }
+
+#if DEBUGBUILDMATRIX > 0
+  fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
+  for(long i = 0; i < len_xn-1; i++){
+    fprintf(stderr, "%u, ", len_gb_xn[i]);
+  }
+  fprintf(stderr, "%u\n", len_gb_xn[len_xn-1]);
+#endif
+  sp_matfglmcol_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglmcol_t));
+  matrix->charac = fc;
+  matrix->ncols = dquot;
+  matrix->nzero = 0; /* count_zero; */
+  matrix->nrows = len_xn + count_not_lm;
+  long len1 = dquot * (len_xn + count_not_lm);
+  long len2 = dquot - (len_xn + count_not_lm /* + count_zero*/);
+
+  if(posix_memalign((void **)&(matrix->dense_mat), 32, sizeof(CF_t)*len1)){
+    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i < len1; i++){
+      matrix->dense_mat[i] = 0;
+    }
+  }
+  if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
+    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i < len2; i++){
+      matrix->triv_idx[i] = 0;
+    }
+  }
+  if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
+    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i <len2; i++){
+      matrix->triv_pos[i] = 0;
+    }
+  }
+  /* if(posix_memalign((void **)&matrix->zero_idx, 32, sizeof(CF_t)*count_zero)){ */
+  /*   fprintf(stderr, "Problem when allocating matrix->zero_idx\n"); */
+  /*   exit(1); */
+  /* } */
+  /* else{ */
+  /*   for(long i = 0; i < count_zero; i++){ */
+  /*     matrix->zero_idx[i] = 0; */
+  /*   } */
+  /* } */
+  if(posix_memalign((void **)&matrix->dense_idx, 32,
+		    sizeof(CF_t)*(len_xn + count_not_lm))){
+    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i < len_xn + count_not_lm; i++){
+      matrix->dense_idx[i] = 0;
+    }
+  }
+  if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*(len_xn + count_not_lm))){
+    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    exit(1);
+  }
+  else{
+    for(long i = 0; i < len_xn + count_not_lm; i++){
+      matrix->dst[i] = 0;
+    }
+  }
+  
+  for (long i = count_not_lm; i  < tbr->lml; i++) {
+    len_t idx = tbr->lmps[i];
+    len_t * hm  = tbr->hm[idx]+OFFSET;
+    len_t len = tbr->hm[idx][LENGTH];
+    long k = 0;
+    for (long j = 0; j < 5; j++) {
+      while (!is_equal_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv)) {
+	k++;
+      }
+    }
+  }
+  
+  long l_triv = 0;
+  long l_dens = 0;
+  /* long l_zero = 0; */
+  long nrows = 0;
+  long count = 0;
+  long count_nf = 0;
+  for(long i = 0; i < dquot; i++){
+    long pos = -1;
+    int32_t *exp = lmb + (i * nv);
+    /* display_monomial_full(stderr, nv, NULL, 0, exp); */
+    if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
+#if DEBUGBUILDMATRIX > 0
+      display_monomial_full(stderr, nv, NULL, 0, exp);
+      fprintf(stderr, " => remains in monomial basis\n");
+#endif
+      /* mult by xn stays in the basis */
+      matrix->triv_idx[l_triv] = i;
+      matrix->triv_pos[l_triv] = pos + i;
+
+      l_triv++;
+    }
+    else{
+      /* we get now outside the basis */
+#if DEBUGBUILDMATRIX > 0
+      display_monomial_full(stderr, nv, NULL, 0, exp);
+      fprintf(stderr, " => does NOT remain in monomial basis");
+#endif
+/*       if (i == zeronf[l_zero]){ */
+/* #if DEBUGBUILDMATRIX > 0 */
+/* 	fprintf(stderr, " => land on 0\n"); */
+/* 	printf ("zero row #%ld in row #%ld\n",l_zero,i); */
+/* #endif */
+/* 	matrix->zero_idx[l_zero] = i; */
+/* 	l_zero++; */
+/*       } */
+/*       else { */
+	matrix->dense_idx[l_dens] = i;
+	l_dens++;
+	if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
+#if DEBUGBUILDMATRIX > 0
+	  fprintf(stderr, " => land on a leading monomial\n");
+#endif
+	  printf ("Dense row from Gb\n");
+	  copy_poly_in_matrixcol_no_zero(matrix, nrows, bcf, bexp, blen,
+					 start_cf_gb_xn[count],
+					 len_gb_xn[count], lmb, nv, fc);
+	  nrows++;
+	  count++;
+	  if(len_xn < count && i < dquot){
+	    fprintf(stderr, "One should not arrive here (build_matrix)\n");
+	    free(lens);
+	    free(exps);
+	    free(cfs);
+	    free(matrix->dense_mat);
+	    free(matrix->dense_idx);
+	    free(matrix->triv_idx);
+	    free(matrix->triv_pos);
+	    /* free(matrix->zero_idx); */
+	    free(matrix);
+	    free(evi);
+	    free(len_gb_xn);
+	    free(start_cf_gb_xn);
+	    free(div_xn);
+	    free(div_not_xn);
+	    return NULL;
+	  }
+	/* } */
+	else if (i == extranf[count_nf]){
+#if DEBUGBUILDMATRIX > 0
+	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
+#endif
+	  printf ("Dense row from extra poly\n");
+	  copy_extrapoly_in_matrixcol_no_zero(matrix, nrows, lmb,
+					      tobereduced + count_nf,
+					      tbr, bht, evi, st, nv, maxdeg);
+	  nrows++;
+	  count_nf++;
+	}
+      }
+    }
+  }
+  /* printf ("matrix finished\n[\n"); */
+  /* for (long i = 0; i< matrix->nrows; i++){ */
+  /*   printf ("["); */
+  /*   for (long j = 0; j < matrix->ncols; j++){ */
+  /*     printf ("%d, ", matrix->dense_mat[i*matrix->ncols+j]); */
+  /*   } */
+  /*   printf ("\b\b]\n"); */
+  /* } */
+  /* printf("]\n"); */
+  /* assumes the entries of matrix->dst are 0 */
+  for(long i = 0; i < matrix->nrows; i++){
+    for(long j = matrix->ncols - 1; j >= 0; j--){
+      if(matrix->dense_mat[i*matrix->ncols + j] == 0){
+        matrix->dst[i]++;
+	/* printf ("%d, ",matrix->dst[i]); */
+      }
+      else{
+        break;
+      }
+    }
+  }
+
+  printf ("Dense vectors from extra poly\n");
+  for (long i = 0; i < 2*nv - 2; i++) {
+    copy_extrapoly_in_vector_no_zero(leftvectorsparam[i], dquot, lmb,
+				     tobereduced + count_not_lm + i,
+				     tbr, bht, evi, st, nv, maxdeg);
+  }
+  free(lens);
+  free(exps);
+  free(cfs);
+  free(evi);
+  free(len_gb_xn);
+  free(start_cf_gb_xn);
+  free(div_xn);
+  free(div_not_xn);
+  return matrix;
+}
 
 /**
 

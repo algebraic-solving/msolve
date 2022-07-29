@@ -1783,19 +1783,13 @@ static inline void guess_minpoly_colon(param_t *param,
   }
 }
 
-static inline void guess_sequence_colon(sp_matfglmcol_t *matrix,
-					fglm_data_t * data,
-					CF_t * leftvec,
-					CF_t ** leftvecparam,
-					szmat_t block_size, long dimquot,
-					mod_t prime,
-					param_t * param,
-					fglm_bms_data_t * data_bms,
-					uint64_t *linvars,
-					uint32_t *lineqs,
-					const long nvars,
-					long *dim_ptr,
-					const int info_level){
+static inline void
+guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
+		     CF_t * leftvec, CF_t ** leftvecparam,
+		     szmat_t block_size, long dimquot, mod_t prime,
+		     param_t * param, fglm_bms_data_t * data_bms,
+		     uint64_t *linvars, uint32_t *lineqs, const long nvars,
+		     long *dim_ptr, const int info_level){
   /* printf ("modulo %d\n",prime); */
   /* printf ("size   %d\n",matrix->ncols); */
   /* printf ("leftvec\n"); */

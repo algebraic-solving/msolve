@@ -3021,8 +3021,11 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
   int32_t **leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
 
   int success = 1;
-
-  int32_t *lmb_ori = gb_modular_trace_learning(num_gb, leadmons_ori,
+  gb_modpoly_t modgbs;
+  uint32_t *mgb = calloc(sizeof(uint32_t), bht->nv);
+  int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
+                                               mgb,
+                                               num_gb, leadmons_ori,
                                                btrace[0],
                                                tht, bs_qq, bht, st,
                                                lp->p[0], //prime,
@@ -3032,10 +3035,15 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
                                                gens,
                                                files,
                                                &success);
-
+  display_gbmodpoly(stderr, modgbs);
+  gb_modpoly_realloc(modgbs, 2);
+  display_gbmodpoly(stderr, modgbs);
 
   if(lmb_ori == NULL || success == 0 || gens->field_char) {
       /* print_msolve_message(stderr, 1); */
+    free(mgb);
+    gb_modpoly_clear(modgbs);
+
     for(int i = 0; i < st->nthrds; i++){
       /* free_trace(&btrace[i]); */
     }
@@ -3165,6 +3173,9 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
 
   }
 
+
+  free(mgb);
+  gb_modpoly_clear(modgbs);
 
   /* free and clean up */
   free_shared_hash_data(bht);

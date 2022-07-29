@@ -293,7 +293,8 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
 }
 
 
-static int32_t * gb_modular_trace_learning(
+static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
+                                           uint32_t *mgb,
                                            int32_t *num_gb,
                                            int32_t **leadmons,
                                            trace_t *trace,
@@ -372,7 +373,7 @@ static int32_t * gb_modular_trace_learning(
         }
     }
 
-      if(st->fc == 0){
+
 
         /**************************************************/
         long dquot = 0;
@@ -409,33 +410,14 @@ static int32_t * gb_modular_trace_learning(
 
         int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
 
-        /************************************************/
-        /************************************************/
-        fprintf(stderr, "lens = [");
-        for(int32_t i = 0; i < bs->lml; i++){
-          fprintf(stderr, "%d, ", lens[i]);
-        }
-        fprintf(stderr, "]\n");
-        /************************************************/
-        /************************************************/
-        gb_modpoly_t modgbs;
         gb_modpoly_init(modgbs, 3, lens, bs->lml);
-        display_gbmodpoly(stderr, modgbs);
-        gb_modpoly_realloc(modgbs, 2);
-        display_gbmodpoly(stderr, modgbs);
 
-        uint32_t *mgb = calloc(sizeof(uint32_t), bht->nv);
         modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb);
 
-        display_gbmodpoly(stderr, modgbs);
-        fprintf(stderr, "Clear gb_modpolys\n");
-        free(mgb);
-        gb_modpoly_clear(modgbs);
-      }
-      else{
-        print_ff_basis_data(
-                            files->out_file, "a", bs, bht, st, gens, print_gb);
-      }
+
+
+      free_basis(&(bs));
+      return lmb;
 }
 
 

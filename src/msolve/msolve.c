@@ -4817,6 +4817,10 @@ restart:
                 printf("Problem with normalform, stopped computation.\n");
                 exit(1);
             }
+            /* print reduced element in tbr, last one is the input element */
+	    /* printf ("normal form:\n"); */
+            /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
+	    /* 				st, gens->vnames, 0); */
 	    ct2 = cputime();
 	    rt2 = realtime();
 	    if (info_level) {
@@ -4870,9 +4874,9 @@ restart:
 	      }
 	      maxdeg = MAX(maxdeg,degi);
 	    }
-	    printf ("maximal degree of the truncated staircase: %ld\n",maxdeg);
+	    printf ("Maximal degree of the truncated staircase: %ld\n",maxdeg);
 	    long dquot;
-#define ZERO 1
+#define ZERO 0
 #if ZERO
 	    int32_t *lmb= monomial_basis_colon (bld[0],
 						gens->nvars, bexp_lm,
@@ -4882,14 +4886,14 @@ restart:
 						 gens->nvars, bexp_lm,
 						 &dquot, maxdeg);
 #endif
-	    printf("\nMonomial basis:\n");
-	    for (len_t k = 0; k < dquot; ++k) {
-	      for (len_t l = 0; l < gens->nvars; ++l){
-		printf("%2u ", lmb[k*gens->nvars+l]);
-	      }
-	      printf("\n");
-	    }
-	    printf("Subspace has dimension: %ld\n",dquot);
+	    /* printf("\nMonomial basis:\n"); */
+	    /* for (len_t k = 0; k < dquot; ++k) { */
+	    /*   for (len_t l = 0; l < gens->nvars; ++l){ */
+	    /* 	printf("%2u ", lmb[k*gens->nvars+l]); */
+	    /*   } */
+	    /*   printf("\n"); */
+	    /* } */
+	    printf("Subspace of quotient algebra has dimension: %ld\n",dquot);
 	    uint32_t * leftvector = calloc(dquot,sizeof (uint32_t));
 	    uint32_t ** leftvectorsparam = malloc(2*(gens->nvars-1)*sizeof (uint32_t *));
 	    for (long i = 0; i < 2*(gens->nvars-1); i++) {

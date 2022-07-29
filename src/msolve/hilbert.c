@@ -776,20 +776,22 @@ copy_poly_in_matrixcol_no_zero(sp_matfglmcol_t* matrix, long nrows,
   long i;
   long N = nrows * matrix->ncols ;
   long k = 0;
-  printf("[");
+  /* printf("["); */
   for(i = 0; i < matrix->ncols; i++){
-    int b = is_larger_exponent((*bexp) + (end - 1 - k) * nv, lmb + i * nv, nv);
-    while (b > 0) {
-      k++;
-      b = is_larger_exponent((*bexp) + (end - 1 - k) * nv, lmb + i *  nv, nv);
-    }
-    if(!b){ /* equal exponent */
-      matrix->dense_mat[N + i] = fc - bcf[end - 1 -  k];
-      printf("%u, ",matrix->dense_mat[N + i]);
-      k++;
+    if (k < end) {
+      int b = is_larger_exponent((*bexp) + (end - 1 - k) * nv, lmb + i * nv, nv);
+      while (b < 0 && k < end-2) {
+	k++;
+	b = is_larger_exponent((*bexp) + (end - 1 - k) * nv, lmb + i *  nv, nv);
+      }
+      if(!b){ /* equal exponent */
+	matrix->dense_mat[N + i] = fc - bcf[end - 1 -  k];
+	/* printf("%u, ",matrix->dense_mat[N + i]); */
+	k++;
+      }
     }
   }
-  printf("]\n");
+  /* printf("]\n"); */
 }
 
 static inline void
@@ -829,7 +831,7 @@ copy_extrapoly_in_vector(uint32_t* vector, long ncols, int32_t *lmb,
       k++;
     }
   }
-  /* printf("\b\b]\n"); */
+  /* printf("]\n"); */
 }
 
 static inline void
@@ -847,20 +849,22 @@ copy_extrapoly_in_vector_no_zero(uint32_t* vector, long ncols,
   /* printf ("len=%d\n",len); */
   long i;
   long k = 0;
-  printf ("[");
+  /* printf ("["); */
   for(i = 0; i < ncols; i++){
-    int b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
-    while (b > 0) {
-      k++;
-      b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
-    }
-    if(!b){ /* equal_exponent */
-      vector[i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
-      printf ("%u, ",vector[i]);
-      k++;
+    if (k < len) {
+      int b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
+      while (b < 0 && k < len-2) {
+	k++;
+	b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
+      }
+      if(!b){ /* equal_exponent */
+	vector[i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
+	/* printf ("%u, ",vector[i]); */
+	k++;
+      }
     }
   }
-  printf("\b\b]\n");
+  /* printf("]\n"); */
 }
 
 static inline void
@@ -902,7 +906,7 @@ copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix, long nrows,
       k++;
     }
   }
-  /* printf("\b\b]\n"); */
+  /* printf("]\n"); */
 }
 
 static inline void
@@ -919,20 +923,22 @@ copy_extrapoly_in_matrixcol_no_zero(sp_matfglmcol_t* matrix, long nrows,
   long i;
   long N = nrows * matrix->ncols ;
   long k = 0;
-  printf("[");
+  /* printf("["); */
   for(i = 0; i < matrix->ncols; i++){
-    int b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
-    while (b > 0) {
-      k++;
-      b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
-    }
-    if(!b){ /* equal_exponent */
-      matrix->dense_mat[N + i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
-      printf("%u, ",matrix->dense_mat[N + i]);
-      k++;
+    if (k < len) {
+      int b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
+      while (b < 0 && k < len-2) {
+	k++;
+	b = is_larger_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv);
+      }
+      if(!b){ /* equal_exponent */
+	matrix->dense_mat[N + i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
+	/* printf("%u, ",matrix->dense_mat[N + i]); */
+	k++;
+      }
     }
   }
-  printf("]\n");
+  /* printf("]\n"); */
 }
 
 
@@ -1839,7 +1845,6 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   }
   copy_extrapoly_in_vector_no_zero(leftvector, dquot, lmb, 1,
 				   tbr, bht, evi, st, nv, maxdeg);
-
   /* takes monomials in bexp_lm which are reducible by xn */
   /* div_xn contains the indices of those monomials*/
   int32_t *div_xn = calloc(bld, sizeof(int32_t));
@@ -1851,7 +1856,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   long len_xn = get_div_xn_bounded(bexp_lm, bld, nv, div_xn,div_not_xn,
 				   &len_not_xn,maxdeg+1);
   
-#if DEBUGBUILDMATRIX>0
+#if DEBUGBUILDMATRIX > 0
   fprintf(stderr, "\n");
   fprintf(stderr, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
@@ -1972,21 +1977,21 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
 			     lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  tobereduced;
-  printf ("%ld imported\n",tobereduced);
+  /* printf ("%ld imported\n",tobereduced); */
   for (int k = 0; k < tobereduced; ++k) {
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
-  printf ("polynomials to be reduced\n");
-  print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht,
-			      st, gens->vnames, 0);
+  /* printf ("polynomials to be reduced\n"); */
+  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
+  /* 			      st, gens->vnames, 0); */
   int success = core_nf(&tbr, &bht, &st, mul, bs);
   if (!success) {
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
   }
-  printf ("reductions\n");
-  print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht,
-			      st, gens->vnames, 0);
+  /* printf ("reductions\n"); */
+  /* print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht, */
+  /* 			      st, gens->vnames, 0); */
   /* printf ("Number of zero normal forms: %ld\n",count_zero); */
   /* lengths of the polys which we need to build the matrix */
   int32_t *len_gb_xn = malloc(sizeof(int32_t) * len_xn);
@@ -2129,7 +2134,6 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 #if DEBUGBUILDMATRIX > 0
 	  fprintf(stderr, " => land on a leading monomial\n");
 #endif
-	  printf ("Dense row from Gb\n");
 	  copy_poly_in_matrixcol_no_zero(matrix, nrows, bcf, bexp, blen,
 					 start_cf_gb_xn[count],
 					 len_gb_xn[count], lmb, nv, fc);
@@ -2153,19 +2157,17 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 	    free(div_not_xn);
 	    return NULL;
 	  }
-	/* } */
+	}
 	else if (i == extranf[count_nf]){
 #if DEBUGBUILDMATRIX > 0
 	  fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
-	  printf ("Dense row from extra poly\n");
 	  copy_extrapoly_in_matrixcol_no_zero(matrix, nrows, lmb,
 					      tobereduced + count_nf,
 					      tbr, bht, evi, st, nv, maxdeg);
 	  nrows++;
 	  count_nf++;
 	}
-      }
     }
   }
   /* printf ("matrix finished\n[\n"); */
@@ -2174,7 +2176,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   /*   for (long j = 0; j < matrix->ncols; j++){ */
   /*     printf ("%d, ", matrix->dense_mat[i*matrix->ncols+j]); */
   /*   } */
-  /*   printf ("\b\b]\n"); */
+  /*   printf ("]\n"); */
   /* } */
   /* printf("]\n"); */
   /* assumes the entries of matrix->dst are 0 */
@@ -2190,7 +2192,6 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
     }
   }
 
-  printf ("Dense vectors from extra poly\n");
   for (long i = 0; i < 2*nv - 2; i++) {
     copy_extrapoly_in_vector_no_zero(leftvectorsparam[i], dquot, lmb,
 				     tobereduced + count_not_lm + i,

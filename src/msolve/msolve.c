@@ -3139,7 +3139,8 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
     double ca0 = realtime();
 
     double stf4 = 0;
-    gb_modular_trace_application(num_gb,
+    gb_modular_trace_application(modgbs, mgb,
+                                 num_gb,
                                  leadmons_ori,
                                  leadmons_current,
                                  btrace,

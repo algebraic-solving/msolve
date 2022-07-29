@@ -373,55 +373,53 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
         }
     }
 
+    /**************************************************/
+    long dquot = 0;
+    int32_t *lmb = monomial_basis_enlarged(bs->lml, bht->nv,
+                                           bexp_lm, &dquot);
 
+    /************************************************/
+    /************************************************/
+    fprintf(stderr, "nvars = %d\n", st->nvars);
+    fprintf(stderr, "dquot = %ld\n", dquot);
+    for(int32_t i = 0; i < dquot; i++){
+      fprintf(stderr, "[");
+      for(int32_t j = 0; j < st->nvars - 1; j++){
+        fprintf(stderr, "%d, ", lmb[j+i*st->nvars]);
+      }
+      fprintf(stderr, "%d], ", lmb[st->nvars - 1 + i*st->nvars]);
+    }
+    fprintf(stderr, "\n");
+    /************************************************/
+    /************************************************/
 
-        /**************************************************/
-        long dquot = 0;
-        int32_t *lmb = monomial_basis_enlarged(bs->lml, bht->nv,
-                                               bexp_lm, &dquot);
+    int nb = 0;
+    int32_t *ldeg = array_nbdegrees(bexp_lm, bs->lml, bht->nv, &nb);
+    fprintf(stderr, "nb = %d => ldeg = [", nb);
 
-        /************************************************/
-        /************************************************/
-        fprintf(stderr, "nvars = %d\n", st->nvars);
-        fprintf(stderr, "dquot = %ld\n", dquot);
-        for(int32_t i = 0; i < dquot; i++){
-          fprintf(stderr, "[");
-          for(int32_t j = 0; j < st->nvars - 1; j++){
-            fprintf(stderr, "%d, ", lmb[j+i*st->nvars]);
-          }
-          fprintf(stderr, "%d], ", lmb[st->nvars - 1 + i*st->nvars]);
-        }
-        fprintf(stderr, "\n");
-        /************************************************/
-        /************************************************/
+    /************************************************/
+    /************************************************/
+    for(int i = 0; i < nb; i++){
+      fprintf(stderr, "%d, ", ldeg[i]);
+    }
+    fprintf(stderr, "]\n");
+    /************************************************/
+    /************************************************/
 
-        int nb = 0;
-        int32_t *ldeg = array_nbdegrees(bexp_lm, bs->lml, bht->nv, &nb);
-        fprintf(stderr, "nb = %d => ldeg = [", nb);
+    int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
 
-        /************************************************/
-        /************************************************/
-        for(int i = 0; i < nb; i++){
-          fprintf(stderr, "%d, ", ldeg[i]);
-        }
-        fprintf(stderr, "]\n");
-        /************************************************/
-        /************************************************/
+    gb_modpoly_init(modgbs, 3, lens, bs->lml);
 
-        int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
+    modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb);
 
-        gb_modpoly_init(modgbs, 3, lens, bs->lml);
-
-        modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb);
-
-
-
-      free_basis(&(bs));
-      return lmb;
+    free_basis(&(bs));
+    return lmb;
 }
 
 
-static void gb_modular_trace_application(int32_t *num_gb,
+static void gb_modular_trace_application(gb_modpoly_t modgbs,
+                                         uint32_t *mgb,
+                                         int32_t *num_gb,
                                          int32_t **leadmons_ori,
                                          int32_t **leadmons_current,
 
@@ -477,6 +475,13 @@ static void gb_modular_trace_application(int32_t *num_gb,
     if(!equal_staircase(leadmons_current[i], leadmons_ori[i],
                        num_gb[i], num_gb[i], bht[i]->nv)){
       bad_primes[i] = 1;
+    }
+
+  }
+  for(i = 0; i < st->nprimes; i++){
+    if(!bad_primes[i] && bs[i] != NULL){
+      /* copy of data for multi-mod computation */
+      modpgbs_set(modgbs, bs[i], bht[i], lp->p[i], lmb_ori, dquot_ori, mgb);
     }
     if (bs[i] != NULL) {
       free_basis(&(bs[i]));

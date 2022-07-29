@@ -3015,15 +3015,12 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
   if(gens->field_char){
     lp->p[0] = gens->field_char;
   }
-  int32_t **blen_gb_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
-  int32_t **bstart_cf_gb_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
 
   int32_t *num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));
   int32_t **leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
   int32_t **leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
 
   int success = 1;
-  int squares = 1;
 
   int32_t *lmb_ori = gb_modular_trace_learning(num_gb, leadmons_ori,
                                                btrace[0],
@@ -3184,9 +3181,6 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
     if (bs[i] != NULL) {
       free_basis(&(bs[i]));
     }
-    free(blen_gb_xn[i]);
-    free(bstart_cf_gb_xn[i]);
-
     free(leadmons_ori[i]);
     free(leadmons_current[i]);
     free_trace(&btrace[i]);

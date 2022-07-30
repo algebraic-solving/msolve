@@ -237,6 +237,25 @@ static inline void add_row_with_signature(
     mat->ld++;
 }
 
+static inline void add_syzygy_schreyer(
+        crit_t *syz,
+        const hm_t sm,
+        const len_t si,
+        const ht_t * const ht
+        )
+{
+    while (syz[si].ld >= syz[si].sz) {
+        syz[si].sz *= 2;
+        syz[si].hm = realloc(syz[si].hm,
+                (unsigned long)syz[si].sz * sizeof(hm_t));
+        syz[si].sdm = realloc(syz[si].sdm,
+                (unsigned long)syz[si].sz * sizeof(sdm_t));
+    }
+    syz[si].hm[syz[si].ld]  = sm;
+    syz[si].sdm[syz[si].ld] = ht->hd[sm].sdm;
+    syz[si].ld++;
+}
+
 static inline crit_t *initialize_syzygies_schreyer(
         const bs_t * const bs,
         ht_t *ht

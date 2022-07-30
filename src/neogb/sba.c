@@ -362,6 +362,8 @@ int core_sba_schreyer(
         /* signature-reduce matrix */
         sba_linear_algebra_for_sba(smat, st);
 
+        /* add signature of rows that reduced to zero to syzygies */
+
         /* flag rows with new leading terms, i.e. non-multiples of
          * already known leading terms */
 

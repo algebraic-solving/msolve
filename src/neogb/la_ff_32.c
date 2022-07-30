@@ -2179,7 +2179,9 @@ static void probabilistic_sparse_reduced_echelon_form_ff_32(
 
 static void sba_echelon_form_ff_32(
         smat_t *smat,
-        stat_t *st
+        crit_t *syz,
+        stat_t *st,
+        const ht_t * const ht
         )
 {
     len_t i = 0, j, k;
@@ -2218,7 +2220,9 @@ static void sba_echelon_form_ff_32(
         npiv = sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
                 dr, smat, pivs, npiv[SM_OFFSET], sm, si, i, st);
         if (!npiv) {
-            break;
+            /* row s-reduced to zero, add syzygy and go on with next row */
+            add_syzygy_schreyer(syz, sm, si, ht);
+            continue;
         }
 
         /* normalize coefficient array
@@ -3603,7 +3607,9 @@ static void probabilistic_sparse_linear_algebra_ff_32(
 
 static void sba_linear_algebra_ff_32(
         smat_t *smat,
-        stat_t *st
+        crit_t *syz,
+        stat_t *st,
+        const ht_t * const ht
         )
 {
     /* timings */
@@ -3614,7 +3620,7 @@ static void sba_linear_algebra_ff_32(
     smat->curr_cf32 = realloc(smat->curr_cf32,
             (unsigned long)mat->ld * sizeof(cf32_t *));
 
-    sba_echelon_form_ff_32(smat, st);
+    sba_echelon_form_ff_32(smat, syz, st, ht);
 
     /* timings */
     ct1 = cputime();

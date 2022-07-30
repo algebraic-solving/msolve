@@ -378,15 +378,8 @@ int core_sba_schreyer(
         /* map hashes to columns */
         convert_hashes_to_columns_sba(&hcm, smat, st, ht);
 
-        /* signature-reduce matrix */
-        sba_linear_algebra_for_sba(smat, st);
-
-        /* add signature of rows that reduced to zero to syzygies */
-
-        /* flag rows with new leading terms, i.e. non-multiples of
-         * already known leading terms */
-
-        /* fully reduce elements with new leading terms */
+        /* s-reduce matrix and add syzygies when rows s-reduce to zero */
+        sba_linear_algebra_for_sba(smat, syz, st, ht);
 
         /* maps columns to hashes
          * NOTE: Reset hash table indices to zero in here! */
@@ -414,6 +407,8 @@ int core_sba_schreyer(
         printf("-------------------------------------------------\
                 ----------------------------------------\n");
     }
+    /* TODO: fully reduce elements in basis. */
+
     if (st->nev > 0) {
         len_t j = 0;
         for (len_t i = 0; i < bs->lml; ++i) {

@@ -292,6 +292,23 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
   return 1;
 }
 
+static inline int32_t maxbitsize_gens(data_gens_ff_t *gens, len_t ngens){
+  if(gens->field_char != 0){
+    return -1;
+  }
+  const int32_t *lens = gens->lens;
+  mpz_t **cfs = gens->mpz_cfs;
+  int32_t off = 0;
+  int32_t mbs = 0;
+  for(int32_t i = 0; i < ngens; i++){
+    for(int32_t j = off; j < off + lens[i]; ++j){
+      mbs = MAX(mbs,
+                mpz_sizeinbase(*(cfs[2*j]), 2) + mpz_sizeinbase(*(cfs[2*j+1]), 2));
+    }
+    off += lens[i];
+  }
+  return mbs;
+}
 
 static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            uint32_t *mgb,
@@ -308,6 +325,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            int *dim,
                                            long *dquot_ori,
                                            data_gens_ff_t *gens,
+                                           int32_t maxbitsize,
                                            files_gb *files,
                                            int *success)
 {
@@ -408,7 +426,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
 
-    gb_modpoly_init(modgbs, 3, lens, bs->lml);
+    gb_modpoly_init(modgbs, maxbitsize, lens, bs->lml);
 
     modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb);
 

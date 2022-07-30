@@ -3023,6 +3023,9 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
   int success = 1;
   gb_modpoly_t modgbs;
   uint32_t *mgb = calloc(sizeof(uint32_t), bht->nv);
+  int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
+  fprintf(stderr, "MAX BIT SIZE COEFFS = %d\n", maxbitsize);
+
   int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                mgb,
                                                num_gb, leadmons_ori,
@@ -3032,7 +3035,7 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
                                                info_level,
                                                print_gb,
                                                dim_ptr, dquot_ptr,
-                                               gens,
+                                               gens, maxbitsize,
                                                files,
                                                &success);
   display_gbmodpoly(stderr, modgbs);

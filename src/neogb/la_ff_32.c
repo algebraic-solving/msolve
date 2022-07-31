@@ -2186,6 +2186,9 @@ static void sba_echelon_form_ff_32(
 {
     len_t i = 0, j, k;
 
+    /* row index, might differ from i if we encounter zero reductions */
+    len_t ri;
+
     const len_t nc  = smat->nc;
     const len_t nr  = smat->ld;
 
@@ -2197,7 +2200,7 @@ static void sba_echelon_form_ff_32(
 
     /* TODO: At the moment I do not see how to make this parallel due to
      * reduction dependencies on the signatures. */
-    for (i = 0; i < nr; ++i) {
+    for (ri = 0, i = 0; i < nr; ++i) {
         hm_t *npiv      = smat->cols[i];
         cf32_t *cfs     = smat->prev_cf32[npiv[SM_CFS]];
         const hm_t sm   = npiv[SM_SMON]
@@ -2217,14 +2220,16 @@ static void sba_echelon_form_ff_32(
             dr[ds[j+3]]  = (int64_t)cfs[j+3];
         }
         sc  = npiv[SM_OFFSET];
+        free(npiv);
         npiv = sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
-                dr, smat, pivs, npiv[SM_OFFSET], sm, si, i, st);
+                dr, smat, pivs, npiv[SM_OFFSET], sm, si, ri, st);
         if (!npiv) {
             /* row s-reduced to zero, add syzygy and go on with next row */
             add_syzygy_schreyer(syz, sm, si, ht);
             continue;
         }
 
+        ri++;
         /* normalize coefficient array
          * NOTE: this has to be done here, otherwise the reduction may
          * lead to wrong results in a parallel computation since other
@@ -2242,11 +2247,8 @@ static void sba_echelon_form_ff_32(
         free(smat->prev_cf32[smat->cols[i][SM_CFS]]);
         smat->prev_cf32[smat->cols[i][SM_CFS]] = NULL;
     }
-    /* we do not need the old pivots anymore */
-    for (i = 0; i < ncl; ++i) {
-        free(pivs[i]);
-        pivs[i] = NULL;
-    }
+    /* adjust number of rows stored in matrix */
+    smat->ld = ri;
 
     free(pivs);
     pivs = NULL;

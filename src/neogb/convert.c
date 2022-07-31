@@ -206,7 +206,7 @@ static void convert_hashes_to_columns_sat(
 }
 
 
-static void convert_hashes_to_columns_sba(
+static void sba_convert_hashes_to_columns(
         hi_t **hcmp,
         smat_t *smat,
         stat_t *st,
@@ -232,8 +232,6 @@ static void convert_hashes_to_columns_sba(
     hd_t *hd        = ht->hd;
     hm_t **cols     = smat->cols;
 
-    /* all elements in the sht hash table represent
-     * exactly one column of the matrix */
     hcm = realloc(hcm, (unsigned long)eld * sizeof(hi_t));
     k = 0;
     for (i = 0; i < nr; ++i) {
@@ -426,6 +424,20 @@ static void convert_hashes_to_columns(
         fflush(stdout);
     }
     *hcmp = hcm;
+}
+
+static void sba_convert_columns_to_hashes(
+        smat_t *smat,
+        const hi_t * const hcm
+        )
+{
+    len_t i, j;
+
+    for (i = 0; i < smat->ld; ++i) {
+        for (j = SM_OFFSET; j < bs->hm[i][SM_LEN]+SM_OFFSET; ++j) {
+            smat->cols[i][j]  = hcm[smat->cols[i][j]];
+        }
+    }
 }
 
 static void convert_columns_to_hashes(

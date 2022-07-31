@@ -376,13 +376,15 @@ int core_sba_schreyer(
         sort_matrix_rows_by_increasing_signature(smat, ht);
 
         /* map hashes to columns */
-        convert_hashes_to_columns_sba(&hcm, smat, st, ht);
+        sba_convert_hashes_to_columns(&hcm, smat, st, ht);
 
         /* s-reduce matrix and add syzygies when rows s-reduce to zero */
-        sba_linear_algebra_for_sba(smat, syz, st, ht);
+        sba_linear_algebra(smat, syz, st, ht);
 
-        /* maps columns to hashes
-         * NOTE: Reset hash table indices to zero in here! */
+        /* maps columns to hashes */
+        sba_convert_columns_to_hashes(smat, hcm);
+
+        /* NOTE: Reset hash table indices to zero in here! */
         ht->elo = ht->eld;
 
         /* add new elements to basis */

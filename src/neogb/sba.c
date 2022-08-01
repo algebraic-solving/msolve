@@ -493,19 +493,21 @@ int core_sba_schreyer(
         printf("-------------------------------------------------\
                 ----------------------------------------\n");
     }
-    /* TODO: fully reduce elements in basis. */
-
-    if (st->nev > 0) {
-        len_t j = 0;
-        for (len_t i = 0; i < bs->lml; ++i) {
-            if (ht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
-                bs->lm[j]   = bs->lm[i];
-                bs->lmps[j] = bs->lmps[i];
-                ++j;
-            }
+    /* fully reduce elements in basis. */
+    if (st->reduce_gb == 1) {
+        /* prepare basis data to apply final reduction process */
+        for (len_t i = 0; i < bs->ld; ++i) {
+            bs->lm[i]   = ht->hd[bs->hm[i][SM_OFFSET]].sdm;
+            bs->lmps[i] = i;
         }
-        bs->lml = j;
+        bs->lml = bs->ld;
+
+        ht_t *sht = initialize_secondary_hash_table(bht, st);
+        /* note: bht will become sht, and sht will become NULL,
+         * thus we need pointers */
+        reduce_basis(bs, mat, &hcm, &bht, &sht, st);
     }
+
 
     *bsp    = bs;
     *htp    = ht;

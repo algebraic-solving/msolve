@@ -478,20 +478,19 @@ int core_sba_schreyer(
         /* add new elements to basis */
         ne = sba_add_new_elements_to_basis(smat, ht, bs, st);
 
-        /* free psmat */
+        /* free psmat, all entries should be already freed */
+        free(psmat);
+        psmat = NULL;
 
-
-        /* if we found a constant we are done, so remove all remaining pairs */
-        if (bs->constant  == 1) {
+        /* if we found a constant we are done, if we have added no new elements
+         * we assume we are done*/
+        if (bs->constant  == 1 || ne == 0) {
             try_termination =   1;
         }
         rrt1 = realtime();
         if (st->info_level > 1) {
             printf("%13.2f sec\n", rrt1-rrt0);
         }
-
-        /* TODO: termination check, like no new elements the last rounds, etc. */
-
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\

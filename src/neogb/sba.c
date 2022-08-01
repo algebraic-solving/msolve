@@ -57,6 +57,94 @@ static inline void free_signature_criteria(
     *critp  =   crit;
 }
 
+static len_t sba_add_new_elements_to_basis(
+        const smat_t * const smat,
+        const ht_t * const ht,
+        bs_t *bs,
+        const stat_t * const st
+        )
+{
+    len_t i, j, k, ne;
+
+    const len_t nr  = smat->ld;
+    const len_t bld = bs->ld;
+
+    bs->lo = bld;
+
+    /* row indices of new elements are getting precached */
+    len_t *rine = calloc((unsigned long)smat->ld, sizeof(len_t));
+
+    k = 0;
+    i = 0;
+next:
+    for (; i < ld; ++i) {
+        const hm_t lm = smat->cols[i][SM_OFFSET];
+        for (j = 0; j < bld; ++j) {
+            if (check_monomial_division(bs->hm[j][SM_OFFSET], lm, ht) == 1) {
+                goto next;
+            }
+        }
+        rine[k++] = i;
+    }
+    check_enlarge_basis(bs, k, st);
+
+    /* now enter elements to basis */
+    for (i = 0; i < k; ++i) {
+        bs->hm[bs->ld] = (hm_t *)malloc(
+                (unsigned long)(smat->cols[rine[i]i][SM_LEN])+SM_OFFSET *
+                sizeof(hm_t));
+        memcpy(bs->hm[bs->ld], sat->cols[rine[i]],
+                (unsigned long)(smat->cols[rine[i]][SM_LEN])+SM_OFFSET *
+                sizeof(hm_t));
+        bs->cf_32[bs->ld] = (cf32_t *)malloc(
+                (unsigned long)(smat->cols[rine[i]][SM_LEN]) *
+                sizeof(cf32_t));
+        memcpy(bs->cf_32[bs->ld], sat->cur_cf32[rine[i]],
+                (unsigned long)(smat->cols[rine[i]][SM_LEN]) * sizeof(cf32_t));
+        bs->ld++;
+    }
+
+    free(rine);
+    rine = NULL;
+
+    /* check number of new elements here, later on bs->ld might change */
+    ne = k;
+
+    /* If the input is NOT homogeneous, check if the new elements in
+     * the basis makes older elements redundant. */
+    if (st->homogeneous != 1) {
+        /* Note: Now, bs->ld is the new load of the basis after adding
+         * new elements, bld was set before thus it represents the old
+         * load of the basis. */
+        const len_t bln = bs->ld;
+        k = 0;
+        for (i = 0; i < bld; ++i) {
+            for (j = blo; j < bln; ++j) {
+                const hm_t lm = bs->hm[i][SM_OFFSET];
+                if (check_monomial_division(bs->hm[j][SM_OFFSET], lm, ht) == 1) {
+                    free(bs->hm[i]);
+                    bs->hm[i] = NULL;
+                    free(bs->cf_32[i]);
+                    bs->cf_32[i] = NULL;
+                }
+                bs->hm[k]    = bs->hm[i];
+                bs->cf_32[k] = bs->cf_32[i];
+                k++;
+            }
+        }
+        /* now add new elements correctly in minimized basis */
+        for (i = blo; i < bln; ++i) {
+            bs->hm[k]    = bs->hm[i];
+            bs->cf_32[k] = bs->cf_32[i];
+            k++;
+        }
+        bs->ld = k;
+    }
+    /* TODO: check divisibility and set lml, etc. correctly in here */
+
+    return ne;
+}
+
 static int is_signature_needed(
         const smat_t * const smat,
         const crit_t * const syz,
@@ -388,7 +476,7 @@ int core_sba_schreyer(
         ht->elo = ht->eld;
 
         /* add new elements to basis */
-
+        ne = sba_add_new_elements_to_basis(smat, ht, bs, st);
 
         /* free psmat */
 

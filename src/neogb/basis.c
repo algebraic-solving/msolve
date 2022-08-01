@@ -187,7 +187,7 @@ bs_t *initialize_basis(
 void check_enlarge_basis(
         bs_t *bs,
         const len_t added,
-        const stat_t *st
+        const stat_t * const st
         )
 {
     if (bs->ld + added >= bs->sz) {

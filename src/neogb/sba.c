@@ -384,6 +384,31 @@ static inline void initialize_signatures_not_schreyer(
     }
 }
 
+void sba_prepare_next_degree(
+        smat **psmatp,
+        smat_t **smatp,
+        const stat_t * const st)
+{
+    smat_t *psmat = *psmatp;
+    smat_t *smat  = *smatp;
+    psmat = smat;
+
+    /* reset smat data */
+    smat->cols      = NULL;
+    smat->prev_cf32 = NULL;
+    smat->curr_cf32 = NULL;
+    smat->ld = smat->sz = smat->nz = smat->nc = 0;
+
+    smat->sz        = psmat->ld * st->nvars + in->ld;
+    smat->cols      = (hm_t **)calloc(
+            (unsigned long)smat->sz,sizeof(hm_t *));
+    smat->prev_cf32 = (cf32_t **)calloc(
+            (unsigned long)psmat->ld,sizeof(cf32_t *));
+
+    *psmatp = psmat;
+    *smatp  = smat;
+}
+
 int core_sba_schreyer(
         bs_t **bsp,
         ht_t **htp,
@@ -433,14 +458,7 @@ int core_sba_schreyer(
         st->current_rd++;
 
         /* prepare signature matrix for next degree */
-        psmat   =   smat;
-        smat    =   (smat_t *)calloc(1, sizeof(smat_t));
-
-        smat->sz        =   psmat->ld * st->nvars + in->ld;
-        smat->cols      =   (hm_t **)calloc(
-                (unsigned long)smat->sz,sizeof(hm_t *));
-        smat->prev_cf32 =   (cf32_t **)calloc(
-                (unsigned long)psmat->ld,sizeof(cf32_t *));
+        sba_prepare_next_degree(&psmat, &smat, st);
 
         /* check if we have initial generators not handled in lower degree
          * until now */

@@ -24,6 +24,13 @@
 
 #include "data.h"
 
+inline void add_syzygy_schreyer(
+        crit_t *syz,
+        const hm_t sm,
+        const len_t si,
+        const ht_t * const ht
+        );
+
 int core_sba_schreyer(
         bs_t **bsp,
         ht_t **bhtp,

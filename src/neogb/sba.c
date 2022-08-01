@@ -210,8 +210,6 @@ static inline void enlarge_signature_matrix(
                 smat->curr_cf32, (unsigned long)smat->sz * sizeof(cf32_t *));
         smat->prev_cf32 = realloc(
                 smat->prev_cf32, (unsigned long)smat->sz * sizeof(cf32_t *));
-        smat->bs_cf32 = realloc(
-                smat->bs_cf32, (unsigned long)smat->sz * sizeof(cf32_t *));
 }
 
 static inline void check_enlarge_rewrite_rule_array(
@@ -255,7 +253,6 @@ static void add_row_to_signature_matrix(
     const len_t ld      =   smat->ld;
     smat->prev_cf32[ld] =   psmat->curr_cf32[idx];
     smat->curr_cf32[ld] =   NULL;
-    smat->bs_cf32[ld]   =   NULL;
     /* copy monomial entries in row */
     smat->cols[ld]  =   malloc(
             ((unsigned long)psmat->cols[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
@@ -520,6 +517,7 @@ int core_sba_schreyer(
     free_signature_criteria(&rew, st);
 
     /* TODO: free signature matrices! */
+
 
     return 1;
 }

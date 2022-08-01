@@ -302,24 +302,24 @@ static void add_multiples_of_previous_degree_row(
 }
 
 static inline void add_row_with_signature(
-        smat_t *mat,
+        smat_t *smat,
         const bs_t * const bs,
         const len_t pos
         )
 {
-    const len_t ld          =   mat->ld;
+    const len_t ld          =   smat->ld;
     const unsigned long len =   bs->hm[pos][LENGTH];
-    mat->cols[ld]           =   (hm_t *)malloc(
+    smat->cols[ld]           =   (hm_t *)malloc(
             (len + SM_OFFSET) * sizeof(hm_t));
     /* copy polynomial data */
-    memcpy(mat->cols[ld]+SM_CFS,bs->hm[pos]+COEFFS,
+    memcpy(smat->cols[ld]+SM_CFS,bs->hm[pos]+COEFFS,
             len + OFFSET - COEFFS);
-    mat->prev_cf32[ld]      =   bs->cf_32[bs->hm[pos][COEFFS]];
-    mat->cols[ld][SM_CFS]   =   ld;
+    smat->prev_cf32[ld]      =   bs->cf_32[bs->hm[pos][COEFFS]];
+    smat->cols[ld][SM_CFS]   =   ld;
     /* store also signature data */
-    mat->cols[ld][SM_SMON]  =   bs->sm[pos];
-    mat->cols[ld][SM_SIDX]  =   bs->si[pos];
-    mat->ld++;
+    smat->cols[ld][SM_SMON]  =   bs->sm[pos];
+    smat->cols[ld][SM_SIDX]  =   bs->si[pos];
+    smat->ld++;
 }
 
 inline void add_syzygy_schreyer(
@@ -384,7 +384,7 @@ static inline void initialize_signatures_not_schreyer(
     }
 }
 
-void sba_prepare_next_degree(
+static void sba_prepare_next_degree(
         smat **psmatp,
         smat_t **smatp,
         const stat_t * const st)
@@ -407,6 +407,38 @@ void sba_prepare_next_degree(
 
     *psmatp = psmat;
     *smatp  = smat;
+}
+
+static void check_initial_generators(
+        smat_t *smat,
+        bs_t *in
+        )
+{
+    while (in->ld > 0 && in->hm[in->ld-1][DEG] == next_degree) {
+        add_row_with_signature(smat, in, in->ld-1);
+        free(in->hm[in->ld]);
+        in->hm[in->ld] = NULL;
+        free(in->cf_32[in->ld]);
+        in->cf_32[in->ld] = NULL;
+        in->ld--;
+    }
+}
+
+static void generate_next_degree_matrix(
+        smat_t *smat,
+        smat_t *psmat,
+        const crit_t * const syz,
+        crit_t *rew,
+        ht_t *ht,
+        stat_t *st
+        )
+{
+    for (len_t i = psmat->ld; i > 0 ; --i) {
+        add_multiples_of_previous_degree_row(
+                smat, psmat, i-1, syz, rew, ht, st);
+        free(psmat->cols[i-1]);
+        psmat->cols[i-1]  =   NULL;
+    }
 }
 
 int core_sba_schreyer(
@@ -462,18 +494,11 @@ int core_sba_schreyer(
 
         /* check if we have initial generators not handled in lower degree
          * until now */
-        while (in->ld > 0 && in->hm[in->ld-1][DEG] == next_degree) {
-            add_row_with_signature(smat, in, in->ld-1);
-            in->ld--;
-        }
+        check_initial_generators(smat, in);
+
         /* generate rows from previous degree matrix, start with the highest
          * signatures in order to get an efficient rewrite criterion test */
-        for (len_t i = psmat->ld; i > 0 ; --i) {
-            add_multiples_of_previous_degree_row(
-                    smat, psmat, i-1, syz, rew, ht, st);
-            free(psmat->cols[i-1]);
-            psmat->cols[i-1]  =   NULL;
-        }
+        generate_next_degree_matrix(smat, psmat, syz, rew, ht, st);
 
         /* sort matrix rows by increasing signature */
         sort_matrix_rows_by_increasing_signature(smat, ht);

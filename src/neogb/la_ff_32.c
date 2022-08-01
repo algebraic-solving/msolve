@@ -674,8 +674,7 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
     int32_t fnzc        = -1; /* first non zero column */
     const int64_t mod   = (int64_t)st->fc;
     const int64_t mod2  = (int64_t)st->fc * st->fc;
-    const len_t nc      = mat->nc;
-    cf32_t * const * const mcf  = mat->cf_32;
+    const len_t nc      = smat->nc;
 #ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
     __m256i cmpv, redv, drv, mulv, prodv, resv, rresv;
@@ -702,7 +701,7 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
         /* found reducer row, get multiplier */
         const int64_t mul = (int64_t)dr[i];
         dts = pivs[i];
-        cfs = smat->cur_cf32[dts[SM_CFS]];
+        cfs = smat->curr_cf32[dts[SM_CFS]];
 
 #ifdef HAVE_AVX2
         const len_t len = dts[SM_LEN];
@@ -796,7 +795,7 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
     smat->cols[ri][SM_PRE] = j % UNROLL;
     smat->cols[ri][SM_LEN] = j;
 
-    smat->cur_cf32[ri]  = cf;
+    smat->curr_cf32[ri] = cf;
 
     return smat->cols[ri];
 }
@@ -2184,7 +2183,7 @@ static void sba_echelon_form_ff_32(
         const ht_t * const ht
         )
 {
-    len_t i = 0, j, k;
+    len_t i, j;
 
     /* row index, might differ from i if we encounter zero reductions */
     len_t ri;
@@ -2203,12 +2202,11 @@ static void sba_echelon_form_ff_32(
     for (ri = 0, i = 0; i < nr; ++i) {
         hm_t *npiv      = smat->cols[i];
         cf32_t *cfs     = smat->prev_cf32[npiv[SM_CFS]];
-        const hm_t sm   = npiv[SM_SMON]
-        const len_t si  = npiv[SM_SIDX]
+        const hm_t sm   = npiv[SM_SMON];
+        const len_t si  = npiv[SM_SIDX];
         const len_t os  = npiv[SM_PRE];
         const len_t len = npiv[SM_LEN];
         const hm_t * const ds = npiv + SM_OFFSET;
-        k = 0;
         memset(dr, 0, (unsigned long)nc * sizeof(int64_t));
         for (j = 0; j < os; ++j) {
             dr[ds[j]]  = (int64_t)cfs[j];
@@ -2219,7 +2217,6 @@ static void sba_echelon_form_ff_32(
             dr[ds[j+2]]  = (int64_t)cfs[j+2];
             dr[ds[j+3]]  = (int64_t)cfs[j+3];
         }
-        sc  = npiv[SM_OFFSET];
         free(npiv);
         npiv = sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
                 dr, smat, pivs, npiv[SM_OFFSET], sm, si, ri, st);
@@ -2234,9 +2231,9 @@ static void sba_echelon_form_ff_32(
          * NOTE: this has to be done here, otherwise the reduction may
          * lead to wrong results in a parallel computation since other
          * threads might directly use the new pivot once it is synced. */
-        if (smat->cur_cf32[npiv[SM_CFS]][0] != 1) {
+        if (smat->curr_cf32[npiv[SM_CFS]][0] != 1) {
             normalize_sparse_matrix_row_ff_32(
-                    smat->cur_cf32[npiv[SM_CFS]], npiv[SM_PRE],
+                    smat->curr_cf32[npiv[SM_CFS]], npiv[SM_PRE],
                     npiv[SM_LEN], st->fc);
         }
         pivs[npiv[SM_OFFSET]] = npiv;
@@ -2247,7 +2244,9 @@ static void sba_echelon_form_ff_32(
         free(smat->prev_cf32[smat->cols[i][SM_CFS]]);
         smat->prev_cf32[smat->cols[i][SM_CFS]] = NULL;
     }
-    /* adjust number of rows stored in matrix */
+    /* get number of zero reductions and adjust number of
+     * rows stored in matrix */
+    smat->nz = smat->ld - ri;
     smat->ld = ri;
 
     free(pivs);
@@ -3620,7 +3619,7 @@ static void sba_linear_algebra_ff_32(
     rt0 = realtime();
 
     smat->curr_cf32 = realloc(smat->curr_cf32,
-            (unsigned long)mat->ld * sizeof(cf32_t *));
+            (unsigned long)smat->ld * sizeof(cf32_t *));
 
     sba_echelon_form_ff_32(smat, syz, st, ht);
 
@@ -3630,11 +3629,7 @@ static void sba_linear_algebra_ff_32(
     st->la_ctime  +=  ct1 - ct0;
     st->la_rtime  +=  rt1 - rt0;
 
-    st->num_zerored += (mat->nrl - mat->np);
-    if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
-    }
+    st->num_zerored += smat->nz;
 }
 
 static void exact_sparse_linear_algebra_ff_32(

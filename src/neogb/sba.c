@@ -322,7 +322,7 @@ static inline void add_row_with_signature(
     mat->ld++;
 }
 
-static inline void add_syzygy_schreyer(
+inline void add_syzygy_schreyer(
         crit_t *syz,
         const hm_t sm,
         const len_t si,
@@ -474,6 +474,10 @@ int core_sba_schreyer(
 
         /* add new elements to basis */
         ne = sba_add_new_elements_to_basis(smat, ht, bs, st);
+        if (st->info_level > 1) {
+            printf("%7d new %7d zero", ne, smat->nz);
+            fflush(stdout);
+        }
 
         /* free psmat, all entries should be already freed */
         free(psmat);

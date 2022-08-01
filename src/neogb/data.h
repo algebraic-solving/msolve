@@ -237,7 +237,8 @@ struct smat_t
     cf32_t **prev_cf32; // coefficients from previous degree matrix
     len_t sz;           // number of rows memory is allocated for
     len_t ld;           // number of rows stored
-    len_t nc;
+    len_t nc;           // number of columns
+    len_t nz;           // number of zero reductions
 };
 
 /* tracer stuff */
@@ -479,6 +480,17 @@ extern cf32_t *(*reduce_dense_row_by_old_pivots_ff_32)(
         hm_t * const * const pivs,
         const hi_t dpiv,
         const uint32_t fc
+        );
+
+extern hm_t *(*sba_reduce_dense_row_by_known_pivots_sparse_ff_32)(
+        int64_t *dr,
+        smat_t *smat,
+        hm_t *const *pivs,
+        const hi_t dpiv,    /* pivot of dense row at the beginning */
+        const hm_t sm,      /* signature monomial of row reduced */
+        const len_t si,     /* signature index of row reduced */
+        const len_t ri,     /* index of row in matrix */
+        stat_t *st
         );
 
 extern hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(

@@ -225,8 +225,6 @@ static void sba_convert_hashes_to_columns(
     ct0 = cputime();
     rt0 = realtime();
 
-    len_t hi;
-
     const len_t nr  = smat->ld;
     const hl_t eld  = ht->eld;
     hd_t *hd        = ht->hd;
@@ -235,11 +233,11 @@ static void sba_convert_hashes_to_columns(
     hcm = realloc(hcm, (unsigned long)eld * sizeof(hi_t));
     k = 0;
     for (i = 0; i < nr; ++i) {
-        len = SM_OFFSET + cols[i][SM_LEN];
+        const len_t len = SM_OFFSET + cols[i][SM_LEN];
         for (j = SM_OFFSET; j < len; ++j) {
-            if (hd[cols[j]].idx != 0) {
-                hd[cols[j]].idx = 1;
-                hcm[k++] = cols[j];
+            if (hd[cols[i][j]].idx != 0) {
+                hd[cols[i][j]].idx = 1;
+                hcm[k++] = cols[i][j];
             }
         }
     }
@@ -259,7 +257,7 @@ static void sba_convert_hashes_to_columns(
      * } */
 
     /* store the other direction (hash -> column) */
-    const hi_t ld = k
+    const hi_t ld = k;
     for (i = 0; i < ld; ++i) {
         hd[hcm[i]].idx = (hi_t)i;
     }
@@ -269,7 +267,7 @@ static void sba_convert_hashes_to_columns(
     for (i = 0; i < nr; ++i) {
         const len_t os  = cols[i][SM_PRE];
         const len_t len = cols[i][SM_LEN];
-        row = rrows[k] + SM_OFFSET;
+        row = cols[i] + SM_OFFSET;
         for (j = 0; j < os; ++j) {
             row[j]  = hd[row[j]].idx;
         }
@@ -284,7 +282,7 @@ static void sba_convert_hashes_to_columns(
 
     /* compute density of matrix */
     nterms  *=  100; /* for percentage */
-    double density = (double)nterms / (double)mnr / (double)mat->nc;
+    double density = (double)nterms / (double)nr / (double)smat->nc;
 
     /* timings */
     ct1 = cputime();
@@ -434,7 +432,8 @@ static void sba_convert_columns_to_hashes(
     len_t i, j;
 
     for (i = 0; i < smat->ld; ++i) {
-        for (j = SM_OFFSET; j < bs->hm[i][SM_LEN]+SM_OFFSET; ++j) {
+        const len_t len = smat->cols[i][SM_LEN] + SM_OFFSET;
+        for (j = SM_OFFSET; j < len; ++j) {
             smat->cols[i][j]  = hcm[smat->cols[i][j]];
         }
     }

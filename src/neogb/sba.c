@@ -77,7 +77,7 @@ static len_t sba_add_new_elements_to_basis(
     k = 0;
     i = 0;
 next:
-    for (; i < ld; ++i) {
+    for (; i < nr; ++i) {
         const hm_t lm = smat->cols[i][SM_OFFSET];
         for (j = 0; j < bld; ++j) {
             if (check_monomial_division(bs->hm[j][SM_OFFSET], lm, ht) == 1) {
@@ -91,15 +91,15 @@ next:
     /* now enter elements to basis */
     for (i = 0; i < k; ++i) {
         bs->hm[bs->ld] = (hm_t *)malloc(
-                (unsigned long)(smat->cols[rine[i]i][SM_LEN])+SM_OFFSET *
+                (unsigned long)(smat->cols[rine[i]][SM_LEN])+SM_OFFSET *
                 sizeof(hm_t));
-        memcpy(bs->hm[bs->ld], sat->cols[rine[i]],
+        memcpy(bs->hm[bs->ld], smat->cols[rine[i]],
                 (unsigned long)(smat->cols[rine[i]][SM_LEN])+SM_OFFSET *
                 sizeof(hm_t));
         bs->cf_32[bs->ld] = (cf32_t *)malloc(
                 (unsigned long)(smat->cols[rine[i]][SM_LEN]) *
                 sizeof(cf32_t));
-        memcpy(bs->cf_32[bs->ld], sat->cur_cf32[rine[i]],
+        memcpy(bs->cf_32[bs->ld], smat->curr_cf32[rine[i]],
                 (unsigned long)(smat->cols[rine[i]][SM_LEN]) * sizeof(cf32_t));
         bs->ld++;
     }
@@ -119,8 +119,8 @@ next:
         const len_t bln = bs->ld;
         k = 0;
         for (i = 0; i < bld; ++i) {
-            for (j = blo; j < bln; ++j) {
-                const hm_t lm = bs->hm[i][SM_OFFSET];
+            const hm_t lm = bs->hm[i][SM_OFFSET];
+            for (j = bld; j < bln; ++j) {
                 if (check_monomial_division(bs->hm[j][SM_OFFSET], lm, ht) == 1) {
                     free(bs->hm[i]);
                     bs->hm[i] = NULL;
@@ -133,7 +133,7 @@ next:
             }
         }
         /* now add new elements correctly in minimized basis */
-        for (i = blo; i < bln; ++i) {
+        for (i = bld; i < bln; ++i) {
             bs->hm[k]    = bs->hm[i];
             bs->cf_32[k] = bs->cf_32[i];
             k++;
@@ -233,7 +233,7 @@ static inline void add_rewrite_rule(
         )
 {
     const len_t sidx    =   smat->cols[smat->ld-1][SM_SIDX];
-    check_enlarge_rewrite_rule_array(rw, sidx);
+    check_enlarge_rewrite_rule_array(rew, sidx);
     rew[sidx].hm[rew[sidx].ld]  =   smat->cols[smat->ld-1][SM_SMON];
     rew[sidx].sdm[rew[sidx].ld] =   ht->hd[smat->cols[smat->ld-1][SM_SMON]].sdm;
     rew[sidx].ld++;
@@ -385,8 +385,9 @@ static inline void initialize_signatures_not_schreyer(
 }
 
 static void sba_prepare_next_degree(
-        smat **psmatp,
+        smat_t **psmatp,
         smat_t **smatp,
+        const bs_t * const in,
         const stat_t * const st)
 {
     smat_t *psmat = *psmatp;
@@ -414,6 +415,8 @@ static void check_initial_generators(
         bs_t *in
         )
 {
+    int32_t next_degree = in->hm[in->ld-1][DEG];
+
     while (in->ld > 0 && in->hm[in->ld-1][DEG] == next_degree) {
         add_row_with_signature(smat, in, in->ld-1);
         free(in->hm[in->ld]);
@@ -441,6 +444,36 @@ static void generate_next_degree_matrix(
     }
 }
 
+static void sba_final_reduction_step(
+        bs_t *bs,
+        ht_t **htp,
+        hi_t *hcm,
+        stat_t *st
+        )
+{
+    ht_t *ht = *htp;
+
+    /* prepare basis data to apply final reduction process */
+    for (len_t i = 0; i < bs->ld; ++i) {
+        bs->lm[i]   = ht->hd[bs->hm[i][SM_OFFSET]].sdm;
+        bs->lmps[i] = i;
+    }
+    bs->lml = bs->ld;
+
+    ht_t *sht  = initialize_secondary_hash_table(ht, st);
+    mat_t *mat = (mat_t *)calloc(1, sizeof(mat_t));
+    /* note: bht will become sht, and sht will become NULL,
+     * thus we need pointers */
+    reduce_basis(bs, mat, &hcm, &ht, &sht, st);
+    if (sht != NULL) {
+        free_hash_table(&sht);
+    }
+    free(mat);
+    mat = NULL;
+
+    *htp = ht;
+}
+
 int core_sba_schreyer(
         bs_t **bsp,
         ht_t **htp,
@@ -454,6 +487,7 @@ int core_sba_schreyer(
     /* timings for one round */
     double rrt0, rrt1;
 
+    len_t ne = 0; /* tracks new elements for basis in each round */
     int try_termination =   0;
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
@@ -474,7 +508,6 @@ int core_sba_schreyer(
     sort_r(in->hm, (unsigned long)in->ld, sizeof(hm_t *),
             initial_input_cmp_sig, ht);
 
-    int32_t next_degree =   in->hm[in->ld-1][DEG];
     if (st->info_level > 1) {
         printf("\ndeg     sel   pairs        mat          density \
                 new data             time(rd)\n");
@@ -490,7 +523,7 @@ int core_sba_schreyer(
         st->current_rd++;
 
         /* prepare signature matrix for next degree */
-        sba_prepare_next_degree(&psmat, &smat, st);
+        sba_prepare_next_degree(&psmat, &smat, in, st);
 
         /* check if we have initial generators not handled in lower degree
          * until now */
@@ -522,10 +555,6 @@ int core_sba_schreyer(
             fflush(stdout);
         }
 
-        /* free psmat, all entries should be already freed */
-        free(psmat);
-        psmat = NULL;
-
         /* if we found a constant we are done, if we have added no new elements
          * we assume we are done*/
         if (bs->constant  == 1 || ne == 0) {
@@ -536,23 +565,16 @@ int core_sba_schreyer(
             printf("%13.2f sec\n", rrt1-rrt0);
         }
     }
+    /* Note: We cannot free all signature related data at this point, maybe
+     * we terminated too early and need to further compute in higher degrees. */
+
     if (st->info_level > 1) {
         printf("-------------------------------------------------\
                 ----------------------------------------\n");
     }
     /* fully reduce elements in basis. */
     if (st->reduce_gb == 1) {
-        /* prepare basis data to apply final reduction process */
-        for (len_t i = 0; i < bs->ld; ++i) {
-            bs->lm[i]   = ht->hd[bs->hm[i][SM_OFFSET]].sdm;
-            bs->lmps[i] = i;
-        }
-        bs->lml = bs->ld;
-
-        ht_t *sht = initialize_secondary_hash_table(bht, st);
-        /* note: bht will become sht, and sht will become NULL,
-         * thus we need pointers */
-        reduce_basis(bs, mat, &hcm, &bht, &sht, st);
+        sba_final_reduction_step(bs, &ht, hcm, st);
     }
 
 
@@ -561,12 +583,10 @@ int core_sba_schreyer(
     *stp    = st;
 
     /* free and clean up */
-    free(hcm);
+    free_sba_matrices(&smat, &psmat);
     free_signature_criteria(&syz, st);
     free_signature_criteria(&rew, st);
-
-    /* TODO: free signature matrices! */
-
+    free(hcm);
 
     return 1;
 }

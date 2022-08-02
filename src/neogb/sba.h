@@ -24,7 +24,7 @@
 
 #include "data.h"
 
-inline void add_syzygy_schreyer(
+void add_syzygy_schreyer(
         crit_t *syz,
         const hm_t sm,
         const len_t si,

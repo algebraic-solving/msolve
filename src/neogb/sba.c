@@ -474,6 +474,32 @@ static void sba_final_reduction_step(
     *htp = ht;
 }
 
+static void free_sba_matrices(
+        smat_t **smatp,
+        smat_t **psmatp
+        )
+{
+    smat_t *smat = *smatp;
+    for (len_t i = 0; i < smat->sz; ++i) {
+        free(smat->cols[i]);
+        free(smat->prev_cf32[i]);
+        free(smat->curr_cf32[i]);
+    }
+    free(smat);
+    smat = NULL;
+    *smatp = smat;
+
+    smat_t *psmat = *psmatp;
+    for (len_t i = 0; i < psmat->sz; ++i) {
+        free(psmat->cols[i]);
+        free(psmat->prev_cf32[i]);
+        free(psmat->curr_cf32[i]);
+    }
+    free(psmat);
+    psmat = NULL;
+    *psmatp = psmat;
+}
+
 int core_sba_schreyer(
         bs_t **bsp,
         ht_t **htp,

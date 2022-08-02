@@ -443,8 +443,9 @@ extern int64_t (*export_julia_data)(
 /* linear algebra routines */
 extern void (*sba_linear_algebra)(
         smat_t *smat,
-        const smat_t * const psmat,
-        stat_t *st
+        crit_t *syz,
+        stat_t *st,
+        const ht_t * const ht
         );
 
 extern void (*linear_algebra)(

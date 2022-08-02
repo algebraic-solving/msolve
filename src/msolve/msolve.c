@@ -4606,6 +4606,69 @@ restart:
     b     = 0;
 
     if(gens->field_char > 0){
+        if (use_signatures > 0) {
+            /* timings */
+            double ct0, ct1, rt0, rt1;
+            ct0 = cputime();
+            rt0 = realtime();
+
+            /* data structures for basis, hash table and statistics */
+            bs_t *bs    = NULL;
+            bs_t *sat   = NULL;
+            ht_t *bht   = NULL;
+            stat_t *st  = NULL;
+
+            /* for (int ii = 0; ii<gens->nvars; ++ii) {
+             *     mul[ii] = 1;
+             * } */
+
+            int success = 0;
+
+            success = initialize_gba_input_data(&bs, &bht, &st,
+                    gens->lens, gens->exps, (void *)gens->cfs,
+                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
+                    /* gens->field_char, 0 [> DRL order <], gens->nvars, */
+                    gens->ngens, saturate, initial_hts, nr_threads, max_pairs,
+                    update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
+                    info_level);
+
+            st->fc  = gens->field_char;
+            if(info_level){
+                fprintf(stderr,
+                        "NOTE: Field characteristic is now corrected to %u\n",
+                        st->fc);
+            }
+            if (!success) {
+                printf("Bad input data, stopped computation.\n");
+                exit(1);
+            }
+            /* compute a gb for initial generators */
+            success = core_sba_schreyer(&bs, &bht, &st);
+
+            if (!success) {
+                printf("Problem with sba, stopped computation.\n");
+                exit(1);
+            }
+            int64_t nb  = export_results_from_gba(bld, blen, bexp,
+                    bcf, &malloc, &bs, &bht, &st);
+
+            /* timings */
+            ct1 = cputime();
+            rt1 = realtime();
+            st->overall_ctime = ct1 - ct0;
+            st->overall_rtime = rt1 - rt0;
+
+            if (st->info_level > 1) {
+                print_final_statistics(stderr, st);
+            }
+
+            if(nb==0){
+                fprintf(stderr, "Something went wrong during the computation\n");
+                return -1;
+            }
+            return 0;
+        }
+
         if (saturate == 1) { /* positive characteristic */
             /* timings */
             double ct0, ct1, rt0, rt1;

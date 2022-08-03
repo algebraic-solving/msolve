@@ -4614,7 +4614,6 @@ restart:
 
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;
-            bs_t *sat   = NULL;
             ht_t *bht   = NULL;
             stat_t *st  = NULL;
 

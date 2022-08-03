@@ -228,17 +228,22 @@ struct mat_t
     len_t rbal;         /* length of reducer binary array */
 };
 
-/* signature matrix stuff */
+/* signature matrix stuff, stores information from previous and current step */
 typedef struct smat_t smat_t;
 struct smat_t
 {
-    hm_t **cols;        // monomial resp. column data of polynomials
-    cf32_t **curr_cf32; // coefficients of currently reduced rows
-    cf32_t **prev_cf32; // coefficients from previous degree matrix
-    len_t sz;           // number of rows memory is allocated for
-    len_t ld;           // number of rows stored
-    len_t nc;           // number of columns
-    len_t nz;           // number of zero reductions
+    hm_t **cr;     /* current matrix rows, hashes resp. columns */
+    hm_t **pr;     /* previous matrix rows, hashes resp. columns */
+    cf32_t **cc32; /* current matrix coefficients */
+    cf32_t **pc32; /* previous matrix coefficients */
+    deg_t cd;      /* current degree */
+    len_t csz;     /* number of rows memory is allocated */
+                   /* for in current matrix */
+    len_t cld;     /* number of rows stored in current matrix */
+    len_t pld;     /* number of rows stored in previous matrix */
+    len_t cnc;     /* number of columns in current matrix */
+    len_t cnz;     /* number of zero reductions during linear algebra */
+                   /* on current matrix */
 };
 
 /* tracer stuff */

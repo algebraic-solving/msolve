@@ -252,38 +252,35 @@ static void add_row_to_sba_matrix(
     if (smat->cld >= smat->csz) {
         enlarge_sba_matrix(smat);
     }
-    const len_t ld      = smat->cld;
-    smat->pc32[ld]      = smat->cc32[idx];
-    smat->curr_cf32[ld] = NULL;
+    const len_t cld = smat->cld;
     /* copy monomial entries in row */
-    smat->cols[ld]  =   malloc(
-            ((unsigned long)psmat->cols[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
-    memcpy(smat->cols[ld], psmat->cols[idx],
-            ((unsigned long)psmat->cols[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
+    smat->cr[ld]  =   malloc(
+            ((unsigned long)smat->pr[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
+    memcpy(smat->cr[ld], psmat->pr[idx],
+            ((unsigned long)smat->pr[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
 
     /* now multiply each column entry with the corresponding variable */
-    hm_t *cols          =   smat->cols[ld];
+    hm_t *cr            =   smat->cr[cld];
     exp_t *ev           =   ht->ev[0];
     const len_t shift   =   var_idx > ht->ebl ? 2 : 1;
 
     /* multiply signature */
-    ev              =   ht->ev[cols[SM_SMON]];
+    ev          = ht->ev[cr[SM_SMON]];
     ev[var_idx+shift]++;
-    cols[SM_SMON]   =   insert_in_hash_table(ev, ht);
+    cr[SM_SMON] = insert_in_hash_table(ev, ht);
 
     /* multiply monomials in corresp. polnoymial */
-    const len_t len =   cols[SM_LEN] + SM_OFFSET;
+    const len_t len =  cr[SM_LEN] + SM_OFFSET;
     for (len_t i = SM_OFFSET; i < len; ++i) {
-        ev      =   ht->ev[cols[i]];
+        ev    = ht->ev[cr[i]];
         ev[var_idx+shift]++;
-        cols[i] =   insert_in_hash_table(ev, ht);
+        cr[i] = nsert_in_hash_table(ev, ht);
     }
-    smat->ld++;
+    smat->cld++;
 }
 
 static void add_multiples_of_previous_degree_row(
         smat_t *smat,
-        smat_t *psmat,
         const len_t idx,
         const crit_t * const syz,
         crit_t *rew,
@@ -295,7 +292,7 @@ static void add_multiples_of_previous_degree_row(
     for (len_t i = 0; i < nv; ++i) {
         /* check syzygy and rewrite criterion */
         if (is_signature_needed(smat, syz, rew, idx, i, ht) == 1) {
-            add_row_to_sba_matrix(smat, psmat, idx, i, ht);
+            add_row_to_sba_matrix(smat, idx, i, ht);
             /* add rewrite rule */
             add_rewrite_rule(rew, smat, ht);
         }
@@ -475,18 +472,17 @@ static void add_initial_generators(
 
 static void generate_next_degree_matrix(
         smat_t *smat,
-        smat_t *psmat,
         const crit_t * const syz,
         crit_t *rew,
         ht_t *ht,
         stat_t *st
         )
 {
-    for (len_t i = psmat->ld; i > 0 ; --i) {
-        add_multiples_of_previous_degree_row(
-                smat, psmat, i-1, syz, rew, ht, st);
-        free(psmat->cols[i-1]);
-        psmat->cols[i-1]  =   NULL;
+    const len_t pld = smat->pld;
+    for (len_t i = pld; i > 0 ; --i) {
+        add_multiples_of_previous_degree_row(smat, i-1, syz, rew, ht, st);
+        free(smat->pc[i-1]);
+        smat->pc[i-1] = NULL;
     }
 }
 
@@ -568,7 +564,7 @@ int core_sba_schreyer(
     hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
 
     /* signature matrix and previous degree signature matrix */
-    smat_t *smat= calloc(1, sizeof(smat_t));
+    smat_t *smat = calloc(1, sizeof(smat_t));
     /* initial degree is the lowest degree of the input generators */
     smat->cd = in->hm[0][DEG];
 

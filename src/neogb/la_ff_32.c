@@ -701,7 +701,7 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
         /* found reducer row, get multiplier */
         const int64_t mul = (int64_t)dr[i];
         dts = pivs[i];
-        cfs = smat->curr_cf32[dts[SM_CFS]];
+        cfs = smat->cc32[dts[SM_CFS]];
 
 #ifdef HAVE_AVX2
         const len_t len = dts[SM_LEN];
@@ -772,18 +772,18 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
     }
 
     if (k == 0) {
-        free(smat->cols[ri]);
-        smat->cols[ri] = NULL;
+        free(smat->cr[ri]);
+        smat->cr[ri] = NULL;
 
-        return smat->cols[ri];
+        return smat->cr[ri];
     }
 
-    smat->cols[ri]  = realloc(smat->cols[ri],
+    smat->cr[ri] = realloc(smat->cr[ri],
             (unsigned long)(k+SM_OFFSET) * sizeof(hm_t));
-    cf32_t *cf      = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
+    cf32_t *cf   = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
 
     j = 0;
-    hm_t *rs  = smat->cols[ri] + SM_OFFSET;
+    hm_t *rs  = smat->cr[ri] + SM_OFFSET;
     for (i = fnzc; i < nc; ++i) {
         if (dr[i] != 0) {
             rs[j] = (hm_t)i;
@@ -791,13 +791,13 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
             j++;
         }
     }
-    smat->cols[ri][SM_CFS] = ri;
-    smat->cols[ri][SM_PRE] = j % UNROLL;
-    smat->cols[ri][SM_LEN] = j;
+    smat->cr[ri][SM_CFS] = ri;
+    smat->cr[ri][SM_PRE] = j % UNROLL;
+    smat->cr[ri][SM_LEN] = j;
 
-    smat->curr_cf32[ri] = cf;
+    smat->cc32[ri] = cf;
 
-    return smat->cols[ri];
+    return smat->cr[ri];
 }
 
 static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(

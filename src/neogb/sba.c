@@ -170,6 +170,7 @@ static int is_signature_needed(
     const len_t evl     = ht->evl;
 
     /* syzygy criterion */
+syz:
     const crit_t syz_idx = syz[sig_idx];
     for (len_t i = 0; i < syz_idx.ld; ++i) {
         if (nsdm & syz_idx.sdm[i]) {
@@ -178,21 +179,22 @@ static int is_signature_needed(
         const exp_t *sev = ht->ev[syz_idx.hm[i]];
         for (len_t j = 0; j < evl; ++j) {
             if (sev[j] > ev[j]) {
-                continue;
+                goto syz;
             }
         }
         return 0;
     }
     /* rewrite criterion */
+rew:
     const crit_t rew_idx = rew[sig_idx];
     for (len_t i = 0; i < rew_idx.ld; ++i) {
         if (nsdm & rew_idx.sdm[i]) {
             continue;
         }
-        const exp_t *sev = ht->ev[rew_idx.hm[i]];
+        const exp_t *rev = ht->ev[rew_idx.hm[i]];
         for (len_t j = 0; j < evl; ++j) {
-            if (sev[j] > ev[j]) {
-                continue;
+            if (rev[j] > ev[j]) {
+                goto rew;
             }
         }
         return 0;

@@ -516,30 +516,19 @@ static void sba_final_reduction_step(
     *htp = ht;
 }
 
-static void free_sba_matrices(
+static void free_sba_matrix(
         smat_t **smatp,
-        smat_t **psmatp
         )
 {
     smat_t *smat = *smatp;
-    for (len_t i = 0; i < smat->sz; ++i) {
-        free(smat->cols[i]);
-        free(smat->prev_cf32[i]);
-        free(smat->curr_cf32[i]);
+    for (len_t i = 0; i < smat->csz; ++i) {
+        free(smat->cr[i]);
+        free(smat->cc32[i]);
+        free(smat->pc32[i]);
     }
     free(smat);
     smat = NULL;
     *smatp = smat;
-
-    smat_t *psmat = *psmatp;
-    for (len_t i = 0; i < psmat->sz; ++i) {
-        free(psmat->cols[i]);
-        free(psmat->prev_cf32[i]);
-        free(psmat->curr_cf32[i]);
-    }
-    free(psmat);
-    psmat = NULL;
-    *psmatp = psmat;
 }
 
 static void generate_next_degree_sba_matrix(
@@ -582,9 +571,9 @@ int core_sba_schreyer(
     /* timings for one round */
     double rrt0, rrt1;
 
-    len_t ni = 0; /* track new elements from input data for next degree */
     len_t ne = 0; /* tracks new elements for basis in each round */
-    int try_termination =   0;
+    int try_termination = 0;
+
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
     hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
@@ -635,9 +624,6 @@ int core_sba_schreyer(
         /* maps columns to hashes */
         sba_convert_columns_to_hashes(smat, hcm);
 
-        /* NOTE: Reset hash table indices to zero in here! */
-        ht->elo = ht->eld;
-
         /* add new elements to basis */
         ne = sba_add_new_elements_to_basis(smat, ht, bs, st);
 
@@ -677,7 +663,7 @@ int core_sba_schreyer(
     *stp    = st;
 
     /* free and clean up */
-    free_sba_matrices(&smat, &psmat);
+    free_sba_matrix(&smat);
     free_signature_criteria(&syz, st);
     free_signature_criteria(&rew, st);
     free(hcm);

@@ -470,7 +470,7 @@ static void add_initial_generators(
     }
 }
 
-static void generate_next_degree_matrix(
+static void generate_next_degree_matrix_from_previous(
         smat_t *smat,
         const crit_t * const syz,
         crit_t *rew,
@@ -542,6 +542,32 @@ static void free_sba_matrices(
     *psmatp = psmat;
 }
 
+static void generate_next_degree_sba_matrix(
+                smat_t *smat,
+                bs_t *in,
+                crit_t *syz,
+                crit_t *rew,
+                ht_t *ht,
+                stat_t *st
+                )
+{
+    /* check if we have initial generators not handled in lower degree
+     * until now */
+    const len_t ni = get_number_of_initial_generators_in_next_degree(
+            in, smat->cd);
+    /* prepare signature matrix for next degree */
+    sba_prepare_next_degree(smat, in, ni, st);
+
+    reset_signature_criteria(rew, st);
+
+    /* generate rows from previous degree matrix, start with the highest
+     * signatures in order to get an efficient rewrite criterion test */
+    generate_next_degree_matrix_from_previous(
+            smat, syz, rew, ht, st);
+
+    add_initial_generators(smat, in, ni);
+}
+
 int core_sba_schreyer(
         bs_t **bsp,
         ht_t **htp,
@@ -594,19 +620,8 @@ int core_sba_schreyer(
             st->max_bht_size : ht->esz;
         st->current_rd++;
 
-        /* check if we have initial generators not handled in lower degree
-         * until now */
-        ne = get_number_of_initial_generators_in_next_degree(in, smat->cd);
-        /* prepare signature matrix for next degree */
-        sba_prepare_next_degree(smat, in, ne, st);
-
-        reset_signature_criteria(rew, st);
-
-        /* generate rows from previous degree matrix, start with the highest
-         * signatures in order to get an efficient rewrite criterion test */
-        generate_next_degree_matrix(smat, psmat, syz, rew, ht, st);
-
-        add_initial_generators(smat, in, ne);
+        /* generate matrix for next degree step */
+        generate_next_degree_sba_matrix(smat, in, syz, rew, ht, st);
 
         printf("4 psmat->ld %u\n", psmat->ld);
 

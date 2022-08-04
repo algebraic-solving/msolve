@@ -3048,6 +3048,19 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
     gb_modpoly_realloc(modgbs, 2);
     display_gbmodpoly(stderr, modgbs);
 
+    int nb = 0;
+    int32_t *ldeg = array_nbdegrees((*leadmons_ori), modgbs->npolys, bht->nv, &nb);
+
+    /************************************************/
+    /************************************************/
+    fprintf(stderr, "nb = %d => ldeg = [", nb);
+    for(int i = 0; i < nb; i++){
+      fprintf(stderr, "%d, ", ldeg[i]);
+    }
+    fprintf(stderr, "]\n");
+    /************************************************/
+    /************************************************/
+
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
       /* print_msolve_message(stderr, 1); */
       free(mgb);

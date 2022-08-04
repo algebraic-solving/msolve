@@ -237,12 +237,14 @@ struct smat_t
     cf32_t **cc32; /* current matrix coefficients */
     cf32_t **pc32; /* previous matrix coefficients */
     deg_t cd;      /* current degree */
+    len_t nlm;     /* number of new leading monomials for basis from */
+                   /* current matrix */
     len_t csz;     /* number of rows memory is allocated */
                    /* for in current matrix */
     len_t cld;     /* number of rows stored in current matrix */
     len_t pld;     /* number of rows stored in previous matrix */
-    len_t cnc;     /* number of columns in current matrix */
-    len_t cnz;     /* number of zero reductions during linear algebra */
+    len_t nc;      /* number of columns in current matrix */
+    len_t nz;      /* number of zero reductions during linear algebra */
                    /* on current matrix */
 };
 

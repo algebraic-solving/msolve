@@ -59,7 +59,7 @@ static inline void free_signature_criteria(
     *critp  =   crit;
 }
 
-static len_t sba_add_new_elements_to_basis(
+static void sba_add_new_elements_to_basis(
         const smat_t * const smat,
         const ht_t * const ht,
         bs_t *bs,
@@ -142,9 +142,7 @@ next:
         }
         bs->ld = k;
     }
-    /* TODO: check divisibility and set lml, etc. correctly in here */
-
-    return ne;
+    smat->nlm = ne;
 }
 
 static int is_signature_needed(
@@ -552,7 +550,6 @@ int core_sba_schreyer(
     /* timings for one round */
     double rrt0, rrt1;
 
-    len_t ne = 0; /* tracks new elements for basis in each round */
     int try_termination = 0;
 
     /* hashes-to-columns map, initialized with length 1, is reallocated
@@ -606,13 +603,13 @@ int core_sba_schreyer(
         sba_convert_columns_to_hashes(smat, hcm);
 
         /* add new elements to basis */
-        ne = sba_add_new_elements_to_basis(smat, ht, bs, st);
+        sba_add_new_elements_to_basis(smat, ht, bs, st);
 
         /* increase degree for next round */
         smat->cd++;
 
         if (st->info_level > 1) {
-            printf("%7d new %7d zero", ne, smat->nz);
+            printf("%7d new %7d zero", smat->nlm, smat->nz);
             fflush(stdout);
         }
 

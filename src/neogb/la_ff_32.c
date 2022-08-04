@@ -671,10 +671,10 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
     len_t i, j, k;
     cf32_t *cfs;
     hm_t *dts;
-    int32_t fnzc        = -1; /* first non zero column */
-    const int64_t mod   = (int64_t)st->fc;
-    const int64_t mod2  = (int64_t)st->fc * st->fc;
-    const len_t nc      = smat->nc;
+    int32_t fnzc       = -1; /* first non zero column */
+    const int64_t mod  = (int64_t)st->fc;
+    const int64_t mod2 = (int64_t)st->fc * st->fc;
+    const len_t nc     = smat->nc;
 #ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
     __m256i cmpv, redv, drv, mulv, prodv, resv, rresv;
@@ -3631,7 +3631,7 @@ static void sba_linear_algebra_ff_32(
     ct0 = cputime();
     rt0 = realtime();
 
-    smat->cc32 = realloc(smat->curr_cf32,
+    smat->cc32 = realloc(smat->cc32,
             (unsigned long)smat->cld * sizeof(cf32_t *));
 
     sba_echelon_form_ff_32(smat, syz, st, ht);

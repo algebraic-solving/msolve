@@ -3026,156 +3026,172 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
   int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
   fprintf(stderr, "MAX BIT SIZE COEFFS = %d\n", maxbitsize);
 
-  int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
-                                               mgb,
-                                               num_gb, leadmons_ori,
-                                               btrace[0],
-                                               tht, bs_qq, bht, st,
-                                               lp->p[0], //prime,
-                                               info_level,
-                                               print_gb,
-                                               dim_ptr, dquot_ptr,
-                                               gens, maxbitsize,
-                                               files,
-                                               &success);
-  display_gbmodpoly(stderr, modgbs);
-  gb_modpoly_realloc(modgbs, 2);
-  display_gbmodpoly(stderr, modgbs);
+  int learn = 1, apply = 1;
+  int nprimes = 0;
+  double stf4 = 0;
 
-  if(lmb_ori == NULL || success == 0 || gens->field_char) {
+  ht_t **blht, **btht;
+  while(learn){
+    int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
+                                                 mgb,
+                                                 num_gb, leadmons_ori,
+                                                 btrace[0],
+                                                 tht, bs_qq, bht, st,
+                                                 lp->p[0], //prime,
+                                                 info_level,
+                                                 print_gb,
+                                                 dim_ptr, dquot_ptr,
+                                                 gens, maxbitsize,
+                                                 files,
+                                                 &success);
+    display_gbmodpoly(stderr, modgbs);
+    gb_modpoly_realloc(modgbs, 2);
+    display_gbmodpoly(stderr, modgbs);
+
+    if(lmb_ori == NULL || success == 0 || gens->field_char) {
       /* print_msolve_message(stderr, 1); */
-    free(mgb);
-    gb_modpoly_clear(modgbs);
+      free(mgb);
+      gb_modpoly_clear(modgbs);
 
-    for(int i = 0; i < st->nthrds; i++){
-      /* free_trace(&btrace[i]); */
-    }
-    free(btrace);
-    if(gens->field_char==0){
-      free_shared_hash_data(bht);
-      if(bht!=NULL){
-        free_hash_table(&bht);
+      for(int i = 0; i < st->nthrds; i++){
+        /* free_trace(&btrace[i]); */
       }
-      free(bht);
+      free(btrace);
+      if(gens->field_char==0){
+        free_shared_hash_data(bht);
+        if(bht!=NULL){
+          free_hash_table(&bht);
+        }
+        free(bht);
+      }
+      if(tht!=NULL){
+        free_hash_table(&tht);
+      }
+      free(tht);
+      /* for (i = 0; i < st->nthrds; ++i) { */
+      /*   free_basis(&(bs[i])); */
+      /* } */
+      free(bs);
+      if(gens->field_char==0){
+        free(bs_qq);
+      }
+      //here we should clean nmod_params
+      free_lucky_primes(&lp);
+      free(bad_primes);
+      free(lp);
+      free(st);
     }
-    if(tht!=NULL){
-      free_hash_table(&tht);
+    /* duplicate data for multi-threaded multi-mod computation */
+    /* duplicate_data_mthread_trace(st->nthrds, st, num_gb, */
+    /*                              leadmons_ori, leadmons_current, */
+    /*                              btrace, */
+    /*                              bdata_bms, bdata_fglm, */
+    /*                              bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix, */
+    /*                              nmod_params, nlins, bnlins, */
+    /*                              blinvars, lineqs_ptr, */
+    /*                              bsquvars); */
+
+    /* copy of hash tables for tracer application */
+    blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
+    blht[0] = bht;
+    for(int i = 1; i < st->nthrds; i++){
+      ht_t *lht = copy_hash_table(bht, st);
+      blht[i] = lht;
     }
-    free(tht);
-    /* for (i = 0; i < st->nthrds; ++i) { */
-    /*   free_basis(&(bs[i])); */
-    /* } */
-    free(bs);
-    if(gens->field_char==0){
-      free(bs_qq);
+    btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
+    btht[0] = tht;
+    for(int i = 1; i < st->nthrds; i++){
+      btht[i] = copy_hash_table(tht, st);
     }
-    //here we should clean nmod_params
-    free_lucky_primes(&lp);
-    free(bad_primes);
-    free(lp);
-    free(st);
-  }
 
-  /* duplicate data for multi-threaded multi-mod computation */
-  /* duplicate_data_mthread_trace(st->nthrds, st, num_gb, */
-  /*                              leadmons_ori, leadmons_current, */
-  /*                              btrace, */
-  /*                              bdata_bms, bdata_fglm, */
-  /*                              bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix, */
-  /*                              nmod_params, nlins, bnlins, */
-  /*                              blinvars, lineqs_ptr, */
-  /*                              bsquvars); */
+    if(info_level){
+      fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+    }
 
-  /* copy of hash tables for tracer application */
-  ht_t **blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-  blht[0] = bht;
-  for(int i = 1; i < st->nthrds; i++){
-    ht_t *lht = copy_hash_table(bht, st);
-    blht[i] = lht;
-  }
-  ht_t **btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-  btht[0] = tht;
-  for(int i = 1; i < st->nthrds; i++){
-    btht[i] = copy_hash_table(tht, st);
-  }
+    learn = 0;
+    while(apply){
 
-
-  if(info_level){
-    fprintf(stderr, "\nStarts trace based multi-modular computations\n");
-  }
-
-
-  mpz_t modulus;
-  mpz_init_set_ui(modulus, primeinit);
-  mpz_t prod_crt;
-  mpz_init_set_ui(prod_crt, primeinit);
-
-  int rerun = 1, nprimes = 1, mcheck =1;
-
-  long nbadprimes = 0;
-
-  prime = next_prime(1<<30);
-
-  /* measures time spent in rational reconstruction */
-  double strat = 0;
-
-  while(rerun == 1 || mcheck == 1){
-
-    /* generate lucky prime numbers */
-    prime = next_prime(prime);
-    lp->p[0] = prime;
-    while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
-      prime = next_prime(prime);
+      /* generate lucky prime numbers */
+      prime = next_prime(1<<30);
       lp->p[0] = prime;
-    }
-
-    for(len_t i = 1; i < st->nthrds; i++){
-      prime = next_prime(prime);
-      lp->p[i] = prime;
       while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
         prime = next_prime(prime);
+        lp->p[0] = prime;
+      }
+
+      for(len_t i = 1; i < st->nthrds; i++){
+        prime = next_prime(prime);
         lp->p[i] = prime;
+        while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+          prime = next_prime(prime);
+          lp->p[i] = prime;
+        }
       }
+      prime = lp->p[st->nthrds - 1];
+      gb_modpoly_realloc(modgbs, st->nthrds);
+
+      gb_modular_trace_application(modgbs, mgb,
+                                   num_gb,
+                                   leadmons_ori,
+                                   leadmons_current,
+                                   btrace,
+                                   btht, bs_qq, blht, st,
+                                   field_char, 0, /* info_level, */
+                                   bs, lmb_ori, *dquot_ptr, lp,
+                                   gens, &stf4, bad_primes);
+
+      nprimes += st->nthrds;
+
+      if(nprimes == 1){
+        if(info_level>2){
+          fprintf(stderr, "------------------------------------------\n");
+          fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
+          fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
+          fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
+          fprintf(stderr, "------------------------------------------\n");
+        }
+        if(info_level>1){
+          fprintf(stderr, "Application phase %.2f Gops/sec\n",
+                  (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
+        }
+      }
+
+      for(int i = 0; i < st->nthrds; i++){
+        if(bad_primes[i] == 0){
+          fprintf(stderr, "badprimes[i] is 0\n");
+        }
+      }
+
     }
-    prime = lp->p[st->nthrds - 1];
-
-    double ca0 = realtime();
-
-    double stf4 = 0;
-    gb_modular_trace_application(modgbs, mgb,
-                                 num_gb,
-                                 leadmons_ori,
-                                 leadmons_current,
-                                 btrace,
-                                 btht, bs_qq, blht, st,
-                                 field_char, 0, /* info_level, */
-                                 bs, lmb_ori, *dquot_ptr, lp,
-                                 gens, &stf4, bad_primes);
-    double ca1 = realtime() - ca0;
-
-    if(nprimes==1){
-      if(info_level>2){
-        fprintf(stderr, "------------------------------------------\n");
-        fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
-        fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
-        fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
-        fprintf(stderr, "------------------------------------------\n");
-      }
-      if(info_level>1){
-        fprintf(stderr, "Application phase %.2f Gops/sec\n",
-                (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
-        fprintf(stderr, "Tracer + fglm time (elapsed): %.2f sec\n",
-                (ca1) );
-      }
-    }
-
-    for(int i = 0; i < st->nthrds; i++){
-      if(bad_primes[i] == 0){
-        fprintf(stderr, "badprimes[i] is 0\n");
-      }
-    }
-
   }
+
+
+
+
+  /* mpz_t modulus; */
+  /* mpz_init_set_ui(modulus, primeinit); */
+  /* mpz_t prod_crt; */
+  /* mpz_init_set_ui(prod_crt, primeinit); */
+
+  /* int rerun = 1, nprimes = 1, mcheck =1; */
+
+  /* long nbadprimes = 0; */
+
+  /* prime = next_prime(1<<30); */
+
+  /* /\* measures time spent in rational reconstruction *\/ */
+  /* double strat = 0; */
+
+  /* while(rerun == 1 || mcheck == 1){ */
+
+  /*   double ca0 = realtime(); */
+
+  /*   double stf4 = 0; */
+  /*   double ca1 = realtime() - ca0; */
+
+
+
+  /* } */
 
 
   free(mgb);

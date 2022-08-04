@@ -156,12 +156,12 @@ static int is_signature_needed(
 {
     /* get exponent vector and increment entry for var_idx */
     exp_t *ev   =   ht->ev[0];
-    ev          =   ht->ev[smat->pc[idx][SM_SMON]];
+    ev          =   ht->ev[smat->pr[idx][SM_SMON]];
     /* Note: ht->ebl = #elimination variables + 1 */
     len_t shift =   var_idx < ht->ebl - 1 ? 1: 2;
     ev[var_idx+shift]++;
 
-    const len_t sig_idx = smat->pc[idx][SM_SIDX];
+    const len_t sig_idx = smat->pr[idx][SM_SIDX];
     const hm_t hm       = insert_in_hash_table(ev, ht);
     const sdm_t nsdm    = ~ht->hd[hm].sdm;
 
@@ -252,9 +252,9 @@ static void add_row_to_sba_matrix(
     }
     const len_t cld = smat->cld;
     /* copy monomial entries in row */
-    smat->cr[ld]  =   malloc(
+    smat->cr[cld]  =   malloc(
             ((unsigned long)smat->pr[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
-    memcpy(smat->cr[ld], psmat->pr[idx],
+    memcpy(smat->cr[cld], smat->pr[idx],
             ((unsigned long)smat->pr[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
 
     /* now multiply each column entry with the corresponding variable */
@@ -322,7 +322,7 @@ static inline void add_row_with_signature(
     smat->cld++;
     smat->pld++;
 
-    printf("smat %p ld %u\n", smat, smat->ld);
+    printf("smat %p ld %u\n", smat, smat->cld);
 }
 
 inline void add_syzygy_schreyer(
@@ -402,7 +402,7 @@ static void sba_prepare_next_degree(
     /* reset smat data */
     smat->cr   = NULL;
     smat->cc32 = NULL;
-    smat->cld  = smat->csz = smat->cnz = smat->cnc = 0;
+    smat->cld  = smat->csz = smat->nz = smat->nc = 0;
 
     smat->csz = (smat->pld * st->nvars) + ni;
     smat->cr  = (hm_t **)calloc(
@@ -460,8 +460,8 @@ static void generate_next_degree_matrix_from_previous(
     const len_t pld = smat->pld;
     for (len_t i = pld; i > 0 ; --i) {
         add_multiples_of_previous_degree_row(smat, i-1, syz, rew, ht, st);
-        free(smat->pc[i-1]);
-        smat->pc[i-1] = NULL;
+        free(smat->pr[i-1]);
+        smat->pr[i-1] = NULL;
     }
 }
 
@@ -496,7 +496,7 @@ static void sba_final_reduction_step(
 }
 
 static void free_sba_matrix(
-        smat_t **smatp,
+        smat_t **smatp
         )
 {
     smat_t *smat = *smatp;
@@ -615,7 +615,7 @@ int core_sba_schreyer(
 
         /* if we found a constant we are done, if we have added no new elements
          * we assume we are done*/
-        if (bs->constant  == 1 || ne == 0) {
+        if (bs->constant  == 1 || smat->nlm == 0) {
             try_termination =   1;
         }
         rrt1 = realtime();

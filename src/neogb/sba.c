@@ -389,25 +389,6 @@ static inline void initialize_signatures_not_schreyer(
     }
 }
 
-static void reset_sba_matrix(
-        smat_t *smat
-        )
-{
-    for (len_t i = 0; i < smat->ld; ++i) {
-        free(smat->cols[i]);
-        free(smat->curr_cf32[i]);
-        free(smat->prev_cf32[i]);
-    }
-    free(smat->cols);
-    smat->cols = NULL;
-    free(smat->curr_cf32);
-    smat->curr_cf32 = NULL;
-    free(smat->prev_cf32);
-    smat->prev_cf32 = NULL;
-
-    smat->ld = smat->sz = smat->nz = smat->nc = 0;
-}
-
 static void sba_prepare_next_degree(
         smat_t *smat,
         const bs_t * const in,

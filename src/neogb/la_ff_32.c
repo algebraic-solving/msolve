@@ -2189,7 +2189,7 @@ static void sba_echelon_form_ff_32(
     len_t ri;
 
     const len_t nc  = smat->nc;
-    const len_t nr  = smat->ld;
+    const len_t nr  = smat->cld;
 
     /* we fill in all known lead terms in pivs */
     hm_t **pivs = (hm_t **)calloc((unsigned long)nc, sizeof(hm_t *));
@@ -2200,8 +2200,8 @@ static void sba_echelon_form_ff_32(
     /* TODO: At the moment I do not see how to make this parallel due to
      * reduction dependencies on the signatures. */
     for (ri = 0, i = 0; i < nr; ++i) {
-        hm_t *npiv      = smat->cols[i];
-        cf32_t *cfs     = smat->prev_cf32[npiv[SM_CFS]];
+        hm_t *npiv      = smat->cr[i];
+        cf32_t *cfs     = smat->pc32[npiv[SM_CFS]];
         const hm_t sm   = npiv[SM_SMON];
         const len_t si  = npiv[SM_SIDX];
         const len_t os  = npiv[SM_PRE];
@@ -2231,23 +2231,23 @@ static void sba_echelon_form_ff_32(
          * NOTE: this has to be done here, otherwise the reduction may
          * lead to wrong results in a parallel computation since other
          * threads might directly use the new pivot once it is synced. */
-        if (smat->curr_cf32[npiv[SM_CFS]][0] != 1) {
+        if (smat->cc32[npiv[SM_CFS]][0] != 1) {
             normalize_sparse_matrix_row_ff_32(
-                    smat->curr_cf32[npiv[SM_CFS]], npiv[SM_PRE],
+                    smat->cc32[npiv[SM_CFS]], npiv[SM_PRE],
                     npiv[SM_LEN], st->fc);
         }
         pivs[npiv[SM_OFFSET]] = npiv;
     }
 
     /* free initial coefficients coming from previous degree matrix */
-    for (i = 0; i < nr; ++i) {
-        free(smat->prev_cf32[smat->cols[i][SM_CFS]]);
-        smat->prev_cf32[smat->cols[i][SM_CFS]] = NULL;
+    for (i = 0; i < smat->pld; ++i) {
+        free(smat->pc32[i]);
+        smat->pc32[i] = NULL;
     }
     /* get number of zero reductions and adjust number of
      * rows stored in matrix */
-    smat->nz = smat->ld - ri;
-    smat->ld = ri;
+    smat->nz  = smat->cld - ri;
+    smat->cld = ri;
 
     free(pivs);
     pivs = NULL;
@@ -3631,8 +3631,8 @@ static void sba_linear_algebra_ff_32(
     ct0 = cputime();
     rt0 = realtime();
 
-    smat->curr_cf32 = realloc(smat->curr_cf32,
-            (unsigned long)smat->ld * sizeof(cf32_t *));
+    smat->cc32 = realloc(smat->curr_cf32,
+            (unsigned long)smat->cld * sizeof(cf32_t *));
 
     sba_echelon_form_ff_32(smat, syz, st, ht);
 

@@ -225,19 +225,19 @@ static void sba_convert_hashes_to_columns(
     ct0 = cputime();
     rt0 = realtime();
 
-    const len_t nr  = smat->ld;
-    const hl_t eld  = ht->eld;
-    hd_t *hd        = ht->hd;
-    hm_t **cols     = smat->cols;
+    const len_t nr = smat->cld;
+    const hl_t eld = ht->eld;
+    hd_t *hd       = ht->hd;
+    hm_t **cr      = smat->cr;
 
     hcm = realloc(hcm, (unsigned long)eld * sizeof(hi_t));
     k = 0;
     for (i = 0; i < nr; ++i) {
-        const len_t len = SM_OFFSET + cols[i][SM_LEN];
+        const len_t len = SM_OFFSET + cr[i][SM_LEN];
         for (j = SM_OFFSET; j < len; ++j) {
-            if (hd[cols[i][j]].idx != 0) {
-                hd[cols[i][j]].idx = 1;
-                hcm[k++] = cols[i][j];
+            if (hd[cr[i][j]].idx != 0) {
+                hd[cr[i][j]].idx = 1;
+                hcm[k++] = cr[i][j];
             }
         }
     }
@@ -265,9 +265,9 @@ static void sba_convert_hashes_to_columns(
     /* map column positions to matrix rows */
 #pragma omp parallel for num_threads(st->nthrds) private(k, j)
     for (i = 0; i < nr; ++i) {
-        const len_t os  = cols[i][SM_PRE];
-        const len_t len = cols[i][SM_LEN];
-        row = cols[i] + SM_OFFSET;
+        const len_t os  = cr[i][SM_PRE];
+        const len_t len = cr[i][SM_LEN];
+        row = cr[i] + SM_OFFSET;
         for (j = 0; j < os; ++j) {
             row[j]  = hd[row[j]].idx;
         }
@@ -290,7 +290,7 @@ static void sba_convert_hashes_to_columns(
     st->convert_ctime +=  ct1 - ct0;
     st->convert_rtime +=  rt1 - rt0;
     if (st->info_level > 1) {
-        printf(" %7d x %-7d %8.2f%%", smat->ld, smat->nc, density);
+        printf(" %7d x %-7d %8.2f%%", smat->cld, smat->nc, density);
         fflush(stdout);
     }
     *hcmp = hcm;
@@ -432,9 +432,9 @@ static void sba_convert_columns_to_hashes(
     len_t i, j;
 
     for (i = 0; i < smat->ld; ++i) {
-        const len_t len = smat->cols[i][SM_LEN] + SM_OFFSET;
+        const len_t len = smat->cr[i][SM_LEN] + SM_OFFSET;
         for (j = SM_OFFSET; j < len; ++j) {
-            smat->cols[i][j]  = hcm[smat->cols[i][j]];
+            smat->cr[i][j] = hcm[smat->cr[i][j]];
         }
     }
 }

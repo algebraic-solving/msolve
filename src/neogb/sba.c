@@ -308,12 +308,12 @@ static inline void add_row_with_signature(
      * we prepared the next degree step */
     const len_t cld         = smat->cld;
     const len_t pld         = smat->pld;
-    const unsigned long len = bs->hm[pos][LENGTH];
+    const len_t len = bs->hm[pos][LENGTH];
     smat->cr[cld]           = (hm_t *)malloc(
             (len + SM_OFFSET) * sizeof(hm_t));
     /* copy polynomial data */
-    memcpy(smat->cr[cld]+SM_CFS,bs->hm[pos]+COEFFS,
-            len + OFFSET - COEFFS);
+    memcpy(smat->cr[cld]+SM_PRE,bs->hm[pos]+PRELOOP,
+            (len + OFFSET - PRELOOP) * sizeof(hm_t));
     smat->pc32[pld]        = bs->cf_32[bs->hm[pos][COEFFS]];
     smat->cr[cld][SM_CFS]  = pld;
     /* store also signature data */
@@ -321,8 +321,6 @@ static inline void add_row_with_signature(
     smat->cr[cld][SM_SIDX] = bs->si[pos];
     smat->cld++;
     smat->pld++;
-
-    printf("smat %p ld %u\n", smat, smat->cld);
 }
 
 inline void add_syzygy_schreyer(
@@ -421,10 +419,15 @@ static len_t get_number_of_initial_generators_in_next_degree(
         )
 {
     len_t ctr = 0;
+    for (int l = 0; l < in->ld; ++l) {
+        printf("deg[%d] = %d\n", l, in->hm[l][DEG]);
+    }
+
     int32_t i = in->ld-1;
 
     while (i >= 0 && in->hm[i][DEG] == nd) {
         ctr++;
+        i--;
     }
     return ctr;
 }
@@ -521,6 +524,7 @@ static void generate_next_degree_sba_matrix(
 {
     /* check if we have initial generators not handled in lower degree
      * until now */
+    printf("smat->cd %d\n", smat->cd);
     const len_t ni = get_number_of_initial_generators_in_next_degree(
             in, smat->cd);
     /* prepare signature matrix for next degree */
@@ -559,7 +563,7 @@ int core_sba_schreyer(
     /* signature matrix and previous degree signature matrix */
     smat_t *smat = calloc(1, sizeof(smat_t));
     /* initial degree is the lowest degree of the input generators */
-    smat->cd = in->hm[0][DEG];
+    smat->cd = in->hm[in->ld-1][DEG];
 
     /* initialize signature related information */
     initialize_signatures_schreyer(in);

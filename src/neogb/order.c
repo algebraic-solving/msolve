@@ -886,8 +886,8 @@ static inline void sort_matrix_rows_by_increasing_signature(
         void *htp
         )
 {
-    hm_t **cols = smat->cols;
-    sort_r(cols, (unsigned long)smat->ld, sizeof(hm_t *),
+    hm_t **cr = smat->cr;
+    sort_r(cr, (unsigned long)smat->cld, sizeof(hm_t *),
             &matrix_row_cmp_by_increasing_signature, htp);
 }
 

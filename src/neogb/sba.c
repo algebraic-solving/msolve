@@ -596,11 +596,11 @@ int core_sba_schreyer(
 
     /* initialize signature related information */
     initialize_signatures_schreyer(in);
-    crit_t *syz =   initialize_syzygies_schreyer(in, ht);
-    crit_t *rew =   initialize_signature_criteria(st);
+    crit_t *syz = initialize_syzygies_schreyer(in, ht);
+    crit_t *rew = initialize_signature_criteria(st);
 
     /* initialize an empty basis for keeping the real basis elements */
-    bs_t *bs    =   initialize_basis(st);
+    bs_t *bs = initialize_basis(st);
 
     /* sort initial elements, highest lead term first */
     sort_r(in->hm, (unsigned long)in->ld, sizeof(hm_t *),
@@ -616,14 +616,12 @@ int core_sba_schreyer(
 
     while (!try_termination) {
         rrt0  = realtime();
-        st->max_bht_size    = st->max_bht_size > ht->esz ?
+        st->max_bht_size = st->max_bht_size > ht->esz ?
             st->max_bht_size : ht->esz;
         st->current_rd++;
 
         /* generate matrix for next degree step */
         generate_next_degree_sba_matrix(smat, in, syz, rew, ht, st);
-
-        printf("4 psmat->ld %u\n", psmat->ld);
 
         /* sort matrix rows by increasing signature */
         sort_matrix_rows_by_increasing_signature(smat, ht);

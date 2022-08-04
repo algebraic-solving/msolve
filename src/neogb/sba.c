@@ -30,17 +30,13 @@ static inline crit_t *initialize_signature_criteria(
     return crit;
 }
 
-static inline void free_signature_criteria_data(
+static inline void reset_signature_criteria(
         crit_t *crit,
         const stat_t * const st
         )
 {
     for (len_t i = 0; i < st->ngens; ++i) {
-        free(crit[i].sdm);
-        crit[i].sdm =   NULL;
-        free(crit[i].hm);
-        crit[i].hm  =   NULL;
-        crit[i].ld  =   0;
+        crit[i].ld = 0;
     }
 }
 
@@ -50,7 +46,13 @@ static inline void free_signature_criteria(
         )
 {
     crit_t *crit    =   *critp;
-    free_signature_criteria_data(crit, st);
+    for (len_t i = 0; i < st->ngens; ++i) {
+        free(crit[i].sdm);
+        crit[i].sdm =   NULL;
+        free(crit[i].hm);
+        crit[i].hm  =   NULL;
+        crit[i].ld  =   0;
+    }
     free(crit);
     crit    =   NULL;
 
@@ -288,7 +290,6 @@ static void add_multiples_of_previous_degree_row(
 {
     const len_t nv  =   ht->nv;
 
-    free_signature_criteria_data(rew, st);
     for (len_t i = 0; i < nv; ++i) {
         /* check syzygy and rewrite criterion */
         if (is_signature_needed(smat, syz, rew, idx, i, ht) == 1) {
@@ -599,13 +600,16 @@ int core_sba_schreyer(
          * until now */
         ne = get_number_of_initial_generators_in_next_degree(in, smat->cd);
         /* prepare signature matrix for next degree */
-        sba_prepare_next_degree(smat, in, st);
+        sba_prepare_next_degree(smat, in, ne, st);
 
-        add_initial_generators(smat, in);
+        reset_signature_criteria(rew, st);
 
         /* generate rows from previous degree matrix, start with the highest
          * signatures in order to get an efficient rewrite criterion test */
         generate_next_degree_matrix(smat, psmat, syz, rew, ht, st);
+
+        add_initial_generators(smat, in, ne);
+
         printf("4 psmat->ld %u\n", psmat->ld);
 
         /* sort matrix rows by increasing signature */

@@ -3049,7 +3049,8 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
     display_gbmodpoly(stderr, modgbs);
 
     int nb = 0;
-    int32_t *ldeg = array_nbdegrees((*leadmons_ori), modgbs->npolys, bht->nv, &nb);
+    int32_t *ldeg = array_nbdegrees((*leadmons_ori), num_gb[0],
+                                    bht->nv, &nb);
 
     /************************************************/
     /************************************************/
@@ -3063,6 +3064,7 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
 
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
       /* print_msolve_message(stderr, 1); */
+      apply = 0;
       free(mgb);
       gb_modpoly_clear(modgbs);
 
@@ -3095,14 +3097,9 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
       free(st);
     }
     /* duplicate data for multi-threaded multi-mod computation */
-    /* duplicate_data_mthread_trace(st->nthrds, st, num_gb, */
-    /*                              leadmons_ori, leadmons_current, */
-    /*                              btrace, */
-    /*                              bdata_bms, bdata_fglm, */
-    /*                              bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix, */
-    /*                              nmod_params, nlins, bnlins, */
-    /*                              blinvars, lineqs_ptr, */
-    /*                              bsquvars); */
+    duplicate_data_mthread_gbtrace(st->nthrds, st, num_gb,
+                                   leadmons_ori, leadmons_current,
+                                   btrace);
 
     /* copy of hash tables for tracer application */
     blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));

@@ -59,7 +59,7 @@ static inline void free_signature_criteria(
     *critp  =   crit;
 }
 
-static void sba_add_new_elements_to_basis(
+static len_t sba_add_new_elements_to_basis(
         const smat_t * const smat,
         const ht_t * const ht,
         bs_t *bs,
@@ -142,7 +142,7 @@ next:
         }
         bs->ld = k;
     }
-    smat->nlm = ne;
+    return ne;
 }
 
 static int is_signature_needed(
@@ -272,7 +272,7 @@ static void add_row_to_sba_matrix(
     for (len_t i = SM_OFFSET; i < len; ++i) {
         ev    = ht->ev[cr[i]];
         ev[var_idx+shift]++;
-        cr[i] = nsert_in_hash_table(ev, ht);
+        cr[i] = insert_in_hash_table(ev, ht);
     }
     smat->cld++;
 }
@@ -603,7 +603,7 @@ int core_sba_schreyer(
         sba_convert_columns_to_hashes(smat, hcm);
 
         /* add new elements to basis */
-        sba_add_new_elements_to_basis(smat, ht, bs, st);
+        smat->nlm = sba_add_new_elements_to_basis(smat, ht, bs, st);
 
         /* increase degree for next round */
         smat->cd++;

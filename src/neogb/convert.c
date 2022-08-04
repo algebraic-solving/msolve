@@ -431,7 +431,7 @@ static void sba_convert_columns_to_hashes(
 {
     len_t i, j;
 
-    for (i = 0; i < smat->ld; ++i) {
+    for (i = 0; i < smat->cld; ++i) {
         const len_t len = smat->cr[i][SM_LEN] + SM_OFFSET;
         for (j = SM_OFFSET; j < len; ++j) {
             smat->cr[i][j] = hcm[smat->cr[i][j]];

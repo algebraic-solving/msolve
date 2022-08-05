@@ -778,6 +778,8 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
         return smat->cr[ri];
     }
 
+    printf("k %d | ri %u | cr[%u] = %p\n", k, ri, ri, smat->cr[ri]);
+    printf("%lu\n", (unsigned long)(k+SM_OFFSET));
     smat->cr[ri] = realloc(smat->cr[ri],
             (unsigned long)(k+SM_OFFSET) * sizeof(hm_t));
     cf32_t *cf   = (cf32_t *)malloc((unsigned long)(k) * sizeof(cf32_t));
@@ -2217,9 +2219,12 @@ static void sba_echelon_form_ff_32(
             dr[ds[j+2]]  = (int64_t)cfs[j+2];
             dr[ds[j+3]]  = (int64_t)cfs[j+3];
         }
+        const len_t offset = npiv[SM_OFFSET];
         free(npiv);
+        npiv        = NULL;
+        smat->cr[i] = NULL;
         npiv = sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
-                dr, smat, pivs, npiv[SM_OFFSET], sm, si, ri, st);
+                dr, smat, pivs, offset, sm, si, ri, st);
         if (!npiv) {
             /* row s-reduced to zero, add syzygy and go on with next row */
             add_syzygy_schreyer(syz, sm, si, ht);

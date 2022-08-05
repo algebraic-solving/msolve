@@ -156,10 +156,13 @@ static int is_signature_needed(
 {
     /* get exponent vector and increment entry for var_idx */
     exp_t *ev   =   ht->ev[0];
-    ev          =   ht->ev[smat->pr[idx][SM_SMON]];
+    memcpy(ev, ht->ev[smat->pr[idx][SM_SMON]],
+            (unsigned long)ht->evl * sizeof(exp_t));;
     /* Note: ht->ebl = #elimination variables + 1 */
-    len_t shift =   var_idx < ht->ebl - 1 ? 1: 2;
+    len_t shift   = var_idx < ht->ebl - 1 ? 1: 2;
+    len_t deg_pos = shift == 2 ? ht->ebl : 0;
     ev[var_idx+shift]++;
+    ev[deg_pos]++;
 
     const len_t sig_idx = smat->pr[idx][SM_SIDX];
     const hm_t hm       = insert_in_hash_table(ev, ht);
@@ -251,6 +254,9 @@ static void add_row_to_sba_matrix(
         enlarge_sba_matrix(smat);
     }
     const len_t cld = smat->cld;
+    /* Note: ht->ebl = #elimination variables + 1 */
+    len_t shift     = var_idx < ht->ebl - 1 ? 1: 2;
+    len_t deg_pos   = shift == 2 ? ht->ebl : 0;
     /* copy monomial entries in row */
     smat->cr[cld]  =   malloc(
             ((unsigned long)smat->pr[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
@@ -263,16 +269,11 @@ static void add_row_to_sba_matrix(
     printf("\n");
     /* now multiply each column entry with the corresponding variable */
     hm_t *cr            =   smat->cr[cld];
+    /* Note that ht->ev[0] is already the multiplied signature, we have already
+     * checked if we need this signature in is_signature_needed(), thus we can
+     * just use it without further updating it. */
     exp_t *ev           =   ht->ev[0];
-    const len_t shift   =   var_idx > ht->ebl ? 2 : 1;
-
     /* multiply signature */
-    ev          = ht->ev[cr[SM_SMON]];
-    for (int i = 0; i < ht->evl; ++i) {
-        printf("%u ", ev[i]);
-    }
-    printf("\n");
-    ev[var_idx+shift]++;
     cr[SM_SMON] = insert_in_hash_table(ev, ht);
     printf("signature ");
     for (int i = 0; i < ht->evl; ++i) {
@@ -283,8 +284,9 @@ static void add_row_to_sba_matrix(
     /* multiply monomials in corresp. polnoymial */
     const len_t len =  cr[SM_LEN] + SM_OFFSET;
     for (len_t i = SM_OFFSET; i < len; ++i) {
-        ev    = ht->ev[cr[i]];
+        memcpy(ev, ht->ev[cr[i]], (unsigned long)ht->evl * sizeof(exp_t));
         ev[var_idx+shift]++;
+        ev[deg_pos]++;
         cr[i] = insert_in_hash_table(ev, ht);
     }
     smat->cld++;
@@ -545,18 +547,43 @@ static void generate_next_degree_sba_matrix(
     /* check if we have initial generators not handled in lower degree
      * until now */
     printf("smat->cd %d\n", smat->cd);
+        printf("1 ht->ev[1] ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[1][ii]);
+        }
+        printf("\n");
     const len_t ni = get_number_of_initial_generators_in_next_degree(
             in, smat->cd);
     /* prepare signature matrix for next degree */
+        printf("2 ht->ev[1] ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[1][ii]);
+        }
+        printf("\n");
     sba_prepare_next_degree(smat, in, ni, st);
 
+        printf("3 ht->ev[1] ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[1][ii]);
+        }
+        printf("\n");
     reset_signature_criteria(rew, st);
 
     /* generate rows from previous degree matrix, start with the highest
      * signatures in order to get an efficient rewrite criterion test */
+        printf("4 ht->ev[1] ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[1][ii]);
+        }
+        printf("\n");
     generate_next_degree_matrix_from_previous(
             smat, syz, rew, ht, st);
 
+        printf("5 ht->ev[1] ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[1][ii]);
+        }
+        printf("\n");
     add_initial_generators(smat, in, ni);
 }
 
@@ -638,9 +665,33 @@ int core_sba_schreyer(
 
         /* maps columns to hashes */
         sba_convert_columns_to_hashes(smat, hcm);
+        printf("ht->ev[1] ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[1][ii]);
+        }
+        printf("\n");
 
+        /* reset indices in hash table*/
+        reset_hash_table_indices(ht, hcm, smat->nc);
+
+        printf("ht->ev[1] ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[1][ii]);
+        }
+        printf("\n");
         /* add new elements to basis */
         smat->nlm = sba_add_new_elements_to_basis(smat, ht, bs, st);
+        printf("ht->ev[1] ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[1][ii]);
+        }
+        printf("\n");
+
+        printf("smat->cr[0][SM_SMON] = %u | ", smat->cr[0][SM_SMON]);
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[smat->cr[0][SM_SMON]][ii]);
+        }
+        printf("\n");
 
         /* increase degree for next round */
         smat->cd++;

@@ -32,6 +32,12 @@
 /* The idea of the structure of the hash table is taken from an
  * implementation by Roman Pearce and Michael Monagan in Maple. */
 
+void reset_hash_table_indices(
+        ht_t *ht,
+        const hi_t * const hcm,
+        const len_t len
+        );
+
 ht_t *initialize_basis_hash_table(
     stat_t *st
     );

@@ -357,6 +357,38 @@ static int spair_cmp_deglex(
  * IMPLEMENTATIONS FOR DEGREE REVERSE LEXICOGRAPHICAL ORDER
  *  */
 
+static int initial_input_cmp_drl_reverse(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    len_t i;
+    ht_t *ht  = htp;
+
+    const hm_t ha  = ((hm_t **)a)[0][OFFSET];
+    const hm_t hb  = ((hm_t **)b)[0][OFFSET];
+
+    const exp_t * const ea  = ht->ev[ha];
+    const exp_t * const eb  = ht->ev[hb];
+
+    /* DRL */
+    if (ea[DEG] > eb[DEG]) {
+        return 1;
+    } else {
+        if (ea[DEG] != eb[DEG]) {
+            return -1;
+        }
+    }
+
+    /* note: reverse lexicographical */
+    i = ht->evl-1;
+    while (i > 1 && ea[i] == eb[i]) {
+        --i;
+    }
+    return eb[i] - ea[i];
+}
+
 static int initial_input_cmp_drl(
         const void *a,
         const void *b,

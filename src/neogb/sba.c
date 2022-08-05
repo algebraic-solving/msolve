@@ -93,10 +93,10 @@ next:
     /* now enter elements to basis */
     for (i = 0; i < k; ++i) {
         bs->hm[bs->ld] = (hm_t *)malloc(
-                (unsigned long)(smat->cr[rine[i]][SM_LEN])+SM_OFFSET *
+                (unsigned long)(smat->cr[rine[i]][SM_LEN]+SM_OFFSET) *
                 sizeof(hm_t));
         memcpy(bs->hm[bs->ld], smat->cr[rine[i]],
-                (unsigned long)(smat->cr[rine[i]][SM_LEN])+SM_OFFSET *
+                (unsigned long)(smat->cr[rine[i]][SM_LEN]+SM_OFFSET) *
                 sizeof(hm_t));
         bs->cf_32[bs->ld] = (cf32_t *)malloc(
                 (unsigned long)(smat->cr[rine[i]][SM_LEN]) *
@@ -105,6 +105,7 @@ next:
                 (unsigned long)(smat->cr[rine[i]][SM_LEN]) * sizeof(cf32_t));
         bs->ld++;
     }
+    printf("add smat->cr %p\n", smat->cr);
 
     free(rine);
     rine = NULL;
@@ -263,10 +264,6 @@ static void add_row_to_sba_matrix(
     memcpy(smat->cr[cld], smat->pr[idx],
             ((unsigned long)smat->pr[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
 
-    for (int i = 0; i < smat->cr[cld][SM_LEN]+SM_OFFSET; ++i) {
-        printf("%u ", smat->cr[cld][i]);
-    }
-    printf("\n");
     /* now multiply each column entry with the corresponding variable */
     hm_t *cr            =   smat->cr[cld];
     /* Note that ht->ev[0] is already the multiplied signature, we have already
@@ -275,11 +272,6 @@ static void add_row_to_sba_matrix(
     exp_t *ev           =   ht->ev[0];
     /* multiply signature */
     cr[SM_SMON] = insert_in_hash_table(ev, ht);
-    printf("signature ");
-    for (int i = 0; i < ht->evl; ++i) {
-        printf("%u ", ev[i]);
-    }
-    printf(" | %u\n", cr[SM_SIDX]);
 
     /* multiply monomials in corresp. polnoymial */
     const len_t len =  cr[SM_LEN] + SM_OFFSET;
@@ -412,12 +404,15 @@ static void sba_prepare_next_degree(
         )
 {
 
+    printf("1 pr %p - cr %p\n", smat->pr, smat->cr);
     smat->pr   = smat->cr;
+    printf("2 pr %p - cr %p\n", smat->pr, smat->cr);
     smat->pc32 = smat->cc32;
     smat->pld  = smat->cld;
 
     /* reset smat data */
     smat->cr   = NULL;
+    printf("3 pr %p - cr %p\n", smat->pr, smat->cr);
     smat->cc32 = NULL;
     smat->cld  = smat->csz = smat->nz = smat->nc = 0;
 
@@ -428,9 +423,6 @@ static void sba_prepare_next_degree(
     /* allocate memory to store initial generators in pr and pc32 */
     smat->pc32 = realloc(smat->pc32,
             (unsigned long)(smat->pld + ni) * sizeof(cf32_t *));
-    for (int i = 0; i < smat->pld; ++i) {
-        printf("[%d] -> %p\n", i, smat->pc32[i]);
-    }
 }
 
 static len_t get_number_of_initial_generators_in_next_degree(
@@ -546,44 +538,18 @@ static void generate_next_degree_sba_matrix(
 {
     /* check if we have initial generators not handled in lower degree
      * until now */
-    printf("smat->cd %d\n", smat->cd);
-        printf("1 ht->ev[1] ");
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[1][ii]);
-        }
-        printf("\n");
     const len_t ni = get_number_of_initial_generators_in_next_degree(
             in, smat->cd);
     /* prepare signature matrix for next degree */
-        printf("2 ht->ev[1] ");
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[1][ii]);
-        }
-        printf("\n");
     sba_prepare_next_degree(smat, in, ni, st);
 
-        printf("3 ht->ev[1] ");
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[1][ii]);
-        }
-        printf("\n");
     reset_signature_criteria(rew, st);
 
     /* generate rows from previous degree matrix, start with the highest
      * signatures in order to get an efficient rewrite criterion test */
-        printf("4 ht->ev[1] ");
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[1][ii]);
-        }
-        printf("\n");
     generate_next_degree_matrix_from_previous(
             smat, syz, rew, ht, st);
 
-        printf("5 ht->ev[1] ");
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[1][ii]);
-        }
-        printf("\n");
     add_initial_generators(smat, in, ni);
 }
 
@@ -648,9 +614,6 @@ int core_sba_schreyer(
         /* generate matrix for next degree step */
         generate_next_degree_sba_matrix(smat, in, syz, rew, ht, st);
 
-        for (int ii = 0; ii < smat->cld; ++ii) {
-            printf("%u | %u \n", smat->cr[ii][SM_SMON], smat->cr[ii][SM_SIDX]);
-        }
         /* sort matrix rows by increasing signature */
         sort_matrix_rows_by_increasing_signature(smat, ht);
         for (int ii = 0; ii < smat->cld; ++ii) {
@@ -662,36 +625,19 @@ int core_sba_schreyer(
 
         /* s-reduce matrix and add syzygies when rows s-reduce to zero */
         sba_linear_algebra(smat, syz, st, ht);
+        printf("0 cld %u %p\n", smat->cld, smat->cr);
 
         /* maps columns to hashes */
         sba_convert_columns_to_hashes(smat, hcm);
-        printf("ht->ev[1] ");
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[1][ii]);
-        }
-        printf("\n");
 
         /* reset indices in hash table*/
         reset_hash_table_indices(ht, hcm, smat->nc);
 
-        printf("ht->ev[1] ");
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[1][ii]);
-        }
-        printf("\n");
+        printf("cld %u %p\n", smat->cld, smat->cr);
+
         /* add new elements to basis */
         smat->nlm = sba_add_new_elements_to_basis(smat, ht, bs, st);
-        printf("ht->ev[1] ");
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[1][ii]);
-        }
-        printf("\n");
-
-        printf("smat->cr[0][SM_SMON] = %u | ", smat->cr[0][SM_SMON]);
-        for (int ii = 0; ii < ht->evl; ++ii) {
-            printf("%u ", ht->ev[smat->cr[0][SM_SMON]][ii]);
-        }
-        printf("\n");
+        printf("2 cld %u %p\n", smat->cld, smat->cr);
 
         /* increase degree for next round */
         smat->cd++;

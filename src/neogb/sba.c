@@ -311,7 +311,9 @@ static inline void add_row_with_signature(
     const len_t len = bs->hm[pos][LENGTH];
     smat->cr[cld]           = (hm_t *)malloc(
             (len + SM_OFFSET) * sizeof(hm_t));
-    /* copy polynomial data */
+    /* copy polynomial data, take a look at the difference between
+     * the meta data stored in hm arrays from bs and the 
+     * meta data stored in signature-based smat rows. */
     memcpy(smat->cr[cld]+SM_PRE,bs->hm[pos]+PRELOOP,
             (len + OFFSET - PRELOOP) * sizeof(hm_t));
     smat->pc32[pld]        = bs->cf_32[bs->hm[pos][COEFFS]];

@@ -1189,6 +1189,9 @@ void set_function_pointers(
                 spair_cmp           = spair_cmp_drl;
                 hcm_cmp             = hcm_cmp_pivots_drl;
         }
+        if (st->use_signatures > 0) {
+            initial_input_cmp = initial_input_cmp_drl_reverse;
+        }
     }
 
   /* up to 17 bits we can use one modular operation for reducing a row. this works

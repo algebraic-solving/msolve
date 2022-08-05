@@ -257,6 +257,10 @@ static void add_row_to_sba_matrix(
     memcpy(smat->cr[cld], smat->pr[idx],
             ((unsigned long)smat->pr[idx][SM_LEN]+SM_OFFSET) * sizeof(hm_t));
 
+    for (int i = 0; i < smat->cr[cld][SM_LEN]+SM_OFFSET; ++i) {
+        printf("%u ", smat->cr[cld][i]);
+    }
+    printf("\n");
     /* now multiply each column entry with the corresponding variable */
     hm_t *cr            =   smat->cr[cld];
     exp_t *ev           =   ht->ev[0];
@@ -264,8 +268,17 @@ static void add_row_to_sba_matrix(
 
     /* multiply signature */
     ev          = ht->ev[cr[SM_SMON]];
+    for (int i = 0; i < ht->evl; ++i) {
+        printf("%u ", ev[i]);
+    }
+    printf("\n");
     ev[var_idx+shift]++;
     cr[SM_SMON] = insert_in_hash_table(ev, ht);
+    printf("signature ");
+    for (int i = 0; i < ht->evl; ++i) {
+        printf("%u ", ev[i]);
+    }
+    printf(" | %u\n", cr[SM_SIDX]);
 
     /* multiply monomials in corresp. polnoymial */
     const len_t len =  cr[SM_LEN] + SM_OFFSET;
@@ -318,8 +331,10 @@ static inline void add_row_with_signature(
             (len + OFFSET - PRELOOP) * sizeof(hm_t));
     smat->pc32[pld]        = bs->cf_32[bs->hm[pos][COEFFS]];
     smat->cr[cld][SM_CFS]  = pld;
+    printf("cld %u -> cfs pld %u\n", cld, pld);
     /* store also signature data */
     smat->cr[cld][SM_SMON] = bs->sm[pos];
+    printf("sm[%u] = %u | %u\n", pos, bs->sm[pos], bs->si[pos]);
     smat->cr[cld][SM_SIDX] = bs->si[pos];
     smat->cld++;
     smat->pld++;
@@ -372,7 +387,7 @@ static inline void initialize_signatures_schreyer(
         )
 {
     for (len_t i = 0; i < bs->ld; ++i) {
-        bs->si[i]   =   i;
+        bs->si[i]   =   bs->ld-1-i;
         bs->sm[i]   =   bs->hm[i][OFFSET];
     }
 }
@@ -411,8 +426,9 @@ static void sba_prepare_next_degree(
     /* allocate memory to store initial generators in pr and pc32 */
     smat->pc32 = realloc(smat->pc32,
             (unsigned long)(smat->pld + ni) * sizeof(cf32_t *));
-    smat->pr   = realloc(smat->pr,
-            (unsigned long)(smat->pld + ni) * sizeof(hm_t *));
+    for (int i = 0; i < smat->pld; ++i) {
+        printf("[%d] -> %p\n", i, smat->pc32[i]);
+    }
 }
 
 static len_t get_number_of_initial_generators_in_next_degree(
@@ -445,10 +461,12 @@ static void add_initial_generators(
 
     while (j < ne) {
         add_row_with_signature(smat, in, i);
+        /* memory for coeffs vector is freed in sba
+         * linear algebra later on */
+        in->cf_32[in->hm[i][COEFFS]] = NULL;
         free(in->hm[i]);
         in->hm[i] = NULL;
-        free(in->cf_32[i]);
-        in->cf_32[i] = NULL;
+        in->ld--;
         i--;
         j++;
     }
@@ -569,6 +587,13 @@ int core_sba_schreyer(
 
     /* initialize signature related information */
     initialize_signatures_schreyer(in);
+    printf("initial signatures\n");
+    for (int j = 0; j < in->ld; ++j) {
+        for (int i = 0; i < ht->evl; ++i) {
+            printf("%u ", ht->ev[in->sm[j]][i]);
+        }
+        printf(" | %u --> %u\n", in->si[j], in->sm[j]);
+    }
     crit_t *syz = initialize_syzygies_schreyer(in, ht);
     crit_t *rew = initialize_signature_criteria(st);
 
@@ -596,8 +621,14 @@ int core_sba_schreyer(
         /* generate matrix for next degree step */
         generate_next_degree_sba_matrix(smat, in, syz, rew, ht, st);
 
+        for (int ii = 0; ii < smat->cld; ++ii) {
+            printf("%u | %u \n", smat->cr[ii][SM_SMON], smat->cr[ii][SM_SIDX]);
+        }
         /* sort matrix rows by increasing signature */
         sort_matrix_rows_by_increasing_signature(smat, ht);
+        for (int ii = 0; ii < smat->cld; ++ii) {
+            printf("%u | %u \n", smat->cr[ii][SM_SMON], smat->cr[ii][SM_SIDX]);
+        }
 
         /* map hashes to columns */
         sba_convert_hashes_to_columns(&hcm, smat, st, ht);

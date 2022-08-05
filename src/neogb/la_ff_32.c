@@ -793,9 +793,11 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
             j++;
         }
     }
-    smat->cr[ri][SM_CFS] = ri;
-    smat->cr[ri][SM_PRE] = j % UNROLL;
-    smat->cr[ri][SM_LEN] = j;
+    smat->cr[ri][SM_SMON] = sm;
+    smat->cr[ri][SM_SIDX] = si;
+    smat->cr[ri][SM_CFS]  = ri;
+    smat->cr[ri][SM_PRE]  = j % UNROLL;
+    smat->cr[ri][SM_LEN]  = j;
 
     smat->cc32[ri] = cf;
 
@@ -2203,6 +2205,7 @@ static void sba_echelon_form_ff_32(
      * reduction dependencies on the signatures. */
     for (ri = 0, i = 0; i < nr; ++i) {
         hm_t *npiv      = smat->cr[i];
+        printf("npiv[SM_CFS] = %u / %u\n", npiv[SM_CFS], smat->pld);
         cf32_t *cfs     = smat->pc32[npiv[SM_CFS]];
         const hm_t sm   = npiv[SM_SMON];
         const len_t si  = npiv[SM_SIDX];
@@ -2223,6 +2226,7 @@ static void sba_echelon_form_ff_32(
         free(npiv);
         npiv        = NULL;
         smat->cr[i] = NULL;
+        printf("reducing row %u || %u | %u\n", i, sm, si);
         npiv = sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
                 dr, smat, pivs, offset, sm, si, ri, st);
         if (!npiv) {

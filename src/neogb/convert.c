@@ -232,10 +232,12 @@ static void sba_convert_hashes_to_columns(
 
     hcm = realloc(hcm, (unsigned long)eld * sizeof(hi_t));
     k = 0;
+    printf("nr %u\n", nr);
     for (i = 0; i < nr; ++i) {
         const len_t len = SM_OFFSET + cr[i][SM_LEN];
         for (j = SM_OFFSET; j < len; ++j) {
-            if (hd[cr[i][j]].idx != 0) {
+            printf("j %u -- idx %u\n", j, hd[cr[i][j]].idx);
+            if (hd[cr[i][j]].idx == 0) {
                 hd[cr[i][j]].idx = 1;
                 hcm[k++] = cr[i][j];
             }

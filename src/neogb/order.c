@@ -357,6 +357,7 @@ static int spair_cmp_deglex(
  * IMPLEMENTATIONS FOR DEGREE REVERSE LEXICOGRAPHICAL ORDER
  *  */
 
+#if 0
 static int initial_input_cmp_drl_reverse(
         const void *a,
         const void *b,
@@ -388,6 +389,7 @@ static int initial_input_cmp_drl_reverse(
     }
     return eb[i] - ea[i];
 }
+#endif
 
 static int initial_input_cmp_drl(
         const void *a,

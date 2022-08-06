@@ -180,7 +180,7 @@ static int is_signature_needed(
     const len_t evl     = ht->evl;
 
     /* syzygy criterion */
-syz:
+syz: ;
     const crit_t syz_idx = syz[sig_idx];
     for (len_t i = 0; i < syz_idx.ld; ++i) {
         if (nsdm & syz_idx.sdm[i]) {
@@ -195,7 +195,7 @@ syz:
         return 0;
     }
     /* rewrite criterion */
-rew:
+rew: ;
     const crit_t rew_idx = rew[sig_idx];
     for (len_t i = 0; i < rew_idx.ld; ++i) {
         if (nsdm & rew_idx.sdm[i]) {

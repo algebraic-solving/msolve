@@ -27,6 +27,14 @@ static inline crit_t *initialize_signature_criteria(
 {
     crit_t *crit    =   calloc((unsigned long)st->ngens, sizeof(crit_t));
 
+    for (int i = 0; i < st->ngens; ++i) {
+        crit[i].sz = 1;
+        crit[i].sdm =  realloc(crit[i].sdm,
+                (unsigned long)crit[i].sz * sizeof(sdm_t));
+        crit[i].hm  =  realloc(crit[i].hm,
+                (unsigned long)crit[i].sz * sizeof(hm_t));
+    }
+
     return crit;
 }
 

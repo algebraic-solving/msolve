@@ -3181,7 +3181,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free_lucky_primes(&lp);
     free(bad_primes);
     free(lp);
-    free(st);
     free(linvars);
     if(nlins){
       free(lineqs_ptr[0]);
@@ -3203,8 +3202,10 @@ int msolve_trace_qq(mpz_param_t mpz_param,
         (*nmod_param) = par;
 
       }
+      free(st);
       return 0;
     }
+    free(st);
     free(nmod_params);
     if(*dim_ptr==1){
       if(info_level){

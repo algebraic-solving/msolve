@@ -280,7 +280,6 @@ static void sba_convert_hashes_to_columns(
             row[j+3]  = hd[row[j+3]].idx;
         }
         nterms += len;
-        printf("convert forth [%u] -> %u | %u\n", i, cr[i][SM_SMON], cr[i][SM_SIDX]);
     }
 
     /* compute density of matrix */
@@ -439,7 +438,6 @@ static void sba_convert_columns_to_hashes(
         for (j = SM_OFFSET; j < len; ++j) {
             smat->cr[i][j] = hcm[smat->cr[i][j]];
         }
-        printf("convert back [%u] -> %u | %u\n", i, smat->cr[i][SM_SMON], smat->cr[i][SM_SIDX]);
     }
 }
 

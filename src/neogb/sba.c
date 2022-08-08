@@ -28,7 +28,7 @@ static inline crit_t *initialize_signature_criteria(
     crit_t *crit    =   calloc((unsigned long)st->ngens, sizeof(crit_t));
 
     for (int i = 0; i < st->ngens; ++i) {
-        crit[i].sz = 1;
+        crit[i].sz = 8;
         crit[i].sdm =  realloc(crit[i].sdm,
                 (unsigned long)crit[i].sz * sizeof(sdm_t));
         crit[i].hm  =  realloc(crit[i].hm,
@@ -90,7 +90,9 @@ next:
     for (; i < nr; ++i) {
         const hm_t lm = smat->cr[i][SM_OFFSET];
         for (j = 0; j < bld; ++j) {
-            if (check_monomial_division(bs->hm[j][SM_OFFSET], lm, ht) == 1) {
+            printf("j %u / %u bld\n", j, bld);
+            if (check_monomial_division(bs->hm[j][OFFSET], lm, ht) == 1) {
+                i++;
                 goto next;
             }
         }
@@ -98,22 +100,30 @@ next:
     }
     check_enlarge_basis(bs, k, st);
 
+    for (i = 0; i < bs->ld; ++i) {
+        printf("bs[%u] -> %p\n", i, bs->hm[i]);
+    }
     /* now enter elements to basis */
     for (i = 0; i < k; ++i) {
+        printf("adding %u into %u\n", i, bs->ld);
         bs->hm[bs->ld] = (hm_t *)malloc(
-                (unsigned long)(smat->cr[rine[i]][SM_LEN]+SM_OFFSET) *
+                (unsigned long)(smat->cr[rine[i]][SM_LEN]+OFFSET) *
                 sizeof(hm_t));
-        memcpy(bs->hm[bs->ld], smat->cr[rine[i]],
-                (unsigned long)(smat->cr[rine[i]][SM_LEN]+SM_OFFSET) *
+        memcpy(bs->hm[bs->ld]+PRELOOP, smat->cr[rine[i]]+SM_PRE,
+                (unsigned long)(smat->cr[rine[i]][SM_LEN]+SM_OFFSET-SM_PRE) *
                 sizeof(hm_t));
         bs->cf_32[bs->ld] = (cf32_t *)malloc(
                 (unsigned long)(smat->cr[rine[i]][SM_LEN]) *
                 sizeof(cf32_t));
-        memcpy(bs->cf_32[bs->ld], smat->cc32[rine[i]],
+        memcpy(bs->cf_32[bs->ld], smat->cc32[smat->cr[rine[i]][SM_CFS]],
                 (unsigned long)(smat->cr[rine[i]][SM_LEN]) * sizeof(cf32_t));
+        /* We assume that the polynomials are homogeneous */
+        bs->hm[bs->ld][DEG]    = ht->hd[bs->hm[bs->ld][OFFSET]].deg;
+        bs->hm[bs->ld][COEFFS] = bs->ld;
         bs->ld++;
     }
     printf("add smat->cr %p\n", smat->cr);
+    printf("final bld %u\n", bs->ld);
 
     free(rine);
     rine = NULL;
@@ -129,26 +139,36 @@ next:
          * load of the basis. */
         const len_t bln = bs->ld;
         k = 0;
-        for (i = 0; i < bld; ++i) {
-            const hm_t lm = bs->hm[i][SM_OFFSET];
+        i = 0;
+next_element:
+        for (; i < bld; ++i) {
+            const hm_t lm = bs->hm[i][OFFSET];
             for (j = bld; j < bln; ++j) {
-                if (check_monomial_division(bs->hm[j][SM_OFFSET], lm, ht) == 1) {
+                if (check_monomial_division(bs->hm[j][OFFSET], lm, ht) == 1) {
+                    printf("freeing %u / %u due to %u\n", i, bld, j);
                     free(bs->hm[i]);
                     bs->hm[i] = NULL;
                     free(bs->cf_32[i]);
                     bs->cf_32[i] = NULL;
+                    i++;
+                    goto next_element;
                 }
-                bs->hm[k]    = bs->hm[i];
-                bs->cf_32[k] = bs->cf_32[i];
-                k++;
             }
-        }
-        /* now add new elements correctly in minimized basis */
-        for (i = bld; i < bln; ++i) {
             bs->hm[k]    = bs->hm[i];
             bs->cf_32[k] = bs->cf_32[i];
             k++;
         }
+        printf("k %u\n", k);
+        /* now add new elements correctly in minimized basis */
+        printf("bld %u --> %u bln\n", bld, bln);
+        for (i = bld; i < bln; ++i) {
+                printf("i %u\n", i);
+            bs->hm[k]         = bs->hm[i];
+            bs->cf_32[k]      = bs->cf_32[i];
+            bs->hm[k][COEFFS] = k;
+            k++;
+        }
+        printf("drin?\n");
         bs->ld = k;
     }
     return ne;
@@ -163,6 +183,8 @@ static int is_signature_needed(
         ht_t *ht
         )
 {
+    len_t i;
+
     /* get exponent vector and increment entry for var_idx */
     exp_t *ev   =   ht->ev[0];
     memcpy(ev, ht->ev[smat->pr[idx][SM_SMON]],
@@ -174,39 +196,66 @@ static int is_signature_needed(
     ev[deg_pos]++;
 
     const len_t sig_idx = smat->pr[idx][SM_SIDX];
+    printf("check signature ");
+    for (int ii = 0; ii < ht->evl; ++ii) {
+        printf("%u ", ev[ii]);
+    }
+    printf("| %u\n", sig_idx);
+
     const hm_t hm       = insert_in_hash_table(ev, ht);
     const sdm_t nsdm    = ~ht->hd[hm].sdm;
 
     const len_t evl     = ht->evl;
+    printf("---syzgyies---\n");
+    for (int jj = 0; jj < syz[sig_idx].ld; ++jj) {
+        for (int kk = 0; kk < ht->evl; ++kk) {
+            printf("%u ", ht->ev[syz[sig_idx].hm[jj]][kk]);
+        }
+        printf("| %u\n", sig_idx);
+    }
+
+    printf("---rewriters---\n");
+    for (int jj = 0; jj < rew[sig_idx].ld; ++jj) {
+        for (int kk = 0; kk < ht->evl; ++kk) {
+            printf("%u ", ht->ev[rew[sig_idx].hm[jj]][kk]);
+        }
+        printf("| %u\n", sig_idx);
+    }
 
     /* syzygy criterion */
+    i = 0;
 syz: ;
     const crit_t syz_idx = syz[sig_idx];
-    for (len_t i = 0; i < syz_idx.ld; ++i) {
+    for (; i < syz_idx.ld; ++i) {
         if (nsdm & syz_idx.sdm[i]) {
             continue;
         }
         const exp_t *sev = ht->ev[syz_idx.hm[i]];
         for (len_t j = 0; j < evl; ++j) {
             if (sev[j] > ev[j]) {
+                i++;
                 goto syz;
             }
         }
+        printf("syz crit applies\n");
         return 0;
     }
     /* rewrite criterion */
+    i = 0;
 rew: ;
     const crit_t rew_idx = rew[sig_idx];
-    for (len_t i = 0; i < rew_idx.ld; ++i) {
+    for (; i < rew_idx.ld; ++i) {
         if (nsdm & rew_idx.sdm[i]) {
             continue;
         }
         const exp_t *rev = ht->ev[rew_idx.hm[i]];
         for (len_t j = 0; j < evl; ++j) {
             if (rev[j] > ev[j]) {
+                i++;
                 goto rew;
             }
         }
+        printf("rew crit applies\n");
         return 0;
     }
     return 1;
@@ -225,7 +274,7 @@ static inline void enlarge_sba_matrix(
                 smat->pc32, (unsigned long)smat->csz * sizeof(cf32_t *));
 }
 
-static inline void check_enlarge_rewrite_rule_array(
+static inline void check_enlarge_signature_rule_array(
         crit_t *rew,
         const len_t sidx
         )
@@ -246,7 +295,7 @@ static inline void add_rewrite_rule(
         )
 {
     const len_t sidx = smat->cr[smat->cld-1][SM_SIDX];
-    check_enlarge_rewrite_rule_array(rew, sidx);
+    check_enlarge_signature_rule_array(rew, sidx);
     rew[sidx].hm[rew[sidx].ld]  = smat->cr[smat->cld-1][SM_SMON];
     rew[sidx].sdm[rew[sidx].ld] = ht->hd[smat->cr[smat->cld-1][SM_SMON]].sdm;
     rew[sidx].ld++;
@@ -349,13 +398,8 @@ inline void add_syzygy_schreyer(
         const ht_t * const ht
         )
 {
-    while (syz[si].ld >= syz[si].sz) {
-        syz[si].sz *= 2;
-        syz[si].hm = realloc(syz[si].hm,
-                (unsigned long)syz[si].sz * sizeof(hm_t));
-        syz[si].sdm = realloc(syz[si].sdm,
-                (unsigned long)syz[si].sz * sizeof(sdm_t));
-    }
+    check_enlarge_signature_rule_array(syz, si);
+
     syz[si].hm[syz[si].ld]  = sm;
     syz[si].sdm[syz[si].ld] = ht->hd[sm].sdm;
     syz[si].ld++;
@@ -379,7 +423,14 @@ static inline crit_t *initialize_syzygies_schreyer(
             syz[i].hm[j]    = insert_multiplied_signature_in_hash_table(
                     bs->hm[j][OFFSET], bs->sm[i], ht);
             syz[i].sdm[j]   = ht->hd[syz[i].hm[j]].sdm;
+            printf("init syz[%u] -> ", i);
+            for (int ii = 0; ii<ht->evl; ++ii) {
+                printf("%u ", ht->ev[syz[i].hm[j]][ii]);
+            }
+            printf("\n");
         }
+        syz[i].ld = i;
+        printf("\n");
     }
     return syz;
 }

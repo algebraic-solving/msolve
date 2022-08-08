@@ -4632,6 +4632,12 @@ restart:
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
+            if (st->homogeneous != 1) {
+                fprintf(stderr,
+                        "Input system must be homogeneous.\n");
+                exit(1);
+            }
+
             st->fc  = gens->field_char;
             if(info_level){
                 fprintf(stderr,

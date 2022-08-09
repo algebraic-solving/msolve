@@ -414,12 +414,12 @@ static inline crit_t *initialize_syzygies_schreyer(
     crit_t *syz =   calloc((unsigned long)bs->ld, sizeof(crit_t));
     syz[0].ld   =   0;
     syz[0].sz   =   0;
-    for (len_t i = 1; i < bs->ld; ++i) {
+    for (len_t i = 0; i < bs->ld-1; ++i) {
         syz[i].hm   =   calloc((unsigned long)i, sizeof(hm_t));
         syz[i].sdm  =   calloc((unsigned long)i, sizeof(sdm_t));
         syz[i].ld   =   0;
         syz[i].sz   =   i;
-        for (len_t j = 0; j < i; ++j) {
+        for (len_t j = i+1; j < bs->ld; ++j) {
             syz[i].hm[j]    = insert_multiplied_signature_in_hash_table(
                     bs->hm[j][OFFSET], bs->sm[i], ht);
             syz[i].sdm[j]   = ht->hd[syz[i].hm[j]].sdm;
@@ -440,7 +440,7 @@ static inline void initialize_signatures_schreyer(
         )
 {
     for (len_t i = 0; i < bs->ld; ++i) {
-        bs->si[i]   =   bs->ld-1-i;
+        bs->si[i]   =   i;
         bs->sm[i]   =   bs->hm[i][OFFSET];
     }
 }

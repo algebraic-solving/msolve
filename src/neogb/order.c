@@ -911,7 +911,7 @@ static int matrix_row_cmp_by_increasing_signature(
         sidx_a  = (int)((hm_t **)a)[0][SM_SIDX];
         sidx_b  = (int)((hm_t **)b)[0][SM_SIDX];
 
-        return sidx_a - sidx_b;
+        return sidx_b - sidx_a;
     }
 }
 

@@ -2225,7 +2225,11 @@ static void sba_echelon_form_ff_32(
         free(npiv);
         npiv        = NULL;
         smat->cr[i] = NULL;
-        printf("reducing row %u || %u | %u\n", i, sm, si);
+        printf("reducing row %u || %u | %u -- ", i, sm, si);
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[sm][ii]);
+        }
+        printf("\n");
         npiv = sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
                 dr, smat, pivs, offset, sm, si, ri, st);
         if (!npiv) {

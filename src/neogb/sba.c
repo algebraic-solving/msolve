@@ -111,6 +111,11 @@ next:
 
     /* now enter elements to basis */
     for (i = 0; i < k; ++i) {
+        printf("coming from signature ");
+        for (int ii = 0; ii < ht->evl; ++ii) {
+            printf("%u ", ht->ev[smat->cr[rine[i]][SM_SMON]][ii]);
+        }
+        printf("| %u\n", smat->cr[rine[i]][SM_SIDX]);
         bs->hm[bs->ld] = (hm_t *)malloc(
                 (unsigned long)(smat->cr[rine[i]][SM_LEN]+OFFSET) *
                 sizeof(hm_t));
@@ -224,6 +229,7 @@ static int is_signature_needed(
         printf("| %u\n", sig_idx);
     }
 
+#if 1
     /* syzygy criterion */
     i = 0;
 syz: ;
@@ -260,6 +266,7 @@ rew: ;
         printf("rew crit applies\n");
         return 0;
     }
+#endif
     return 1;
 }
 
@@ -358,8 +365,7 @@ static void add_multiples_of_previous_degree_row(
     len_t ctr = 0;
     for (len_t i = 0; i < nv; ++i) {
         /* check syzygy and rewrite criterion */
-        if (1) {
-        /* if (is_signature_needed(smat, syz, rew, idx, i, ht) == 1) { */
+        if (is_signature_needed(smat, syz, rew, idx, i, ht) == 1) {
             add_row_to_sba_matrix(smat, idx, i, ht);
             ctr++;
         }
@@ -643,14 +649,15 @@ int core_sba_schreyer(
 
     /* initialize signature related information */
     initialize_signatures_schreyer(in);
-    /* printf("initial signatures\n");
-     * for (int j = 0; j < in->ld; ++j) {
-     *     for (int i = 0; i < ht->evl; ++i) {
-     *         printf("%u ", ht->ev[in->sm[j]][i]);
-     *     }
-     *     printf(" | %u --> %u\n", in->si[j], in->sm[j]);
-     * } */
-    crit_t *syz = initialize_syzygies_schreyer(in, ht);
+    printf("initial signatures\n");
+    for (int j = 0; j < in->ld; ++j) {
+        for (int i = 0; i < ht->evl; ++i) {
+            printf("%u ", ht->ev[in->sm[j]][i]);
+        }
+        printf(" | %u --> %u\n", in->si[j], in->sm[j]);
+    }
+    /* crit_t *syz = initialize_syzygies_schreyer(in, ht); */
+    crit_t *syz = initialize_signature_criteria(st);
     crit_t *rew = initialize_signature_criteria(st);
 
     /* initialize an empty basis for keeping the real basis elements */

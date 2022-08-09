@@ -281,6 +281,7 @@ static inline void check_enlarge_signature_rule_array(
         const len_t sidx
         )
 {
+    printf("idx %u --> ld %u / sz %u\n", sidx, rew[sidx].ld, rew[sidx].sz);
     if (rew[sidx].ld >= rew[sidx].sz) {
         rew[sidx].sz  *= 2;
         rew[sidx].sdm =  realloc(rew[sidx].sdm,
@@ -357,7 +358,8 @@ static void add_multiples_of_previous_degree_row(
     len_t ctr = 0;
     for (len_t i = 0; i < nv; ++i) {
         /* check syzygy and rewrite criterion */
-        if (is_signature_needed(smat, syz, rew, idx, i, ht) == 1) {
+        if (1) {
+        /* if (is_signature_needed(smat, syz, rew, idx, i, ht) == 1) { */
             add_row_to_sba_matrix(smat, idx, i, ht);
             ctr++;
         }
@@ -417,26 +419,31 @@ static inline crit_t *initialize_syzygies_schreyer(
         ht_t *ht
         )
 {
+    const len_t bld = bs->ld;
     /* when initializing syzygies we assume that bs->ld == st->ngens */
     crit_t *syz =   calloc((unsigned long)bs->ld, sizeof(crit_t));
     syz[0].ld   =   0;
     syz[0].sz   =   0;
-    for (len_t i = 0; i < bs->ld-1; ++i) {
-        syz[i].hm   =   calloc((unsigned long)i, sizeof(hm_t));
-        syz[i].sdm  =   calloc((unsigned long)i, sizeof(sdm_t));
+    /* We allocate one more slot of memory than needed, thus also
+     * for signature index bs->ld-1 we have at least one open
+     * slot for fewer size checks if enlargement of the syzygy
+     * rule arrays are needed later on. */
+    for (len_t i = 0; i < bld; ++i) {
+        syz[i].hm   =   calloc((unsigned long)bld-i, sizeof(hm_t));
+        syz[i].sdm  =   calloc((unsigned long)bld-i, sizeof(sdm_t));
         syz[i].ld   =   0;
-        syz[i].sz   =   i;
-        for (len_t j = i+1; j < bs->ld; ++j) {
+        syz[i].sz   =   bld-i;
+        for (len_t j = i+1; j < bld; ++j) {
             syz[i].hm[j]    = insert_multiplied_signature_in_hash_table(
                     bs->hm[j][OFFSET], bs->sm[i], ht);
             syz[i].sdm[j]   = ht->hd[syz[i].hm[j]].sdm;
-            /* printf("init syz[%u] -> ", i);
-             * for (int ii = 0; ii<ht->evl; ++ii) {
-             *     printf("%u ", ht->ev[syz[i].hm[j]][ii]);
-             * }
-             * printf("\n"); */
+            printf("init syz[%u] -> ", i);
+            for (int ii = 0; ii<ht->evl; ++ii) {
+                printf("%u ", ht->ev[syz[i].hm[j]][ii]);
+            }
+            printf("\n");
         }
-        syz[i].ld = i;
+        syz[i].ld = bld-1-i;
         /* printf("\n"); */
     }
     return syz;

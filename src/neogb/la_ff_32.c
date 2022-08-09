@@ -2205,7 +2205,6 @@ static void sba_echelon_form_ff_32(
      * reduction dependencies on the signatures. */
     for (ri = 0, i = 0; i < nr; ++i) {
         hm_t *npiv      = smat->cr[i];
-        printf("npiv[SM_CFS] = %u / %u\n", npiv[SM_CFS], smat->pld);
         cf32_t *cfs     = smat->pc32[npiv[SM_CFS]];
         const hm_t sm   = npiv[SM_SMON];
         const len_t si  = npiv[SM_SIDX];

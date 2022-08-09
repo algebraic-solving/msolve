@@ -344,6 +344,8 @@ struct stat_t
 
     int64_t num_pairsred;
     int64_t num_gb_crit;
+    int64_t num_syz_crit;
+    int64_t num_rew_crit;
     int64_t num_redundant_old;
     int64_t num_redundant;
     int64_t num_rht;

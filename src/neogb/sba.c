@@ -563,11 +563,12 @@ static void generate_next_degree_matrix_from_previous(
 static void sba_final_reduction_step(
         bs_t *bs,
         ht_t **htp,
-        hi_t *hcm,
+        hi_t **hcmp,
         stat_t *st
         )
 {
-    ht_t *ht = *htp;
+    ht_t *ht  = *htp;
+    hi_t *hcm = *hcmp;
 
     /* prepare basis data to apply final reduction process */
     for (len_t i = 0; i < bs->ld; ++i) {
@@ -587,7 +588,8 @@ static void sba_final_reduction_step(
     free(mat);
     mat = NULL;
 
-    *htp = ht;
+    *htp  = ht;
+    *hcmp = hcm;
 }
 
 static void free_sba_matrix(
@@ -595,9 +597,12 @@ static void free_sba_matrix(
         )
 {
     smat_t *smat = *smatp;
-    for (len_t i = 0; i < smat->csz; ++i) {
+    for (len_t i = 0; i < smat->cld; ++i) {
         free(smat->cr[i]);
         free(smat->cc32[i]);
+    }
+    for (len_t i = 0; i < smat->pld; ++i) {
+        free(smat->pc32[i]);
     }
     free(smat);
     smat = NULL;
@@ -739,7 +744,7 @@ int core_sba_schreyer(
     }
     /* fully reduce elements in basis. */
     if (st->reduce_gb == 1) {
-        sba_final_reduction_step(bs, &ht, hcm, st);
+        sba_final_reduction_step(bs, &ht, &hcm, st);
     }
 
 

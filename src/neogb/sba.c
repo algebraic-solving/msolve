@@ -187,7 +187,8 @@ static int is_signature_needed(
         const crit_t * const rew,
         const len_t idx,
         const len_t var_idx,
-        ht_t *ht
+        ht_t *ht,
+        stat_t *st
         )
 {
     len_t i;
@@ -245,6 +246,7 @@ syz: ;
                 goto syz;
             }
         }
+        st->num_syz_crit++;
         /* printf("syz crit applies\n"); */
         return 0;
     }
@@ -263,6 +265,7 @@ rew: ;
                 goto rew;
             }
         }
+        st->num_rew_crit++;
         /* printf("rew crit applies\n"); */
         return 0;
     }
@@ -370,7 +373,7 @@ static void add_multiples_of_previous_degree_row(
     }
     for (len_t i = 0; i < nv; ++i) {
         /* check syzygy and rewrite criterion */
-        if (is_signature_needed(smat, syz, rew, idx, i, ht) == 1) {
+        if (is_signature_needed(smat, syz, rew, idx, i, ht, st) == 1) {
             add_row_to_sba_matrix(smat, idx, i, ht);
             ctr++;
         }
@@ -595,7 +598,6 @@ static void free_sba_matrix(
     for (len_t i = 0; i < smat->csz; ++i) {
         free(smat->cr[i]);
         free(smat->cc32[i]);
-        free(smat->pc32[i]);
     }
     free(smat);
     smat = NULL;
@@ -733,7 +735,7 @@ int core_sba_schreyer(
 
     if (st->info_level > 1) {
         printf("-------------------------------------------------\
-                ----------------------------------------\n");
+----------------------------\n");
     }
     /* fully reduce elements in basis. */
     if (st->reduce_gb == 1) {
@@ -750,6 +752,9 @@ int core_sba_schreyer(
     free_signature_criteria(&syz, st);
     free_signature_criteria(&rew, st);
     free(hcm);
+
+    printf("#syzygy criteria  %7lld\n", st->num_syz_crit);
+    printf("#rewrite criteria %7lld\n", st->num_rew_crit);
 
     return 1;
 }

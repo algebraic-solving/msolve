@@ -673,10 +673,10 @@ int core_sba_schreyer(
             initial_input_cmp_sig, ht);
 
     if (st->info_level > 1) {
-        printf("\ndeg     sel   pairs        mat          density \
-                new data             time(rd)\n");
+        printf("\n deg           mat          density \
+          new data              time(rd)\n");
         printf("-------------------------------------------------\
-                ----------------------------------------\n");
+----------------------------\n");
     }
     st->current_rd  =   0;
 

@@ -72,6 +72,12 @@ int64_t (*export_julia_data)(
         );
 
 /* linear algebra routines */
+void (*sba_linear_algebra)(
+        smat_t *smat,
+        crit_t *syz,
+        stat_t *st,
+        const ht_t * const ht
+        );
 void (*linear_algebra)(
         mat_t *mat,
         const bs_t * const bs,
@@ -105,6 +111,17 @@ cf32_t *(*reduce_dense_row_by_old_pivots_ff_32)(
         hm_t * const * const pivs,
         const hi_t dpiv,
         const uint32_t fc
+        );
+
+hm_t *(*sba_reduce_dense_row_by_known_pivots_sparse_ff_32)(
+        int64_t *dr,
+        smat_t *smat,
+        hm_t *const *pivs,
+        const hi_t dpiv,    /* pivot of dense row at the beginning */
+        const hm_t sm,      /* signature monomial of row reduced */
+        const len_t si,     /* signature index of row reduced */
+        const len_t ri,     /* index of row in matrix */
+        stat_t *st
         );
 
 hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(

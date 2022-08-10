@@ -357,6 +357,40 @@ static int spair_cmp_deglex(
  * IMPLEMENTATIONS FOR DEGREE REVERSE LEXICOGRAPHICAL ORDER
  *  */
 
+#if 0
+static int initial_input_cmp_drl_reverse(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    len_t i;
+    ht_t *ht  = htp;
+
+    const hm_t ha  = ((hm_t **)a)[0][OFFSET];
+    const hm_t hb  = ((hm_t **)b)[0][OFFSET];
+
+    const exp_t * const ea  = ht->ev[ha];
+    const exp_t * const eb  = ht->ev[hb];
+
+    /* DRL */
+    if (ea[DEG] > eb[DEG]) {
+        return 1;
+    } else {
+        if (ea[DEG] != eb[DEG]) {
+            return -1;
+        }
+    }
+
+    /* note: reverse lexicographical */
+    i = ht->evl-1;
+    while (i > 1 && ea[i] == eb[i]) {
+        --i;
+    }
+    return eb[i] - ea[i];
+}
+#endif
+
 static int initial_input_cmp_drl(
         const void *a,
         const void *b,
@@ -877,7 +911,7 @@ static int matrix_row_cmp_by_increasing_signature(
         sidx_a  = (int)((hm_t **)a)[0][SM_SIDX];
         sidx_b  = (int)((hm_t **)b)[0][SM_SIDX];
 
-        return sidx_a - sidx_b;
+        return sidx_b - sidx_a;
     }
 }
 
@@ -886,8 +920,8 @@ static inline void sort_matrix_rows_by_increasing_signature(
         void *htp
         )
 {
-    hm_t **cols = smat->cols;
-    sort_r(cols, (unsigned long)smat->ld, sizeof(hm_t *),
+    hm_t **cr = smat->cr;
+    sort_r(cr, (unsigned long)smat->cld, sizeof(hm_t *),
             &matrix_row_cmp_by_increasing_signature, htp);
 }
 

@@ -692,6 +692,15 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
         }
         if (pivs[i] == NULL) {
             if (fnzc == -1) {
+                if (i == dpiv) {
+                    for (j = dpiv; j < nc; ++j) {
+                        if (dr[j] != 0) {
+                            k++;
+                        }
+                    }
+                    fnzc = i;
+                    break;
+                }
                 fnzc = i;
             }
             k++;

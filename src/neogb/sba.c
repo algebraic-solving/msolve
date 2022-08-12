@@ -758,6 +758,7 @@ int core_sba_schreyer(
     free_signature_criteria(&rew, st);
     free(hcm);
 
+    printf("size of basis     %7u\n", bs->ld);
     printf("#syzygy criteria  %7lld\n", st->num_syz_crit);
     printf("#rewrite criteria %7lld\n", st->num_rew_crit);
 

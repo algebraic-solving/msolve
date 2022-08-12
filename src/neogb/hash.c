@@ -659,6 +659,104 @@ restart:
     return pos;
 }
 
+/* If the exponent vector is not contained in the hash table
+ * we return 0 and hp is a pointer to the hash value and kp is
+ * a pointer to the index of hmap where to store the exponent.
+ * If the exponent vector is contained in the hash table we
+ * return 1 and kp is the pointer of the index where the
+ * exponent vector is stored in the exponents array of the
+ * hash table. */
+static inline int32_t is_contained_in_hash_table(
+        const exp_t *a,
+        const ht_t * const ht,
+        const val_t h,
+        hi_t *kp
+        )
+{
+    hl_t i;
+    hi_t k;
+    len_t j;
+    const len_t evl = ht->evl;
+    const hl_t hsz = ht->hsz;
+    /* ht->hsz <= 2^32 => mod is always uint32_t */
+    const hi_t mod = (hi_t)(ht->hsz - 1);
+
+    /* probing */
+    k = h;
+    i = 0;
+restart:
+    for (; i < hsz; ++i) {
+        k = (hi_t)((k+i) & mod);
+        const hi_t hm = ht->hmap[k];
+        if (!hm) {
+            *kp = k;
+            return 0;
+        }
+        if (ht->hd[hm].val != h) {
+            continue;
+        }
+        const exp_t * const ehm = ht->ev[hm];
+        for (j = 0; j < evl-1; j += 2) {
+            if (a[j] != ehm[j] || a[j+1] != ehm[j+1]) {
+                i++;
+                goto restart;
+            }
+        }
+        if (a[evl-1] != ehm[evl-1]) {
+            i++;
+            goto restart;
+        }
+        *kp = hm;
+        return 1;
+    }
+    return -1;
+}
+
+/* This function assumes that is_contained_in_hash_table() was
+ * called beforehand such that the values for h and k are already
+ * precomputed. */
+static inline len_t add_to_hash_table(
+    const exp_t *a,
+    const val_t h,
+    const hi_t k,
+    ht_t *ht
+    )
+{
+    /* add element to hash table */
+    hi_t pos;
+    ht->hmap[k] = pos = (hi_t)ht->eld;
+    exp_t *e    = ht->ev[pos];
+    hd_t *d     = ht->hd + pos;
+    memcpy(e, a, (unsigned long)ht->evl * sizeof(exp_t));
+    d->sdm  =   generate_short_divmask(e, ht);
+    d->deg  =   e[0];
+    d->deg  +=  ht->ebl > 0 ? e[ht->ebl] : 0;
+    d->val  =   h;
+
+    ht->eld++;
+
+    return pos;
+}
+
+static inline len_t check_insert_in_hash_table(
+        const exp_t *a,
+        val_t h,
+        ht_t *ht
+        )
+{
+    if (h == 0) {
+        /* generate hash value */
+        for (len_t j = 0; j < ht->evl; ++j) {
+            h +=  ht->rn[j] * a[j];
+        }
+    }
+
+    hi_t k  = 0;
+
+    return is_contained_in_hash_table(a, ht, h, &k) ?
+        k : add_to_hash_table(a, h, k, ht);
+}
+
 static inline hi_t insert_in_hash_table(
     const exp_t *a,
     ht_t *ht
@@ -898,61 +996,25 @@ static inline void insert_in_basis_hash_table_pivots(
 
     const len_t len = row[LENGTH]+OFFSET;
     const len_t evl = bht->evl;
-    const hi_t hsz  = bht->hsz;
+    /* const hi_t hsz  = bht->hsz; */
     /* ht->hsz <= 2^32 => mod is always uint32_t */
-    const hi_t mod = (hi_t)(hsz - 1);
+    /* const hi_t mod = (hi_t)(hsz - 1); */
 
     const hd_t * const hds    = sht->hd;
     exp_t * const * const evs = sht->ev;
     
     exp_t **ev  = bht->ev;
-    hi_t *hmap  = bht->hmap;
-    hd_t *hd    = bht->hd;
+    /* hi_t *hmap  = bht->hmap; */
+    /* hd_t *hd    = bht->hd; */
 
     l = OFFSET;
-letsgo:
     for (; l < len; ++l) {
         const val_t h = hds[hcm[row[l]]].val;
         memcpy(ev[bht->eld], evs[hcm[row[l]]],
                 (unsigned long)evl * sizeof(exp_t));
         const exp_t * const n = ev[bht->eld];
-        k = h;
-        i = 0;
-restart:
-        for (; i < hsz; ++i) {
-            k = (hi_t)(k+i) & mod;
-            const hi_t hm  = hmap[k];
-            if (!hm) {
-                break;
-            }
-            if (hd[hm].val != h) {
-                continue;
-            }
-            const exp_t * const ehm = ev[hm];
-            for (j = 0; j < evl-1; j += 2) {
-                if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
-                    i++;
-                    goto restart;
-                }
-            }
-            if (n[evl-1] != ehm[evl-1]) {
-                i++;
-                goto restart;
-            }
-            row[l] = hm;
-            l++;
-            goto letsgo;
-        }
 
-        /* add element to hash table */
-        hmap[k] = pos = (hi_t)bht->eld;
-        d = hd + bht->eld;
-        d->sdm  = hds[hcm[row[l]]].sdm;
-        d->deg  = hds[hcm[row[l]]].deg;
-        d->val  = h;
-
-        bht->eld++;
-        row[l] =  pos;
+        row[l] = check_insert_in_hash_table(n, h, bht);
     }
 }
 
@@ -978,13 +1040,9 @@ static inline void insert_multiplied_poly_in_hash_table(
     const hd_t * const hd1  = ht1->hd;
     
     exp_t **ev2     = ht2->ev;
-    hd_t *hd2       = ht2->hd;
-    const hi_t hsz2 = ht2->hsz;
-    /* ht->hsz <= 2^32 => mod is always uint32_t */
-    const hi_t mod = (hi_t)(hsz2 - 1);
 
     l = OFFSET;
-letsgo:
+
     for (; l < len; ++l) {
         const val_t h   = h1 + hd1[b[l]].val;
         const exp_t * const eb = ev1[b[l]];
@@ -994,44 +1052,7 @@ letsgo:
             n[j]  = (exp_t)(ea[j] + eb[j]);
         }
 
-        k = h;
-        i = 0;
-restart:
-        for (; i < hsz2; ++i) {
-            k = (hi_t)(k+i) & mod;
-            const hi_t hm  = ht2->hmap[k];
-            if (!hm) {
-                break;
-            }
-            if (hd2[hm].val != h) {
-                continue;
-            }
-            const exp_t * const ehm = ev2[hm];
-            for (j = 0; j < evl-1; j += 2) {
-                if (n[j] != ehm[j] || n[j+1] != ehm[j+1]) {
-                    i++;
-                    goto restart;
-                }
-            }
-            if (n[evl-1] != ehm[evl-1]) {
-                i++;
-                goto restart;
-            }
-            row[l] = hm;
-            l++;
-            goto letsgo;
-        }
-
-        /* add element to hash table */
-        ht2->hmap[k]  = pos = (hi_t)ht2->eld;
-        d = hd2 + ht2->eld;
-        d->sdm  =   generate_short_divmask(n, ht2);
-        d->deg  =   n[0];
-        d->deg  +=  ht2->ebl > 0 ? n[ht2->ebl] : 0;
-        d->val  =   h;
-
-        ht2->eld++;
-        row[l] =  pos;
+        row[l] = check_insert_in_hash_table(n, h, ht2);
     }
 }
 
@@ -1168,7 +1189,7 @@ static void reset_hash_table(
     }
     for (i = 0; i < pld; ++i) {
         e = oev[ps[i].lcm];
-        ps[i].lcm = insert_in_hash_table(e, ht);
+        ps[i].lcm = check_insert_in_hash_table(e, 0, ht);
     }
     /* note: all memory is allocated as a big block, so it is
      *       enough to free oev[0].       */
@@ -1219,7 +1240,8 @@ static inline hi_t get_lcm(
      *     printf("%d ", etmp[ii]);
      * }
      * printf("\n"); */
-    return insert_in_hash_table(etmp, ht2);
+    return check_insert_in_hash_table(etmp, 0, ht2);
+    /* return insert_in_hash_table(etmp, ht2); */
 }
 
 static inline hm_t *multiplied_poly_to_matrix_row(

@@ -3014,6 +3014,7 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
   lp->p[0] = primeinit;
   if(gens->field_char){
     lp->p[0] = gens->field_char;
+    primeinit = gens->field_char;
   }
 
   int32_t *num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));
@@ -3031,13 +3032,18 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
   double stf4 = 0;
 
   ht_t **blht, **btht;
+
+  data_lift_t dlift;
+  data_lift_init(dlift);
+
+
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                  mgb,
                                                  num_gb, leadmons_ori,
                                                  btrace[0],
                                                  tht, bs_qq, bht, st,
-                                                 lp->p[0], //prime,
+                                                 primeinit, /* lp->p[0],  */
                                                  info_level,
                                                  print_gb,
                                                  dim_ptr, dquot_ptr,
@@ -3065,6 +3071,8 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
       /* print_msolve_message(stderr, 1); */
       apply = 0;
+      data_lift_clear(dlift);
+
       free(mgb);
       gb_modpoly_clear(modgbs);
 
@@ -3171,38 +3179,11 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
           fprintf(stderr, "badprimes[i] is 0\n");
         }
       }
-
+      apply = ratrecon_gb(modgbs, dlift);
     }
   }
 
-
-
-
-  /* mpz_t modulus; */
-  /* mpz_init_set_ui(modulus, primeinit); */
-  /* mpz_t prod_crt; */
-  /* mpz_init_set_ui(prod_crt, primeinit); */
-
-  /* int rerun = 1, nprimes = 1, mcheck =1; */
-
-  /* long nbadprimes = 0; */
-
-  /* prime = next_prime(1<<30); */
-
-  /* /\* measures time spent in rational reconstruction *\/ */
-  /* double strat = 0; */
-
-  /* while(rerun == 1 || mcheck == 1){ */
-
-  /*   double ca0 = realtime(); */
-
-  /*   double stf4 = 0; */
-  /*   double ca1 = realtime() - ca0; */
-
-
-
-  /* } */
-
+  data_lift_clear(dlift);
 
   free(mgb);
   gb_modpoly_clear(modgbs);

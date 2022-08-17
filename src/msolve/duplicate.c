@@ -117,7 +117,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
   for(int i = 0; i <nthreads; i++){
     bnlins[i] = nlins;
   }
-  
+
   for(int i = 0; i < nthreads; i++){
     leadmons_current[i] = (int32_t *)calloc(len, sizeof(int32_t));
   }

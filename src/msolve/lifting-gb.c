@@ -31,19 +31,59 @@ typedef modpolys_struct modpolys_t[1];
 typedef struct {
   uint32_t alloc; /* alloc -> max number of primes */
   uint32_t nprimes; /* number of primes */
-  uint32_t *primes; /* array of prime numbers */
+  uint64_t *primes; /* array of prime numbers encoded with uint64_t to ensure
+                       compatibility with flint */
+  uint64_t *cfs; /* array of length equal to number of primes which will be used
+                    to copy coefficients (hence ensuring compatibility with
+                    flint) */
   uint32_t npolys; /* number of polynomials */
   modpolys_t *modpolys; /* array of polynomials modulo primes */
 } gb_modpoly_array_struct;
 
 typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
+
+typedef struct {
+  int32_t idpol; /* index of polynomial */
+  uint32_t coef; /* index of coefficient to lift */
+  int start; /* indicates if multi-mod flint structures need to be
+                initialized */
+  mpz_t crt;
+  mpz_t num;
+  mpz_t den;
+  int check1;
+  int check2;
+} data_lift_struct;
+
+typedef data_lift_struct data_lift_t[1];
+
+static inline void data_lift_init(data_lift_t dlift){
+  dlift->idpol = -1;
+  dlift->coef = 0;
+  dlift->start = 0;
+  mpz_init(dlift->crt);
+  mpz_init(dlift->num);
+  mpz_init(dlift->den);
+  dlift->check1 = 0;
+  dlift->check2 = 0;
+  dlift->coef = -1;
+}
+
+static inline void data_lift_clear(data_lift_t dlift){
+
+  mpz_clear(dlift->crt);
+  mpz_clear(dlift->num);
+  mpz_clear(dlift->den);
+
+}
+
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, uint32_t *lens,
                                    uint32_t npolys){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
-  modgbs->primes = calloc(sizeof(uint32_t), alloc);
+  modgbs->primes = calloc(sizeof(uint64_t), alloc);
+  modgbs->cfs = calloc(sizeof(uint64_t), alloc);
   modgbs->npolys = npolys;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * npolys);
   for(uint32_t i = 0; i < npolys; i++){
@@ -59,13 +99,20 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                       uint32_t newalloc){
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
-  uint32_t *newprimes = (uint32_t *)realloc(modgbs->primes,
-                                            modgbs->alloc * sizeof(uint32_t));
+  uint64_t *newprimes = (uint64_t *)realloc(modgbs->primes,
+                                            modgbs->alloc * sizeof(uint64_t));
   if(newprimes == NULL){
     fprintf(stderr, "Problem when reallocating modgbs (primes)\n");
     exit(1);
   }
   modgbs->primes = newprimes;
+  uint64_t *newcfs = (uint64_t *)realloc(modgbs->primes,
+                                         modgbs->alloc * sizeof(uint64_t));
+  if(newcfs == NULL){
+    fprintf(stderr, "Problem when reallocating modgbs (cfs)\n");
+    exit(1);
+  }
+  modgbs->cfs = newcfs;
   for(uint32_t i = oldalloc; i < modgbs->alloc; i++){
     modgbs->primes[i] = 0;
   }
@@ -91,9 +138,9 @@ static inline void display_gbmodpoly(FILE *file,
   fprintf(file, "nprimes = %d\n", modgbs->nprimes);
   fprintf(stderr, "primes = [");
   for(uint32_t i = 0; i < modgbs->alloc-1; i++){
-    fprintf(file, "%d, ", modgbs->primes[i]);
+    fprintf(file, "%lu, ", modgbs->primes[i]);
   }
-  fprintf(file, "%d]\n", modgbs->primes[modgbs->alloc -1]);
+  fprintf(file, "%lu]\n", modgbs->primes[modgbs->alloc -1]);
   fprintf(file, "numpolys = %d\n", modgbs->npolys);
   fprintf(file, "[\n");
   for(uint32_t i = 0; i < modgbs->npolys; i++){
@@ -493,4 +540,37 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
     }
   }
   st->nthrds = nthrds;
+}
+
+static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
+  fprintf(stderr, "Not implemented yet\n");
+  exit(1);
+}
+
+/* returns 0 when gb is lifted over the rationals */
+static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift){
+  if((dlift->check1 == 1 && dlift->check2 == 1 && dlift->idpol < modgbs->npolys - 1)){
+    dlift->idpol++;
+    dlift->coef = coef_to_lift(modgbs, dlift->idpol);
+  }
+
+  /* Data needed by multi CRT functions */
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t comb_temp;
+
+  fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
+  fmpz_comb_temp_init(comb_temp, comb);
+  fmpz_t y;
+  fmpz_init(y);
+
+  modpolys_t *polys = modgbs->modpolys;
+  fmpz_multi_CRT_ui(y, polys[dlift->idpol]->modpcfs[dlift->coef],
+                    comb, comb_temp, 1);
+  fmpz_get_mpz(dlift->crt, y);
+
+  fmpz_clear(y);
+  fmpz_comb_temp_clear(comb_temp);
+  fmpz_comb_clear(comb);
+
+  return 1;
 }

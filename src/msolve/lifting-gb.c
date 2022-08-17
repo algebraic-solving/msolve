@@ -564,7 +564,10 @@ static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift){
   fmpz_init(y);
 
   modpolys_t *polys = modgbs->modpolys;
-  fmpz_multi_CRT_ui(y, polys[dlift->idpol]->modpcfs[dlift->coef],
+  for(uint32_t i = 0; i < modgbs->nprimes; i++){
+    modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[dlift->coef][i];
+  }
+  fmpz_multi_CRT_ui(y, modgbs->cfs, 
                     comb, comb_temp, 1);
   fmpz_get_mpz(dlift->crt, y);
 

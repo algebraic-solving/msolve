@@ -574,6 +574,20 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
   fmpz_comb_clear(comb);
 }
 
+static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
+                                         mpz_t mod, mpz_t prod, int thrds){
+  /* all primes are assumed to be good primes */
+  for(int i = 0; i < thrds; i++){
+    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) + 1];
+    mpz_mul_ui(prod, mod, modgbs->primes[modgbs->nprimes - (thrds - i) + 1]);
+    mpz_CRT_ui(dlift->crt, dlift->crt, mod,
+               coef, modgbs->primes[modgbs->nprimes - (thrds - i) + 1],
+               prod, 0);
+    mpz_set(mod, prod);
+  }
+
+}
+
 /* returns 0 when gb is lifted over the rationals */
 static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                        mpz_t mod, mpz_t prod, int thrds){
@@ -587,21 +601,14 @@ static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     dlift->start = 0;
   }
   if(dlift->start == 0){
-    /*  */
+    /* starts lifting witness coefficient */
     start_dlift(modgbs, dlift);
   }
   else{
     if(dlift->check1 == 0){
 
-      /* all primes are assumed to be good primes */
-      for(int i = 0; i < thrds; i++){
-        uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) + 1];
-        mpz_mul_ui(prod, mod, modgbs->primes[modgbs->nprimes - (thrds - i) + 1]);
-        mpz_CRT_ui(dlift->crt, dlift->crt, mod,
-                   coef, modgbs->primes[modgbs->nprimes - (thrds - i) + 1],
-                   prod, 0);
-        mpz_set(mod, prod);
-      }
+      incremental_dlift_crt(modgbs, dlift,
+                            mod, prod, thrds);
 
     }
   }

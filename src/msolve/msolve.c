@@ -3036,6 +3036,10 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
   data_lift_t dlift;
   data_lift_init(dlift);
 
+  mpz_t mod;
+  mpz_init(mod);
+  mpz_t prod;
+  mpz_init(prod);
 
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
@@ -3050,6 +3054,8 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
+    apply = 1;
+
     display_gbmodpoly(stderr, modgbs);
     gb_modpoly_realloc(modgbs, 2);
     display_gbmodpoly(stderr, modgbs);
@@ -3069,9 +3075,11 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
     /************************************************/
 
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
-      /* print_msolve_message(stderr, 1); */
+
       apply = 0;
       data_lift_clear(dlift);
+      mpz_clear(prod);
+      mpz_clear(mod);
 
       free(mgb);
       gb_modpoly_clear(modgbs);
@@ -3179,11 +3187,13 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
           fprintf(stderr, "badprimes[i] is 0\n");
         }
       }
-      apply = ratrecon_gb(modgbs, dlift);
+      apply = ratrecon_gb(modgbs, dlift, mod, prod);
     }
   }
 
   data_lift_clear(dlift);
+  mpz_clear(prod);
+  mpz_clear(mod);
 
   free(mgb);
   gb_modpoly_clear(modgbs);
@@ -3559,7 +3569,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   //attention les longueurs des mpz_param sont fixees par nmod_params[0]
   //dans des cas exceptionnels, ca peut augmenter avec un autre premier.
 
-  /** data for rational reconstruction of trace and det of mult. mat. **/
+  /* data for rational reconstruction of trace and det of mult. mat. */
   trace_det_fglm_mat_t trace_det;
   uint32_t detidx = 0;
   /* int32_t tridx = nmod_params[0]->elim->length-2; */

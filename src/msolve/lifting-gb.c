@@ -48,11 +48,11 @@ typedef struct {
   uint32_t coef; /* index of coefficient to lift */
   int start; /* indicates if multi-mod flint structures need to be
                 initialized */
-  mpz_t crt;
-  mpz_t num;
-  mpz_t den;
-  int check1;
-  int check2;
+  mpz_t crt; /* current crt */
+  mpz_t num; /* lifted numerator */
+  mpz_t den; /* lifted denominator */
+  int check1; /* tells whether lifted data are ok with one more prime */
+  int check2; /* tells whether lifted data are ok with two more primes */
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
@@ -502,7 +502,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   st->nthrds = 1 ;
   /*at the moment multi-threading is not supprted here*/
   memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
-  #pragma omp parallel for num_threads(st->nthrds/* nthrds */)  \
+  #pragma omp parallel for num_threads(nthrds)  \
     private(i) schedule(static)
   for (i = 0; i < st->nprimes; ++i){
     ca0 = realtime();
@@ -542,38 +542,55 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   st->nthrds = nthrds;
 }
 
+/* returns index of coefficient to lift */
 static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
   fprintf(stderr, "Not implemented yet\n");
   exit(1);
 }
 
 /* returns 0 when gb is lifted over the rationals */
-static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift){
+static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
+                       mpz_t mod, mpz_t prod){
   if((dlift->check1 == 1 && dlift->check2 == 1 && dlift->idpol < modgbs->npolys - 1)){
+    /* next pol to lift */
     dlift->idpol++;
     dlift->coef = coef_to_lift(modgbs, dlift->idpol);
+    /* updates check flags */
+    dlift->check1 = 0;
+    dlift->check2 = 0;
+    dlift->start = 0;
   }
+  if(dlift->start == 0){
+    /*  */
+    /* Data needed by multi CRT functions */
+    fmpz_comb_t comb;
+    fmpz_comb_temp_t comb_temp;
 
-  /* Data needed by multi CRT functions */
-  fmpz_comb_t comb;
-  fmpz_comb_temp_t comb_temp;
+    fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
+    fmpz_comb_temp_init(comb_temp, comb);
+    fmpz_t y;
+    fmpz_init(y);
 
-  fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
-  fmpz_comb_temp_init(comb_temp, comb);
-  fmpz_t y;
-  fmpz_init(y);
+    modpolys_t *polys = modgbs->modpolys;
+    for(uint32_t i = 0; i < modgbs->nprimes; i++){
+      modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[dlift->coef][i];
+    }
+    fmpz_multi_CRT_ui(y, modgbs->cfs,
+                      comb, comb_temp, 0);
+    fmpz_get_mpz(dlift->crt, y);
+    /* indicates that CRT started */
+    dlift->start = 1;
 
-  modpolys_t *polys = modgbs->modpolys;
-  for(uint32_t i = 0; i < modgbs->nprimes; i++){
-    modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[dlift->coef][i];
+    fmpz_clear(y);
+    fmpz_comb_temp_clear(comb_temp);
+    fmpz_comb_clear(comb);
   }
-  fmpz_multi_CRT_ui(y, modgbs->cfs, 
-                    comb, comb_temp, 1);
-  fmpz_get_mpz(dlift->crt, y);
-
-  fmpz_clear(y);
-  fmpz_comb_temp_clear(comb_temp);
-  fmpz_comb_clear(comb);
+  else{
+    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes];
+    mpz_CRT_ui(dlift->crt, dlift->crt, mod,
+               coef, modgbs->primes[modgbs->nprimes],
+               prod, 0);
+  }
 
   return 1;
 }

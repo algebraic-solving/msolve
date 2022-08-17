@@ -3181,13 +3181,16 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
                   (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
         }
       }
-
+      int bad = 0;
       for(int i = 0; i < st->nthrds; i++){
         if(bad_primes[i] == 0){
           fprintf(stderr, "badprimes[i] is 0\n");
+          bad = 1;
         }
       }
-      apply = ratrecon_gb(modgbs, dlift, mod, prod);
+      if(!bad){
+        apply = ratrecon_gb(modgbs, dlift, mod, prod, st->nthrds);
+      }
     }
   }
 

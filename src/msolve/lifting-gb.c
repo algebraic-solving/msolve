@@ -548,9 +548,35 @@ static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
   exit(1);
 }
 
+/* uses FLINT's multi CRT when starting to lift one witness coef */
+static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
+  /* Data needed by multi CRT functions */
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t comb_temp;
+
+  fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
+  fmpz_comb_temp_init(comb_temp, comb);
+  fmpz_t y;
+  fmpz_init(y);
+
+  modpolys_t *polys = modgbs->modpolys;
+  for(uint32_t i = 0; i < modgbs->nprimes; i++){
+    modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[dlift->coef][i];
+  }
+  fmpz_multi_CRT_ui(y, modgbs->cfs,
+                    comb, comb_temp, 0);
+  fmpz_get_mpz(dlift->crt, y);
+  /* indicates that CRT started */
+  dlift->start = 1;
+
+  fmpz_clear(y);
+  fmpz_comb_temp_clear(comb_temp);
+  fmpz_comb_clear(comb);
+}
+
 /* returns 0 when gb is lifted over the rationals */
 static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
-                       mpz_t mod, mpz_t prod){
+                       mpz_t mod, mpz_t prod, int thrds){
   if((dlift->check1 == 1 && dlift->check2 == 1 && dlift->idpol < modgbs->npolys - 1)){
     /* next pol to lift */
     dlift->idpol++;
@@ -562,34 +588,22 @@ static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   }
   if(dlift->start == 0){
     /*  */
-    /* Data needed by multi CRT functions */
-    fmpz_comb_t comb;
-    fmpz_comb_temp_t comb_temp;
-
-    fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
-    fmpz_comb_temp_init(comb_temp, comb);
-    fmpz_t y;
-    fmpz_init(y);
-
-    modpolys_t *polys = modgbs->modpolys;
-    for(uint32_t i = 0; i < modgbs->nprimes; i++){
-      modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[dlift->coef][i];
-    }
-    fmpz_multi_CRT_ui(y, modgbs->cfs,
-                      comb, comb_temp, 0);
-    fmpz_get_mpz(dlift->crt, y);
-    /* indicates that CRT started */
-    dlift->start = 1;
-
-    fmpz_clear(y);
-    fmpz_comb_temp_clear(comb_temp);
-    fmpz_comb_clear(comb);
+    start_dlift(modgbs, dlift);
   }
   else{
-    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes];
-    mpz_CRT_ui(dlift->crt, dlift->crt, mod,
-               coef, modgbs->primes[modgbs->nprimes],
-               prod, 0);
+    if(dlift->check1 == 0){
+
+      /* all primes are assumed to be good primes */
+      for(int i = 0; i < thrds; i++){
+        uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) + 1];
+        mpz_mul_ui(prod, mod, modgbs->primes[modgbs->nprimes - (thrds - i) + 1]);
+        mpz_CRT_ui(dlift->crt, dlift->crt, mod,
+                   coef, modgbs->primes[modgbs->nprimes - (thrds - i) + 1],
+                   prod, 0);
+        mpz_set(mod, prod);
+      }
+
+    }
   }
 
   return 1;

@@ -90,9 +90,11 @@ int core_nf(
     /* columns indices are mapped back to exponent hashes */
     return_normal_forms_to_basis(
             mat, tbr, bht, sht, hcm, st);
+
     /* all rows in mat are now polynomials in the basis,
      * so we do not need the rows anymore */
     clear_matrix(mat);
+
     rt1 = realtime();
     if (st->info_level > 1) {
         printf("%13.2f sec\n", rt1-rt0);

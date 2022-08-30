@@ -1367,19 +1367,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       evi[i-2]    =   i;
     }
   }
-#if 0
-  for (long i = 1; i < tbr->lml; i++) {
-    len_t idx = tbr->lmps[i];
-    len_t * hm  = tbr->hm[idx]+OFFSET;
-    len_t len = tbr->hm[idx][LENGTH];
-    long k = 0;
-    for (long j = 0; j < 5; j++) {
-      while (!is_equal_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv)) {
-	k++;
-      }
-    }
-  }
-#endif
   copy_extrapoly_in_vector(leftvector, dquot, lmb, 1,
 			   tbr, bht, evi, st, nv, maxdeg);
 
@@ -1621,20 +1608,6 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
 
-#if 0
-  for (long i = count_not_lm; i  < tbr->lml; i++) {
-    len_t idx = tbr->lmps[i];
-    len_t * hm  = tbr->hm[idx]+OFFSET;
-    len_t len = tbr->hm[idx][LENGTH];
-    long k = 0;
-    for (long j = 0; j < 5; j++) {
-      while (!is_equal_exponent_bs (bht,hm[len-1-j],evi,lmb+k*nv,nv)) {
-	k++;
-      }
-    }
-  }
-#endif
-  
   long l_triv = 0;
   long l_dens = 0;
   long l_zero = 0;

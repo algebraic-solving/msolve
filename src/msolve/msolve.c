@@ -4786,7 +4786,6 @@ restart:
             /* for (int ii = 0; ii<gens->nvars; ++ii) {
              *     mul[ii] = 1;
              * } */
-
             int success = 0;
 
             /* initialize generators of ideal, note the "gens->ngens-1_form" which
@@ -4800,22 +4799,13 @@ restart:
              * only implemented for 32-bit elements). Later on we set st-fc by hand
              * to the correct field characteristic. */
             success = initialize_gba_input_data(&bs, &bht, &st,
-						gens->lens,
-						gens->exps,
-						(void *)gens->cfs,
-						1073741827, 0 /* DRL
-							       * order */,
-						elim_block_len, gens->nvars,
-						/* gens->field_char,
-						 * 0 [> DRL order <],
-						 * gens->nvars, */
-						gens->ngens, 1,
-						initial_hts,
-						nr_threads, max_pairs,
-						update_ht, la_option,
-						use_signatures,
-						1 /* reduce_gb */, 0,
-						info_level);
+                    gens->lens, gens->exps, (void *)gens->cfs,
+                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
+                    /* gens->field_char, 0 [> DRL order <], gens->nvars, */
+                    gens->ngens, 1, initial_hts, nr_threads, max_pairs,
+                    update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
+                    info_level);
+
 	    st->fc  = gens->field_char;
             if(info_level){
                 fprintf(stderr,
@@ -4935,7 +4925,6 @@ restart:
 	    
 	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
 						 form */
-	    printf ("degree of the nf: %ld\n",maxdeg);
 	    for (long i = 0; i < bld[0]; i++) {
 	      long degi = 0;
 	      for (long k = 0; k < gens->nvars; k++) {
@@ -5078,11 +5067,11 @@ restart:
 	/* no colon    = 0 */
 	if (normal_form == 0) {/* positive characteristic */
 
-          int dim = - 2;
-          long dquot = -1;
+	  int dim = - 2;
+	  long dquot = -1;
 
-          b = real_msolve_qq(*mpz_paramp,
-                             &param,
+	  b = real_msolve_qq(*mpz_paramp,
+			     &param,
                              &dim,
                              &dquot,
                              nb_real_roots_ptr,

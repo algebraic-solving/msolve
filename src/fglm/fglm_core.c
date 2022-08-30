@@ -736,7 +736,7 @@ static inline long make_square_free_elim_poly(param_t *param,
                                               long dimquot,
                                               int info_level){
   long dim = data_bms->BMS->V1->length - 1;
-
+  
   int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
 
   if(boo && dim == dimquot){

@@ -1620,7 +1620,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       matrix->dst[i] = 0;
     }
   }
-  
+
+#if 0
   for (long i = count_not_lm; i  < tbr->lml; i++) {
     len_t idx = tbr->lmps[i];
     len_t * hm  = tbr->hm[idx]+OFFSET;
@@ -1632,6 +1633,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       }
     }
   }
+#endif
   
   long l_triv = 0;
   long l_dens = 0;

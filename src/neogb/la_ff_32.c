@@ -2695,8 +2695,6 @@ static void exact_sparse_reduced_echelon_form_nf_ff_32(
         /* k   = __sync_bool_c#csompare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv); */
         cfs = mat->cf_32[npiv[COEFFS]];
     }
-
-    /* we do not need the old pivots anymore */
     for (i = 0; i < ncl; ++i) {
         free(pivs[i]);
         pivs[i] = NULL;
@@ -3762,7 +3760,7 @@ static void exact_sparse_linear_algebra_nf_ff_32(
     uint32_t zeroes = 0;
     for (i = 0; i < mat->nrl; ++i) {
         if (mat->tr[i] == NULL) {
-            zeroes  +=  1;
+	    zeroes  +=  1;
         }
     }
     if (st->info_level > 1) {

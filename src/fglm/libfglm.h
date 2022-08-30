@@ -20,6 +20,9 @@
 
 param_t *nmod_fglm_compute(sp_matfglm_t *, mod_t, long,
                            long, uint64_t *, uint32_t *, uint64_t*, int);
+param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *, mod_t,
+			       CF_t *, CF_t **, long,
+			       long, uint64_t *, uint32_t *, uint64_t *, int);
 param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *, mod_t, long,
                                       long,
                                       long,

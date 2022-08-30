@@ -4382,7 +4382,6 @@ int real_msolve_qq(mpz_param_t mp_param,
   
   
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
-    printf ("here\n");
     mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
     for(long i = 0; i < mp_param->elim->length; i++){
       mpz_init_set(pol[i], mp_param->elim->coeffs[i]);

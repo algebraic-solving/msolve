@@ -456,6 +456,56 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
     }
 }
 
+/*
+
+Matrix vector product.
+Result is stored in res.
+vres will contain the product of the dense part.
+
+ */
+static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *mat,
+						  CF_t *vec,
+						  CF_t *vres,
+						  const mod_t prime,
+						  //cf_l_t *vec_cache, //obsolete
+						  const uint32_t RED_32,
+						  const uint64_t RED_64,
+						  const uint32_t preinv,
+						  const uint32_t pi1,
+						  const uint32_t pi2){
+
+  szmat_t ncols = mat->ncols;
+  szmat_t nrows = mat->nrows;
+  szmat_t nzero = mat->nzero;
+  szmat_t ntriv = ncols - nrows - nzero;
+  // ADD zero rows
+  /* printf ("ncols: %d\nnrows: %d\nnzero: %d\nntriv: %d\n",ncols,nrows,nzero,ntriv); */
+  /* printf ("start\n"); */
+  for(szmat_t i = 0; i < ntriv; i++){
+    res[mat->triv_idx[i]] = vec[mat->triv_pos[i]];
+  }
+  /* printf ("triv\n"); */
+  for(szmat_t i= 0; i < nzero; i++){
+    res[mat->zero_idx[i]] = 0;
+  }
+  /* printf ("zero\n"); */
+  /* printf("ncols %u\n", ncols); */
+#ifdef HAVE_AVX2
+  /* matrix_vector_product(vres, mat->dense_mat, vec, ncols, nrows, prime, RED_32, RED_64); */
+  _8mul_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
+                              ncols, nrows, prime, RED_32, RED_64,
+			      preinv);
+  /* printf ("mul AVX\n"); */
+#else
+  non_avx_matrix_vector_product(vres, mat->dense_mat, vec,
+                              ncols, nrows, prime, RED_32, RED_64);
+  /* printf ("mul non AVX\n"); */
+#endif
+    for(szmat_t i = 0; i < nrows; i++){
+      res[mat->dense_idx[i]] = vres[i];
+    }
+    /* printf ("dense\n"); */
+}
 
 
 
@@ -477,8 +527,7 @@ static inline void print_vec(FILE *file, CF_t *vec, szmat_t len){
   fprintf(file, "%u]\n",vec[len-1]);
 }
 
-static inline void mynmod_berlekamp_massey_print(
-                                                 const nmod_berlekamp_massey_t B)
+static inline void mynmod_berlekamp_massey_print(const nmod_berlekamp_massey_t B)
 {
   slong i;
   nmod_poly_fprint_pretty(stderr, B->V1, "x");
@@ -687,7 +736,7 @@ static inline long make_square_free_elim_poly(param_t *param,
                                               long dimquot,
                                               int info_level){
   long dim = data_bms->BMS->V1->length - 1;
-
+  
   int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
 
   if(boo && dim == dimquot){
@@ -718,6 +767,38 @@ static inline long make_square_free_elim_poly(param_t *param,
   data_bms->sqf->num=0;
   return param->elim->length - 1;
 }
+
+static inline long make_square_free_elim_poly_colon(param_t *param,
+						    fglm_bms_data_t *data_bms,
+						    long dimquot,
+						    int info_level){
+  long dim = data_bms->BMS->V1->length - 1;
+  
+  int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
+
+  if(boo){
+    nmod_poly_set(param->elim, data_bms->BMS->V1);
+  }
+  else{
+    if(info_level){
+      fprintf(stderr, "Mininimal polynomial is not square-free\n");
+    }
+    nmod_poly_factor_squarefree(data_bms->sqf, data_bms->BMS->V1);
+    nmod_poly_one(param->elim);
+    for(ulong i = 0; i < data_bms->sqf->num; i++){
+      nmod_poly_mul(param->elim, param->elim, data_bms->sqf->p+i);
+    }
+    if(info_level){
+      fprintf(stderr, "Degree of the square-free part: %ld\n",
+              param->elim->length-1);
+      fprintf(stderr, "[%ld, %ld, %ld]\n", dimquot, dim, param->elim->length - 1);
+    }
+  }
+
+  data_bms->sqf->num=0;
+  return param->elim->length - 1;
+}
+
 
 static inline void compute_minpoly(param_t *param,
                                    fglm_data_t *data,
@@ -991,6 +1072,42 @@ static inline void divide_table_polynomials (param_t *param,
 
 }
 
+static inline void divide_table_polynomials_colon (param_t *param,
+						   fglm_data_t *data,
+						   fglm_bms_data_t *data_bms,
+						   ulong dimquot,
+						   szmat_t block_size,
+						   mod_t prime,
+						   int ncoord,
+						   const long nvars,
+						   uint64_t lambda) {
+
+  szmat_t length= data_bms->BMS->V1->length-1;
+  nmod_poly_zero (data_bms->BMS->R0);
+  nmod_poly_fit_length(data_bms->BMS->R0, length);
+
+  for (long i = 0; i < length; i++){
+    if (lambda == 0) {
+      nmod_poly_set_coeff_ui (data_bms->BMS->R0,i,
+			      data->res[(length-i-1)*block_size+ncoord]);
+
+    }
+    else {
+      uint64_t coeff= (lambda*data->res[(length-i-1)*block_size+ncoord]) % prime;
+      coeff= (data->res[(length-i-1)*block_size+(nvars-1)+ncoord] + coeff) % prime;
+      nmod_poly_set_coeff_ui (data_bms->BMS->R0,i,
+			      coeff);
+    }
+  }
+
+  nmod_poly_mul (data_bms->BMS->R1,data_bms->BMS->R0,data_bms->BMS->V1);
+  nmod_poly_shift_right (data_bms->BMS->R1,data_bms->BMS->R1,length);
+  nmod_poly_mul (data_bms->BMS->R1,data_bms->BMS->R1,data_bms->Z2);
+  nmod_poly_rem (data_bms->BMS->R1,data_bms->BMS->R1,param->elim);
+
+}
+
+
 
 
 static
@@ -1096,7 +1213,106 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
   }
 }
 
+static int compute_parametrizations_colon(param_t *param,
+					  fglm_data_t *data,
+					  fglm_bms_data_t *data_bms,
+					  ulong dimquot,
+					  szmat_t block_size,
+					  long nlins,
+					  uint64_t *linvars,
+					  uint32_t *lineqs,
+					  uint64_t *squvars,
+					  long nvars,
+					  mod_t prime,
+					  int verif){
 
+  int nr_fail_param=-1;
+  if (invert_table_polynomial (param, data, data_bms, dimquot, block_size,
+                               prime, 0, 0)) {
+#if DEBUGFGLM > 0
+    fprintf (stdout,"C1=");
+    nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
+    fprintf(stdout, "invC1=");
+    nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+#endif
+    long dec = 0;
+    for(long nc = 0; nc < nvars - 1 ; nc++){
+      if(linvars[nvars - 2 - nc] == 0){
+        divide_table_polynomials_colon(param,data,data_bms, dimquot, block_size, prime,
+				       nc + 1-dec,nvars,0);
+        nmod_poly_neg(param->coords[nvars-2-nc], data_bms->BMS->R1);
+#if DEBUGFGLM > 0
+        nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
+        fprintf(stdout, "\n");
+#endif
+      }
+      else{
+        dec++;
+      }
+    }
+
+    /* parametrizations verification */
+    if (verif) {
+      dec = 0;
+      for(long nc = 0; nc < nvars - 1 ; nc++){
+        if(linvars[nvars - 2 - nc] == 0
+           && squvars[nvars - 2 - nc] != 0){
+
+          uint64_t lambda= 1 + ((uint64_t) rand() % (prime-1));
+          /* needed for verification */
+
+          invert_table_polynomial (param, data, data_bms, dimquot, block_size,
+                                   prime, nc+1-dec, lambda);
+#if DEBUGFGLM > 1
+          fprintf (stdout,"C2=");
+          nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
+          fprintf(stdout, "invC2=");
+          nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+#endif
+
+          divide_table_polynomials_colon(param,data,data_bms, dimquot, block_size,
+					 prime, nc+1-dec,nvars,lambda);
+          nmod_poly_neg(data_bms->BMS->R1, data_bms->BMS->R1);
+
+#if DEBUGFGLM > 1
+          nmod_poly_fprint_pretty(stdout, data_bms->BMS->R1, "X");
+          fprintf(stdout, "\n");
+#endif
+          if (! nmod_poly_equal (param->coords[nvars-2-nc],data_bms->BMS->R1)) {
+            if (nr_fail_param == -1) {
+              nr_fail_param= nvars-2-nc;
+            }
+          }
+        }
+        else{
+          if(linvars[nvars -2 - nc] != 0){
+            if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
+              nmod_poly_fit_length(param->coords[nvars-2-nc],
+                                   param->elim->alloc );
+            }
+            param->coords[nvars-2-nc]->length = param->elim->length-1 ;
+            for(long i = 0; i < param->elim->length-1 ; i++){
+              param->coords[nvars-2-nc]->coeffs[i] = 0;
+            }
+          }
+        }
+        if(linvars[nvars - 2 - nc] != 0){
+          dec++;
+        }
+      }
+    }
+
+    set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
+
+#if DEBUGFGLM>0
+    display_fglm_param_maple(stderr, param);
+#endif
+
+    return nvars-1-nr_fail_param;
+  } else {
+    return 0;
+  }
+}
 
 static inline long initialize_fglm_data(sp_matfglm_t *matrix,
                                         fglm_data_t *data,
@@ -1121,6 +1337,31 @@ static inline long initialize_fglm_data(sp_matfglm_t *matrix,
 
   return nb;
 }
+
+static inline long initialize_fglm_colon_data(sp_matfglmcol_t *matrix,
+					      fglm_data_t *data,
+					      const mod_t prime,
+					      const long sz,
+					      const szmat_t block_size){
+  long nb = 0;
+  for(long i = 0; i < sz; i++){
+    if(matrix->dense_mat[i]==0)
+      nb++;
+  }
+  srand(time(NULL));
+  for(szmat_t i = 0; i < matrix->ncols; i++){
+    data->vecinit[i] = (CF_t)rand() % prime;
+    data->vecinit[i] += (CF_t)rand() % prime;
+    /* data->vecinit[i] = (CF_t)(i+1) % prime; */
+  }
+  data->res[0] = data->vecinit[0];
+  for(szmat_t i = 1; i < block_size; i++){
+    data->res[i] = data->vecinit[i+1];
+  }
+
+  return nb;
+}
+
 
 param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long nvars,
                            const long nlins,
@@ -1515,4 +1756,357 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   }
   return 0;
 }
+
+static inline void guess_minpoly_colon(param_t *param,
+				       fglm_data_t *data,
+				       fglm_bms_data_t *data_bms,
+				       long dimquot,
+				       long tentative_degree,
+				       uint64_t *linvars,
+				       uint32_t *lineqs,
+				       long nvars,
+				       long *dim,
+				       int info_level){
+  compute_elim_poly(data, data_bms, tentative_degree);
+  if(dimquot > 1){
+    *dim = make_square_free_elim_poly_colon(param, data_bms, dimquot, info_level);
+  }
+  else{
+    nmod_poly_fit_length(param->elim, 2);
+    param->elim->length = 2;
+    param->elim->coeffs[1] = 1;
+    param->elim->coeffs[0] = lineqs[nvars*(nvars+1)-1];
+    *dim = 1;
+  }
+}
+
+static inline void
+guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
+		     CF_t * leftvec, CF_t ** leftvecparam,
+		     szmat_t block_size, long dimquot, mod_t prime,
+		     param_t * param, fglm_bms_data_t * data_bms,
+		     uint64_t *linvars, uint32_t *lineqs, const long nvars,
+		     long *dim_ptr, const int info_level){
+  /* printf ("modulo %d\n",prime); */
+  /* printf ("size   %d\n",matrix->ncols); */
+  /* printf ("leftvec\n"); */
+  /* print_vec(stdout, leftvec, matrix->ncols); */
+  /* printf ("rightvec\n"); */
+  /* print_vec(stdout, data->vecinit, matrix->ncols); */
+
+  uint32_t RED_32 = ((uint64_t)2<<31) % prime;
+
+#if DEBUGFGLM > 2
+  fprintf(stderr, "RED_32 = %u\n", RED_32);
+#endif
+
+  uint32_t RED_64 = ((uint64_t)1<<63) % prime;
+  RED_64 = (RED_64*2) % prime;
+
+#if DEBUGFGLM > 2
+  fprintf(stderr, "RED_64 = %u\n", RED_64);
+#endif
+
+  uint32_t preinv = 2^(62) % prime;
+  uint32_t pi1 = ((uint64_t)pow(2, 32)) / RED_64;
+  uint32_t pi2 = (uint64_t)pow(2, 32) / RED_32;
+
+  uint64_t * data_backup = (uint64_t *) malloc (2 * matrix->ncols * sizeof(uint64_t));
+  
+  uint64_t acc = 0;
+  uint64_t * accparam = (uint64_t *) calloc (2 * (nvars-1),sizeof(uint64_t));
+  for(szmat_t j = 0; j < matrix->ncols; j++){
+    acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
+    for (szmat_t k = 1; k < block_size /*2*(nvars-1)*/; k++) {
+      accparam[k-1] = (accparam[k-1] + (((uint64_t)leftvecparam[k-1][j]) * data->vecinit[j])) % prime;
+    }
+  }
+  data->res[0] = acc;
+  for (szmat_t k = 1; k < block_size; k++) {
+    data->res[k] = accparam[k-1];
+  }
+  data->pts[0] = acc;
+  data_backup[0] = acc;
+
+  szmat_t i = 1;
+  szmat_t tentative_degree =  MIN (4,matrix->ncols);
+  /* printf ("tentative degree = %d\n",tentative_degree); */
+  while (i <= 2*tentative_degree-1) {
+    sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
+				   data->vecinit, data->vecmult,
+				   prime, RED_32, RED_64, preinv, pi1, pi2);
+    /* printf ("sparse_mat\n"); */
+#if DEBUGFGLM > 1
+    print_vec(stderr, data->vvec, matrix->ncols);
+#endif
+
+    CF_t *tmp = data->vecinit;
+    data->vecinit = data->vvec;
+    data->vvec = tmp;
+    /* data->res[i*block_size] = data->vecinit[0]; */
+    acc = 0;
+    for (long k = 1; k < block_size/*2*(nvars-1)*/; k++) {
+      accparam[k-1] = 0;
+    }
+    for(szmat_t j = 0; j < matrix->ncols; j++){
+      acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
+      for (long k = 1; k < block_size /*2*(nvars-1)*/; k++) {
+	accparam[k-1] = (accparam[k-1] + (((uint64_t)leftvecparam[k-1][j]) * data->vecinit[j])) % prime;
+      }
+    }
+    data->res[i*block_size]= acc;
+    for (szmat_t k = 1; k < block_size; k++) {
+      data->res[i*block_size + k] = accparam[k-1];
+    }
+    data->pts[i] = acc;
+    data_backup[i] = acc;
+    
+#if DEBUGFGLM > 1
+    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
+#endif
+
+#if DEBUGFGLM > 2
+    fprintf(stderr, "res = ");
+    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
+#endif
+    if (i == 2*tentative_degree-1) {
+      /* printf ("guessing min poly\n"); */
+      guess_minpoly_colon(param, data, data_bms, dimquot, tentative_degree,
+			  linvars, lineqs, nvars, dim_ptr, info_level);
+      if (*dim_ptr < tentative_degree) {
+	/* printf ("degree ok!\n"); */
+	free (data_backup);
+	break;
+      } else {
+	nmod_berlekamp_massey_set_prime (data_bms->BMS,prime);
+	memcpy (data->pts,data_backup,i * sizeof(CF_t));
+	tentative_degree = MIN (3 * (*dim_ptr),matrix->ncols);
+	/* printf ("tentative degree = %d\n",tentative_degree); */
+      }
+    }
+    i++;
+  }
+}
+
+#if 0
+static inline void generate_sequence_colon(sp_matfglmcol_t *matrix,
+					   fglm_data_t * data,
+					   CF_t * leftvec,
+					   szmat_t block_size, long dimquot,
+					   mod_t prime){
+
+  uint32_t RED_32 = ((uint64_t)2<<31) % prime;
+
+#if DEBUGFGLM > 2
+  fprintf(stderr, "RED_32 = %u\n", RED_32);
+#endif
+
+  uint32_t RED_64 = ((uint64_t)1<<63) % prime;
+  RED_64 = (RED_64*2) % prime;
+
+#if DEBUGFGLM > 2
+  fprintf(stderr, "RED_64 = %u\n", RED_64);
+#endif
+
+  uint32_t preinv = 2^(62) % prime;
+  uint32_t pi1 = ((uint64_t)pow(2, 32)) / RED_64;
+  uint32_t pi2 = (uint64_t)pow(2, 32) / RED_32;
+
+  uint64_t acc = 0;
+  for(szmat_t j = 0; j < matrix->ncols; j++){
+    acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
+  }
+  data->res[0]= acc;
+  
+  for(szmat_t i = 1; i < matrix->ncols; i++){
+    sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
+				   data->vecinit, data->vecmult,
+				   prime, RED_32, RED_64, preinv, pi1, pi2);
+#if DEBUGFGLM > 1
+    print_vec(stderr, data->vvec, matrix->ncols);
+#endif
+
+
+    CF_t *tmp = data->vecinit;
+    data->vecinit = data->vvec;
+    data->vvec = tmp;
+    /* data->res[i*block_size] = data->vecinit[0]; */
+    acc = 0;
+    for(szmat_t j = 0; j < matrix->ncols; j++){
+      acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
+    }
+    data->res[i*block_size]= acc;
+
+    for(szmat_t j = 1; j < block_size; j++){
+      data->res[j+i*block_size] = data->vecinit[j+1];
+    }
+
+#if DEBUGFGLM > 1
+    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
+#endif
+
+#if DEBUGFGLM > 2
+    fprintf(stderr, "res = ");
+    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
+#endif
+  }
+  for(szmat_t i = matrix->ncols; i < 2*matrix->ncols; i++){
+    sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
+				   data->vecinit, data->vecmult,
+				   prime, RED_32, RED_64, preinv, pi1, pi2);
+#if DEBUGFGLM > 1
+    print_vec(stderr, data->vvec, matrix->ncols);
+#endif
+
+
+    CF_t *tmp = data->vecinit;
+    data->vecinit = data->vvec;
+    data->vvec = tmp;
+    /* data->res[i*block_size] = data->vecinit[0]; */
+    acc = 0;
+    for(szmat_t j = 0; j < matrix->ncols; j++){
+      acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
+    }
+    data->res[i*block_size]= acc;
+
+#if DEBUGFGLM > 1
+    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
+#endif
+
+#if DEBUGFGLM > 2
+    fprintf(stderr, "res = ");
+    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
+#endif
+  }
+#if DEBUGFGLM > 0
+  //  print_vec(stdout, data->res, 2*block_size * matrix->ncols);
+#endif
+
+  //now res contains our generating sequence
+
+  for(ulong i = 0; i < 2 * dimquot; i++){
+    data->pts[i] = data->res[i*block_size];
+  }
+
+}
+#endif
+
+param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
+			       const mod_t prime,
+			       CF_t *leftvec,
+			       CF_t **leftvecparam,
+			       const long nvars,
+			       const long nlins,
+			       uint64_t *linvars,
+			       uint32_t *lineqs,
+			       uint64_t *squvars,
+			       const int info_level){
+#if DEBUGFGLM > 0
+  fprintf(stderr, "prime = %u\n", prime);
+#endif
+
+#if DEBUGFGLM >= 1
+  FILE *fmat = fopen("/tmp/matrix.fglm", "w");
+  display_fglm_colon_matrix(fmat, matrix);
+  fclose(fmat);
+#endif
+  /* 1147878294 */
+  if(prime>=1518500213){
+    fprintf(stderr, "Prime %u is too large.\n", prime);
+    fprintf(stderr, "One needs to use update linear algebra fglm functions\n");
+    return NULL;
+  }
+
+  
+  
+  /* szmat_t block_size = nvars-nlins; //taille de bloc dans data->res */
+  szmat_t block_size = 2*nvars-1; //taille de bloc dans data->res
+  /* for storing sequences terms we need to keep */
+  fglm_data_t *data = allocate_fglm_data(matrix->nrows, matrix->ncols, 2*nvars-1);
+
+  param_t *param = allocate_fglm_param(prime, nvars);
+
+
+  long sz = matrix->ncols * matrix->nrows;
+  long nb = initialize_fglm_colon_data(matrix, data, prime, sz, block_size);
+
+  if(info_level){
+    fprintf(stderr, "[%u, %u], Non trivial / Trivial = %.2f%%\n",
+            matrix->ncols, matrix->nrows,
+            100*((double)matrix->nrows / (double)matrix->ncols));
+    fprintf(stderr, "Density of non-trivial part %.2f%%\n",
+            100-100*(float)nb/(float)sz);
+  }
+  ulong dimquot = (matrix->ncols);
+  //Berlekamp-Massey data
+  fglm_bms_data_t *data_bms = allocate_fglm_bms_data(dimquot, prime);
+#if DEBUGFGLM > 1
+  print_vec(stderr, data->vecinit, matrix->ncols);
+  print_vec(stderr, data->res, 2 * block_size * matrix->ncols);
+  fprintf(stderr, "\n");
+#endif
+  long dim=0;
+  double st = omp_get_wtime();
+
+  //////////////////////////////////////////////////////////////////
+  /* generate_sequence(matrix, data, block_size, dimquot, prime); */
+  /* generate_sequence_verif(matrix, data, block_size, dimquot, */
+  /* 			  squvars, linvars, nvars, prime); */
+  /* printf ("guess\n"); */
+  guess_sequence_colon(matrix, data, leftvec, leftvecparam, block_size, dimquot,
+		       prime,
+		       param, data_bms, linvars, lineqs, nvars,
+		       &dim, info_level);
+  /* printf ("guessed\n"); */
+  //////////////////////////////////////////////////////////////////
+
+  if(info_level){
+    fprintf(stderr,"Time spent to generate sequence\n");
+    fprintf(stderr,"and compute eliminating polynomial (elapsed): %.2f sec\n",
+            omp_get_wtime()-st);
+    fprintf(stderr, "Elimination done.\n");
+  }
+
+  /* nmod_poly_fprint_pretty(stderr, param->elim, "x"); fprintf (stdout,"\n"); */
+
+  //////////////////////////////////////////////////////////////////
+
+  // Now we compute the parametrizations of the radical
+  int right_param= compute_parametrizations_colon(param,
+						  data,
+						  data_bms,
+						  dimquot,
+						  block_size,
+						  nlins, linvars,
+						  lineqs, squvars,
+						  nvars, prime,
+						  1);
+  if (right_param == 0) {
+    fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
+    free_fglm_bms_data(data_bms);
+    free_fglm_data(data);
+    return NULL;
+  } else if (right_param == 1) {
+    fprintf(stderr, "Ideal might have no correct parametrization\n");
+  } else if (right_param == 2) {
+    fprintf(stderr, "Only the first parametrization of ");
+    fprintf (stderr,"the ideal seems correct\n");
+  } else if (right_param < nvars) {
+    fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
+    fprintf(stderr, "the ideal seem correct\n");
+  } else {
+    fprintf(stderr, "All the parametrizations of ");
+    fprintf(stderr, "the ideal seem correct\n");
+  }
+  if(info_level){
+    fprintf(stderr, "Time spent to compute parametrizations (elapsed): %.2f sec\n",
+            omp_get_wtime()-st);
+    fprintf(stderr, "Parametrizations done.\n");
+  }
+  free_fglm_bms_data(data_bms);
+  free_fglm_data(data);
+  /* printf ("free fglm\n"); */
+  return param;
+}
+
 

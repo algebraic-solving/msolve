@@ -63,6 +63,21 @@ typedef struct{
   szmat_t *dst; //pour la gestion des lignes "denses" mais avec un bloc de zero a la fin
 } sp_matfglm_t;
 
+typedef struct{
+  CF_t charac;
+  szmat_t ncols; //dimension du sev du quotient
+  szmat_t nrows; //nbre de lignes non triviales
+  szmat_t nzero; //nbre de lignes nulles
+  CF_t *dense_mat; // matrice nrows lignes et ncols colonnes (elements donnes par lignes)
+  szmat_t *triv_idx; //tableau d'indices des lignes ne contenant que des 0 et un 1
+  szmat_t *triv_pos; //position des 1
+  szmat_t *dense_idx; //position des lignes non triviales (qui constituent donc
+                      //dense_mat)
+  szmat_t *zero_idx; //tableau d'indices des lignes ne contenant que des 0
+  szmat_t *dst; //pour la gestion des lignes "denses" mais avec un bloc de zero a la fin
+} sp_matfglmcol_t;
+
+
 #ifndef ALIGNED32
 #define ALIGNED32 __attribute__((aligned(32)))
 #endif
@@ -185,6 +200,37 @@ static inline void display_fglm_matrix(FILE *file, sp_matfglm_t *matrix){
   fprintf(file, "\n");
   for(long i = 0; i < matrix->nrows; i++){
     fprintf(file, "%d ", matrix->dense_idx[i]);
+  }
+  fprintf(file, "\n");
+}
+
+static inline void display_fglm_colon_matrix(FILE *file, sp_matfglmcol_t *matrix){
+
+  fprintf(file, "%u\n", matrix->charac);
+  fprintf(file, "%u\n", matrix->ncols);
+  fprintf(file, "%u\n", matrix->nrows);
+  fprintf(file, "%u\n", matrix->nzero);
+
+  long len1 = (matrix->ncols)*(matrix->nrows);
+  for(long i = 0; i < len1; i++){
+    fprintf(file, "%d ", matrix->dense_mat[i]);
+  }
+  fprintf(file, "\n");
+  long len2 = (matrix->ncols) - (matrix->nrows);
+  for(long i = 0; i < len2; i++){
+    fprintf(file, "%d ", matrix->triv_idx[i]);
+  }
+  fprintf(file, "\n");
+  for(long i = 0; i < len2; i++){
+    fprintf(file, "%d ", matrix->triv_pos[i]);
+  }
+  fprintf(file, "\n");
+  for(long i = 0; i < matrix->nrows; i++){
+    fprintf(file, "%d ", matrix->dense_idx[i]);
+  }
+  fprintf(file, "\n");
+  for(long i = 0; i < matrix->nzero; i++){
+    fprintf(file, "%d ", matrix->zero_idx[i]);
   }
   fprintf(file, "\n");
 }

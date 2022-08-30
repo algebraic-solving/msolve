@@ -157,6 +157,7 @@ int core_msolve(
         int32_t get_param,
         int32_t genericity_handling,
         int32_t saturate,
+        int32_t colon,
         int32_t normal_form,
         int32_t normal_form_matrix,
         int32_t is_gb,

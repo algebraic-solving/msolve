@@ -862,12 +862,12 @@ static void set_param_linear_vars(param_t *param,
         param->coords[ind]->coeffs[i] = 0;
       }
 
-      int64_t lc = lineqs[nr - 1 - (cnt-1) +(nvars+1)*(nr-1 - (cnt-1))];
-
-      /* if(lc != 1){ */
-      /*   fprintf(stderr, "LC is not 1. There should be a bug\n"); */
-      /*   exit(1); */
-      /* } */
+/*       int64_t lc = lineqs[nr - 1 - (cnt-1) +(nvars+1)*(nr-1 - (cnt-1))];
+ *
+ *       if(lc != 1){
+ *         fprintf(stderr, "LC is not 1. There should be a bug\n");
+ *         exit(1);
+ *       } */
       /* for(int k = nc + 1; k < nvars - 1 ; k++){ */
       for(int k = 1; k < nvars - 1 ; k++){
         int32_t c = lineqs[k+(nvars+1)*(nr-(cnt-1)-1)];

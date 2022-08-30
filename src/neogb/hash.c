@@ -1105,6 +1105,17 @@ restart:
     }
 }
 
+void reset_hash_table_indices(
+        ht_t *ht,
+        const hi_t * const hcm,
+        const len_t len
+        )
+{
+    for (len_t i = 0; i < len; ++i) {
+        ht->hd[hcm[i]].idx = 0;
+    }
+}
+
 static void reset_hash_table(
     ht_t *ht,
     bs_t *bs,

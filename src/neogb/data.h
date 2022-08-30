@@ -49,23 +49,23 @@ inline omp_int_t omp_get_max_threads(void) { return 1;}
 #define UNROLL  4
 /* we store some more information in the row arrays,
  * real data starts at index OFFSET */
-#define OFFSET  6         /* real data starts at OFFSET */
-#define LENGTH  OFFSET-1  /* length of the row */
-#define PRELOOP OFFSET-2  /* length of not unrolled loop part */
-#define COEFFS  OFFSET-3  /* index of corresponding coefficient vector */
-#define MULT    OFFSET-4  /* hash of multiplier (for tracing and saturation) */
-#define BINDEX  OFFSET-5  /* basis index of element (for tracing) */
-#define DEG     OFFSET-6  /* the first entry in each exponent vector
-                           * stores the total degree of the polynomial */
+#define OFFSET  6           /* real data starts at OFFSET */
+#define LENGTH  (OFFSET-1)  /* length of the row */
+#define PRELOOP (OFFSET-2)  /* length of not unrolled loop part */
+#define COEFFS  (OFFSET-3)  /* index of corresponding coefficient vector */
+#define MULT    (OFFSET-4)  /* hash of multiplier (for tracing and saturation) */
+#define BINDEX  (OFFSET-5)  /* basis index of element (for tracing) */
+#define DEG     (OFFSET-6)  /* the first entry in each exponent vector
+                             * stores the total degree of the polynomial */
 
 /* there is a different prelude with meta data for signature based matrices */
-#define SM_OFFSET  5          /* real data starts at SIGOFFSET for signature
+#define SM_OFFSET  5            /* real data starts at SIGOFFSET for signature
                                  * based comptutations */
-#define SM_LEN   SM_OFFSET-1  /* basis index of element (for tracing) */
-#define SM_PRE   SM_OFFSET-2  /* basis index of element (for tracing) */
-#define SM_CFS   SM_OFFSET-3  /* basis index of element (for tracing) */
-#define SM_SIDX  SM_OFFSET-4  /* basis index of element (for tracing) */
-#define SM_SMON  SM_OFFSET-5  /* basis index of element (for tracing) */
+#define SM_LEN   (SM_OFFSET-1)  /* signature meta data length of polynomial */
+#define SM_PRE   (SM_OFFSET-2)  /* signature meta data preloop of polynomial */
+#define SM_CFS   (SM_OFFSET-3)  /* index of corresponding coefficient array */
+#define SM_SIDX  (SM_OFFSET-4)  /* index of signautre */
+#define SM_SMON  (SM_OFFSET-5)  /* hash value of signature monomial */
 
 /* computational data */
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */
@@ -123,6 +123,7 @@ struct ht_t
     exp_t **ev;   /* exponent vector */
     hd_t *hd;     /* hash data */
     hi_t *hmap;   /* hash map */
+    len_t elo;    /* load of exponent vector before current step */
     hl_t eld;     /* load of exponent vector */
     hl_t esz;     /* size of exponent vector */
     hl_t hsz;     /* size of hash map, might be 2^32 */
@@ -166,10 +167,10 @@ struct ps_t
 typedef struct crit_t crit_t;
 struct crit_t
 {
-    sdm_t *sdm;
-    hm_t *hm;
-    len_t ld;
-    len_t sz;
+    sdm_t *sdm; // array of shot divisor mask of signature monomial
+    hm_t *hm;   // array of hash value of the of the signature monomial
+    len_t ld;   // load of the corresponding arrays
+    len_t sz;   // allocated memory / size of the corresponding arrays
 };
 
 /* basis stuff */
@@ -227,18 +228,24 @@ struct mat_t
     len_t rbal;         /* length of reducer binary array */
 };
 
-/* signature matrix stuff */
+/* signature matrix stuff, stores information from previous and current step */
 typedef struct smat_t smat_t;
 struct smat_t
 {
-    hm_t **cols;        // monomial resp. column data of polynomials
-    cf32_t **curr_cf32; // coefficients of currently reduced rows
-    cf32_t **prev_cf32; // coefficients from previous degree matrix
-    cf32_t **bs_cf32;   // coefficients after full reduction for polynomials
-                        // added to Groebner basis
-    len_t sz;           // number of rows memory is allocated for
-    len_t ld;           // number of rows stored
-    len_t nc;
+    hm_t **cr;     /* current matrix rows, hashes resp. columns */
+    hm_t **pr;     /* previous matrix rows, hashes resp. columns */
+    cf32_t **cc32; /* current matrix coefficients */
+    cf32_t **pc32; /* previous matrix coefficients */
+    deg_t cd;      /* current degree */
+    len_t nlm;     /* number of new leading monomials for basis from */
+                   /* current matrix */
+    len_t csz;     /* number of rows memory is allocated */
+                   /* for in current matrix */
+    len_t cld;     /* number of rows stored in current matrix */
+    len_t pld;     /* number of rows stored in previous matrix */
+    len_t nc;      /* number of columns in current matrix */
+    len_t nz;      /* number of zero reductions during linear algebra */
+                   /* on current matrix */
 };
 
 /* tracer stuff */
@@ -337,6 +344,8 @@ struct stat_t
 
     int64_t num_pairsred;
     int64_t num_gb_crit;
+    int64_t num_syz_crit;
+    int64_t num_rew_crit;
     int64_t num_redundant_old;
     int64_t num_redundant;
     int64_t num_rht;
@@ -441,6 +450,13 @@ extern int64_t (*export_julia_data)(
         );
 
 /* linear algebra routines */
+extern void (*sba_linear_algebra)(
+        smat_t *smat,
+        crit_t *syz,
+        stat_t *st,
+        const ht_t * const ht
+        );
+
 extern void (*linear_algebra)(
         mat_t *mat,
         const bs_t * const bs,
@@ -474,6 +490,17 @@ extern cf32_t *(*reduce_dense_row_by_old_pivots_ff_32)(
         hm_t * const * const pivs,
         const hi_t dpiv,
         const uint32_t fc
+        );
+
+extern hm_t *(*sba_reduce_dense_row_by_known_pivots_sparse_ff_32)(
+        int64_t *dr,
+        smat_t *smat,
+        hm_t *const *pivs,
+        const hi_t dpiv,    /* pivot of dense row at the beginning */
+        const hm_t sm,      /* signature monomial of row reduced */
+        const len_t si,     /* signature index of row reduced */
+        const len_t ri,     /* index of row in matrix */
+        stat_t *st
         );
 
 extern hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(

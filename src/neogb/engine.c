@@ -120,7 +120,7 @@ int core_gba(
     if ((*stp)->use_signatures == 0) {
         return core_f4(bsp, bhtp, stp);
     } else {
-        exit(1);
+        return core_sba_schreyer(bsp, bhtp, stp);
     }
 }
 

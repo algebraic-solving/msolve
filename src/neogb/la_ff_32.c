@@ -2528,9 +2528,9 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
  *     printf("not trivial! "); */
     /* if kernel is not trivial really compute it */
     /* dense row for multipliers */
-    hm_t **mulh     = (hm_t **)calloc((unsigned long)ctr, sizeof(hm_t *));
-    cf32_t **mulcf  = (cf32_t **)calloc((unsigned long)ctr, sizeof(cf32_t *));
-    cf32_t **pivcf  = (cf32_t **)calloc((unsigned long)ctr, sizeof(cf32_t *));
+    hm_t **mulh     = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
+    cf32_t **mulcf  = (cf32_t **)calloc((unsigned long)ncols, sizeof(cf32_t *));
+    cf32_t **pivcf  = (cf32_t **)calloc((unsigned long)ncols, sizeof(cf32_t *));
     int64_t *drm    = calloc((unsigned long)sat->ld, sizeof(int64_t));
     /* now we do a ususal F4 reduction with updated pivs, but we have
      * to track the reduction steps when reducing each row from upivs */
@@ -2603,7 +2603,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         free(pivs[i]);
         pivs[i] = NULL;
     }
-    for (i = 0; i < ctr; ++i) {
+    for (i = 0; i < ncols; ++i) {
         free(mulcf[i]);
         mulcf[i]  = NULL;
         free(pivcf[i]);

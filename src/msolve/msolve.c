@@ -4762,6 +4762,10 @@ restart:
                     fprintf(stderr, "Something went wrong during the computation\n");
                     return -1;
                 }
+                if (print_gb) {
+		  print_ff_basis_data(files->out_file, "a", bs, bht,
+                    st, gens, print_gb);
+		}
             }
             return 0;
         }

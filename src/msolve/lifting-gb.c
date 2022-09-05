@@ -605,12 +605,8 @@ static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     start_dlift(modgbs, dlift);
   }
   else{
-    if(dlift->check1 == 0){
-
-      incremental_dlift_crt(modgbs, dlift,
-                            mod, prod, thrds);
-
-    }
+    incremental_dlift_crt(modgbs, dlift,
+                          mod, prod, thrds);
   }
 
   return 1;

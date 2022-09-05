@@ -3038,8 +3038,10 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
 
   mpz_t mod;
   mpz_init(mod);
+  mpz_set_ui(mod, 1);
   mpz_t prod;
   mpz_init(prod);
+  mpz_set_ui(prod, 1);
 
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,

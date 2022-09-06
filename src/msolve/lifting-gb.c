@@ -45,7 +45,7 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
 typedef struct {
   int32_t idpol; /* index of polynomial being lifted */
-  uint32_t coef; /* index of coefficient to lift */
+  uint32_t coef; /* index of witness coefficient to lift */
   int start; /* indicates if multi-mod flint structures need to be
                 initialized */
   mpz_t crt; /* current crt */
@@ -575,6 +575,7 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
   fmpz_comb_clear(comb);
 }
 
+/* Incremental CRT (called once FLINT multi_CRT has been called) */
 static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
                                          mpz_t mod, mpz_t prod, int thrds){
   /* all primes are assumed to be good primes */
@@ -589,19 +590,18 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 
 }
 
-static inline int check_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
+static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
                                         mpz_t mod, mpz_t prod, int thrds){
   fprintf(stderr, "Not implemented yet");
   exit(1);
   return 1;
 }
 
-/* returns 0 when gb is lifted over the rationals */
-static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
-                       mpz_t mod, mpz_t prod, int thrds){
+static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
+                                mpz_t mod, mpz_t prod, int thrds){
   if(dlift->recon == 1){
     /* at a previous call a rational number could lifted */
-    if(check_lifted_rational(modgbs, dlift, mod, prod, thrds)){
+    if(verif_lifted_rational(modgbs, dlift, mod, prod, thrds)){
       if(!dlift->check1){
         dlift->check1 = 1;
       }
@@ -614,7 +614,18 @@ static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       dlift->check2 = 0;
     }
   }
-  if((dlift->check1 == 1 && dlift->check2 == 1 && dlift->idpol < modgbs->npolys - 1)){
+}
+
+/* returns 0 when gb is lifted over the rationals */
+static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
+                       mpz_t mod, mpz_t prod, int thrds){
+
+  update_dlift(modgbs, dlift, mod, prod, thrds);
+  if((dlift->check1 && dlift->check2 && dlift->idpol >= modgbs->npolys - 1)){
+    return 0;
+  }
+
+  if((dlift->check1 && dlift->check2 && dlift->idpol < modgbs->npolys - 1)){
     /* next pol to lift */
     dlift->idpol++;
     dlift->coef = coef_to_lift(modgbs, dlift->idpol);

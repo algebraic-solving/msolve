@@ -592,9 +592,25 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
                                         mpz_t mod, mpz_t prod, int thrds){
-  fprintf(stderr, "Not implemented yet");
-  exit(1);
-  return 1;
+
+  for(int i = 0; i< thrds; i++){
+
+    uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) + 1];
+    uint32_t lc = mpz_fdiv_ui(dlift->den, prime);
+    lc = mod_p_inverse_32(lc, prime);
+
+    uint64_t c = mpz_fdiv_ui(dlift->num, prime);
+    c *= lc;
+    c = c % prime;
+
+    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) + 1];
+
+    if(c!=coef){
+      return 0;
+    }
+
+  }
+  return 1; //(c == trace_mod);
 }
 
 static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,

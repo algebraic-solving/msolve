@@ -340,7 +340,7 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
   else{
     (*dquot)++;
   }
-  long *ind = calloc(nvars, sizeof(long) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);

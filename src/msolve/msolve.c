@@ -3036,12 +3036,15 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
   data_lift_t dlift;
   data_lift_init(dlift);
 
-  mpz_t mod;
-  mpz_init(mod);
-  mpz_set_ui(mod, 1);
-  mpz_t prod;
-  mpz_init(prod);
-  mpz_set_ui(prod, 1);
+  mpz_t *mod_p = malloc(sizeof(mpz_t));
+  mpz_init(mod_p[0]);
+  mpz_set_ui(mod_p[0], 1);
+  mpz_t *prod_p = malloc(sizeof(mpz_t));
+  mpz_init(prod_p[0]);
+  mpz_set_ui(prod_p[0], 1);
+
+  rrec_data_t recdata;
+  initialize_rrec_data(recdata);
 
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
@@ -3080,8 +3083,10 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
 
       apply = 0;
       data_lift_clear(dlift);
-      mpz_clear(prod);
-      mpz_clear(mod);
+      mpz_clear(prod_p[0]);
+      mpz_clear(mod_p[0]);
+      free(prod_p);
+      free(mod_p);
 
       free(mgb);
       gb_modpoly_clear(modgbs);
@@ -3191,17 +3196,22 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
         }
       }
       if(!bad){
-        apply = ratrecon_gb(modgbs, dlift, mod, prod, st->nthrds);
+        apply = ratrecon_gb(modgbs, dlift, mod_p, prod_p, recdata, st->nthrds);
       }
+      /* this is where learn could be reset to 1 */
+      /* but then duplicated datas and others should be free-ed */
     }
   }
 
   data_lift_clear(dlift);
-  mpz_clear(prod);
-  mpz_clear(mod);
+  mpz_clear(prod_p[0]);
+  mpz_clear(mod_p[0]);
+  free(prod_p);
+  free(mod_p);
 
   free(mgb);
   gb_modpoly_clear(modgbs);
+  free_rrec_data(recdata);
 
   /* free and clean up */
   free_shared_hash_data(bht);
@@ -3796,6 +3806,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
           free_rrec_data(recdata);
           mpz_clear(prod_crt);
           trace_det_clear(trace_det);
+          free_rrec_data(recdata);
           fprintf(stderr, "Many other data should be cleaned\n");
           return -4;
         }

@@ -576,24 +576,26 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
 }
 
 /* Incremental CRT (called once FLINT multi_CRT has been called) */
+/* mod is the current modulus */
 static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
-                                         mpz_t mod, mpz_t prod, int thrds){
+                                         mpz_t *mod_p, mpz_t *prod_p, int thrds){
   /* all primes are assumed to be good primes */
   for(int i = 0; i < thrds; i++){
     uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) + 1];
-    mpz_mul_ui(prod, mod, modgbs->primes[modgbs->nprimes - (thrds - i) + 1]);
-    mpz_CRT_ui(dlift->crt, dlift->crt, mod,
+    mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) + 1]);
+    mpz_CRT_ui(dlift->crt, dlift->crt, mod_p[0],
                coef, modgbs->primes[modgbs->nprimes - (thrds - i) + 1],
-               prod, 0);
-    mpz_set(mod, prod);
+               prod_p[0], 0);
+    mpz_set(mod_p[0], prod_p[0]);
   }
 
 }
 
+/* return 1 if the lifted rational hidden in dlift is ok else return 0 */
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
-                                        mpz_t mod, mpz_t prod, int thrds){
+                                        int thrds){
 
-  for(int i = 0; i< thrds; i++){
+  for(int i = 0; i < thrds; i++){
 
     uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) + 1];
     uint32_t lc = mpz_fdiv_ui(dlift->den, prime);
@@ -610,14 +612,14 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
     }
 
   }
-  return 1; //(c == trace_mod);
+  return 1;
 }
 
 static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
-                                mpz_t mod, mpz_t prod, int thrds){
+                                mpz_t *mod_p, mpz_t *prod_p, int thrds){
   if(dlift->recon == 1){
     /* at a previous call a rational number could lifted */
-    if(verif_lifted_rational(modgbs, dlift, mod, prod, thrds)){
+    if(verif_lifted_rational(modgbs, dlift, thrds)){
       if(!dlift->check1){
         dlift->check1 = 1;
       }
@@ -634,13 +636,18 @@ static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
 
 /* returns 0 when gb is lifted over the rationals */
 static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
-                       mpz_t mod, mpz_t prod, int thrds){
+                       mpz_t *mod_p, mpz_t *prod_p,
+                       rrec_data_t recdata, int thrds){
 
-  update_dlift(modgbs, dlift, mod, prod, thrds);
+  /* updates dlift->check1 and dlift->check2 */
+  update_dlift(modgbs, dlift, mod_p, prod_p, thrds);
+  /* the last coef to lift was ok ; we are done */
   if((dlift->check1 && dlift->check2 && dlift->idpol >= modgbs->npolys - 1)){
     return 0;
   }
 
+  /* previous witness coef has been lifted and checked twice */
+  /* we then switch to the next polynomial */
   if((dlift->check1 && dlift->check2 && dlift->idpol < modgbs->npolys - 1)){
     /* next pol to lift */
     dlift->idpol++;
@@ -653,11 +660,18 @@ static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   if(dlift->start == 0){
     /* starts lifting witness coefficient */
     start_dlift(modgbs, dlift);
+    /* updates mod_p and ptr_p */
+    for(int i = 0; i < thrds; i++){
+      uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) + 1];
+      mpz_mul_ui(mod_p[0], mod_p[0], prime);
+      mpz_set(prod_p[0], mod_p[0]);
+    }
   }
   else{
     incremental_dlift_crt(modgbs, dlift,
-                          mod, prod, thrds);
+                          mod_p, prod_p, thrds);
+    /* mod_p and prod_p are updated inside incremental_dlift_crt */
   }
-
+  dlift->recon = ratrecon(dlift->num, dlift->den, dlift->crt, mod_p[0], recdata);
   return 1;
 }

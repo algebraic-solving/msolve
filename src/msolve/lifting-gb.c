@@ -44,11 +44,12 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
 
 typedef struct {
-  int32_t idpol; /* index of polynomial */
+  int32_t idpol; /* index of polynomial being lifted */
   uint32_t coef; /* index of coefficient to lift */
   int start; /* indicates if multi-mod flint structures need to be
                 initialized */
   mpz_t crt; /* current crt */
+  int recon; /* equals 1 when some rational number can be lifted, else 0 */
   mpz_t num; /* lifted numerator */
   mpz_t den; /* lifted denominator */
   int check1; /* tells whether lifted data are ok with one more prime */
@@ -588,9 +589,31 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 
 }
 
+static inline int check_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
+                                        mpz_t mod, mpz_t prod, int thrds){
+  fprintf(stderr, "Not implemented yet");
+  exit(1);
+  return 1;
+}
+
 /* returns 0 when gb is lifted over the rationals */
 static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                        mpz_t mod, mpz_t prod, int thrds){
+  if(dlift->recon == 1){
+    /* at a previous call a rational number could lifted */
+    if(check_lifted_rational(modgbs, dlift, mod, prod, thrds)){
+      if(!dlift->check1){
+        dlift->check1 = 1;
+      }
+      if(!dlift->check2){
+        dlift->check2 = 1;
+      }
+    }
+    else{
+      dlift->check1 = 0;
+      dlift->check2 = 0;
+    }
+  }
   if((dlift->check1 == 1 && dlift->check2 == 1 && dlift->idpol < modgbs->npolys - 1)){
     /* next pol to lift */
     dlift->idpol++;

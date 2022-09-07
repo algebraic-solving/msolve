@@ -545,8 +545,8 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
 /* returns index of coefficient to lift */
 static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
-  fprintf(stderr, "Not implemented yet\n");
-  exit(1);
+  /* to be refined */
+  return modgbs->modpolys[idx]->len / 2;
 }
 
 /* uses FLINT's multi CRT when starting to lift one witness coef */

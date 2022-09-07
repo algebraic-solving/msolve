@@ -3195,8 +3195,15 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
           bad = 1;
         }
       }
+      int idpol = dlift->idpol;
       if(!bad){
         apply = ratrecon_gb(modgbs, dlift, mod_p, prod_p, recdata, st->nthrds);
+      }
+      if(dlift->idpol != idpol){
+        if(info_level){
+          fprintf(stderr, "<%.2f>", 100* dlift->idpol/modgbs->npolys);
+        }
+        idpol->dlift->idpol;
       }
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */

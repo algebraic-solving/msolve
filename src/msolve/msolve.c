@@ -2886,8 +2886,7 @@ void set_linear_function_pointer(int32_t fc){
   - renvoie -4 si bad prime
 */
 
-int msolve_gbtrace_qq(mpz_param_t mpz_param,
-                      param_t **nmod_param,
+int msolve_gbtrace_qq(
                       int *dim_ptr,
                       long *dquot_ptr,
                       data_gens_ff_t *gens,
@@ -2901,8 +2900,7 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
                       int32_t info_level,
                       int32_t print_gb,
                       int32_t pbm_file,
-                      files_gb *files,
-                      int round){
+                      files_gb *files){
 
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
@@ -3161,6 +3159,8 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
         }
       }
       prime = lp->p[st->nthrds - 1];
+      fprintf(stderr, "NEW PRIME = %d\n", prime);
+
       gb_modpoly_realloc(modgbs, st->nthrds);
 
       gb_modular_trace_application(modgbs, mgb,
@@ -3190,8 +3190,8 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
       }
       int bad = 0;
       for(int i = 0; i < st->nthrds; i++){
-        if(bad_primes[i] == 0){
-          fprintf(stderr, "badprimes[i] is 0\n");
+        if(bad_primes[i] == 1){
+          fprintf(stderr, "badprimes[%d] is 1\n", i);
           bad = 1;
         }
       }
@@ -3201,9 +3201,9 @@ int msolve_gbtrace_qq(mpz_param_t mpz_param,
       }
       if(dlift->idpol != idpol){
         if(info_level){
-          fprintf(stderr, "<%.2f>", 100* dlift->idpol/modgbs->npolys);
+          fprintf(stderr, "<%.2f>", 100* (float)(dlift->idpol)/modgbs->npolys);
         }
-        idpol->dlift->idpol;
+        idpol = dlift->idpol;
       }
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
@@ -5822,6 +5822,7 @@ restart:
             return 0;
         }
 #endif
+      /* characteristic is 0 */
       /* characteristic is 0 and elim_block = 0 */
       if (saturate == 1) {       /* characteristic is 0 and elim_block = 0 */
             /* timings */
@@ -6042,6 +6043,26 @@ restart:
 
             int dim = - 2;
             long dquot = -1;
+            /* experimental code */
+            if(print_gb){
+              fprintf(stderr, "\n\nWe enter in experimental code\n\n");
+              msolve_gbtrace_qq(
+                                &dim,
+                                &dquot,
+                                gens,
+                                initial_hts,
+                                nr_threads,
+                                max_pairs,
+                                elim_block_len,
+                                update_ht,
+                                la_option,
+                                use_signatures,
+                                info_level,
+                                print_gb,
+                                generate_pbm, /* pbm_file, */
+                                files);
+              return 0;
+            }
 
             b = real_msolve_qq(*mpz_paramp,
                     &param,

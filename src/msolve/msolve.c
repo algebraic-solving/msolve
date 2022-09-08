@@ -3212,7 +3212,9 @@ int msolve_gbtrace_qq(
       }
       fprintf(stderr, "AFTER RATRECON\n");
       display_gbmodpoly(stderr, modgbs);
-
+      if(dlift->idpol>2){
+        exit(1);
+      }
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
     }

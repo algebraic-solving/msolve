@@ -68,6 +68,7 @@ static inline void data_lift_init(data_lift_t dlift){
   dlift->check1 = 0;
   dlift->check2 = 0;
   dlift->coef = -1;
+  dlift->recon = 0;
 }
 
 static inline void data_lift_clear(data_lift_t dlift){
@@ -100,11 +101,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                       uint32_t newalloc){
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
-  fprintf(stderr, "primes before realloc = ");
-  for(int i = 0; i < modgbs->alloc; i++){
-    fprintf(stderr, "%ld, ", modgbs->primes[i]);
-  }
-  fprintf(stderr, "\n");
+
   uint64_t *newprimes = (uint64_t *)realloc(modgbs->primes,
                                             modgbs->alloc * sizeof(uint64_t));
   if(newprimes == NULL){
@@ -115,12 +112,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   for(uint32_t i = oldalloc; i < modgbs->alloc; i++){
     modgbs->primes[i] = 0;
   }
-  fprintf(stderr, "primes = ");
-  for(int i = 0; i < modgbs->alloc; i++){
-    fprintf(stderr, "%ld, ", modgbs->primes[i]);
-  }
-  fprintf(stderr, "\n");
-  fprintf(stderr, "modgbs->primes reallocated\n");
+
   uint64_t *newcfs = (uint64_t *)realloc(modgbs->cfs,
                                          modgbs->alloc * sizeof(uint64_t));
   if(newcfs == NULL){
@@ -131,7 +123,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   for(uint32_t i = oldalloc; i < modgbs->alloc; i++){
     modgbs->cfs[i] = 0;
   }
-  fprintf(stderr, "modgbs->cfs reallocated\n");
+
   for(uint32_t i = 0; i < modgbs->npolys; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->modpcfs[j],
@@ -576,14 +568,14 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
   fmpz_init(y);
 
   modpolys_t *polys = modgbs->modpolys;
-  fprintf(stderr, "dlift->idpol = %d\n", dlift->idpol);
-  fprintf(stderr, "dlift->coef = %d\n", dlift->coef);
+
   for(uint32_t i = 0; i < modgbs->nprimes; i++){
     modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[dlift->coef][i];
   }
   fmpz_multi_CRT_ui(y, modgbs->cfs,
-                    comb, comb_temp, 0);
+                    comb, comb_temp, 1);
   fmpz_get_mpz(dlift->crt, y);
+
   /* indicates that CRT started */
   dlift->start = 1;
 
@@ -597,38 +589,14 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
 static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
                                          mpz_t *mod_p, mpz_t *prod_p, int thrds){
   /* all primes are assumed to be good primes */
-  fprintf(stderr, "BEFORE LOOP\n");
-  fprintf(stderr, " crt = ");
-  mpz_out_str(stderr, 10, dlift->crt);
-  fprintf(stderr, "\n");
-
-  fprintf(stderr, " mod = ");
-  mpz_out_str(stderr, 10, mod_p[0]);
-  fprintf(stderr, "\n");
-
-  fprintf(stderr, " prod = ");
-  mpz_out_str(stderr, 10, prod_p[0]);
-  fprintf(stderr, "\n");
-
-  fprintf(stderr, "thrds = %d\n", thrds);
   for(int i = 0; i < thrds; i++){
-    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) + 1];
+    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) ];
+
     mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
-    fprintf(stderr, " crt = ");
-    mpz_out_str(stderr, 10, dlift->crt);
-    fprintf(stderr, "\n");
-
-    fprintf(stderr, " mod = ");
-    mpz_out_str(stderr, 10, mod_p[0]);
-    fprintf(stderr, "\n");
-
-    fprintf(stderr, " prod = ");
-    mpz_out_str(stderr, 10, prod_p[0]);
-    fprintf(stderr, "\n");
 
     mpz_CRT_ui(dlift->crt, dlift->crt, mod_p[0],
                coef, modgbs->primes[modgbs->nprimes - (thrds - i) ],
-               prod_p[0], 0);
+               prod_p[0], 1);
     mpz_set(mod_p[0], prod_p[0]);
   }
 
@@ -640,7 +608,7 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
 
   for(int i = 0; i < thrds; i++){
 
-    uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) + 1];
+    uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
     uint32_t lc = mpz_fdiv_ui(dlift->den, prime);
     lc = mod_p_inverse_32(lc, prime);
 
@@ -648,7 +616,7 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
     c *= lc;
     c = c % prime;
 
-    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) + 1];
+    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) ];
 
     if(c!=coef){
       return 0;
@@ -678,15 +646,15 @@ static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
 }
 
 /* returns 0 when gb is lifted over the rationals */
-static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
-                       mpz_t *mod_p, mpz_t *prod_p,
-                       rrec_data_t recdata, int thrds){
+static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
+                        mpz_t *mod_p, mpz_t *prod_p,
+                        rrec_data_t recdata, int thrds){
 
   /* updates dlift->check1 and dlift->check2 */
   update_dlift(modgbs, dlift, mod_p, prod_p, thrds);
   /* the last coef to lift was ok ; we are done */
   if((dlift->check1 && dlift->check2 && dlift->idpol >= modgbs->npolys - 1)){
-    return 0;
+    return;
   }
 
   /* previous witness coef has been lifted and checked twice */
@@ -704,19 +672,23 @@ static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     /* starts lifting witness coefficient */
     start_dlift(modgbs, dlift);
     /* updates mod_p and ptr_p */
-    for(int i = 0; i < modgbs->nprimes; i++){
-      uint32_t prime = modgbs->primes[i];
-      mpz_mul_ui(mod_p[0], mod_p[0], prime);
+    if(dlift->idpol == 0){
+
+      for(int i = 0; i < modgbs->nprimes; i++){
+        uint32_t prime = modgbs->primes[i];
+        mpz_mul_ui(mod_p[0], mod_p[0], prime);
+      }
+      mpz_set(prod_p[0], mod_p[0]);
+
     }
-    mpz_set(prod_p[0], mod_p[0]);
+    else{
+      for(int i = 0; i < thrds; i++){
+        uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i)];
+        mpz_mul_ui(mod_p[0], mod_p[i], prime);
+      }
+      mpz_set(prod_p[0], mod_p[0]);
+    }
 
-    fprintf(stderr, "\n\n MODP = ");
-    mpz_out_str(stderr, 10, mod_p[0]);
-    fprintf(stderr, "\n\n");
-
-    fprintf(stderr, "\n\n PROD = ");
-    mpz_out_str(stderr, 10, prod_p[0]);
-    fprintf(stderr, "\n\n");
 
   }
   else{
@@ -724,6 +696,22 @@ static int ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                           mod_p, prod_p, thrds);
     /* mod_p and prod_p are updated inside incremental_dlift_crt */
   }
+
+  mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
+  mpz_sqrt(recdata->N, recdata->N);
+  mpz_set(recdata->D, recdata->N);
+
   dlift->recon = ratrecon(dlift->num, dlift->den, dlift->crt, mod_p[0], recdata);
-  return 1;
+
+#ifdef DEBUGGBLIFT
+  fprintf(stderr, "dlift->idpol = %d\n", dlift->idpol);
+  fprintf(stderr, "dlift->coef = %d\n", dlift->coef);
+  fprintf(stderr, "dlift->recon = %d\n", dlift->recon);
+  fprintf(stderr, "LIFTED = ");
+  mpz_out_str(stderr, 10, dlift->num);
+  fprintf(stderr, " / ");
+  mpz_out_str(stderr, 10, dlift->den);
+  fprintf(stderr, "\n");
+#endif
+
 }

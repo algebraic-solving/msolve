@@ -3061,8 +3061,10 @@ int msolve_gbtrace_qq(
     apply = 1;
 
     gb_modpoly_realloc(modgbs, 2);
-    display_gbmodpoly(stderr, modgbs);
 
+#ifdef DEBUGGBLIFT
+    display_gbmodpoly(stderr, modgbs);
+#endif
     int nb = 0;
     int32_t *ldeg = array_nbdegrees((*leadmons_ori), num_gb[0],
                                     bht->nv, &nb);
@@ -3158,12 +3160,7 @@ int msolve_gbtrace_qq(
         }
       }
       prime = lp->p[st->nthrds - 1];
-      fprintf(stderr, "NEW PRIME = %d\n", prime);
-
       gb_modpoly_realloc(modgbs, st->nthrds);
-      fprintf(stderr, "AFTER REALLOC\n");
-      display_gbmodpoly(stderr, modgbs);
-
 
       gb_modular_trace_application(modgbs, mgb,
                                    num_gb,
@@ -3175,8 +3172,8 @@ int msolve_gbtrace_qq(
                                    bs, lmb_ori, *dquot_ptr, lp,
                                    gens, &stf4, bad_primes);
 
-      fprintf(stderr, "Application done\n");
-      display_gbmodpoly(stderr, modgbs);
+      /* fprintf(stderr, "Application done\n"); */
+      /* display_gbmodpoly(stderr, modgbs); */
 
       nprimes += st->nthrds;
 
@@ -3202,18 +3199,19 @@ int msolve_gbtrace_qq(
       }
       int idpol = dlift->idpol;
       if(!bad){
-        apply = ratrecon_gb(modgbs, dlift, mod_p, prod_p, recdata, st->nthrds);
+        ratrecon_gb(modgbs, dlift, mod_p, prod_p, recdata, st->nthrds);
       }
-      if(dlift->idpol != idpol){
+      if(dlift->idpol != idpol && dlift->idpol < modgbs->npolys - 1){
         if(info_level){
-          fprintf(stderr, "<%.2f>", 100* (float)(dlift->idpol)/modgbs->npolys);
+          fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->idpol + 1)/modgbs->npolys);
         }
         idpol = dlift->idpol;
       }
-      fprintf(stderr, "AFTER RATRECON\n");
-      display_gbmodpoly(stderr, modgbs);
-      if(dlift->idpol>2){
-        exit(1);
+      if(dlift->idpol == modgbs->npolys - 1 && dlift->check2){
+        if(info_level){
+          fprintf(stderr, "<%.2f%%>\n", 100* (float)(dlift->idpol + 1)/modgbs->npolys);
+        }
+        apply = 0;
       }
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */

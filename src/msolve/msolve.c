@@ -3014,6 +3014,7 @@ int msolve_gbtrace_qq(
     lp->p[0] = gens->field_char;
     primeinit = gens->field_char;
   }
+  prime = next_prime(1<<30);
 
   int32_t *num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));
   int32_t **leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
@@ -3050,7 +3051,7 @@ int msolve_gbtrace_qq(
                                                  num_gb, leadmons_ori,
                                                  btrace[0],
                                                  tht, bs_qq, bht, st,
-                                                 primeinit, /* lp->p[0],  */
+                                                 lp->p[0],
                                                  info_level,
                                                  print_gb,
                                                  dim_ptr, dquot_ptr,
@@ -3059,7 +3060,6 @@ int msolve_gbtrace_qq(
                                                  &success);
     apply = 1;
 
-    display_gbmodpoly(stderr, modgbs);
     gb_modpoly_realloc(modgbs, 2);
     display_gbmodpoly(stderr, modgbs);
 
@@ -3143,8 +3143,7 @@ int msolve_gbtrace_qq(
     while(apply){
 
       /* generate lucky prime numbers */
-      prime = next_prime(1<<30);
-      lp->p[0] = prime;
+      lp->p[0] = next_prime(prime);
       while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
         prime = next_prime(prime);
         lp->p[0] = prime;
@@ -3162,6 +3161,9 @@ int msolve_gbtrace_qq(
       fprintf(stderr, "NEW PRIME = %d\n", prime);
 
       gb_modpoly_realloc(modgbs, st->nthrds);
+      fprintf(stderr, "AFTER REALLOC\n");
+      display_gbmodpoly(stderr, modgbs);
+
 
       gb_modular_trace_application(modgbs, mgb,
                                    num_gb,
@@ -3172,6 +3174,9 @@ int msolve_gbtrace_qq(
                                    field_char, 0, /* info_level, */
                                    bs, lmb_ori, *dquot_ptr, lp,
                                    gens, &stf4, bad_primes);
+
+      fprintf(stderr, "Application done\n");
+      display_gbmodpoly(stderr, modgbs);
 
       nprimes += st->nthrds;
 
@@ -3205,6 +3210,9 @@ int msolve_gbtrace_qq(
         }
         idpol = dlift->idpol;
       }
+      fprintf(stderr, "AFTER RATRECON\n");
+      display_gbmodpoly(stderr, modgbs);
+
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
     }

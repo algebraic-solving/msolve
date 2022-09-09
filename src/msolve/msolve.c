@@ -3201,6 +3201,7 @@ int msolve_gbtrace_qq(
       if(!bad){
         ratrecon_gb(modgbs, dlift, mod_p, prod_p, recdata, st->nthrds);
       }
+
       if(dlift->idpol != idpol && dlift->idpol < modgbs->npolys - 1){
         if(info_level){
           fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->idpol + 1)/modgbs->npolys);
@@ -3217,7 +3218,9 @@ int msolve_gbtrace_qq(
       /* but then duplicated datas and others should be free-ed */
     }
   }
-
+  if(info_level){
+    fprintf(stderr, "%d primes used\n", nprimes);
+  }
   data_lift_clear(dlift);
   mpz_clear(prod_p[0]);
   mpz_clear(mod_p[0]);

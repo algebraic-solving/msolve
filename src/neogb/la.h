@@ -28,7 +28,7 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-#include <config.h>
+#include "config.h"
 #include "types.h"
 
 #if 0

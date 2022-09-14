@@ -213,7 +213,7 @@ or, if you use BibTeX entries:
   HAL_VERSION = {v2},
 }
 ```
-The paper can be downloaded [https://hal.sorbonne-universite.fr/hal-03191666v2/file/main.pdf](here)  
+The paper can be downloaded [here](https://hal.sorbonne-universite.fr/hal-03191666v2/file/main.pdf).
 
 [docs-dev-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-dev-url]: https://msolve.lip6.fr/downloads/msolve-tutorial.pdf

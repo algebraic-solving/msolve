@@ -80,7 +80,7 @@ static inline void data_lift_clear(data_lift_t dlift){
 }
 
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
-                                   uint32_t alloc, uint32_t *lens,
+                                   uint32_t alloc, int32_t *lens,
                                    uint32_t npolys){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
@@ -366,7 +366,7 @@ static inline int32_t maxbitsize_gens(data_gens_ff_t *gens, len_t ngens){
 }
 
 static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
-                                           uint32_t *mgb,
+                                           int32_t *mgb,
                                            int32_t *num_gb,
                                            int32_t **leadmons,
                                            trace_t *trace,
@@ -478,7 +478,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
 
 static void gb_modular_trace_application(gb_modpoly_t modgbs,
-                                         uint32_t *mgb,
+                                         int32_t *mgb,
                                          int32_t *num_gb,
                                          int32_t **leadmons_ori,
                                          int32_t **leadmons_current,

@@ -3022,7 +3022,7 @@ int msolve_gbtrace_qq(
 
   int success = 1;
   gb_modpoly_t modgbs;
-  uint32_t *mgb = calloc(sizeof(uint32_t), bht->nv);
+  int32_t *mgb = calloc(sizeof(uint32_t), bht->nv);
   int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
   fprintf(stderr, "MAX BIT SIZE COEFFS = %d\n", maxbitsize);
 

@@ -676,8 +676,8 @@ static inline int32_t is_contained_in_hash_table(
     hl_t i;
     hi_t k;
     len_t j;
-    const len_t evl = ht->evl;
-    const hl_t hsz = ht->hsz;
+    /* const len_t evl = ht->evl;
+     * const hl_t hsz = ht->hsz; */
     /* ht->hsz <= 2^32 => mod is always uint32_t */
     const hi_t mod = (hi_t)(ht->hsz - 1);
 
@@ -685,7 +685,7 @@ static inline int32_t is_contained_in_hash_table(
     k = h;
     i = 0;
 restart:
-    for (; i < hsz; ++i) {
+    for (; i < ht->hsz; ++i) {
         k = (hi_t)((k+i) & mod);
         const hi_t hm = ht->hmap[k];
         if (!hm) {
@@ -696,13 +696,13 @@ restart:
             continue;
         }
         const exp_t * const ehm = ht->ev[hm];
-        for (j = 0; j < evl-1; j += 2) {
+        for (j = 0; j < ht->evl-1; j += 2) {
             if (a[j] != ehm[j] || a[j+1] != ehm[j+1]) {
                 i++;
                 goto restart;
             }
         }
-        if (a[evl-1] != ehm[evl-1]) {
+        if (a[ht->evl-1] != ehm[ht->evl-1]) {
             i++;
             goto restart;
         }
@@ -716,7 +716,7 @@ restart:
  * called beforehand such that the values for h and k are already
  * precomputed. */
 static inline len_t add_to_hash_table(
-    const exp_t *a,
+    const exp_t * const a,
     const val_t h,
     const hi_t k,
     ht_t *ht
@@ -985,10 +985,7 @@ static inline void insert_in_basis_hash_table_pivots(
     const hi_t * const hcm
     )
 {
-    hl_t i;
-    hi_t k, pos;
-    len_t j, l;
-    hd_t *d;
+    len_t l;
 
     while (bht->esz - bht->eld < row[LENGTH]) {
         enlarge_hash_table(bht);
@@ -1027,11 +1024,8 @@ static inline void insert_multiplied_poly_in_hash_table(
     ht_t *ht2
     )
 {
-    hl_t i;
-    hi_t k, pos;
     len_t j, l;
     exp_t *n;
-    hd_t *d;
 
     const len_t len = b[LENGTH]+OFFSET;
     const len_t evl = ht1->evl;

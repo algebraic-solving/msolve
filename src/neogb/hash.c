@@ -998,7 +998,8 @@ static inline void insert_in_basis_hash_table_pivots(
     hm_t *row,
     ht_t *bht,
     const ht_t * const sht,
-    const hi_t * const hcm
+    const hi_t * const hcm,
+    const stat_t * const st
     )
 {
     len_t l;
@@ -1009,25 +1010,22 @@ static inline void insert_in_basis_hash_table_pivots(
 
     const len_t len = row[LENGTH]+OFFSET;
     const len_t evl = bht->evl;
-    /* const hi_t hsz  = bht->hsz; */
-    /* ht->hsz <= 2^32 => mod is always uint32_t */
-    /* const hi_t mod = (hi_t)(hsz - 1); */
 
     const hd_t * const hds    = sht->hd;
     exp_t * const * const evs = sht->ev;
     
     exp_t **ev  = bht->ev;
-    /* hi_t *hmap  = bht->hmap; */
-    /* hd_t *hd    = bht->hd; */
-
-    l = OFFSET;
-    for (; l < len; ++l) {
+    exp_t *evt  = (exp_t *)malloc(
+        (unsigned long)(st->nthrds * evl) * sizeof(exp_t));
+#pragma omp parallel for num_threads(st->nthrds) \
+    private(l)
+    for (l = OFFSET; l < len; ++l) {
+        exp_t *evtl = evt + (omp_get_thread_num() * evl);
         const val_t h = hds[hcm[row[l]]].val;
-        memcpy(ev[bht->eld], evs[hcm[row[l]]],
+        memcpy(evtl, evs[hcm[row[l]]],
                 (unsigned long)evl * sizeof(exp_t));
-        const exp_t * const n = ev[bht->eld];
 
-        row[l] = check_insert_in_hash_table(n, h, bht);
+        row[l] = check_insert_in_hash_table(evtl, h, bht);
     }
 }
 

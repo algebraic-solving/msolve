@@ -567,7 +567,7 @@ static void return_normal_forms_to_basis(
     /* only for 32 bit at the moment */
     for (i = 0; i < np; ++i) {
         if (rows[i] != NULL) {
-            insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
+            insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm, st);
             bs->cf_32[bs->ld] = mat->cf_32[rows[i][COEFFS]];
             rows[i][COEFFS]   = bs->ld;
             bs->hm[bs->ld]    = rows[i];
@@ -622,7 +622,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         } else {
             i = k;
         }
-        insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm);
+        insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm, st);
         deg = bht->hd[rows[i][OFFSET]].deg;
         if (st->nev > 0) {
             const len_t len = rows[i][LENGTH]+OFFSET;

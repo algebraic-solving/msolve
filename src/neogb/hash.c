@@ -753,8 +753,24 @@ static inline len_t check_insert_in_hash_table(
 
     hi_t k  = 0;
 
+#if 1
+    len_t ld = 0;
+    while (1) {
+        ld = ht->eld;
+        if (is_contained_in_hash_table(a, ht, h, &k)) {
+            return k;
+        } else {
+            if (ht->eld == ld) {
+#pragma omp critical
+                ld = add_to_hash_table(a, h, k, ht);
+                return ld;
+            }
+        }
+    }
+#else
     return is_contained_in_hash_table(a, ht, h, &k) ?
         k : add_to_hash_table(a, h, k, ht);
+#endif
 }
 
 static inline hi_t insert_in_hash_table(

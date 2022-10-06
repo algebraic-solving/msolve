@@ -1224,7 +1224,7 @@ static inline hi_t get_lcm(
     /* exponents of basis elements, thus from basis hash table */
     const exp_t * const ea = ht1->ev[a];
     const exp_t * const eb = ht1->ev[b];
-    exp_t *etmp = ht1->ev[0];
+    exp_t etmp[ht1->evl];
     const len_t evl = ht1->evl;
     const len_t ebl = ht1->ebl;
 

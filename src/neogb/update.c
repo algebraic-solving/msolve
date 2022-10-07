@@ -75,7 +75,7 @@ static void insert_and_update_spairs(
     spair_t *ps = psl->p;
 
 #ifdef _OPENMP
-    const int max_nthrds = 4 <= st->nthrds ? 4 : st->nthrds;
+    const int nthrds = st->nthrds;
 #endif
 
     const int pl  = psl->ld;
@@ -93,7 +93,7 @@ static void insert_and_update_spairs(
     while (bht->esz - bht->eld < bl) {
         enlarge_hash_table(bht);
     }
-#pragma omp parallel for num_threads(max_nthrds) \
+#pragma omp parallel for num_threads(nthrds) \
     private(i)
     for (i = 0; i < bl; ++i) {
         pp[i].lcm   =  get_lcm(bs->hm[i][OFFSET], nch, bht, bht);
@@ -120,7 +120,7 @@ static void insert_and_update_spairs(
     len_t nl  = pl+bl;
     /* Gebauer-Moeller: check old pairs first */
     /* note: old pairs are sorted by the given spair order */
-#pragma omp parallel for num_threads(max_nthrds) \
+#pragma omp parallel for num_threads(nthrds) \
     private(i, j,  l)
     for (i = 0; i < pl; ++i) {
         j = ps[i].gen1;
@@ -191,6 +191,8 @@ static void insert_and_update_spairs(
 
     /* mark redundant elements in basis */
     if (bs->mltdeg > ndeg) {
+#pragma omp parallel for num_threads(nthrds) \
+    private(i)
         for (i = 0; i < lml; ++i) {
             if (bs->red[lmps[i]] == 0
                     && check_monomial_division(bs->hm[lmps[i]][OFFSET], nch, bht)) {
@@ -294,6 +296,7 @@ static void update_basis_f4(
     /* Check new elements on redundancy:
      * Only elements coming from the same matrix are possible leading
      * monomial divisors, thus we only check down to bs->lo */
+#pragma omp parallel for num_threads(st->nthrds)
     for (int l = bs->lo; l < bs->ld; ++l) {
         for (int m = l+1; m < bs->ld; ++m) {
             hm_t lm =   bs->hm[l][OFFSET];

@@ -1014,7 +1014,6 @@ static inline void insert_in_basis_hash_table_pivots(
     const hd_t * const hds    = sht->hd;
     exp_t * const * const evs = sht->ev;
     
-    exp_t **ev  = bht->ev;
     exp_t *evt  = (exp_t *)malloc(
         (unsigned long)(st->nthrds * evl) * sizeof(exp_t));
 #pragma omp parallel for num_threads(st->nthrds) \

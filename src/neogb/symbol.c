@@ -325,8 +325,7 @@ static void select_spairs_by_minimal_degree(
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
             }
-            rrows[nrr][MULT]    = check_insert_in_hash_table(etmp,
-                    bht->hd[rrows[nrr][OFFSET]].val, tht);
+            rrows[nrr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
         }
 
         /* mark lcm column as lead term column */
@@ -357,8 +356,7 @@ static void select_spairs_by_minimal_degree(
                 if (tht->eld == tht->esz-1) {
                     enlarge_hash_table(tht);
                 }
-                trows[ntr][MULT]    = check_insert_in_hash_table(etmp,
-                        bht->hd[trows[ntr][OFFSET]].val, tht);
+                trows[ntr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
             }
             /* mark lcm column as lead term column */
             sht->hd[trows[ntr++][OFFSET]].idx = 2;
@@ -530,8 +528,7 @@ start:
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
             }
-            rows[rr][MULT]    = check_insert_in_hash_table(etmp,
-                    bht->hd[rows[rr][OFFSET]].val, tht);
+            rows[rr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
         }
         sht->hd[m].idx  = 2;
         *nr             = rr + 1;

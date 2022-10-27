@@ -2455,8 +2455,6 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         /* to fix display inconsistency when gens->fc = 0 */
         st->fc = fc;
 
-        long dquot = 0;
-
         print_ff_basis_data(
                             files->out_file, "a", bs, bht, st, gens, print_gb);
         st->fc = 0;
@@ -5181,7 +5179,7 @@ restart:
                     exit(1);
                 }
             }
-	    int64_t nb  = export_results_from_gba(bld, blen, bexp,
+	    export_results_from_gba(bld, blen, bexp,
 						  bcf, &malloc, &bs, &bht, &st);
             printf("size of basis: %u\n", bs->lml);
 	    ct1 = cputime();

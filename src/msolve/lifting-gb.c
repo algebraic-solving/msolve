@@ -262,6 +262,7 @@ static inline int32_t compute_length(int32_t *mon, int nv,
       return i + 1;
     }
   }
+  return -1;
 }
 
 /*

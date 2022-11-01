@@ -483,7 +483,7 @@ static inline int is_equal_exponent(int32_t *exp1, int32_t *exp2, const long nva
   return ((exp1[nvars-1]) == exp2[nvars-1]);
 }
 
-static inline int is_equal_exponent_bs(const ht_t const *exp1, int32_t hmj,
+static inline int is_equal_exponent_bs(const ht_t * const exp1, int32_t hmj,
 				       int32_t *evi,
 				       int32_t *exp2,
 				       const long nvars){
@@ -533,7 +533,7 @@ static inline int is_larger_exponent(int32_t *exp1, int32_t *exp2, const long nv
  * return 0 if they are the same
  * returns 1 if exp1 is larger
  */
-static inline int is_larger_exponent_bs(const ht_t const *exp1, int32_t hmj,
+static inline int is_larger_exponent_bs(const ht_t * const exp1, int32_t hmj,
 					int32_t *evi,
 					int32_t *exp2,
 					const long nvars){
@@ -770,10 +770,10 @@ copy_poly_in_matrixcol_no_zero(sp_matfglmcol_t* matrix, long nrows,
 			       int32_t *bcf, int32_t **bexp, int32_t **blen,
 			       long start, long pos, int32_t *lmb,
 			       const int nv, const long fc){
-  int32_t j;
   long end = start + pos;//(*blen)[pos];
 
 #if DEBUGBUILDMATRIX > 0
+  int32_t j;
   fprintf(stderr, "\nstart = %ld, end = %ld\n", start, end);
   for(j = start; j < end; j++){
     //    display_term(stderr, j, gens, blen, bcf, bexp);
@@ -1585,7 +1585,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   len_t idx = tbr->lmps[1];
   /* printf ("idx=%d\n",idx); */
   len_t * hm  = tbr->hm[idx]+OFFSET;
-  len_t len = tbr->hm[idx][LENGTH];
+  /* len_t len = tbr->hm[idx][LENGTH]; */
   for (long i = 0; i < 2*nv-2;i++){
     lens[count_not_lm + i]=suppsize;
     for (long j = 0; j < suppsize; j++) {
@@ -1931,6 +1931,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   int32_t *div_not_xn = calloc(bld, sizeof(int32_t));
   
   /* len_xn is the number of those monomials of degree at most maxdeg+1. */
+  /* int is_divisible = 0; */
   long len_not_xn = 0;
   long len_xn = get_div_xn_bounded(bexp_lm, bld, nv, div_xn,div_not_xn,
 				   &len_not_xn,maxdeg+1);
@@ -1984,7 +1985,6 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 #endif
 	  }
 	  else{
-	    int is_divisible = 0;
 	    for(long j = 0; j < len_xn; j++) {
 	      if(is_divisible_exponent_xxn(exp, bexp_lm+(div_xn[j])*nv, nv)){
 		extranf[count_not_lm]=i;
@@ -1992,7 +1992,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 #if DEBUGBUILDMATRIX > 0
 		fprintf(stderr, " => land on a MULTIPLE of a leading monomial\n");
 #endif
-		is_divisible = 1;
+		/* is_divisible = 1; */
 		break;
 	      }
 	    }
@@ -2034,7 +2034,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   /* shifts of to be reduced */
   len_t idx = tbr->lmps[1];
   len_t * hm  = tbr->hm[idx]+OFFSET;
-  len_t len = tbr->hm[idx][LENGTH];
+  /* len_t len = tbr->hm[idx][LENGTH]; */
   for (long i = 0; i < 2*nv-2;i++){
     lens[count_not_lm + i]=suppsize;
     for (long j = 0; j < suppsize; j++) {

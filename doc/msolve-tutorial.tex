@@ -814,6 +814,58 @@ The call \verb+./msolve -P 2 -f in.ms+ then outputs
 ]]]]]:
 \end{verbatim}
 
+\section{Saturation and colon ideals}\label{sec:f4sat}
+\msolve also proposes algorithms for computing Gr\"obner bases of
+saturation and colon ideals. Given $m+1$ polynomials
+$f_1,\ldots,f_m,\varphi$ over a field $\K$ with variables
+$x_1,\ldots,x_n$,
+the saturation ideal
+$\langle f_1,\ldots,f_m\rangle:\langle \varphi\rangle^{\infty}$ is the ideal of all
+polynomials $h$, such that there exists $k\in\N$ such that
+$h \varphi^k\in\langle f_1,\ldots,f_m\rangle$.
+The colon ideal
+$\langle f_1,\ldots,f_m\rangle:\langle \varphi\rangle$ is the ideal of all
+polynomials $h$, such that
+$h \varphi\in\langle f_1,\ldots,f_m\rangle$.
+
+A Gr\"obner basis for the \emph{grevlex order} can be computed in the
+former case with an input file containg $f_1,\ldots,f_m,\varphi$ and
+called with the flag \verb+-S+ to use the F4SAT algorithm.
+
+For instance, consider the following input to \msolve written in a file
+\verb+in.ms+.
+\begin{tcolorbox}
+\begin{verbatim}
+x, y, z, w 
+1073741827
+x^4,
+y^4,
+1073741826*w^3*y+x*z^3,
+w
+\end{verbatim}  
+\end{tcolorbox}
+Then, typing the following command line
+\begin{tcolorbox}
+  \begin{verbatim}
+    ./msolve -f in.ms -S -g 2 -o out.ms 
+  \end{verbatim}
+\end{tcolorbox}
+will display in the \verb+out.ms+ file the following content. 
+\begin{tcolorbox}
+{\tiny\begin{lstlisting}[breaklines]
+#Reduced Groebner basis for input in characteristic 1073741827
+#for variable order x, y, z, w
+#w.r.t. grevlex monomial ordering
+#consisting of 6 elements:
+[1*x^1*z^3+1073741826*y^1*w^3,
+1*y^4,
+1*x^1*y^3,
+1*x^2*y^2,
+1*x^3*y^1,
+1*x^4]:
+\end{lstlisting}}
+\end{tcolorbox}
+
 
 % \section{Preliminaries}
 

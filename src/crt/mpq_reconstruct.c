@@ -30,13 +30,8 @@
 /*   do { mpz _t = *u; *u = *v; *v = *t; *t = _t; } while (0); */
 
 static inline void ROT(mpz_t u, mpz_t v, mpz_t t){
-  mpz_t _t;
-  mpz_init(_t);
-  mpz_swap(_t, u);
-  mpz_swap(u,v);
-  mpz_swap(v,t);
-  mpz_swap(t, _t);
-  mpz_clear(_t);
+    mpz_swap(u, v);
+    mpz_swap(v, t);
 }
 
 int

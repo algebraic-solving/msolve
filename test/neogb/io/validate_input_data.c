@@ -9,6 +9,7 @@ int main(void)
     int32_t elim_block_len  =   1;
     int32_t nr_vars         =   2;
     int32_t nr_gens         =   2;
+    int32_t nr_nf           =   1; /* must be <= nr_gens */
     int32_t ht_size         =   17;
     int32_t nr_threads      =   1;
     int32_t max_nr_pairs    =   0;
@@ -21,8 +22,9 @@ int main(void)
 
     int res = validate_input_data(&invalid_gens, cfs, lens,
             &field_char, &mon_order, &elim_block_len, &nr_vars,
-            &nr_gens, &ht_size, &nr_threads, &max_nr_pairs, &reset_ht,
-            &la_option, &use_signatures, &reduce_gb, &info_level);
+            &nr_gens, &nr_nf, &ht_size, &nr_threads, &max_nr_pairs,
+            &reset_ht, &la_option, &use_signatures, &reduce_gb,
+            &info_level);
 
     if (res == -1) return 1;
     if (res == 0) return 1;
@@ -33,6 +35,7 @@ int main(void)
     if (elim_block_len != 1) return 1;
     if (nr_vars!= 2) return 1;
     if (nr_gens != 2) return 1;
+    if (nr_nf != 1) return 1;
     if (ht_size != 17) return 1;
     if (nr_threads != 1) return 1;
     if (max_nr_pairs != 0) return 1;

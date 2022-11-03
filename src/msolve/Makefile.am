@@ -12,6 +12,7 @@ EXTRA_DIST	=	  data.h \
 								hilbert.c \
 								linear.c \
 								lifting.c \
+								lifting-gb.c \
 								iofiles.c \
 								msolve.c \
 								primes.c \

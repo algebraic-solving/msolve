@@ -1051,7 +1051,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         const len_t lenm = dtsm[LENGTH];
         const len_t osm  = lenm % 8;
         const hm_t * const dsm  = dtsm + OFFSET;
-        const uint32_t mulm32 = (uint32_t)(drm[i]);
+        /* const uint32_t mulm32 = (uint32_t)(drm[i]); */
         mulv  = _mm256_set1_epi32(mul32);
         for (j = 0; j < osm; ++j) {
             drm[dsm[j]] -=  mul * cfsm[j];

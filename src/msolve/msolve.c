@@ -5678,20 +5678,36 @@ restart:
             double ct0, ct1, rt0, rt1;
             ct0 = cputime();
             rt0 = realtime();
+            uint32_t field_char         = gens->field_char;
             const uint32_t prime_start = pow(2, 30);
             const int32_t nr_primes = nr_threads;
-
-
             /* initialize stuff */
             stat_t *st  = initialize_statistics();
+
+            int *invalid_gens       =   NULL;
+            int32_t monomial_order  =   0;
+            int32_t reduce_gb       =   1;
+            int res = validate_input_data(&invalid_gens, gens->mpz_cfs,
+                    gens->lens, &field_char, &monomial_order, &elim_block_len,
+                    &gens->nvars, &gens->ngens, &saturate, &initial_hts,
+                    &nr_threads, &max_pairs, &update_ht, &la_option,
+                    &use_signatures, &reduce_gb, &info_level);
+	    
+            /* all data is corrupt */
+            if (res == -1) {
+                fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
+                free(invalid_gens);
+                return -3;
+            }
 
             /* checks and set all meta data. if a nonzero value is returned then
              * some of the input data is corrupted. */
             if (check_and_set_meta_data_trace(st, gens->lens, gens->exps,
-                        (void *)gens->mpz_cfs, gens->field_char, 0,
-                        elim_block_len, gens->nvars, gens->ngens,
+                        (void *)gens->mpz_cfs, invalid_gens, gens->field_char, 0,
+                        elim_block_len, gens->nvars, gens->ngens, saturate,
                         initial_hts, nr_threads, max_pairs, update_ht,
-                        la_option, 1, prime_start, nr_primes, 0, info_level)) {
+                        la_option, use_signatures, 1, prime_start,
+                        nr_primes, 0, info_level)) {
                 free(st);
                 return -3;
             }
@@ -5709,7 +5725,8 @@ restart:
              * the basis elements stored in the trace */
             ht_t *tht = initialize_secondary_hash_table(bht, st);
             /* read in ideal, move coefficients to integers */
-            import_input_data(bs_qq, bht, st, gens->lens, gens->exps, (void *)gens->mpz_cfs);
+            import_input_data(bs_qq, bht, st, gens->lens, gens->exps,
+                    (void *)gens->mpz_cfs, invalid_gens);
 
             if (st->info_level > 0) {
                 print_initial_statistics(stderr, st);

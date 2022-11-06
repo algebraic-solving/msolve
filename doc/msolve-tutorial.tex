@@ -623,6 +623,18 @@ contain pure powers of all variables. The degree of the ideal is also $8$ since
 there are $8$ monomials in $z_1, z_2, z_3$ which are not divisible by the above
 leading monomials.
 
+\msolve also allows you to perform Gröbner bases computations using 
+\emph{one-block elimination monomial order}
+thanks to the \verb+-e+ flag. The following command 
+\begin{tcolorbox}
+  \begin{lstlisting}
+    ./msolve -e 1 -g 2 -f in.ms -o out.ms
+  \end{lstlisting}
+\end{tcolorbox}
+will perform the Gröbner basis computation eliminating the first variable. 
+More generally, using \verb+-e k+ will eliminate the $k$ first variables. 
+
+
 \section{Parametrizations of (finitely many) solutions}\label{sec:param}
 
 Assume that the input polynomials have coefficients in some field $\K$ with

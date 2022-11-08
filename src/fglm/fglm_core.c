@@ -1123,7 +1123,6 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
                                                      long nvars,
                                                      mod_t prime,
                                                      int verif){
-
   int nr_fail_param=-1;
   if (invert_table_polynomial (param, data, data_bms, dimquot, block_size,
                                prime, 0, 0)) {
@@ -1134,11 +1133,23 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
     nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
 #endif
     long dec = 0;
+
     for(long nc = 0; nc < nvars - 1 ; nc++){
+
       if(linvars[nvars - 2 - nc] == 0){
         divide_table_polynomials(param,data,data_bms, dimquot, block_size, prime,
                                  nc + 1-dec,0);
-        nmod_poly_neg(param->coords[nvars-2-nc], data_bms->BMS->R1);
+        if(data_bms->BMS->R1->length>0){
+          nmod_poly_neg(param->coords[nvars-2-nc], data_bms->BMS->R1); 
+        }
+        else{
+          nmod_poly_fit_length(param->coords[nvars-2-nc],
+                               param->elim->length-1 );
+          param->coords[nvars-2-nc]->length = data_bms->BMS->R1->length ;
+          param->coords[nvars-2-nc]->coeffs[0] = 0;
+          param->coords[nvars-2-nc]->coeffs[1] = 0;
+
+        }
 #if DEBUGFGLM > 0
         nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
         fprintf(stdout, "\n");
@@ -1146,6 +1157,17 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
       }
       else{
         dec++;
+        if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc - 1){
+          nmod_poly_fit_length(param->coords[nvars-2-nc],
+                               param->elim->length-1 );
+        }
+
+        param->coords[nvars-2-nc]->length = param->elim->length-1 ;
+
+        for(long i = 0; i < param->elim->length-1 ; i++){
+          param->coords[nvars-2-nc]->coeffs[i] = 0;
+        }
+
       }
     }
 
@@ -1177,11 +1199,13 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           nmod_poly_fprint_pretty(stdout, data_bms->BMS->R1, "X");
           fprintf(stdout, "\n");
 #endif
+
           if (! nmod_poly_equal (param->coords[nvars-2-nc],data_bms->BMS->R1)) {
             if (nr_fail_param == -1) {
               nr_fail_param= nvars-2-nc;
             }
           }
+
         }
         else{
 

@@ -1576,10 +1576,11 @@ static inline void crt_lift_mpz_param(mpz_param_t mpz_param, param_t *nmod_param
   /*assumes prod_crt = modulus * prime */
   crt_lift_mpz_upoly(mpz_param->elim, nmod_param->elim, modulus, prime,
                      prod_crt, nthrds);
-
   for(long i = 0; i < mpz_param->nvars - 1; i++){
+
     crt_lift_mpz_upoly(mpz_param->coords[i], nmod_param->coords[i],
                        modulus, prime, prod_crt, nthrds);
+
   }
 
 }
@@ -1948,6 +1949,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   mpz_mul_ui(prod_crt, *modulus, prime);
   crt_lift_mpz_param(tmp_mpz_param, nmod_param, *modulus, prod_crt,
                      prime, nthrds);
+
   uint32_t trace_mod = nmod_param->elim->coeffs[trace_det->trace_idx];
   uint32_t det_mod = nmod_param->elim->coeffs[trace_det->det_idx];
   int b = 1;
@@ -3613,6 +3615,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   while(nmod_params[0]->elim->coeffs[detidx] == 0 && detidx < nmod_params[0]->elim->length-2){
     detidx++;
   }
+
   trace_det_initset(trace_det,
                     nmod_params[0]->elim->coeffs[tridx],
                     nmod_params[0]->elim->coeffs[detidx],

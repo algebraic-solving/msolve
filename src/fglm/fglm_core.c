@@ -1543,8 +1543,6 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   double st = realtime();
 
-  //////////////////////////////////////////////////////////////////
-
   /* generate_sequence(matrix, *bdata, block_size, dimquot, prime); */
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
                           squvars, linvars, nvars, prime);
@@ -1594,15 +1592,15 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     }
 
     int right_param= compute_parametrizations_non_shape_position_case(param,
-								      *bdata,
-								      *bdata_bms,
-								      dimquot,
-								      block_size,
-								      nlins, linvars,
-								      lineqs,
-								      squvars,
-								      nvars, prime,
-								      1); /* verif */
+                                                                      *bdata,
+                                                                      *bdata_bms,
+                                                                      dimquot,
+                                                                      block_size,
+                                                                      nlins, linvars,
+                                                                      lineqs,
+                                                                      squvars,
+                                                                      nvars, prime,
+                                                                      1); /* verif */
 
     if (right_param == 0) {
       if(info_level){

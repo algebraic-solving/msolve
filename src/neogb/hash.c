@@ -1016,15 +1016,21 @@ static inline void insert_in_basis_hash_table_pivots(
     
     exp_t *evt  = (exp_t *)malloc(
         (unsigned long)(st->nthrds * evl) * sizeof(exp_t));
+#if PARALLEL_HASHING
 #pragma omp parallel for num_threads(st->nthrds) \
     private(l)
+#endif
     for (l = OFFSET; l < len; ++l) {
         exp_t *evtl = evt + (omp_get_thread_num() * evl);
-        const val_t h = hds[hcm[row[l]]].val;
         memcpy(evtl, evs[hcm[row[l]]],
                 (unsigned long)evl * sizeof(exp_t));
 
+#if PARALLEL_HASHING
+        const val_t h = hds[hcm[row[l]]].val;
         row[l] = check_insert_in_hash_table(evtl, h, bht);
+#else
+        row[l] = insert_in_hash_table(evtl, bht);
+#endif
     }
 }
 
@@ -1051,7 +1057,6 @@ static inline void insert_multiplied_poly_in_hash_table(
     l = OFFSET;
 
     for (; l < len; ++l) {
-        const val_t h   = h1 + hd1[b[l]].val;
         const exp_t * const eb = ev1[b[l]];
 
         n = ev2[ht2->eld];
@@ -1059,7 +1064,12 @@ static inline void insert_multiplied_poly_in_hash_table(
             n[j]  = (exp_t)(ea[j] + eb[j]);
         }
 
+#if PARALLEL_HASHING
+        const val_t h   = h1 + hd1[b[l]].val;
         row[l] = check_insert_in_hash_table(n, h, ht2);
+#else
+        row[l] = insert_in_hash_table(n, ht2);
+#endif
     }
 }
 
@@ -1196,7 +1206,11 @@ static void reset_hash_table(
     }
     for (i = 0; i < pld; ++i) {
         e = oev[ps[i].lcm];
+#if PARALLEL_HASHING
         ps[i].lcm = check_insert_in_hash_table(e, 0, ht);
+#else
+        ps[i].lcm = insert_in_hash_table(e, ht);
+#endif
     }
     /* note: all memory is allocated as a big block, so it is
      *       enough to free oev[0].       */
@@ -1247,8 +1261,11 @@ static inline hi_t get_lcm(
      *     printf("%d ", etmp[ii]);
      * }
      * printf("\n"); */
+#if PARALLEL_HASHING
     return check_insert_in_hash_table(etmp, 0, ht2);
-    /* return insert_in_hash_table(etmp, ht2); */
+#else
+    return insert_in_hash_table(etmp, ht2);
+#endif
 }
 
 static inline hm_t *multiplied_poly_to_matrix_row(

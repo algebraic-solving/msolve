@@ -325,7 +325,11 @@ static void select_spairs_by_minimal_degree(
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
             }
+#if PARALLEL_HASHING
             rrows[nrr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+#else
+            rrows[nrr][MULT]    = insert_in_hash_table(etmp, tht);
+#endif
         }
 
         /* mark lcm column as lead term column */
@@ -356,7 +360,11 @@ static void select_spairs_by_minimal_degree(
                 if (tht->eld == tht->esz-1) {
                     enlarge_hash_table(tht);
                 }
+#if PARALLEL_HASHING
                 trows[ntr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+#else
+                trows[ntr][MULT]    = insert_in_hash_table(etmp, tht);
+#endif
             }
             /* mark lcm column as lead term column */
             sht->hd[trows[ntr++][OFFSET]].idx = 2;
@@ -528,7 +536,11 @@ start:
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
             }
+#if PARALLEL_HASHING
             rows[rr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+#else
+            rows[rr][MULT]    = insert_in_hash_table(etmp, tht);
+#endif
         }
         sht->hd[m].idx  = 2;
         *nr             = rr + 1;

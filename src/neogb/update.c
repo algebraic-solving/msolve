@@ -93,8 +93,10 @@ static void insert_and_update_spairs(
     while (bht->esz - bht->eld < bl) {
         enlarge_hash_table(bht);
     }
+#if PARALLEL_HASHING
 #pragma omp parallel for num_threads(nthrds) \
     private(i)
+#endif
     for (i = 0; i < bl; ++i) {
         pp[i].lcm   =  get_lcm(bs->hm[i][OFFSET], nch, bht, bht);
         pp[i].gen1  = i;
@@ -191,8 +193,10 @@ static void insert_and_update_spairs(
 
     /* mark redundant elements in basis */
     if (bs->mltdeg > ndeg) {
+#if PARALLEL_HASHING
 #pragma omp parallel for num_threads(nthrds) \
     private(i)
+#endif
         for (i = 0; i < lml; ++i) {
             if (bs->red[lmps[i]] == 0
                     && check_monomial_division(bs->hm[lmps[i]][OFFSET], nch, bht)) {

@@ -71,34 +71,6 @@
 #include <inttypes.h>
 #define PRINT_U32(a) printf("%"PRIu32,a);
 
-/* /\* */
-/* Barrett reduction */
-/*   2^30 < p < 2^31 */
-
-/*   r=31 and n=32 */
-
-/*   alpha = 2^(n-1) = 2^31, t=n=32, s=r-1=30 */
-
-/*   preinv = q = floor( 2^(s+t) / p ) */
-
-static inline uint32_t MODRED32(const uint64_t n, const uint32_t p, const uint32_t preinv){
-    const uint32_t s = 30;
-    const uint32_t t = 32;
-
-    const uint64_t t1 = n >> s;
-    const uint64_t t2 = (t1 * preinv) >> t;
-    int64_t r = n - t2 * p;
-    (r >= p) ? r -= p : r;
-    (r >= p) ? r -= p : r;
-    return r;
-}
-
-static inline uint32_t ADDMODRED32(uint64_t a, uint64_t b,
-                                   const uint32_t p, const uint32_t preinv)
-{
-  const long neg = p - a;
-  return (neg > b) ? MODRED32((a + b), p, preinv) : MODRED32((b - neg), p, preinv);
-}
 
 static inline uint32_t mul_mod_barrett(const uint32_t x, const uint32_t y,
                                        const uint32_t p, const uint32_t pi){

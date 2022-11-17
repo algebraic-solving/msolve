@@ -37,9 +37,11 @@
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 
 #define DEBUGFGLM 0
+#define BLOCKWIED 0
 
 #include "data_fglm.c"
 #include "linalg-fglm.c"
+#include "matrix-mult.c"
 #include "berlekamp_massey.c"
 
 
@@ -418,6 +420,7 @@ static inline void solve_hankel(fglm_bms_data_t *data_bms,
 }
 
 
+
 /*
 
 Matrix vector product.
@@ -629,6 +632,65 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
 
 }
 #endif
+
+static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
+                                     szmat_t block_size, long dimquot,
+                                     uint64_t* squvars,
+                                     uint64_t* linvars,
+                                     long nvars,
+                                     mod_t prime){
+  uint32_t RED_32 = ((uint64_t)2<<31) % prime;
+  uint32_t RED_64 = ((uint64_t)1<<63) % prime;
+  RED_64 = (RED_64*2) % prime;
+
+  const uint32_t preinv = 2^(62) / prime;
+
+  const szmat_t ncols = matxn->ncols;
+  const szmat_t nrows = matxn->nrows;
+
+  const int BL = 16;
+  /* allocates random matrix */
+  CF_t *Rmat ALIGNED32;
+  if(posix_memalign((void **)&Rmat, 32, BL*ncols*sizeof(CF_t))){
+    fprintf(stderr, "posix_memalign failed\n");
+    exit(1);
+  }
+  memset(Rmat, 0, (ncols)*sizeof(CF_t));
+  for(szmat_t i = 0; i < matxn->ncols; i++){
+    Rmat[i] = (CF_t)rand() % prime;
+    Rmat[i] += (CF_t)rand() % prime;
+  }
+
+  /* allocates result matrix (matxn * Rmat) */
+  CF_t *res ALIGNED32;
+  if(posix_memalign((void **)&res, 32, BL*ncols*sizeof(CF_t))){
+    fprintf(stderr, "posix_memalign failed\n");
+    exit(1);
+  }
+  memset(res, 0, BL*ncols*sizeof(CF_t));
+
+  /* allocates temporary matrix */
+  CF_t *tres ALIGNED32;
+  if(posix_memalign((void **)&tres, 32, nrows*ncols*sizeof(CF_t))){
+    fprintf(stderr, "posix_memalign failed\n");
+    exit(1);
+  }
+  memset(tres, 0, nrows*ncols*sizeof(CF_t));
+
+  szmat_t nb = 2 * matxn->ncols / BL;
+  for(szmat_t i = 0; i < nb; i++){
+    sparse_matfglm_mul(res, matxn, Rmat,
+                       tres,
+                       BL,
+                       prime, preinv,
+                       RED_32,
+                       RED_64);
+  }
+  free(Rmat);
+  free(res);
+  free(tres);
+
+}
 
 static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
 					   szmat_t block_size, long dimquot,
@@ -1436,11 +1498,20 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
 
   double st = realtime();
 
-
-  /* generate_sequence(matrix, data, block_size, dimquot, prime); */
+#ifdef BLOCKWIED
+  fprintf(stderr, "Starts computation of matrix sequence\n");
+  double st0 = omp_get_wtime();
+  generate_matrix_sequence(matrix, data, block_size, dimquot,
+                           squvars, linvars, nvars, prime);
+  double et0 = omp_get_wtime() - st0;
+  fprintf(stderr, "Matrix sequence computed\n");
+  fprintf(stderr, "Elapsed time : %.2f\n", et0);
+  fprintf(stderr, "Implementation to be completed\n");
+  exit(1);
+#else
   generate_sequence_verif(matrix, data, block_size, dimquot,
 			  squvars, linvars, nvars, prime);
-
+#endif
   if(info_level > 1){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
     double rt = realtime()-st;
@@ -1567,9 +1638,20 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   double st = realtime();
 
-  /* generate_sequence(matrix, *bdata, block_size, dimquot, prime); */
+#if BLOCKWIED > 0
+  fprintf(stderr, "Starts computation of matrix sequence\n");
+  double st0 = omp_get_wtime();
+  generate_matrix_sequence(matrix, *bdata, block_size, dimquot,
+                           squvars, linvars, nvars, prime);
+  double et0 = omp_get_wtime() - st0;
+  fprintf(stderr, "Matrix sequence computed\n");
+  fprintf(stderr, "Elapsed time : %.2f\n", et0);
+  fprintf(stderr, "Implementation to be completed\n");
+  exit(1);
+#else
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
                           squvars, linvars, nvars, prime);
+#endif
 
   if(info_level){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);

@@ -162,6 +162,7 @@ static __inline__ void make_zero(uint32_t ** D,
 
 }
 
+#ifdef HAVE_AVX2
 /*
   m = number of rows in A
   l = number of cols in A = number of rows in B
@@ -258,6 +259,7 @@ void _mod_mat_addmul_transpose_op(uint32_t *D,
   }
 
 }
+#endif
 
 static inline void sparse_matfglm_mul(CF_t *res, sp_matfglm_t *matxn, CF_t *R,
                                       CF_t *tres,

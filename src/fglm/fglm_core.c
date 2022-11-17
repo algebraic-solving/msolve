@@ -32,6 +32,8 @@
 
 #ifdef _OPENMP
 #include<omp.h>
+#else
+double omp_get_wtime(void) { return realtime();}
 #endif
 
 #define MIN(x, y) ((x) > (y) ? (y) : (x))

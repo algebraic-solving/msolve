@@ -64,6 +64,39 @@
 
 #endif
 
+#if HAVE_AVX2
+static inline void REDUCE(uint64_t *acc64, uint64_t *acc4x64,
+                          __m256i acc_low, __m256i acc_high,
+                          const uint32_t fc, const uint32_t preinv,
+                          const uint32_t RED_32, const uint32_t RED_64){
+    AVX2STOREU(acc4x64,acc_low);
+    AVX2STOREU(acc4x64+4,acc_high);
+    /* Reduction */
+    *acc64=0;
+    acc4x64[0]+=MODRED32((acc4x64[4]>>32)*RED_64,fc,preinv);
+    /* partie basse du registre haut (2^32->2^63) */
+    acc4x64[0]+=MODRED32((acc4x64[4]&((uint64_t)0xFFFFFFFF))*RED_32,fc,preinv);
+    *acc64+=MODRED32(acc4x64[0],fc,preinv);
+
+    acc4x64[1]+=MODRED32((acc4x64[5]>>32)*RED_64,fc,preinv);
+    /* partie basse du registre haut (2^32->2^63) */
+    acc4x64[1]+=MODRED32((acc4x64[5]&((uint64_t)0xFFFFFFFF))*RED_32,fc,preinv);
+    *acc64+=MODRED32(acc4x64[1],fc,preinv);
+
+    acc4x64[2]+=MODRED32((acc4x64[6]>>32)*RED_64,fc,preinv);
+    /* partie basse du registre haut (2^32->2^63) */
+    acc4x64[2]+=MODRED32((acc4x64[6]&((uint64_t)0xFFFFFFFF))*RED_32,fc,preinv);
+    *acc64+=MODRED32(acc4x64[2],fc,preinv);
+
+    acc4x64[3]+=MODRED32((acc4x64[7]>>32)*RED_64, fc, preinv);
+    /* partie basse du registre haut (2^32->2^63) */
+    acc4x64[3]+=MODRED32((acc4x64[7]&((uint64_t)0xFFFFFFFF))*RED_32,fc,preinv);
+    *acc64+=MODRED32(acc4x64[3],fc,preinv);
+    *acc64=MODRED32(*acc64,fc,preinv);
+}
+#endif
+
+
 /* /\* */
 /* Barrett reduction */
 /*   2^30 < p < 2^31 */
@@ -108,36 +141,6 @@ static inline uint64_t SUBMODRED32(uint64_t a, uint64_t b,
   return (a < b) ? (p + neg) : (neg);
 }
 
-static inline void REDUCE(uint64_t *acc64, uint64_t *acc4x64,
-                          __m256i acc_low, __m256i acc_high,
-                          const uint32_t fc, const uint32_t preinv,
-                          const uint32_t RED_32, const uint32_t RED_64){
-    AVX2STOREU(acc4x64,acc_low);
-    AVX2STOREU(acc4x64+4,acc_high);
-    /* Reduction */
-    *acc64=0;
-    acc4x64[0]+=MODRED32((acc4x64[4]>>32)*RED_64,fc,preinv);
-    /* partie basse du registre haut (2^32->2^63) */
-    acc4x64[0]+=MODRED32((acc4x64[4]&((uint64_t)0xFFFFFFFF))*RED_32,fc,preinv);
-    *acc64+=MODRED32(acc4x64[0],fc,preinv);
-
-    acc4x64[1]+=MODRED32((acc4x64[5]>>32)*RED_64,fc,preinv);
-    /* partie basse du registre haut (2^32->2^63) */
-    acc4x64[1]+=MODRED32((acc4x64[5]&((uint64_t)0xFFFFFFFF))*RED_32,fc,preinv);
-    *acc64+=MODRED32(acc4x64[1],fc,preinv);
-
-    acc4x64[2]+=MODRED32((acc4x64[6]>>32)*RED_64,fc,preinv);
-    /* partie basse du registre haut (2^32->2^63) */
-    acc4x64[2]+=MODRED32((acc4x64[6]&((uint64_t)0xFFFFFFFF))*RED_32,fc,preinv);
-    *acc64+=MODRED32(acc4x64[2],fc,preinv);
-
-    acc4x64[3]+=MODRED32((acc4x64[7]>>32)*RED_64, fc, preinv);
-    /* partie basse du registre haut (2^32->2^63) */
-    acc4x64[3]+=MODRED32((acc4x64[7]&((uint64_t)0xFFFFFFFF))*RED_32,fc,preinv);
-    *acc64+=MODRED32(acc4x64[3],fc,preinv);
-    *acc64=MODRED32(*acc64,fc,preinv);
-}
-
 
 /* B has l rows, n columns */
 /* stores in tmp the entries of B column-wise */
@@ -162,6 +165,7 @@ static __inline__ void make_zero(uint32_t ** D,
 
 }
 
+#ifdef HAVE_AVX2
 /*
   m = number of rows in A
   l = number of cols in A = number of rows in B
@@ -258,6 +262,7 @@ void _mod_mat_addmul_transpose_op(uint32_t *D,
   }
 
 }
+#endif
 
 static inline void sparse_matfglm_mul(CF_t *res, sp_matfglm_t *matxn, CF_t *R,
                                       CF_t *tres,

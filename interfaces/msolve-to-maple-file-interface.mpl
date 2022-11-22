@@ -91,7 +91,7 @@ local i, fd, F2, str;
    fi:
    fclose(fd):
 #   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\n//g' ", fname):
-   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
+   str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
    system(str):
 end proc:
 
@@ -244,7 +244,7 @@ field_char, lsols, nl, i;
      msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb := GetOptions(opts);
    fi;
    ToMSolve(F, field_char, vars, fname1);
-   str := cat(msolve_path," -v ", verb," -g ", gb, " -P ", param, "-t ", nthreads, " -f ", fname1," -o ", fname2):
+   str := cat(msolve_path, " -v ", verb, " -g ", gb, " -P ", param, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
    lprint(str);
    try
    system(str):
@@ -306,7 +306,7 @@ lsols, nl, i;
      msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb := GetOptions(opts);
    fi;
    ToMSolve(F, 0, vars, fname1);
-   str := cat(msolve_path," -v ", verb, " -P ", param, "-t ", nthreads, " -f ", fname1," -o ", fname2):
+   str := cat(msolve_path, " -v ", verb, " -P ", param, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
    gb:=0; #Needed to avoid the user stops GB comp once a prime computation is done
    param:=0;
    try

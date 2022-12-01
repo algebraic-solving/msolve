@@ -4630,7 +4630,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   if(info_level){
     fprintf(stderr, "\n");
   }
-  for(long i = 0; i < param->nsols; i++){
+  for(long i = 0; i < nsols; i++){
     mpz_clear(xup[i]);
     mpz_clear(xdo[i]);
   }

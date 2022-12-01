@@ -4389,8 +4389,8 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  mpz_t *tab, real_point_t pt,
                                  long prec, long nbits,
                                  int info_level){
+  long ns = param->nsols ;
 
-  unsigned long ns = param->nsols ;
   /* root is exact */
   if(rt->isexact==1){
     single_exact_real_root_param(param, rt, nb,

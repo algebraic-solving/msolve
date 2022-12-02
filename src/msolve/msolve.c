@@ -1638,7 +1638,6 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
   if(ratrecon(rnum, rden, pol[*maxrec], modulus, rdata) == 0){
     return 0;
   }
-
   mpz_set(tmp_num[*maxrec], rnum);
   mpz_set(tmp_den[*maxrec], rden);
 
@@ -1709,8 +1708,25 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
     return 0;
   }
 
+  fprintf(stderr, "\n*maxrec = %ld\n", *maxrec);
+  fprintf(stderr, "len = %ld\n\n", len);
+
   mpz_set(tmp_num[*maxrec], rnum);
   mpz_set(tmp_den[*maxrec], rden);
+
+  fprintf(stderr, "Found => ");
+  mpz_out_str(stderr, 10, tmp_num[*maxrec]);
+  fprintf(stderr, " / ");
+  mpz_out_str(stderr, 10, tmp_den[*maxrec]);
+  fprintf(stderr, "\n");
+
+  fprintf(stderr, "In = ");
+  mpz_out_str(stderr, 10, guessed_num);
+  fprintf(stderr, "\n");
+
+  fprintf(stderr, "modulus = ");
+  mpz_out_str(stderr, 10, modulus);
+  fprintf(stderr, "\n");
 
   for(long i = *maxrec + 1; i < len; i++){
     mpz_set(guessed_num, pol[i]);
@@ -2111,7 +2127,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     mpz_set(recdata->N, recdata->D);
 
     for(int i = 0; i < nc; i++){
-      *maxrec = MAX(0, trace_det->det_idx-1);
+      *maxrec = MIN(MAX(0, trace_det->det_idx-1), nmod_param->coords[i]->length - 1);
 
       if(is_lifted[0]>0 && is_lifted[i+1]==0){
 
@@ -4059,7 +4075,6 @@ void single_exact_real_root_param(mpz_param_t param, interval *rt, long nb,
     mpz_neg(val_do, val_do);
     mpz_neg(val_up, val_up);
     mpz_swap(val_up, val_do);
-
 
     long exp = (rt->k) * ((param->denom->length ) -
                           (param->coords[nv]->length));

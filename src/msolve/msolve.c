@@ -1708,25 +1708,8 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
     return 0;
   }
 
-  fprintf(stderr, "\n*maxrec = %ld\n", *maxrec);
-  fprintf(stderr, "len = %ld\n\n", len);
-
   mpz_set(tmp_num[*maxrec], rnum);
   mpz_set(tmp_den[*maxrec], rden);
-
-  fprintf(stderr, "Found => ");
-  mpz_out_str(stderr, 10, tmp_num[*maxrec]);
-  fprintf(stderr, " / ");
-  mpz_out_str(stderr, 10, tmp_den[*maxrec]);
-  fprintf(stderr, "\n");
-
-  fprintf(stderr, "In = ");
-  mpz_out_str(stderr, 10, guessed_num);
-  fprintf(stderr, "\n");
-
-  fprintf(stderr, "modulus = ");
-  mpz_out_str(stderr, 10, modulus);
-  fprintf(stderr, "\n");
 
   for(long i = *maxrec + 1; i < len; i++){
     mpz_set(guessed_num, pol[i]);
@@ -2283,12 +2266,36 @@ static inline int check_unit_mpz_nmod_poly(const long len,
   return 0;
 }
 
-static inline check_param_nmod_poly(const long len,
-                                    const mpz_upoly_t mpz_pol,
-                                    const mpz_t den,
-                                    const nmod_poly_t nm_pol,
-                                    const int32_t prime){
-  
+static inline int check_param_nmod_poly(const long len,
+                                        const mpz_upoly_t mpz_pol,
+                                        const mpz_t den,
+                                        const mpz_t lcelim,
+                                        const long nbsol,
+                                        const nmod_poly_t nm_pol,
+                                        const int32_t prime){
+  if(len == 0){
+    return 0;
+  }
+  mpz_t binv, bprime;
+  mpz_init(binv);
+  mpz_init_set_ui(bprime, prime);
+
+  mpz_mul(binv, lcelim, den);
+  mpz_mul_ui(binv, binv, nbsol);
+  mpz_invert(binv, binv, bprime);
+
+  uint32_t inv = mpz_mod_ui(binv, binv, prime);
+
+  for(long i = 0; i < len; i++){
+
+    mpz_mul_ui(binv, mpz_pol->coeffs[i], inv);
+    if(mpz_mod_ui(binv, binv, prime) != (nm_pol->coeffs[i] % prime)){
+      return 1;
+    }
+  }
+  mpz_clear(binv);
+  mpz_clear(bprime);
+  return 0;
 }
 
 /* renvoie 0 si c'est bon sinon on renvoie l'indice du coeff problematique + 1  */
@@ -2296,17 +2303,13 @@ static inline int check_proportional_mpz_nmod_poly(const long len,
                                                    const mpz_upoly_t mpz_pol,
                                                    const nmod_poly_t nm_pol,
                                                    const int32_t prime){
-  fprintf(stderr, "len = %ld\n", len);
   if(len == 0){
     return 0;
   }
-  fprintf(stderr, "lcoeff = ");
-  mpz_out_str(stderr, 10, mpz_pol->coeffs[len - 1]);
-  fprintf(stderr, "\n");
   uint32_t lc = mpz_fdiv_ui(mpz_pol->coeffs[len - 1], prime);
-  fprintf(stderr, "lcoeff mod %d= %d\n", prime, lc);
+
   uint32_t nmodlc = nm_pol->coeffs[len - 1] % prime;
-  fprintf(stderr, "nmodlc = %d\n", nmodlc);
+
   lc = mod_p_inverse_32(lc, prime);
   nmodlc = mod_p_inverse_32(nmodlc, prime);
   for(long i = 0; i < len; i++){
@@ -2358,10 +2361,17 @@ static inline int check_param_modular(const mpz_param_t mp_param,
 
   for(int i = 0; i <mp_param->nvars-1; i++ ){
     len = mp_param->coords[0]->length;
-    if(check_proportional_mpz_nmod_poly(bparam->coords[i]->length,
-                                        mp_param->coords[i],
-                                        bparam->coords[i],
-                                        prime)){
+    /* if(check_proportional_mpz_nmod_poly(bparam->coords[i]->length, */
+    /*                                     mp_param->coords[i], */
+    /*                                     bparam->coords[i], */
+    /*                                     prime)){ */
+    if(check_param_nmod_poly(bparam->coords[i]->length,
+                             mp_param->coords[i],
+                             mp_param->cfs[i],
+                             mp_param->elim->coeffs[mp_param->elim->length - 1],
+                             mp_param->elim->length - 1,
+                             bparam->coords[i],
+                             prime)){
       is_lifted[i+1] = 0;
       if(info_level){
         fprintf(stderr, "<%d>", i+1);

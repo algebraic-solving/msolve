@@ -1638,7 +1638,6 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
   if(ratrecon(rnum, rden, pol[*maxrec], modulus, rdata) == 0){
     return 0;
   }
-
   mpz_set(tmp_num[*maxrec], rnum);
   mpz_set(tmp_den[*maxrec], rden);
 
@@ -2111,7 +2110,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     mpz_set(recdata->N, recdata->D);
 
     for(int i = 0; i < nc; i++){
-      *maxrec = MAX(0, trace_det->det_idx-1);
+      *maxrec = MIN(MAX(0, trace_det->det_idx-1), nmod_param->coords[i]->length - 1);
 
       if(is_lifted[0]>0 && is_lifted[i+1]==0){
 
@@ -2267,6 +2266,38 @@ static inline int check_unit_mpz_nmod_poly(const long len,
   return 0;
 }
 
+static inline int check_param_nmod_poly(const long len,
+                                        const mpz_upoly_t mpz_pol,
+                                        const mpz_t den,
+                                        const mpz_t lcelim,
+                                        const long nbsol,
+                                        const nmod_poly_t nm_pol,
+                                        const int32_t prime){
+  if(len == 0){
+    return 0;
+  }
+  mpz_t binv, bprime;
+  mpz_init(binv);
+  mpz_init_set_ui(bprime, prime);
+
+  mpz_mul(binv, lcelim, den);
+  mpz_mul_ui(binv, binv, nbsol);
+  mpz_invert(binv, binv, bprime);
+
+  uint32_t inv = mpz_mod_ui(binv, binv, prime);
+
+  for(long i = 0; i < len; i++){
+
+    mpz_mul_ui(binv, mpz_pol->coeffs[i], inv);
+    if(mpz_mod_ui(binv, binv, prime) != (nm_pol->coeffs[i] % prime)){
+      return 1;
+    }
+  }
+  mpz_clear(binv);
+  mpz_clear(bprime);
+  return 0;
+}
+
 /* renvoie 0 si c'est bon sinon on renvoie l'indice du coeff problematique + 1  */
 static inline int check_proportional_mpz_nmod_poly(const long len,
                                                    const mpz_upoly_t mpz_pol,
@@ -2276,7 +2307,9 @@ static inline int check_proportional_mpz_nmod_poly(const long len,
     return 0;
   }
   uint32_t lc = mpz_fdiv_ui(mpz_pol->coeffs[len - 1], prime);
+
   uint32_t nmodlc = nm_pol->coeffs[len - 1] % prime;
+
   lc = mod_p_inverse_32(lc, prime);
   nmodlc = mod_p_inverse_32(nmodlc, prime);
   for(long i = 0; i < len; i++){
@@ -2328,10 +2361,17 @@ static inline int check_param_modular(const mpz_param_t mp_param,
 
   for(int i = 0; i <mp_param->nvars-1; i++ ){
     len = mp_param->coords[0]->length;
-    if(check_proportional_mpz_nmod_poly(bparam->coords[i]->length,
-                                        mp_param->coords[i],
-                                        bparam->coords[i],
-                                        prime)){
+    /* if(check_proportional_mpz_nmod_poly(bparam->coords[i]->length, */
+    /*                                     mp_param->coords[i], */
+    /*                                     bparam->coords[i], */
+    /*                                     prime)){ */
+    if(check_param_nmod_poly(bparam->coords[i]->length,
+                             mp_param->coords[i],
+                             mp_param->cfs[i],
+                             mp_param->elim->coeffs[mp_param->elim->length - 1],
+                             mp_param->elim->length - 1,
+                             bparam->coords[i],
+                             prime)){
       is_lifted[i+1] = 0;
       if(info_level){
         fprintf(stderr, "<%d>", i+1);
@@ -4060,7 +4100,6 @@ void single_exact_real_root_param(mpz_param_t param, interval *rt, long nb,
     mpz_neg(val_up, val_up);
     mpz_swap(val_up, val_do);
 
-
     long exp = (rt->k) * ((param->denom->length ) -
                           (param->coords[nv]->length));
 
@@ -4389,8 +4428,8 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  mpz_t *tab, real_point_t pt,
                                  long prec, long nbits,
                                  int info_level){
+  long ns = param->nsols ;
 
-  unsigned long ns = param->nsols ;
   /* root is exact */
   if(rt->isexact==1){
     single_exact_real_root_param(param, rt, nb,
@@ -4630,7 +4669,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   if(info_level){
     fprintf(stderr, "\n");
   }
-  for(long i = 0; i < param->nsols; i++){
+  for(long i = 0; i < nsols; i++){
     mpz_clear(xup[i]);
     mpz_clear(xdo[i]);
   }

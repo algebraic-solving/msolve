@@ -3646,12 +3646,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   trace_det_fglm_mat_t trace_det;
   uint32_t detidx = 0;
   /* int32_t tridx = nmod_params[0]->elim->length-2; */
-  int32_t tridx = 3* nmod_params[0]->elim->length / 4 ;
+  int32_t tridx = 3* (nmod_params[0]->elim->length - 1) / 4 ;
   /* tridx = nmod_params[0]->elim->length - 2; */
   while(nmod_params[0]->elim->coeffs[tridx] == 0 && tridx > 0){
     tridx--;
   }
-  detidx = 2 * nmod_params[0]->elim->length / 3;
+  detidx = 2 * (nmod_params[0]->elim->length - 1) / 3;
   while(nmod_params[0]->elim->coeffs[detidx] == 0 && detidx < nmod_params[0]->elim->length-2){
     detidx++;
   }

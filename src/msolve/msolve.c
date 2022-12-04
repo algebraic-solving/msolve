@@ -2223,27 +2223,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
 
 
-/**
-renvoie 1 si il faut faire le modular check.
-A terme on va pouvoir enlever cette fonction.
-**/
 
-/* static inline int check_param_modular_elim(mpz_param_t mp_param, */
-/*                                            mpz_upoly_t numer, */
-/*                                            param_t *bparam, */
-/*                                            int32_t prime){ */
-/*   uint32_t lc = mpz_fdiv_ui(numer->coeffs[mp_param->nsols], prime); */
-/*   lc = mod_p_inverse_32(lc, prime); */
-/*   for(long i = 0; i <= mp_param->nsols; i++){ */
-/*     uint64_t c = mpz_fdiv_ui(numer->coeffs[i], prime); */
-/*     c *= (uint64_t)lc; */
-/*     c = c % prime; */
-/*     if(c != bparam->elim->coeffs[i]){ */
-/*       return 1; */
-/*     } */
-/*   } */
-/*   return 0; */
-/* } */
 
 /**
    on verifie que mpz_pol / lc(mpz_pol) mod prime = nm_pol
@@ -2298,34 +2278,6 @@ static inline int check_param_nmod_poly(const long len,
   return 0;
 }
 
-/* renvoie 0 si c'est bon sinon on renvoie l'indice du coeff problematique + 1  */
-static inline int check_proportional_mpz_nmod_poly(const long len,
-                                                   const mpz_upoly_t mpz_pol,
-                                                   const nmod_poly_t nm_pol,
-                                                   const int32_t prime){
-  if(len == 0){
-    return 0;
-  }
-  uint32_t lc = mpz_fdiv_ui(mpz_pol->coeffs[len - 1], prime);
-
-  uint32_t nmodlc = nm_pol->coeffs[len - 1] % prime;
-
-  lc = mod_p_inverse_32(lc, prime);
-  nmodlc = mod_p_inverse_32(nmodlc, prime);
-  for(long i = 0; i < len; i++){
-    uint64_t c = mpz_fdiv_ui(mpz_pol->coeffs[i], prime);
-    c *= (uint64_t)lc;
-    c = c % prime;
-
-    uint64_t nmod_coef = nm_pol->coeffs[i] * nmodlc;
-    nmod_coef = nmod_coef % prime;
-    if(c != nmod_coef){
-      return 1;
-    }
-  }
-  return 0;
-}
-
 
 /**
    renvoie 1 si il faut faire le modular check.
@@ -2361,10 +2313,7 @@ static inline int check_param_modular(const mpz_param_t mp_param,
 
   for(int i = 0; i <mp_param->nvars-1; i++ ){
     len = mp_param->coords[0]->length;
-    /* if(check_proportional_mpz_nmod_poly(bparam->coords[i]->length, */
-    /*                                     mp_param->coords[i], */
-    /*                                     bparam->coords[i], */
-    /*                                     prime)){ */
+
     if(check_param_nmod_poly(bparam->coords[i]->length,
                              mp_param->coords[i],
                              mp_param->cfs[i],

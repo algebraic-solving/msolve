@@ -2313,10 +2313,7 @@ static inline int check_param_modular(const mpz_param_t mp_param,
 
   for(int i = 0; i <mp_param->nvars-1; i++ ){
     len = mp_param->coords[0]->length;
-    /* if(check_proportional_mpz_nmod_poly(bparam->coords[i]->length, */
-    /*                                     mp_param->coords[i], */
-    /*                                     bparam->coords[i], */
-    /*                                     prime)){ */
+
     if(check_param_nmod_poly(bparam->coords[i]->length,
                              mp_param->coords[i],
                              mp_param->cfs[i],

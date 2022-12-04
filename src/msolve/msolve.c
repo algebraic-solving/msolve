@@ -2278,34 +2278,6 @@ static inline int check_param_nmod_poly(const long len,
   return 0;
 }
 
-/* renvoie 0 si c'est bon sinon on renvoie l'indice du coeff problematique + 1  */
-static inline int check_proportional_mpz_nmod_poly(const long len,
-                                                   const mpz_upoly_t mpz_pol,
-                                                   const nmod_poly_t nm_pol,
-                                                   const int32_t prime){
-  if(len == 0){
-    return 0;
-  }
-  uint32_t lc = mpz_fdiv_ui(mpz_pol->coeffs[len - 1], prime);
-
-  uint32_t nmodlc = nm_pol->coeffs[len - 1] % prime;
-
-  lc = mod_p_inverse_32(lc, prime);
-  nmodlc = mod_p_inverse_32(nmodlc, prime);
-  for(long i = 0; i < len; i++){
-    uint64_t c = mpz_fdiv_ui(mpz_pol->coeffs[i], prime);
-    c *= (uint64_t)lc;
-    c = c % prime;
-
-    uint64_t nmod_coef = nm_pol->coeffs[i] * nmodlc;
-    nmod_coef = nmod_coef % prime;
-    if(c != nmod_coef){
-      return 1;
-    }
-  }
-  return 0;
-}
-
 
 /**
    renvoie 1 si il faut faire le modular check.

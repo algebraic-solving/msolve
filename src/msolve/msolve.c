@@ -2223,27 +2223,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
 
 
-/**
-renvoie 1 si il faut faire le modular check.
-A terme on va pouvoir enlever cette fonction.
-**/
 
-/* static inline int check_param_modular_elim(mpz_param_t mp_param, */
-/*                                            mpz_upoly_t numer, */
-/*                                            param_t *bparam, */
-/*                                            int32_t prime){ */
-/*   uint32_t lc = mpz_fdiv_ui(numer->coeffs[mp_param->nsols], prime); */
-/*   lc = mod_p_inverse_32(lc, prime); */
-/*   for(long i = 0; i <= mp_param->nsols; i++){ */
-/*     uint64_t c = mpz_fdiv_ui(numer->coeffs[i], prime); */
-/*     c *= (uint64_t)lc; */
-/*     c = c % prime; */
-/*     if(c != bparam->elim->coeffs[i]){ */
-/*       return 1; */
-/*     } */
-/*   } */
-/*   return 0; */
-/* } */
 
 /**
    on verifie que mpz_pol / lc(mpz_pol) mod prime = nm_pol

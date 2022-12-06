@@ -91,12 +91,12 @@ local i, fd, F2, str;
    fi:
    fclose(fd):
 #   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\n//g' ", fname):
-   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
+   str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
    system(str):
 end proc:
 
 GetOptions:=proc(opts)
-local str, msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output;
+local str, msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb;
   str:=subs(opts,"verb");
   if type(str, integer) then
      verb:=str;
@@ -194,7 +194,7 @@ end proc;
 # the leading monomials are returned
 MSolveGroebner:=proc(F, fc, vars, opts:={})
 local results, dim, fname1, fname2, verb, param, msolve_path, file_dir,
-field_char, lsols, nl, i;
+field_char, lsols, nl, i, gb, output, nthreads, str;
    if type(F, list(polynom(rational))) = false then
      printf("First argument is not a list of polynomials with rational coefficients\n");
    end if;
@@ -244,7 +244,7 @@ field_char, lsols, nl, i;
      msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb := GetOptions(opts);
    fi;
    ToMSolve(F, field_char, vars, fname1);
-   str := cat(msolve_path," -v ", verb," -g ", gb, " -P ", param, "-t ", nthreads, " -f ", fname1," -o ", fname2):
+   str := cat(msolve_path, " -v ", verb, " -g ", gb, " -P ", param, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
    lprint(str);
    try
    system(str):
@@ -282,7 +282,7 @@ end proc:
 # [ vars[1] = (a1+b1)/2, ..., vars[n] = (an+bn)/2 ]
 MSolveRealRoots:=proc(F, vars, opts:={})
 local results, dim, fname1, fname2, verb, param, msolve_path, file_dir,
-lsols, nl, i;
+lsols, nl, i, gb, output, nthreads, str, sols;
    if type(F, list(polynom(rational))) = false then
      printf("First argument is not a list of polynomials with rational coefficients\n");
    end if;
@@ -306,7 +306,7 @@ lsols, nl, i;
      msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb := GetOptions(opts);
    fi;
    ToMSolve(F, 0, vars, fname1);
-   str := cat(msolve_path," -v ", verb, " -P ", param, "-t ", nthreads, " -f ", fname1," -o ", fname2):
+   str := cat(msolve_path, " -v ", verb, " -P ", param, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
    gb:=0; #Needed to avoid the user stops GB comp once a prime computation is done
    param:=0;
    try

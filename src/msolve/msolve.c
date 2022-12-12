@@ -2110,7 +2110,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     mpz_set(recdata->N, recdata->D);
 
     for(int i = 0; i < nc; i++){
-      *maxrec = MIN(MAX(0, trace_det->det_idx-1), nmod_param->coords[i]->length - 1);
+      *maxrec = MIN(MAX(0, trace_det->det_idx-1), MAX(0,nmod_param->coords[i]->length - 1));
 
       if(is_lifted[0]>0 && is_lifted[i+1]==0){
 

@@ -358,7 +358,7 @@ static void convert_hashes_to_columns(
     }
 
     /* map column positions to matrix rows */
-#pragma omp parallel for num_threads(st->nthrds) private(k, j)
+#pragma omp parallel for num_threads(st->nthrds) private(k, j, row)
     for (k = 0; k < mat->nru; ++k) {
         const len_t os  = rrows[k][PRELOOP];
         const len_t len = rrows[k][LENGTH];
@@ -376,7 +376,7 @@ static void convert_hashes_to_columns(
     for (k = 0; k < mat->nru; ++k) {
         nterms  +=  rrows[k][LENGTH];
     }
-#pragma omp parallel for num_threads(st->nthrds) private(k, j)
+#pragma omp parallel for num_threads(st->nthrds) private(k, j, row)
     for (k = 0; k < mat->nrl; ++k) {
         const len_t os  = trows[k][PRELOOP];
         const len_t len = trows[k][LENGTH];

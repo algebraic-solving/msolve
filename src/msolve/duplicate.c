@@ -54,15 +54,15 @@ static inline void duplicate_tracer(int nthreads, trace_t **btrace){
       btrace[i]->td[l].tld = btrace[0]->td[l].tld;
       btrace[i]->td[l].nlm = btrace[0]->td[l].nlm;
 
-      btrace[i]->td[l].rri = calloc(2 * btrace[0]->td[l].rld,
+      btrace[i]->td[l].rri = calloc(btrace[0]->td[l].rld,
                                     sizeof(len_t));
-      for(len_t k = 0; k < ( 2 * btrace[0]->td[l].rld ); ++k){
+      for(len_t k = 0; k < (btrace[0]->td[l].rld ); ++k){
         btrace[i]->td[l].rri[k] = btrace[0]->td[l].rri[k] ;
       }
 
-      btrace[i]->td[l].tri = calloc(2 * btrace[0]->td[l].tld,
+      btrace[i]->td[l].tri = calloc(btrace[0]->td[l].tld,
                                     sizeof(len_t));
-      for(len_t k = 0; k < (2 * btrace[0]->td[l].tld); ++k){
+      for(len_t k = 0; k < (btrace[0]->td[l].tld); ++k){
         btrace[i]->td[l].tri[k] = btrace[0]->td[l].tri[k] ;
       }
 

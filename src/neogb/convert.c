@@ -138,7 +138,7 @@ static void convert_hashes_to_columns_sat(
     }
 
     /* map column positions to reducer matrix */
-#pragma omp parallel for num_threads(st->nthrds) private(k, j)
+#pragma omp parallel for num_threads(st->nthrds) private(k, j, row)
     for (k = 0; k < mat->nru; ++k) {
         const len_t os  = rrows[k][PRELOOP];
         const len_t len = rrows[k][LENGTH];
@@ -157,7 +157,7 @@ static void convert_hashes_to_columns_sat(
         nterms  +=  rrows[k][LENGTH];
     }
     /* map column positions to saturation elements */
-#pragma omp parallel for num_threads(st->nthrds) private(k, j)
+#pragma omp parallel for num_threads(st->nthrds) private(k, j, row)
     for (k = 0; k < sat->ld; ++k) {
         const len_t os  = sat->hm[k][PRELOOP];
         const len_t len = sat->hm[k][LENGTH];
@@ -263,7 +263,7 @@ static void sba_convert_hashes_to_columns(
     }
 
     /* map column positions to matrix rows */
-#pragma omp parallel for num_threads(st->nthrds) private(k, j)
+#pragma omp parallel for num_threads(st->nthrds) private(k, j, row)
     for (i = 0; i < nr; ++i) {
         const len_t os  = cr[i][SM_PRE];
         const len_t len = cr[i][SM_LEN];

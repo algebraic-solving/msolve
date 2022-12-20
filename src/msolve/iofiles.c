@@ -970,31 +970,32 @@ static inline void display_gens_ff(FILE *fh, data_gens_ff_t *gens){
 }
 
 static void display_gens_mpz(FILE *fh, data_gens_ff_t *gens){
-  long pos = 0;
+  long pos = 0, posex = 0;
   for(long i = 0; i < gens->ngens; i++){
     for(long j = 0; j < gens->lens[i]-1; j++){
-      if(mpz_cmp_ui(*(gens->mpz_cfs[pos+j]), 1) != 0){
-        mpz_out_str(fh, 10, *(gens->mpz_cfs[pos+j]));
-        display_monomial(fh, gens, pos+j, &gens->exps);
+      if(mpz_cmp_ui(*(gens->mpz_cfs[pos+2*j]), 1) != 0){
+        mpz_out_str(fh, 10, *(gens->mpz_cfs[pos+2*j]));
+        display_monomial(fh, gens, posex+j, &gens->exps);
       }
       else{
-        display_monomial_single(fh, gens, pos+j, &gens->exps);
+        display_monomial_single(fh, gens, posex+j, &gens->exps);
       }
-      if(mpz_cmp_ui(*(gens->mpz_cfs[pos+j+1]), 0) > 0){
+      if(mpz_cmp_ui(*(gens->mpz_cfs[pos+2*(j+1)]), 0) > 0){
         fprintf(fh, "+");
       }
     }
-    if(mpz_cmp_ui(*(gens->mpz_cfs[pos+ (gens->lens[i]) -1]), 1) != 0){
-      mpz_out_str(fh, 10, *(gens->mpz_cfs[pos+gens->lens[i]-1]));
-      display_monomial(fh, gens, pos+gens->lens[i]-1, &gens->exps);
+    if(mpz_cmp_ui(*(gens->mpz_cfs[pos+ 2*(gens->lens[i] -1)]), 1) != 0){
+      mpz_out_str(fh, 10, *(gens->mpz_cfs[pos+2*(gens->lens[i]-1)]));
+      display_monomial(fh, gens, posex+(gens->lens[i]-1), &gens->exps);
     }
     else{
-      int b = display_monomial_single(fh, gens, pos+gens->lens[i]-1, &gens->exps);
+      int b = display_monomial_single(fh, gens, posex+gens->lens[i]-1, &gens->exps);
       if(b==0){
         fprintf(fh, "1");
       }
     }
-    pos+=gens->lens[i];
+    pos+=2*gens->lens[i];
+    posex+=gens->lens[i];
     if(i < gens->ngens-1){
       fprintf(fh,",\n");
     }

@@ -620,7 +620,6 @@ static int add_random_linear_form_to_input_system(
 {
   fprintf(stderr, "Input = \n");
   display_gens(stderr, gens);
-  fprintf(stderr, "DONE\n");
 
     int64_t i, j;
     int32_t k;
@@ -6093,6 +6092,7 @@ restart:
                     la_option, use_signatures, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
             fprintf(stderr, "b= %d\n", b);
+
             if(print_gb){
               return 0;
             }

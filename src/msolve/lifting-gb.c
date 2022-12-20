@@ -754,7 +754,6 @@ int msolve_gbtrace_qq(
                       int32_t pbm_file,
                       files_gb *files){
 
-  const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
   uint32_t field_char = gens->field_char;
   const void *cfs = gens->mpz_cfs;
@@ -778,7 +777,7 @@ int msolve_gbtrace_qq(
   stat_t *st  = initialize_statistics();
 
   int *invalid_gens   =   NULL;
-  int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
+  int res = validate_input_data(&invalid_gens, cfs, gens->lens, &field_char, &mon_order,
                                 &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
                                 &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
                                 &info_level);
@@ -792,7 +791,7 @@ int msolve_gbtrace_qq(
   /* checks and set all meta data. if a nonzero value is returned then
    * some of the input data is corrupted. */
 
-  if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
+  if (check_and_set_meta_data_trace(st, gens->lens, exps, cfs, invalid_gens,
               field_char, mon_order, elim_block_len, nr_vars, nr_gens,
               nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
               use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
@@ -814,7 +813,7 @@ int msolve_gbtrace_qq(
     * the basis elements stored in the trace */
   ht_t *tht = initialize_secondary_hash_table(bht, st);
   /* read in ideal, move coefficients to integers */
-  import_input_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+  import_input_data(bs_qq, bht, st, gens->lens, exps, cfs, invalid_gens);
   free(invalid_gens);
   invalid_gens  =   NULL;
 

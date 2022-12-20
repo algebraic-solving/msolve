@@ -1592,27 +1592,6 @@ static inline void crt_lift_mpz_param(mpz_param_t mpz_param, param_t *nmod_param
 
 }
 
-void initialize_rrec_data(rrec_data_t recdata){
-  mpz_init(recdata->r0);
-  mpz_init(recdata->r1);
-  mpz_init(recdata->t0);
-  mpz_init(recdata->t1);
-  mpz_init(recdata->q);
-  mpz_init(recdata->tmp);
-  mpz_init(recdata->N);
-  mpz_init(recdata->D);
-}
-
-void free_rrec_data(rrec_data_t recdata){
-  mpz_clear(recdata->r0);
-  mpz_clear(recdata->r1);
-  mpz_clear(recdata->t0);
-  mpz_clear(recdata->t1);
-  mpz_clear(recdata->q);
-  mpz_clear(recdata->tmp);
-  mpz_clear(recdata->N);
-  mpz_clear(recdata->D);
-}
 
 
 

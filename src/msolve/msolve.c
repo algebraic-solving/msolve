@@ -618,10 +618,12 @@ static int add_random_linear_form_to_input_system(
         int32_t info_level
         )
 {
+
     int64_t i, j;
     int32_t k;
     int32_t nvars_old, nvars_new;
     int64_t len_old = 0, len_new;
+
     if (gens->linear_form_base_coef == 0) {
         nvars_old = gens->nvars;
         nvars_new = nvars_old + 1;
@@ -637,6 +639,7 @@ static int add_random_linear_form_to_input_system(
         }
         len_new = len_old + gens->lens[gens->ngens-1];
     }
+
     /* for the first run we have to reinitialize gens data with the newly
      * added variable, then we add the linear form at the end. */
     if (gens->linear_form_base_coef == 0) {
@@ -697,7 +700,8 @@ static int add_random_linear_form_to_input_system(
         printf("[coefficients of linear form are randomly chosen]\n");
     }
     srand(time(0));
-    gens->random_linear_form = malloc(sizeof(int32_t *)*(nvars_new));
+    /* gens->random_linear_form = malloc(sizeof(int32_t)*(nvars_new)); */
+    gens->random_linear_form = realloc(gens->random_linear_form, sizeof(int32_t)*(nvars_new));
 
     if (gens->field_char > 0) {
       int j = 0;
@@ -716,11 +720,14 @@ static int add_random_linear_form_to_input_system(
       int j = 0;
       for (i = 2*len_old; i < 2*len_new; i += 2) {
         gens->random_linear_form[j] = ((int8_t)(rand()));
+
         while(gens->random_linear_form[j] == 0){
             gens->random_linear_form[j] = ((int8_t)(rand()));
         }
 
-        mpz_set_ui(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
+        mpz_set_si(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
+        mpz_set_ui(*(gens->mpz_cfs[i+1]), 1);
+
         k++;
         j++;
       }
@@ -4703,8 +4710,8 @@ int real_msolve_qq(mpz_param_t mp_param,
   if(print_gb){
     return 0;
   }
-  
-  
+
+
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
     mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
     for(long i = 0; i < mp_param->elim->length; i++){

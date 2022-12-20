@@ -162,4 +162,9 @@ typedef struct{
   char *in_file;
   char *out_file;
 } files_gb;
+
+typedef struct{
+  
+} msolvetrace_data_struct;
+typedef msolvetrace_data_struct ms_trace_t[1];
 #endif

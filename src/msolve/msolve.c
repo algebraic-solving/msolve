@@ -6080,7 +6080,6 @@ restart:
             /*   return 0; */
             /* } */
 
-            fprintf(stderr, "ICI : gens->change_var_order = %d\n", gens->change_var_order);
             b = real_msolve_qq(*mpz_paramp,
                     &param,
                     &dim,
@@ -6093,7 +6092,6 @@ restart:
                     elim_block_len, update_ht,
                     la_option, use_signatures, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
-            fprintf(stderr, "b= %d\n", b);
 
             if(print_gb){
               return 0;
@@ -6155,7 +6153,6 @@ restart:
                   undo_variable_order_change(gens);
                 }
                 if (add_random_linear_form_to_input_system(gens, info_level)) {
-                  fprintf(stderr, "random linear form added\n");
                     goto restart;
                 }
             }

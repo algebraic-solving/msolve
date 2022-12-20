@@ -1214,6 +1214,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           param->coords[nvars-2-nc]->coeffs[1] = 0;
 
         }
+
 #if DEBUGFGLM > 0
         nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
         fprintf(stdout, "\n");
@@ -1272,16 +1273,21 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
 
         }
         else{
+          /* might happen that the ideal is non radical and still some squared
+             variables are not in the quotient.
+             In that case, a random linear form has been introduced.
+          */
+          if(linvars[nvars - 2 - nc] != 0){
 
-          if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc ){
-            nmod_poly_fit_length(param->coords[nvars-2-nc],
-                                 param->elim->alloc  );
+            if(param->coords[nvars-2-nc]->alloc <  param->elim->alloc ){
+              nmod_poly_fit_length(param->coords[nvars-2-nc],
+                                   param->elim->alloc  );
+            }
+            param->coords[nvars-2-nc]->length = param->elim->length ;
+            for(long i = 0; i < param->elim->length ; i++){
+              param->coords[nvars-2-nc]->coeffs[i] = 0;
+            }
           }
-          param->coords[nvars-2-nc]->length = param->elim->length ;
-          for(long i = 0; i < param->elim->length ; i++){
-            param->coords[nvars-2-nc]->coeffs[i] = 0;
-          }
-
         }
         if(linvars[nvars - 2 - nc] != 0){
           dec++;

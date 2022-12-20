@@ -23,6 +23,7 @@
 #endif
 
 #include "msolve-data.h"
+#include "msolve-data.c"
 #include "iofiles.c"
 #include "hilbert.c"
 #include "primes.c"

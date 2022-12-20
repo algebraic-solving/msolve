@@ -732,8 +732,6 @@ static int add_random_linear_form_to_input_system(
         j++;
       }
     }
-    fprintf(stderr, "Output = \n");
-    display_gens(stderr, gens);
     gens->rand_linear = 1;
     return 1;
 }

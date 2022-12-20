@@ -1016,5 +1016,4 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
   else{
     display_gens_mpz(fh, gens);
   }
-  fclose(fh);
 }

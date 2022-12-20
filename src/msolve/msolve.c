@@ -618,6 +618,10 @@ static int add_random_linear_form_to_input_system(
         int32_t info_level
         )
 {
+  fprintf(stderr, "Input = \n");
+  display_gens(stderr, gens);
+  fprintf(stderr, "DONE\n");
+
     int64_t i, j;
     int32_t k;
     int32_t nvars_old, nvars_new;
@@ -716,6 +720,7 @@ static int add_random_linear_form_to_input_system(
       int j = 0;
       for (i = 2*len_old; i < 2*len_new; i += 2) {
         gens->random_linear_form[j] = ((int8_t)(rand()));
+        fprintf(stderr, " -> %d ", gens->random_linear_form[j]);
         while(gens->random_linear_form[j] == 0){
             gens->random_linear_form[j] = ((int8_t)(rand()));
         }
@@ -725,6 +730,9 @@ static int add_random_linear_form_to_input_system(
         j++;
       }
     }
+    fprintf(stderr, "DONE\n");
+    fprintf(stderr, "Output = \n");
+    display_gens(stderr, gens);
     gens->rand_linear = 1;
     return 1;
 }
@@ -4703,8 +4711,8 @@ int real_msolve_qq(mpz_param_t mp_param,
   if(print_gb){
     return 0;
   }
-  
-  
+
+
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
     mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
     for(long i = 0; i < mp_param->elim->length; i++){
@@ -6071,6 +6079,7 @@ restart:
             /*   return 0; */
             /* } */
 
+            fprintf(stderr, "ICI : gens->change_var_order = %d\n", gens->change_var_order);
             b = real_msolve_qq(*mpz_paramp,
                     &param,
                     &dim,
@@ -6083,7 +6092,7 @@ restart:
                     elim_block_len, update_ht,
                     la_option, use_signatures, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
-
+            fprintf(stderr, "b= %d\n", b);
             if(print_gb){
               return 0;
             }
@@ -6144,6 +6153,7 @@ restart:
                   undo_variable_order_change(gens);
                 }
                 if (add_random_linear_form_to_input_system(gens, info_level)) {
+                  fprintf(stderr, "random linear form added\n");
                     goto restart;
                 }
             }

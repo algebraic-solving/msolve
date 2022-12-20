@@ -768,7 +768,6 @@ int msolve_gbtrace_qq(
   int reduce_gb = 1;
   int32_t nr_nf = 0;
   const uint32_t prime_start = pow(2, 30);
-  const int32_t nr_primes = nr_threads;
 
   len_t i;
 
@@ -791,10 +790,11 @@ int msolve_gbtrace_qq(
    * some of the input data is corrupted. */
 
   if (check_and_set_meta_data_trace(st, gens->lens, gens->exps, cfs, invalid_gens,
-              field_char, mon_order, elim_block_len, nr_vars, nr_gens,
-              nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
-              use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
-              info_level)) {
+                                    field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+                                    nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+                                    use_signatures, reduce_gb, prime_start,
+                                    nr_threads /* nr_primes */,
+                                    pbm_file, info_level)) {
     free(st);
     return -3;
   }

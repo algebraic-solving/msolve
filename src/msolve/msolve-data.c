@@ -42,7 +42,14 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free(msd->lp);
   /* to be checked if that is to be done when st->ff_bits != 0 */
   free(msd->bs_qq);
+
+  free_shared_hash_data(msd->bht);
+  if(msd->bht!=NULL){
+    free_hash_table(&(msd->bht));
+  }
   free(msd->bht);
+
+
   free(msd->tht);
   free(msd->bs);
   free(msd->bad_primes);

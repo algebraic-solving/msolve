@@ -167,6 +167,9 @@ typedef struct{
   primes_t *lp; /* array of primes, usually of size st->nthrds */
   bs_t *bs_qq; /* basis_qq */
   ht_t *bht; /* hash table */
+  ht_t *tht; /* hash table to store the hashes of the multiples of the basis
+                elements stored in the trace */
+  bs_t **bs;
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];
 #endif

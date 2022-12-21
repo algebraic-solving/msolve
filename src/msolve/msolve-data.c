@@ -22,6 +22,8 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
   msd->lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t));
   msd->bs_qq = initialize_basis(st);
   msd->bht = initialize_basis_hash_table(st);
+  msd->tht = initialize_secondary_hash_table(msd->bht, st);
+  msd->bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
 }
 
 static void free_mstrace(mstrace_t msd, stat_t *st){
@@ -29,4 +31,6 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   /* to be checked if that is to be done when st->ff_bits != 0 */
   free(msd->bs_qq);
   free(msd->bht);
+  free(msd->tht);
+  free(msd->bs);
 }

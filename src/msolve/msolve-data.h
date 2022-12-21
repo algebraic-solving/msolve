@@ -170,6 +170,7 @@ typedef struct{
   ht_t *tht; /* hash table to store the hashes of the multiples of the basis
                 elements stored in the trace */
   bs_t **bs;
+  int *bad_primes;
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];
 #endif

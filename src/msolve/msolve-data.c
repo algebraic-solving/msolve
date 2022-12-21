@@ -28,6 +28,8 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
   msd->bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
   msd->bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
 
+  msd->btrace = (trace_t **)calloc(st->nthrds,
+                                        sizeof(trace_t *));
 }
 
 static void free_mstrace(mstrace_t msd, stat_t *st){
@@ -38,4 +40,5 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free(msd->tht);
   free(msd->bs);
   free(msd->bad_primes);
+  free(msd->btrace);
 }

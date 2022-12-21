@@ -171,6 +171,7 @@ typedef struct{
                 elements stored in the trace */
   bs_t **bs;
   int *bad_primes;
+  trace_t **btrace;
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];
 #endif

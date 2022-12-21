@@ -799,6 +799,7 @@ int msolve_gbtrace_qq(
     return -3;
   }
 
+  mstrace_t mds;
   /* lucky primes */
   primes_t *lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t));
 

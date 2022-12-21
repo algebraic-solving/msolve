@@ -17,3 +17,7 @@
  * Jérémy Berthomieu
  * Christian Eder
  * Mohab Safey El Din */
+
+static void initialize_mstrace(mstrace_t msd, stat_t *st){
+  msd->lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t));
+}

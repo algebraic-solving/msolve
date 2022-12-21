@@ -166,5 +166,5 @@ typedef struct{
 typedef struct{
   primes_t *lp; /* array of primes, usually of size st->nthrds */
 } msolvetrace_data_struct;
-typedef msolvetrace_data_struct ms_trace_t[1];
+typedef msolvetrace_data_struct mstrace_t[1];
 #endif

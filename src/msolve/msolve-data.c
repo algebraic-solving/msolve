@@ -30,6 +30,7 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
 
   msd->btrace = (trace_t **)calloc(st->nthrds,
                                         sizeof(trace_t *));
+  msd->btrace[0]  = initialize_trace();
 }
 
 static void free_mstrace(mstrace_t msd, stat_t *st){

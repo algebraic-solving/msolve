@@ -49,8 +49,11 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   }
   free(msd->bht);
 
-
+  if(msd->tht!=NULL){
+    free_hash_table(&(msd->tht));
+  }
   free(msd->tht);
+
   free(msd->bs);
   free(msd->bad_primes);
   free(msd->btrace);

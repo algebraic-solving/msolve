@@ -172,6 +172,11 @@ typedef struct{
   bs_t **bs;
   int *bad_primes;
   trace_t **btrace;
+
+  int32_t *num_gb;
+  int32_t **leadmons_ori;
+  int32_t **leadmons_current; 
+
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];
 #endif

@@ -31,6 +31,11 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
   msd->btrace = (trace_t **)calloc(st->nthrds,
                                         sizeof(trace_t *));
   msd->btrace[0]  = initialize_trace();
+
+  msd->num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));
+  msd->leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
+  msd->leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
+
 }
 
 static void free_mstrace(mstrace_t msd, stat_t *st){
@@ -42,4 +47,9 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free(msd->bs);
   free(msd->bad_primes);
   free(msd->btrace);
+
+  free(msd->num_gb);
+  free(msd->leadmons_ori);
+  free(msd->leadmons_current);
+
 }

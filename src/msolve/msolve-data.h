@@ -173,9 +173,9 @@ typedef struct{
   int *bad_primes;
   trace_t **btrace;
 
-  int32_t *num_gb;
-  int32_t **leadmons_ori;
-  int32_t **leadmons_current; 
+  int32_t *num_gb; /* array storing lengths of computed GBs */
+  int32_t **leadmons_ori; /* original leading monomials (from learning) */
+  int32_t **leadmons_current; /* leading monomials (from tracing) */
 
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];

@@ -39,7 +39,7 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
   msd->mgb = calloc(sizeof(uint32_t), msd->bht->nv);
 
   msd->blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-  btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
+  msd->btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
 
 }
 
@@ -70,8 +70,8 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free(msd->mgb);
 
   for(int i = 0; i < st->nthrds; i++){
-    free_hash_table(msd->(blht+i));
-    free_hash_table(msd->(btht+i));
+    free_hash_table(msd->blht+i);
+    free_hash_table(msd->btht+i);
   }
 
 }

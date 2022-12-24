@@ -181,6 +181,9 @@ typedef struct{
 
   ht_t **blht;
   ht_t **btht;
+
+  mpz_t *mod_p;
+  mpz_t *prod_p;
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];
 #endif

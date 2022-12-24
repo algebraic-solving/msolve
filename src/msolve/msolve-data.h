@@ -177,6 +177,7 @@ typedef struct{
   int32_t **leadmons_ori; /* original leading monomials (from learning) */
   int32_t **leadmons_current; /* leading monomials (from tracing) */
 
+  int32_t *mgb; 
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];
 #endif

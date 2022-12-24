@@ -877,8 +877,7 @@ int msolve_gbtrace_qq(
   int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
   fprintf(stderr, "MAX BIT SIZE COEFFS = %d\n", maxbitsize);
 
-  int learn = 1, apply = 1;
-  int nprimes = 0;
+  int learn = 1, apply = 1, nprimes = 0;
   double stf4 = 0;
 
   ht_t **blht, **btht;

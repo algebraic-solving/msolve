@@ -36,6 +36,7 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
   msd->leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
   msd->leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
 
+  msd->mgb = calloc(sizeof(uint32_t), msd->bht->nv);
 }
 
 static void free_mstrace(mstrace_t msd, stat_t *st){
@@ -62,4 +63,5 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free(msd->leadmons_ori);
   free(msd->leadmons_current);
 
+  free(msd->mgb);
 }

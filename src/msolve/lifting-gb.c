@@ -799,7 +799,9 @@ int msolve_gbtrace_qq(
     return -3;
   }
 
-  mstrace_t mds;
+  mstrace_t msd;
+  initialize_mstrace(msd, st);
+
   /* lucky primes */
   primes_t *lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t));
 
@@ -967,7 +969,9 @@ int msolve_gbtrace_qq(
       free_lucky_primes(&lp);
       free(bad_primes);
       free(lp);
+      free_mstrace(msd, st);
       free(st);
+
     }
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, st, num_gb,
@@ -976,7 +980,7 @@ int msolve_gbtrace_qq(
 
     blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
     btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-    
+
     /* copy of hash tables for tracer application */
     blht[0] = bht;
     for(int i = 1; i < st->nthrds; i++){
@@ -1108,11 +1112,13 @@ int msolve_gbtrace_qq(
   free(leadmons_current);
 
   free_lucky_primes(&lp);
-  free(st);
   free(bad_primes);
 
   free(num_gb);
   free(btrace);
+
+  free_mstrace(msd, st);
+  free(st);
 
   return 0;
 }

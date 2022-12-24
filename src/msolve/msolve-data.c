@@ -41,6 +41,11 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
   msd->blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
   msd->btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
 
+  for(int i = 0; i < st->nthrds; i++){
+    msd->blht[i] = NULL;
+    msd->btht[i] = NULL;
+  }
+  
   msd->mod_p = malloc(sizeof(mpz_t));
   mpz_init(msd->mod_p[0]);
   mpz_set_ui(msd->mod_p[0], 1);
@@ -78,8 +83,12 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free(msd->mgb);
 
   for(int i = 0; i < st->nthrds; i++){
-    free_hash_table(msd->blht+i);
-    free_hash_table(msd->btht+i);
+    if(msd->blht[i] != NULL){
+      free_hash_table((msd->blht)+i);
+    }
+    if(msd->btht[i] != NULL){
+      free_hash_table((msd->btht)+i);
+    }
   }
 
   mpz_clear(msd->mod_p[0]);

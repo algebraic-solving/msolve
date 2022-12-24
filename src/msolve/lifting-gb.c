@@ -802,9 +802,6 @@ int msolve_gbtrace_qq(
   mstrace_t msd;
   initialize_mstrace(msd, st);
 
-  /* lucky primes */
-  /* primes_t *lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t)); */
-
   /*******************
   * initialize basis
   *******************/

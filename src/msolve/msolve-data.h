@@ -164,7 +164,7 @@ typedef struct{
 } files_gb;
 
 typedef struct{
-  primes_t *lp; /* array of primes, usually of size st->nthrds */
+  primes_t *lp; /* array of lucky primes, usually of size st->nthrds */
   bs_t *bs_qq; /* basis_qq */
   ht_t *bht; /* hash table */
   ht_t *tht; /* hash table to store the hashes of the multiples of the basis

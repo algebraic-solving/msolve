@@ -803,7 +803,7 @@ int msolve_gbtrace_qq(
   initialize_mstrace(msd, st);
 
   /* lucky primes */
-  primes_t *lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t));
+  /* primes_t *lp  = (primes_t *)calloc(st->nthrds, sizeof(primes_t)); */
 
   /*******************
   * initialize basis
@@ -833,12 +833,12 @@ int msolve_gbtrace_qq(
   if(gens->field_char == 0){
     remove_content_of_initial_basis(bs_qq);
     /* generate lucky prime numbers */
-    generate_lucky_primes(lp, bs_qq, st->prime_start, st->nthrds);
+    generate_lucky_primes(msd->lp, bs_qq, st->prime_start, st->nthrds);
   }
   else{
-    lp->old = 0;
-    lp->ld = 1;
-    lp->p = calloc(1, sizeof(uint32_t));
+    msd->lp->old = 0;
+    msd->lp->ld = 1;
+    msd->lp->p = calloc(1, sizeof(uint32_t));
     normalize_initial_basis(bs_qq, st->fc);
   }
 
@@ -862,9 +862,9 @@ int msolve_gbtrace_qq(
   }
 
   primeinit = prime;
-  lp->p[0] = primeinit;
+  msd->lp->p[0] = primeinit;
   if(gens->field_char){
-    lp->p[0] = gens->field_char;
+    msd->lp->p[0] = gens->field_char;
     primeinit = gens->field_char;
   }
   prime = next_prime(1<<30);
@@ -903,7 +903,7 @@ int msolve_gbtrace_qq(
                                                  num_gb, leadmons_ori,
                                                  btrace[0],
                                                  tht, bs_qq, bht, st,
-                                                 lp->p[0],
+                                                 msd->lp->p[0],
                                                  info_level,
                                                  print_gb,
                                                  dim_ptr, dquot_ptr,
@@ -966,9 +966,9 @@ int msolve_gbtrace_qq(
         free(bs_qq);
       }
       //here we should clean nmod_params
-      free_lucky_primes(&lp);
+      /* free_lucky_primes(&lp); */
       free(bad_primes);
-      free(lp);
+      /* free(lp); */
       free_mstrace(msd, st);
       free(st);
 
@@ -1000,21 +1000,21 @@ int msolve_gbtrace_qq(
     while(apply){
 
       /* generate lucky prime numbers */
-      lp->p[0] = next_prime(prime);
+      msd->lp->p[0] = next_prime(prime);
       while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
         prime = next_prime(prime);
-        lp->p[0] = prime;
+        msd->lp->p[0] = prime;
       }
 
       for(len_t i = 1; i < st->nthrds; i++){
         prime = next_prime(prime);
-        lp->p[i] = prime;
+        msd->lp->p[i] = prime;
         while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
           prime = next_prime(prime);
-          lp->p[i] = prime;
+          msd->lp->p[i] = prime;
         }
       }
-      prime = lp->p[st->nthrds - 1];
+      prime = msd->lp->p[st->nthrds - 1];
       gb_modpoly_realloc(modgbs, st->nthrds);
 
       gb_modular_trace_application(modgbs, mgb,
@@ -1024,7 +1024,7 @@ int msolve_gbtrace_qq(
                                    btrace,
                                    btht, bs_qq, blht, st,
                                    field_char, 0, /* info_level, */
-                                   bs, lmb_ori, *dquot_ptr, lp,
+                                   bs, lmb_ori, *dquot_ptr, msd->lp,
                                    gens, &stf4, bad_primes);
 
       /* fprintf(stderr, "Application done\n"); */
@@ -1111,7 +1111,7 @@ int msolve_gbtrace_qq(
   free(leadmons_ori);
   free(leadmons_current);
 
-  free_lucky_primes(&lp);
+  /* free_lucky_primes(&lp); */
   free(bad_primes);
 
   free(num_gb);

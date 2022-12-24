@@ -57,6 +57,7 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
 }
 
 static void free_mstrace(mstrace_t msd, stat_t *st){
+  free_lucky_primes(&msd->lp);
   free(msd->lp);
   /* to be checked if that is to be done when st->ff_bits != 0 */
   free(msd->bs_qq);

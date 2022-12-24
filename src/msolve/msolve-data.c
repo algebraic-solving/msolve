@@ -63,7 +63,10 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
 static void free_mstrace(mstrace_t msd, stat_t *st){
   free_lucky_primes(&msd->lp);
   free(msd->lp);
-  /* to be checked if that is to be done when st->ff_bits != 0 */
+  /* to be checked if that is to be done when st->ff_bits != 0
+     This was previously done only when characteristic is zero
+   */
+  free_basis(&(msd->bs_qq));
   free(msd->bs_qq);
 
   free_shared_hash_data(msd->bht);

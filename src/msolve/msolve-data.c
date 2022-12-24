@@ -45,7 +45,7 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
     msd->blht[i] = NULL;
     msd->btht[i] = NULL;
   }
-  
+
   msd->mod_p = malloc(sizeof(mpz_t));
   mpz_init(msd->mod_p[0]);
   mpz_set_ui(msd->mod_p[0], 1);

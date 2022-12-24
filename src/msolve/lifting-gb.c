@@ -802,10 +802,6 @@ int msolve_gbtrace_qq(
   mstrace_t msd;
   initialize_mstrace(msd, st);
 
-  /* hash table to store the hashes of the multiples of
-    * the basis elements stored in the trace */
-  ht_t *tht = initialize_secondary_hash_table(msd->bht, st);
-
   /* read in ideal, move coefficients to integers */
   import_input_data(msd->bs_qq, msd->bht, st, gens->lens, gens->exps, cfs, invalid_gens);
   free(invalid_gens);
@@ -894,7 +890,7 @@ int msolve_gbtrace_qq(
                                                  mgb,
                                                  num_gb, leadmons_ori,
                                                  btrace[0],
-                                                 tht, msd->bs_qq, msd->bht, st,
+                                                 msd->tht, msd->bs_qq, msd->bht, st,
                                                  msd->lp->p[0],
                                                  info_level,
                                                  print_gb,
@@ -940,10 +936,6 @@ int msolve_gbtrace_qq(
       }
       free(btrace);
 
-      if(tht!=NULL){
-        free_hash_table(&tht);
-      }
-      free(tht);
       /* for (i = 0; i < st->nthrds; ++i) { */
       /*   free_basis(&(bs[i])); */
       /* } */
@@ -971,9 +963,9 @@ int msolve_gbtrace_qq(
       ht_t *lht = copy_hash_table(msd->bht, st);
       blht[i] = lht;
     }
-    btht[0] = tht;
+    btht[0] = msd->tht;
     for(int i = 1; i < st->nthrds; i++){
-      btht[i] = copy_hash_table(tht, st);
+      btht[i] = copy_hash_table(msd->tht, st);
     }
 
     if(info_level){
@@ -1077,8 +1069,6 @@ int msolve_gbtrace_qq(
     free_hash_table(blht+i);
     free_hash_table(btht+i);
   }
-  /* free_hash_table(&bht); */
-  /* free_hash_table(&tht); */
 
   //here we should clean nmod_params
 

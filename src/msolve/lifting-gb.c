@@ -802,13 +802,12 @@ int msolve_gbtrace_qq(
   mstrace_t msd;
   initialize_mstrace(msd, st);
 
-  /* initialize basis hash table, update hash table, symbolic hash table */
-  ht_t *bht = initialize_basis_hash_table(st);
   /* hash table to store the hashes of the multiples of
     * the basis elements stored in the trace */
-  ht_t *tht = initialize_secondary_hash_table(bht, st);
+  ht_t *tht = initialize_secondary_hash_table(msd->bht, st);
+
   /* read in ideal, move coefficients to integers */
-  import_input_data(msd->bs_qq, bht, st, gens->lens, gens->exps, cfs, invalid_gens);
+  import_input_data(msd->bs_qq, msd->bht, st, gens->lens, gens->exps, cfs, invalid_gens);
   free(invalid_gens);
   invalid_gens  =   NULL;
 
@@ -818,11 +817,11 @@ int msolve_gbtrace_qq(
 
   /* for faster divisibility checks, needs to be done after we have
     * read some input data for applying heuristics */
-  calculate_divmask(bht);
+  calculate_divmask(msd->bht);
 
   /* sort initial elements, smallest lead term first */
   sort_r(msd->bs_qq->hm, (unsigned long)msd->bs_qq->ld, sizeof(hm_t *),
-          initial_input_cmp, bht);
+          initial_input_cmp, msd->bht);
   if(gens->field_char == 0){
     remove_content_of_initial_basis(msd->bs_qq);
     /* generate lucky prime numbers */
@@ -868,7 +867,7 @@ int msolve_gbtrace_qq(
 
   int success = 1;
   gb_modpoly_t modgbs;
-  int32_t *mgb = calloc(sizeof(uint32_t), bht->nv);
+  int32_t *mgb = calloc(sizeof(uint32_t), msd->bht->nv);
   int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
   fprintf(stderr, "MAX BIT SIZE COEFFS = %d\n", maxbitsize);
 
@@ -895,7 +894,7 @@ int msolve_gbtrace_qq(
                                                  mgb,
                                                  num_gb, leadmons_ori,
                                                  btrace[0],
-                                                 tht, msd->bs_qq, bht, st,
+                                                 tht, msd->bs_qq, msd->bht, st,
                                                  msd->lp->p[0],
                                                  info_level,
                                                  print_gb,
@@ -912,7 +911,7 @@ int msolve_gbtrace_qq(
 #endif
     int nb = 0;
     int32_t *ldeg = array_nbdegrees((*leadmons_ori), num_gb[0],
-                                    bht->nv, &nb);
+                                    msd->bht->nv, &nb);
 
     /************************************************/
     /************************************************/
@@ -940,13 +939,7 @@ int msolve_gbtrace_qq(
         /* free_trace(&btrace[i]); */
       }
       free(btrace);
-      if(gens->field_char==0){
-        free_shared_hash_data(bht);
-        if(bht!=NULL){
-          free_hash_table(&bht);
-        }
-        free(bht);
-      }
+
       if(tht!=NULL){
         free_hash_table(&tht);
       }
@@ -973,9 +966,9 @@ int msolve_gbtrace_qq(
     btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
 
     /* copy of hash tables for tracer application */
-    blht[0] = bht;
+    blht[0] = msd->bht;
     for(int i = 1; i < st->nthrds; i++){
-      ht_t *lht = copy_hash_table(bht, st);
+      ht_t *lht = copy_hash_table(msd->bht, st);
       blht[i] = lht;
     }
     btht[0] = tht;
@@ -1067,6 +1060,7 @@ int msolve_gbtrace_qq(
   if(info_level){
     fprintf(stderr, "%d primes used\n", nprimes);
   }
+  free_mstrace(msd, st);
   data_lift_clear(dlift);
   mpz_clear(prod_p[0]);
   mpz_clear(mod_p[0]);
@@ -1078,8 +1072,8 @@ int msolve_gbtrace_qq(
   free_rrec_data(recdata);
 
   /* free and clean up */
-  free_shared_hash_data(bht);
-  for(int i = 0; i < st->nthrds; i++){
+  /* free_shared_hash_data(bht); */
+  for(int i = 1; i < st->nthrds; i++){
     free_hash_table(blht+i);
     free_hash_table(btht+i);
   }
@@ -1107,7 +1101,6 @@ int msolve_gbtrace_qq(
   free(num_gb);
   free(btrace);
 
-  free_mstrace(msd, st);
   free(st);
 
   return 0;

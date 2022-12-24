@@ -69,11 +69,15 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free_basis(&(msd->bs_qq));
   free(msd->bs_qq);
 
+  /***********************************************************
+    to be checked if that is to be done when st->ff_bits != 0
+     This was previously done only when characteristic is zero
+  ************************************************************/
   free_shared_hash_data(msd->bht);
-  if(msd->bht!=NULL){
+  if(msd->bht != NULL){
     free_hash_table(&(msd->bht));
   }
-  free(msd->bht);
+  /***********************************************************/
 
   if(msd->tht!=NULL){
     free_hash_table(&(msd->tht));
@@ -90,7 +94,9 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
 
   free(msd->mgb);
 
-  for(int i = 0; i < st->nthrds; i++){
+  /* starts at 1 because memory is already cleaned at i = 0 */
+  for(int i = 1; i < st->nthrds; i++){
+    free_shared_hash_data(msd->blht[i]);
     if(msd->blht[i] != NULL){
       free_hash_table((msd->blht)+i);
     }

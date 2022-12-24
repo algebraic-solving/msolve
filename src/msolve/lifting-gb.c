@@ -974,14 +974,15 @@ int msolve_gbtrace_qq(
                                    leadmons_ori, leadmons_current,
                                    btrace);
 
-    /* copy of hash tables for tracer application */
     blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
+    btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
+    
+    /* copy of hash tables for tracer application */
     blht[0] = bht;
     for(int i = 1; i < st->nthrds; i++){
       ht_t *lht = copy_hash_table(bht, st);
       blht[i] = lht;
     }
-    btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
     btht[0] = tht;
     for(int i = 1; i < st->nthrds; i++){
       btht[i] = copy_hash_table(tht, st);

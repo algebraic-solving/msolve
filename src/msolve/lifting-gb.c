@@ -1064,7 +1064,6 @@ int msolve_gbtrace_qq(
   free_rrec_data(recdata);
 
   /* free and clean up */
-  /* free_shared_hash_data(bht); */
   for(int i = 1; i < st->nthrds; i++){
     free_hash_table(blht+i);
     free_hash_table(btht+i);

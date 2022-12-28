@@ -3462,12 +3462,13 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* free and clean up */
   free_shared_hash_data(bht);
+  for(int i = 1; i < st->nthrds; i++){
+    free_shared_hash_data(blht[i]);
+  }
   for(int i = 0; i < st->nthrds; i++){
     free_hash_table(blht+i);
     free_hash_table(btht+i);
   }
-  /* free_hash_table(&bht); */
-  /* free_hash_table(&tht); */
 
   //here we should clean nmod_params
 

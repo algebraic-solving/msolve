@@ -88,6 +88,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->cfs = calloc(sizeof(uint64_t), alloc);
   modgbs->npolys = npolys;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * npolys);
+
   for(uint32_t i = 0; i < npolys; i++){
     modgbs->modpolys[i]->len = lens[i];
     modgbs->modpolys[i]->modpcfs = malloc(sizeof(uint32_t **)*lens[i]);
@@ -253,9 +254,10 @@ static inline int grevlex_is_less_than(int nv, int32_t* m1, int32_t *m2){
 static inline int32_t compute_length(int32_t *mon, int nv,
                                      int32_t *basis, int dquot){
   fprintf(stderr, "mon = [");
-  for(int i = 0; i < nv ; i++){
+  for(int i = 0; i < nv-1 ; i++){
     fprintf(stderr, "%d, ", mon[i]);
   }
+  fprintf(stderr, "%d]", mon[nv-1]);
   fprintf(stderr, "\n");
   for(int i = dquot - 1; i >= 0; i--){
     if(!grevlex_is_less_than(nv, mon, basis + i * nv)){
@@ -277,9 +279,11 @@ static inline int32_t compute_length(int32_t *mon, int nv,
  */
 static inline int32_t *array_of_lengths(int32_t *bexp_lm, int len,
                                         int32_t *basis, int dquot, int nv){
+  fprintf(stderr, "len = %d\n", len);
   int32_t *lens = calloc(sizeof(int32_t), len);
   for(int i = 0; i < len; i++){
     lens[i] = compute_length(bexp_lm + (i * nv), nv, basis, dquot);
+    fprintf(stderr, "lens[%d] = %d\n", i, lens[i]);
   }
   return lens;
 }
@@ -328,7 +332,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       hm  = bs->hm[idx]+OFFSET;
       len = bs->hm[idx][LENGTH];
     }
-    int bc = modgbs->modpolys[i]->len;
+    int bc = modgbs->modpolys[i]->len - 1;
     for (j = 1; j < len; ++j) {
       uint32_t c = bs->cf_32[bs->hm[idx][COEFFS]][j];
       for (k = 0; k < nv; ++k) {

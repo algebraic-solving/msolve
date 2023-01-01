@@ -830,12 +830,6 @@ int msolve_gbtrace_qq(
     normalize_initial_basis(msd->bs_qq, st->fc);
   }
 
-  /* initialize tracers */
-  trace_t **btrace = (trace_t **)calloc(st->nthrds,
-                                       sizeof(trace_t *));
-  btrace[0]  = initialize_trace();
-  /* initialization of other tracers is done through duplication */
-
   uint32_t prime = next_prime(1<<30);
   uint32_t primeinit;
   srand(time(0));
@@ -884,7 +878,7 @@ int msolve_gbtrace_qq(
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                  mgb,
                                                  num_gb, leadmons_ori,
-                                                 btrace[0],
+                                                 msd->btrace[0],
                                                  msd->tht, msd->bs_qq, msd->bht, st,
                                                  msd->lp->p[0],
                                                  info_level,
@@ -926,10 +920,6 @@ int msolve_gbtrace_qq(
       free(mgb);
       gb_modpoly_clear(modgbs);
 
-      for(int i = 0; i < st->nthrds; i++){
-        /* free_trace(&btrace[i]); */
-      }
-      free(btrace);
 
       //here we should clean nmod_params
       free_mstrace(msd, st);
@@ -939,7 +929,7 @@ int msolve_gbtrace_qq(
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, st, num_gb,
                                    leadmons_ori, leadmons_current,
-                                   btrace);
+                                   msd->btrace);
 
     blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
     btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
@@ -984,7 +974,7 @@ int msolve_gbtrace_qq(
                                    num_gb,
                                    leadmons_ori,
                                    leadmons_current,
-                                   btrace,
+                                   msd->btrace,
                                    btht, msd->bs_qq, blht, st,
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
@@ -1061,7 +1051,6 @@ int msolve_gbtrace_qq(
   for(i = 0; i < st->nthrds; ++i){
     free(leadmons_ori[i]);
     free(leadmons_current[i]);
-    free_trace(&btrace[i]);
   }
 
 
@@ -1069,7 +1058,6 @@ int msolve_gbtrace_qq(
   free(leadmons_current);
 
   free(num_gb);
-  free(btrace);
 
   free(st);
 

@@ -131,6 +131,8 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
       free_hash_table((msd->btht)+i);
     }
   }
+  free(msd->btht);
+  free(msd->blht);
 
   mpz_clear(msd->mod_p[0]);
   free(msd->mod_p);

@@ -930,17 +930,15 @@ int msolve_gbtrace_qq(
                                    msd->leadmons_ori, msd->leadmons_current,
                                    msd->btrace);
 
-    btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-
     /* copy of hash tables for tracer application */
     msd->blht[0] = msd->bht;
     for(int i = 1; i < st->nthrds; i++){
       ht_t *lht = copy_hash_table(msd->bht, st);
       msd->blht[i] = lht;
     }
-    btht[0] = msd->tht;
+    msd->btht[0] = msd->tht;
     for(int i = 1; i < st->nthrds; i++){
-      btht[i] = copy_hash_table(msd->tht, st);
+      msd->btht[i] = copy_hash_table(msd->tht, st);
     }
 
     if(info_level){
@@ -973,7 +971,7 @@ int msolve_gbtrace_qq(
                                    msd->leadmons_ori,
                                    msd->leadmons_current,
                                    msd->btrace,
-                                   btht, msd->bs_qq, msd->blht, st,
+                                   msd->btht, msd->bs_qq, msd->blht, st,
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
                                    gens, &stf4, msd->bad_primes);
@@ -1036,11 +1034,6 @@ int msolve_gbtrace_qq(
 
   gb_modpoly_clear(modgbs);
   free_rrec_data(recdata);
-
-  /* free and clean up */
-  for(int i = 1; i < st->nthrds; i++){
-    free_hash_table(btht+i);
-  }
 
   //here we should clean nmod_params
 

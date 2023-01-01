@@ -830,8 +830,6 @@ int msolve_gbtrace_qq(
     normalize_initial_basis(msd->bs_qq, st->fc);
   }
 
-  /* generate array to store modular bases */
-  bs_t **bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
 
   int *bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
 
@@ -936,11 +934,6 @@ int msolve_gbtrace_qq(
       }
       free(btrace);
 
-      /* for (i = 0; i < st->nthrds; ++i) { */
-      /*   free_basis(&(bs[i])); */
-      /* } */
-      free(bs);
-
       //here we should clean nmod_params
       /* free_lucky_primes(&lp); */
       free(bad_primes);
@@ -1000,7 +993,7 @@ int msolve_gbtrace_qq(
                                    btrace,
                                    btht, msd->bs_qq, blht, st,
                                    field_char, 0, /* info_level, */
-                                   bs, lmb_ori, *dquot_ptr, msd->lp,
+                                   msd->bs, lmb_ori, *dquot_ptr, msd->lp,
                                    gens, &stf4, bad_primes);
 
       /* fprintf(stderr, "Application done\n"); */
@@ -1072,15 +1065,12 @@ int msolve_gbtrace_qq(
   //here we should clean nmod_params
 
   for(i = 0; i < st->nthrds; ++i){
-    if (bs[i] != NULL) {
-      free_basis(&(bs[i]));
-    }
     free(leadmons_ori[i]);
     free(leadmons_current[i]);
     free_trace(&btrace[i]);
   }
 
-  free(bs);
+
   free(leadmons_ori);
   free(leadmons_current);
 

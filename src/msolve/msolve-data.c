@@ -29,6 +29,7 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
   msd->bht = initialize_basis_hash_table(st);
   msd->tht = initialize_secondary_hash_table(msd->bht, st);
 
+  /* generate array to store modular bases */
   msd->bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
   msd->bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
 
@@ -84,6 +85,11 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   }
   free(msd->tht);
 
+  for(int i = 0; i < st->nthrds; ++i){
+    if (msd->bs[i] != NULL) {
+      free_basis(&(msd->bs[i]));
+    }
+  }
   free(msd->bs);
   free(msd->bad_primes);
   free(msd->btrace);

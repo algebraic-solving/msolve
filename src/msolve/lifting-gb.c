@@ -830,9 +830,6 @@ int msolve_gbtrace_qq(
     normalize_initial_basis(msd->bs_qq, st->fc);
   }
 
-
-  int *bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
-
   /* initialize tracers */
   trace_t **btrace = (trace_t **)calloc(st->nthrds,
                                        sizeof(trace_t *));
@@ -935,9 +932,6 @@ int msolve_gbtrace_qq(
       free(btrace);
 
       //here we should clean nmod_params
-      /* free_lucky_primes(&lp); */
-      free(bad_primes);
-      /* free(lp); */
       free_mstrace(msd, st);
       free(st);
 
@@ -994,7 +988,7 @@ int msolve_gbtrace_qq(
                                    btht, msd->bs_qq, blht, st,
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
-                                   gens, &stf4, bad_primes);
+                                   gens, &stf4, msd->bad_primes);
 
       /* fprintf(stderr, "Application done\n"); */
       /* display_gbmodpoly(stderr, modgbs); */
@@ -1016,7 +1010,7 @@ int msolve_gbtrace_qq(
       }
       int bad = 0;
       for(int i = 0; i < st->nthrds; i++){
-        if(bad_primes[i] == 1){
+        if(msd->bad_primes[i] == 1){
           fprintf(stderr, "badprimes[%d] is 1\n", i);
           bad = 1;
         }
@@ -1073,9 +1067,6 @@ int msolve_gbtrace_qq(
 
   free(leadmons_ori);
   free(leadmons_current);
-
-  /* free_lucky_primes(&lp); */
-  free(bad_primes);
 
   free(num_gb);
   free(btrace);

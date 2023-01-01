@@ -43,6 +43,7 @@ static void initialize_mstrace(mstrace_t msd, stat_t *st){
   msd->leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
   msd->leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
 
+  /* array to store one monomial */
   msd->mgb = calloc(sizeof(uint32_t), msd->bht->nv);
 
   msd->blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));

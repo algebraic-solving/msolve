@@ -864,12 +864,6 @@ int msolve_gbtrace_qq(
   data_lift_t dlift;
   data_lift_init(dlift);
 
-  /* mpz_t *mod_p = malloc(sizeof(mpz_t)); */
-  /* mpz_init(mod_p[0]); */
-  /* mpz_set_ui(mod_p[0], 1); */
-  mpz_t *prod_p = malloc(sizeof(mpz_t));
-  mpz_init(prod_p[0]);
-  mpz_set_ui(prod_p[0], 1);
 
   rrec_data_t recdata;
   initialize_rrec_data(recdata);
@@ -912,8 +906,6 @@ int msolve_gbtrace_qq(
 
       apply = 0;
       data_lift_clear(dlift);
-      mpz_clear(prod_p[0]);
-      free(prod_p);
 
       gb_modpoly_clear(modgbs);
 
@@ -1001,7 +993,7 @@ int msolve_gbtrace_qq(
       }
       int idpol = dlift->idpol;
       if(!bad){
-        ratrecon_gb(modgbs, dlift, msd->mod_p, prod_p, recdata, st->nthrds);
+        ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds);
       }
 
       if(dlift->idpol != idpol && dlift->idpol < modgbs->npolys - 1){
@@ -1025,9 +1017,6 @@ int msolve_gbtrace_qq(
   }
   free_mstrace(msd, st);
   data_lift_clear(dlift);
-  mpz_clear(prod_p[0]);
-
-  free(prod_p);
 
   gb_modpoly_clear(modgbs);
   free_rrec_data(recdata);

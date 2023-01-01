@@ -177,7 +177,7 @@ typedef struct{
   int32_t **leadmons_ori; /* original leading monomials (from learning) */
   int32_t **leadmons_current; /* leading monomials (from tracing) */
 
-  int32_t *mgb;
+  int32_t *mgb; /* array which stores one monomial */
 
   ht_t **blht;
   ht_t **btht;

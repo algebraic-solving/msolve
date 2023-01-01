@@ -848,7 +848,7 @@ int msolve_gbtrace_qq(
 
   int success = 1;
   gb_modpoly_t modgbs;
-  int32_t *mgb = calloc(sizeof(uint32_t), msd->bht->nv);
+
   int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
   fprintf(stderr, "MAX BIT SIZE COEFFS = %d\n", maxbitsize);
 
@@ -872,7 +872,7 @@ int msolve_gbtrace_qq(
 
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
-                                                 mgb,
+                                                 msd->mgb,
                                                  msd->num_gb, msd->leadmons_ori,
                                                  msd->btrace[0],
                                                  msd->tht, msd->bs_qq, msd->bht, st,
@@ -913,7 +913,6 @@ int msolve_gbtrace_qq(
       free(prod_p);
       free(mod_p);
 
-      free(mgb);
       gb_modpoly_clear(modgbs);
 
 
@@ -966,7 +965,7 @@ int msolve_gbtrace_qq(
       prime = msd->lp->p[st->nthrds - 1];
       gb_modpoly_realloc(modgbs, st->nthrds);
 
-      gb_modular_trace_application(modgbs, mgb,
+      gb_modular_trace_application(modgbs, msd->mgb,
                                    msd->num_gb,
                                    msd->leadmons_ori,
                                    msd->leadmons_current,
@@ -1032,7 +1031,6 @@ int msolve_gbtrace_qq(
   free(prod_p);
   free(mod_p);
 
-  free(mgb);
   gb_modpoly_clear(modgbs);
   free_rrec_data(recdata);
 

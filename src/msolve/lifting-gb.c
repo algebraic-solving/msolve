@@ -859,7 +859,7 @@ int msolve_gbtrace_qq(
   int learn = 1, apply = 1, nprimes = 0;
   double stf4 = 0;
 
-  ht_t **blht, **btht;
+  ht_t **btht;
 
   data_lift_t dlift;
   data_lift_init(dlift);
@@ -930,14 +930,13 @@ int msolve_gbtrace_qq(
                                    msd->leadmons_ori, msd->leadmons_current,
                                    msd->btrace);
 
-    blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
     btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
 
     /* copy of hash tables for tracer application */
-    blht[0] = msd->bht;
+    msd->blht[0] = msd->bht;
     for(int i = 1; i < st->nthrds; i++){
       ht_t *lht = copy_hash_table(msd->bht, st);
-      blht[i] = lht;
+      msd->blht[i] = lht;
     }
     btht[0] = msd->tht;
     for(int i = 1; i < st->nthrds; i++){
@@ -974,7 +973,7 @@ int msolve_gbtrace_qq(
                                    msd->leadmons_ori,
                                    msd->leadmons_current,
                                    msd->btrace,
-                                   btht, msd->bs_qq, blht, st,
+                                   btht, msd->bs_qq, msd->blht, st,
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
                                    gens, &stf4, msd->bad_primes);
@@ -1040,7 +1039,6 @@ int msolve_gbtrace_qq(
 
   /* free and clean up */
   for(int i = 1; i < st->nthrds; i++){
-    free_hash_table(blht+i);
     free_hash_table(btht+i);
   }
 

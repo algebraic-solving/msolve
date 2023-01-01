@@ -846,7 +846,6 @@ int msolve_gbtrace_qq(
   }
   prime = next_prime(1<<30);
 
-  int32_t *num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));
   int32_t **leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
   int32_t **leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
 
@@ -877,7 +876,7 @@ int msolve_gbtrace_qq(
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                  mgb,
-                                                 num_gb, leadmons_ori,
+                                                 msd->num_gb, leadmons_ori,
                                                  msd->btrace[0],
                                                  msd->tht, msd->bs_qq, msd->bht, st,
                                                  msd->lp->p[0],
@@ -895,7 +894,7 @@ int msolve_gbtrace_qq(
     display_gbmodpoly(stderr, modgbs);
 #endif
     int nb = 0;
-    int32_t *ldeg = array_nbdegrees((*leadmons_ori), num_gb[0],
+    int32_t *ldeg = array_nbdegrees((*leadmons_ori), msd->num_gb[0],
                                     msd->bht->nv, &nb);
 
     /************************************************/
@@ -927,7 +926,7 @@ int msolve_gbtrace_qq(
 
     }
     /* duplicate data for multi-threaded multi-mod computation */
-    duplicate_data_mthread_gbtrace(st->nthrds, st, num_gb,
+    duplicate_data_mthread_gbtrace(st->nthrds, st, msd->num_gb,
                                    leadmons_ori, leadmons_current,
                                    msd->btrace);
 
@@ -971,7 +970,7 @@ int msolve_gbtrace_qq(
       gb_modpoly_realloc(modgbs, st->nthrds);
 
       gb_modular_trace_application(modgbs, mgb,
-                                   num_gb,
+                                   msd->num_gb,
                                    leadmons_ori,
                                    leadmons_current,
                                    msd->btrace,
@@ -1056,8 +1055,6 @@ int msolve_gbtrace_qq(
 
   free(leadmons_ori);
   free(leadmons_current);
-
-  free(num_gb);
 
   free(st);
 

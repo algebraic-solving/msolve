@@ -1154,7 +1154,7 @@ static inline void copy_poly_in_matrix_from_bs_32(sp_matfglm_t* matrix,
     It returns all monomials that can appear in the GB
  */
 static inline int32_t *monomial_basis_enlarged(long length, long nvars, 
-                                      int32_t *bexp_lm, long *dquot){
+                                               int32_t *bexp_lm, long *dquot){
   fprintf(stderr, "\nbexp\n");
   for(int i = 0; i < nvars; i++){
     fprintf(stderr, "%d, ", bexp_lm[(length-1)*(nvars) + i]);

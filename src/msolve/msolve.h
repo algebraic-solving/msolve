@@ -21,7 +21,7 @@
 #ifndef MSOLVE_MSOLVE_H
 #define MSOLVE_MSOLVE_H
 
-#include "data.h"
+#include "msolve-data.h"
 
 int msolve_ff_alloc(
         param_t **bparam,

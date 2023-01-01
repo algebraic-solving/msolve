@@ -22,7 +22,8 @@
 #include "config.h"
 #endif
 
-#include "data.h"
+#include "msolve-data.h"
+#include "msolve-data.c"
 #include "iofiles.c"
 #include "hilbert.c"
 #include "primes.c"

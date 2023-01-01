@@ -162,4 +162,28 @@ typedef struct{
   char *in_file;
   char *out_file;
 } files_gb;
+
+typedef struct{
+  primes_t *lp; /* array of lucky primes, usually of size st->nthrds */
+  bs_t *bs_qq; /* basis_qq */
+  ht_t *bht; /* hash table */
+  ht_t *tht; /* hash table to store the hashes of the multiples of the basis
+                elements stored in the trace */
+  bs_t **bs;
+  int *bad_primes;
+  trace_t **btrace;
+
+  int32_t *num_gb; /* array storing lengths of computed GBs */
+  int32_t **leadmons_ori; /* original leading monomials (from learning) */
+  int32_t **leadmons_current; /* leading monomials (from tracing) */
+
+  int32_t *mgb; /* array which stores one monomial */
+
+  ht_t **blht;
+  ht_t **btht;
+
+  mpz_t *mod_p;
+  mpz_t *prod_p;
+} msolvetrace_data_struct;
+typedef msolvetrace_data_struct mstrace_t[1];
 #endif

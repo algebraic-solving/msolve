@@ -88,6 +88,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->cfs = calloc(sizeof(uint64_t), alloc);
   modgbs->npolys = npolys;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * npolys);
+
   for(uint32_t i = 0; i < npolys; i++){
     modgbs->modpolys[i]->len = lens[i];
     modgbs->modpolys[i]->modpcfs = malloc(sizeof(uint32_t **)*lens[i]);
@@ -253,9 +254,10 @@ static inline int grevlex_is_less_than(int nv, int32_t* m1, int32_t *m2){
 static inline int32_t compute_length(int32_t *mon, int nv,
                                      int32_t *basis, int dquot){
   fprintf(stderr, "mon = [");
-  for(int i = 0; i < nv ; i++){
+  for(int i = 0; i < nv-1 ; i++){
     fprintf(stderr, "%d, ", mon[i]);
   }
+  fprintf(stderr, "%d]", mon[nv-1]);
   fprintf(stderr, "\n");
   for(int i = dquot - 1; i >= 0; i--){
     if(!grevlex_is_less_than(nv, mon, basis + i * nv)){
@@ -277,9 +279,11 @@ static inline int32_t compute_length(int32_t *mon, int nv,
  */
 static inline int32_t *array_of_lengths(int32_t *bexp_lm, int len,
                                         int32_t *basis, int dquot, int nv){
+  fprintf(stderr, "len = %d\n", len);
   int32_t *lens = calloc(sizeof(int32_t), len);
   for(int i = 0; i < len; i++){
     lens[i] = compute_length(bexp_lm + (i * nv), nv, basis, dquot);
+    fprintf(stderr, "lens[%d] = %d\n", i, lens[i]);
   }
   return lens;
 }
@@ -328,7 +332,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       hm  = bs->hm[idx]+OFFSET;
       len = bs->hm[idx][LENGTH];
     }
-    int bc = modgbs->modpolys[i]->len;
+    int bc = modgbs->modpolys[i]->len - 1;
     for (j = 1; j < len; ++j) {
       uint32_t c = bs->cf_32[bs->hm[idx][COEFFS]][j];
       for (k = 0; k < nv; ++k) {
@@ -715,4 +719,311 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   fprintf(stderr, "\n");
 #endif
 
+}
+
+
+/*
+
+  - renvoie 0 si le calcul est ok.
+  => GB = [1] dim =0 dquot = 0
+  => Positive dimension dim > 0
+  => Dimension zero + calcul qui a pu etre fait. dim=0 dquot > 0
+
+  - renvoie 1 si le calcul a echoue
+  => Dimension 0 => pas en position generique
+
+  - renvoie 2 si besoin de plus de genericite.
+  => (tous les carres ne sont pas sous l'escalier)
+
+  - renvoie -2 si la carac est > 0
+
+  - renvoie -3 si meta data pas bonnes
+
+  - renvoie -4 si bad prime
+*/
+
+int msolve_gbtrace_qq(
+                      int *dim_ptr,
+                      long *dquot_ptr,
+                      data_gens_ff_t *gens,
+                      int32_t ht_size, //initial_hts,
+                      int32_t nr_threads,
+                      int32_t max_nr_pairs,
+                      int32_t elim_block_len,
+                      int32_t reset_ht,
+                      int32_t la_option,
+                      int32_t use_signatures,
+                      int32_t info_level,
+                      int32_t print_gb,
+                      int32_t pbm_file,
+                      files_gb *files){
+
+  uint32_t field_char = gens->field_char;
+  const void *cfs = gens->mpz_cfs;
+  if(gens->field_char){
+    cfs = gens->cfs;
+  }
+  else{
+    cfs = gens->mpz_cfs;
+  }
+  int mon_order = 0;
+  int32_t nr_vars = gens->nvars;
+  int32_t nr_gens = gens->ngens;
+  int reduce_gb = 1;
+  int32_t nr_nf = 0;
+  const uint32_t prime_start = pow(2, 30);
+
+  len_t i;
+
+  /* initialize stuff */
+  stat_t *st  = initialize_statistics();
+
+  int *invalid_gens   =   NULL;
+  int res = validate_input_data(&invalid_gens, cfs, gens->lens, &field_char, &mon_order,
+                                &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
+                                &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
+                                &info_level);
+
+  /* all data is corrupt */
+  if (res == -1) {
+    fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
+    free(invalid_gens);
+    return -3;
+  }
+  /* checks and set all meta data. if a nonzero value is returned then
+   * some of the input data is corrupted. */
+
+  if (check_and_set_meta_data_trace(st, gens->lens, gens->exps, cfs, invalid_gens,
+                                    field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+                                    nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+                                    use_signatures, reduce_gb, prime_start,
+                                    nr_threads /* nr_primes */,
+                                    pbm_file, info_level)) {
+    free(st);
+    return -3;
+  }
+
+  mstrace_t msd;
+  initialize_mstrace(msd, st);
+
+  /* read in ideal, move coefficients to integers */
+  import_input_data(msd->bs_qq, msd->bht, st, gens->lens, gens->exps, cfs, invalid_gens);
+  free(invalid_gens);
+  invalid_gens  =   NULL;
+
+  if (st->info_level > 0) {
+    print_initial_statistics(stderr, st);
+  }
+
+  /* for faster divisibility checks, needs to be done after we have
+    * read some input data for applying heuristics */
+  calculate_divmask(msd->bht);
+
+  /* sort initial elements, smallest lead term first */
+  sort_r(msd->bs_qq->hm, (unsigned long)msd->bs_qq->ld, sizeof(hm_t *),
+          initial_input_cmp, msd->bht);
+  if(gens->field_char == 0){
+    remove_content_of_initial_basis(msd->bs_qq);
+    /* generate lucky prime numbers */
+    generate_lucky_primes(msd->lp, msd->bs_qq, st->prime_start, st->nthrds);
+  }
+  else{
+    msd->lp->old = 0;
+    msd->lp->ld = 1;
+    msd->lp->p = calloc(1, sizeof(uint32_t));
+    normalize_initial_basis(msd->bs_qq, st->fc);
+  }
+
+  uint32_t prime = next_prime(1<<30);
+  uint32_t primeinit;
+  srand(time(0));
+  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  while(gens->field_char==0 && is_lucky_prime_ui(prime, msd->bs_qq)){
+    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  }
+
+  primeinit = prime;
+  msd->lp->p[0] = primeinit;
+  if(gens->field_char){
+    msd->lp->p[0] = gens->field_char;
+    primeinit = gens->field_char;
+  }
+  prime = next_prime(1<<30);
+
+  int success = 1;
+  gb_modpoly_t modgbs;
+
+  int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
+  fprintf(stderr, "MAX BIT SIZE COEFFS = %d\n", maxbitsize);
+
+  int learn = 1, apply = 1, nprimes = 0;
+  double stf4 = 0;
+
+  ht_t **btht;
+
+  data_lift_t dlift;
+  data_lift_init(dlift);
+
+
+  rrec_data_t recdata;
+  initialize_rrec_data(recdata);
+
+  while(learn){
+    int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
+                                                 msd->mgb,
+                                                 msd->num_gb, msd->leadmons_ori,
+                                                 msd->btrace[0],
+                                                 msd->tht, msd->bs_qq, msd->bht, st,
+                                                 msd->lp->p[0],
+                                                 info_level,
+                                                 print_gb,
+                                                 dim_ptr, dquot_ptr,
+                                                 gens, maxbitsize,
+                                                 files,
+                                                 &success);
+    apply = 1;
+
+    gb_modpoly_realloc(modgbs, 2);
+
+#ifdef DEBUGGBLIFT
+    display_gbmodpoly(stderr, modgbs);
+#endif
+    int nb = 0;
+    int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
+                                    msd->bht->nv, &nb);
+
+    /************************************************/
+    /************************************************/
+    fprintf(stderr, "nb = %d => ldeg = [", nb);
+    for(int i = 0; i < nb; i++){
+      fprintf(stderr, "%d, ", ldeg[i]);
+    }
+    fprintf(stderr, "]\n");
+    /************************************************/
+    /************************************************/
+
+    if(lmb_ori == NULL || success == 0 || gens->field_char) {
+
+      apply = 0;
+      data_lift_clear(dlift);
+
+      gb_modpoly_clear(modgbs);
+
+
+      //here we should clean nmod_params
+      free_mstrace(msd, st);
+      free(st);
+
+    }
+    /* duplicate data for multi-threaded multi-mod computation */
+    duplicate_data_mthread_gbtrace(st->nthrds, st, msd->num_gb,
+                                   msd->leadmons_ori, msd->leadmons_current,
+                                   msd->btrace);
+
+    /* copy of hash tables for tracer application */
+    msd->blht[0] = msd->bht;
+    for(int i = 1; i < st->nthrds; i++){
+      ht_t *lht = copy_hash_table(msd->bht, st);
+      msd->blht[i] = lht;
+    }
+    msd->btht[0] = msd->tht;
+    for(int i = 1; i < st->nthrds; i++){
+      msd->btht[i] = copy_hash_table(msd->tht, st);
+    }
+
+    if(info_level){
+      fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+    }
+
+    learn = 0;
+    while(apply){
+
+      /* generate lucky prime numbers */
+      msd->lp->p[0] = next_prime(prime);
+      while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
+        prime = next_prime(prime);
+        msd->lp->p[0] = prime;
+      }
+
+      for(len_t i = 1; i < st->nthrds; i++){
+        prime = next_prime(prime);
+        msd->lp->p[i] = prime;
+        while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
+          prime = next_prime(prime);
+          msd->lp->p[i] = prime;
+        }
+      }
+      prime = msd->lp->p[st->nthrds - 1];
+      gb_modpoly_realloc(modgbs, st->nthrds);
+
+      gb_modular_trace_application(modgbs, msd->mgb,
+                                   msd->num_gb,
+                                   msd->leadmons_ori,
+                                   msd->leadmons_current,
+                                   msd->btrace,
+                                   msd->btht, msd->bs_qq, msd->blht, st,
+                                   field_char, 0, /* info_level, */
+                                   msd->bs, lmb_ori, *dquot_ptr, msd->lp,
+                                   gens, &stf4, msd->bad_primes);
+
+      /* fprintf(stderr, "Application done\n"); */
+      /* display_gbmodpoly(stderr, modgbs); */
+
+      nprimes += st->nthrds;
+
+      if(nprimes == 1){
+        if(info_level>2){
+          fprintf(stderr, "------------------------------------------\n");
+          fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
+          fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
+          fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
+          fprintf(stderr, "------------------------------------------\n");
+        }
+        if(info_level>1){
+          fprintf(stderr, "Application phase %.2f Gops/sec\n",
+                  (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
+        }
+      }
+      int bad = 0;
+      for(int i = 0; i < st->nthrds; i++){
+        if(msd->bad_primes[i] == 1){
+          fprintf(stderr, "badprimes[%d] is 1\n", i);
+          bad = 1;
+        }
+      }
+      int idpol = dlift->idpol;
+      if(!bad){
+        ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds);
+      }
+
+      if(dlift->idpol != idpol && dlift->idpol < modgbs->npolys - 1){
+        if(info_level){
+          fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->idpol + 1)/modgbs->npolys);
+        }
+        idpol = dlift->idpol;
+      }
+      if(dlift->idpol == modgbs->npolys - 1 && dlift->check2){
+        if(info_level){
+          fprintf(stderr, "<%.2f%%>\n", 100* (float)(dlift->idpol + 1)/modgbs->npolys);
+        }
+        apply = 0;
+      }
+      /* this is where learn could be reset to 1 */
+      /* but then duplicated datas and others should be free-ed */
+    }
+  }
+  if(info_level){
+    fprintf(stderr, "%d primes used\n", nprimes);
+  }
+  free_mstrace(msd, st);
+  data_lift_clear(dlift);
+
+  gb_modpoly_clear(modgbs);
+  free_rrec_data(recdata);
+
+  //here we should clean nmod_params
+
+  free(st);
+
+  return 0;
 }

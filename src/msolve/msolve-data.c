@@ -104,7 +104,19 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free(msd->btrace);
 
   free(msd->num_gb);
+
+  for(int i = 0; i < st->nthrds; ++i){
+    if(msd->leadmons_ori[i] != NULL){
+      free(msd->leadmons_ori[i]);
+    }
+  }
   free(msd->leadmons_ori);
+
+  for(int i = 0; i < st->nthrds; ++i){
+    if(msd->leadmons_current[i] != NULL){
+      free(msd->leadmons_current[i]);
+    }
+  }
   free(msd->leadmons_current);
 
   free(msd->mgb);

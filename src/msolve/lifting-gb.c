@@ -846,9 +846,6 @@ int msolve_gbtrace_qq(
   }
   prime = next_prime(1<<30);
 
-  int32_t **leadmons_ori = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
-  int32_t **leadmons_current = (int32_t**)calloc(st->nthrds, sizeof(int32_t *));
-
   int success = 1;
   gb_modpoly_t modgbs;
   int32_t *mgb = calloc(sizeof(uint32_t), msd->bht->nv);
@@ -876,7 +873,7 @@ int msolve_gbtrace_qq(
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                  mgb,
-                                                 msd->num_gb, leadmons_ori,
+                                                 msd->num_gb, msd->leadmons_ori,
                                                  msd->btrace[0],
                                                  msd->tht, msd->bs_qq, msd->bht, st,
                                                  msd->lp->p[0],
@@ -894,7 +891,7 @@ int msolve_gbtrace_qq(
     display_gbmodpoly(stderr, modgbs);
 #endif
     int nb = 0;
-    int32_t *ldeg = array_nbdegrees((*leadmons_ori), msd->num_gb[0],
+    int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                     msd->bht->nv, &nb);
 
     /************************************************/
@@ -927,7 +924,7 @@ int msolve_gbtrace_qq(
     }
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, st, msd->num_gb,
-                                   leadmons_ori, leadmons_current,
+                                   msd->leadmons_ori, msd->leadmons_current,
                                    msd->btrace);
 
     blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
@@ -971,8 +968,8 @@ int msolve_gbtrace_qq(
 
       gb_modular_trace_application(modgbs, mgb,
                                    msd->num_gb,
-                                   leadmons_ori,
-                                   leadmons_current,
+                                   msd->leadmons_ori,
+                                   msd->leadmons_current,
                                    msd->btrace,
                                    btht, msd->bs_qq, blht, st,
                                    field_char, 0, /* info_level, */
@@ -1046,15 +1043,6 @@ int msolve_gbtrace_qq(
   }
 
   //here we should clean nmod_params
-
-  for(i = 0; i < st->nthrds; ++i){
-    free(leadmons_ori[i]);
-    free(leadmons_current[i]);
-  }
-
-
-  free(leadmons_ori);
-  free(leadmons_current);
 
   free(st);
 

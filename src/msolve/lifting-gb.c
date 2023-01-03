@@ -42,7 +42,13 @@ typedef struct {
 
 typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
+#ifdef NEWGBLIFT
+typedef struct{
+  
+} data_lift_struct;
 
+typedef data_lift_struct data_lift_t[1];
+#else
 typedef struct {
   int32_t idpol; /* index of polynomial being lifted */
   uint32_t coef; /* index of witness coefficient to lift */
@@ -57,6 +63,7 @@ typedef struct {
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
+#endif
 
 static inline void data_lift_init(data_lift_t dlift){
   dlift->idpol = -1;

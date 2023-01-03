@@ -74,6 +74,8 @@ typedef struct {
 typedef data_lift_struct data_lift_t[1];
 #endif
 
+#ifdef NEWGBLIFT
+#else
 static inline void data_lift_init(data_lift_t dlift){
   dlift->idpol = -1;
   dlift->coef = 0;
@@ -86,7 +88,10 @@ static inline void data_lift_init(data_lift_t dlift){
   dlift->coef = -1;
   dlift->recon = 0;
 }
+#endif
 
+#ifdef NEWGBLIFT
+#else
 static inline void data_lift_clear(data_lift_t dlift){
 
   mpz_clear(dlift->crt);
@@ -94,6 +99,7 @@ static inline void data_lift_clear(data_lift_t dlift){
   mpz_clear(dlift->den);
 
 }
+#endif
 
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, int32_t *lens,
@@ -577,6 +583,8 @@ static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
   return modgbs->modpolys[idx]->len / 2;
 }
 
+#ifdef NEWGBLIFT
+#else
 /* uses FLINT's multi CRT when starting to lift one witness coef */
 static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
   /* Data needed by multi CRT functions */
@@ -604,7 +612,10 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
   fmpz_comb_temp_clear(comb_temp);
   fmpz_comb_clear(comb);
 }
+#endif
 
+#ifdef NEWGBLIFT
+#else
 /* Incremental CRT (called once FLINT multi_CRT has been called) */
 /* mod is the current modulus */
 static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
@@ -622,7 +633,10 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
   }
 
 }
+#endif
 
+#ifdef NEWGBLIFT
+#else
 /* return 1 if the lifted rational hidden in dlift is ok else return 0 */
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
                                         int thrds){
@@ -646,7 +660,10 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
   }
   return 1;
 }
+#endif
 
+#ifdef NEWGBLIFT
+#else
 static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
                                 mpz_t *mod_p, mpz_t *prod_p, int thrds){
   if(dlift->recon == 1){
@@ -665,7 +682,10 @@ static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
     }
   }
 }
+#endif
 
+#ifdef NEWGBLIFT
+#else
 /* returns 0 when gb is lifted over the rationals */
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
@@ -736,7 +756,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 #endif
 
 }
-
+#endif
 
 /*
 

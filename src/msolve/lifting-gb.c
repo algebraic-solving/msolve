@@ -94,6 +94,9 @@ static inline void data_lift_init(data_lift_t dlift){
 #endif
 
 #ifdef NEWGBLIFT
+static inline void data_lift_clear(data_lift_t dlift){
+  return;
+}
 #else
 static inline void data_lift_clear(data_lift_t dlift){
 

@@ -42,9 +42,10 @@ typedef struct {
 
 typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
+#define NEWGBLIFT 1
 #ifdef NEWGBLIFT
 typedef struct{
-  int32_t idx; /* index of polynomial being lifted */
+  int32_t idpol; /* index of polynomial being lifted */
   int start; /* indicates if multi-mod flint structures need to be
                 initialized */
   mpz_t crt; /* stores current CRT */

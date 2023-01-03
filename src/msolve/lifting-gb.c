@@ -682,6 +682,10 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
 #endif
 
 #ifdef NEWGBLIFT
+static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
+                                mpz_t *mod_p, mpz_t *prod_p, int thrds){
+  return;
+}
 #else
 static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
                                 mpz_t *mod_p, mpz_t *prod_p, int thrds){
@@ -704,6 +708,11 @@ static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
 #endif
 
 #ifdef NEWGBLIFT
+static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
+                        mpz_t *mod_p, mpz_t *prod_p,
+                        rrec_data_t recdata, int thrds){
+  return;
+}
 #else
 /* returns 0 when gb is lifted over the rationals */
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,

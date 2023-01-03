@@ -590,6 +590,7 @@ static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
 }
 
 #ifdef NEWGBLIFT
+/* uses FLINT's multi CRT when starting to lift one witness coef */
 static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
   return;
 }

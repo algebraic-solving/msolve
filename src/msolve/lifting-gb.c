@@ -112,7 +112,21 @@ static inline void data_lift_init(data_lift_t dlift, int npol){
 
 #ifdef NEWGBLIFT
 static inline void data_lift_clear(data_lift_t dlift){
-  return;
+  mpz_clear(dlift->crt);
+
+  for(int32_t i = 0; i < dlift->npol; i++){
+    mpz_clear(dlift->num[i]);
+  }
+  free(dlift->num);
+
+  for(int32_t i = 0; i < dlift->npol; i++){
+    mpz_clear(dlift->den[i]);
+  }
+  free(dlift->den);
+
+  free(dlift->check1);
+  free(dlift->check2);
+
 }
 #else
 static inline void data_lift_clear(data_lift_t dlift){

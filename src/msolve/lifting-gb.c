@@ -75,6 +75,9 @@ typedef data_lift_struct data_lift_t[1];
 #endif
 
 #ifdef NEWGBLIFT
+static inline void data_lift_init(data_lift_t dlift){
+  return;
+}
 #else
 static inline void data_lift_init(data_lift_t dlift){
   dlift->idpol = -1;

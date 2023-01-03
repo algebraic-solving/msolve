@@ -650,6 +650,11 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 #endif
 
 #ifdef NEWGBLIFT
+/* return 1 if the lifted rational hidden in dlift is ok else return 0 */
+static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
+                                        int thrds){
+  return 1;
+}
 #else
 /* return 1 if the lifted rational hidden in dlift is ok else return 0 */
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,

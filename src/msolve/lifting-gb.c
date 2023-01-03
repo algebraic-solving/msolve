@@ -44,7 +44,16 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
 #ifdef NEWGBLIFT
 typedef struct{
-  
+  int32_t idx; /* index of polynomial being lifted */
+  int start; /* indicates if multi-mod flint structures need to be
+                initialized */
+  mpz_t crt; /* stores current CRT */
+  int recon; /* equals 1 when some rational number can be lifted, else 0 */
+  mpz_t *num; /* lifted numerator */
+  mpz_t *den; /* lifted denominator */
+  int *check1; /* tells whether lifted data are ok with one more prime */
+  int *check2; /* tells whether lifted data are ok with two more primes */
+
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];

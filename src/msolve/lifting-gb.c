@@ -45,6 +45,7 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 #define NEWGBLIFT 1
 #ifdef NEWGBLIFT
 typedef struct{
+  int32_t npol; /* number of polynomials to be lifted */
   int32_t idpol; /* index of polynomial being lifted */
   int start; /* indicates if multi-mod flint structures need to be
                 initialized */
@@ -76,11 +77,26 @@ typedef data_lift_struct data_lift_t[1];
 #endif
 
 #ifdef NEWGBLIFT
-static inline void data_lift_init(data_lift_t dlift){
-  return;
+static inline void data_lift_init(data_lift_t dlift, int32_t npol){
+  dlift->npol = npol;
+  dlift->idpol = -1;
+  dlift->start = 0;
+  mpz_init(dlift->crt);
+  dlift->recon = 0;
+  dlift->num = malloc(sizeof(mpz_t) * npol);
+  for(int32_t i = 0; i < npol; i++){
+    mpz_init(dlift->num[i]);
+  }
+  dlift->den = malloc(sizeof(mpz_t) * npol);
+  for(int32_t i = 0; i < npol; i++){
+    mpz_init(dlift->den[i]);
+  }
+  dlift->check1 = calloc(npol, sizeof(int));
+  dlift->check2 = calloc(npol, sizeof(int));
+
 }
 #else
-static inline void data_lift_init(data_lift_t dlift){
+static inline void data_lift_init(data_lift_t dlift, int npol){
   dlift->idpol = -1;
   dlift->coef = 0;
   dlift->start = 0;
@@ -926,13 +942,13 @@ int msolve_gbtrace_qq(
 
   ht_t **btht;
 
-  data_lift_t dlift;
-  data_lift_init(dlift);
 
 
   rrec_data_t recdata;
   initialize_rrec_data(recdata);
 
+  data_lift_t dlift;
+  int dlinit = 0;
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                  msd->mgb,
@@ -946,6 +962,11 @@ int msolve_gbtrace_qq(
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
+    if(!dlinit){
+      data_lift_init(dlift, modgbs->npolys);
+      dlinit = 1;
+    }
+
     apply = 1;
 
     gb_modpoly_realloc(modgbs, 2);
@@ -970,12 +991,12 @@ int msolve_gbtrace_qq(
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
 
       apply = 0;
-      data_lift_clear(dlift);
+      if(dlinit){
+        data_lift_clear(dlift);
+      }
 
       gb_modpoly_clear(modgbs);
 
-
-      //here we should clean nmod_params
       free_mstrace(msd, st);
       free(st);
 
@@ -1081,12 +1102,12 @@ int msolve_gbtrace_qq(
     fprintf(stderr, "%d primes used\n", nprimes);
   }
   free_mstrace(msd, st);
-  data_lift_clear(dlift);
+  if(dlinit){
+    data_lift_clear(dlift);
+  }
 
   gb_modpoly_clear(modgbs);
   free_rrec_data(recdata);
-
-  //here we should clean nmod_params
 
   free(st);
 

@@ -590,6 +590,9 @@ static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
 }
 
 #ifdef NEWGBLIFT
+static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
+  return;
+}
 #else
 /* uses FLINT's multi CRT when starting to lift one witness coef */
 static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
@@ -621,6 +624,10 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
 #endif
 
 #ifdef NEWGBLIFT
+static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
+                                         mpz_t *mod_p, mpz_t *prod_p, int thrds){
+  return;
+}
 #else
 /* Incremental CRT (called once FLINT multi_CRT has been called) */
 /* mod is the current modulus */

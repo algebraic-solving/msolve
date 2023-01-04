@@ -687,23 +687,38 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
 #endif
 
 #ifdef NEWGBLIFT
+/* Incremental CRT (called once FLINT multi_CRT has been called) */
+/* mod is the current modulus */
 static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
-                                         mpz_t *mod_p, mpz_t *prod_p, int thrds){
-  return;
+                                         int32_t coef, mpz_t *mod_p, mpz_t *prod_p,
+                                         int thrds){
+
+  /* all primes are assumed to be good primes */
+  for(int i = 0; i < thrds; i++){
+    uint32_t c = modgbs->modpolys[dlift->idpol]->modpcfs[coef][modgbs->nprimes  - (thrds - i) ];
+
+    mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
+
+    mpz_CRT_ui(dlift->crt, dlift->crt, mod_p[0],
+               c, modgbs->primes[modgbs->nprimes - (thrds - i) ],
+               prod_p[0], 1);
+    mpz_set(mod_p[0], prod_p[0]);
+  }
 }
 #else
 /* Incremental CRT (called once FLINT multi_CRT has been called) */
 /* mod is the current modulus */
 static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
-                                         mpz_t *mod_p, mpz_t *prod_p, int thrds){
+                                         int32_t coef, mpz_t *mod_p, mpz_t *prod_p,
+                                         int thrds){
   /* all primes are assumed to be good primes */
   for(int i = 0; i < thrds; i++){
-    uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) ];
+    uint32_t c = modgbs->modpolys[dlift->idpol]->modpcfs[coef][modgbs->nprimes  - (thrds - i) ];
 
     mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
 
     mpz_CRT_ui(dlift->crt, dlift->crt, mod_p[0],
-               coef, modgbs->primes[modgbs->nprimes - (thrds - i) ],
+               c, modgbs->primes[modgbs->nprimes - (thrds - i) ],
                prod_p[0], 1);
     mpz_set(mod_p[0], prod_p[0]);
   }

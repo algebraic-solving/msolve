@@ -96,6 +96,8 @@ static inline void data_lift_init(data_lift_t dlift, int32_t npol){
   for(int32_t i = 0; i < npol; i++){
     mpz_init(dlift->den[i]);
   }
+  dlift->start = 0;
+  dlift->end = 0;
   dlift->check1 = calloc(npol, sizeof(int));
   dlift->check2 = calloc(npol, sizeof(int));
 
@@ -810,6 +812,11 @@ static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
                         rrec_data_t recdata, int thrds){
+
+  /* all polynomials have been lifted */
+  if(dlift->idpol >= modgbs->npols){
+    return;
+  }
   return;
 }
 #else

@@ -54,6 +54,8 @@ typedef struct{
   int32_t *coef; /* array of indices to lift */
   mpz_t *num; /* lifted numerator */
   mpz_t *den; /* lifted denominator */
+  int32_t start; /* indicates smallest index of poly whose coef has been lifted but not checked*/
+  int32_t end; /* indicates largest index of poly whose coef has been lifted but not checked*/
   int *check1; /* tells whether lifted data are ok with one more prime */
   int *check2; /* tells whether lifted data are ok with two more primes */
 
@@ -730,26 +732,26 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 /* return 1 if the lifted rationals stored in dlift is ok else return 0 */
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
                                         int thrds){
-  /* for(int32_t c =0; c < dlift->npol; i++){ */
+  for(int32_t c = dlift->start; c <= dlift->end; c++){
 
-  /*   for(int i = 0; i < thrds; i++){ */
+    for(int i = 0; i < thrds; i++){
 
-  /*     uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ]; */
-  /*     uint32_t lc = mpz_fdiv_ui(dlift->den, prime); */
-  /*     lc = mod_p_inverse_32(lc, prime); */
+      uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
+      uint32_t lc = mpz_fdiv_ui(dlift->den[c], prime);
+      lc = mod_p_inverse_32(lc, prime);
 
-  /*     uint64_t c = mpz_fdiv_ui(dlift->num, prime); */
-  /*     c *= lc; */
-  /*     c = c % prime; */
+      uint64_t c = mpz_fdiv_ui(dlift->num[c], prime);
+      c *= lc;
+      c = c % prime;
 
-  /*     uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) ]; */
+      uint32_t coef = modgbs->modpolys[c]->modpcfs[dlift->coef[c]][modgbs->nprimes  - (thrds - i) ];
 
-  /*     if(c!=coef){ */
-  /*       return 0; */
-  /*     } */
-  /*   } */
+      if(c!=coef){
+        return 0;
+      }
+    }
 
-  /* } */
+  }
   return 1;
 }
 #else

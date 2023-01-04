@@ -47,7 +47,7 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */
   int32_t idpol; /* index of polynomial being lifted */
-  int start; /* indicates if multi-mod flint structures need to be
+  int crt_mult; /* indicates if multi-mod flint structures need to be
                 initialized */
   mpz_t crt; /* stores current CRT */
   int recon; /* equals 1 when some rational number can be lifted, else 0 */
@@ -64,7 +64,7 @@ typedef data_lift_struct data_lift_t[1];
 typedef struct {
   int32_t idpol; /* index of polynomial being lifted */
   uint32_t coef; /* index of witness coefficient to lift */
-  int start; /* indicates if multi-mod flint structures need to be
+  int crt_mult; /* indicates if multi-mod flint structures need to be
                 initialized */
   mpz_t crt; /* current crt */
   int recon; /* equals 1 when some rational number can be lifted, else 0 */
@@ -81,7 +81,7 @@ typedef data_lift_struct data_lift_t[1];
 static inline void data_lift_init(data_lift_t dlift, int32_t npol){
   dlift->npol = npol;
   dlift->idpol = -1;
-  dlift->start = 0;
+  dlift->crt_mult = 0;
   mpz_init(dlift->crt);
   dlift->recon = 0;
   dlift->coef = calloc(npol, sizeof(mpz_t) );
@@ -102,7 +102,7 @@ static inline void data_lift_init(data_lift_t dlift, int32_t npol){
 static inline void data_lift_init(data_lift_t dlift, int npol){
   dlift->idpol = -1;
   dlift->coef = 0;
-  dlift->start = 0;
+  dlift->crt_mult = 0;
   mpz_init(dlift->crt);
   mpz_init(dlift->num);
   mpz_init(dlift->den);
@@ -649,7 +649,7 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   fmpz_get_mpz(dlift->crt, y);
 
   /* indicates that CRT started */
-  dlift->start = 1;
+  dlift->crt_mult = 1;
 
   fmpz_clear(y);
   fmpz_comb_temp_clear(comb_temp);
@@ -678,7 +678,7 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   fmpz_get_mpz(dlift->crt, y);
 
   /* indicates that CRT started */
-  dlift->start = 1;
+  dlift->crt_mult = 1;
 
   fmpz_clear(y);
   fmpz_comb_temp_clear(comb_temp);
@@ -727,9 +727,29 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 #endif
 
 #ifdef NEWGBLIFT
-/* return 1 if the lifted rational hidden in dlift is ok else return 0 */
+/* return 1 if the lifted rationals stored in dlift is ok else return 0 */
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
                                         int thrds){
+  /* for(int32_t c =0; c < dlift->npol; i++){ */
+
+  /*   for(int i = 0; i < thrds; i++){ */
+
+  /*     uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ]; */
+  /*     uint32_t lc = mpz_fdiv_ui(dlift->den, prime); */
+  /*     lc = mod_p_inverse_32(lc, prime); */
+
+  /*     uint64_t c = mpz_fdiv_ui(dlift->num, prime); */
+  /*     c *= lc; */
+  /*     c = c % prime; */
+
+  /*     uint32_t coef = modgbs->modpolys[dlift->idpol]->modpcfs[dlift->coef][modgbs->nprimes  - (thrds - i) ]; */
+
+  /*     if(c!=coef){ */
+  /*       return 0; */
+  /*     } */
+  /*   } */
+
+  /* } */
   return 1;
 }
 #else
@@ -812,9 +832,9 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     /* updates check flags */
     dlift->check1 = 0;
     dlift->check2 = 0;
-    dlift->start = 0;
+    dlift->crt_mult = 0;
   }
-  if(dlift->start == 0){
+  if(dlift->crt_mult == 0){
     /* starts lifting witness coefficient */
     start_dlift(modgbs, dlift, dlift->coef);
     /* updates mod_p and ptr_p */

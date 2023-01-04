@@ -51,6 +51,7 @@ typedef struct{
                 initialized */
   mpz_t crt; /* stores current CRT */
   int recon; /* equals 1 when some rational number can be lifted, else 0 */
+  int32_t *coef; /* array of indices to lift */
   mpz_t *num; /* lifted numerator */
   mpz_t *den; /* lifted denominator */
   int *check1; /* tells whether lifted data are ok with one more prime */
@@ -83,6 +84,8 @@ static inline void data_lift_init(data_lift_t dlift, int32_t npol){
   dlift->start = 0;
   mpz_init(dlift->crt);
   dlift->recon = 0;
+  dlift->coef = calloc(npol, sizeof(mpz_t) );
+
   dlift->num = malloc(sizeof(mpz_t) * npol);
   for(int32_t i = 0; i < npol; i++){
     mpz_init(dlift->num[i]);
@@ -622,12 +625,9 @@ static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
 
 #ifdef NEWGBLIFT
 /* uses FLINT's multi CRT when starting to lift one witness coef */
-static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
-  return;
-}
-#else
-/* uses FLINT's multi CRT when starting to lift one witness coef */
-static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
+/* TODO: avoid to initialize/clear comb and comb_temp at each call */
+/* coef is the index of the coefficient to be lifted */
+static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t coef){
   /* Data needed by multi CRT functions */
   fmpz_comb_t comb;
   fmpz_comb_temp_t comb_temp;
@@ -640,7 +640,36 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift){
   modpolys_t *polys = modgbs->modpolys;
 
   for(uint32_t i = 0; i < modgbs->nprimes; i++){
-    modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[dlift->coef][i];
+    modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[coef][i];
+  }
+  fmpz_multi_CRT_ui(y, modgbs->cfs,
+                    comb, comb_temp, 1);
+  fmpz_get_mpz(dlift->crt, y);
+
+  /* indicates that CRT started */
+  dlift->start = 1;
+
+  fmpz_clear(y);
+  fmpz_comb_temp_clear(comb_temp);
+  fmpz_comb_clear(comb);
+
+}
+#else
+/* uses FLINT's multi CRT when starting to lift one witness coef */
+static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t coef){
+  /* Data needed by multi CRT functions */
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t comb_temp;
+
+  fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
+  fmpz_comb_temp_init(comb_temp, comb);
+  fmpz_t y;
+  fmpz_init(y);
+
+  modpolys_t *polys = modgbs->modpolys;
+
+  for(uint32_t i = 0; i < modgbs->nprimes; i++){
+    modgbs->cfs[i] = polys[dlift->idpol]->modpcfs[coef][i];
   }
   fmpz_multi_CRT_ui(y, modgbs->cfs,
                     comb, comb_temp, 1);
@@ -770,7 +799,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   }
   if(dlift->start == 0){
     /* starts lifting witness coefficient */
-    start_dlift(modgbs, dlift);
+    start_dlift(modgbs, dlift, dlift->coef);
     /* updates mod_p and ptr_p */
     if(dlift->idpol == 0){
 

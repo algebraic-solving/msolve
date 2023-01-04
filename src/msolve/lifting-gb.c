@@ -117,6 +117,8 @@ static inline void data_lift_init(data_lift_t dlift, int npol){
 static inline void data_lift_clear(data_lift_t dlift){
   mpz_clear(dlift->crt);
 
+  free(dlift->coef);
+
   for(int32_t i = 0; i < dlift->npol; i++){
     mpz_clear(dlift->num[i]);
   }

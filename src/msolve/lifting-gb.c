@@ -46,7 +46,10 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 #ifdef NEWGBLIFT
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */
+  int32_t nsteps; /* number of steps for ranging the GB to be lifted */
   int32_t idpol; /* index of polynomial being lifted */
+  int32_t *steps; /* array of length nsteps ; the sum of the entries should
+                     equal nsteps */
   int crt_mult; /* indicates if multi-mod flint structures need to be
                 initialized */
   mpz_t crt; /* stores current CRT */
@@ -80,22 +83,34 @@ typedef data_lift_struct data_lift_t[1];
 #endif
 
 #ifdef NEWGBLIFT
-static inline void data_lift_init(data_lift_t dlift, int32_t npol){
+static inline void data_lift_init(data_lift_t dlift,
+                                  int32_t npol,
+                                  int32_t *steps, int32_t nsteps){
   dlift->npol = npol;
   dlift->idpol = -1;
+  dlift->nsteps = nsteps;
+
+  int32_t i;
+
+  dlift->steps = calloc(nsteps, sizeof(int32_t));
+  for(i = 0; i < nsteps; i++){
+    dlift->steps[i] = steps[i];
+  }
+
   dlift->crt_mult = 0;
   mpz_init(dlift->crt);
   dlift->recon = 0;
   dlift->coef = calloc(npol, sizeof(mpz_t) );
 
   dlift->num = malloc(sizeof(mpz_t) * npol);
-  for(int32_t i = 0; i < npol; i++){
+  for(i = 0; i < npol; i++){
     mpz_init(dlift->num[i]);
   }
   dlift->den = malloc(sizeof(mpz_t) * npol);
-  for(int32_t i = 0; i < npol; i++){
+  for(i = 0; i < npol; i++){
     mpz_init(dlift->den[i]);
   }
+
   dlift->start = 0;
   dlift->end = 0;
   dlift->check1 = calloc(npol, sizeof(int));
@@ -121,6 +136,7 @@ static inline void data_lift_init(data_lift_t dlift, int npol){
 static inline void data_lift_clear(data_lift_t dlift){
   mpz_clear(dlift->crt);
 
+  free(dlift->steps);
   free(dlift->coef);
 
   for(int32_t i = 0; i < dlift->npol; i++){
@@ -808,13 +824,43 @@ static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
 }
 #endif
 
+static void update_prodprimes(gb_modpoly_t modgbs, data_lift_t dlift,
+                              mpz_t *mod_p, mpz_t *prod_p, int thrds){
+  if(dlift->crt_mult == 0){
+    /* starts lifting witness coefficient */
+    start_dlift(modgbs, dlift, dlift->coef[0]);
+    /* updates mod_p and ptr_p */
+    if(dlift->idpol == 0){
+
+      for(int i = 0; i < modgbs->nprimes; i++){
+        uint32_t prime = modgbs->primes[i];
+        mpz_mul_ui(mod_p[0], mod_p[0], prime);
+      }
+      mpz_set(prod_p[0], mod_p[0]);
+
+    }
+    else{
+      for(int i = 0; i < thrds; i++){
+        uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i)];
+        mpz_mul_ui(mod_p[0], mod_p[i], prime);
+      }
+      mpz_set(prod_p[0], mod_p[0]);
+    }
+  }
+  else{
+    incremental_dlift_crt(modgbs, dlift, dlift->coef[0],
+                          mod_p, prod_p, thrds);
+    /* mod_p and prod_p are updated inside incremental_dlift_crt */
+  }
+}
+
 #ifdef NEWGBLIFT
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
                         rrec_data_t recdata, int thrds){
 
   /* all polynomials have been lifted */
-  if(dlift->idpol >= modgbs->npols){
+  if(dlift->idpol >= modgbs->npolys){
     return;
   }
   return;
@@ -1051,10 +1097,6 @@ int msolve_gbtrace_qq(
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
-    if(!dlinit){
-      data_lift_init(dlift, modgbs->npolys);
-      dlinit = 1;
-    }
 
     apply = 1;
 
@@ -1063,15 +1105,20 @@ int msolve_gbtrace_qq(
 #ifdef DEBUGGBLIFT
     display_gbmodpoly(stderr, modgbs);
 #endif
-    int nb = 0;
-    int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
-                                    msd->bht->nv, &nb);
 
+    if(!dlinit){
+      int nb = 0;
+      int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
+                                      msd->bht->nv, &nb);
+      data_lift_init(dlift, modgbs->npolys, ldeg, nb);
+      free(ldeg);
+      dlinit = 1;
+    }
     /************************************************/
     /************************************************/
-    fprintf(stderr, "nb = %d => ldeg = [", nb);
-    for(int i = 0; i < nb; i++){
-      fprintf(stderr, "%d, ", ldeg[i]);
+    fprintf(stderr, "nb = %d => ldeg = [", dlift->nsteps);
+    for(int i = 0; i < dlift->nsteps; i++){
+      fprintf(stderr, "%d, ", dlift->steps[i]);
     }
     fprintf(stderr, "]\n");
     /************************************************/

@@ -47,6 +47,11 @@ ht_t *copy_hash_table(
     const stat_t *st
     );
 
+ht_t *full_copy_hash_table(
+                      const ht_t *bht,
+                      const stat_t *st
+                      );
+
 ht_t *initialize_secondary_hash_table(
     const ht_t *bht,
     const stat_t *st
@@ -59,6 +64,10 @@ void free_shared_hash_data(
 void free_hash_table(
     ht_t **htp
     );
+
+void full_free_hash_table(
+                     ht_t **htp
+                     );
 
 void calculate_divmask(
     ht_t *ht

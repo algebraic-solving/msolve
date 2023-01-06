@@ -200,7 +200,7 @@ ht_t *full_copy_hash_table(
 
     ht->ndv = bht->ndv;
     ht->bpv = bht->bpv;
-    
+
     ht->dm  = (sdm_t *)calloc(
                               (unsigned long)(ht->ndv * ht->bpv), sizeof(sdm_t));
 
@@ -329,6 +329,45 @@ void free_hash_table(
     free(ht);
     ht    = NULL;
     *htp  = ht;
+}
+
+void full_free_hash_table(
+                     ht_t **htp
+                     )
+{
+  ht_t *ht  = *htp;
+  if (ht->hmap) {
+    free(ht->hmap);
+    ht->hmap = NULL;
+  }
+  if (ht->hd) {
+    free(ht->hd);
+    ht->hd  = NULL;
+  }
+  if (ht->ev) {
+    /* note: memory is allocated as one big block,
+     *       so freeing ev[0] is enough */
+    free(ht->ev[0]);
+    free(ht->ev);
+    ht->ev  = NULL;
+  }
+  if (ht != NULL) {
+    if (ht->rn) {
+      free(ht->rn);
+      ht->rn = NULL;
+    }
+    if (ht->dv) {
+      free(ht->dv);
+      ht->dv = NULL;
+    }
+    if (ht->dm) {
+      free(ht->dm);
+      ht->dm = NULL;
+    }
+  }
+  free(ht);
+  ht    = NULL;
+  *htp  = ht;
 }
 
 /* we just double the hash table size */

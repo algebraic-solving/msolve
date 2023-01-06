@@ -180,6 +180,61 @@ ht_t *copy_hash_table(
     return ht;
 }
 
+ht_t *full_copy_hash_table(
+    const ht_t *bht,
+    const stat_t *st
+    )
+{
+    hl_t j;
+
+    ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
+
+    ht->nv    = bht->nv;
+    ht->evl   = bht->evl;
+    ht->ebl   = bht->ebl;
+    ht->hsz   = bht->hsz;
+    ht->esz   = bht->esz;
+
+    ht->hmap  = calloc(ht->hsz, sizeof(hi_t));
+    memcpy(ht->hmap, bht->hmap, (unsigned long)ht->hsz * sizeof(hi_t));
+
+    ht->ndv = bht->ndv;
+    ht->bpv = bht->bpv;
+    ht->dm  = bht->dm;
+    
+    ht->rn  = calloc((unsigned long)bht->evl, sizeof(val_t));
+    memcpy(bht->rn, bht->rn, (unsigned long)ht->evl * sizeof(val_t));
+
+    ht->dv  = (len_t *)calloc((unsigned long)ht->ndv, sizeof(len_t));
+    memcpy(ht->dv, bht->dv, (unsigned long)ht->ndv * sizeof(len_t));
+
+    /* generate exponent vector */
+    /* keep first entry empty for faster divisibility checks */
+    ht->hd  = (hd_t *)calloc(ht->esz, sizeof(hd_t));
+
+    memcpy(ht->hd, bht->hd, (unsigned long)ht->esz * sizeof(hd_t));
+    ht->ev  = (exp_t **)malloc(ht->esz * sizeof(exp_t *));
+    if (ht->ev == NULL) {
+        fprintf(stderr, "Computation needs too much memory on this machine,\n");
+        fprintf(stderr, "could not initialize exponent vector for hash table,\n");
+        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
+    }
+    exp_t *tmp  = (exp_t *)malloc(
+            (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
+    if (tmp == NULL) {
+        fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
+        fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
+        fprintf(stderr, "segmentation fault will follow.\n");
+    }
+    memcpy(tmp, bht->ev[0], (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
+    ht->eld = bht->eld;
+    const hl_t esz  = ht->esz;
+    for (j = 0; j < esz; ++j) {
+        ht->ev[j]  = tmp + (j*ht->evl);
+    }
+    return ht;
+}
+
 ht_t *initialize_secondary_hash_table(
     const ht_t *bht,
     const stat_t *st

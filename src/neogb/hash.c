@@ -200,8 +200,10 @@ ht_t *full_copy_hash_table(
 
     ht->ndv = bht->ndv;
     ht->bpv = bht->bpv;
-    ht->dm  = bht->dm;
     
+    ht->dm  = (sdm_t *)calloc(
+                              (unsigned long)(ht->ndv * ht->bpv), sizeof(sdm_t));
+
     ht->rn  = calloc((unsigned long)bht->evl, sizeof(val_t));
     memcpy(bht->rn, bht->rn, (unsigned long)ht->evl * sizeof(val_t));
 

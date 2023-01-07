@@ -3156,7 +3156,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   ht_t **blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
   blht[0] = bht;
   for(int i = 1; i < st->nthrds; i++){
-    ht_t *lht = copy_hash_table(bht, st);
+    ht_t *lht = full_copy_hash_table(bht, st);
     blht[i] = lht;
   }
   ht_t **btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
@@ -3463,7 +3463,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* free and clean up */
   free_shared_hash_data(bht);
   for(int i = 0; i < st->nthrds; i++){
-    free_hash_table(blht+i);
+    full_free_hash_table(blht+i);
     free_hash_table(btht+i);
   }
 

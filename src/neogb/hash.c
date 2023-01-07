@@ -180,6 +180,63 @@ ht_t *copy_hash_table(
     return ht;
 }
 
+ht_t *full_copy_hash_table(
+    const ht_t *bht,
+    const stat_t *st
+    )
+{
+    hl_t j;
+
+    ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
+
+    ht->nv    = bht->nv;
+    ht->evl   = bht->evl;
+    ht->ebl   = bht->ebl;
+    ht->hsz   = bht->hsz;
+    ht->esz   = bht->esz;
+
+    ht->hmap  = calloc(ht->hsz, sizeof(hi_t));
+    memcpy(ht->hmap, bht->hmap, (unsigned long)ht->hsz * sizeof(hi_t));
+
+    ht->ndv = bht->ndv;
+    ht->bpv = bht->bpv;
+
+    ht->dm  = (sdm_t *)calloc(
+                              (unsigned long)(ht->ndv * ht->bpv), sizeof(sdm_t));
+
+    ht->rn  = calloc((unsigned long)bht->evl, sizeof(val_t));
+    memcpy(bht->rn, bht->rn, (unsigned long)ht->evl * sizeof(val_t));
+
+    ht->dv  = (len_t *)calloc((unsigned long)ht->ndv, sizeof(len_t));
+    memcpy(ht->dv, bht->dv, (unsigned long)ht->ndv * sizeof(len_t));
+
+    /* generate exponent vector */
+    /* keep first entry empty for faster divisibility checks */
+    ht->hd  = (hd_t *)calloc(ht->esz, sizeof(hd_t));
+
+    memcpy(ht->hd, bht->hd, (unsigned long)ht->esz * sizeof(hd_t));
+    ht->ev  = (exp_t **)malloc(ht->esz * sizeof(exp_t *));
+    if (ht->ev == NULL) {
+        fprintf(stderr, "Computation needs too much memory on this machine,\n");
+        fprintf(stderr, "could not initialize exponent vector for hash table,\n");
+        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
+    }
+    exp_t *tmp  = (exp_t *)malloc(
+            (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
+    if (tmp == NULL) {
+        fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
+        fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
+        fprintf(stderr, "segmentation fault will follow.\n");
+    }
+    memcpy(tmp, bht->ev[0], (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
+    ht->eld = bht->eld;
+    const hl_t esz  = ht->esz;
+    for (j = 0; j < esz; ++j) {
+        ht->ev[j]  = tmp + (j*ht->evl);
+    }
+    return ht;
+}
+
 ht_t *initialize_secondary_hash_table(
     const ht_t *bht,
     const stat_t *st
@@ -272,6 +329,45 @@ void free_hash_table(
     free(ht);
     ht    = NULL;
     *htp  = ht;
+}
+
+void full_free_hash_table(
+                     ht_t **htp
+                     )
+{
+  ht_t *ht  = *htp;
+  if (ht->hmap) {
+    free(ht->hmap);
+    ht->hmap = NULL;
+  }
+  if (ht->hd) {
+    free(ht->hd);
+    ht->hd  = NULL;
+  }
+  if (ht->ev) {
+    /* note: memory is allocated as one big block,
+     *       so freeing ev[0] is enough */
+    free(ht->ev[0]);
+    free(ht->ev);
+    ht->ev  = NULL;
+  }
+  if (ht != NULL) {
+    if (ht->rn) {
+      free(ht->rn);
+      ht->rn = NULL;
+    }
+    if (ht->dv) {
+      free(ht->dv);
+      ht->dv = NULL;
+    }
+    if (ht->dm) {
+      free(ht->dm);
+      ht->dm = NULL;
+    }
+  }
+  free(ht);
+  ht    = NULL;
+  *htp  = ht;
 }
 
 /* we just double the hash table size */

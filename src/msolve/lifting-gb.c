@@ -42,7 +42,7 @@ typedef struct {
 
 typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
-#define NEWGBLIFT 1
+//#define NEWGBLIFT 1
 #ifdef NEWGBLIFT
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */
@@ -141,7 +141,10 @@ static inline void data_lift_init(data_lift_t dlift, int npol,
 
   dlift->crt_mult = 0;
   dlift->coef = calloc(npol, sizeof(mpz_t) );
-  mpz_init(dlift->crt);
+
+  dlift->crt = malloc(sizeof(mpz_t));
+  mpz_init(dlift->crt[0]);
+
   mpz_init(dlift->num);
   mpz_init(dlift->den);
   dlift->check1 = 0;
@@ -177,7 +180,9 @@ static inline void data_lift_clear(data_lift_t dlift){
 #else
 static inline void data_lift_clear(data_lift_t dlift){
 
-  mpz_clear(dlift->crt);
+  mpz_clear(dlift->crt[0]);
+  free(dlift->crt);
+
   mpz_clear(dlift->num);
   mpz_clear(dlift->den);
   free(dlift->coef);
@@ -719,7 +724,7 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   }
   fmpz_multi_CRT_ui(y, modgbs->cfs,
                     comb, comb_temp, 1);
-  fmpz_get_mpz(dlift->crt, y);
+  fmpz_get_mpz(dlift->crt[0], y);
 
   /* indicates that CRT started */
   dlift->crt_mult = 1;
@@ -763,7 +768,7 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 
     mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
 
-    mpz_CRT_ui(dlift->crt, dlift->crt, mod_p[0],
+    mpz_CRT_ui(dlift->crt[0], dlift->crt[0], mod_p[0],
                c, modgbs->primes[modgbs->nprimes - (thrds - i) ],
                prod_p[0], 1);
     mpz_set(mod_p[0], prod_p[0]);
@@ -957,7 +962,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_sqrt(recdata->N, recdata->N);
   mpz_set(recdata->D, recdata->N);
 
-  dlift->recon = ratrecon(dlift->num, dlift->den, dlift->crt, mod_p[0], recdata);
+  dlift->recon = ratrecon(dlift->num, dlift->den, dlift->crt[0], mod_p[0], recdata);
 
 #ifdef DEBUGGBLIFT
   fprintf(stderr, "dlift->lstart = %d\n", dlift->lstart);

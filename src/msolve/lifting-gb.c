@@ -108,7 +108,7 @@ static inline void data_lift_init(data_lift_t dlift,
   dlift->crt_mult = 0;
   dlift->crt = malloc(sizeof(mpz_t) * dlift->npol);
   for(int32_t i = 0; i < dlift->npol; i++){
-    mpz_init(dlift->crt);
+    mpz_init(dlift->crt[i]);
   }
   dlift->recon = 0;
   dlift->coef = calloc(npol, sizeof(mpz_t) );
@@ -152,7 +152,10 @@ static inline void data_lift_init(data_lift_t dlift, int npol,
 
 #ifdef NEWGBLIFT
 static inline void data_lift_clear(data_lift_t dlift){
-  mpz_clear(dlift->crt);
+  for(int32_t i = 0; i < dlift->npol; i++){
+    mpz_clear(dlift->crt[i]);
+  }
+  free(dlift->crt);
 
   free(dlift->steps);
   free(dlift->coef);

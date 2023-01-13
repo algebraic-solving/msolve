@@ -121,10 +121,8 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
   free(msd->leadmons_current);
 
   free(msd->mgb);
-
   /* starts at 1 because memory is already cleaned at i = 0 */
   for(int i = 1; i < st->nthrds; i++){
-    free_shared_hash_data(msd->blht[i]);
     if(msd->blht[i] != NULL){
       free_hash_table((msd->blht)+i);
     }

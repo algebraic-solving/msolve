@@ -46,9 +46,9 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 #ifdef NEWGBLIFT
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */
-  int32_t nsteps; /* number of steps for ranging the GB to be lifted */
+  int32_t nsteps; /* number of steps for lifting GB (per degree) */
   int32_t *steps; /* array of length nsteps ; the sum of the entries should
-                     equal nsteps */
+                     equal npol */
   /* liftings are performed on ranges of polynomials (depending on their degrees) */
   int32_t lstart; /* index of first polynomial to be lifted */
   int32_t lend; /* index of last polynomial to be lifted */
@@ -72,9 +72,9 @@ typedef data_lift_struct data_lift_t[1];
 typedef struct {
   int32_t lstart; /* index of polynomial being lifted */
   int32_t lend; /* not used */
-  int32_t nsteps; /* number of steps for ranging the GB to be lifted */
+  int32_t nsteps; /* number of steps for lifting GB (per degree) */
   int32_t *steps; /* array of length nsteps ; the sum of the entries should
-                     equal nsteps */
+                     equal the total number of polynomials to be lifted */
   uint32_t *coef; /*  */
   int crt_mult; /* indicates if multi-mod flint structures need to be
                 initialized */
@@ -106,6 +106,7 @@ static inline void data_lift_init(data_lift_t dlift,
   }
 
   dlift->crt_mult = 0;
+
   mpz_init(dlift->crt);
   dlift->recon = 0;
   dlift->coef = calloc(npol, sizeof(mpz_t) );
@@ -874,7 +875,16 @@ static void update_prodprimes(gb_modpoly_t modgbs, data_lift_t dlift,
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
                         rrec_data_t recdata, int thrds){
+  fprintf(stderr, "npol = %d\n", dlift->npol);
+  fprintf(stderr, "nsteps = %d\n", dlift->nsteps);
+  for(int i = 0; i < dlift->nsteps; i++){
+    fprintf(stderr, "[%d]", dlift->steps[i]);
+  }
+  fprintf(stderr, "\n");
+  fprintf(stderr, "dlift->start = %d\n", dlift->start);
+  fprintf(stderr, "dlift->end = %d\n", dlift->end);
 
+  exit(1);
   /* all polynomials have been lifted */
   if(dlift->lstart >= modgbs->npolys){
     return;
@@ -1099,6 +1109,7 @@ int msolve_gbtrace_qq(
   initialize_rrec_data(recdata);
 
   data_lift_t dlift;
+  /* indicates that dlift has been already initialized */
   int dlinit = 0;
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,

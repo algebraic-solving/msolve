@@ -55,7 +55,7 @@ typedef struct{
 
   int crt_mult; /* indicates if multi-mod flint structures need to be
                 initialized */
-  mpz_t crt; /* stores current CRT */
+  mpz_t *crt; /* stores current CRT */
   int recon; /* equals 1 when some rational number can be lifted, else 0 */
   int32_t *coef; /* array of indices to lift */
   mpz_t *num; /* lifted numerator */
@@ -78,7 +78,7 @@ typedef struct {
   uint32_t *coef; /*  */
   int crt_mult; /* indicates if multi-mod flint structures need to be
                 initialized */
-  mpz_t crt; /* current crt */
+  mpz_t *crt; /* current crt */
   int recon; /* equals 1 when some rational number can be lifted, else 0 */
   mpz_t num; /* lifted numerator */
   mpz_t den; /* lifted denominator */
@@ -106,8 +106,10 @@ static inline void data_lift_init(data_lift_t dlift,
   }
 
   dlift->crt_mult = 0;
-
-  mpz_init(dlift->crt);
+  dlift->crt = malloc(sizeof(mpz_t) * dlift->npol);
+  for(int32_t i = 0; i < dlift->npol; i++){
+    mpz_init(dlift->crt);
+  }
   dlift->recon = 0;
   dlift->coef = calloc(npol, sizeof(mpz_t) );
 

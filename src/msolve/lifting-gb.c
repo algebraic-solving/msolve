@@ -42,7 +42,7 @@ typedef struct {
 
 typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
-//#define NEWGBLIFT 1
+#define NEWGBLIFT 1
 #ifdef NEWGBLIFT
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */

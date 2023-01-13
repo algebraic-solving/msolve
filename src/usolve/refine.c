@@ -939,7 +939,12 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
         fprintf(stderr, "Error in refinement (neg. roots): these values should not be zero\n");
         exit(1);
       }
-      refine_QIR_positive_root(upol, deg, pos_rt, tab, prec, verbose);
+      long d = 1 + ilog2_mpz(pos_rt->numer) - rt->k;
+
+      /* fprintf(stderr, "[%d, %ld]", prec, */
+      /*         prec + ((*deg) * MAX(0, d)) / 32); */
+      refine_QIR_positive_root(upol, deg, pos_rt, tab,
+                               prec + (((*deg)-1) * MAX(0, d)) / 32, verbose);
 
       if(mpz_sgn(tab[0])==mpz_sgn(tab[1])){
         fprintf(stderr, "BUG in refinement (sgn tab[0]==sgn tab[1]) for neg. roots");
@@ -998,7 +1003,11 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
         fprintf(stderr, "Error in refinement (pos. roots): these values should not be zero\n");
         exit(1);
       }
-      refine_QIR_positive_root(upol, deg, rt, tab, prec, verbose);
+      long d = 1 + ilog2_mpz(rt->numer) - rt->k;
+
+      /* fprintf(stderr, "[%d, %ld]", prec, prec + ((*deg) * MAX(0, 1 + d)) / 32); */
+      refine_QIR_positive_root(upol, deg, rt, tab,
+                               prec + (((*deg) - 1) * MAX(0, 1 + d)) / 32, verbose);
       if(mpz_sgn(tab[0])==mpz_sgn(tab[1])){
         fprintf(stderr,"BUG in refinement (sgn tab[0]=sgn tab[1] for pos. roots)");
         exit(1);

@@ -3847,63 +3847,20 @@ int evalquadric(mpz_t *quad, mpz_t r, long k,
 int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
                 mpz_t *xdo, mpz_t *xup,
                 mpz_t tmp, mpz_t den_do, mpz_t den_up,
-                long corr){
+                long corr, mpz_t c){
 
   /* /\* boo is 1 if den_do and den_up have not the same sign */
   /*    else it is 0 */
-  mpz_t c;
-  mpz_init(c);
   mpz_add_ui(c, r, 1);
 
-  mpz_poly_eval_2exp_naive2(denom, deg, r, k, den_do, tmp);
-  mpz_poly_eval_2exp_naive2(denom, deg, c, k, den_up, tmp);
-
-  mpz_clear(c);
-
-  if(mpz_sgn(den_do)!=mpz_sgn(den_up)){
-    return 1;
-  }
-  if(mpz_cmp(den_do, den_up)>0){
-    mpz_swap(den_do, den_up);
-  }
-  mpz_mul_2exp(den_do, den_do, corr);
-  mpz_mul_2exp(den_up, den_up, corr);
-  mpz_fdiv_q_2exp(den_do, den_do, k*deg);
-  mpz_cdiv_q_2exp(den_up, den_up, k*deg);
-  return 0;
-
-
-  /* /\* MODIFS START HERE  *\/ */
-  /* mpz_t * tmpquad = calloc(3, sizeof(mpz_t)); */
-  /* mpz_t * quad = calloc(3, sizeof(mpz_t)); */
-  /* mpz_init(tmpquad[0]); */
-  /* mpz_init(tmpquad[1]); */
-  /* mpz_init(tmpquad[2]); */
-  /* mpz_init(quad[0]); */
-  /* mpz_init(quad[1]); */
-  /* mpz_init(quad[2]); */
-  /* int q = deg / 3; */
-  /* for(int i = 0; i < q; i++){ */
-  /*   mpz_set(quad[0], denom[3*i]); */
-  /*   mpz_set(quad[1], denom[3*i+1]); */
-  /*   mpz_set(quad[2], denom[3*i+2]); */
-  /*   int b = evalquadric(quad, r, k, */
-  /*                       tmpquad, tmp); */
-  /*   if(b==1)fprintf(stderr, "[r]\n"); */
-  /* } */
   /* mpz_poly_eval_2exp_naive2(denom, deg, r, k, den_do, tmp); */
   /* mpz_poly_eval_2exp_naive2(denom, deg, c, k, den_up, tmp); */
-  /* mpz_clear(tmpquad[0]); */
-  /* mpz_clear(tmpquad[1]); */
-  /* mpz_clear(tmpquad[2]); */
-  /* mpz_clear(quad[0]); */
-  /* mpz_clear(quad[1]); */
-  /* mpz_clear(quad[2]); */
-  /* mpz_clear(c); */
+
 
   /* if(mpz_sgn(den_do)!=mpz_sgn(den_up)){ */
   /*   return 1; */
   /* } */
+  /* MODIFS START HERE */
   /* if(mpz_cmp(den_do, den_up)>0){ */
   /*   mpz_swap(den_do, den_up); */
   /* } */
@@ -3912,7 +3869,7 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
   /* mpz_fdiv_q_2exp(den_do, den_do, k*deg); */
   /* mpz_cdiv_q_2exp(den_up, den_up, k*deg); */
   /* return 0; */
-  /* /\*MODIFS END HERE *\/ */
+
   int boo = mpz_poly_eval_interval(denom, deg, k,
                                r, c,
                                tmp, den_do, den_up);
@@ -3924,8 +3881,10 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
   mpz_mul_2exp(den_up, den_up, corr);
   mpz_fdiv_q_2exp(den_do, den_do, k*deg);
   mpz_cdiv_q_2exp(den_up, den_up, k*deg);
-  mpz_clear(c);
 
+  if(mpz_sgn(den_do)!=mpz_sgn(den_up)){
+    return 1;
+  }
   return boo;
 }
 
@@ -3935,9 +3894,8 @@ int value_denom(mpz_t *denom, long deg, mpz_t r, long k,
 int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k,
                    mpz_t *xdo, mpz_t *xup,
                    mpz_t tmp, mpz_t den_do, mpz_t den_up,
-                   long corr){
-  mpz_t c;
-  mpz_init(c);
+                   long corr, mpz_t c){
+
   mpz_add_ui(c, r, 1);
   int boo = mpz_poly_eval_interval(denom, deg, k,
                                r, c,
@@ -3950,7 +3908,6 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k,
   mpz_mul_2exp(den_up, den_up, corr);
   mpz_fdiv_q_2exp(den_do, den_do, k*deg);
   mpz_cdiv_q_2exp(den_up, den_up, k*deg);
-  mpz_clear(c);
 
   return boo;
 }
@@ -3961,7 +3918,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do,
                                  mpz_t c, mpz_t tmp, mpz_t val_do, mpz_t val_up,
                                  mpz_t *tab, real_point_t pt,
-                                 long prec, long nbits,
+                                 long prec, long nbits, mpz_t s,
                                  int info_level){
   long ns = param->nsols ;
 
@@ -3976,7 +3933,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   }
 
   long b = 16;
-  prec = MAX(prec, rt->k);
+  long newprec = MAX(prec, rt->k);
   long corr = 2*(ns + rt->k);
 
 
@@ -3986,12 +3943,12 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                              corr,
                              xdo, xup);
 
-  while(value_denom(param->denom->coeffs,
-                    param->denom->length - 1,
-                    rt->numer,
-                    rt->k,
-                    xdo, xup,
-                    tmp, den_do, den_up, corr)){
+  while(newvalue_denom(param->denom->coeffs,
+                       param->denom->length - 1,
+                       rt->numer,
+                       rt->k,
+                       xdo, xup,
+                       tmp, den_do, den_up, corr, s)){
 
     /* fprintf(stderr, "==> "); mpz_out_str(stderr, 10, rt->numer); */
     /* fprintf(stderr, " / 2^%ld\n", rt->k); */
@@ -3999,7 +3956,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     /* root is positive */
     if(mpz_sgn(rt->numer)>=0){
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
-      refine_QIR_positive_root(polelim, &ns, rt, tab, 2*(rt->k),
+      refine_QIR_positive_root(polelim, &ns, rt, tab, 2* (rt->k),
                                info_level);
     }
     else{
@@ -4015,7 +3972,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
         }
       }
       get_values_at_bounds(polelim, ns, pos_root, tab);
-      refine_QIR_positive_root(polelim, &ns, pos_root, tab, 2*(pos_root->k),
+      refine_QIR_positive_root(polelim, &ns, pos_root, tab, 2* (pos_root->k) + ns,
                                info_level);
       for(long i = 0; i<=ns; i++){
         if((i & 1) == 1){
@@ -4037,6 +3994,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
         }
       }
     }
+
     if(ns != param->nsols){
       for(long i = 0; i < param->elim->length; i++){
         mpz_set(polelim[i], param->elim->coeffs[i]);
@@ -4044,7 +4002,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
       ns = param->nsols;
     }
 
-    prec *= 2;
     corr *= 2;  /* *((rt->k) + prec); */
     b *= 2;
     /* generate_table_values(rt, c, ns, b, corr, */
@@ -4055,7 +4012,9 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     if(info_level){
       fprintf(stderr, "<%ld>", rt->k);
     }
+
   }
+
 
   mpz_t v1, v2;
   mpz_init(v1); mpz_init(v2);
@@ -4152,6 +4111,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   mpz_clear(v1);
   mpz_clear(v2);
+
 }
 
 
@@ -4159,6 +4119,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
                       real_point_t *pts, long prec, long nbits,
                       double step,
                       int info_level){
+
   long nsols = param->elim->length - 1;
   mpz_t *xup = malloc(sizeof(mpz_t)*nsols);
   mpz_t *xdo = malloc(sizeof(mpz_t)*nsols);
@@ -4182,14 +4143,18 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   }
   interval *pos_root = calloc(1, sizeof(interval));
   mpz_init(pos_root->numer);
+  mpz_t s;
+  mpz_init(s);
+
   double et = realtime();
+
   for(long nc = 0; nc < nb; nc++){
     interval *rt = roots+nc;
 
     lazy_single_real_root_param(param, polelim, rt, nb, pos_root,
                                 xdo, xup, den_up, den_do,
                                 c, tmp, val_do, val_up, tab,
-                                pts[nc], prec, nbits,
+                                pts[nc], prec, nbits, s,
                                 info_level);
 
     if(info_level){
@@ -4211,6 +4176,7 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   free(xup);
   free(xdo);
   mpz_clear(c);
+  mpz_clear(s);
   mpz_clear(tmp);
   mpz_clear(den_up);
   mpz_clear(den_do);
@@ -4305,11 +4271,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                                             mp_param->coords[i]->length - 1);
       maxnbits = MAX(cmax, maxnbits);
     }
-    long prec = MAX(precision, 64 + (maxnbits / 32) );
-    if(info_level){
-      fprintf(stderr, "Real root isolation starts at precision %ld\n",
-              prec);
-    }
+    long prec = MAX(precision, 64 + (maxnbits) / 32 );
     double st = realtime();
     roots = real_roots(pol, mp_param->elim->length - 1,
                        &nbpos, &nbneg, prec, nr_threads, info_level );

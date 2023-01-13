@@ -127,7 +127,7 @@ static void free_mstrace(mstrace_t msd, stat_t *st){
       free_hash_table((msd->blht)+i);
     }
   }
-  for(int i = 0; i < st->nthrds; i++){
+  for(int i = 1; i < st->nthrds; i++){
     if(msd->btht[i] != NULL){
       free_hash_table((msd->btht)+i);
     }

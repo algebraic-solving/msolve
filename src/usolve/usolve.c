@@ -1325,8 +1325,8 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
                              flags->prec_isole, flags->classical_algo, flags->debug);
     }
     else{
-      refine_QIR_roots(upoly, &deg, roots, *nb_neg_roots, *nb_pos_roots,
-                       flags->prec_isole, flags->verbose, step, flags->nthreads);
+      refine_QIR_roots_adaptative(upoly, &deg, roots, *nb_neg_roots, *nb_pos_roots,
+                                  flags->prec_isole, flags->verbose, step, flags->nthreads);
     }
   }
   refine_time = realtime() - refine_time;

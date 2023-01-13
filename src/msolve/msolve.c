@@ -608,7 +608,7 @@ static int add_linear_form_to_input_system(
             mpz_set_ui(*(gens->mpz_cfs[i]), (int32_t)(pow(k, bcf - 1)));
             k++;
         }
-        mpz_set_ui(*(gens->mpz_cfs[2*(len_new - 1)]), 1);
+        mpz_set_si(*(gens->mpz_cfs[2*(len_new - 1)]), 1);
     }
     return 1;
 }
@@ -4305,7 +4305,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                                             mp_param->coords[i]->length - 1);
       maxnbits = MAX(cmax, maxnbits);
     }
-    long prec = MAX(precision, 64 + 2*(LOG2(mp_param->elim->length) + (maxnbits / 32)) );
+    long prec = MAX(precision, 64 + (maxnbits / 32) );
     if(info_level){
       fprintf(stderr, "Real root isolation starts at precision %ld\n",
               prec);

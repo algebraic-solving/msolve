@@ -3921,7 +3921,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  long prec, long nbits, mpz_t s,
                                  int info_level){
   long ns = param->nsols ;
-
   /* root is exact */
   if(rt->isexact==1){
     single_exact_real_root_param(param, rt, nb,
@@ -4119,7 +4118,6 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
                       real_point_t *pts, long prec, long nbits,
                       double step,
                       int info_level){
-
   long nsols = param->elim->length - 1;
   mpz_t *xup = malloc(sizeof(mpz_t)*nsols);
   mpz_t *xdo = malloc(sizeof(mpz_t)*nsols);
@@ -4271,7 +4269,7 @@ int real_msolve_qq(mpz_param_t mp_param,
                                             mp_param->coords[i]->length - 1);
       maxnbits = MAX(cmax, maxnbits);
     }
-    long prec = MAX(precision, 64 + (maxnbits) / 32 );
+    long prec = MAX(precision, 128 + (maxnbits) / 32 );
     double st = realtime();
     roots = real_roots(pol, mp_param->elim->length - 1,
                        &nbpos, &nbneg, prec, nr_threads, info_level );

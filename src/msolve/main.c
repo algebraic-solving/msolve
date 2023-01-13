@@ -161,7 +161,7 @@ static void getoptions(
     case 'p':
       *precision = strtol(optarg, NULL, 10);
       if (*precision < 0) {
-          *precision = 64;
+          *precision = 128;
       }
       /* if (*precision > 100) { */
       /*     *precision = 100; */
@@ -302,7 +302,7 @@ int main(int argc, char **argv){
     int32_t normal_form_matrix    = 0;
     int32_t is_gb                 = 0;
     int32_t get_param             = 0;
-    int32_t precision             = 64;
+    int32_t precision             = 128;
 
     files_gb *files = malloc(sizeof(files_gb));
     files->in_file = NULL;
@@ -312,6 +312,7 @@ int main(int argc, char **argv){
             &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
             &normal_form, &normal_form_matrix, &is_gb, &get_param,
             &precision, &generate_pbm, &info_level, files);
+
     FILE *fh  = fopen(files->in_file, "r");
 
     if (fh == NULL) {

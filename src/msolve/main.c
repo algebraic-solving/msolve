@@ -355,7 +355,14 @@ int main(int argc, char **argv){
     int32_t field_char  = 9001;
     int32_t nr_gens     = 0;
     data_gens_ff_t *gens = allocate_data_gens();
-    
+
+    /*** temporary code to be cleaned ***/
+    if(isolate){
+      fprintf(stderr, "Real root isolation (not implemented yet)\n");
+
+      free(files);
+      return 0;
+    }
     get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens);
 #ifdef IODEBUG
     display_gens(stdout, gens);
@@ -381,9 +388,11 @@ int main(int argc, char **argv){
 
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
-            initial_hts, max_pairs, elim_block_len, update_ht, generate_pbm,
-            reduce_gb, print_gb, get_param, genericity_handling, saturate,
-	    colon, normal_form, normal_form_matrix, is_gb, precision, files, gens,
+                          initial_hts, max_pairs, elim_block_len, update_ht,
+                          generate_pbm, reduce_gb, print_gb, get_param,
+                          genericity_handling, saturate, colon, normal_form,
+                          normal_form_matrix, is_gb, precision, 
+                          files, gens,
             &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */

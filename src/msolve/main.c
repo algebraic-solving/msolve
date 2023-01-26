@@ -101,9 +101,11 @@ static inline void display_help(char *str){
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
   fprintf(stdout, "         format please see the general output data format section\n");
   fprintf(stdout, "         above.\n");
-  fprintf(stdout, "-q QQQ   qqqqqqqqqqq.\n");
+  fprintf(stdout, "-q Q     qqqq.\n");
   fprintf(stdout, "-r RED   Reduce Groebner basis.\n");
   fprintf(stdout, "         Default: 1 (yes).\n");
+  /* fprintf(stdout, "-R       Refinement fo real roots.\n"); */
+  /* fprintf(stdout, "         (not implemented yet).\n"); */
   fprintf(stdout, "-s HTS   Initial hash table size given\n");
   fprintf(stdout, "         as power of two. Default: 17.\n");
   fprintf(stdout, "-S       Use f4sat saturation algorithm:\n");
@@ -136,6 +138,7 @@ static void getoptions(
         int32_t *is_gb,
         int32_t *get_param,
         int32_t *precision,
+        int32_t *refine,
         int32_t *generate_pbm_files,
         int32_t *info_level,
         files_gb *files){
@@ -143,7 +146,7 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:v:l:t:e:o:u:i:p:P:q:g:c:s:SCr:m:M:n:";
+  char options[] = "hf:v:l:t:e:o:u:i:p:P:q:g:c:s:SCr:R:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'h':
@@ -175,6 +178,9 @@ static void getoptions(
       if (*use_signatures > 3) {
           *use_signatures = 0;
       }
+      break;
+    case 'R':
+      *refine = 1;
       break;
     case 'i':
       *is_gb = strtol(optarg, NULL, 10);
@@ -303,15 +309,16 @@ int main(int argc, char **argv){
     int32_t is_gb                 = 0;
     int32_t get_param             = 0;
     int32_t precision             = 128;
+    int32_t refine                = 0; /* not used at the moment */
 
     files_gb *files = malloc(sizeof(files_gb));
     files->in_file = NULL;
     files->out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
-            &elim_block_len, &la_option, &use_signatures, &update_ht,
-            &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
-            &normal_form, &normal_form_matrix, &is_gb, &get_param,
-            &precision, &generate_pbm, &info_level, files);
+               &elim_block_len, &la_option, &use_signatures, &update_ht,
+               &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
+               &normal_form, &normal_form_matrix, &is_gb, &get_param,
+               &precision, &refine, &generate_pbm, &info_level, files);
 
     FILE *fh  = fopen(files->in_file, "r");
 

@@ -359,7 +359,8 @@ int main(int argc, char **argv){
     /*** temporary code to be cleaned ***/
     if(isolate){
       fprintf(stderr, "Real root isolation (not implemented yet)\n");
-
+      mpz_param_array_t lparams;
+      get_params_from_file_bin(files->in_file, lparams);
       free(files);
       return 0;
     }

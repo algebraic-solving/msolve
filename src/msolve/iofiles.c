@@ -1019,13 +1019,52 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
   }
 }
 
+static inline void get_poly_bin(FILE *file, mpz_upoly_t pol){
+  if(!fscanf(file, "%d\n", &pol->alloc)){
+    fprintf(stderr, "Issue when reading binary file (alloc = %d)\n", pol->alloc);
+    exit(1);
+  }
+
+  pol->coeffs = malloc(sizeof(mpz_t) * pol->alloc);
+  pol->length = pol->alloc;
+  for(int32_t i = 0; i < pol->length; i++){
+    mpz_init(pol->coeffs[i]);
+    if(!mpz_inp_raw(pol->coeffs[i], file)){
+      fprintf(stderr, "An error occured when reading file (i=%d)\n", i);
+      exit(1);
+    }
+  }
+}
+
+
 static inline void get_single_param_from_file_bin(FILE *file, mpz_param_t param){
-  return;
+  get_poly_bin(file, param->elim);
+
+  get_poly_bin(file, param->denom);
+  if(!fscanf(file, "%ld\n", &param->nvars)){
+    fprintf(stderr, "Issue when reading binary file (nvars)\n");
+    exit(1);
+  }
+
+  param->nsols = param->elim->length - 1;
+  param->dquot = param->elim->length - 1;
+
+  param->coords = malloc(sizeof(mpz_upoly_t) * param->nvars);
+  for(int32_t i = 0; i < param->nvars; i++){
+    get_poly_bin(file, param->coords[i]);
+  }
+
 }
 
 static inline void get_params_from_file_bin(char *fn, mpz_param_array_t lparam){
   FILE *file = fopen(fn,"r");
-  fscanf(file, "%d\n", &lparam->nb);
+  int32_t nb = 0;
+  if(!fscanf(file, "%d\n", &nb)){
+    fprintf(stderr, "Issue when reading binary file (nb)\n");
+    exit(1);
+  }
+  lparam->nb = nb;
+
   lparam->params = malloc(sizeof(mpz_param_t) * lparam->nb);
   for(int32_t i = 0; i < lparam->nb; i++){
     get_single_param_from_file_bin(file, lparam->params[i]);

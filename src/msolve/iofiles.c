@@ -1018,3 +1018,17 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
     display_gens_mpz(fh, gens);
   }
 }
+
+static inline void get_single_param_from_file_bin(FILE *file, mpz_param_t param){
+  return;
+}
+
+static inline void get_params_from_file_bin(char *fn, mpz_param_array_t lparam){
+  FILE *file = fopen(fn,"r");
+  fscanf(file, "%d\n", &lparam->nb);
+  lparam->params = malloc(sizeof(mpz_param_t) * lparam->nb);
+  for(int32_t i = 0; i < lparam->nb; i++){
+    get_single_param_from_file_bin(file, lparam->params[i]);
+  }
+  fclose(file);
+}

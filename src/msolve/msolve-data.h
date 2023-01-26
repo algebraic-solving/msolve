@@ -94,6 +94,12 @@ typedef struct{
 typedef mpz_param_struct mpz_param_t[1];
 
 typedef struct{
+  int32_t nb;
+  mpz_param_t *params;
+} mpz_param_array_struct;
+typedef mpz_param_array_struct mpz_param_array_t[1];
+
+typedef struct{
   uint32_t ncols; /* dimension of quotient */
   uint32_t nrows; /* number of non trivial lines */
   mpz_t *dense_mat; /*array of nrows*ncols*2 mpz_t coefficients (num, den)*/

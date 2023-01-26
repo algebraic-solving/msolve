@@ -88,6 +88,9 @@ static inline void display_help(char *str){
   fprintf(stdout, "         monomial order. ELIM has to be a number between\n");
   fprintf(stdout, "         1 and #variables-1. The basis the first block eliminated\n");
   fprintf(stdout, "         is then computed.\n");
+  fprintf(stdout, "-I       Isolates the real roots (provided some univariate data)\n");
+  fprintf(stdout, "         without re-computing a Gröbner basis\n");
+  fprintf(stdout, "         Default: 0 (no).\n");
   fprintf(stdout, "-l LIN   Linear algebra variant to be applied:\n");
   fprintf(stdout, "          1 - exact sparse / dense\n");
   fprintf(stdout, "          2 - exact sparse (default)\n");
@@ -140,6 +143,7 @@ static void getoptions(
         int32_t *get_param,
         int32_t *precision,
         int32_t *refine,
+        int32_t *isolate,
         int32_t *generate_pbm_files,
         int32_t *info_level,
         files_gb *files){
@@ -147,7 +151,7 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:v:l:t:e:o:u:i:p:P:q:g:c:s:SCr:R:m:M:n:";
+  char options[] = "hf:v:l:t:e:o:u:i:I:p:P:q:g:c:s:SCr:R:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'h':
@@ -191,6 +195,9 @@ static void getoptions(
       if (*is_gb > 1) {
           *is_gb = 1;
       }
+      break;
+    case 'I':
+      *isolate = strtol(optarg, NULL, 10);
       break;
     case 's':
       *initial_hts = strtol(optarg, NULL, 10);
@@ -311,6 +318,7 @@ int main(int argc, char **argv){
     int32_t get_param             = 0;
     int32_t precision             = 128;
     int32_t refine                = 0; /* not used at the moment */
+    int32_t isolate               = 0; /* not used at the moment */
 
     files_gb *files = malloc(sizeof(files_gb));
     files->in_file = NULL;
@@ -319,7 +327,7 @@ int main(int argc, char **argv){
                &elim_block_len, &la_option, &use_signatures, &update_ht,
                &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &get_param,
-               &precision, &refine, &generate_pbm, &info_level, files);
+               &precision, &refine, &isolate, &generate_pbm, &info_level, files);
 
     FILE *fh  = fopen(files->in_file, "r");
 

@@ -4191,6 +4191,12 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   free(pos_root);
 }
 
+void isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
+                              interval **real_roots_ptr, real_point_t **real_pts_ptr,
+                              int32_t precision){
+  
+}
+
 int real_msolve_qq(mpz_param_t mp_param,
                    param_t **nmod_param,
                    int *dim_ptr,

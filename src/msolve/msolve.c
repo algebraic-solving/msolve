@@ -4191,10 +4191,56 @@ void real_roots_param(mpz_param_t param, interval *roots, long nb,
   free(pos_root);
 }
 
-void isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
-                              interval **real_roots_ptr, real_point_t **real_pts_ptr,
-                              int32_t precision){
-  
+
+static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
+                                              interval **real_roots_ptr, real_point_t **real_pts_ptr,
+                                              int32_t precision, int32_t nr_threads, int32_t info_level){
+  mpz_t *pol = calloc(param->elim->length, sizeof(mpz_t));
+  for(long i = 0; i < param->elim->length; i++){
+    mpz_init_set(pol[i], param->elim->coeffs[i]);
+  }
+  long maxnbits = mpz_poly_max_bsize_coeffs(param->elim->coeffs,
+                                            param->elim->length - 1);
+
+  for(int i = 0; i < param->nvars - 1; i++){
+    long cmax = mpz_poly_max_bsize_coeffs(param->coords[i]->coeffs,
+                                          param->coords[i]->length - 1);
+    maxnbits = MAX(cmax, maxnbits);
+  }
+  long prec = MAX(precision, 128 + (maxnbits) / 32 );
+  double st = realtime();
+
+  long unsigned int nbpos = 0;
+  long unsigned int nbneg = 0;
+  interval *roots = real_roots(pol, param->elim->length - 1,
+                               &nbpos, &nbneg, prec, nr_threads, info_level );
+  long nb = nbpos + nbneg;
+  double step = (realtime() - st) / (nb) * 10 * LOG2(precision);
+
+  real_point_t *pts = NULL;
+  if(info_level > 0){
+    fprintf(stderr, "Number of real roots: %ld\n", nb);
+  }
+  if(nb){
+    /* */
+    if(info_level){
+      fprintf(stderr, "Starts real root extraction.\n");
+    }
+    double st = realtime();
+    pts = malloc(sizeof(real_point_t) * nb);
+
+    for(long i = 0; i < nb; i++){
+      real_point_init(pts[i], param->nvars);
+    }
+
+    real_roots_param(param, roots, nb, pts, precision, maxnbits,
+                     step, info_level);
+    if(info_level){
+      fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
+              realtime() - st);
+    }
+  }
+  return pts;
 }
 
 int real_msolve_qq(mpz_param_t mp_param,

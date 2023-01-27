@@ -4114,10 +4114,9 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 }
 
 
-void real_roots_param(mpz_param_t param, interval *roots, long nb,
-                      real_point_t *pts, long prec, long nbits,
-                      double step,
-                      int info_level){
+void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
+                              real_point_t *pts, long prec, long nbits,
+                              double step, int info_level){
   long nsols = param->elim->length - 1;
   mpz_t *xup = malloc(sizeof(mpz_t)*nsols);
   mpz_t *xdo = malloc(sizeof(mpz_t)*nsols);
@@ -4233,7 +4232,7 @@ static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_r
       real_point_init(pts[i], param->nvars);
     }
 
-    real_roots_param(param, roots, nb, pts, precision, maxnbits,
+    extract_real_roots_param(param, roots, nb, pts, precision, maxnbits,
                      step, info_level);
     if(info_level){
       fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
@@ -4343,7 +4342,7 @@ int real_msolve_qq(mpz_param_t mp_param,
         real_point_init(pts[i], mp_param->nvars);
       }
 
-      real_roots_param(mp_param, roots, nb, pts, precision, maxnbits,
+      extract_real_roots_param(mp_param, roots, nb, pts, precision, maxnbits,
                        step, info_level);
       if(info_level){
         fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",

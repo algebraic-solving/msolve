@@ -4239,6 +4239,13 @@ static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_r
               realtime() - st);
     }
   }
+  *real_roots_ptr     = roots;
+  *nb_real_roots_ptr  = nb;
+
+  for(long i = 0; i < param->elim->length; i++){
+    mpz_clear(pol[i]);
+  }
+  free(pol);
   return pts;
 }
 
@@ -4307,48 +4314,11 @@ int real_msolve_qq(mpz_param_t mp_param,
 
 
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
-    mpz_t *pol = calloc(mp_param->elim->length, sizeof(mpz_t));
-    for(long i = 0; i < mp_param->elim->length; i++){
-      mpz_init_set(pol[i], mp_param->elim->coeffs[i]);
-    }
-    long maxnbits = mpz_poly_max_bsize_coeffs(mp_param->elim->coeffs,
-                                              mp_param->elim->length - 1);
-    /* long minnbits = mpz_poly_min_bsize_coeffs(mp_param->elim->coeffs,
-     *                                           mp_param->elim->length - 1); */
-    for(int i = 0; i < mp_param->nvars - 1; i++){
-      long cmax = mpz_poly_max_bsize_coeffs(mp_param->coords[i]->coeffs,
-                                            mp_param->coords[i]->length - 1);
-      maxnbits = MAX(cmax, maxnbits);
-    }
-    long prec = MAX(precision, 128 + (maxnbits) / 32 );
-    double st = realtime();
-    roots = real_roots(pol, mp_param->elim->length - 1,
-                       &nbpos, &nbneg, prec, nr_threads, info_level );
-    long nb = nbpos + nbneg;
-    double step = (realtime() - st) / (nb) * 10 * LOG2(precision);
 
-    if(info_level > 0){
-      fprintf(stderr, "Number of real roots: %ld\n", nb);
-    }
+    pts = isolate_real_roots_param(mp_param, nb_real_roots_ptr, real_roots_ptr,
+                                   real_pts_ptr, precision, nr_threads, info_level);
+    int32_t nb = *nb_real_roots_ptr;
     if(nb){
-      /* */
-      if(info_level){
-        fprintf(stderr, "Starts real root extraction.\n");
-      }
-      double st = realtime();
-      pts = malloc(sizeof(real_point_t) * nb);
-
-      for(long i = 0; i < nb; i++){
-        real_point_init(pts[i], mp_param->nvars);
-      }
-
-      extract_real_roots_param(mp_param, roots, nb, pts, precision, maxnbits,
-                       step, info_level);
-      if(info_level){
-        fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
-                realtime() - st);
-      }
-
       /* If we added a linear form for genericity reasons remove do not
        * return the last (new) variable in the solutions later on */
       if (gens->linear_form_base_coef > 0) {
@@ -4369,15 +4339,8 @@ int real_msolve_qq(mpz_param_t mp_param,
         }
         free(tmp);
       }
+      *real_pts_ptr = pts;
     }
-
-    for(long i = 0; i < mp_param->elim->length; i++){
-      mpz_clear(pol[i]);
-    }
-    free(pol);
-    *real_roots_ptr     = roots;
-    *nb_real_roots_ptr  = nb;
-    *real_pts_ptr       = pts;
   }
   return b;
 }

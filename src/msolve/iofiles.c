@@ -1060,7 +1060,7 @@ static inline void get_params_from_file_bin(char *fn, mpz_param_array_t lparam){
   FILE *file = fopen(fn,"r");
   int32_t nb = 0;
   if(!fscanf(file, "%d\n", &nb)){
-    fprintf(stderr, "Issue when reading binary file (nb)\n");
+    fprintf(stderr, "Issue when reading binary file (nb = %d)\n", nb);
     exit(1);
   }
   lparam->nb = nb;

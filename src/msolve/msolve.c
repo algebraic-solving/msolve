@@ -3540,6 +3540,7 @@ void real_point_clear(real_point_t pt){
   free(pt->coords);
 }
 
+
 void display_real_point_middle(FILE *fstream, real_point_t pt){
   mpz_t c;
   mpz_init(c);
@@ -4362,6 +4363,30 @@ int real_msolve_qq(mpz_param_t mp_param,
     }
   }
   return b;
+}
+
+void display_arrays_of_real_roots(files_gb *files, int32_t len, real_point_t **lreal_pts, long *lnbr){
+  if(files->out_file != NULL){
+    FILE *ofile = fopen(files->out_file, "a+");
+    fprintf(ofile, "[");
+    for(int i = 0; i < len - 1; i++){
+      display_real_points(ofile, lreal_pts[i], lnbr[i]);
+      fprintf(ofile, ", \n");
+    }
+    display_real_points(ofile, lreal_pts[len - 1], lnbr[len - 1]);
+    fprintf(ofile, "];\n");
+    fclose(ofile);
+  }
+  else{
+    fprintf(stdout, "[");
+    for(int i = 0; i < len - 1; i++){
+      display_real_points(stdout, lreal_pts[i], lnbr[i]);
+      fprintf(stdout, ", \n");
+    }
+    display_real_points(stdout, lreal_pts[len - 1], lnbr[len - 1]);
+    fprintf(stdout, "];\n");
+  }
+
 }
 
 

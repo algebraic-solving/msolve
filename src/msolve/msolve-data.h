@@ -166,7 +166,9 @@ typedef real_point_struct real_point_t[1];
 
 typedef struct{
   char *in_file;
+  char *bin_file;
   char *out_file;
+  char *bin_out_file;
 } files_gb;
 
 typedef struct{

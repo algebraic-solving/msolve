@@ -358,7 +358,7 @@ int main(int argc, char **argv){
 
     /*** temporary code to be cleaned ***/
     if(isolate){
-      fprintf(stderr, "Real root isolation (not implemented yet)\n");
+      fprintf(stderr, "Real root isolation\n");
       mpz_param_array_t lparams;
       get_params_from_file_bin(files->in_file, lparams);
       double st = realtime();
@@ -371,11 +371,21 @@ int main(int argc, char **argv){
       if(info_level){
         fprintf(stderr, "Total elapsed time = %.2f\n", realtime() - st);
       }
-      param_t *mod_param  = NULL;
+
+      display_arrays_of_real_roots(files, lparams->nb, lreal_pts, lnbr);
       for(int i = 0; i < lparams->nb; i++){
-        manage_output(0, 0, lparams->params[i]->elim->length-1, files, gens, mod_param,
-                      lparams->params + i, 0, lnbr + i, lreal_roots + i, lreal_pts + i, info_level);
+        if (lnbr[i] > 0) {
+          for(long j = 0; j < lnbr[i]; j++){
+            real_point_clear(lreal_pts[i][j]);
+            mpz_clear( (lreal_roots[i]+j)->numer );
+          }
+          free(lreal_pts[i]);
+          free(lreal_roots[i]);
+        }
       }
+      free(lnbr);
+      free(lreal_roots);
+      free(lreal_pts);
       free(files);
       return 0;
     }

@@ -342,8 +342,8 @@ int main(int argc, char **argv){
     if(files->out_file != NULL){
       FILE *ofile = fopen(files->out_file, "w");
       if(ofile == NULL){
-	fprintf(stderr, "Cannot open output file\n");
-	exit(1);
+        fprintf(stderr, "Cannot open output file\n");
+        exit(1);
       }
       fclose(ofile);
     }
@@ -361,6 +361,14 @@ int main(int argc, char **argv){
       fprintf(stderr, "Real root isolation (not implemented yet)\n");
       mpz_param_array_t lparams;
       get_params_from_file_bin(files->in_file, lparams);
+      long nbr;
+      interval *real_roots = NULL;
+      real_point_t *real_pts = NULL;
+      for(int i = 0; i < lparams->nb; i++){
+        isolate_real_roots_param(lparams->params[i], &nbr,
+                                 &real_roots, &real_pts,
+                                 precision, nr_threads, info_level);
+      }
       free(files);
       return 0;
     }

@@ -4239,7 +4239,7 @@ static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_r
               realtime() - st);
     }
   }
-  *real_roots_ptr     = roots;
+  *real_roots_ptr = roots;
   *nb_real_roots_ptr  = nb;
 
   for(long i = 0; i < param->elim->length; i++){
@@ -4299,9 +4299,6 @@ int real_msolve_qq(mpz_param_t mp_param,
                           files,
                           round);
 
-  long unsigned int nbpos = 0;
-  long unsigned int nbneg = 0;
-  interval *roots   = NULL;
   real_point_t *pts = NULL;
 
   if(get_param>1){

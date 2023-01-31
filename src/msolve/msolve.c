@@ -4192,7 +4192,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 
 
 static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
-                                              interval **real_roots_ptr, real_point_t **real_pts_ptr,
+                                              interval **real_roots_ptr, 
                                               int32_t precision, int32_t nr_threads, int32_t info_level){
   mpz_t *pol = calloc(param->elim->length, sizeof(mpz_t));
   for(long i = 0; i < param->elim->length; i++){
@@ -4262,7 +4262,7 @@ static void isolate_real_roots_lparam(mpz_param_array_t lparams,
   real_point_t *real_pts = NULL;
   for(int i = 0; i < lparams->nb; i++){
     isolate_real_roots_param(lparams->params[i], &nbr,
-                             lreal_roots + i, lreal_pts + i,
+                             lreal_roots + i,
                              precision, nr_threads, info_level);
   }
 
@@ -4332,7 +4332,7 @@ int real_msolve_qq(mpz_param_t mp_param,
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
 
     pts = isolate_real_roots_param(mp_param, nb_real_roots_ptr, real_roots_ptr,
-                                   real_pts_ptr, precision, nr_threads, info_level);
+                                   precision, nr_threads, info_level);
     int32_t nb = *nb_real_roots_ptr;
     if(nb){
       /* If we added a linear form for genericity reasons remove do not

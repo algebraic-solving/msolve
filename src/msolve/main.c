@@ -426,14 +426,15 @@ int main(int argc, char **argv){
     free(param);
     mpz_param_clear(mpz_param);
 
-    free(real_roots);
 
     if (nb_real_roots > 0) {
         for(long i = 0; i < nb_real_roots; i++){
           real_point_clear(real_pts[i]);
+          mpz_clear(real_roots[i].numer);
         }
         free(real_pts);
     }
+    free(real_roots);
 
     /* timings */
     if (info_level > 0) {

@@ -371,6 +371,11 @@ int main(int argc, char **argv){
       if(info_level){
         fprintf(stderr, "Total elapsed time = %.2f\n", realtime() - st);
       }
+      param_t *mod_param  = NULL;
+      for(int i = 0; i < lparams->nb; i++){
+        manage_output(0, 0, lparams->params[i]->elim->length-1, files, gens, mod_param,
+                      lparams->params + i, 0, lnbr + i, lreal_roots + i, lreal_pts + i, info_level);
+      }
       free(files);
       return 0;
     }

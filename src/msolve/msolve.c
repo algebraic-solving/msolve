@@ -4267,7 +4267,7 @@ static void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr
   }
   (*lnbr_ptr)        = lnbr;
   (*lreal_roots_ptr) = lreal_roots;
-  (*lreal_roots_ptr) = lreal_roots;
+  (*lreal_pts_ptr) = lreal_pts;
 
 }
 

@@ -362,13 +362,19 @@ int main(int argc, char **argv){
       mpz_param_array_t lparams;
       get_params_from_file_bin(files->in_file, lparams);
       double st = realtime();
-      isolate_real_roots_lparam(lparams, precision, nr_threads, info_level);
+      long *lnbr = NULL;
+      interval **lreal_roots = NULL;
+      real_point_t **lreal_pts = NULL;
+      isolate_real_roots_lparam(lparams, &lnbr,
+                                &lreal_roots, &lreal_pts,
+                                precision, nr_threads, info_level);
       if(info_level){
         fprintf(stderr, "Total elapsed time = %.2f\n", realtime() - st);
       }
       free(files);
       return 0;
     }
+
     get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens);
 #ifdef IODEBUG
     display_gens(stdout, gens);

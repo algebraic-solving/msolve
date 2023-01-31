@@ -4249,22 +4249,25 @@ static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_r
   return pts;
 }
 
-static void isolate_real_roots_lparam(mpz_param_array_t lparams, 
+static void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
+                                      interval ***lreal_roots_ptr, real_point_t ***lreal_pts_ptr,
                                       int32_t precision, int32_t nr_threads, int32_t info_level){
-  long nbr;
+  long *lnbr = malloc(sizeof(long) * lparams->nb);
   interval **lreal_roots = malloc(sizeof(interval *) * lparams->nb);
   real_point_t **lreal_pts = malloc(sizeof(real_point_t *) * lparams->nb);
   for(int i = 0; i < lparams->nb; i++){
     lreal_roots[i] = NULL;
     lreal_pts[i] = NULL;
   }
-  interval *real_roots = NULL;
-  real_point_t *real_pts = NULL;
+
   for(int i = 0; i < lparams->nb; i++){
-    isolate_real_roots_param(lparams->params[i], &nbr,
-                             lreal_roots + i,
-                             precision, nr_threads, info_level);
+    lreal_pts[i] = isolate_real_roots_param(lparams->params[i], lnbr + i,
+                                            lreal_roots + i,
+                                            precision, nr_threads, info_level);
   }
+  (*lnbr_ptr)        = lnbr;
+  (*lreal_roots_ptr) = lreal_roots;
+  (*lreal_roots_ptr) = lreal_roots;
 
 }
 

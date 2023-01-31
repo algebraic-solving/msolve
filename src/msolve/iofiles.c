@@ -1071,3 +1071,7 @@ static inline void get_params_from_file_bin(char *fn, mpz_param_array_t lparam){
   }
   fclose(file);
 }
+
+static inline void get_params_from_file(char *fn, mpz_param_array_t lparam){
+  return;
+}

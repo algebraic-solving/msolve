@@ -343,13 +343,16 @@ int main(int argc, char **argv){
                &precision, &refine, &isolate, &generate_pbm, &info_level, files);
 
     FILE *fh  = fopen(files->in_file, "r");
+    FILE *bfh  = fopen(files->bin_file, "r");
 
-    if (fh == NULL) {
-      fprintf(stderr, "File not found.\n");
+    if (fh == NULL && bfh == NULL) {
+      fprintf(stderr, "Input file not found.\n");
       exit(1);
     }
     fclose(fh);
+    fclose(bfh);
     fh =  NULL;
+    bfh =  NULL;
     
     /* clear out_file if given */
     if(files->out_file != NULL){
@@ -373,7 +376,12 @@ int main(int argc, char **argv){
     if(isolate){
       fprintf(stderr, "Real root isolation\n");
       mpz_param_array_t lparams;
-      get_params_from_file_bin(files->in_file, lparams);
+      if(files->in_file==NULL){
+        get_params_from_file_bin(files->bin_file, lparams);
+      }
+      else{
+        get_params_from_file(files->in_file, lparams);
+      }
       double st = realtime();
       long *lnbr = NULL;
       interval **lreal_roots = NULL;

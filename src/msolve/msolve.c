@@ -4249,6 +4249,19 @@ static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_r
   return pts;
 }
 
+static void isolate_real_roots_lparam(mpz_param_array_t lparams, 
+                                      int32_t precision, int32_t nr_threads, int32_t info_level){
+  long nbr;
+  interval *real_roots = NULL;
+  real_point_t *real_pts = NULL;
+  for(int i = 0; i < lparams->nb; i++){
+    isolate_real_roots_param(lparams->params[i], &nbr,
+                             &real_roots, &real_pts,
+                             precision, nr_threads, info_level);
+  }
+
+}
+
 int real_msolve_qq(mpz_param_t mp_param,
                    param_t **nmod_param,
                    int *dim_ptr,

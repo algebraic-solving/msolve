@@ -361,13 +361,10 @@ int main(int argc, char **argv){
       fprintf(stderr, "Real root isolation (not implemented yet)\n");
       mpz_param_array_t lparams;
       get_params_from_file_bin(files->in_file, lparams);
-      long nbr;
-      interval *real_roots = NULL;
-      real_point_t *real_pts = NULL;
-      for(int i = 0; i < lparams->nb; i++){
-        isolate_real_roots_param(lparams->params[i], &nbr,
-                                 &real_roots, &real_pts,
-                                 precision, nr_threads, info_level);
+      double st = realtime();
+      isolate_real_roots_lparam(lparams, precision, nr_threads, info_level);
+      if(info_level){
+        fprintf(stderr, "Total elapsed time = %.2f\n", realtime() - st);
       }
       free(files);
       return 0;

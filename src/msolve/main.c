@@ -149,9 +149,11 @@ static void getoptions(
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
   char *filename = NULL;
+  char *bin_filename = NULL;
   char *out_fname = NULL;
+  char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:v:l:t:e:o:u:i:I:p:P:q:g:c:s:SCr:R:m:M:n:";
+  char options[] = "hf:F:v:l:t:e:o:O:u:i:I:p:P:q:g:c:s:SCr:R:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'h':
@@ -227,8 +229,15 @@ static void getoptions(
       fflag = 0;
       filename = optarg;
       break;
+    case 'F':
+      fflag = 0;
+      bin_filename = optarg;
+      break;
     case 'o':
       out_fname = optarg;
+      break;
+    case 'O':
+      bin_out_fname = optarg;
       break;
     case 'P':
       *get_param = strtol(optarg, NULL, 10);
@@ -285,7 +294,9 @@ static void getoptions(
     exit(1);
   }
   files->in_file = filename;
+  files->in_file = bin_filename;
   files->out_file = out_fname;
+  files->bin_out_file = bin_out_fname;
 }
 
 
@@ -322,7 +333,9 @@ int main(int argc, char **argv){
 
     files_gb *files = malloc(sizeof(files_gb));
     files->in_file = NULL;
+    files->bin_file = NULL;
     files->out_file = NULL;
+    files->bin_out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
                &elim_block_len, &la_option, &use_signatures, &update_ht,
                &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,

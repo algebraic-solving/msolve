@@ -63,6 +63,7 @@ static inline void display_help(char *str){
 
 
   fprintf(stdout, "\nAdvanced options:\n\n");
+  fprintf(stdout, "-F FILE  File name encoding parametrizations in binary format.\n\n");
   fprintf(stdout, "-g GB    Prints reduced Groebner bases of input system for\n");
   fprintf(stdout, "         first prime characteristic w.r.t. grevlex ordering.\n");
   fprintf(stdout, "         One element per line is printed, commata separated.\n");
@@ -88,6 +89,9 @@ static inline void display_help(char *str){
   fprintf(stdout, "         monomial order. ELIM has to be a number between\n");
   fprintf(stdout, "         1 and #variables-1. The basis the first block eliminated\n");
   fprintf(stdout, "         is then computed.\n");
+  fprintf(stdout, "-I       Isolates the real roots (provided some univariate data)\n");
+  fprintf(stdout, "         without re-computing a Gröbner basis\n");
+  fprintf(stdout, "         Default: 0 (no).\n");
   fprintf(stdout, "-l LIN   Linear algebra variant to be applied:\n");
   fprintf(stdout, "          1 - exact sparse / dense\n");
   fprintf(stdout, "          2 - exact sparse (default)\n");
@@ -101,9 +105,12 @@ static inline void display_help(char *str){
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
   fprintf(stdout, "         format please see the general output data format section\n");
   fprintf(stdout, "         above.\n");
-  fprintf(stdout, "-q QQQ   qqqqqqqqqqq.\n");
+  fprintf(stdout, "-q Q     Uses signature-based algotithms.\n");
+  fprintf(stdout, "         Default: 0 (no).\n");
   fprintf(stdout, "-r RED   Reduce Groebner basis.\n");
   fprintf(stdout, "         Default: 1 (yes).\n");
+  /* fprintf(stdout, "-R       Refinement fo real roots.\n"); */
+  /* fprintf(stdout, "         (not implemented yet).\n"); */
   fprintf(stdout, "-s HTS   Initial hash table size given\n");
   fprintf(stdout, "         as power of two. Default: 17.\n");
   fprintf(stdout, "-S       Use f4sat saturation algorithm:\n");
@@ -136,14 +143,18 @@ static void getoptions(
         int32_t *is_gb,
         int32_t *get_param,
         int32_t *precision,
+        int32_t *refine,
+        int32_t *isolate,
         int32_t *generate_pbm_files,
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
   char *filename = NULL;
+  char *bin_filename = NULL;
   char *out_fname = NULL;
+  char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:v:l:t:e:o:u:i:p:P:q:g:c:s:SCr:m:M:n:";
+  char options[] = "hf:F:v:l:t:e:o:O:u:i:I:p:P:q:g:c:s:SCr:R:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'h':
@@ -176,6 +187,9 @@ static void getoptions(
           *use_signatures = 0;
       }
       break;
+    case 'R':
+      *refine = 1;
+      break;
     case 'i':
       *is_gb = strtol(optarg, NULL, 10);
       if (*is_gb < 0) {
@@ -184,6 +198,9 @@ static void getoptions(
       if (*is_gb > 1) {
           *is_gb = 1;
       }
+      break;
+    case 'I':
+      *isolate = strtol(optarg, NULL, 10);
       break;
     case 's':
       *initial_hts = strtol(optarg, NULL, 10);
@@ -213,8 +230,15 @@ static void getoptions(
       fflag = 0;
       filename = optarg;
       break;
+    case 'F':
+      fflag = 0;
+      bin_filename = optarg;
+      break;
     case 'o':
       out_fname = optarg;
+      break;
+    case 'O':
+      bin_out_fname = optarg;
       break;
     case 'P':
       *get_param = strtol(optarg, NULL, 10);
@@ -271,7 +295,9 @@ static void getoptions(
     exit(1);
   }
   files->in_file = filename;
+  files->bin_file = bin_filename;
   files->out_file = out_fname;
+  files->bin_out_file = bin_out_fname;
 }
 
 
@@ -303,31 +329,42 @@ int main(int argc, char **argv){
     int32_t is_gb                 = 0;
     int32_t get_param             = 0;
     int32_t precision             = 128;
+    int32_t refine                = 0; /* not used at the moment */
+    int32_t isolate               = 0; /* not used at the moment */
 
     files_gb *files = malloc(sizeof(files_gb));
     files->in_file = NULL;
+    files->bin_file = NULL;
     files->out_file = NULL;
+    files->bin_out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
-            &elim_block_len, &la_option, &use_signatures, &update_ht,
-            &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
-            &normal_form, &normal_form_matrix, &is_gb, &get_param,
-            &precision, &generate_pbm, &info_level, files);
+               &elim_block_len, &la_option, &use_signatures, &update_ht,
+               &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
+               &normal_form, &normal_form_matrix, &is_gb, &get_param,
+               &precision, &refine, &isolate, &generate_pbm, &info_level, files);
 
     FILE *fh  = fopen(files->in_file, "r");
+    FILE *bfh  = fopen(files->bin_file, "r");
 
-    if (fh == NULL) {
-      fprintf(stderr, "File not found.\n");
+    if (fh == NULL && bfh == NULL) {
+      fprintf(stderr, "Input file not found.\n");
       exit(1);
     }
-    fclose(fh);
+    if(fh!=NULL){
+      fclose(fh);
+    }
+    if(bfh != NULL){
+      fclose(bfh);
+    }
     fh =  NULL;
-    
+    bfh =  NULL;
+
     /* clear out_file if given */
     if(files->out_file != NULL){
       FILE *ofile = fopen(files->out_file, "w");
       if(ofile == NULL){
-	fprintf(stderr, "Cannot open output file\n");
-	exit(1);
+        fprintf(stderr, "Cannot open output file\n");
+        exit(1);
       }
       fclose(ofile);
     }
@@ -339,7 +376,46 @@ int main(int argc, char **argv){
     int32_t field_char  = 9001;
     int32_t nr_gens     = 0;
     data_gens_ff_t *gens = allocate_data_gens();
-    
+
+    /*** temporary code to be cleaned ***/
+    if(isolate){
+      fprintf(stderr, "Real root isolation\n");
+      mpz_param_array_t lparams;
+      if(files->in_file==NULL){
+        get_params_from_file_bin(files->bin_file, lparams);
+      }
+      else{
+        get_params_from_file(files->in_file, lparams);
+      }
+      double st = realtime();
+      long *lnbr = NULL;
+      interval **lreal_roots = NULL;
+      real_point_t **lreal_pts = NULL;
+      isolate_real_roots_lparam(lparams, &lnbr,
+                                &lreal_roots, &lreal_pts,
+                                precision, nr_threads, info_level);
+      if(info_level){
+        fprintf(stderr, "Total elapsed time = %.2f\n", realtime() - st);
+      }
+
+      display_arrays_of_real_roots(files, lparams->nb, lreal_pts, lnbr);
+      for(int i = 0; i < lparams->nb; i++){
+        if (lnbr[i] > 0) {
+          for(long j = 0; j < lnbr[i]; j++){
+            real_point_clear(lreal_pts[i][j]);
+            mpz_clear( (lreal_roots[i]+j)->numer );
+          }
+          free(lreal_pts[i]);
+          free(lreal_roots[i]);
+        }
+      }
+      free(lnbr);
+      free(lreal_roots);
+      free(lreal_pts);
+      free(files);
+      return 0;
+    }
+
     get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens);
 #ifdef IODEBUG
     display_gens(stdout, gens);
@@ -365,23 +441,26 @@ int main(int argc, char **argv){
 
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
-            initial_hts, max_pairs, elim_block_len, update_ht, generate_pbm,
-            reduce_gb, print_gb, get_param, genericity_handling, saturate,
-	    colon, normal_form, normal_form_matrix, is_gb, precision, files, gens,
+                          initial_hts, max_pairs, elim_block_len, update_ht,
+                          generate_pbm, reduce_gb, print_gb, get_param,
+                          genericity_handling, saturate, colon, normal_form,
+                          normal_form_matrix, is_gb, precision, 
+                          files, gens,
             &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
     free(param);
     mpz_param_clear(mpz_param);
 
-    free(real_roots);
 
     if (nb_real_roots > 0) {
         for(long i = 0; i < nb_real_roots; i++){
           real_point_clear(real_pts[i]);
+          mpz_clear(real_roots[i].numer);
         }
         free(real_pts);
     }
+    free(real_roots);
 
     /* timings */
     if (info_level > 0) {

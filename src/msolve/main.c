@@ -63,6 +63,7 @@ static inline void display_help(char *str){
 
 
   fprintf(stdout, "\nAdvanced options:\n\n");
+  fprintf(stdout, "-F FILE  File name encoding parametrizations in binary format.\n\n");
   fprintf(stdout, "-g GB    Prints reduced Groebner bases of input system for\n");
   fprintf(stdout, "         first prime characteristic w.r.t. grevlex ordering.\n");
   fprintf(stdout, "         One element per line is printed, commata separated.\n");

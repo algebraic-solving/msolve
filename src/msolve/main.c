@@ -294,7 +294,7 @@ static void getoptions(
     exit(1);
   }
   files->in_file = filename;
-  files->in_file = bin_filename;
+  files->bin_file = bin_filename;
   files->out_file = out_fname;
   files->bin_out_file = bin_out_fname;
 }
@@ -349,11 +349,15 @@ int main(int argc, char **argv){
       fprintf(stderr, "Input file not found.\n");
       exit(1);
     }
-    fclose(fh);
-    fclose(bfh);
+    if(fh!=NULL){
+      fclose(fh);
+    }
+    if(bfh != NULL){
+      fclose(bfh);
+    }
     fh =  NULL;
     bfh =  NULL;
-    
+
     /* clear out_file if given */
     if(files->out_file != NULL){
       FILE *ofile = fopen(files->out_file, "w");

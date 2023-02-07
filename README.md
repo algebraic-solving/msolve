@@ -145,6 +145,12 @@ prime fields
 and independent prime computations are run in parallel)
 - algorithms for real root isolation.
 
+# `msolve` in [AlgebraicSolving](https://github.com/algebraic-solving/AlgebraicSolving.jl)
+
+[AlgebraicSolving](https://github.com/algebraic-solving/AlgebraicSolving.jl) is a Julia package
+that wraps `msolve` and provides some more functionality like computing rational solutions.
+See [here](https://algebraic-solving.github.io/) for more information and documentation.
+
 # `msolve` in [Oscar](https://oscar-system.github.io/Oscar.jl)
 
 `msolve` is used in [Oscar](https://oscar-system.github.io/Oscar.jl) to *solve* 
@@ -155,7 +161,7 @@ it will output a rational parametrization of the solution set as well as the
 real solutions to the input system (see `msolve`'s 
 tutorial [here](https://msolve.lip6.fr/downloads/msolve-tutorial.pdf)).
 
-You can have a look at [this](https://github.com/oscar-system/Oscar.jl/blob/master/src/Rings/msolve/msolve.jl) and the documentation of [Oscar](https://oscar-system.github.io/Oscar.jl).
+You can have a look at [this](https://github.com/oscar-system/Oscar.jl/blob/master/src/Rings/solving.jl) and the documentation of [Oscar](https://oscar-system.github.io/Oscar.jl).
 
 Here is how you can use it.
 ```jldoctest
@@ -163,7 +169,7 @@ julia> R,(x1,x2,x3) = PolynomialRing(QQ, ["x1","x2","x3"])
 (Multivariate Polynomial Ring in x1, x2, x3 over Rational Field, fmpq_mpoly[x1, x2, x3])
 julia> I = ideal(R, [x1+2*x2+2*x3-1, x1^2+2*x2^2+2*x3^2-x1, 2*x1*x2+2*x2*x3-x2])
 ideal(x1 + 2*x2 + 2*x3 - 1, x1^2 - x1 + 2*x2^2 + 2*x3^2, 2*x1*x2 + 2*x2*x3 - x2)
-julia> msolve(I)
+julia> real_solutions(I)
 ((84*x^4 - 40*x^3 + x^2 + x, 336*x^3 - 120*x^2 + 2*x + 1, PolyElem[-184*x^3 + 80*x^2 - 4*x - 1, -36*x^3 + 18*x^2 - 2*x], fmpz[-1, -1]), Vector{fmpq}[[744483363399261433351//1180591620717411303424, 372241681699630716673//1180591620717411303424, -154187553040555781639//1180591620717411303424], [1, 0, 0], [71793683196126133110381699745//316912650057057350374175801344, 71793683196126133110381699745//633825300114114700748351602688, 173325283664805084153412401855//633825300114114700748351602688], [196765270119568550571//590295810358705651712, 1//590295810358705651712, 196765270119568550571//590295810358705651712]])
 ```
 
@@ -221,3 +227,6 @@ The paper can be downloaded [here](https://hal.sorbonne-universite.fr/hal-031916
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: https://msolve.lip6.fr/downloads/msolve-tutorial.pdf
 
+# Funding
+
+The development of `msolve` is supported by the [Forschungsinitiative Rheinland-Pfalz](https://rptu.de/forschung/forschungsinitiative-rlp).

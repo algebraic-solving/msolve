@@ -95,8 +95,7 @@ static inline void data_lift_init(data_lift_t dlift,
                                   int32_t npol,
                                   int32_t *steps, int32_t nsteps){
   dlift->npol = npol;
-  dlift->lstart = -1;
-  dlift->end = -1;
+  dlift->lstart = 0;
   dlift->nsteps = nsteps;
 
   int32_t i;
@@ -105,6 +104,7 @@ static inline void data_lift_init(data_lift_t dlift,
   for(i = 0; i < nsteps; i++){
     dlift->steps[i] = steps[i];
   }
+  dlift->lend = steps[0];
 
   dlift->crt_mult = 0;
   dlift->crt = malloc(sizeof(mpz_t) * dlift->npol);
@@ -833,6 +833,7 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
 #ifdef NEWGBLIFT
 static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
                                 mpz_t *mod_p, mpz_t *prod_p, int thrds){
+  fprintf(stderr, "in update_dlift\n");
   return;
 }
 #else
@@ -896,8 +897,12 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     fprintf(stderr, "[%d]", dlift->steps[i]);
   }
   fprintf(stderr, "\n");
-  fprintf(stderr, "dlift->start = %d\n", dlift->start);
-  fprintf(stderr, "dlift->end = %d\n", dlift->end);
+  fprintf(stderr, "dlift->lstart = %d\n", dlift->lstart);
+  fprintf(stderr, "dlift->lend = %d\n", dlift->lend);
+
+  fprintf(stderr, "nprimes  = %d\n", modgbs->nprimes);
+
+  start_dlift(modgbs, dlift, dlift->coef);
 
   exit(1);
   /* all polynomials have been lifted */

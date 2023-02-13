@@ -5668,15 +5668,15 @@ restart:
             int dim = - 2;
             long dquot = -1;
             /* experimental code */
-            /* if(print_gb){ */
-            /*   fprintf(stderr, "\n\nWe enter in experimental code\n\n"); */
-            /*   msolve_gbtrace_qq(&dim, &dquot, gens, initial_hts, nr_threads, */
-            /*                     max_pairs, elim_block_len, update_ht, */
-            /*                     la_option, use_signatures, info_level, */
-            /*                     print_gb, generate_pbm, /\* pbm_file, *\/ */
-            /*                     files); */
-            /*   return 0; */
-            /* } */
+            if(print_gb){
+              fprintf(stderr, "\n\nWe enter in experimental code\n\n");
+              msolve_gbtrace_qq(&dim, &dquot, gens, initial_hts, nr_threads,
+                                max_pairs, elim_block_len, update_ht,
+                                la_option, use_signatures, info_level,
+                                print_gb, generate_pbm, /* pbm_file, */
+                                files);
+              return 0;
+            }
 
             b = real_msolve_qq(*mpz_paramp,
                     &param,

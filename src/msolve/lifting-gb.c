@@ -36,13 +36,14 @@ typedef struct {
   uint64_t *cfs; /* array of length equal to number of primes which will be used
                     to copy coefficients (hence ensuring compatibility with
                     flint) */
-  uint32_t npolys; /* number of polynomials */
+  uint32_t ld; /* number of polynomials */
   modpolys_t *modpolys; /* array of polynomials modulo primes */
 } gb_modpoly_array_struct;
 
 typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
 #define NEWGBLIFT 1
+
 #ifdef NEWGBLIFT
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */
@@ -192,15 +193,15 @@ static inline void data_lift_clear(data_lift_t dlift){
 
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, int32_t *lens,
-                                   uint32_t npolys){
+                                   uint32_t ld){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
   modgbs->primes = calloc(sizeof(uint64_t), alloc);
   modgbs->cfs = calloc(sizeof(uint64_t), alloc);
-  modgbs->npolys = npolys;
-  modgbs->modpolys = malloc(sizeof(modpolys_struct) * npolys);
+  modgbs->ld = ld;
+  modgbs->modpolys = malloc(sizeof(modpolys_struct) * ld);
 
-  for(uint32_t i = 0; i < npolys; i++){
+  for(uint32_t i = 0; i < ld; i++){
     modgbs->modpolys[i]->len = lens[i];
     modgbs->modpolys[i]->modpcfs = malloc(sizeof(uint32_t **)*lens[i]);
     for(uint32_t j = 0; j < lens[i]; j++){
@@ -236,7 +237,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
     modgbs->cfs[i] = 0;
   }
 
-  for(uint32_t i = 0; i < modgbs->npolys; i++){
+  for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->modpcfs[j],
                                                  modgbs->alloc * sizeof(uint32_t));
@@ -261,9 +262,9 @@ static inline void display_gbmodpoly(FILE *file,
     fprintf(file, "%lu, ", modgbs->primes[i]);
   }
   fprintf(file, "%lu]\n", modgbs->primes[modgbs->alloc -1]);
-  fprintf(file, "numpolys = %d\n", modgbs->npolys);
+  fprintf(file, "numpolys = %d\n", modgbs->ld);
   fprintf(file, "[\n");
-  for(uint32_t i = 0; i < modgbs->npolys; i++){
+  for(uint32_t i = 0; i < modgbs->ld; i++){
     uint32_t len = modgbs->modpolys[i]->len;
     fprintf(file, "[%d, ", len);
     for(uint32_t j = 0; j < len; j++){
@@ -285,7 +286,7 @@ static inline void display_gbmodpoly(FILE *file,
 
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
-  for(uint32_t i = 0; i < modgbs->npolys; i++){
+  for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       free(modgbs->modpolys[i]->modpcfs[j]);
     }
@@ -434,7 +435,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
     }
   }
 
-  for(i = 0; i < modgbs->npolys; i++){
+  for(i = 0; i < modgbs->ld; i++){
     idx = bs->lmps[i];
     if (bs->hm[idx] == NULL) {
       fprintf(stderr, " poly is 0\n");
@@ -900,7 +901,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
   exit(1);
   /* all polynomials have been lifted */
-  if(dlift->lstart >= modgbs->npolys){
+  if(dlift->lstart >= modgbs->ld){
     return;
   }
   return;
@@ -914,13 +915,13 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /* updates dlift->check1 and dlift->check2 */
   update_dlift(modgbs, dlift, mod_p, prod_p, thrds);
   /* the last coef to lift was ok ; we are done */
-  if((dlift->check1 && dlift->check2 && dlift->lstart >= modgbs->npolys - 1)){
+  if((dlift->check1 && dlift->check2 && dlift->lstart >= modgbs->ld - 1)){
     return;
   }
 
   /* previous witness coef has been lifted and checked twice */
   /* we then switch to the next polynomial */
-  if(dlift->lstart == -1 || (dlift->check1 && dlift->check2 && dlift->lstart < modgbs->npolys - 1)){
+  if(dlift->lstart == -1 || (dlift->check1 && dlift->check2 && dlift->lstart < modgbs->ld - 1)){
     /* next pol to lift */
     dlift->lstart++;
 
@@ -1151,7 +1152,7 @@ int msolve_gbtrace_qq(
       int nb = 0;
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                       msd->bht->nv, &nb);
-      data_lift_init(dlift, modgbs->npolys, ldeg, nb);
+      data_lift_init(dlift, modgbs->ld, ldeg, nb);
       free(ldeg);
       dlinit = 1;
     }
@@ -1259,17 +1260,17 @@ int msolve_gbtrace_qq(
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds);
       }
 
-      if(dlift->lstart != lstart && dlift->lstart < modgbs->npolys - 1){
+      if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
         if(info_level){
-          fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->npolys);
+          fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }
         lstart = dlift->lstart;
       }
 #ifdef NEWGBLIFT
 #else
-      if(dlift->lstart == modgbs->npolys - 1 && dlift->check2){
+      if(dlift->lstart == modgbs->ld - 1 && dlift->check2){
         if(info_level){
-          fprintf(stderr, "<%.2f%%>\n", 100* (float)(dlift->lstart + 1)/modgbs->npolys);
+          fprintf(stderr, "<%.2f%%>\n", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }
         apply = 0;
       }

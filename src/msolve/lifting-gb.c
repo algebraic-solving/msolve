@@ -748,16 +748,16 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
     /* all primes are assumed to be good primes */
     for(int i = 0; i < thrds; i++){
       for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
-      uint32_t c = modgbs->modpolys[k]->modpcfs[coef[0]][modgbs->nprimes  - (thrds - i) ];
+        uint32_t c = modgbs->modpolys[k]->modpcfs[coef[0]][modgbs->nprimes  - (thrds - i) ];
 
-      mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
+        mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
 
-      mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
-                 c, modgbs->primes[modgbs->nprimes - (thrds - i) ],
-                 prod_p[0], 1);
+        mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
+                   c, modgbs->primes[modgbs->nprimes - (thrds - i) ],
+                   prod_p[0], 1);
+      }
       mpz_set(mod_p[0], prod_p[0]);
     }
-  }
 }
 #else
 /* Incremental CRT (called once FLINT multi_CRT has been called) */

@@ -50,6 +50,7 @@ typedef struct{
   int32_t nsteps; /* number of steps for lifting GB (per degree) */
   int32_t *steps; /* array of length nsteps ; the sum of the entries should
                      equal npol */
+  int32_t cstep; /* current step lifting GB */
   /* liftings are performed on ranges of polynomials (depending on their degrees) */
   int32_t lstart; /* index of first polynomial to be lifted */
   int32_t lend; /* index of last polynomial to be lifted */
@@ -104,6 +105,7 @@ static inline void data_lift_init(data_lift_t dlift,
   for(i = 0; i < nsteps; i++){
     dlift->steps[i] = steps[i];
   }
+  dlift->cstep = 0;
   dlift->lend = steps[0];
 
   dlift->crt_mult = 0;
@@ -743,9 +745,9 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
                                          int32_t *coef, mpz_t *mod_p, mpz_t *prod_p,
                                          int thrds){
 
-  for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
     /* all primes are assumed to be good primes */
     for(int i = 0; i < thrds; i++){
+      for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
       uint32_t c = modgbs->modpolys[k]->modpcfs[coef[0]][modgbs->nprimes  - (thrds - i) ];
 
       mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
@@ -902,7 +904,22 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
   fprintf(stderr, "nprimes  = %d\n", modgbs->nprimes);
 
-  start_dlift(modgbs, dlift, dlift->coef);
+  /* starts CRT */
+  if(dlift->crt_mult == 0){
+    if(modgbs->nprimes >= dlift->cstep){
+      start_dlift(modgbs, dlift, dlift->coef);
+    }
+    else{
+      /* We do not have enough primes */
+      return;
+    }
+  }
+  else{
+    incremental_dlift_crt(modgbs, dlift,
+                          dlift->coef, mod_p, prod_p,
+                          thrds);
+  }
+
 
   exit(1);
   /* all polynomials have been lifted */

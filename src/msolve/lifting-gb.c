@@ -106,7 +106,7 @@ static inline void data_lift_init(data_lift_t dlift,
     dlift->steps[i] = steps[i];
   }
   dlift->cstep = 0;
-  dlift->lend = steps[0];
+  dlift->lend = steps[0] - 1;
 
   dlift->crt_mult = 0;
   dlift->crt = malloc(sizeof(mpz_t) * dlift->npol);
@@ -350,7 +350,6 @@ static inline int grevlex_is_less_than(int nv, int32_t* m1, int32_t *m2){
   for(int i = 0; i < nv; i++){
     deg2 += m2[i];
   }
-  fprintf(stderr, "[deg1 = %d, deg2 = %d]\n", deg1, deg2);
   if(deg1 < deg2){
     return 1;
   }
@@ -367,12 +366,7 @@ static inline int grevlex_is_less_than(int nv, int32_t* m1, int32_t *m2){
 
 static inline int32_t compute_length(int32_t *mon, int nv,
                                      int32_t *basis, int dquot){
-  fprintf(stderr, "mon = [");
-  for(int i = 0; i < nv-1 ; i++){
-    fprintf(stderr, "%d, ", mon[i]);
-  }
-  fprintf(stderr, "%d]", mon[nv-1]);
-  fprintf(stderr, "\n");
+
   for(int i = dquot - 1; i >= 0; i--){
     if(!grevlex_is_less_than(nv, mon, basis + i * nv)){
       return i + 1;
@@ -393,11 +387,9 @@ static inline int32_t compute_length(int32_t *mon, int nv,
  */
 static inline int32_t *array_of_lengths(int32_t *bexp_lm, int len,
                                         int32_t *basis, int dquot, int nv){
-  fprintf(stderr, "len = %d\n", len);
   int32_t *lens = calloc(sizeof(int32_t), len);
   for(int i = 0; i < len; i++){
     lens[i] = compute_length(bexp_lm + (i * nv), nv, basis, dquot);
-    fprintf(stderr, "lens[%d] = %d\n", i, lens[i]);
   }
   return lens;
 }
@@ -572,18 +564,6 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     /************************************************/
     /************************************************/
-    fprintf(stderr, "nvars = %d\n", st->nvars);
-    fprintf(stderr, "dquot = %ld\n", dquot);
-    for(int32_t i = 0; i < dquot; i++){
-      fprintf(stderr, "[");
-      for(int32_t j = 0; j < st->nvars - 1; j++){
-        fprintf(stderr, "%d, ", lmb[j+i*st->nvars]);
-      }
-      fprintf(stderr, "%d], ", lmb[st->nvars - 1 + i*st->nvars]);
-    }
-    fprintf(stderr, "\n");
-    /************************************************/
-    /************************************************/
 
     int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
 
@@ -692,8 +672,9 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   modpolys_t *polys = modgbs->modpolys;
 
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
+    int32_t cl = dlift->coef[k];
     for(uint32_t i = 0; i < modgbs->nprimes; i++){
-      modgbs->cfs[i] = polys[k]->modpcfs[coef[0]][i];
+      modgbs->cfs[i] = polys[k]->modpcfs[coef[cl]][i];
     }
     fmpz_multi_CRT_ui(y, modgbs->cfs,
                       comb, comb_temp, 1);
@@ -745,19 +726,15 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
                                          int32_t *coef, mpz_t *mod_p, mpz_t *prod_p,
                                          int thrds){
 
-    /* all primes are assumed to be good primes */
-    for(int i = 0; i < thrds; i++){
-      for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
-        uint32_t c = modgbs->modpolys[k]->modpcfs[coef[0]][modgbs->nprimes  - (thrds - i) ];
-
-        mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
-
-        mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
-                   c, modgbs->primes[modgbs->nprimes - (thrds - i) ],
-                   prod_p[0], 1);
-      }
-      mpz_set(mod_p[0], prod_p[0]);
-    }
+  /* all primes are assumed to be good primes */
+  mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
+  for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
+    uint32_t c = modgbs->modpolys[k]->modpcfs[coef[0]][modgbs->nprimes  - 1 ];
+    mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
+               c, modgbs->primes[modgbs->nprimes - 1 ],
+               prod_p[0], 1);
+  }
+  mpz_set(mod_p[0], prod_p[0]);
 }
 #else
 /* Incremental CRT (called once FLINT multi_CRT has been called) */
@@ -893,24 +870,57 @@ static void update_prodprimes(gb_modpoly_t modgbs, data_lift_t dlift,
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
                         rrec_data_t recdata, int thrds){
-  fprintf(stderr, "npol = %d\n", dlift->npol);
-  fprintf(stderr, "nsteps = %d\n", dlift->nsteps);
   for(int i = 0; i < dlift->nsteps; i++){
     fprintf(stderr, "[%d]", dlift->steps[i]);
   }
   fprintf(stderr, "\n");
-  fprintf(stderr, "dlift->lstart = %d\n", dlift->lstart);
-  fprintf(stderr, "dlift->lend = %d\n", dlift->lend);
+  fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 
-  fprintf(stderr, "nprimes  = %d\n", modgbs->nprimes);
-
+  /********************************************************/
+  /*                     CRT                              */
+  /********************************************************/
   /* starts CRT */
   if(dlift->crt_mult == 0){
-    if(modgbs->nprimes >= dlift->cstep){
+    /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
+    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) + 1){
       start_dlift(modgbs, dlift, dlift->coef);
+
+      if(dlift->lstart == 0){
+        mpz_set_ui(mod_p[0], 1);
+        for(int i = 0; i < modgbs->nprimes; i++){
+          uint32_t prime = modgbs->primes[i];
+          mpz_mul_ui(mod_p[0], mod_p[0], prime);
+        }
+        mpz_set(prod_p[0], mod_p[0]);
+
+      }
+      else{
+        for(int i = 0; i < thrds; i++){
+          uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i)];
+          mpz_mul_ui(mod_p[0], mod_p[i], prime);
+        }
+        mpz_set(prod_p[0], mod_p[0]);
+      }
+      return;
     }
     else{
       /* We do not have enough primes */
+      if(dlift->lstart == 0){
+        mpz_set_ui(mod_p[0], 1);
+        for(int i = 0; i < modgbs->nprimes; i++){
+          uint32_t prime = modgbs->primes[i];
+          mpz_mul_ui(mod_p[0], mod_p[0], prime);
+        }
+        mpz_set(prod_p[0], mod_p[0]);
+
+      }
+      else{
+        for(int i = 0; i < thrds; i++){
+          uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i)];
+          mpz_mul_ui(mod_p[0], mod_p[i], prime);
+        }
+        mpz_set(prod_p[0], mod_p[0]);
+      }
       return;
     }
   }
@@ -919,11 +929,48 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                           dlift->coef, mod_p, prod_p,
                           thrds);
   }
+  /********************************************************/
+  /********************************************************/
 
+  /********************************************************/
+  /*                       RATRECON                       */
+  /********************************************************/
+  mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
+  mpz_sqrt(recdata->N, recdata->N);
+  mpz_set(recdata->D, recdata->N);
+  for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
+    fprintf(stderr, "[%d] -> ", i);
+    dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
+                            dlift->crt[i], mod_p[0], recdata);
+    fprintf(stderr, "[%d : dlift->recon = %d]\n", i, dlift->recon);
+    if(dlift->recon){
+      mpz_out_str(stderr, 10, dlift->num[i]);
+      fprintf(stderr, " / ");
+      mpz_out_str(stderr, 10, dlift->den[i]);
+      fprintf(stderr, "\n");
+      dlift->lstart++;
+    }
+    else{
+      fprintf(stderr, "BIP\n");
+    }
+  }
+  /********************************************************/
+  /********************************************************/
 
-  exit(1);
+  if(dlift->lstart >= dlift->lend){
+    dlift->lstart = dlift->lend + 1;
+    dlift->lend += dlift->steps[dlift->cstep + 1] ;
+    dlift->cstep++;
+    dlift->crt_mult = 0;
+  }
+  fprintf(stderr, "And now lstart = %d and lend = %d (load = %d)\n",
+          dlift->lstart, dlift->lend, modgbs->ld);
+  /* fprintf(stderr, "exit ratrecon_gb\n"); */
+  /* exit(1); */
+
   /* all polynomials have been lifted */
   if(dlift->lstart >= modgbs->ld){
+    dlift->lend = dlift->lstart;
     return;
   }
   return;
@@ -986,6 +1033,14 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_set(recdata->D, recdata->N);
 
   dlift->recon = ratrecon(dlift->num, dlift->den, dlift->crt[0], mod_p[0], recdata);
+
+  if(dlift->recon){
+    fprintf(stderr, "dlift->lstart = %d\n", dlift->lstart);
+    mpz_out_str(stderr, 10, dlift->num);
+    fprintf(stderr, " / ");
+    mpz_out_str(stderr, 10, dlift->den);
+    fprintf(stderr, "\n");
+  }
 
 #ifdef DEBUGGBLIFT
   fprintf(stderr, "dlift->lstart = %d\n", dlift->lstart);
@@ -1180,11 +1235,11 @@ int msolve_gbtrace_qq(
     }
     /************************************************/
     /************************************************/
-    fprintf(stderr, "nb = %d => ldeg = [", dlift->nsteps);
-    for(int i = 0; i < dlift->nsteps; i++){
-      fprintf(stderr, "%d, ", dlift->steps[i]);
-    }
-    fprintf(stderr, "]\n");
+    /* fprintf(stderr, "nb = %d => ldeg = [", dlift->nsteps); */
+    /* for(int i = 0; i < dlift->nsteps; i++){ */
+    /*   fprintf(stderr, "%d, ", dlift->steps[i]); */
+    /* } */
+    /* fprintf(stderr, "]\n"); */
     /************************************************/
     /************************************************/
 
@@ -1289,6 +1344,12 @@ int msolve_gbtrace_qq(
         lstart = dlift->lstart;
       }
 #ifdef NEWGBLIFT
+      if(dlift->lstart >= modgbs->ld){
+        if(info_level){
+          fprintf(stderr, "<100%%>\n");
+        }
+        apply = 0;
+      }
 #else
       if(dlift->lstart == modgbs->ld - 1 && dlift->check2){
         if(info_level){

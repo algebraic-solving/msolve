@@ -805,20 +805,31 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, int32_t start, int32_t e
 
 }
 
-static inline ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
-                                   int32_t start, int32_t end,
-                                   mpz_t *mod_p, mpz_t *prod_p,
-                                   rrec_data_t recdata){
+static inline void ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
+                                        int32_t start, int32_t end,
+                                        mpz_t *mod_p, rrec_data_t recdata){
   mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
   mpz_sqrt(recdata->N, recdata->N);
   mpz_set(recdata->D, recdata->N);
 
+  mpz_t rnum, rden;
+  mpz_init(rnum);
+  mpz_init(rden);
+
   modpolys_t *polys = modgbs->modpolys;
   for(int32_t k = start; k <= end; k++){
     for(int32_t l = 0; l < polys[k]->len; l++){
-      
+      if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p[0], dlift->den[k], recdata)){
+        mpz_set(polys[k]->cf_qq[2*l], rnum);
+        mpz_set(polys[k]->cf_qq[2*l + 1], rden);
+      }
+      else{
+        fprintf(stderr, "[!]");
+      }
     }
   }
+  mpz_clear(rnum);
+  mpz_clear(rden);
 }
 
 #ifdef NEWGBLIFT

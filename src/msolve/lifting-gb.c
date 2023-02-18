@@ -21,7 +21,7 @@
 
 typedef struct{
   uint32_t len; /* length of the encoded polynomial */
-  uint32_t **modpcfs; /* array of arrays of coefficients
+  uint32_t **cf_32; /* array of arrays of coefficients
                        * modulo several primes
                        */
 } modpolys_struct;
@@ -205,9 +205,9 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
 
   for(uint32_t i = 0; i < ld; i++){
     modgbs->modpolys[i]->len = lens[i];
-    modgbs->modpolys[i]->modpcfs = malloc(sizeof(uint32_t **)*lens[i]);
+    modgbs->modpolys[i]->cf_32 = malloc(sizeof(uint32_t **)*lens[i]);
     for(uint32_t j = 0; j < lens[i]; j++){
-      modgbs->modpolys[i]->modpcfs[j] = calloc(sizeof(uint32_t), alloc);
+      modgbs->modpolys[i]->cf_32[j] = calloc(sizeof(uint32_t), alloc);
     }
   }
 }
@@ -241,14 +241,14 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
 
   for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
-      uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->modpcfs[j],
+      uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->cf_32[j],
                                                  modgbs->alloc * sizeof(uint32_t));
       if(newcfs_pol == NULL){
         fprintf(stderr, "Problem when reallocating modgbs (cfs_pol)\n");
       }
-      modgbs->modpolys[i]->modpcfs[j] = newcfs_pol;
+      modgbs->modpolys[i]->cf_32[j] = newcfs_pol;
       for(uint32_t k = oldalloc; k < modgbs->alloc; k++){
-        modgbs->modpolys[i]->modpcfs[j][k] = 0;
+        modgbs->modpolys[i]->cf_32[j][k] = 0;
       }
     }
   }
@@ -272,13 +272,13 @@ static inline void display_gbmodpoly(FILE *file,
     for(uint32_t j = 0; j < len; j++){
       fprintf(stderr, "[");
       for(uint32_t k = 0; k < modgbs->alloc-1; k++){
-        fprintf(file, "%d, ", modgbs->modpolys[i]->modpcfs[j][k]);
+        fprintf(file, "%d, ", modgbs->modpolys[i]->cf_32[j][k]);
       }
       if(j < len - 1){
-        fprintf(file, "%d], ", modgbs->modpolys[i]->modpcfs[j][modgbs->alloc-1]);
+        fprintf(file, "%d], ", modgbs->modpolys[i]->cf_32[j][modgbs->alloc-1]);
       }
       else{
-        fprintf(file, "%d]\n", modgbs->modpolys[i]->modpcfs[j][modgbs->alloc-1]);
+        fprintf(file, "%d]\n", modgbs->modpolys[i]->cf_32[j][modgbs->alloc-1]);
       }
     }
     fprintf(file, "],\n");
@@ -290,9 +290,9 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
-      free(modgbs->modpolys[i]->modpcfs[j]);
+      free(modgbs->modpolys[i]->cf_32[j]);
     }
-    free(modgbs->modpolys[i]->modpcfs);
+    free(modgbs->modpolys[i]->cf_32);
   }
   free(modgbs->modpolys);
 }
@@ -447,7 +447,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       while(!is_equal_exponent(mgb, basis + (bc * nv), nv)){
         bc--;
       }
-      modgbs->modpolys[i]->modpcfs[bc][modgbs->nprimes] = c;
+      modgbs->modpolys[i]->cf_32[bc][modgbs->nprimes] = c;
       bc--;
     }
   }
@@ -674,7 +674,7 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
     int32_t cl = dlift->coef[k];
     for(uint32_t i = 0; i < modgbs->nprimes; i++){
-      modgbs->cfs[i] = polys[k]->modpcfs[coef[cl]][i];
+      modgbs->cfs[i] = polys[k]->cf_32[coef[cl]][i];
     }
     fmpz_multi_CRT_ui(y, modgbs->cfs,
                       comb, comb_temp, 1);
@@ -704,7 +704,7 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   modpolys_t *polys = modgbs->modpolys;
 
   for(uint32_t i = 0; i < modgbs->nprimes; i++){
-    modgbs->cfs[i] = polys[dlift->lstart]->modpcfs[coef[0]][i];
+    modgbs->cfs[i] = polys[dlift->lstart]->cf_32[coef[0]][i];
   }
   fmpz_multi_CRT_ui(y, modgbs->cfs,
                     comb, comb_temp, 1);
@@ -729,7 +729,7 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
-    uint32_t c = modgbs->modpolys[k]->modpcfs[coef[0]][modgbs->nprimes  - 1 ];
+    uint32_t c = modgbs->modpolys[k]->cf_32[coef[0]][modgbs->nprimes  - 1 ];
     mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
                c, modgbs->primes[modgbs->nprimes - 1 ],
                prod_p[0], 1);
@@ -744,7 +744,7 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
                                          int thrds){
   /* all primes are assumed to be good primes */
   for(int i = 0; i < thrds; i++){
-    uint32_t c = modgbs->modpolys[dlift->lstart]->modpcfs[coef[0]][modgbs->nprimes  - (thrds - i) ];
+    uint32_t c = modgbs->modpolys[dlift->lstart]->cf_32[coef[0]][modgbs->nprimes  - (thrds - i) ];
 
     mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - (thrds - i) ]);
 
@@ -773,7 +773,7 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
       c *= lc;
       c = c % prime;
 
-      uint32_t coef = modgbs->modpolys[c]->modpcfs[dlift->coef[c]][modgbs->nprimes  - (thrds - i) ];
+      uint32_t coef = modgbs->modpolys[c]->cf_32[dlift->coef[c]][modgbs->nprimes  - (thrds - i) ];
 
       if(c!=coef){
         return 0;
@@ -798,7 +798,7 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
     c *= lc;
     c = c % prime;
 
-    uint32_t coef = modgbs->modpolys[dlift->lstart]->modpcfs[dlift->coef[0]][modgbs->nprimes  - (thrds - i) ];
+    uint32_t coef = modgbs->modpolys[dlift->lstart]->cf_32[dlift->coef[0]][modgbs->nprimes  - (thrds - i) ];
 
     if(c!=coef){
       return 0;

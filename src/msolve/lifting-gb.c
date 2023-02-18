@@ -763,6 +763,36 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 }
 #endif
 
+
+static inline void crt_lift_modgbs(gb_modpoly_t modgbs, int32_t start, int32_t end){
+  /* Data needed by multi CRT functions */
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t comb_temp;
+
+  fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
+  fmpz_comb_temp_init(comb_temp, comb);
+  fmpz_t y;
+  fmpz_init(y);
+
+  modpolys_t *polys = modgbs->modpolys;
+
+  for(int32_t k = start; k <= end; k++){
+    for(int32_t l = 0; l < polys[k]->len; l++){
+      for(uint32_t i = 0; i < modgbs->nprimes; i++){
+        modgbs->cf_64[i] = polys[k]->cf_32[l][i];
+      }
+      fmpz_multi_CRT_ui(y, modgbs->cf_64,
+                        comb, comb_temp, 1);
+      fmpz_get_mpz(polys[k]->cf_zz[l], y);
+    }
+  }
+
+  fmpz_clear(y);
+  fmpz_comb_temp_clear(comb_temp);
+  fmpz_comb_clear(comb);
+
+}
+
 #ifdef NEWGBLIFT
 /* return 1 if the lifted rationals stored in dlift is ok else return 0 */
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
@@ -875,17 +905,19 @@ static void update_prodprimes(gb_modpoly_t modgbs, data_lift_t dlift,
 #ifdef NEWGBLIFT
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
-                        rrec_data_t recdata, int thrds){
+                        rrec_data_t recdata, int thrds, double *st_crt){
+#ifdef DEBUGGBLIFT
   for(int i = 0; i < dlift->nsteps; i++){
     fprintf(stderr, "[%d]", dlift->steps[i]);
   }
   fprintf(stderr, "\n");
   fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
-
+#endif
   /********************************************************/
   /*                     CRT                              */
   /********************************************************/
   /* starts CRT */
+  double st = realtime();
   if(dlift->crt_mult == 0){
     /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
     if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) + 1){
@@ -935,6 +967,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                           dlift->coef, mod_p, prod_p,
                           thrds);
   }
+  *st_crt += realtime() - st;
+
   /********************************************************/
   /********************************************************/
 
@@ -944,35 +978,41 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
   mpz_sqrt(recdata->N, recdata->N);
   mpz_set(recdata->D, recdata->N);
+  int32_t start = dlift->lstart;
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
-    fprintf(stderr, "[%d] -> ", i);
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
                             dlift->crt[i], mod_p[0], recdata);
-    fprintf(stderr, "[%d : dlift->recon = %d]\n", i, dlift->recon);
+    if(dlift->recon){
+      dlift->lstart++;
+    }
+#ifdef DEBUGLIFT
     if(dlift->recon){
       mpz_out_str(stderr, 10, dlift->num[i]);
       fprintf(stderr, " / ");
       mpz_out_str(stderr, 10, dlift->den[i]);
       fprintf(stderr, "\n");
-      dlift->lstart++;
     }
     else{
       fprintf(stderr, "BIP\n");
     }
+#endif
   }
   /********************************************************/
   /********************************************************/
 
   if(dlift->lstart >= dlift->lend){
+    /* lifting over all the polynomials in the range */
+    st = realtime();
+    crt_lift_modgbs(modgbs, start, dlift->lend);
+    *st_crt += realtime() - st;
+
     dlift->lstart = dlift->lend + 1;
     dlift->lend += dlift->steps[dlift->cstep + 1] ;
     dlift->cstep++;
     dlift->crt_mult = 0;
   }
-  fprintf(stderr, "And now lstart = %d and lend = %d (load = %d)\n",
-          dlift->lstart, dlift->lend, modgbs->ld);
-  /* fprintf(stderr, "exit ratrecon_gb\n"); */
-  /* exit(1); */
+  /* fprintf(stderr, "And now lstart = %d and lend = %d (load = %d)\n", */
+  /*         dlift->lstart, dlift->lend, modgbs->ld); */
 
   /* all polynomials have been lifted */
   if(dlift->lstart >= modgbs->ld){
@@ -1209,6 +1249,7 @@ int msolve_gbtrace_qq(
   data_lift_t dlift;
   /* indicates that dlift has been already initialized */
   int dlinit = 0;
+  double st_crt = 0;
   while(learn){
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                  msd->mgb,
@@ -1340,7 +1381,7 @@ int msolve_gbtrace_qq(
       }
       int lstart = dlift->lstart;
       if(!bad){
-        ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds);
+        ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt);
       }
 
       if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
@@ -1353,6 +1394,7 @@ int msolve_gbtrace_qq(
       if(dlift->lstart >= modgbs->ld){
         if(info_level){
           fprintf(stderr, "<100%%>\n");
+          fprintf(stderr, "CRT time = %.2f\n", st_crt);
         }
         apply = 0;
       }

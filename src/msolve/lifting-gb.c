@@ -917,7 +917,6 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
                                         int thrds){
   if(dlift->recon){
-    fprintf(stderr, "*");
     for(int32_t k = dlift->start; k <= dlift->end; k++){
 
       for(int i = 0; i < thrds; i++){
@@ -940,11 +939,9 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
       }
       if(!dlift->check1[k]){
         dlift->check1[k] = 1;
-        fprintf(stderr, "(%d)", k);
       }
       else{
         dlift->check2[k] = 1;
-        fprintf(stderr, "^(%d)^", k);
       }
     }
   }
@@ -1153,7 +1150,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       dlift->lend += dlift->steps[dlift->cstep + 1] ;
       dlift->cstep++;
       dlift->crt_mult = 0;
-      dlift->recon = 0;
     }
   }
   else{

@@ -301,32 +301,56 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
 static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs){
   modpolys_t *pols = modgbs->modpolys;
-  int32_t p = modgbs->ld;
+  int32_t p = modgbs->ld - 1;
   fprintf(file, "[");
   for(uint32_t i = 0; i < p - 1; i++){
     fprintf(file, "[");
     for(uint32_t l = pols[i]->len - 1; l > 0; l--){
-      mpz_out_str(file, 10, pols[i]->cf_qq[2*l]);
-      fprintf(file, "/");
-      mpz_out_str(file, 10, pols[i]->cf_qq[2*l + 1]);
-      fprintf(file, ", ");
+      if(mpz_cmp_ui(pols[i]->cf_qq[2*l + 1], 1)){
+        mpz_out_str(file, 10, pols[i]->cf_qq[2*l]);
+        fprintf(file, "/");
+        mpz_out_str(file, 10, pols[i]->cf_qq[2*l + 1]);
+        fprintf(file, ", ");
+      }
+      else{
+        mpz_out_str(file, 10, pols[i]->cf_qq[2*l]);
+        fprintf(file, ", ");
+      }
     }
-    mpz_out_str(file, 10, pols[i]->cf_qq[0]);
-    fprintf(file, "/");
-    mpz_out_str(file, 10, pols[i]->cf_qq[1]);
-    fprintf(file, "],\n");
+    if(mpz_cmp_ui(pols[i]->cf_qq[1], 1)){
+      mpz_out_str(file, 10, pols[i]->cf_qq[0]);
+      fprintf(file, "/");
+      mpz_out_str(file, 10, pols[i]->cf_qq[1]);
+      fprintf(file, "],\n");
+    }
+    else{
+      mpz_out_str(file, 10, pols[i]->cf_qq[0]);
+      fprintf(file, "],\n");
+    }
   }
   fprintf(file, "[");
   for(uint32_t l = pols[p-1]->len - 1; l > 0; l--){
-    mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l]);
-    fprintf(file, "/");
-    mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l + 1]);
-    fprintf(file, ", ");
+    if(mpz_cmp_ui(pols[p-1]->cf_qq[2*l + 1], 1)){
+      mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l]);
+      fprintf(file, "/");
+      mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l + 1]);
+      fprintf(file, ", ");
+    }
+    else{
+      mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l]);
+      fprintf(file, ", ");
+    }
   }
-  mpz_out_str(file, 10, pols[p-1]->cf_qq[0]);
-  fprintf(file, "/");
-  mpz_out_str(file, 10, pols[p-1]->cf_qq[1]);
-  fprintf(file, "]\n");
+  if(mpz_cmp_ui(pols[p-1]->cf_qq[1], 1)){
+    mpz_out_str(file, 10, pols[p-1]->cf_qq[0]);
+    fprintf(file, "/");
+    mpz_out_str(file, 10, pols[p-1]->cf_qq[1]);
+    fprintf(file, "]\n");
+  }
+  else{
+    mpz_out_str(file, 10, pols[p-1]->cf_qq[0]);
+    fprintf(file, "]\n");
+  }
   fprintf(file, "]:");
 }
 
@@ -1006,6 +1030,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   fprintf(stderr, "\n");
   fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 #endif
+
   /********************************************************/
   /*                     CRT                              */
   /********************************************************/
@@ -1080,6 +1105,9 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     if(dlift->recon){
       dlift->lstart++;
     }
+    else{
+      break;
+    }
 #ifdef DEBUGLIFT
     if(dlift->recon){
       mpz_out_str(stderr, 10, dlift->num[i]);
@@ -1095,15 +1123,16 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /********************************************************/
   /********************************************************/
 
-  if(dlift->lstart >= dlift->lend){
+  int b = -1;
+  if(dlift->lstart != start){
     /* lifting over all the polynomials in the range */
     st = realtime();
     crt_lift_modgbs(modgbs, start, dlift->lend);
     *st_crt += realtime() - st;
 
     st = realtime();
-    int b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
-                                 mod_p, recdata);
+    b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
+                             mod_p, recdata);
     *st_rrec += realtime() - st;
 
     if(b >= 0){
@@ -1116,8 +1145,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       dlift->crt_mult = 0;
     }
   }
-  /* fprintf(stderr, "And now lstart = %d and lend = %d (load = %d)\n", */
-  /*         dlift->lstart, dlift->lend, modgbs->ld); */
 
   /* all polynomials have been lifted */
   if(dlift->lstart >= modgbs->ld){
@@ -1386,15 +1413,12 @@ int msolve_gbtrace_qq(
       free(ldeg);
       dlinit = 1;
     }
-    /************************************************/
-    /************************************************/
-    /* fprintf(stderr, "nb = %d => ldeg = [", dlift->nsteps); */
-    /* for(int i = 0; i < dlift->nsteps; i++){ */
-    /*   fprintf(stderr, "%d, ", dlift->steps[i]); */
-    /* } */
-    /* fprintf(stderr, "]\n"); */
-    /************************************************/
-    /************************************************/
+
+    for(int i = 0; i < dlift->nsteps; i++){
+      fprintf(stderr, "[%d]", dlift->steps[i]);
+    }
+    fprintf(stderr, "\n");
+    fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
 
@@ -1525,7 +1549,7 @@ int msolve_gbtrace_qq(
   }
 
   if(files->out_file != NULL){
-    FILE *ofile = fopen(files->out_file, "a+");
+    FILE *ofile = fopen(files->out_file, "w+");
     display_gbmodpoly_cf_qq(ofile, modgbs);
     fclose(ofile);
   }

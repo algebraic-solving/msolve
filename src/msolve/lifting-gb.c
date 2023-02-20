@@ -868,7 +868,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
       }
       else{
         fprintf(stderr, "![%d,%d]!", k, l);
-        return 1;
+        return k;
       }
     }
   }
@@ -1493,7 +1493,7 @@ int msolve_gbtrace_qq(
       if(dlift->lstart >= modgbs->ld){
         if(info_level){
           fprintf(stderr, "<100%%>\n");
-          fprintf(stderr, "CRT time = %.2f, Rational recosntruction time= %.2f\n", st_crt, st_rrec);
+          fprintf(stderr, "CRT time = %.2f, Rational reconstruction time= %.2f\n", st_crt, st_rrec);
         }
         apply = 0;
       }

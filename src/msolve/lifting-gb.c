@@ -301,9 +301,9 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
 static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs){
   modpolys_t *pols = modgbs->modpolys;
-  int32_t p = modgbs->ld - 1;
+  int32_t p = modgbs->ld;
   fprintf(file, "[");
-  for(uint32_t i = 0; i < p; i++){
+  for(uint32_t i = 0; i < p - 1; i++){
     fprintf(file, "[");
     for(uint32_t l = pols[i]->len - 1; l > 0; l--){
       mpz_out_str(file, 10, pols[i]->cf_qq[2*l]);
@@ -866,9 +866,11 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
     mpz_mul(recdata->N, recdata->N, dlift->den[k]);
 
     mpz_set(lcm, dlift->den[k]);
+
     for(int32_t l = 0; l < polys[k]->len; l++){
       if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p[0], dlift->den[k], recdata)){
         mpz_set(polys[k]->cf_qq[2*l], rnum);
+        mpz_mul(rden, rden, dlift->den[k]);
         mpz_set(polys[k]->cf_qq[2*l + 1], rden);
       }
       else{

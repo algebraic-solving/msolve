@@ -298,6 +298,33 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
   fprintf(file, "]\n");
 }
 
+static inline void display_gbmodpoly_cf_qq(FILE *file,
+                                           gb_modpoly_t modgbs){
+  modpolys_t *pols = modgbs->modpolys;
+  int32_t p = modgbs->ld - 1;
+  for(uint32_t i = 0; i < p; i++){
+    for(uint32_t l = pols[i]->len - 1; l > 0; l--){
+      mpz_out_str(file, 10, pols[i]->cf_qq[2*l]);
+      fprintf(file, "/");
+      mpz_out_str(file, 10, pols[i]->cf_qq[2*l + 1]);
+    }
+    mpz_out_str(file, 10, pols[i]->cf_qq[0]);
+    fprintf(file, "/");
+    mpz_out_str(file, 10, pols[i]->cf_qq[1]);
+    fprintf(file, ",\n");
+  }
+  for(uint32_t l = pols[p-1]->len - 1; l > 0; l--){
+    mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l]);
+    fprintf(file, "/");
+    mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l + 1]);
+  }
+  mpz_out_str(file, 10, pols[p-1]->cf_qq[0]);
+  fprintf(file, "/");
+  mpz_out_str(file, 10, pols[p-1]->cf_qq[1]);
+  fprintf(file, "\n");
+
+}
+
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   for(uint32_t i = 0; i < modgbs->ld; i++){

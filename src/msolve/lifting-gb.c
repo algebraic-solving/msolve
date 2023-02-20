@@ -87,7 +87,7 @@ typedef struct {
   int crt_mult; /* indicates if multi-mod flint structures need to be
                 initialized */
   mpz_t *crt; /* current crt */
-  int recon; /* equals 1 when some rational number can be lifted, else 0 */
+  int recon; /* equals 1 when some rational number has been lifted, else 0 */
   mpz_t num; /* lifted numerator */
   mpz_t den; /* lifted denominator */
   int check1; /* tells whether lifted data are ok with one more prime */
@@ -916,31 +916,36 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
 */
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
                                         int thrds){
-  for(int32_t k = dlift->start; k <= dlift->end; k++){
+  if(dlift->recon){
+    fprintf(stderr, "*");
+    for(int32_t k = dlift->start; k <= dlift->end; k++){
 
-    for(int i = 0; i < thrds; i++){
+      for(int i = 0; i < thrds; i++){
 
-      uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
-      uint32_t lc = mpz_fdiv_ui(dlift->den[k], prime);
-      lc = mod_p_inverse_32(lc, prime);
+        uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
+        uint32_t lc = mpz_fdiv_ui(dlift->den[k], prime);
+        lc = mod_p_inverse_32(lc, prime);
 
-      uint64_t c = mpz_fdiv_ui(dlift->num[k], prime);
-      c *= lc;
-      c = c % prime;
+        uint64_t c = mpz_fdiv_ui(dlift->num[k], prime);
+        c *= lc;
+        c = c % prime;
 
-      uint32_t coef = modgbs->modpolys[k]->cf_32[dlift->coef[k]][modgbs->nprimes  - (thrds - i) ];
+        uint32_t coef = modgbs->modpolys[k]->cf_32[dlift->coef[k]][modgbs->nprimes  - (thrds - i) ];
 
-      if(c!=coef){
-        dlift->check1[k] = 0;
-        dlift->check2[k] = 0;
-        return k;
+        if(c!=coef){
+          dlift->check1[k] = 0;
+          dlift->check2[k] = 0;
+          return k;
+        }
       }
-    }
-    if(!dlift->check1[k]){
-       dlift->check1[k] = 1;
-    }
-    else{
-      dlift->check2[k] = 1;
+      if(!dlift->check1[k]){
+        dlift->check1[k] = 1;
+        fprintf(stderr, "(%d)", k);
+      }
+      else{
+        dlift->check2[k] = 1;
+        fprintf(stderr, "^(%d)^", k);
+      }
     }
   }
   return -1;
@@ -1042,6 +1047,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 #endif
 
+  verif_lifted_rational(modgbs, dlift, thrds);
+
   /********************************************************/
   /*                     CRT                              */
   /********************************************************/
@@ -1108,6 +1115,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_sqrt(recdata->N, recdata->N);
   mpz_set(recdata->D, recdata->N);
   int32_t start = dlift->lstart;
+  dlift->start = start;
+  dlift->end = start;
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
     st = realtime();
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
@@ -1115,21 +1124,11 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     *st_rrec += realtime()-st;
     if(dlift->recon){
       dlift->lstart++;
+      dlift->end++;
     }
     else{
       break;
     }
-#ifdef DEBUGLIFT
-    if(dlift->recon){
-      mpz_out_str(stderr, 10, dlift->num[i]);
-      fprintf(stderr, " / ");
-      mpz_out_str(stderr, 10, dlift->den[i]);
-      fprintf(stderr, "\n");
-    }
-    else{
-      fprintf(stderr, "BIP\n");
-    }
-#endif
   }
   /********************************************************/
   /********************************************************/
@@ -1154,7 +1153,11 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       dlift->lend += dlift->steps[dlift->cstep + 1] ;
       dlift->cstep++;
       dlift->crt_mult = 0;
+      dlift->recon = 0;
     }
+  }
+  else{
+    dlift->recon = 0;
   }
 
   /* all polynomials have been lifted */

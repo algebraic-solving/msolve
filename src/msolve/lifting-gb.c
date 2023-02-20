@@ -301,7 +301,7 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
 static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs){
   modpolys_t *pols = modgbs->modpolys;
-  int32_t p = modgbs->ld - 1;
+  int32_t p = modgbs->ld ;
   fprintf(file, "[");
   for(uint32_t i = 0; i < p - 1; i++){
     fprintf(file, "[");
@@ -832,7 +832,8 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 #endif
 
 
-static inline void crt_lift_modgbs(gb_modpoly_t modgbs, int32_t start, int32_t end){
+static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
+                                   int32_t start, int32_t end){
   /* Data needed by multi CRT functions */
   fmpz_comb_t comb;
   fmpz_comb_temp_t comb_temp;
@@ -845,13 +846,15 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, int32_t start, int32_t e
   modpolys_t *polys = modgbs->modpolys;
 
   for(int32_t k = start; k <= end; k++){
-    for(int32_t l = 0; l < polys[k]->len; l++){
-      for(uint32_t i = 0; i < modgbs->nprimes; i++){
-        modgbs->cf_64[i] = polys[k]->cf_32[l][i];
+    if(dlift->check1[k]){
+      for(int32_t l = 0; l < polys[k]->len; l++){
+        for(uint32_t i = 0; i < modgbs->nprimes; i++){
+          modgbs->cf_64[i] = polys[k]->cf_32[l][i];
+        }
+        fmpz_multi_CRT_ui(y, modgbs->cf_64,
+                          comb, comb_temp, 1);
+        fmpz_get_mpz(polys[k]->cf_zz[l], y);
       }
-      fmpz_multi_CRT_ui(y, modgbs->cf_64,
-                        comb, comb_temp, 1);
-      fmpz_get_mpz(polys[k]->cf_zz[l], y);
     }
   }
 
@@ -877,30 +880,30 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   modpolys_t *polys = modgbs->modpolys;
   for(int32_t k = start; k <= end; k++){
 
-    /* mpz_out_str(stderr, 10, dlift->num[k]); */
-    /* fprintf(stderr, " / "); */
-    /* mpz_out_str(stderr, 10, dlift->den[k]); */
-    /* fprintf(stderr, "\n"); */
+    if(dlift->check1[k]){
+      mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
+      mpz_sqrt(recdata->N, recdata->N);
+      mpz_set(recdata->D, recdata->N);
 
-    mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
-    mpz_sqrt(recdata->N, recdata->N);
-    mpz_set(recdata->D, recdata->N);
+      mpz_fdiv_q(recdata->D, recdata->D, dlift->den[k]);
+      mpz_mul(recdata->N, recdata->N, dlift->den[k]);
 
-    mpz_fdiv_q(recdata->D, recdata->D, dlift->den[k]);
-    mpz_mul(recdata->N, recdata->N, dlift->den[k]);
+      mpz_set(lcm, dlift->den[k]);
 
-    mpz_set(lcm, dlift->den[k]);
-
-    for(int32_t l = 0; l < polys[k]->len; l++){
-      if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p[0], dlift->den[k], recdata)){
-        mpz_set(polys[k]->cf_qq[2*l], rnum);
-        mpz_mul(rden, rden, dlift->den[k]);
-        mpz_set(polys[k]->cf_qq[2*l + 1], rden);
+      for(int32_t l = 0; l < polys[k]->len; l++){
+        if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p[0], dlift->den[k], recdata)){
+          mpz_set(polys[k]->cf_qq[2*l], rnum);
+          mpz_mul(rden, rden, dlift->den[k]);
+          mpz_set(polys[k]->cf_qq[2*l + 1], rden);
+        }
+        else{
+          fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
+          return k;
+        }
       }
-      else{
-        fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
-        return k;
-      }
+    }
+    else{
+      return k;
     }
   }
   mpz_clear(rnum);
@@ -1113,7 +1116,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_set(recdata->D, recdata->N);
   int32_t start = dlift->lstart;
   dlift->start = start;
-  dlift->end = start;
+  dlift->end = start-1;
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
     st = realtime();
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
@@ -1122,6 +1125,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     if(dlift->recon){
       dlift->lstart++;
       dlift->end++;
+
     }
     else{
       break;
@@ -1134,7 +1138,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   if(dlift->lstart != start){
     /* lifting over all the polynomials in the range */
     st = realtime();
-    crt_lift_modgbs(modgbs, start, dlift->lend);
+    crt_lift_modgbs(modgbs, dlift, start, dlift->lend);
     *st_crt += realtime() - st;
 
     st = realtime();
@@ -1159,6 +1163,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /* all polynomials have been lifted */
   if(dlift->lstart >= modgbs->ld){
     dlift->lend = dlift->lstart;
+    dlift->end = dlift->lstart;
     return;
   }
   return;

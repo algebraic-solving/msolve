@@ -302,27 +302,32 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs){
   modpolys_t *pols = modgbs->modpolys;
   int32_t p = modgbs->ld - 1;
+  fprintf(file, "[");
   for(uint32_t i = 0; i < p; i++){
+    fprintf(file, "[");
     for(uint32_t l = pols[i]->len - 1; l > 0; l--){
       mpz_out_str(file, 10, pols[i]->cf_qq[2*l]);
       fprintf(file, "/");
       mpz_out_str(file, 10, pols[i]->cf_qq[2*l + 1]);
+      fprintf(file, ", ");
     }
     mpz_out_str(file, 10, pols[i]->cf_qq[0]);
     fprintf(file, "/");
     mpz_out_str(file, 10, pols[i]->cf_qq[1]);
-    fprintf(file, ",\n");
+    fprintf(file, "],\n");
   }
+  fprintf(file, "[");
   for(uint32_t l = pols[p-1]->len - 1; l > 0; l--){
     mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l]);
     fprintf(file, "/");
     mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l + 1]);
+    fprintf(file, ", ");
   }
   mpz_out_str(file, 10, pols[p-1]->cf_qq[0]);
   fprintf(file, "/");
   mpz_out_str(file, 10, pols[p-1]->cf_qq[1]);
-  fprintf(file, "\n");
-
+  fprintf(file, "]\n");
+  fprintf(file, "]:");
 }
 
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
@@ -1515,6 +1520,12 @@ int msolve_gbtrace_qq(
   free_mstrace(msd, st);
   if(dlinit){
     data_lift_clear(dlift);
+  }
+
+  if(files->out_file != NULL){
+    FILE *ofile = fopen(files->out_file, "a+");
+    display_gbmodpoly_cf_qq(ofile, modgbs);
+    fclose(ofile);
   }
 
   gb_modpoly_clear(modgbs);

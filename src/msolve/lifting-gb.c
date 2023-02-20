@@ -898,7 +898,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         mpz_set(polys[k]->cf_qq[2*l + 1], rden);
       }
       else{
-        fprintf(stderr, "![%d,%d]!", k, l);
+        fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
         return k;
       }
     }
@@ -1513,7 +1513,11 @@ int msolve_gbtrace_qq(
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt, &st_rrec);
       }
-
+      if(info_level){
+        if(!(nprimes & (nprimes - 1))){
+          fprintf(stderr, "{%d}", nprimes);
+        }
+      }
       if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
         if(info_level){
           fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);

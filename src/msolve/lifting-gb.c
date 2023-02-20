@@ -267,7 +267,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
 }
 
 
-static inline void display_gbmodpoly(FILE *file,
+static inline void display_gbmodpoly_cf_32(FILE *file,
                                      gb_modpoly_t modgbs){
   fprintf(file, "alloc = %d\n", modgbs->alloc);
   fprintf(file, "nprimes = %d\n", modgbs->nprimes);
@@ -805,9 +805,13 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, int32_t start, int32_t e
 
 }
 
-static inline void ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
-                                        int32_t start, int32_t end,
-                                        mpz_t *mod_p, rrec_data_t recdata){
+/*
+  returns the index of the poly if some of its coeff could not be lifted
+  else returns -1
+ */
+static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
+                                       int32_t start, int32_t end,
+                                       mpz_t *mod_p, rrec_data_t recdata){
  
   mpz_t rnum, rden, lcm;
   mpz_init(rnum);
@@ -817,10 +821,10 @@ static inline void ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   modpolys_t *polys = modgbs->modpolys;
   for(int32_t k = start; k <= end; k++){
 
-    mpz_out_str(stderr, 10, dlift->num[k]);
-    fprintf(stderr, " / ");
-    mpz_out_str(stderr, 10, dlift->den[k]);
-    fprintf(stderr, "\n");
+    /* mpz_out_str(stderr, 10, dlift->num[k]); */
+    /* fprintf(stderr, " / "); */
+    /* mpz_out_str(stderr, 10, dlift->den[k]); */
+    /* fprintf(stderr, "\n"); */
 
     mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
     mpz_sqrt(recdata->N, recdata->N);
@@ -837,12 +841,14 @@ static inline void ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
       }
       else{
         fprintf(stderr, "![%d,%d]!", k, l);
+        return 1;
       }
     }
   }
   mpz_clear(rnum);
   mpz_clear(rden);
   mpz_clear(lcm);
+  return -1;
 }
 
 #ifdef NEWGBLIFT
@@ -1062,14 +1068,19 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     *st_crt += realtime() - st;
 
     st = realtime();
-    ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
-                         mod_p, recdata);
+    int b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
+                                 mod_p, recdata);
     *st_rrec += realtime() - st;
 
-    dlift->lstart = dlift->lend + 1;
-    dlift->lend += dlift->steps[dlift->cstep + 1] ;
-    dlift->cstep++;
-    dlift->crt_mult = 0;
+    if(b >= 0){
+      dlift->lstart = b;
+    }
+    else{
+      dlift->lstart = dlift->lend + 1;
+      dlift->lend += dlift->steps[dlift->cstep + 1] ;
+      dlift->cstep++;
+      dlift->crt_mult = 0;
+    }
   }
   /* fprintf(stderr, "And now lstart = %d and lend = %d (load = %d)\n", */
   /*         dlift->lstart, dlift->lend, modgbs->ld); */

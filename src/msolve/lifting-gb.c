@@ -68,6 +68,7 @@ typedef struct{
   int32_t *coef; /* array of indices to lift */
   mpz_t *num; /* lifted numerator */
   mpz_t *den; /* lifted denominator */
+  mpz_t gden; /* guessed denominator */
   int32_t start; /* indicates smallest index of poly whose coef has been lifted but not checked*/
   int32_t end; /* indicates largest index of poly whose coef has been lifted but not checked*/
   int *check1; /* tells whether lifted data are ok with one more prime */
@@ -130,6 +131,7 @@ static inline void data_lift_init(data_lift_t dlift,
   for(i = 0; i < npol; i++){
     mpz_init(dlift->den[i]);
   }
+  mpz_init_set_ui(gden, 1);
 
   dlift->start = 0;
   dlift->end = 0;
@@ -182,6 +184,7 @@ static inline void data_lift_clear(data_lift_t dlift){
   }
   free(dlift->den);
 
+  mpz_clear(gden);
   free(dlift->check1);
   free(dlift->check2);
 
@@ -880,7 +883,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   modpolys_t *polys = modgbs->modpolys;
   for(int32_t k = start; k <= end; k++){
 
-    if(dlift->check1[k]){
+    if(dlift->check2[k]){
       mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
       mpz_sqrt(recdata->N, recdata->N);
       mpz_set(recdata->D, recdata->N);
@@ -1117,7 +1120,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   int32_t start = dlift->lstart;
   dlift->start = start;
   dlift->end = start-1;
-  for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
+  int32_t i = dlift->lstart;
+  if(dlift->check2[i] == 0){
     st = realtime();
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
                             dlift->crt[i], mod_p[0], recdata);
@@ -1125,12 +1129,26 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     if(dlift->recon){
       dlift->lstart++;
       dlift->end++;
-
-    }
-    else{
-      break;
     }
   }
+  else{
+    for(i = dlift->lstart; i <= dlift->lend; i++){
+      fprintf(stderr, "[%d]", i);
+      st = realtime();
+      dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
+                              dlift->crt[i], mod_p[0], recdata);
+      *st_rrec += realtime()-st;
+
+      if(dlift->recon){
+        dlift->lstart++;
+        dlift->end++;
+      }
+      else{
+        break;
+      }
+    }
+  }
+
   /********************************************************/
   /********************************************************/
 

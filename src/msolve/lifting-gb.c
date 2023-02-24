@@ -131,7 +131,7 @@ static inline void data_lift_init(data_lift_t dlift,
   for(i = 0; i < npol; i++){
     mpz_init(dlift->den[i]);
   }
-  mpz_init_set_ui(gden, 1);
+  mpz_init_set_ui(dlift->gden, 1);
 
   dlift->start = 0;
   dlift->end = 0;
@@ -184,7 +184,7 @@ static inline void data_lift_clear(data_lift_t dlift){
   }
   free(dlift->den);
 
-  mpz_clear(gden);
+  mpz_clear(dlift->gden);
   free(dlift->check1);
   free(dlift->check2);
 
@@ -1120,34 +1120,23 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   int32_t start = dlift->lstart;
   dlift->start = start;
   dlift->end = start-1;
-  int32_t i = dlift->lstart;
-  if(dlift->check2[i] == 0){
+
+  for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
+    fprintf(stderr, "[%d]", i);
     st = realtime();
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
                             dlift->crt[i], mod_p[0], recdata);
     *st_rrec += realtime()-st;
+
     if(dlift->recon){
       dlift->lstart++;
       dlift->end++;
     }
-  }
-  else{
-    for(i = dlift->lstart; i <= dlift->lend; i++){
-      fprintf(stderr, "[%d]", i);
-      st = realtime();
-      dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
-                              dlift->crt[i], mod_p[0], recdata);
-      *st_rrec += realtime()-st;
-
-      if(dlift->recon){
-        dlift->lstart++;
-        dlift->end++;
-      }
-      else{
-        break;
-      }
+    else{
+      break;
     }
   }
+
 
   /********************************************************/
   /********************************************************/

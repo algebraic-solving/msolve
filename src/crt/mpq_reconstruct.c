@@ -207,12 +207,13 @@ int ratreconwden(mpz_t n, mpz_t d, /* output numerator and denominator */
   while(mpz_cmp_ui(u, 0) < 0){
     mpz_add(u, u, mod);
   }
-  mpz_mul(u, u, gden);
   mpz_mod(u, u, mod);
   mpz_set(recdata->r0, mod);
   mpz_set_ui(recdata->t0, 0);
 
   mpz_set(recdata->r1, u);
+  mpz_mul(recdata->r1, recdata->r1, gden);
+  mpz_mod(recdata->r1, recdata->r1, mod);
   mpz_set_ui(recdata->t1, 1);
 
   while(mpz_cmp(recdata->r1, recdata->N)>0){

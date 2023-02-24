@@ -849,7 +849,7 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   modpolys_t *polys = modgbs->modpolys;
 
   for(int32_t k = start; k <= end; k++){
-    if(dlift->check1[k]){
+    if(dlift->check2[k]){
       for(int32_t l = 0; l < polys[k]->len; l++){
         for(uint32_t i = 0; i < modgbs->nprimes; i++){
           modgbs->cf_64[i] = polys[k]->cf_32[l][i];
@@ -1050,6 +1050,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 #endif
 
+
   verif_lifted_rational(modgbs, dlift, thrds);
 
   /********************************************************/
@@ -1114,6 +1115,22 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /********************************************************/
   /*                       RATRECON                       */
   /********************************************************/
+
+  if(dlift->lstart == 0){
+    mpz_set_ui(dlift->gden, 1);
+  }
+  else{
+    if(dlift->check2[dlift->lstart-1]){
+      mpz_set(dlift->gden, dlift->den[dlift->lstart-1]);
+    }
+  }
+
+  int32_t start = dlift->lstart;
+  dlift->start = start;
+  dlift->end = start-1;
+
+  st = realtime();
+
   mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
   mpz_sqrt(recdata->N, recdata->N);
   mpz_set(recdata->D, recdata->N);
@@ -1121,33 +1138,36 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_fdiv_q(recdata->D, recdata->D, dlift->gden);
   mpz_mul(recdata->N, recdata->N, dlift->gden);
 
-  int32_t start = dlift->lstart;
-  dlift->start = start;
-  dlift->end = start-1;
-
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
-    fprintf(stderr, "[%d]", i);
-    st = realtime();
-    dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
-                                dlift->crt[i], mod_p[0],
-                                dlift->gden, recdata);
-    *st_rrec += realtime()-st;
+    /* fprintf(stderr, "[%d]", i); */
 
-    if(dlift->recon){
+    if(ratreconwden(dlift->num[i], dlift->den[i], dlift->crt[i], mod_p[0], dlift->gden, recdata)){
+      mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
+      dlift->recon = 1;
+
       dlift->lstart++;
       dlift->end++;
+
     }
     else{
+
+      dlift->recon = 0;
+
+      mpz_set_ui(dlift->gden, 1);
+      mpz_set_ui(dlift->den[i], 1);
+
       break;
     }
   }
 
+  *st_rrec += realtime()-st;
 
   /********************************************************/
   /********************************************************/
 
   int b = -1;
   if(dlift->lstart != start){
+
     /* lifting over all the polynomials in the range */
     st = realtime();
     crt_lift_modgbs(modgbs, dlift, start, dlift->lend);
@@ -1157,6 +1177,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
                              mod_p, recdata);
     *st_rrec += realtime() - st;
+
 
     if(b >= 0){
       dlift->lstart = b;
@@ -1376,10 +1397,11 @@ int msolve_gbtrace_qq(
   uint32_t prime = next_prime(1<<30);
   uint32_t primeinit;
   srand(time(0));
-  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
-  while(gens->field_char==0 && is_lucky_prime_ui(prime, msd->bs_qq)){
-    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
-  }
+  fprintf(stderr, "PRIME INIT IS FIXED\n");
+  /* prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30)); */
+  /* while(gens->field_char==0 && is_lucky_prime_ui(prime, msd->bs_qq)){ */
+  /*   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30)); */
+  /* } */
 
   primeinit = prime;
   msd->lp->p[0] = primeinit;

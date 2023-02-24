@@ -1248,34 +1248,23 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   int32_t start = dlift->lstart;
   dlift->start = start;
   dlift->end = start-1;
-  int32_t i = dlift->lstart;
-  if(dlift->check2[i] == 0){
+
+  for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
+    fprintf(stderr, "[%d]", i);
     st = realtime();
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
                             dlift->crt[i], mod_p[0], recdata);
     *st_rrec += realtime()-st;
+
     if(dlift->recon){
       dlift->lstart++;
       dlift->end++;
     }
-  }
-  else{
-    for(i = dlift->lstart; i <= dlift->lend; i++){
-      fprintf(stderr, "[%d]", i);
-      st = realtime();
-      dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
-                              dlift->crt[i], mod_p[0], recdata);
-      *st_rrec += realtime()-st;
-
-      if(dlift->recon){
-        dlift->lstart++;
-        dlift->end++;
-      }
-      else{
-        break;
-      }
+    else{
+      break;
     }
   }
+
 
   /********************************************************/
   /********************************************************/

@@ -1245,6 +1245,10 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
   mpz_sqrt(recdata->N, recdata->N);
   mpz_set(recdata->D, recdata->N);
+
+  mpz_fdiv_q(recdata->D, recdata->D, dlift->gden);
+  mpz_mul(recdata->N, recdata->N, dlift->gden);
+
   int32_t start = dlift->lstart;
   dlift->start = start;
   dlift->end = start-1;
@@ -1252,8 +1256,9 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
     fprintf(stderr, "[%d]", i);
     st = realtime();
-    dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
-                            dlift->crt[i], mod_p[0], recdata);
+    dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
+                                dlift->crt[i], mod_p[0],
+                                dlift->gden, recdata);
     *st_rrec += realtime()-st;
 
     if(dlift->recon){

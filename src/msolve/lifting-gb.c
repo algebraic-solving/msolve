@@ -1139,11 +1139,18 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_mul(recdata->N, recdata->N, dlift->gden);
 
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
-    /* fprintf(stderr, "[%d]", i); */
 
-    if(ratreconwden(dlift->num[i], dlift->den[i], dlift->crt[i], mod_p[0], dlift->gden, recdata)){
+    if(dlift->check1[i]==1)fprintf(stderr, "*");
+
+    dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
+                                dlift->crt[i], mod_p[0], dlift->gden, recdata);
+    if(i==66){
+      fprintf(stderr, "-> %ld ", mpz_sizeinbase(dlift->den[i], 2));
+      fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
+      fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
+    }
+    if(dlift->recon){
       mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
-      dlift->recon = 1;
 
       dlift->lstart++;
       dlift->end++;
@@ -1152,9 +1159,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     else{
 
       dlift->recon = 0;
-
-      mpz_set_ui(dlift->gden, 1);
-      mpz_set_ui(dlift->den[i], 1);
 
       break;
     }

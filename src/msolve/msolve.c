@@ -1763,6 +1763,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
 /**
 
    la sortie est recons / denominator
+
  **/
 
 static inline int rational_reconstruction_upoly(mpz_upoly_t recons,
@@ -4031,6 +4032,8 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     /*                             (rt->k)*(param->coords[nv]->length-1), corr, b, */
     /*                             tmp, val_do, val_up); */
 
+    fprintf(stderr, "NV = %ld\n", nv);
+
     mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                 param->coords[nv]->length - 1,
                                 rt->k,
@@ -4167,9 +4170,6 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 
   }
 
-  if(info_level){
-    fprintf(stderr, "\n");
-  }
   for(long i = 0; i < nsols; i++){
     mpz_clear(xup[i]);
     mpz_clear(xdo[i]);
@@ -4237,7 +4237,7 @@ static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_r
     }
 
     extract_real_roots_param(param, roots, nb, pts, precision, maxnbits,
-                     step, info_level);
+                             step, info_level);
     if(info_level){
       fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
               realtime() - st);

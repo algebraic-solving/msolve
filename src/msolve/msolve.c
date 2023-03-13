@@ -4029,8 +4029,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     /*                             (rt->k)*(param->coords[nv]->length-1), corr, b, */
     /*                             tmp, val_do, val_up); */
 
-    fprintf(stderr, "NV = %ld\n", nv);
-
     mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                 param->coords[nv]->length - 1,
                                 rt->k,

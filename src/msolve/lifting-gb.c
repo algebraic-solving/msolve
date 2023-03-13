@@ -904,12 +904,14 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
           mpz_set(polys[k]->cf_qq[2*l], rnum);
           mpz_mul(rden, rden, dlift->den[k]);
           mpz_set(polys[k]->cf_qq[2*l + 1], rden);
+          mpz_lcm(lcm, lcm, rden);
         }
         else{
           fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
           return k;
         }
       }
+      mpz_set(dlift->den[k], lcm);
     }
     else{
       return k;
@@ -1066,7 +1068,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   double st = realtime();
   if(dlift->crt_mult == 0){
     /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
-    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep])){
+    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep] / 2)){
       start_dlift(modgbs, dlift, dlift->coef);
 
       if(dlift->lstart == 0){

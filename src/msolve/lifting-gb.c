@@ -885,11 +885,17 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
 
     if(dlift->check2[k]){
       mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
-      mpz_sqrt(recdata->N, recdata->N);
-      mpz_set(recdata->D, recdata->N);
 
-      mpz_fdiv_q(recdata->D, recdata->D, dlift->den[k]);
-      mpz_mul(recdata->N, recdata->N, dlift->den[k]);
+      if(dlift->cstep){
+        mpz_root(recdata->D, recdata->N, 3);
+        mpz_fdiv_q(recdata->N, recdata->N, recdata->D);
+      }
+      else{
+        mpz_sqrt(recdata->N, recdata->N);
+        mpz_set(recdata->D, recdata->N);
+        mpz_fdiv_q(recdata->D, recdata->D, dlift->den[k]);
+        mpz_mul(recdata->N, recdata->N, dlift->den[k]);
+      }
 
       mpz_set(lcm, dlift->den[k]);
 
@@ -1132,11 +1138,21 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   st = realtime();
 
   mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
-  mpz_sqrt(recdata->N, recdata->N);
-  mpz_set(recdata->D, recdata->N);
 
-  mpz_fdiv_q(recdata->D, recdata->D, dlift->gden);
-  mpz_mul(recdata->N, recdata->N, dlift->gden);
+  if(dlift->cstep){
+
+    long bg = mpz_sizeinbase(dlift->gden, 2);
+    long bt = mpz_sizeinbase(recdata->N, 2);
+
+    mpz_root(recdata->D, recdata->N, 3);
+    mpz_fdiv_q(recdata->N, recdata->N, recdata->D);
+
+  }
+  else{
+    mpz_sqrt(recdata->N, recdata->N);
+    mpz_set(recdata->D, recdata->N);
+
+  }
 
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
 
@@ -1145,10 +1161,21 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
                                 dlift->crt[i], mod_p[0], dlift->gden, recdata);
     if(i==66){
-      fprintf(stderr, "-> %ld ", mpz_sizeinbase(dlift->den[i], 2));
-      fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
-      fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
+      if(dlift->recon){
+        fprintf(stderr, "GOOD ! ");
+        fprintf(stderr, "-> [%ld, ", mpz_sizeinbase(dlift->num[i], 2));
+        fprintf(stderr, "%ld]", mpz_sizeinbase(dlift->den[i], 2));
+        fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
+        fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
+      }
+      else{
+        fprintf(stderr, "NOT GOOD ! ");
+        fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
+        fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
+        fprintf(stderr, "[gden -> %ld]", mpz_sizeinbase(dlift->gden, 2));
+      }
     }
+
     if(dlift->recon){
       mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
 

@@ -1582,7 +1582,7 @@ int msolve_gbtrace_qq(
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt, &st_rrec);
       }
-      if(st_rrec - ost_rrec > 10 * dlift->rr * stf4){
+      if(10*(st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
           fprintf(stderr, "(->%d)", dlift->rr);

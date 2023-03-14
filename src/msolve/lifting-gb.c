@@ -53,6 +53,7 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 #ifdef NEWGBLIFT
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */
+  int32_t rr; /* number of primes before activating rational reconstruction */
   int32_t nsteps; /* number of steps for lifting GB (per degree) */
   int32_t *steps; /* array of length nsteps ; the sum of the entries should
                      equal npol */
@@ -103,6 +104,7 @@ static inline void data_lift_init(data_lift_t dlift,
                                   int32_t npol,
                                   int32_t *steps, int32_t nsteps){
   dlift->npol = npol;
+  dlift->rr = 2;
   dlift->lstart = 0;
   dlift->nsteps = nsteps;
 
@@ -1155,44 +1157,45 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
   }
 
-  for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
+  if(modgbs->nprimes % dlift->rr == 0){
+    for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
 
-    if(dlift->check1[i]==1)fprintf(stderr, "*");
+      if(dlift->check1[i]==1)fprintf(stderr, "*");
 
-    dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
-                                dlift->crt[i], mod_p[0], dlift->gden, recdata);
+      dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
+                                  dlift->crt[i], mod_p[0], dlift->gden, recdata);
 
-    if(i==66){
+      if(i==66){
+        if(dlift->recon){
+          fprintf(stderr, "GOOD ! ");
+          fprintf(stderr, "-> [%ld, ", mpz_sizeinbase(dlift->num[i], 2));
+          fprintf(stderr, "%ld]", mpz_sizeinbase(dlift->den[i], 2));
+          fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
+          fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
+        }
+        else{
+          fprintf(stderr, "NOT GOOD ! ");
+          fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
+          fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
+          fprintf(stderr, "[gden -> %ld]", mpz_sizeinbase(dlift->gden, 2));
+        }
+      }
+
       if(dlift->recon){
-        fprintf(stderr, "GOOD ! ");
-        fprintf(stderr, "-> [%ld, ", mpz_sizeinbase(dlift->num[i], 2));
-        fprintf(stderr, "%ld]", mpz_sizeinbase(dlift->den[i], 2));
-        fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
-        fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
+        mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
+
+        dlift->lstart++;
+        dlift->end++;
+
       }
       else{
-        fprintf(stderr, "NOT GOOD ! ");
-        fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
-        fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
-        fprintf(stderr, "[gden -> %ld]", mpz_sizeinbase(dlift->gden, 2));
+
+        dlift->recon = 0;
+
+        break;
       }
     }
-
-    if(dlift->recon){
-      mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
-
-      dlift->lstart++;
-      dlift->end++;
-
-    }
-    else{
-
-      dlift->recon = 0;
-
-      break;
-    }
   }
-
   *st_rrec += realtime()-st;
 
   /********************************************************/
@@ -1593,8 +1596,12 @@ int msolve_gbtrace_qq(
         }
       }
       int lstart = dlift->lstart;
+      double ost_rrec = st_rrec;
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt, &st_rrec);
+      }
+      if(st_rrec - ost_rrec > 10 * dlift->rr * stf4){
+        dlift->rr = 2*dlift->rr;
       }
       if(info_level){
         if(!(nprimes & (nprimes - 1))){

@@ -402,7 +402,7 @@ static inline int32_t *array_nbdegrees(int32_t *bexp_lm, int len,
   }
   int32_t *ldeg = calloc(sizeof(int32_t), *nb);
   deg = degree(bexp_lm, nv);
-  ldeg[0] = deg;
+  ldeg[0] = 1;
   int32_t i = 0, j = 1;
   while(j < len){
     int32_t newdeg = degree(bexp_lm + j * nv, nv);
@@ -1058,7 +1058,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 #endif
 
-
   verif_lifted_rational(modgbs, dlift, thrds);
 
   /********************************************************/
@@ -1068,7 +1067,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   double st = realtime();
   if(dlift->crt_mult == 0){
     /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
-    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep] / 2)){
+    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 2){
       start_dlift(modgbs, dlift, dlift->coef);
 
       if(dlift->lstart == 0){
@@ -1162,6 +1161,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
     dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
                                 dlift->crt[i], mod_p[0], dlift->gden, recdata);
+
     if(i==66){
       if(dlift->recon){
         fprintf(stderr, "GOOD ! ");
@@ -1496,11 +1496,12 @@ int msolve_gbtrace_qq(
       dlinit = 1;
     }
 
-    for(int i = 0; i < dlift->nsteps; i++){
-      fprintf(stderr, "[%d]", dlift->steps[i]);
+    if(info_level){
+      for(int i = 0; i < dlift->nsteps; i++){
+        fprintf(stderr, "[%d]", dlift->steps[i]);
+      }
+      fprintf(stderr, "\n");
     }
-    fprintf(stderr, "\n");
-    fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
 

@@ -1686,7 +1686,6 @@ int msolve_gbtrace_qq(
       prime = msd->lp->p[st->nthrds - 1];
       gb_modpoly_realloc(modgbs, st->nthrds);
 
-      double sta = realtime();
       gb_modular_trace_application(modgbs, msd->mgb,
                                    msd->num_gb,
                                    msd->leadmons_ori,

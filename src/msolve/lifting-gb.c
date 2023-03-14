@@ -1557,7 +1557,6 @@ int msolve_gbtrace_qq(
       prime = msd->lp->p[st->nthrds - 1];
       gb_modpoly_realloc(modgbs, st->nthrds);
 
-      double sta = realtime();
       gb_modular_trace_application(modgbs, msd->mgb,
                                    msd->num_gb,
                                    msd->leadmons_ori,
@@ -1568,8 +1567,6 @@ int msolve_gbtrace_qq(
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
                                    gens, &stf4, msd->bad_primes);
 
-      sta = realtime() - st;
-      
       /* display_gbmodpoly(stderr, modgbs); */
 
       nprimes += st->nthrds;
@@ -1585,6 +1582,7 @@ int msolve_gbtrace_qq(
         if(info_level>1){
           fprintf(stderr, "Application phase %.2f Gops/sec\n",
                   (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
+          fprintf(stderr, "Elapsed time: %.2f\n", stf4);
         }
       }
       int bad = 0;

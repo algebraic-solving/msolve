@@ -1415,11 +1415,11 @@ int msolve_gbtrace_qq(
   uint32_t prime = next_prime(1<<30);
   uint32_t primeinit;
   srand(time(0));
-  fprintf(stderr, "PRIME INIT IS FIXED\n");
-  /* prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30)); */
-  /* while(gens->field_char==0 && is_lucky_prime_ui(prime, msd->bs_qq)){ */
-  /*   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30)); */
-  /* } */
+
+  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  while(gens->field_char==0 && is_lucky_prime_ui(prime, msd->bs_qq)){
+    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  }
 
   primeinit = prime;
   msd->lp->p[0] = primeinit;

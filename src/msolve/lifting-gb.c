@@ -1587,7 +1587,7 @@ int msolve_gbtrace_qq(
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt, &st_rrec);
       }
-      if(2*(st_rrec - ost_rrec) > dlift->rr * stf4){
+      if((st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
           fprintf(stderr, "(->%d)", dlift->rr);

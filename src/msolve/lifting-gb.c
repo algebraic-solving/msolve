@@ -1482,10 +1482,15 @@ int msolve_gbtrace_qq(
     }
 
     if(info_level){
+      int s= 0;
       for(int i = 0; i < dlift->nsteps; i++){
         fprintf(stderr, "[%d]", dlift->steps[i]);
+        s+=dlift->steps[i];
       }
       fprintf(stderr, "\n");
+      if(s > 1){
+        fprintf(stderr, "%d polynomials to lift\n", s);
+      }
     }
 
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
@@ -1582,7 +1587,7 @@ int msolve_gbtrace_qq(
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt, &st_rrec);
       }
-      if(10*(st_rrec - ost_rrec) > dlift->rr * stf4){
+      if(2*(st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
           fprintf(stderr, "(->%d)", dlift->rr);

@@ -728,11 +728,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   st->nthrds = nthrds;
 }
 
-/* returns index of coefficient to lift */
-static inline int coef_to_lift(gb_modpoly_t modgbs, int32_t idx){
-  /* to be refined */
-  return modgbs->modpolys[idx]->len / 2;
-}
+
 
 #ifdef NEWGBLIFT
 /* uses FLINT's multi CRT when starting to lift one witness coef */
@@ -1075,7 +1071,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   double st = realtime();
   if(dlift->crt_mult == 0){
     /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
-    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 2){
+    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 16){
       start_dlift(modgbs, dlift, dlift->coef);
 
       if(dlift->lstart == 0){

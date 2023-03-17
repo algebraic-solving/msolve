@@ -104,7 +104,7 @@ static inline void data_lift_init(data_lift_t dlift,
                                   int32_t npol,
                                   int32_t *steps, int32_t nsteps){
   dlift->npol = npol;
-  dlift->rr = 2;
+  dlift->rr = 1;
   dlift->lstart = 0;
   dlift->nsteps = nsteps;
 
@@ -699,7 +699,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
       bs[i] = gba_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
     }
     *stf4 = realtime()-ca0;
-    /* printf("F4 trace timing %13.2f\n", *stf4); */
 
     if(bs[i]->lml != num_gb[i]){
       if (bs[i] != NULL) {
@@ -725,6 +724,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
       free_basis(&(bs[i]));
     }
   }
+
   st->nthrds = nthrds;
 }
 

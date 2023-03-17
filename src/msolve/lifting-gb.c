@@ -910,12 +910,18 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         }
         else{
           fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
+          mpz_clear(rnum);
+          mpz_clear(rden);
+          mpz_clear(lcm);
           return k;
         }
       }
-      mpz_set(dlift->den[k], lcm);
+      mpz_lcm(dlift->gden, dlift->gden, lcm);
     }
     else{
+      mpz_clear(rnum);
+      mpz_clear(rden);
+      mpz_clear(lcm);
       return k;
     }
   }

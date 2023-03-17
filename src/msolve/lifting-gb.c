@@ -50,7 +50,7 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
 #define NEWGBLIFT 1
 
-#ifdef NEWGBLIFT
+
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */
   int32_t rr; /* number of primes before activating rational reconstruction */
@@ -78,28 +78,8 @@ typedef struct{
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
-#else
-typedef struct {
-  int32_t lstart; /* index of polynomial being lifted */
-  int32_t lend; /* not used */
-  int32_t nsteps; /* number of steps for lifting GB (per degree) */
-  int32_t *steps; /* array of length nsteps ; the sum of the entries should
-                     equal the total number of polynomials to be lifted */
-  uint32_t *coef; /*  */
-  int crt_mult; /* indicates if multi-mod flint structures need to be
-                initialized */
-  mpz_t *crt; /* current crt */
-  int recon; /* equals 1 when some rational number has been lifted, else 0 */
-  mpz_t num; /* lifted numerator */
-  mpz_t den; /* lifted denominator */
-  int check1; /* tells whether lifted data are ok with one more prime */
-  int check2; /* tells whether lifted data are ok with two more primes */
-} data_lift_struct;
 
-typedef data_lift_struct data_lift_t[1];
-#endif
 
-#ifdef NEWGBLIFT
 static inline void data_lift_init(data_lift_t dlift,
                                   int32_t npol,
                                   int32_t *steps, int32_t nsteps){
@@ -142,32 +122,7 @@ static inline void data_lift_init(data_lift_t dlift,
   dlift->check2 = calloc(npol, sizeof(int));
 
 }
-#else
-static inline void data_lift_init(data_lift_t dlift, int npol,
-                                  int32_t *steps, int32_t nsteps){
-  dlift->lstart = -1;
-  dlift->lend = -1;
 
-  dlift->steps = calloc(nsteps, sizeof(int32_t));
-  for(int32_t i = 0; i < nsteps; i++){
-    dlift->steps[i] = steps[i];
-  }
-
-  dlift->crt_mult = 0;
-  dlift->coef = calloc(npol, sizeof(mpz_t) );
-
-  dlift->crt = malloc(sizeof(mpz_t));
-  mpz_init(dlift->crt[0]);
-
-  mpz_init(dlift->num);
-  mpz_init(dlift->den);
-  dlift->check1 = 0;
-  dlift->check2 = 0;
-  dlift->recon = 0;
-}
-#endif
-
-#ifdef NEWGBLIFT
 static inline void data_lift_clear(data_lift_t dlift){
   for(int32_t i = 0; i < dlift->npol; i++){
     mpz_clear(dlift->crt[i]);
@@ -192,18 +147,6 @@ static inline void data_lift_clear(data_lift_t dlift){
   free(dlift->check2);
 
 }
-#else
-static inline void data_lift_clear(data_lift_t dlift){
-
-  mpz_clear(dlift->crt[0]);
-  free(dlift->crt);
-
-  mpz_clear(dlift->num);
-  mpz_clear(dlift->den);
-  free(dlift->coef);
-
-}
-#endif
 
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, int32_t *lens,

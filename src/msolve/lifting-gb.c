@@ -728,7 +728,21 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   st->nthrds = nthrds;
 }
 
-
+static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
+  uint32_t ld = modgbs->ld;
+  for(int32_t i = 0; i < ld; i++){
+    uint32_t d = 0;
+    while(d < modgbs->modpolys[i]->len){
+      if(modgbs->modpolys[i]->cf_32[d][0]){
+        dlift->coef[i] = d;
+        break;
+      }
+      else{
+        d++;
+      }
+    }
+  }
+}
 
 #ifdef NEWGBLIFT
 /* uses FLINT's multi CRT when starting to lift one witness coef */
@@ -749,7 +763,8 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
     int32_t cl = dlift->coef[k];
     for(uint32_t i = 0; i < modgbs->nprimes; i++){
-      modgbs->cf_64[i] = polys[k]->cf_32[coef[cl]][i];
+      /* modgbs->cf_64[i] = polys[k]->cf_32[coef[cl]][i]; */
+      modgbs->cf_64[i] = polys[k]->cf_32[cl][i];
     }
     fmpz_multi_CRT_ui(y, modgbs->cf_64,
                       comb, comb_temp, 1);
@@ -804,7 +819,7 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
-    uint32_t c = modgbs->modpolys[k]->cf_32[coef[0]][modgbs->nprimes  - 1 ];
+    uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
     mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
                c, modgbs->primes[modgbs->nprimes - 1 ],
                prod_p[0], 1);
@@ -1479,6 +1494,7 @@ int msolve_gbtrace_qq(
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                       msd->bht->nv, &nb);
       data_lift_init(dlift, modgbs->ld, ldeg, nb);
+      choose_coef_to_lift(modgbs, dlift);
       free(ldeg);
       dlinit = 1;
     }

@@ -104,7 +104,11 @@ static inline void data_lift_init(data_lift_t dlift,
                                   int32_t npol,
                                   int32_t *steps, int32_t nsteps){
   dlift->npol = npol;
+<<<<<<< HEAD
   dlift->rr = 1;
+=======
+  dlift->rr = 2;
+>>>>>>> c1949f6e85c6e54e2cc198d473b5470cb2f1d30b
   dlift->lstart = 0;
   dlift->nsteps = nsteps;
 
@@ -763,7 +767,6 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
     int32_t cl = dlift->coef[k];
     for(uint32_t i = 0; i < modgbs->nprimes; i++){
-      /* modgbs->cf_64[i] = polys[k]->cf_32[coef[cl]][i]; */
       modgbs->cf_64[i] = polys[k]->cf_32[cl][i];
     }
     fmpz_multi_CRT_ui(y, modgbs->cf_64,
@@ -819,7 +822,11 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
+<<<<<<< HEAD
     uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
+=======
+    uint32_t c = modgbs->modpolys[k]->cf_32[coef[0]][modgbs->nprimes  - 1 ];
+>>>>>>> c1949f6e85c6e54e2cc198d473b5470cb2f1d30b
     mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
                c, modgbs->primes[modgbs->nprimes - 1 ],
                prod_p[0], 1);
@@ -921,6 +928,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         }
         else{
           fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
+<<<<<<< HEAD
           mpz_clear(rnum);
           mpz_clear(rden);
           mpz_clear(lcm);
@@ -933,6 +941,14 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
       mpz_clear(rnum);
       mpz_clear(rden);
       mpz_clear(lcm);
+=======
+          return k;
+        }
+      }
+      mpz_set(dlift->den[k], lcm);
+    }
+    else{
+>>>>>>> c1949f6e85c6e54e2cc198d473b5470cb2f1d30b
       return k;
     }
   }
@@ -1086,7 +1102,11 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   double st = realtime();
   if(dlift->crt_mult == 0){
     /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
+<<<<<<< HEAD
     if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 16){
+=======
+    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 2){
+>>>>>>> c1949f6e85c6e54e2cc198d473b5470cb2f1d30b
       start_dlift(modgbs, dlift, dlift->coef);
 
       if(dlift->lstart == 0){
@@ -1494,7 +1514,10 @@ int msolve_gbtrace_qq(
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                       msd->bht->nv, &nb);
       data_lift_init(dlift, modgbs->ld, ldeg, nb);
+<<<<<<< HEAD
       choose_coef_to_lift(modgbs, dlift);
+=======
+>>>>>>> c1949f6e85c6e54e2cc198d473b5470cb2f1d30b
       free(ldeg);
       dlinit = 1;
     }

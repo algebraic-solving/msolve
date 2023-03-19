@@ -676,7 +676,7 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
   uint32_t ld = modgbs->ld;
   for(int32_t i = 0; i < ld; i++){
     uint32_t d = 0;
-    while(d < modgbs->modpolys[i]->len){
+    while(d < modgbs->modpolys[i]->len - 1){
       if(modgbs->modpolys[i]->cf_32[d][0]){
         dlift->coef[i] = d;
         break;
@@ -864,13 +864,15 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         }
         else{
           fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
+          mpz_set_ui(dlift->gden, 1);
           mpz_clear(rnum);
           mpz_clear(rden);
           mpz_clear(lcm);
           return k;
         }
+        mpz_set(dlift->gden, lcm);
+        /* mpz_lcm(dlift->gden, dlift->gden, lcm); */
       }
-      mpz_lcm(dlift->gden, dlift->gden, lcm);
     }
     else{
       mpz_clear(rnum);
@@ -1010,7 +1012,7 @@ static void update_prodprimes(gb_modpoly_t modgbs, data_lift_t dlift,
 #ifdef NEWGBLIFT
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
-                        rrec_data_t recdata,
+                        rrec_data_t recdata1, rrec_data_t recdata2,
                         int thrds, double *st_crt, double *st_rrec){
 #ifdef DEBUGGBLIFT
   for(int i = 0; i < dlift->nsteps; i++){
@@ -1029,7 +1031,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   double st = realtime();
   if(dlift->crt_mult == 0){
     /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
-    if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 16){
+    if(0==0 || modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 16){
       start_dlift(modgbs, dlift, dlift->coef);
 
       if(dlift->lstart == 0){
@@ -1088,11 +1090,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   if(dlift->lstart == 0){
     mpz_set_ui(dlift->gden, 1);
   }
-  else{
-    if(dlift->check2[dlift->lstart-1]){
-      mpz_set(dlift->gden, dlift->den[dlift->lstart-1]);
-    }
-  }
 
   int32_t start = dlift->lstart;
   dlift->start = start;
@@ -1100,20 +1097,26 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
   st = realtime();
 
-  mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
+  mpz_fdiv_q_2exp(recdata1->N, mod_p[0], 1);
 
   if(dlift->cstep){
 
-    long bg = mpz_sizeinbase(dlift->gden, 2);
-    long bt = mpz_sizeinbase(recdata->N, 2);
+    mpz_set(recdata2->N, recdata1->N);
 
-    mpz_root(recdata->D, recdata->N, 3);
-    mpz_fdiv_q(recdata->N, recdata->N, recdata->D);
+    mpz_sqrt(recdata2->N, recdata2->N);
+    mpz_set(recdata2->D, recdata2->N);
+
+
+    mpz_root(recdata1->D, recdata1->N, 3);
+    mpz_fdiv_q(recdata1->N, recdata1->N, recdata1->D);
 
   }
   else{
-    mpz_sqrt(recdata->N, recdata->N);
-    mpz_set(recdata->D, recdata->N);
+    mpz_sqrt(recdata1->N, recdata1->N);
+    mpz_set(recdata1->D, recdata1->N);
+
+    mpz_set(recdata2->N, recdata1->N);
+    mpz_set(recdata2->D, recdata1->D);
 
   }
 
@@ -1121,7 +1124,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
 
       dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
-                                  dlift->crt[i], mod_p[0], dlift->gden, recdata);
+                                  dlift->crt[i], mod_p[0], dlift->gden, recdata1);
 
       if(dlift->recon){
         mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
@@ -1132,9 +1135,16 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       }
       else{
 
-        dlift->recon = 0;
-
-        break;
+        dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
+                                dlift->crt[i], mod_p[0], recdata2);
+        if(dlift->recon){
+          dlift->lstart++;
+          dlift->end++;
+        }
+        else{
+          dlift->recon = 0;
+          break;
+        }
       }
     }
   }
@@ -1153,7 +1163,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
     st = realtime();
     b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
-                             mod_p, recdata);
+                             mod_p, recdata1);
     *st_rrec += realtime() - st;
 
 
@@ -1402,8 +1412,9 @@ int msolve_gbtrace_qq(
 
 
 
-  rrec_data_t recdata;
-  initialize_rrec_data(recdata);
+  rrec_data_t recdata1, recdata2;
+  initialize_rrec_data(recdata1);
+  initialize_rrec_data(recdata2);
 
   data_lift_t dlift;
   /* indicates that dlift has been already initialized */
@@ -1546,7 +1557,8 @@ int msolve_gbtrace_qq(
       int lstart = dlift->lstart;
       double ost_rrec = st_rrec;
       if(!bad){
-        ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt, &st_rrec);
+        ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
+                    st->nthrds, &st_crt, &st_rrec);
       }
       if((st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
@@ -1600,7 +1612,8 @@ int msolve_gbtrace_qq(
   }
 
   gb_modpoly_clear(modgbs);
-  free_rrec_data(recdata);
+  free_rrec_data(recdata1);
+  free_rrec_data(recdata2);
 
   free(st);
 

@@ -426,7 +426,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
                                int *mgb){
   if(modgbs->nprimes >= modgbs->alloc-1){
     fprintf(stderr, "Not enough space in modgbs\n");
-    return 0;
+    exit(1);
   }
   modgbs->primes[modgbs->nprimes] = fc;
 
@@ -1525,6 +1525,7 @@ int msolve_gbtrace_qq(
   double st_rrec = 0;
 
   while(learn){
+    fprintf(stderr, "ici : [np = %d, alloc = %d]\n", nprimes, modgbs->alloc);
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                  msd->mgb,
                                                  msd->num_gb, msd->leadmons_ori,
@@ -1620,7 +1621,10 @@ int msolve_gbtrace_qq(
         }
       }
       prime = msd->lp->p[st->nthrds - 1];
-      gb_modpoly_realloc(modgbs, st->nthrds);
+
+      if(modgbs->alloc <= nprimes + 2){
+        gb_modpoly_realloc(modgbs, 32*st->nthrds);
+      }
 
       gb_modular_trace_application(modgbs, msd->mgb,
                                    msd->num_gb,

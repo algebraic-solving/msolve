@@ -1030,12 +1030,10 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /* starts CRT */
   double st = realtime();
   if(dlift->crt_mult == 0){
-    /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
-    if(0==0 || modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 16){
+    if(0==0 || modgbs->nprimes >=  (dlift->steps[dlift->cstep])){
       start_dlift(modgbs, dlift, dlift->coef);
 
       if(dlift->lstart == 0){
-        mpz_set_ui(mod_p[0], 1);
         for(int i = 0; i < modgbs->nprimes; i++){
           uint32_t prime = modgbs->primes[i];
           mpz_mul_ui(mod_p[0], mod_p[0], prime);
@@ -1050,27 +1048,26 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
         }
         mpz_set(prod_p[0], mod_p[0]);
       }
-      return;
     }
     else{
       /* We do not have enough primes */
+      fprintf(stderr, "-");
       if(dlift->lstart == 0){
-        mpz_set_ui(mod_p[0], 1);
+        fprintf(stderr, "(a)");
         for(int i = 0; i < modgbs->nprimes; i++){
           uint32_t prime = modgbs->primes[i];
           mpz_mul_ui(mod_p[0], mod_p[0], prime);
         }
         mpz_set(prod_p[0], mod_p[0]);
-
       }
       else{
+        fprintf(stderr, "(b)");
         for(int i = 0; i < thrds; i++){
           uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i)];
           mpz_mul_ui(mod_p[0], mod_p[i], prime);
         }
         mpz_set(prod_p[0], mod_p[0]);
       }
-      return;
     }
   }
   else{
@@ -1087,6 +1084,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /*                       RATRECON                       */
   /********************************************************/
 
+  st = realtime();
+
   if(dlift->lstart == 0){
     mpz_set_ui(dlift->gden, 1);
   }
@@ -1094,8 +1093,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   int32_t start = dlift->lstart;
   dlift->start = start;
   dlift->end = start-1;
-
-  st = realtime();
 
   mpz_fdiv_q_2exp(recdata1->N, mod_p[0], 1);
 
@@ -1105,7 +1102,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
     mpz_sqrt(recdata2->N, recdata2->N);
     mpz_set(recdata2->D, recdata2->N);
-
 
     mpz_root(recdata1->D, recdata1->N, 3);
     mpz_fdiv_q(recdata1->N, recdata1->N, recdata1->D);
@@ -1520,7 +1516,7 @@ int msolve_gbtrace_qq(
       prime = msd->lp->p[st->nthrds - 1];
 
       if(modgbs->alloc <= nprimes + 2){
-        gb_modpoly_realloc(modgbs, 16*st->nthrds);
+        gb_modpoly_realloc(modgbs, 62*st->nthrds);
       }
 
       gb_modular_trace_application(modgbs, msd->mgb,
@@ -1560,11 +1556,12 @@ int msolve_gbtrace_qq(
       }
       int lstart = dlift->lstart;
       double ost_rrec = st_rrec;
+      double ost_crt = st_crt;
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
                     st->nthrds, &st_crt, &st_rrec);
       }
-      if((st_rrec - ost_rrec) > dlift->rr * stf4){
+      if(/* (st_crt -ost_crt) + */ (st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
           fprintf(stderr, "(->%d)", dlift->rr);

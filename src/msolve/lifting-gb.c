@@ -1623,7 +1623,7 @@ int msolve_gbtrace_qq(
       prime = msd->lp->p[st->nthrds - 1];
 
       if(modgbs->alloc <= nprimes + 2){
-        gb_modpoly_realloc(modgbs, 32*st->nthrds);
+        gb_modpoly_realloc(modgbs, 16*st->nthrds);
       }
 
       gb_modular_trace_application(modgbs, msd->mgb,

@@ -900,11 +900,9 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
       }
       if(!dlift->check1[k]){
         dlift->check1[k] = 1;
-        fprintf(stderr, "[!]");
       }
       else{
         dlift->check2[k] = 1;
-        fprintf(stderr, "[!!]");
       }
     }
   }
@@ -1418,7 +1416,7 @@ int msolve_gbtrace_qq(
         }
       }
       if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
-        /* S = 0; */
+        S = lstart;
         if(info_level){
           fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }

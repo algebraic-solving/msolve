@@ -282,7 +282,7 @@ end proc:
 # [ vars[1] = (a1+b1)/2, ..., vars[n] = (an+bn)/2 ]
 MSolveRealRoots:=proc(F, vars, opts:={})
 local results, dim, fname1, fname2, verb, param, msolve_path, file_dir,
-lsols, nl, i, gb, output, nthreads, str, sols;
+lsols, nl, i, j, gb, output, nthreads, str, sols;
    if type(F, list(polynom(rational))) = false then
      printf("First argument is not a list of polynomials with rational coefficients\n");
    end if;

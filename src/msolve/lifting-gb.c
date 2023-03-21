@@ -70,6 +70,7 @@ typedef struct{
   mpz_t *num; /* lifted numerator */
   mpz_t *den; /* lifted denominator */
   mpz_t gden; /* guessed denominator */
+  mpz_t tmp;
   int32_t start; /* indicates smallest index of poly whose coef has been lifted but not checked*/
   int32_t end; /* indicates largest index of poly whose coef has been lifted but not checked*/
   int *check1; /* tells whether lifted data are ok with one more prime */
@@ -115,7 +116,7 @@ static inline void data_lift_init(data_lift_t dlift,
     mpz_init(dlift->den[i]);
   }
   mpz_init_set_ui(dlift->gden, 1);
-
+  mpz_init(dlift->tmp);
   dlift->start = 0;
   dlift->end = 0;
   dlift->check1 = calloc(npol, sizeof(int));
@@ -143,6 +144,7 @@ static inline void data_lift_clear(data_lift_t dlift){
   free(dlift->den);
 
   mpz_clear(dlift->gden);
+  mpz_clear(dlift->tmp);
   free(dlift->check1);
   free(dlift->check2);
 
@@ -1043,6 +1045,10 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
       if(dlift->recon){
         mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
+        mpz_gcd(dlift->tmp, dlift->den[i], dlift->num[i]);
+
+        mpz_divexact(dlift->num[i], dlift->num[i], dlift->tmp);
+        mpz_divexact(dlift->den[i], dlift->den[i], dlift->tmp);
 
         dlift->lstart++;
         dlift->end++;

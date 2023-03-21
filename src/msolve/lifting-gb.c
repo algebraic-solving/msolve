@@ -1302,6 +1302,7 @@ int msolve_gbtrace_qq(
                       int32_t pbm_file,
                       files_gb *files){
 
+  double st0 = realtime();
   uint32_t field_char = gens->field_char;
   const void *cfs = gens->mpz_cfs;
   if(gens->field_char){
@@ -1599,7 +1600,7 @@ int msolve_gbtrace_qq(
     }
   }
   if(info_level){
-    fprintf(stderr, "%d primes used\n", nprimes);
+    fprintf(stderr, "%d primes used. Elapsed time: %.2f\n", nprimes, realtime()-st0);
   }
   free_mstrace(msd, st);
   if(dlinit){

@@ -75,7 +75,7 @@ typedef struct{
   int32_t end; /* indicates largest index of poly whose coef has been lifted but not checked*/
   int *check1; /* tells whether lifted data are ok with one more prime */
   int *check2; /* tells whether lifted data are ok with two more primes */
-
+  int32_t S;
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
@@ -89,7 +89,7 @@ static inline void data_lift_init(data_lift_t dlift,
 
   dlift->lstart = 0;
   dlift->nsteps = nsteps;
-
+  dlift->S = 0;
   int32_t i;
 
   dlift->steps = calloc(nsteps, sizeof(int32_t));
@@ -683,7 +683,7 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
     uint32_t len = modgbs->modpolys[i]->len;
     while(d < len - 1){
       if(modgbs->modpolys[i]->cf_32[d][0]){
-        dlift->coef[i] = d/* d */;
+        dlift->coef[i] = d /* d */;
         break;
       }
       else{
@@ -855,10 +855,9 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
           mpz_clear(lcm);
           return k;
         }
-        /* mpz_set(dlift->gden, lcm); */
-        mpz_lcm(dlift->gden, dlift->gden, lcm);
       }
-    }
+      dlift->S++;
+     }
     else{
       mpz_clear(rnum);
       mpz_clear(rden);
@@ -1050,6 +1049,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
         mpz_divexact(dlift->num[i], dlift->num[i], dlift->tmp);
         mpz_divexact(dlift->den[i], dlift->den[i], dlift->tmp);
 
+        mpz_set(dlift->gden, dlift->den[i]);
+
         dlift->lstart++;
         dlift->end++;
 
@@ -1061,6 +1062,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
         if(dlift->recon){
           dlift->lstart++;
           dlift->end++;
+          mpz_set(dlift->gden, dlift->den[i]);
         }
         else{
           dlift->recon = 0;
@@ -1276,14 +1278,14 @@ int msolve_gbtrace_qq(
                                                  info_level,
                                                  print_gb,
                                                  dim_ptr, dquot_ptr,
-                                                 S,
+                                                 dlift->S,
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
 
     apply = 1;
 
-    gb_modpoly_realloc(modgbs, 2, S);
+    gb_modpoly_realloc(modgbs, 2, dlift->S);
 
 #ifdef DEBUGGBLIFT
     display_gbmodpoly(stderr, modgbs);
@@ -1376,7 +1378,7 @@ int msolve_gbtrace_qq(
                                    msd->btht, msd->bs_qq, msd->blht, st,
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
-                                   S, gens, &stf4, msd->bad_primes);
+                                   dlift->S, gens, &stf4, msd->bad_primes);
 
       /* display_gbmodpoly(stderr, modgbs); */
 
@@ -1422,7 +1424,6 @@ int msolve_gbtrace_qq(
         }
       }
       if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
-        S = lstart;
         if(info_level){
           fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }

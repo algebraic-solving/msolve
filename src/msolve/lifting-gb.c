@@ -175,7 +175,8 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
 }
 
 static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
-                                      uint32_t newalloc){
+                                      uint32_t newalloc,
+                                      int32_t start){
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
 
@@ -201,7 +202,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
     modgbs->cf_64[i] = 0;
   }
 
-  for(uint32_t i = 0; i < modgbs->ld; i++){
+  for(uint32_t i = start; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->cf_32[j],
                                                  modgbs->alloc * sizeof(uint32_t));
@@ -423,7 +424,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
                                const bs_t *bs, const ht_t * const ht,
                                const int32_t fc,
                                int32_t *basis, const int dquot,
-                               int *mgb){
+                              int *mgb, int32_t start){
   if(modgbs->nprimes >= modgbs->alloc-1){
     fprintf(stderr, "Not enough space in modgbs\n");
     exit(1);
@@ -453,7 +454,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
     }
   }
 
-  for(i = 0; i < modgbs->ld; i++){
+  for(i = start; i < modgbs->ld; i++){
     idx = bs->lmps[i];
     if (bs->hm[idx] == NULL) {
       fprintf(stderr, " poly is 0\n");
@@ -514,6 +515,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            int print_gb,
                                            int *dim,
                                            long *dquot_ori,
+                                           int32_t start,
                                            data_gens_ff_t *gens,
                                            int32_t maxbitsize,
                                            files_gb *files,
@@ -593,7 +595,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     gb_modpoly_init(modgbs, maxbitsize, lens, bs->lml);
 
-    modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb);
+    modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb, start);
 
     free_basis(&(bs));
     return lmb;
@@ -617,12 +619,12 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          int32_t *lmb_ori,
                                          int32_t dquot_ori,
                                          primes_t *lp,
+                                         int32_t start,
                                          data_gens_ff_t *gens,
                                          double *stf4,
                                          int *bad_primes){
 
   st->info_level = 0;
-
   /* tracing phase */
   len_t i;
   double ca0;
@@ -663,7 +665,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   for(i = 0; i < st->nprimes; i++){
     if(!bad_primes[i] && bs[i] != NULL){
       /* copy of data for multi-mod computation */
-      modpgbs_set(modgbs, bs[i], bht[i], lp->p[i], lmb_ori, dquot_ori, mgb);
+      modpgbs_set(modgbs, bs[i], bht[i], lp->p[i], lmb_ori, dquot_ori, mgb, start);
     }
     if (bs[i] != NULL) {
       free_basis(&(bs[i]));
@@ -863,8 +865,8 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
           mpz_clear(lcm);
           return k;
         }
-        mpz_set(dlift->gden, lcm);
-        /* mpz_lcm(dlift->gden, dlift->gden, lcm); */
+        /* mpz_set(dlift->gden, lcm); */
+        mpz_lcm(dlift->gden, dlift->gden, lcm);
       }
     }
     else{
@@ -982,9 +984,9 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /*                     CRT                              */
   /********************************************************/
   /* starts CRT */
-  double st = realtime();
-
+  double st = realtime();;
   if(dlift->crt_mult == 0){
+
     if(0==0 || modgbs->nprimes >=  (dlift->steps[dlift->cstep])){
       start_dlift(modgbs, dlift, dlift->coef);
 
@@ -1368,13 +1370,14 @@ int msolve_gbtrace_qq(
                                                  info_level,
                                                  print_gb,
                                                  dim_ptr, dquot_ptr,
+                                                 dlift->lstart,
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
 
     apply = 1;
 
-    gb_modpoly_realloc(modgbs, 2);
+    gb_modpoly_realloc(modgbs, 2, dlift->lstart);
 
 #ifdef DEBUGGBLIFT
     display_gbmodpoly(stderr, modgbs);
@@ -1456,7 +1459,7 @@ int msolve_gbtrace_qq(
       prime = msd->lp->p[st->nthrds - 1];
 
       if(modgbs->alloc <= nprimes + 2){
-        gb_modpoly_realloc(modgbs, 62*st->nthrds);
+        gb_modpoly_realloc(modgbs, 32*st->nthrds, dlift->lstart);
       }
 
       gb_modular_trace_application(modgbs, msd->mgb,
@@ -1467,7 +1470,7 @@ int msolve_gbtrace_qq(
                                    msd->btht, msd->bs_qq, msd->blht, st,
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
-                                   gens, &stf4, msd->bad_primes);
+                                   dlift->lstart, gens, &stf4, msd->bad_primes);
 
       /* display_gbmodpoly(stderr, modgbs); */
 

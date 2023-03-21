@@ -883,7 +883,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   return -1;
 }
 
-#ifdef NEWGBLIFT
+
 /* returns the first index between start and end for which the lifted rationals stored
    in dlift are not ok
    else it returns -1
@@ -923,33 +923,7 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
   }
   return -1;
 }
-#else
-/* return 1 if the lifted rational hidden in dlift is ok else return 0 */
-static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
-                                        int thrds){
 
-  for(int i = 0; i < thrds; i++){
-
-    uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
-    uint32_t lc = mpz_fdiv_ui(dlift->den, prime);
-    lc = mod_p_inverse_32(lc, prime);
-
-    uint64_t c = mpz_fdiv_ui(dlift->num, prime);
-    c *= lc;
-    c = c % prime;
-
-    uint32_t coef = modgbs->modpolys[dlift->lstart]->cf_32[dlift->coef[0]][modgbs->nprimes  - (thrds - i) ];
-
-    if(c!=coef){
-      return 0;
-    }
-
-  }
-  return 1;
-}
-#endif
-
-#ifdef NEWGBLIFT
 static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
                                 mpz_t *mod_p, mpz_t *prod_p, int thrds){
 
@@ -958,26 +932,7 @@ static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
 
   return;
 }
-#else
-static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
-                                mpz_t *mod_p, mpz_t *prod_p, int thrds){
-  if(dlift->recon == 1){
-    /* at a previous call a rational number could lifted */
-    if(verif_lifted_rational(modgbs, dlift, thrds)){
-      if(!dlift->check1){
-        dlift->check1 = 1;
-      }
-      if(!dlift->check2){
-        dlift->check2 = 1;
-      }
-    }
-    else{
-      dlift->check1 = 0;
-      dlift->check2 = 0;
-    }
-  }
-}
-#endif
+
 
 static void update_prodprimes(gb_modpoly_t modgbs, data_lift_t dlift,
                               mpz_t *mod_p, mpz_t *prod_p, int thrds){

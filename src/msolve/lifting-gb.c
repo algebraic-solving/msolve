@@ -256,7 +256,7 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
   for(uint32_t i = 0; i < p - 1; i++){
     fprintf(file, "[");
     for(uint32_t l = pols[i]->len - 1; l > 0; l--){
-      if(mpz_cmp_ui(pols[i]->cf_qq[2*l + 1], 1)){
+      if(mpz_cmp_ui(pols[i]->cf_qq[2*l + 1], 1) && mpz_cmp_ui(pols[i]->cf_qq[2*l], 0)){
         mpz_out_str(file, 10, pols[i]->cf_qq[2*l]);
         fprintf(file, "/");
         mpz_out_str(file, 10, pols[i]->cf_qq[2*l + 1]);
@@ -280,7 +280,7 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
   }
   fprintf(file, "[");
   for(uint32_t l = pols[p-1]->len - 1; l > 0; l--){
-    if(mpz_cmp_ui(pols[p-1]->cf_qq[2*l + 1], 1)){
+    if(mpz_cmp_ui(pols[p-1]->cf_qq[2*l + 1], 1) && mpz_cmp_ui(pols[p-1]->cf_qq[2*l], 0)){
       mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l]);
       fprintf(file, "/");
       mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l + 1]);
@@ -678,9 +678,10 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
   uint32_t ld = modgbs->ld;
   for(int32_t i = 0; i < ld; i++){
     uint32_t d = 0;
-    while(d < modgbs->modpolys[i]->len - 1){
+    uint32_t len = modgbs->modpolys[i]->len;
+    while(d < len - 1){
       if(modgbs->modpolys[i]->cf_32[d][0]){
-        dlift->coef[i] = d;
+        dlift->coef[i] = d/* d */;
         break;
       }
       else{
@@ -899,9 +900,11 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
       }
       if(!dlift->check1[k]){
         dlift->check1[k] = 1;
+        fprintf(stderr, "[!]");
       }
       else{
         dlift->check2[k] = 1;
+        fprintf(stderr, "[!!]");
       }
     }
   }
@@ -1034,7 +1037,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   }
 
   if(modgbs->nprimes % dlift->rr == 0){
-    for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
+    int32_t ls = dlift->lstart;
+    for(int32_t i = ls; i <= dlift->lend; i++){
 
       dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
                                   dlift->crt[i], mod_p[0], dlift->gden, recdata1);
@@ -1256,8 +1260,9 @@ int msolve_gbtrace_qq(
   int dlinit = 0;
   double st_crt = 0;
   double st_rrec = 0;
+  int32_t S = 0;
   while(learn){
-    fprintf(stderr, "ici : [np = %d, alloc = %d]\n", nprimes, modgbs->alloc);
+
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
                                                  msd->mgb,
                                                  msd->num_gb, msd->leadmons_ori,
@@ -1267,14 +1272,14 @@ int msolve_gbtrace_qq(
                                                  info_level,
                                                  print_gb,
                                                  dim_ptr, dquot_ptr,
-                                                 dlift->lstart,
+                                                 S,
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
 
     apply = 1;
 
-    gb_modpoly_realloc(modgbs, 2, dlift->lstart);
+    gb_modpoly_realloc(modgbs, 2, S);
 
 #ifdef DEBUGGBLIFT
     display_gbmodpoly(stderr, modgbs);
@@ -1356,7 +1361,7 @@ int msolve_gbtrace_qq(
       prime = msd->lp->p[st->nthrds - 1];
 
       if(modgbs->alloc <= nprimes + 2){
-        gb_modpoly_realloc(modgbs, 32*st->nthrds, dlift->lstart);
+        gb_modpoly_realloc(modgbs, 32*st->nthrds, 0/* dlift->lstart */);
       }
 
       gb_modular_trace_application(modgbs, msd->mgb,
@@ -1367,7 +1372,7 @@ int msolve_gbtrace_qq(
                                    msd->btht, msd->bs_qq, msd->blht, st,
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
-                                   dlift->lstart, gens, &stf4, msd->bad_primes);
+                                   S, gens, &stf4, msd->bad_primes);
 
       /* display_gbmodpoly(stderr, modgbs); */
 
@@ -1413,6 +1418,7 @@ int msolve_gbtrace_qq(
         }
       }
       if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
+        /* S = 0; */
         if(info_level){
           fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }

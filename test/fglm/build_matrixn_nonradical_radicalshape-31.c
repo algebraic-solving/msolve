@@ -36,9 +36,9 @@ int main(void)
 
     get_data_from_file(files->in_file, &nr_vars, &field_char,&nr_gens,gens);
 
-    if (nr_vars != 2) return 1;
-    if (field_char != 1073741827) return 1;
-    if (nr_gens != 3) return 1;
+    if (nr_vars != 2) return 101;
+    if (field_char != 1073741827) return 102;
+    if (nr_gens != 3) return 103;
 
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));
@@ -80,7 +80,7 @@ int main(void)
     success = core_gba(&bs, &bht, &st);
     if (!success) {
       printf("Problem with F4, stopped computation.\n");
-      return 1;
+      return 104;
     }
 
     export_results_from_gba(bld, blen, bexp,bcf, &malloc, &bs, &bht, &st);
@@ -93,25 +93,25 @@ int main(void)
 
     /* display_fglm_matrix (stdout, matrix); */
 
-    if (matrix->charac != field_char) return 1;
-    if (matrix->ncols != 3) return 1;
-    if (matrix->nrows != 2) return 1;
+    if (matrix->charac != field_char) return 105;
+    if (matrix->ncols != 3) return 106;
+    if (matrix->nrows != 2) return 107;
 
-    if (matrix->dense_mat[0] != 0) return 1;
-    if (matrix->dense_mat[1] != 0) return 1;
-    if (matrix->dense_mat[2] != 0) return 1;
-    if (matrix->dense_mat[3] != 0) return 1;
-    if (matrix->dense_mat[4] != 0) return 1;
-    if (matrix->dense_mat[5] != 0) return 1;
+    if (matrix->dense_mat[0] != 0) return 201;
+    if (matrix->dense_mat[1] != 0) return 202;
+    if (matrix->dense_mat[2] != 0) return 203;
+    if (matrix->dense_mat[3] != 0) return 204;
+    if (matrix->dense_mat[4] != 0) return 205;
+    if (matrix->dense_mat[5] != 0) return 206;
 
-    if (matrix->triv_idx[0] != 0) return 1;
-    if (matrix->triv_pos[0] != 1) return 1;
+    if (matrix->triv_idx[0] != 0) return 207;
+    if (matrix->triv_pos[0] != 1) return 208;
 
-    if (matrix->dense_idx[0] != 1) return 1;
-    if (matrix->dense_idx[1] != 2) return 1;
+    if (matrix->dense_idx[0] != 1) return 209;
+    if (matrix->dense_idx[1] != 2) return 210;
 
-    if (matrix->dst[0] != 3) return 1;
-    if (matrix->dst[1] != 3) return 1;
+    if (matrix->dst[0] != 3) return 211;
+    if (matrix->dst[1] != 3) return 212;
 
     return 0;
 }

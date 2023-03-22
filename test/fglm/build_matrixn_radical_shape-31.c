@@ -34,12 +34,11 @@ int main(void)
     int32_t nr_gens     = 0;
     data_gens_ff_t *gens = allocate_data_gens();
 
-    get_data_from_file(files->in_file, &nr_vars, &field_char,&nr_gens,
-		       gens);
+    get_data_from_file(files->in_file, &nr_vars, &field_char,&nr_gens,gens);
 
-    if (nr_vars != 3) return 1;
-    if (field_char != 1073741827) return 1;
-    if (nr_gens != 3) return 1;
+    if (nr_vars != 3) return 101;
+    if (field_char != 1073741827) return 102;
+    if (nr_gens != 3) return 103;
 
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));
@@ -47,7 +46,7 @@ int main(void)
     param_t *param  = NULL;
     mpz_param_t mpz_param;
     mpz_param_init(mpz_param);
-    
+
     long nb_real_roots      = 0;
     interval *real_roots    = NULL;
     real_point_t *real_pts  = NULL;
@@ -70,80 +69,57 @@ int main(void)
     blen  = malloc(sizeof(int32_t *));
     bexp  = malloc(sizeof(int32_t *));
     bcf   = malloc(sizeof(void *));
-        
+
     bs_t *bs    = NULL;
     ht_t *bht   = NULL;
     stat_t *st  = NULL;
 
     int success = 0;
-    
-    success = initialize_gba_input_data(&bs, &bht, &st,
-					gens->lens, gens->exps, (void *)gens->cfs,
-					1073741827, 0 /* DRL order */,
-					elim_block_len, gens->nvars,
-					/* gens->field_char,
-					   0 [> DRL order <],
-					   gens->nvars, */
-					gens->ngens, saturate,
-					initial_hts, nr_threads, max_pairs,
-					update_ht, la_option,
-					use_signatures, 1 /* reduce_gb */, 0,
-					info_level);
+
+    success = initialize_gba_input_data(&bs, &bht, &st,gens->lens, gens->exps, (void *)gens->cfs,	1073741827, 0 /* DRL order */,elim_block_len, gens->nvars,/* gens->field_char,0 [> DRL order <], gens->nvars, */ gens->ngens, saturate,	initial_hts, nr_threads, max_pairs,	update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,	info_level);
     success = core_gba(&bs, &bht, &st);
     if (!success) {
       printf("Problem with F4, stopped computation.\n");
-      return 1;
+      return 104;
     }
-    
-    export_results_from_gba(bld, blen, bexp,
-			    bcf, &malloc, &bs, &bht, &st);
 
-    /* DRL Gb [5*z^2 -     x +   2*y +   3*z +    9,
-     *         5*y*z -   2*x +   4*y +   6*z +   13,
-     *         5*x*z -  12*x -     y +  16*z +   73,
-     *           y^2 -     x +   3*y +   2*z +    6,
-     *         5*x*y -  26*x -  33*y +  93*z +  139,
-     *         5*x^2 - 263*x - 109*y + 749*z + 1242]
-     */
-    
+    export_results_from_gba(bld, blen, bexp,bcf, &malloc, &bs, &bht, &st);
+
     int32_t *bcf_ff = (int32_t *)(*bcf);
     int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
     long dquot = 0;
-    int32_t *lmb= monomial_basis (bld[0], gens->nvars, bexp_lm,
-				  &dquot);
-    sp_matfglm_t  *matrix= build_matrixn(lmb, dquot, bld[0], blen, bexp, bcf_ff,
-					 bexp_lm, gens->nvars, gens->field_char);
-    
+    int32_t *lmb= monomial_basis (bld[0], gens->nvars, bexp_lm,&dquot);
+    sp_matfglm_t  *matrix= build_matrixn(lmb, dquot, bld[0], blen, bexp, bcf_ff,bexp_lm, gens->nvars, gens->field_char);
+
     /* display_fglm_matrix (stdout, matrix); */
-    
-    if (matrix->charac != field_char) return 1;
-    if (matrix->ncols != 4) return 1;
-    if (matrix->nrows != 3) return 1;
-    
-    if (matrix->dense_mat[0] != 429496729) return 1;
-    if (matrix->dense_mat[1] != 858993461) return 1;
-    if (matrix->dense_mat[2] != 214748365) return 1;
-    if (matrix->dense_mat[3] != 429496731) return 1;
-    if (matrix->dense_mat[4] != 858993459) return 1;
-    if (matrix->dense_mat[5] != 644245095) return 1;
-    if (matrix->dense_mat[6] != 429496730) return 1;
-    if (matrix->dense_mat[7] != 858993462) return 1;
-    
-    if (matrix->dense_mat[8]  != 858993447) return 1;
-    if (matrix->dense_mat[9]  != 644245093) return 1;
-    if (matrix->dense_mat[10] != 429496731) return 1;
-    if (matrix->dense_mat[11] != 858993464) return 1;
 
-    if (matrix->triv_idx[0] != 0) return 1;
-    if (matrix->triv_pos[0] != 1) return 1;
+    if (matrix->charac != field_char) return 105;
+    if (matrix->ncols != 4) return 106;
+    if (matrix->nrows != 3) return 107;
 
-    if (matrix->dense_idx[0] != 1) return 1;
-    if (matrix->dense_idx[1] != 2) return 1;
-    if (matrix->dense_idx[2] != 3) return 1;
+    if (matrix->dense_mat[0] != 429496729) return 201;
+    if (matrix->dense_mat[1] != 858993461) return 202;
+    if (matrix->dense_mat[2] != 214748365) return 203;
+    if (matrix->dense_mat[3] != 429496731) return 204;
+    if (matrix->dense_mat[4] != 858993459) return 205;
+    if (matrix->dense_mat[5] != 644245095) return 206;
+    if (matrix->dense_mat[6] != 429496730) return 207;
+    if (matrix->dense_mat[7] != 858993462) return 208;
+    if (matrix->dense_mat[8] != 858993447) return 209;
+    if (matrix->dense_mat[9] != 644245093) return 210;
+    if (matrix->dense_mat[10] != 429496731) return 211;
+    if (matrix->dense_mat[11] != 858993464) return 212;
 
-    if (matrix->dst[0] != 0) return 1;
-    if (matrix->dst[1] != 0) return 1;
-    if (matrix->dst[2] != 0) return 1;
-            
+    if (matrix->triv_idx[0] != 0) return 213;
+    if (matrix->triv_pos[0] != 1) return 214;
+
+    if (matrix->dense_idx[0] != 1) return 215;
+    if (matrix->dense_idx[1] != 2) return 216;
+    if (matrix->dense_idx[2] != 3) return 217;
+
+    if (matrix->dst[0] != 0) return 218;
+    if (matrix->dst[1] != 0) return 219;
+    if (matrix->dst[2] != 0) return 220;
+
     return 0;
 }

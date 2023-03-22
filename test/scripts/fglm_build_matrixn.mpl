@@ -55,8 +55,8 @@ local i, fd, F2, str;
 end proc:
 
 main:= proc (F,vars,char,str)
-local G,lmGb,lmGbxn,ord,ns,rv,fd,b,i,i2,j,nr_col,nr_row,dense_idx,triv_idx,triv_pos,Mxn,
-    dst;
+local G,lmGb,lmGbxn,ord,ns,rv,fd,b,i,i2,j,nr_col,nr_row:
+local dense_idx,triv_idx,triv_pos,Mxn,dst,cpt;
     ord  := tdeg(op(vars)):
     G    := Groebner:-Basis (F,ord,characteristic=char):
     lmGb := map (g->LeadingMonomial (g,ord), G):
@@ -71,6 +71,7 @@ local G,lmGb,lmGbxn,ord,ns,rv,fd,b,i,i2,j,nr_col,nr_row,dense_idx,triv_idx,triv_
     dst:= map (l->0,dense_idx):
     ToMSolve (F,char,vars,cat("../input_files/",str,".ms")):
     fd:= fopen (cat("../fglm/build_matrixn_",str,".c"),WRITE):
+    cpt:
     fprintf (fd,
              "#include \"../../src/msolve/libmsolve.c\"\n\n"
              "int main(void)\n{\n"
@@ -106,9 +107,9 @@ local G,lmGb,lmGbxn,ord,ns,rv,fd,b,i,i2,j,nr_col,nr_row,dense_idx,triv_idx,triv_
              "    int32_t nr_gens     = 0;\n"
              "    data_gens_ff_t *gens = allocate_data_gens();\n\n"
              "    get_data_from_file(files->in_file, &nr_vars, &field_char,&nr_gens,gens);\n\n"
-             "    if (nr_vars != %a) return 1;\n"
-             "    if (field_char != %a) return 1;\n"
-             "    if (nr_gens != %a) return 1;\n\n"
+             "    if (nr_vars != %a) return 101;\n"
+             "    if (field_char != %a) return 102;\n"
+             "    if (nr_gens != %a) return 103;\n\n"
              "    gens->rand_linear           = 0;\n"
              "    gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));\n\n"
              "    param_t *param  = NULL;\n"
@@ -141,7 +142,7 @@ local G,lmGb,lmGbxn,ord,ns,rv,fd,b,i,i2,j,nr_col,nr_row,dense_idx,triv_idx,triv_
              "    success = core_gba(&bs, &bht, &st);\n"
              "    if (!success) {\n"
              "      printf(\"Problem with F4, stopped computation.\\n\");\n"
-             "      return 1;\n"
+             "      return 104;\n"
              "    }\n\n"
              "    export_results_from_gba(bld, blen, bexp,bcf, &malloc, &bs, &bht, &st);\n\n"
              "    int32_t *bcf_ff = (int32_t *)(*bcf);\n"
@@ -150,11 +151,12 @@ local G,lmGb,lmGbxn,ord,ns,rv,fd,b,i,i2,j,nr_col,nr_row,dense_idx,triv_idx,triv_
              "    int32_t *lmb= monomial_basis (bld[0], gens->nvars, bexp_lm,&dquot);\n"
              "    sp_matfglm_t  *matrix= build_matrixn(lmb, dquot, bld[0], blen, bexp, bcf_ff,bexp_lm, gens->nvars, gens->field_char);\n\n"
              "    /* display_fglm_matrix (stdout, matrix); */\n\n"
-             "    if (matrix->charac != field_char) return 1;\n"
-             "    if (matrix->ncols != %a) return 1;\n"
-             "    if (matrix->nrows != %a) return 1;\n\n",
+             "    if (matrix->charac != field_char) return 105;\n"
+             "    if (matrix->ncols != %a) return 106;\n"
+             "    if (matrix->nrows != %a) return 107;\n\n",
              str,nops(vars),char,nops(F),char,nr_col,nr_row):
     b    := is_staircase_grevlex_generic (ns,rv,lmGbxn,vars):
+    cpt  := 201:
     if (b) then
         Mxn  := MultiplicationMatrix (vars[-1],ns,rv,G,ord,characteristic=char):
         print (Mxn);
@@ -162,8 +164,9 @@ local G,lmGb,lmGbxn,ord,ns,rv,fd,b,i,i2,j,nr_col,nr_row,dense_idx,triv_idx,triv_
             i2:= rv[lmGbxn[i]/vars[-1]]:
             for j from 1 to nr_col do
                 fprintf (fd,
-                    "    if (matrix->dense_mat[%a] != %a) return 1;\n",
-                    (i-1)*nr_col+j-1,Mxn[i2,j]):
+                         "    if (matrix->dense_mat[%a] != %a) return %a;\n",
+                         (i-1)*nr_col+j-1,Mxn[i2,j],cpt):
+                cpt:= cpt+1:
             end do:
             for j from nr_col to 1 by -1 do
                 if (Mxn[i2,j] = 0) then dst[i]:= dst[i]+1:
@@ -174,25 +177,29 @@ local G,lmGb,lmGbxn,ord,ns,rv,fd,b,i,i2,j,nr_col,nr_row,dense_idx,triv_idx,triv_
         fprintf (fd,"\n"):
         for i from 1 to nops(triv_idx) do
             fprintf (fd,
-                "    if (matrix->triv_idx[%a] != %a) return 1;\n",
-                i-1,triv_idx[i]-1):
+                     "    if (matrix->triv_idx[%a] != %a) return %a;\n",
+                     i-1,triv_idx[i]-1,cpt):
+            cpt:= cpt+1:
         end do:
         for i from 1 to nops(triv_idx) do
             fprintf (fd,
-                "    if (matrix->triv_pos[%a] != %a) return 1;\n",
-                i-1,triv_pos[i]-1):
+                     "    if (matrix->triv_pos[%a] != %a) return %a;\n",
+                     i-1,triv_pos[i]-1,cpt):
+            cpt:= cpt+1:
         end do:
         fprintf (fd,"\n"):
         for i from 1 to nr_row do
             fprintf (fd,
-                     "    if (matrix->dense_idx[%a] != %a) return 1;\n",
-                     i-1,dense_idx[i]-1):
+                     "    if (matrix->dense_idx[%a] != %a) return %a;\n",
+                     i-1,dense_idx[i]-1,cpt):
+            cpt:=cpt+1:
         end do:
         fprintf (fd,"\n"):
         for i from 1 to nr_row do
             fprintf (fd,
-                     "    if (matrix->dst[%a] != %a) return 1;\n",
-                     i-1,dst[i]):
+                     "    if (matrix->dst[%a] != %a) return %a;\n",
+                     i-1,dst[i],cpt):
+            cpt:=cpt+1:
         end do:
         fprintf (fd,"\n"
                  "    return 0;\n}"):

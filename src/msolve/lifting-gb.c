@@ -30,6 +30,7 @@ typedef struct{
                   being lifted, numerators and denominators
                   are given given as mpz_t
                */
+  mpz_t lm; /* stores the leading monomial (hence all numerators of cf_qq should be divided by lm) */
 } modpolys_struct;
 
 typedef modpolys_struct modpolys_t[1];
@@ -172,6 +173,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
     for(uint32_t j = 0; j < 2 * lens[i]; j++){
       mpz_init(modgbs->modpolys[i]->cf_qq[j]);
     }
+    mpz_init(modgbs->modpolys[i]->lm);
   }
 }
 
@@ -202,7 +204,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   for(uint32_t i = oldalloc; i < modgbs->alloc; i++){
     modgbs->cf_64[i] = 0;
   }
-
+  fprintf(stderr, "START = %d\n", start);
   for(uint32_t i = start; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->cf_32[j],
@@ -277,8 +279,10 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
     }
     else{
       mpz_out_str(file, 10, pols[i]->cf_qq[0]);
-      fprintf(file, "],\n");
+      fprintf(file, ",\n");
     }
+    mpz_out_str(file, 10, pols[i]->lm);
+    fprintf(file, "],\n");
   }
   fprintf(file, "[");
   for(uint32_t l = pols[p-1]->len - 1; l > 0; l--){
@@ -301,8 +305,10 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
   }
   else{
     mpz_out_str(file, 10, pols[p-1]->cf_qq[0]);
-    fprintf(file, "]\n");
+    fprintf(file, ",\n");
   }
+  mpz_out_str(file, 10, pols[p-1]->lm);
+  fprintf(file, "]\n");
   fprintf(file, "]:");
 }
 
@@ -316,6 +322,7 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
     for(uint32_t j = 0; j < 2 * modgbs->modpolys[i]->len; j++){
       mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
     }
+    mpz_clear(modgbs->modpolys[i]->lm);
     free(modgbs->modpolys[i]->cf_32);
     free(modgbs->modpolys[i]->cf_zz);
     free(modgbs->modpolys[i]->cf_qq);
@@ -816,10 +823,9 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
                                        int32_t start, int32_t end,
                                        mpz_t *mod_p, rrec_data_t recdata){
  
-  mpz_t rnum, rden, lcm;
+  mpz_t rnum, rden;
   mpz_init(rnum);
   mpz_init(rden);
-  mpz_init(lcm);
 
   modpolys_t *polys = modgbs->modpolys;
   for(int32_t k = start; k <= end; k++){
@@ -838,36 +844,35 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         mpz_mul(recdata->N, recdata->N, dlift->den[k]);
       }
 
-      mpz_set(lcm, dlift->den[k]);
-
       for(int32_t l = 0; l < polys[k]->len; l++){
+
+
         if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p[0], dlift->den[k], recdata)){
+
           mpz_set(polys[k]->cf_qq[2*l], rnum);
-          mpz_mul(rden, rden, dlift->den[k]);
+          /* mpz_mul(rden, rden, dlift->den[k]); */
           mpz_set(polys[k]->cf_qq[2*l + 1], rden);
-          mpz_lcm(lcm, lcm, rden);
+
         }
         else{
           fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
           mpz_set_ui(dlift->gden, 1);
           mpz_clear(rnum);
           mpz_clear(rden);
-          mpz_clear(lcm);
           return k;
         }
       }
+      mpz_set(polys[k]->lm, dlift->den[k]);
       dlift->S++;
      }
     else{
       mpz_clear(rnum);
       mpz_clear(rden);
-      mpz_clear(lcm);
       return k;
     }
   }
   mpz_clear(rnum);
   mpz_clear(rden);
-  mpz_clear(lcm);
   return -1;
 }
 
@@ -1367,7 +1372,7 @@ int msolve_gbtrace_qq(
       prime = msd->lp->p[st->nthrds - 1];
 
       if(modgbs->alloc <= nprimes + 2){
-        gb_modpoly_realloc(modgbs, 32*st->nthrds, 0/* dlift->lstart */);
+        gb_modpoly_realloc(modgbs, 16*st->nthrds, dlift->S);
       }
 
       gb_modular_trace_application(modgbs, msd->mgb,

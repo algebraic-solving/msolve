@@ -180,6 +180,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
 static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                       uint32_t newalloc,
                                       int32_t start){
+  double st = realtime();
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
 
@@ -204,7 +205,6 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   for(uint32_t i = oldalloc; i < modgbs->alloc; i++){
     modgbs->cf_64[i] = 0;
   }
-  fprintf(stderr, "START = %d\n", start);
   for(uint32_t i = start; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->cf_32[j],
@@ -850,7 +850,6 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p[0], dlift->den[k], recdata)){
 
           mpz_set(polys[k]->cf_qq[2*l], rnum);
-          /* mpz_mul(rden, rden, dlift->den[k]); */
           mpz_set(polys[k]->cf_qq[2*l + 1], rden);
 
         }

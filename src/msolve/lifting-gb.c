@@ -922,35 +922,7 @@ static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
 }
 
 
-static void update_prodprimes(gb_modpoly_t modgbs, data_lift_t dlift,
-                              mpz_t *mod_p, mpz_t *prod_p, int thrds){
-  if(dlift->crt_mult == 0){
-    /* starts lifting witness coefficient */
-    start_dlift(modgbs, dlift, dlift->coef);
-    /* updates mod_p and ptr_p */
-    if(dlift->lstart == 0){
 
-      for(int i = 0; i < modgbs->nprimes; i++){
-        uint32_t prime = modgbs->primes[i];
-        mpz_mul_ui(mod_p[0], mod_p[0], prime);
-      }
-      mpz_set(prod_p[0], mod_p[0]);
-
-    }
-    else{
-      for(int i = 0; i < thrds; i++){
-        uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i)];
-        mpz_mul_ui(mod_p[0], mod_p[i], prime);
-      }
-      mpz_set(prod_p[0], mod_p[0]);
-    }
-  }
-  else{
-    incremental_dlift_crt(modgbs, dlift, dlift->coef,
-                          mod_p, prod_p, thrds);
-    /* mod_p and prod_p are updated inside incremental_dlift_crt */
-  }
-}
 
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
@@ -1038,6 +1010,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     mpz_set(recdata2->D, recdata1->D);
 
   }
+
 
   if(modgbs->nprimes % dlift->rr == 0){
     int32_t ls = dlift->lstart;

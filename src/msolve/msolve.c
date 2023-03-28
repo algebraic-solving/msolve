@@ -2479,7 +2479,8 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                                squvars,
                                                info_level,
                                                bdata_fglm, bdata_bms,
-                                               success);
+                                               success,
+					       st);
         }
         free_basis(&(bs));
         *dim = 0;
@@ -2581,7 +2582,7 @@ static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
         *bparam = nmod_fglm_compute_trace_data(*bmatrix, fc, bht->nv, *bsz,
                 *nlins_ptr, linvars, lineqs_ptr[0],
                 squvars, info_level,
-                bdata_fglm, bdata_bms, success);
+		bdata_fglm, bdata_bms, success,st);
         *dim = 0;
         *dquot_ori = dquot;
 
@@ -2674,7 +2675,8 @@ for (i = 0; i < st->nprimes; ++i){
                                           bdata_fglm[i],
                                           bdata_bms[i],
                                           nbsols,
-                                          info_level)){
+                                          info_level,
+					  st)){
       bad_primes[i] = 1;
     }
     free_basis(&(bs[i]));
@@ -2778,7 +2780,8 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
                                             bdata_fglm[i],
                                             bdata_bms[i],
                                             nbsols,
-                                            info_level)){
+                                            info_level,
+					    st)){
         bad_primes[i] = 1;
       }
     }

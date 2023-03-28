@@ -1608,7 +1608,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                       int info_level,
                                       fglm_data_t **bdata,
                                       fglm_bms_data_t **bdata_bms,
-                                      int *success){
+                                      int *success,
+				      stat_t *st){
 #if DEBUGFGLM > 0
   fprintf(stderr, "prime = %u\n", prime);
 #endif
@@ -1644,7 +1645,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   ulong dimquot = (matrix->ncols);
 
-  double st = realtime();
+  double st_fglm = realtime();
 
 #if BLOCKWIED > 0
   fprintf(stderr, "Starts computation of matrix sequence\n");
@@ -1663,11 +1664,11 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   if(info_level){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
-    double rt = realtime()-st;
-    fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt, nops / rt);
+    double rt_fglm = realtime()-st_fglm;
+    fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm);
   }
 
-  st = realtime();
+  st_fglm = realtime();
 
   /* Berlekamp-Massey data */
   *bdata_bms = allocate_fglm_bms_data(dimquot, prime);
@@ -1678,7 +1679,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
-            realtime()-st);
+            realtime()-st_fglm);
   }
 
 
@@ -1763,7 +1764,8 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
                                        fglm_data_t *data_fglm,
                                        fglm_bms_data_t *data_bms,
                                        const long deg_init,
-                                       const int info_level){
+                                       const int info_level,
+				       const stat_t *st){
 #if DEBUGFGLM > 0
   fprintf(stderr, "prime = %u\n", prime);
 #endif
@@ -1806,7 +1808,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   fprintf(stderr, "\n");
 #endif
 
-  double st = realtime();
+  double st_fglm = realtime();
 
   //////////////////////////////////////////////////////////////////
 
@@ -1821,11 +1823,11 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
   if(info_level){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
-    double rt = realtime()-st;
-    fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt, nops / rt);
+    double rt_fglm = realtime()-st_fglm;
+    fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm);
   }
 
-  st = realtime();
+  st_fglm = realtime();
 
   fglm_bms_data_set_prime(data_bms, prime);
 
@@ -1835,7 +1837,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
   if(info_level){
     fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
-            realtime()-st);
+            realtime()-st_fglm);
   }
   if(param->elim->length-1 != deg_init){
     fprintf(stderr, "Warning: Degree of elim poly = %ld\n", param->elim->length-1);

@@ -701,7 +701,7 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
   }
 }
 
-#ifdef NEWGBLIFT
+
 /* uses FLINT's multi CRT when starting to lift one witness coef */
 /* TODO: avoid to initialize/clear comb and comb_temp at each call */
 /* coef is the array of indices of the coefficients to be lifted */
@@ -736,35 +736,7 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
   fmpz_comb_clear(comb);
 
 }
-#else
-/* uses FLINT's multi CRT when starting to lift one witness coef */
-static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t *coef){
-  /* Data needed by multi CRT functions */
-  fmpz_comb_t comb;
-  fmpz_comb_temp_t comb_temp;
 
-  fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
-  fmpz_comb_temp_init(comb_temp, comb);
-  fmpz_t y;
-  fmpz_init(y);
-
-  modpolys_t *polys = modgbs->modpolys;
-
-  for(uint32_t i = 0; i < modgbs->nprimes; i++){
-    modgbs->cf_64[i] = polys[dlift->lstart]->cf_32[coef[0]][i];
-  }
-  fmpz_multi_CRT_ui(y, modgbs->cf_64,
-                    comb, comb_temp, 1);
-  fmpz_get_mpz(dlift->crt[0], y);
-
-  /* indicates that CRT started */
-  dlift->crt_mult = 1;
-
-  fmpz_clear(y);
-  fmpz_comb_temp_clear(comb_temp);
-  fmpz_comb_clear(comb);
-}
-#endif
 
 
 /* Incremental CRT (called once FLINT multi_CRT has been called) */

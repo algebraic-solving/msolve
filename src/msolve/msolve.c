@@ -3934,7 +3934,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   }
 
   long b = 16;
-  long newprec = MAX(prec, rt->k);
   long corr = 2*(ns + rt->k);
 
 
@@ -4248,9 +4247,9 @@ static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_r
   return pts;
 }
 
-static void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
-                                      interval ***lreal_roots_ptr, real_point_t ***lreal_pts_ptr,
-                                      int32_t precision, int32_t nr_threads, int32_t info_level){
+void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
+                               interval ***lreal_roots_ptr, real_point_t ***lreal_pts_ptr,
+                               int32_t precision, int32_t nr_threads, int32_t info_level){
   long *lnbr = malloc(sizeof(long) * lparams->nb);
   interval **lreal_roots = malloc(sizeof(interval *) * lparams->nb);
   real_point_t **lreal_pts = malloc(sizeof(real_point_t *) * lparams->nb);

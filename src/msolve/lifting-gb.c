@@ -704,7 +704,7 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
 /* uses FLINT's multi CRT when starting to lift one witness coef */
 /* TODO: avoid to initialize/clear comb and comb_temp at each call */
 /* coef is the array of indices of the coefficients to be lifted */
-static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t *coef){
+static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, int32_t *coef){
   /* Data needed by multi CRT functions */
   fmpz_comb_t comb;
   fmpz_comb_temp_t comb_temp;
@@ -1113,8 +1113,6 @@ int msolve_gbtrace_qq(
   int32_t nr_nf = 0;
   const uint32_t prime_start = pow(2, 30);
 
-  len_t i;
-
   /* initialize stuff */
   stat_t *st  = initialize_statistics();
 
@@ -1200,10 +1198,6 @@ int msolve_gbtrace_qq(
   int learn = 1, apply = 1, nprimes = 0;
   double stf4 = 0;
 
-  ht_t **btht;
-
-
-
   rrec_data_t recdata1, recdata2;
   initialize_rrec_data(recdata1);
   initialize_rrec_data(recdata2);
@@ -1213,7 +1207,7 @@ int msolve_gbtrace_qq(
   int dlinit = 0;
   double st_crt = 0;
   double st_rrec = 0;
-  int32_t S = 0;
+
   while(learn){
 
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
@@ -1354,7 +1348,7 @@ int msolve_gbtrace_qq(
       }
       int lstart = dlift->lstart;
       double ost_rrec = st_rrec;
-      double ost_crt = st_crt;
+
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
                     st->nthrds, &st_crt, &st_rrec);

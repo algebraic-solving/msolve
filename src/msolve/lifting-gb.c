@@ -180,7 +180,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
 static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                       uint32_t newalloc,
                                       int32_t start){
-  double st = realtime();
+
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
 

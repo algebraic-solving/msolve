@@ -886,16 +886,18 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
   return -1;
 }
 
-static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
-                                mpz_t *mod_p, mpz_t *prod_p, int thrds){
-  if(verif_lifted_rational(modgbs, dlift, thrds)){
-  }
-  return;
+
+
+#ifdef NEWGBLIFT
+static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
+                        mpz_t *mod_p, mpz_t *prod_p,
+                        rrec_data_t recdata1, rrec_data_t recdata2,
+                        int thrds, double *st_crt, double *st_rrec){
+
+  verif_lifted_rational(modgbs, dlift, thrds);
+
 }
-
-
-
-
+#else
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
                         rrec_data_t recdata1, rrec_data_t recdata2,
@@ -1059,7 +1061,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   }
   return;
 }
-
+#endif
 
 /*
 

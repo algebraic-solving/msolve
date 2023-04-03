@@ -1370,7 +1370,6 @@ int msolve_gbtrace_qq(
         }
         lstart = dlift->lstart;
       }
-#ifdef NEWGBLIFT
       if(dlift->lstart >= modgbs->ld){
         if(info_level){
           fprintf(stderr, "<100%%>\n");
@@ -1378,14 +1377,6 @@ int msolve_gbtrace_qq(
         }
         apply = 0;
       }
-#else
-      if(dlift->lstart == modgbs->ld - 1 && dlift->check2){
-        if(info_level){
-          fprintf(stderr, "<%.2f%%>\n", 100* (float)(dlift->lstart + 1)/modgbs->ld);
-        }
-        apply = 0;
-      }
-#endif
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
     }

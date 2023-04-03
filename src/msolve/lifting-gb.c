@@ -754,6 +754,23 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_set(mod_p[0], prod_p[0]);
 }
 
+/* Incremental CRT on the whole array of witness coefficients */
+/* mod is the current modulus */
+static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t dlift,
+                                              int32_t *coef, mpz_t *mod_p, mpz_t *prod_p,
+                                              int thrds){
+
+  /* all primes are assumed to be good primes */
+  mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
+  for(int32_t k = dlift->lstart; k <= modgbs->ld; k++){
+    uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
+    mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
+               c, modgbs->primes[modgbs->nprimes - 1 ],
+               prod_p[0], 1);
+  }
+  mpz_set(mod_p[0], prod_p[0]);
+}
+
 
 static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
                                    int32_t start, int32_t end){

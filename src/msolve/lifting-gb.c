@@ -98,8 +98,11 @@ static inline void data_lift_init(data_lift_t dlift,
   }
 
   dlift->cstep = 0;
+#ifdef NEWGBLIFT
+  dlift->lend = npol;
+#else
   dlift->lend = steps[0] - 1;
-
+#endif
   dlift->crt_mult = 0;
   dlift->crt = malloc(sizeof(mpz_t) * dlift->npol);
   for(int32_t i = 0; i < dlift->npol; i++){

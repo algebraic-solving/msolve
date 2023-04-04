@@ -930,6 +930,40 @@ static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2,
   }
 }
 
+static inline int reconstructcoeff(data_lift_t dlift, int32_t i, mpz_t *mod_p,
+                                   rrec_data_t recdata1, rrec_data_t recdata2){
+  dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
+                              dlift->crt[i], mod_p[0], dlift->gden, recdata1);
+
+  if(dlift->recon){
+    mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
+    mpz_gcd(dlift->tmp, dlift->den[i], dlift->num[i]);
+
+    mpz_divexact(dlift->num[i], dlift->num[i], dlift->tmp);
+    mpz_divexact(dlift->den[i], dlift->den[i], dlift->tmp);
+
+    mpz_set(dlift->gden, dlift->den[i]);
+
+    dlift->lstart++;
+    dlift->end++;
+
+  }
+  else{
+
+    dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
+                            dlift->crt[i], mod_p[0], recdata2);
+    if(dlift->recon){
+      dlift->lstart++;
+      dlift->end++;
+      mpz_set(dlift->gden, dlift->den[i]);
+    }
+    else{
+      dlift->recon = 0;
+    }
+  }
+  return dlift->recon;
+}
+
 #ifdef NEWGBLIFT
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         mpz_t *mod_p, mpz_t *prod_p,
@@ -956,7 +990,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
   st = realtime();
   for(int32_t i = dlift->lstart; i < dlift->lend; i++){
-    
+    int b = reconstructcoeff(dlift, i, mod_p,
+                             recdata1, recdata2);
   }
   *st_rrec += realtime()-st;
 

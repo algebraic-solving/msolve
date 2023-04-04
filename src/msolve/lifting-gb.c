@@ -948,6 +948,7 @@ static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2,
   }
 }
 
+/* returns 0 iff rational number could not be lifted */
 static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t *mod_p,
                                    rrec_data_t recdata1, rrec_data_t recdata2){
   int b = ratreconwden(dl->num[i], dl->den[i],
@@ -974,16 +975,16 @@ static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t *mod_p,
 }
 
 #ifdef NEWGBLIFT
-static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
+static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         mpz_t *mod_p, mpz_t *prod_p,
                         rrec_data_t recdata1, rrec_data_t recdata2,
                         int thrds, double *st_crt, double *st_rrec){
 
-  verif_lifted_rational(modgbs, dlift, thrds);
+  verif_lifted_rational(modgbs, dl, thrds);
 
   double st = realtime();;
-  incremental_dlift_crt(modgbs, dlift,
-                        dlift->coef, mod_p, prod_p,
+  incremental_dlift_crt(modgbs, dl,
+                        dl->coef, mod_p, prod_p,
                         thrds);
   *st_crt += realtime() - st;
 
@@ -991,16 +992,22 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /*            RATRECON WITNESS COEFFS                   */
   /********************************************************/
 
-  if(dlift->lstart == 0){
-    mpz_set_ui(dlift->gden, 1);
+  if(dl->lstart == 0){
+    mpz_set_ui(dl->gden, 1);
   }
 
-  set_recdata(dlift, recdata1, recdata2, mod_p);
+  set_recdata(dl, recdata1, recdata2, mod_p);
 
   st = realtime();
-  for(int32_t i = dlift->lstart; i < dlift->lend; i++){
-    int b = reconstructcoeff(dlift, i, mod_p,
+  for(int32_t i = dl->lstart; i < dl->lend; i++){
+    int b = reconstructcoeff(dl, i, mod_p,
                              recdata1, recdata2);
+    if(!b){
+      break;
+    }
+    else{
+      
+    }
   }
   *st_rrec += realtime()-st;
 

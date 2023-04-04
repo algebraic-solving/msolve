@@ -948,38 +948,29 @@ static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2,
   }
 }
 
-static inline int reconstructcoeff(data_lift_t dlift, int32_t i, mpz_t *mod_p,
+static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t *mod_p,
                                    rrec_data_t recdata1, rrec_data_t recdata2){
-  dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
-                              dlift->crt[i], mod_p[0], dlift->gden, recdata1);
+  int b = ratreconwden(dl->num[i], dl->den[i],
+                       dl->crt[i], mod_p[0], dl->gden, recdata1);
 
-  if(dlift->recon){
-    mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
-    mpz_gcd(dlift->tmp, dlift->den[i], dlift->num[i]);
+  if(b){
+    mpz_mul(dl->den[i], dl->den[i], dl->gden);
+    mpz_gcd(dl->tmp, dl->den[i], dl->num[i]);
 
-    mpz_divexact(dlift->num[i], dlift->num[i], dlift->tmp);
-    mpz_divexact(dlift->den[i], dlift->den[i], dlift->tmp);
+    mpz_divexact(dl->num[i], dl->num[i], dl->tmp);
+    mpz_divexact(dl->den[i], dl->den[i], dl->tmp);
 
-    mpz_set(dlift->gden, dlift->den[i]);
-
-    dlift->lstart++;
-    dlift->end++;
-
+    mpz_set(dl->gden, dl->den[i]);
   }
   else{
 
-    dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
-                            dlift->crt[i], mod_p[0], recdata2);
-    if(dlift->recon){
-      dlift->lstart++;
-      dlift->end++;
-      mpz_set(dlift->gden, dlift->den[i]);
-    }
-    else{
-      dlift->recon = 0;
+    b = ratrecon(dl->num[i], dl->den[i],
+                 dl->crt[i], mod_p[0], recdata2);
+    if(b){
+      mpz_set(dl->gden, dl->den[i]);
     }
   }
-  return dlift->recon;
+  return b;
 }
 
 #ifdef NEWGBLIFT

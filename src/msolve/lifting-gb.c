@@ -867,12 +867,47 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   return -1;
 }
 
+#ifdef NEWGBLIFT
+/* returns (coef == num / den mod prime) */
+static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef){
+  uint32_t lc = mpz_fdiv_ui(den, prime);
+  lc = mod_p_inverse_32(lc, prime);
 
+  uint64_t c = mpz_fdiv_ui(num, prime);
+  c *= lc;
+  c = c % prime;
+
+  return (c==coef);
+}
+
+static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t dl,
+                                              int thrds){
+  for(int32_t k = dl->lstart; k < dl->lend; k++){
+    if(!dl->check1[k]){
+      /* too early to perform the verification */
+      return k;
+    }
+    for(int i = 0; i < thrds; i++){
+
+      uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
+      uint32_t coef = modgbs->modpolys[k]->cf_32[dl->coef[k]][modgbs->nprimes  - (thrds - i) ];
+      int b = verif_coef(dl->num[k], dl->den[k], prime, coef);
+
+      if(!b){
+        dl->check1[k] = 0;
+        return k;
+      }
+    }
+    dl->start++;
+  }
+  return -1;
+}
+#else
 /* returns the first index between start and end for which the lifted rationals stored
    in dlift are not ok
    else it returns -1
 */
-static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
+static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t dlift,
                                         int thrds){
   if(dlift->recon){
     for(int32_t k = dlift->start; k <= dlift->end; k++){
@@ -905,6 +940,7 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
   }
   return -1;
 }
+#endif
 
 static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t* mod_p){
   mpz_fdiv_q_2exp(rd1->N, mod_p[0], 1);
@@ -962,7 +998,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         rrec_data_t recdata1, rrec_data_t recdata2,
                         int thrds, double *st_crt, double *st_rrec){
 
-  verif_lifted_rational(modgbs, dl, thrds);
+  verif_lifted_rational_wcoef(modgbs, dl, thrds);
 
   double st = realtime();;
   incremental_dlift_crt(modgbs, dl,
@@ -988,7 +1024,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
       break;
     }
     else{
-      
+      dl->check1[i] = 1;
     }
   }
   *st_rrec += realtime()-st;
@@ -1007,7 +1043,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 #endif
 
-  verif_lifted_rational(modgbs, dlift, thrds);
+  verif_lifted_rational_wcoef(modgbs, dlift, thrds);
 
   /********************************************************/
   /*                     CRT                              */

@@ -693,7 +693,8 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
     uint32_t len = modgbs->modpolys[i]->len;
     while(d < len - 1){
       if(modgbs->modpolys[i]->cf_32[d][0]){
-        dlift->coef[i] = d /* d */;
+        fprintf(stderr, "(%d, %d)", d, modgbs->modpolys[i]->cf_32[d][0]);
+        dlift->coef[i] = d;
         break;
       }
       else{
@@ -765,7 +766,7 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
 
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
-  for(int32_t k = dlift->lstart; k <= modgbs->ld; k++){
+  for(int32_t k = dlift->lstart; k < modgbs->ld; k++){
     uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
     mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
                c, modgbs->primes[modgbs->nprimes - 1 ],
@@ -876,7 +877,7 @@ static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef
   uint64_t c = mpz_fdiv_ui(num, prime);
   c *= lc;
   c = c % prime;
-
+  fprintf(stderr, "<%ld, %d>", c, coef);
   return (c==coef);
 }
 
@@ -885,6 +886,7 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
   for(int32_t k = dl->lstart; k < dl->lend; k++){
     if(!dl->check1[k]){
       /* too early to perform the verification */
+      fprintf(stderr, "ici ?\n");
       return k;
     }
     for(int i = 0; i < thrds; i++){
@@ -999,11 +1001,13 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         int thrds, double *st_crt, double *st_rrec){
 
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
+  dl->lstart = dl->start;
+  fprintf(stderr, "[np=%d, ls=%d]", modgbs->nprimes, dl->lstart);
+  double st = realtime();
 
-  double st = realtime();;
-  incremental_dlift_crt(modgbs, dl,
-                        dl->coef, mod_p, prod_p,
-                        thrds);
+  incremental_dlift_crt_full(modgbs, dl,
+                             dl->coef, mod_p, prod_p,
+                             thrds);
   *st_crt += realtime() - st;
 
   /********************************************************/

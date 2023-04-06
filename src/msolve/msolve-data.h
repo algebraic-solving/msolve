@@ -142,6 +142,7 @@ typedef struct{
   mpz_t trace_den;
   mpz_t det_num;
   mpz_t det_den;
+  mpz_t tmp;
   int done_trace;
   int done_det;
   int check_trace;

@@ -675,6 +675,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   for(i = 0; i < st->nprimes; i++){
     if(!bad_primes[i] && bs[i] != NULL){
+
       /* copy of data for multi-mod computation */
       modpgbs_set(modgbs, bs[i], bht[i], lp->p[i], lmb_ori, dquot_ori, mgb, start);
     }
@@ -693,7 +694,6 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
     uint32_t len = modgbs->modpolys[i]->len;
     while(d < len - 1){
       if(modgbs->modpolys[i]->cf_32[d][0]){
-        fprintf(stderr, "(%d, %d)", d, modgbs->modpolys[i]->cf_32[d][0]);
         dlift->coef[i] = d;
         break;
       }
@@ -877,7 +877,7 @@ static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef
   uint64_t c = mpz_fdiv_ui(num, prime);
   c *= lc;
   c = c % prime;
-  fprintf(stderr, "<%ld, %d>", c, coef);
+
   return (c==coef);
 }
 
@@ -886,7 +886,6 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
   for(int32_t k = dl->lstart; k < dl->lend; k++){
     if(!dl->check1[k]){
       /* too early to perform the verification */
-      fprintf(stderr, "ici ?\n");
       return k;
     }
     for(int i = 0; i < thrds; i++){
@@ -1002,7 +1001,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
 
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
   dl->lstart = dl->start;
-  fprintf(stderr, "[np=%d, ls=%d]", modgbs->nprimes, dl->lstart);
+
   double st = realtime();
 
   incremental_dlift_crt_full(modgbs, dl,
@@ -1358,7 +1357,7 @@ int msolve_gbtrace_qq(
                                                  info_level,
                                                  print_gb,
                                                  dim_ptr, dquot_ptr,
-                                                 dlift->S,
+                                                 0,
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
@@ -1368,7 +1367,7 @@ int msolve_gbtrace_qq(
     gb_modpoly_realloc(modgbs, 2, dlift->S);
 
 #ifdef DEBUGGBLIFT
-    display_gbmodpoly(stderr, modgbs);
+    display_gbmodpoly_cf_32(stderr, modgbs);
 #endif
 
     if(!dlinit){
@@ -1459,8 +1458,6 @@ int msolve_gbtrace_qq(
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
                                    dlift->S, gens, &stf4, msd->bad_primes);
-
-      /* display_gbmodpoly(stderr, modgbs); */
 
       nprimes += st->nthrds;
 

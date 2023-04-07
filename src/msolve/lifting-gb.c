@@ -898,6 +898,7 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
         return k;
       }
     }
+    
     dl->start++;
   }
   return -1;

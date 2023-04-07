@@ -185,11 +185,13 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                       uint32_t newalloc,
                                       int32_t start){
 
+
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
 
   uint64_t *newprimes = (uint64_t *)realloc(modgbs->primes,
                                             modgbs->alloc * sizeof(uint64_t));
+
   if(newprimes == NULL){
     fprintf(stderr, "Problem when reallocating modgbs (primes)\n");
     exit(1);
@@ -638,13 +640,10 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
   st->info_level = 0;
   /* tracing phase */
-  len_t i;
   double ca0;
 
   /* F4 and FGLM are run using a single thread */
   /* st->nthrds is reset to its original value afterwards */
-  const int nthrds = st->nthrds;
-  st->nthrds = 1 ;
   /*at the moment multi-threading is not supprted here*/
   memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
 
@@ -664,8 +663,9 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
       free_basis(&(bs));
     }
     bad_primes[0] = 1;
+    exit(1);
   }
-  get_lm_from_bs_trace(bs, bht[0], leadmons_current[i]);
+  get_lm_from_bs_trace(bs, bht[0], leadmons_current[0]);
 
   if(!equal_staircase(leadmons_current[0], leadmons_ori[0],
                       num_gb[0], num_gb[0], bht[0]->nv)){
@@ -678,50 +678,9 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
 
   if (bs != NULL) {
-    free_basis(&(bs));
+    free_basis(&bs);
   }
 
-  st->nthrds = nthrds;
-
-  /***********************************************************************/
-  /* #pragma omp parallel for num_threads(nthrds)  \ */
-  /*   private(i) schedule(static) */
-  /* for (i = 0; i < st->nprimes; ++i){ */
-  /*   ca0 = realtime(); */
-  /*   if(st->laopt > 40){ */
-  /*     bs[i] = modular_f4(bs_qq, bht[i], st, lp->p[i]); */
-  /*   } */
-  /*   else{ */
-  /*     bs[i] = gba_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]); */
-  /*   } */
-  /*   *stf4 = realtime()-ca0; */
-
-  /*   if(bs[i]->lml != num_gb[i]){ */
-  /*     if (bs[i] != NULL) { */
-  /*       free_basis(&(bs[i])); */
-  /*     } */
-  /*     bad_primes[i] = 1; */
-  /*   } */
-  /*   get_lm_from_bs_trace(bs[i], bht[i], leadmons_current[i]); */
-
-  /*   if(!equal_staircase(leadmons_current[i], leadmons_ori[i], */
-  /*                      num_gb[i], num_gb[i], bht[i]->nv)){ */
-  /*     bad_primes[i] = 1; */
-  /*   } */
-
-  /* } */
-  /* for(i = 0; i < st->nprimes; i++){ */
-  /*   if(!bad_primes[i] && bs[i] != NULL){ */
-  /*     /\* copy of data for multi-mod computation *\/ */
-  /*     modpgbs_set(modgbs, bs[i], bht[i], lp->p[i], lmb_ori, dquot_ori, mgb, start); */
-  /*   } */
-
-  /*   if (bs[i] != NULL) { */
-  /*     free_basis(&(bs[i])); */
-  /*   } */
-  /* } */
-
-  /* st->nthrds = nthrds; */
 }
 
 static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
@@ -809,9 +768,9 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
   uint64_t newprime = modgbs->primes[modgbs->nprimes - 1 ];
 
   /* all primes are assumed to be good primes */
-  mpz_mul_ui(prod_p, mod_p, newprime);
+  mpz_mul_ui(prod_p, mod_p, (uint32_t)newprime);
   for(int32_t k = dl->lstart; k < modgbs->ld; k++){
-    uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
+    uint64_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
 
     mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
                c, newprime, prod_p, dl->tmp, 1);
@@ -1000,8 +959,8 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
 }
 #endif
 
-static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t* mod_p){
-  mpz_fdiv_q_2exp(rd1->N, mod_p[0], 1);
+static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t mod_p){
+  mpz_fdiv_q_2exp(rd1->N, mod_p, 1);
 
   if(dl->lstart){
 
@@ -1025,10 +984,10 @@ static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2,
 }
 
 /* returns 0 iff rational number could not be lifted */
-static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t *mod_p,
+static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
                                    rrec_data_t recdata1, rrec_data_t recdata2){
   int b = ratreconwden(dl->num[i], dl->den[i],
-                       dl->crt[i], mod_p[0], dl->gden, recdata1);
+                       dl->crt[i], mod_p, dl->gden, recdata1);
 
   if(b){
     mpz_mul(dl->den[i], dl->den[i], dl->gden);
@@ -1042,7 +1001,7 @@ static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t *mod_p,
   else{
 
     b = ratrecon(dl->num[i], dl->den[i],
-                 dl->crt[i], mod_p[0], recdata2);
+                 dl->crt[i], mod_p, recdata2);
     if(b){
       mpz_set(dl->gden, dl->den[i]);
     }
@@ -1052,7 +1011,7 @@ static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t *mod_p,
 
 #ifdef NEWGBLIFT
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
-                        mpz_t *mod_p, mpz_t *prod_p,
+                        mpz_t mod_p, mpz_t prod_p,
                         rrec_data_t recdata1, rrec_data_t recdata2,
                         int thrds, double *st_crt, double *st_rrec){
 
@@ -1062,7 +1021,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   double st = realtime();
 
   incremental_dlift_crt_full(modgbs, dl,
-                             dl->coef, mod_p[0], prod_p[0],
+                             dl->coef, mod_p, prod_p,
                              thrds);
   *st_crt += realtime() - st;
 
@@ -1505,7 +1464,7 @@ int msolve_gbtrace_qq(
 
     apply = 1;
 
-    gb_modpoly_realloc(modgbs, 2, dlift->S);
+    gb_modpoly_realloc(modgbs, 1, dlift->S);
 
 #ifdef DEBUGGBLIFT
     display_gbmodpoly_cf_32(stderr, modgbs);

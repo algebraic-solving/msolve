@@ -1695,6 +1695,7 @@ int msolve_gbtrace_qq(
           fprintf(stderr, "(->%d)", dlift->rr);
         }
       }
+
       if(info_level){
         if(!(nprimes & (nprimes - 1))){
           fprintf(stderr, "{%d}", nprimes);

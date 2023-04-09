@@ -212,7 +212,6 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->nprimes = 0;
   modgbs->primes = calloc(sizeof(uint64_t), alloc);
   modgbs->cf_64 = calloc(sizeof(uint64_t), alloc);
-
   modgbs->ld = ld;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * ld);
 

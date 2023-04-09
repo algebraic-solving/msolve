@@ -819,17 +819,10 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
 static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
                                        int32_t start, int32_t end,
                                        mpz_t *mod_p, rrec_data_t recdata){
- 
-  mpz_t rnum, rden;
-  mpz_init(rnum);
-  mpz_init(rden);
-
-
   mpz_t rnum, rden;
 
   mpz_init(rnum);
   mpz_init(rden);
-  mpz_init(lcm);
 
   modpolys_t *polys = modgbs->modpolys;
   for(int32_t k = start; k <= end; k++){
@@ -871,9 +864,6 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
     else{
       mpz_clear(rnum);
       mpz_clear(rden);
-      return k;
-    }
-    else{
       return k;
     }
   }
@@ -1615,15 +1605,6 @@ int msolve_gbtrace_qq(
         }
         apply = 0;
       }
-#else
-      if(dlift->lstart == modgbs->ld - 1 && dlift->check2){
-        if(info_level){
-
-          fprintf(stderr, "<%.2f%%>\n", 100* (float)(dlift->lstart + 1)/modgbs->ld);
-        }
-        apply = 0;
-      }
-#endif
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
     }

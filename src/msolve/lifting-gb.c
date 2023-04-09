@@ -923,6 +923,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         mpz_set(recdata->D, recdata->N);
         mpz_fdiv_q(recdata->D, recdata->D, dlift->den[k]);
         mpz_mul(recdata->N, recdata->N, dlift->den[k]);
+
       }
 
       mpz_set(lcm, dlift->den[k]);
@@ -1707,7 +1708,6 @@ int msolve_gbtrace_qq(
         if(info_level){
           fprintf(stderr, "<100%%>\n");
           fprintf(stderr, "CRT time = %.2f, Rational reconstruction time= %.2f\n", st_crt, st_rrec);
-
         }
         apply = 0;
       }

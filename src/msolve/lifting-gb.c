@@ -956,7 +956,6 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_clear(rden);
   mpz_clear(lcm);
   return -1;
-
 }
 
 #ifdef NEWGBLIFT
@@ -1273,14 +1272,19 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     *st_crt += realtime() - st;
 
     st = realtime();
-    ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
-                         mod_p, recdata);
+    int b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
+                                 mod_p, recdata);
     *st_rrec += realtime() - st;
 
-    dlift->lstart = dlift->lend + 1;
-    dlift->lend += dlift->steps[dlift->cstep + 1] ;
-    dlift->cstep++;
-    dlift->crt_mult = 0;
+    if(b >= 0){
+      dlift->lstart = b;
+    }
+    else{
+      dlift->lstart = dlift->lend + 1;
+      dlift->lend += dlift->steps[dlift->cstep + 1] ;
+      dlift->cstep++;
+      dlift->crt_mult = 0;
+    }
   }
   /* fprintf(stderr, "And now lstart = %d and lend = %d (load = %d)\n", */
   /*         dlift->lstart, dlift->lend, modgbs->ld); */

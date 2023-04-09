@@ -1474,7 +1474,6 @@ int msolve_gbtrace_qq(
         }
         lstart = dlift->lstart;
       }
-#ifdef NEWGBLIFT
       if(dlift->lstart >= modgbs->ld){
         if(info_level){
           fprintf(stderr, "<100%%>\n");

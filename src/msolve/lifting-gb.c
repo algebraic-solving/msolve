@@ -994,6 +994,7 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
         dlift->check2[k] = 1;
       }
     }
+
   }
   return -1;
 }

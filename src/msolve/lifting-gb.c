@@ -1283,7 +1283,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       dlift->lend += dlift->steps[dlift->cstep + 1] ;
       dlift->cstep++;
       dlift->crt_mult = 0;
-      dlift->recon = 0;
     }
   }
   else{

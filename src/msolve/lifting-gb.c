@@ -854,7 +854,6 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 #endif
 
 
-
 static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
                                    int32_t start, int32_t end){
   /* Data needed by multi CRT functions */
@@ -877,7 +876,6 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         fmpz_multi_CRT_ui(y, modgbs->cf_64,
                           comb, comb_temp, 1);
         fmpz_get_mpz(polys[k]->cf_zz[l], y);
-
       }
     }
   }
@@ -951,6 +949,9 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
       mpz_clear(lcm);
       return k;
 
+    }
+    else{
+      return k;
     }
   }
   mpz_clear(rnum);
@@ -1246,7 +1247,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_set(recdata->D, recdata->N);
   int32_t start = dlift->lstart;
   dlift->start = start;
-  dlift->end = start;
+  dlift->end = start-1;
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
     st = realtime();
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
@@ -1255,6 +1256,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     if(dlift->recon){
       dlift->lstart++;
       dlift->end++;
+
     }
     else{
       break;
@@ -1267,7 +1269,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   if(dlift->lstart != start){
     /* lifting over all the polynomials in the range */
     st = realtime();
-    crt_lift_modgbs(modgbs, start, dlift->lend);
+    crt_lift_modgbs(modgbs, dlift, start, dlift->lend);
     *st_crt += realtime() - st;
 
     st = realtime();
@@ -1309,7 +1311,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   if(dlift->lstart >= modgbs->ld){
     dlift->lend = dlift->lstart;
     dlift->end = dlift->lstart;
-
     return;
   }
   return;

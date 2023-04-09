@@ -210,7 +210,11 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
   modgbs->primes = calloc(sizeof(uint64_t), alloc);
+<<<<<<< HEAD
   modgbs->cf_64 = calloc(sizeof(uint64_t), alloc);
+=======
+  modgbs->cfs = calloc(sizeof(uint64_t), alloc);
+>>>>>>> ccc38f4 (replaces npolys with ld)
   modgbs->ld = ld;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * ld);
 
@@ -1494,7 +1498,10 @@ int msolve_gbtrace_qq(
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                       msd->bht->nv, &nb);
       data_lift_init(dlift, modgbs->ld, ldeg, nb);
+<<<<<<< HEAD
       choose_coef_to_lift(modgbs, dlift);
+=======
+>>>>>>> ccc38f4 (replaces npolys with ld)
       free(ldeg);
       dlinit = 1;
     }
@@ -1605,6 +1612,7 @@ int msolve_gbtrace_qq(
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt, &st_rrec);
       }
+<<<<<<< HEAD
       if((st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
@@ -1618,11 +1626,17 @@ int msolve_gbtrace_qq(
       }
       if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
         if(info_level){
+=======
+
+      if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
+        if(info_level){
+>>>>>>> ccc38f4 (replaces npolys with ld)
           fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }
         lstart = dlift->lstart;
       }
 #ifdef NEWGBLIFT
+<<<<<<< HEAD
       if(dlift->lstart >= modgbs->ld){
         if(info_level){
           fprintf(stderr, "<100%%>\n");
@@ -1633,6 +1647,11 @@ int msolve_gbtrace_qq(
 #else
       if(dlift->lstart == modgbs->ld - 1 && dlift->check2){
         if(info_level){
+=======
+#else
+      if(dlift->lstart == modgbs->ld - 1 && dlift->check2){
+        if(info_level){
+>>>>>>> ccc38f4 (replaces npolys with ld)
           fprintf(stderr, "<%.2f%%>\n", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }
         apply = 0;

@@ -1098,7 +1098,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 #endif
 
-
   verif_lifted_rational(modgbs, dlift, thrds);
 
   /********************************************************/
@@ -1109,7 +1108,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   if(dlift->crt_mult == 0){
     /* if(modgbs->nprimes >=  (dlift->lend)/2 + 1){ */
     if(modgbs->nprimes >=  (dlift->steps[dlift->cstep]) / 16){
-
       start_dlift(modgbs, dlift, dlift->coef);
 
       if(dlift->lstart == 0){
@@ -1268,6 +1266,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
     dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
                                 dlift->crt[i], mod_p[0], dlift->gden, recdata);
+
     if(i==66){
       if(dlift->recon){
         fprintf(stderr, "GOOD ! ");

@@ -227,7 +227,6 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
     }
     for(uint32_t j = 0; j < 2 * lens[i]; j++){
       mpz_init(modgbs->modpolys[i]->cf_qq[j]);
-
     }
   }
 }
@@ -375,7 +374,6 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
     free(modgbs->modpolys[i]->cf_32);
     free(modgbs->modpolys[i]->cf_zz);
     free(modgbs->modpolys[i]->cf_qq);
-
   }
   free(modgbs->modpolys);
 }
@@ -950,6 +948,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_clear(rden);
   mpz_clear(lcm);
   return -1;
+
 }
 
 #ifdef NEWGBLIFT
@@ -1237,8 +1236,10 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_set(recdata->D, recdata->N);
   int32_t start = dlift->lstart;
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
+    st = realtime();
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
                             dlift->crt[i], mod_p[0], recdata);
+    *st_rrec += realtime()-st;
     if(dlift->recon){
       dlift->lstart++;
     }
@@ -1262,6 +1263,11 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     st = realtime();
     crt_lift_modgbs(modgbs, start, dlift->lend);
     *st_crt += realtime() - st;
+
+    st = realtime();
+    ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
+                         mod_p, recdata);
+    *st_rrec += realtime() - st;
 
     dlift->lstart = dlift->lend + 1;
     dlift->lend += dlift->steps[dlift->cstep + 1] ;

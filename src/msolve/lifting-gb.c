@@ -104,7 +104,10 @@ static inline void data_lift_init(data_lift_t dlift,
                                   int32_t npol,
                                   int32_t *steps, int32_t nsteps){
   dlift->npol = npol;
+<<<<<<< HEAD
   dlift->rr = 1;
+=======
+>>>>>>> 26ae183 (fixed data_lift_init)
   dlift->lstart = 0;
   dlift->nsteps = nsteps;
 
@@ -114,8 +117,12 @@ static inline void data_lift_init(data_lift_t dlift,
   for(i = 0; i < nsteps; i++){
     dlift->steps[i] = steps[i];
   }
+<<<<<<< HEAD
   dlift->cstep = 0;
   dlift->lend = steps[0] - 1;
+=======
+  dlift->lend = steps[0];
+>>>>>>> 26ae183 (fixed data_lift_init)
 
   dlift->crt_mult = 0;
   dlift->crt = malloc(sizeof(mpz_t) * dlift->npol);
@@ -1013,8 +1020,12 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
 #ifdef NEWGBLIFT
 static inline void update_dlift(gb_modpoly_t modgbs, data_lift_t dlift,
                                 mpz_t *mod_p, mpz_t *prod_p, int thrds){
+<<<<<<< HEAD
   if(verif_lifted_rational(modgbs, dlift, thrds)){
   }
+=======
+  fprintf(stderr, "in update_dlift\n");
+>>>>>>> 26ae183 (fixed data_lift_init)
   return;
 }
 #else
@@ -1078,6 +1089,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     fprintf(stderr, "[%d]", dlift->steps[i]);
   }
   fprintf(stderr, "\n");
+<<<<<<< HEAD
   fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
 #endif
 
@@ -1231,6 +1243,14 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   else{
     dlift->recon = 0;
   }
+=======
+  fprintf(stderr, "dlift->lstart = %d\n", dlift->lstart);
+  fprintf(stderr, "dlift->lend = %d\n", dlift->lend);
+
+  fprintf(stderr, "nprimes  = %d\n", modgbs->nprimes);
+
+  start_dlift(modgbs, dlift, dlift->coef);
+>>>>>>> 26ae183 (fixed data_lift_init)
 
   /* all polynomials have been lifted */
   if(dlift->lstart >= modgbs->ld){
@@ -1498,10 +1518,8 @@ int msolve_gbtrace_qq(
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                       msd->bht->nv, &nb);
       data_lift_init(dlift, modgbs->ld, ldeg, nb);
-<<<<<<< HEAD
+
       choose_coef_to_lift(modgbs, dlift);
-=======
->>>>>>> ccc38f4 (replaces npolys with ld)
       free(ldeg);
       dlinit = 1;
     }
@@ -1612,7 +1630,6 @@ int msolve_gbtrace_qq(
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata, st->nthrds, &st_crt, &st_rrec);
       }
-<<<<<<< HEAD
       if((st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
@@ -1626,17 +1643,11 @@ int msolve_gbtrace_qq(
       }
       if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
         if(info_level){
-=======
-
-      if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
-        if(info_level){
->>>>>>> ccc38f4 (replaces npolys with ld)
           fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }
         lstart = dlift->lstart;
       }
 #ifdef NEWGBLIFT
-<<<<<<< HEAD
       if(dlift->lstart >= modgbs->ld){
         if(info_level){
           fprintf(stderr, "<100%%>\n");
@@ -1647,11 +1658,7 @@ int msolve_gbtrace_qq(
 #else
       if(dlift->lstart == modgbs->ld - 1 && dlift->check2){
         if(info_level){
-=======
-#else
-      if(dlift->lstart == modgbs->ld - 1 && dlift->check2){
-        if(info_level){
->>>>>>> ccc38f4 (replaces npolys with ld)
+
           fprintf(stderr, "<%.2f%%>\n", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }
         apply = 0;

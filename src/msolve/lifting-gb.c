@@ -947,7 +947,6 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
       mpz_clear(rden);
       mpz_clear(lcm);
       return k;
-
     }
     else{
       return k;
@@ -1598,7 +1597,6 @@ int msolve_gbtrace_qq(
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                       msd->bht->nv, &nb);
       data_lift_init(dlift, modgbs->ld, ldeg, nb);
-
       choose_coef_to_lift(modgbs, dlift);
       free(ldeg);
       dlinit = 1;

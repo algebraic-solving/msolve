@@ -921,6 +921,29 @@ static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
   return -1;
 }
 
+static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t* mod_p){
+  mpz_fdiv_q_2exp(rd1->N, mod_p[0], 1);
+
+  if(dl->lstart){
+
+    mpz_set(rd2->N, rd1->N);
+
+    mpz_sqrt(rd2->N, rd2->N);
+    mpz_set(rd2->D, rd2->N);
+
+    mpz_root(rd1->D, rd1->N, 3);
+    mpz_fdiv_q(rd1->N, rd1->N, rd1->D);
+
+  }
+  else{
+    mpz_sqrt(rd1->N, rd1->N);
+    mpz_set(rd1->D, rd1->N);
+
+    mpz_set(rd2->N, rd1->N);
+    mpz_set(rd2->D, rd1->D);
+
+  }
+}
 
 #ifdef NEWGBLIFT
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
@@ -929,6 +952,28 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
                         int thrds, double *st_crt, double *st_rrec){
 
   verif_lifted_rational(modgbs, dlift, thrds);
+
+  double st = realtime();;
+  incremental_dlift_crt(modgbs, dlift,
+                        dlift->coef, mod_p, prod_p,
+                        thrds);
+  *st_crt += realtime() - st;
+
+  /********************************************************/
+  /*            RATRECON WITNESS COEFFS                   */
+  /********************************************************/
+
+  if(dlift->lstart == 0){
+    mpz_set_ui(dlift->gden, 1);
+  }
+
+  set_recdata(dlift, recdata1, recdata2, mod_p);
+
+  st = realtime();
+  for(int32_t i = dlift->lstart; i < dlift->lend; i++){
+    
+  }
+  *st_rrec += realtime()-st;
 
 }
 #else

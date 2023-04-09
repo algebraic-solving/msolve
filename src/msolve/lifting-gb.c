@@ -1098,6 +1098,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 
   verif_lifted_rational(modgbs, dlift, thrds);
 
+
   /********************************************************/
   /*                     CRT                              */
   /********************************************************/
@@ -1251,6 +1252,9 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     if(dlift->recon){
       dlift->lstart++;
     }
+    else{
+      break;
+    }
 #ifdef DEBUGLIFT
     if(dlift->recon){
       mpz_out_str(stderr, 10, dlift->num[i]);
@@ -1266,15 +1270,16 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   /********************************************************/
   /********************************************************/
 
-  if(dlift->lstart >= dlift->lend){
+  int b = -1;
+  if(dlift->lstart != start){
     /* lifting over all the polynomials in the range */
     st = realtime();
     crt_lift_modgbs(modgbs, start, dlift->lend);
     *st_crt += realtime() - st;
 
     st = realtime();
-    int b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
-                                 mod_p, recdata);
+    b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
+                             mod_p, recdata);
     *st_rrec += realtime() - st;
 
     if(b >= 0){
@@ -1287,8 +1292,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       dlift->crt_mult = 0;
     }
   }
-  /* fprintf(stderr, "And now lstart = %d and lend = %d (load = %d)\n", */
-  /*         dlift->lstart, dlift->lend, modgbs->ld); */
 
     if(b >= 0){
       dlift->lstart = b;

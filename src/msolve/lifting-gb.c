@@ -219,6 +219,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   for(uint32_t i = 0; i < ld; i++){
     modgbs->modpolys[i]->len = lens[i];
     modgbs->modpolys[i]->cf_32 = malloc(sizeof(uint32_t **)*lens[i]);
+
     modgbs->modpolys[i]->cf_zz = malloc(sizeof(mpz_t)*lens[i]);
     modgbs->modpolys[i]->cf_qq = malloc(sizeof(mpz_t)*2*lens[i]);
     for(uint32_t j = 0; j < lens[i]; j++){
@@ -227,6 +228,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
     }
     for(uint32_t j = 0; j < 2 * lens[i]; j++){
       mpz_init(modgbs->modpolys[i]->cf_qq[j]);
+
     }
   }
 }
@@ -374,6 +376,7 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
     free(modgbs->modpolys[i]->cf_32);
     free(modgbs->modpolys[i]->cf_zz);
     free(modgbs->modpolys[i]->cf_qq);
+
   }
   free(modgbs->modpolys);
 }
@@ -767,7 +770,6 @@ static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, uint32_t 
     for(uint32_t i = 0; i < modgbs->nprimes; i++){
       /* modgbs->cf_64[i] = polys[k]->cf_32[coef[cl]][i]; */
       modgbs->cf_64[i] = polys[k]->cf_32[cl][i];
-
     }
     fmpz_multi_CRT_ui(y, modgbs->cf_64,
                       comb, comb_temp, 1);
@@ -877,6 +879,7 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
         fmpz_multi_CRT_ui(y, modgbs->cf_64,
                           comb, comb_temp, 1);
         fmpz_get_mpz(polys[k]->cf_zz[l], y);
+
       }
     }
   }

@@ -967,6 +967,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
 static inline int verif_lifted_rational(gb_modpoly_t modgbs, data_lift_t dlift,
                                         int thrds){
   if(dlift->recon){
+
     for(int32_t k = dlift->start; k <= dlift->end; k++){
 
       for(int i = 0; i < thrds; i++){
@@ -1098,7 +1099,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
 #endif
 
   verif_lifted_rational(modgbs, dlift, thrds);
-
 
   /********************************************************/
   /*                     CRT                              */
@@ -1245,6 +1245,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_sqrt(recdata->N, recdata->N);
   mpz_set(recdata->D, recdata->N);
   int32_t start = dlift->lstart;
+  dlift->start = start;
+  dlift->end = start;
   for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
     st = realtime();
     dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
@@ -1252,21 +1254,11 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
     *st_rrec += realtime()-st;
     if(dlift->recon){
       dlift->lstart++;
+      dlift->end++;
     }
     else{
       break;
     }
-#ifdef DEBUGLIFT
-    if(dlift->recon){
-      mpz_out_str(stderr, 10, dlift->num[i]);
-      fprintf(stderr, " / ");
-      mpz_out_str(stderr, 10, dlift->den[i]);
-      fprintf(stderr, "\n");
-    }
-    else{
-      fprintf(stderr, "BIP\n");
-    }
-#endif
   }
   /********************************************************/
   /********************************************************/
@@ -1291,7 +1283,11 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       dlift->lend += dlift->steps[dlift->cstep + 1] ;
       dlift->cstep++;
       dlift->crt_mult = 0;
+      dlift->recon = 0;
     }
+  }
+  else{
+    dlift->recon = 0;
   }
 
     if(b >= 0){

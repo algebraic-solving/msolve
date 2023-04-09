@@ -829,6 +829,7 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
 
   }
   mpz_set(mod_p[0], prod_p[0]);
+
 }
 #else
 /* Incremental CRT (called once FLINT multi_CRT has been called) */

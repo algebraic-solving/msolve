@@ -901,6 +901,11 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_init(rden);
   mpz_init(lcm);
 
+
+  mpz_t rnum, rden;
+  mpz_init(rnum);
+  mpz_init(rden);
+
   modpolys_t *polys = modgbs->modpolys;
   for(int32_t k = start; k <= end; k++){
 
@@ -942,6 +947,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
       mpz_clear(rden);
       mpz_clear(lcm);
       return k;
+
     }
   }
   mpz_clear(rnum);

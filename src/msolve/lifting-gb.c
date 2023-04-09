@@ -1267,22 +1267,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
       dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
                                   dlift->crt[i], mod_p[0], dlift->gden, recdata);
 
-      if(i==66){
-        if(dlift->recon){
-          fprintf(stderr, "GOOD ! ");
-          fprintf(stderr, "-> [%ld, ", mpz_sizeinbase(dlift->num[i], 2));
-          fprintf(stderr, "%ld]", mpz_sizeinbase(dlift->den[i], 2));
-          fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
-          fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
-        }
-        else{
-          fprintf(stderr, "NOT GOOD ! ");
-          fprintf(stderr, "[%ld, ", mpz_sizeinbase(recdata->N, 2));
-          fprintf(stderr, "%ld] ", mpz_sizeinbase(recdata->D, 2));
-          fprintf(stderr, "[gden -> %ld]", mpz_sizeinbase(dlift->gden, 2));
-        }
-      }
-
       if(dlift->recon){
         mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
 

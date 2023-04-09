@@ -1560,7 +1560,7 @@ static inline void set_mpz_param_nmod(mpz_param_t mpz_param, param_t *nmod_param
 
 static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
                                       mpz_t modulus, int32_t prime,
-                                      mpz_t prod,
+                                      mpz_t prod, mpz_t tmp,
                                       int nthrds){
   long i;
 
@@ -1568,7 +1568,7 @@ static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
   private(i) schedule(static)
   for(i = 0; i < pol->length; i++){
     mpz_CRT_ui(pol->coeffs[i], pol->coeffs[i], modulus,
-               nmod_pol->coeffs[i], prime, prod, 1);
+               nmod_pol->coeffs[i], prime, prod, tmp, 1);
   }
 
 
@@ -1578,15 +1578,15 @@ static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
 /* assumes that all degrees are the same */
 static inline void crt_lift_mpz_param(mpz_param_t mpz_param, param_t *nmod_param,
                                       mpz_t modulus, mpz_t prod_crt,
-                                      const int32_t prime, const int nthrds){
+                                      const int32_t prime, mpz_t tmp, const int nthrds){
 
   /*assumes prod_crt = modulus * prime */
   crt_lift_mpz_upoly(mpz_param->elim, nmod_param->elim, modulus, prime,
-                     prod_crt, nthrds);
+                     prod_crt, tmp, nthrds);
   for(long i = 0; i < mpz_param->nvars - 1; i++){
 
     crt_lift_mpz_upoly(mpz_param->coords[i], nmod_param->coords[i],
-                       modulus, prime, prod_crt, nthrds);
+                       modulus, prime, prod_crt, tmp, nthrds);
 
   }
 
@@ -1934,7 +1934,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
   mpz_mul_ui(prod_crt, *modulus, prime);
   crt_lift_mpz_param(tmp_mpz_param, nmod_param, *modulus, prod_crt,
-                     prime, nthrds);
+                     prime, trace_det->tmp, nthrds);
 
   uint32_t trace_mod = nmod_param->elim->coeffs[trace_det->trace_idx];
   uint32_t det_mod = nmod_param->elim->coeffs[trace_det->det_idx];
@@ -1970,7 +1970,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
 #if LIFTMATRIX == 1
   if(*matrec < crt_mat->nrows*crt_mat->ncols){
-    crt_lift_mat(crt_mat, mat, *modulus, prod_crt, prime, nthrds);
+    crt_lift_mat(crt_mat, mat, *modulus, prod_crt, prime, trace_det->tmp, nthrds);
   }
 #endif
   mpz_mul_ui(*modulus, *modulus, prime);

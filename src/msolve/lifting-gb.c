@@ -627,7 +627,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          stat_t *st,
                                          const int32_t fc,
                                          int info_level,
-                                         bs_t **bs,
+                                         bs_t **obs,
                                          int32_t *lmb_ori,
                                          int32_t dquot_ori,
                                          primes_t *lp,
@@ -647,45 +647,81 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   st->nthrds = 1 ;
   /*at the moment multi-threading is not supprted here*/
   memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
-  #pragma omp parallel for num_threads(nthrds)  \
-    private(i) schedule(static)
-  for (i = 0; i < st->nprimes; ++i){
-    ca0 = realtime();
-    if(st->laopt > 40){
-      bs[i] = modular_f4(bs_qq, bht[i], st, lp->p[i]);
-    }
-    else{
-      bs[i] = gba_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
-    }
-    *stf4 = realtime()-ca0;
 
-    if(bs[i]->lml != num_gb[i]){
-      if (bs[i] != NULL) {
-        free_basis(&(bs[i]));
-      }
-      bad_primes[i] = 1;
-      /* return; */
-    }
-    get_lm_from_bs_trace(bs[i], bht[i], leadmons_current[i]);
+  bs_t *bs = NULL;
 
-    if(!equal_staircase(leadmons_current[i], leadmons_ori[i],
-                       num_gb[i], num_gb[i], bht[i]->nv)){
-      bad_primes[i] = 1;
-    }
-
+  ca0 = realtime();
+  if(st->laopt > 40){
+    bs = modular_f4(bs_qq, bht[0], st, lp->p[0]);
   }
-  for(i = 0; i < st->nprimes; i++){
-    if(!bad_primes[i] && bs[i] != NULL){
+  else{
+    bs = gba_trace_application_phase(btrace[0], btht[0], bs_qq, bht[0], st, lp->p[0]);
+  }
+  *stf4 = realtime()-ca0;
 
-      /* copy of data for multi-mod computation */
-      modpgbs_set(modgbs, bs[i], bht[i], lp->p[i], lmb_ori, dquot_ori, mgb, start);
+  if(bs->lml != num_gb[0]){
+    if (bs != NULL) {
+      free_basis(&(bs));
     }
-    if (bs[i] != NULL) {
-      free_basis(&(bs[i]));
-    }
+    bad_primes[0] = 1;
+  }
+  get_lm_from_bs_trace(bs, bht[0], leadmons_current[i]);
+
+  if(!equal_staircase(leadmons_current[0], leadmons_ori[0],
+                      num_gb[0], num_gb[0], bht[0]->nv)){
+    bad_primes[0] = 1;
+  }
+
+  if(!bad_primes[0] && bs != NULL){
+    /* copy of data for multi-mod computation */
+    modpgbs_set(modgbs, bs, bht[0], lp->p[0], lmb_ori, dquot_ori, mgb, start);
+  }
+
+  if (bs != NULL) {
+    free_basis(&(bs));
   }
 
   st->nthrds = nthrds;
+
+  /***********************************************************************/
+  /* #pragma omp parallel for num_threads(nthrds)  \ */
+  /*   private(i) schedule(static) */
+  /* for (i = 0; i < st->nprimes; ++i){ */
+  /*   ca0 = realtime(); */
+  /*   if(st->laopt > 40){ */
+  /*     bs[i] = modular_f4(bs_qq, bht[i], st, lp->p[i]); */
+  /*   } */
+  /*   else{ */
+  /*     bs[i] = gba_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]); */
+  /*   } */
+  /*   *stf4 = realtime()-ca0; */
+
+  /*   if(bs[i]->lml != num_gb[i]){ */
+  /*     if (bs[i] != NULL) { */
+  /*       free_basis(&(bs[i])); */
+  /*     } */
+  /*     bad_primes[i] = 1; */
+  /*   } */
+  /*   get_lm_from_bs_trace(bs[i], bht[i], leadmons_current[i]); */
+
+  /*   if(!equal_staircase(leadmons_current[i], leadmons_ori[i], */
+  /*                      num_gb[i], num_gb[i], bht[i]->nv)){ */
+  /*     bad_primes[i] = 1; */
+  /*   } */
+
+  /* } */
+  /* for(i = 0; i < st->nprimes; i++){ */
+  /*   if(!bad_primes[i] && bs[i] != NULL){ */
+  /*     /\* copy of data for multi-mod computation *\/ */
+  /*     modpgbs_set(modgbs, bs[i], bht[i], lp->p[i], lmb_ori, dquot_ori, mgb, start); */
+  /*   } */
+
+  /*   if (bs[i] != NULL) { */
+  /*     free_basis(&(bs[i])); */
+  /*   } */
+  /* } */
+
+  /* st->nthrds = nthrds; */
 }
 
 static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
@@ -756,29 +792,32 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
     uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
     mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
                c, modgbs->primes[modgbs->nprimes - 1 ],
-               prod_p[0], 1);
-
+               prod_p[0], dlift->tmp, 1);
   }
   mpz_set(mod_p[0], prod_p[0]);
 
 
 }
 
+
 /* Incremental CRT on the whole array of witness coefficients */
 /* mod is the current modulus */
-static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t dlift,
-                                              int32_t *coef, mpz_t *mod_p, mpz_t *prod_p,
+static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t dl,
+                                              int32_t *coef, mpz_t mod_p, mpz_t prod_p,
                                               int thrds){
 
+  uint64_t newprime = modgbs->primes[modgbs->nprimes - 1 ];
+
   /* all primes are assumed to be good primes */
-  mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
-  for(int32_t k = dlift->lstart; k < modgbs->ld; k++){
+  mpz_mul_ui(prod_p, mod_p, newprime);
+  for(int32_t k = dl->lstart; k < modgbs->ld; k++){
     uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
-    mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
-               c, modgbs->primes[modgbs->nprimes - 1 ],
-               prod_p[0], 1);
+
+    mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
+               c, newprime, prod_p, dl->tmp, 1);
+
   }
-  mpz_set(mod_p[0], prod_p[0]);
+  mpz_set(mod_p, prod_p);
 }
 
 
@@ -1023,7 +1062,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   double st = realtime();
 
   incremental_dlift_crt_full(modgbs, dl,
-                             dl->coef, mod_p, prod_p,
+                             dl->coef, mod_p[0], prod_p[0],
                              thrds);
   *st_crt += realtime() - st;
 
@@ -1038,14 +1077,16 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   set_recdata(dl, recdata1, recdata2, mod_p);
 
   st = realtime();
-  for(int32_t i = dl->lstart; i < dl->lend; i++){
-    int b = reconstructcoeff(dl, i, mod_p,
-                             recdata1, recdata2);
-    if(!b){
-      break;
-    }
-    else{
-      dl->check1[i] = 1;
+  if(modgbs->nprimes % dl->rr == 0){
+    for(int32_t i = dl->lstart; i < dl->lend; i++){
+      int b = reconstructcoeff(dl, i, mod_p,
+                               recdata1, recdata2);
+      if(!b){
+        break;
+      }
+      else{
+        dl->check1[i] = 1;
+      }
     }
   }
   *st_rrec += realtime()-st;
@@ -1432,7 +1473,6 @@ int msolve_gbtrace_qq(
   gb_modpoly_t modgbs;
 
   int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
-  fprintf(stderr, "MAX BIT SIZE COEFFS = %d\n", maxbitsize);
 
   int learn = 1, apply = 1, nprimes = 0;
   double stf4 = 0;

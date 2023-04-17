@@ -204,9 +204,10 @@ int ratreconwden(mpz_t n, mpz_t d, /* output numerator and denominator */
                  mpz_t u, const mpz_t mod, const mpz_t gden,
                  rrec_data_t recdata){
 
-  while(mpz_cmp_ui(u, 0) < 0){
-    mpz_add(u, u, mod);
-  }
+  /* while(mpz_cmp_ui(u, 0) < 0){ */
+  /*   mpz_add(u, u, mod); */
+  /* } */
+
   mpz_mod(u, u, mod);
   mpz_set(recdata->r0, mod);
   mpz_set_ui(recdata->t0, 0);

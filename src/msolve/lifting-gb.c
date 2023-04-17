@@ -18,6 +18,9 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include<flint/fmpz.h>
+
+#define MAX(a,b) (((a)>(b))?(a):(b))
 
 typedef struct{
   uint32_t len; /* length of the encoded polynomial */
@@ -787,10 +790,10 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
 
   modpolys_t *polys = modgbs->modpolys;
 
-  for(int32_t k = start; k <= end; k++){
+  for(int32_t k = start; k < end; k++){
     if(dlift->check1[k]){
       for(int32_t l = 0; l < polys[k]->len; l++){
-        for(uint32_t i = 0; i < modgbs->nprimes; i++){
+        for(uint32_t i = 0; i < modgbs->nprimes-1; i++){
           modgbs->cf_64[i] = polys[k]->cf_32[l][i];
         }
         fmpz_multi_CRT_ui(y, modgbs->cf_64,
@@ -806,54 +809,65 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
 
 }
 
+
+static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t mod_p){
+  mpz_fdiv_q_2exp(rd1->N, mod_p, 1);
+
+  if(dl->lstart){
+
+    mpz_set(rd2->N, rd1->N);
+
+    mpz_sqrt(rd2->N, rd2->N);
+    mpz_set(rd2->D, rd2->N);
+
+    mpz_root(rd1->D, rd1->N, 3);
+    mpz_fdiv_q(rd1->N, rd1->N, rd1->D);
+
+  }
+  else{
+    mpz_sqrt(rd1->N, rd1->N);
+    mpz_set(rd1->D, rd1->N);
+
+    mpz_set(rd2->N, rd1->N);
+    mpz_set(rd2->D, rd1->D);
+
+  }
+}
+
 /*
   returns the index of the poly if some of its coeff could not be lifted
   else returns -1
  */
-static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
+static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
                                        int32_t start, int32_t end,
-                                       mpz_t *mod_p, rrec_data_t recdata){
+                                       mpz_t mod_p, rrec_data_t rd1, rrec_data_t rd2){
  
   mpz_t rnum, rden;
   mpz_init(rnum);
   mpz_init(rden);
 
   modpolys_t *polys = modgbs->modpolys;
-  for(int32_t k = start; k <= end; k++){
-
-    if(dlift->check1[k]){
-      mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
-
-      if(dlift->cstep){
-        mpz_root(recdata->D, recdata->N, 3);
-        mpz_fdiv_q(recdata->N, recdata->N, recdata->D);
-      }
-      else{
-        mpz_sqrt(recdata->N, recdata->N);
-        mpz_set(recdata->D, recdata->N);
-        mpz_fdiv_q(recdata->D, recdata->D, dlift->den[k]);
-        mpz_mul(recdata->N, recdata->N, dlift->den[k]);
-      }
+  set_recdata(dl, rd1, rd2, mod_p);
+  for(int32_t k = start; k < end; k++){
+    if(dl->check1[k]){
 
       for(int32_t l = 0; l < polys[k]->len; l++){
 
-
-        if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p[0], dlift->den[k], recdata)){
-
+        if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p, dl->den[k], rd1)){
           mpz_set(polys[k]->cf_qq[2*l], rnum);
           mpz_set(polys[k]->cf_qq[2*l + 1], rden);
 
         }
         else{
           fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
-          mpz_set_ui(dlift->gden, 1);
+          mpz_set_ui(dl->gden, 1);
           mpz_clear(rnum);
           mpz_clear(rden);
           return k;
         }
       }
-      mpz_set(polys[k]->lm, dlift->den[k]);
-      dlift->S++;
+      mpz_set(polys[k]->lm, dl->den[k]);
+      /* dlift->S++; */
     }
     else{
       mpz_clear(rnum);
@@ -863,7 +877,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   }
   mpz_clear(rnum);
   mpz_clear(rden);
-  return -1;
+  return end;
 }
 
 #ifdef NEWGBLIFT
@@ -943,31 +957,6 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
 }
 #endif
 
-
-static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t mod_p){
-  mpz_fdiv_q_2exp(rd1->N, mod_p, 1);
-
-  if(dl->lstart){
-
-    mpz_set(rd2->N, rd1->N);
-
-    mpz_sqrt(rd2->N, rd2->N);
-    mpz_set(rd2->D, rd2->N);
-
-    mpz_root(rd1->D, rd1->N, 3);
-    mpz_fdiv_q(rd1->N, rd1->N, rd1->D);
-
-  }
-  else{
-    mpz_sqrt(rd1->N, rd1->N);
-    mpz_set(rd1->D, rd1->N);
-
-    mpz_set(rd2->N, rd1->N);
-    mpz_set(rd2->D, rd1->D);
-
-  }
-}
-
 /* returns 0 iff rational number could not be lifted */
 static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
                                    rrec_data_t recdata1, rrec_data_t recdata2){
@@ -1001,6 +990,10 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         int thrds, double *st_crt, double *st_rrec){
 
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
+  if(dl->lstart != dl->start){
+    crt_lift_modgbs(modgbs, dl, dl->lstart, dl->start);
+    dl->start = ratrecon_lift_modgbs(modgbs, dl, dl->lstart, dl->start, mod_p, recdata1, recdata2);
+  }
   dl->lstart = dl->start;
 
   double st = realtime();
@@ -1592,7 +1585,7 @@ int msolve_gbtrace_qq(
     }
   }
   if(info_level){
-    fprintf(stderr, "%d primes used. Elapsed time: %.2f\n", nprimes, realtime()-st0);
+    fprintf(stderr, "%d primes used. \nElapsed time: %.2f\n", nprimes, realtime()-st0);
   }
   free_mstrace(msd, st);
   if(dlinit){

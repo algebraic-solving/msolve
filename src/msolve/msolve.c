@@ -27,6 +27,7 @@
 #define LIFTMATRIX 0
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
+#define MIN(x, y) ((x) > (y) ? (y) : (x))
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
 #define ilog2_mpz(a) mpz_sizeinbase(a,2)
 

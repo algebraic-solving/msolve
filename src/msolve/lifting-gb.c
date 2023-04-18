@@ -47,6 +47,8 @@ typedef struct {
                     to copy coefficients (hence ensuring compatibility with
                     flint) */
   uint32_t ld; /* number of polynomials */
+  int32_t *mb; /* monomial basis enlarged */
+  int32_t *lm; /* monomial basis enlarged */
   modpolys_t *modpolys; /* array of polynomials modulo primes */
 } gb_modpoly_array_struct;
 
@@ -158,7 +160,8 @@ static inline void data_lift_clear(data_lift_t dlift){
 
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, int32_t *lens,
-                                   uint32_t ld){
+                                   uint32_t ld,
+                                   int32_t *lm, int32_t *basis){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
   modgbs->primes = calloc(sizeof(uint64_t), alloc);
@@ -166,6 +169,8 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->ld = ld;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * ld);
 
+  modgbs->mb = basis;
+  modgbs->lm = lm;
   for(uint32_t i = 0; i < ld; i++){
     modgbs->modpolys[i]->len = lens[i];
     modgbs->modpolys[i]->cf_32 = malloc(sizeof(uint32_t **)*lens[i]);
@@ -321,6 +326,8 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
 
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
+  free(modgbs->mb);
+  free(modgbs->lm);
   for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       free(modgbs->modpolys[i]->cf_32[j]);
@@ -608,7 +615,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
 
-    gb_modpoly_init(modgbs, maxbitsize, lens, bs->lml);
+    gb_modpoly_init(modgbs, maxbitsize, lens, bs->lml, bexp_lm, lmb);
 
     modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb, start);
 

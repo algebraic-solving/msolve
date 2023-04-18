@@ -867,7 +867,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         }
       }
       mpz_set(polys[k]->lm, dl->den[k]);
-      /* dlift->S++; */
+      /* dl->S++; */
     }
     else{
       mpz_clear(rnum);

@@ -1597,7 +1597,9 @@ int msolve_gbtrace_qq(
     display_gbmodpoly_cf_qq(ofile, modgbs);
     fclose(ofile);
   }
-
+  else{
+    display_gbmodpoly_cf_qq(stdout, modgbs);
+  }
   gb_modpoly_clear(modgbs);
   free_rrec_data(recdata1);
   free_rrec_data(recdata2);

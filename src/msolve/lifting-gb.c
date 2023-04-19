@@ -47,8 +47,9 @@ typedef struct {
                     to copy coefficients (hence ensuring compatibility with
                     flint) */
   uint32_t ld; /* number of polynomials */
+  int nv; /* number of variables */
   int32_t *mb; /* monomial basis enlarged */
-  int32_t *lm; /* monomial basis enlarged */
+  int32_t *ldm; /* lead monomials */
   modpolys_t *modpolys; /* array of polynomials modulo primes */
 } gb_modpoly_array_struct;
 
@@ -160,17 +161,23 @@ static inline void data_lift_clear(data_lift_t dlift){
 
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, int32_t *lens,
-                                   uint32_t ld,
+                                   int nv, uint32_t ld,
                                    int32_t *lm, int32_t *basis){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
   modgbs->primes = calloc(sizeof(uint64_t), alloc);
   modgbs->cf_64 = calloc(sizeof(uint64_t), alloc);
   modgbs->ld = ld;
+  modgbs->nv = nv;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * ld);
 
   modgbs->mb = basis;
-  modgbs->lm = lm;
+  modgbs->ldm = calloc(nv*ld, sizeof(int32_t));
+  for(int32_t i = 0; i < ld; i++){
+    for(int j = 0; j < nv; j++){
+      modgbs->ldm[i*nv+j] = lm[i*nv+j];
+    }
+  }
   for(uint32_t i = 0; i < ld; i++){
     modgbs->modpolys[i]->len = lens[i];
     modgbs->modpolys[i]->cf_32 = malloc(sizeof(uint32_t **)*lens[i]);
@@ -261,13 +268,65 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
     }
     fprintf(file, "],\n");
   }
-  fprintf(file, "]\n");
+  fprintf(file, "]:\n");
+}
+
+static inline void display_modpoly(FILE *file,
+                                   gb_modpoly_t modgbs,
+                                   int32_t pos,
+                                   data_gens_ff_t *gens){
+
+  if(mpz_cmp_ui(modgbs->modpolys[pos]->lm, 1) != 0){
+    mpz_out_str(file, 10, modgbs->modpolys[pos]->lm);
+    fprintf(file, "*");
+  }
+  display_monomial_single(file, gens, pos, &modgbs->ldm);
+  for(int32_t i = modgbs->modpolys[pos]->len-1; i > 0 ; i--){
+    /* if(pos==4)fprintf(stderr, "[%d]", i); */
+    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0){
+      if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0)>0){
+        fprintf(file, "+");
+      }
+      mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i]);
+      if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0){
+        fprintf(file, "/");
+        mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i + 1]);
+       }
+      fprintf(file, "*");
+   }
+    else{
+      fprintf(file, "+");
+    }
+    display_monomial_single(file, gens, i, &modgbs->mb);
+    fflush(file);
+  }
+  if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 0) > 0){
+    fprintf(file, "+");
+    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[0]);
+  }
+  if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 0) < 0){
+    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[0]);
+  }
+  if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0){
+    fprintf(file, "/");
+    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[1]);
+  }
+
 }
 
 static inline void display_gbmodpoly_cf_qq(FILE *file,
-                                           gb_modpoly_t modgbs){
+                                           gb_modpoly_t modgbs,
+                                           data_gens_ff_t *gens){
   modpolys_t *pols = modgbs->modpolys;
   int32_t p = modgbs->ld ;
+  fprintf(file, "[");
+  for(int i = 0; i < p-1; i++){
+    display_modpoly(file, modgbs, i, gens);
+    fprintf(file, ", \n");
+  }
+  display_modpoly(file, modgbs, p-1, gens);
+  fprintf(file, "\n");
+  fprintf(file, "]:\n");
   fprintf(file, "[");
   for(uint32_t i = 0; i < p - 1; i++){
     fprintf(file, "[");
@@ -327,7 +386,7 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   free(modgbs->mb);
-  free(modgbs->lm);
+  free(modgbs->ldm);
   for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       free(modgbs->modpolys[i]->cf_32[j]);
@@ -615,7 +674,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
 
-    gb_modpoly_init(modgbs, maxbitsize, lens, bs->lml, bexp_lm, lmb);
+    gb_modpoly_init(modgbs, 2, lens, bht->nv, bs->lml, leadmons[0], lmb);
 
     modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb, start);
 
@@ -1601,11 +1660,11 @@ int msolve_gbtrace_qq(
 
   if(files->out_file != NULL){
     FILE *ofile = fopen(files->out_file, "w+");
-    display_gbmodpoly_cf_qq(ofile, modgbs);
+    display_gbmodpoly_cf_qq(ofile, modgbs, gens);
     fclose(ofile);
   }
   else{
-    display_gbmodpoly_cf_qq(stdout, modgbs);
+    display_gbmodpoly_cf_qq(stdout, modgbs, gens);
   }
   gb_modpoly_clear(modgbs);
   free_rrec_data(recdata1);

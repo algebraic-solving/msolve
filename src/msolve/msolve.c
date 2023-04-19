@@ -25,9 +25,12 @@
 #include "lifting-gb.c"
 
 #define LIFTMATRIX 0
-
+#ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
+#endif
+#ifndef MIN
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
+#endif
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
 #define ilog2_mpz(a) mpz_sizeinbase(a,2)
 

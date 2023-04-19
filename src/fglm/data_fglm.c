@@ -300,8 +300,8 @@ static inline void nmod_poly_set_prime(nmod_poly_t poly,
   mp_limb_t ninv = n_preinvert_limb(prime);
   poly->mod.n = prime;
   poly->mod.ninv = ninv;
-  /* count_leading_zeros(poly->mod.norm, prime); */
-  poly->mod.norm = flint_clz(prime);
+  count_leading_zeros(poly->mod.norm, prime);
+  /* poly->mod.norm = flint_clz(prime); */
 
 }
 

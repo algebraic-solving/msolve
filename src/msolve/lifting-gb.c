@@ -282,8 +282,7 @@ static inline void display_modpoly(FILE *file,
   }
   display_monomial_single(file, gens, pos, &modgbs->ldm);
   for(int32_t i = modgbs->modpolys[pos]->len-1; i > 0 ; i--){
-    /* if(pos==4)fprintf(stderr, "[%d]", i); */
-    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0){
+    if((mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0) != 0 && mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 1) != 0) || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0){
       if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0)>0){
         fprintf(file, "+");
       }
@@ -291,13 +290,17 @@ static inline void display_modpoly(FILE *file,
       if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0){
         fprintf(file, "/");
         mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i + 1]);
-       }
+      }
       fprintf(file, "*");
-   }
-    else{
-      fprintf(file, "+");
     }
-    display_monomial_single(file, gens, i, &modgbs->mb);
+    else{
+      if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0) != 0){
+        fprintf(file, "+");
+      }
+    }
+    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0) != 0){
+      display_monomial_single(file, gens, i, &modgbs->mb);
+    }
     fflush(file);
   }
   if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 0) > 0){

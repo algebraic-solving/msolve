@@ -88,70 +88,70 @@ typedef struct{
 typedef data_lift_struct data_lift_t[1];
 
 
-static inline void data_lift_init(data_lift_t dlift,
+static inline void data_lift_init(data_lift_t dl,
                                   int32_t npol,
                                   int32_t *steps, int32_t nsteps){
-  dlift->npol = npol;
-  dlift->rr = 1;
-  dlift->lstart = 0;
-  dlift->nsteps = nsteps;
-  dlift->S = 0;
+  dl->npol = npol;
+  dl->rr = 1;
+  dl->lstart = 0;
+  dl->nsteps = nsteps;
+  dl->S = 0;
   int32_t i;
 
-  dlift->steps = calloc(nsteps, sizeof(int32_t));
+  dl->steps = calloc(nsteps, sizeof(int32_t));
   for(i = 0; i < nsteps; i++){
-    dlift->steps[i] = steps[i];
+    dl->steps[i] = steps[i];
   }
-  dlift->cstep = 0;
-  dlift->lend = npol;
-  dlift->crt_mult = 0;
-  dlift->crt = malloc(sizeof(mpz_t) * dlift->npol);
-  for(int32_t i = 0; i < dlift->npol; i++){
-    mpz_init(dlift->crt[i]);
+  dl->cstep = 0;
+  dl->lend = npol;
+  dl->crt_mult = 0;
+  dl->crt = malloc(sizeof(mpz_t) * dl->npol);
+  for(int32_t i = 0; i < dl->npol; i++){
+    mpz_init(dl->crt[i]);
   }
-  dlift->recon = 0;
-  dlift->coef = calloc(npol, sizeof(mpz_t) );
+  dl->recon = 0;
+  dl->coef = calloc(npol, sizeof(mpz_t) );
 
-  dlift->num = malloc(sizeof(mpz_t) * npol);
+  dl->num = malloc(sizeof(mpz_t) * npol);
   for(i = 0; i < npol; i++){
-    mpz_init(dlift->num[i]);
+    mpz_init(dl->num[i]);
   }
-  dlift->den = malloc(sizeof(mpz_t) * npol);
+  dl->den = malloc(sizeof(mpz_t) * npol);
   for(i = 0; i < npol; i++){
-    mpz_init(dlift->den[i]);
+    mpz_init(dl->den[i]);
   }
-  mpz_init_set_ui(dlift->gden, 1);
-  mpz_init(dlift->tmp);
-  dlift->start = 0;
-  dlift->end = 0;
-  dlift->check1 = calloc(npol, sizeof(int));
-  dlift->check2 = calloc(npol, sizeof(int));
+  mpz_init_set_ui(dl->gden, 1);
+  mpz_init(dl->tmp);
+  dl->start = 0;
+  dl->end = 0;
+  dl->check1 = calloc(npol, sizeof(int));
+  dl->check2 = calloc(npol, sizeof(int));
 
 }
 
-static inline void data_lift_clear(data_lift_t dlift){
-  for(int32_t i = 0; i < dlift->npol; i++){
-    mpz_clear(dlift->crt[i]);
+static inline void data_lift_clear(data_lift_t dl){
+  for(int32_t i = 0; i < dl->npol; i++){
+    mpz_clear(dl->crt[i]);
   }
-  free(dlift->crt);
+  free(dl->crt);
 
-  free(dlift->steps);
-  free(dlift->coef);
+  free(dl->steps);
+  free(dl->coef);
 
-  for(int32_t i = 0; i < dlift->npol; i++){
-    mpz_clear(dlift->num[i]);
+  for(int32_t i = 0; i < dl->npol; i++){
+    mpz_clear(dl->num[i]);
   }
-  free(dlift->num);
+  free(dl->num);
 
-  for(int32_t i = 0; i < dlift->npol; i++){
-    mpz_clear(dlift->den[i]);
+  for(int32_t i = 0; i < dl->npol; i++){
+    mpz_clear(dl->den[i]);
   }
-  free(dlift->den);
+  free(dl->den);
 
-  mpz_clear(dlift->gden);
-  mpz_clear(dlift->tmp);
-  free(dlift->check1);
-  free(dlift->check2);
+  mpz_clear(dl->gden);
+  mpz_clear(dl->tmp);
+  free(dl->check1);
+  free(dl->check2);
 
 }
 
@@ -326,60 +326,6 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
   display_modpoly(file, modgbs, p-1, gens);
   fprintf(file, "\n");
   fprintf(file, "]:\n");
-  /* fprintf(file, "["); */
-  /* for(uint32_t i = 0; i < p - 1; i++){ */
-  /*   fprintf(file, "["); */
-  /*   for(uint32_t l = pols[i]->len - 1; l > 0; l--){ */
-  /*     if(mpz_cmp_ui(pols[i]->cf_qq[2*l + 1], 1) && mpz_cmp_ui(pols[i]->cf_qq[2*l], 0)){ */
-  /*       mpz_out_str(file, 10, pols[i]->cf_qq[2*l]); */
-  /*       fprintf(file, "/"); */
-  /*       mpz_out_str(file, 10, pols[i]->cf_qq[2*l + 1]); */
-  /*       fprintf(file, ", "); */
-  /*     } */
-  /*     else{ */
-  /*       mpz_out_str(file, 10, pols[i]->cf_qq[2*l]); */
-  /*       fprintf(file, ", "); */
-  /*     } */
-  /*   } */
-  /*   if(mpz_cmp_ui(pols[i]->cf_qq[1], 1)){ */
-  /*     mpz_out_str(file, 10, pols[i]->cf_qq[0]); */
-  /*     fprintf(file, "/"); */
-  /*     mpz_out_str(file, 10, pols[i]->cf_qq[1]); */
-  /*     fprintf(file, "],\n"); */
-  /*   } */
-  /*   else{ */
-  /*     mpz_out_str(file, 10, pols[i]->cf_qq[0]); */
-  /*     fprintf(file, ",\n"); */
-  /*   } */
-  /*   mpz_out_str(file, 10, pols[i]->lm); */
-  /*   fprintf(file, "],\n"); */
-  /* } */
-  /* fprintf(file, "["); */
-  /* for(uint32_t l = pols[p-1]->len - 1; l > 0; l--){ */
-  /*   if(mpz_cmp_ui(pols[p-1]->cf_qq[2*l + 1], 1) && mpz_cmp_ui(pols[p-1]->cf_qq[2*l], 0)){ */
-  /*     mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l]); */
-  /*     fprintf(file, "/"); */
-  /*     mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l + 1]); */
-  /*     fprintf(file, ", "); */
-  /*   } */
-  /*   else{ */
-  /*     mpz_out_str(file, 10, pols[p-1]->cf_qq[2*l]); */
-  /*     fprintf(file, ", "); */
-  /*   } */
-  /* } */
-  /* if(mpz_cmp_ui(pols[p-1]->cf_qq[1], 1)){ */
-  /*   mpz_out_str(file, 10, pols[p-1]->cf_qq[0]); */
-  /*   fprintf(file, "/"); */
-  /*   mpz_out_str(file, 10, pols[p-1]->cf_qq[1]); */
-  /*   fprintf(file, "]\n"); */
-  /* } */
-  /* else{ */
-  /*   mpz_out_str(file, 10, pols[p-1]->cf_qq[0]); */
-  /*   fprintf(file, ",\n"); */
-  /* } */
-  /* mpz_out_str(file, 10, pols[p-1]->lm); */
-  /* fprintf(file, "]\n"); */
-  /* fprintf(file, "]:"); */
 }
 
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){

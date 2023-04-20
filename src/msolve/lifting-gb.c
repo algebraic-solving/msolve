@@ -713,42 +713,6 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
 }
 
 
-/* uses FLINT's multi CRT when starting to lift one witness coef */
-/* TODO: avoid to initialize/clear comb and comb_temp at each call */
-/* coef is the array of indices of the coefficients to be lifted */
-static inline void start_dlift(gb_modpoly_t modgbs, data_lift_t dlift, int32_t *coef){
-  /* Data needed by multi CRT functions */
-  fmpz_comb_t comb;
-  fmpz_comb_temp_t comb_temp;
-
-  fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
-  fmpz_comb_temp_init(comb_temp, comb);
-  fmpz_t y;
-  fmpz_init(y);
-
-  modpolys_t *polys = modgbs->modpolys;
-
-  for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
-    int32_t cl = dlift->coef[k];
-    for(uint32_t i = 0; i < modgbs->nprimes; i++){
-      modgbs->cf_64[i] = polys[k]->cf_32[cl][i];
-    }
-    fmpz_multi_CRT_ui(y, modgbs->cf_64,
-                      comb, comb_temp, 1);
-    fmpz_get_mpz(dlift->crt[k], y);
-  }
-
-  /* indicates that CRT started */
-  dlift->crt_mult = 1;
-
-  fmpz_clear(y);
-  fmpz_comb_temp_clear(comb_temp);
-  fmpz_comb_clear(comb);
-
-}
-
-
-
 /* Incremental CRT (called once FLINT multi_CRT has been called) */
 /* mod is the current modulus */
 static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
@@ -967,8 +931,12 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
 
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
   if(dl->lstart != dl->start){
+    double st = realtime();
     crt_lift_modgbs(modgbs, dl, dl->lstart, dl->start);
+    *st_crt += realtime() - st;
+    st = realtime();
     dl->start = ratrecon_lift_modgbs(modgbs, dl, dl->lstart, dl->start, mod_p, recdata1, recdata2);
+    *st_rrec += realtime()-st;
   }
   dl->lstart = dl->start;
 

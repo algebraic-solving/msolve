@@ -103,11 +103,7 @@ static inline void data_lift_init(data_lift_t dlift,
     dlift->steps[i] = steps[i];
   }
   dlift->cstep = 0;
-#ifdef NEWGBLIFT
   dlift->lend = npol;
-#else
-  dlift->lend = steps[0] - 1;
-#endif
   dlift->crt_mult = 0;
   dlift->crt = malloc(sizeof(mpz_t) * dlift->npol);
   for(int32_t i = 0; i < dlift->npol; i++){
@@ -955,7 +951,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   return end;
 }
 
-#ifdef NEWGBLIFT
+
 /* returns (coef == num / den mod prime) */
 static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef){
   uint32_t lc = mpz_fdiv_ui(den, prime);
@@ -991,46 +987,6 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
   }
   return -1;
 }
-#else
-/* returns the first index between start and end for which the lifted rationals stored
-   in dlift are not ok
-   else it returns -1
-*/
-static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t dlift,
-                                        int thrds){
-  if(dlift->recon){
-    for(int32_t k = dlift->start; k <= dlift->end; k++){
-
-      for(int i = 0; i < thrds; i++){
-
-        uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
-        uint32_t lc = mpz_fdiv_ui(dlift->den[k], prime);
-        lc = mod_p_inverse_32(lc, prime);
-
-        uint64_t c = mpz_fdiv_ui(dlift->num[k], prime);
-        c *= lc;
-        c = c % prime;
-
-        uint32_t coef = modgbs->modpolys[k]->cf_32[dlift->coef[k]][modgbs->nprimes  - (thrds - i) ];
-
-        if(c!=coef){
-          dlift->check1[k] = 0;
-          dlift->check2[k] = 0;
-          return k;
-        }
-      }
-      if(!dlift->check1[k]){
-        dlift->check1[k] = 1;
-      }
-      else{
-        dlift->check2[k] = 1;
-      }
-    }
-
-  }
-  return -1;
-}
-#endif
 
 /* returns 0 iff rational number could not be lifted */
 static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
@@ -1058,7 +1014,6 @@ static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
   return b;
 }
 
-#ifdef NEWGBLIFT
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         mpz_t mod_p, mpz_t prod_p,
                         rrec_data_t recdata1, rrec_data_t recdata2,
@@ -1104,243 +1059,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   *st_rrec += realtime()-st;
 
 }
-#else
-static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dlift,
-                        mpz_t *mod_p, mpz_t *prod_p,
-                        rrec_data_t recdata1, rrec_data_t recdata2,
-                        int thrds, double *st_crt, double *st_rrec){
-#ifdef DEBUGGBLIFT
-  for(int i = 0; i < dlift->nsteps; i++){
-    fprintf(stderr, "[%d]", dlift->steps[i]);
-  }
-  fprintf(stderr, "\n");
-  fprintf(stderr, "nprimes  = %d [cstep = %d]\n", modgbs->nprimes, dlift->cstep);
-#endif
-
-  verif_lifted_rational_wcoef(modgbs, dlift, thrds);
-
-  /********************************************************/
-  /*                     CRT                              */
-  /********************************************************/
-  /* starts CRT */
-  double st = realtime();;
-  if(dlift->crt_mult == 0){
-
-    if(0==0 || modgbs->nprimes >=  (dlift->steps[dlift->cstep])){
-      start_dlift(modgbs, dlift, dlift->coef);
-
-      if(dlift->lstart == 0){
-        for(int i = 0; i < modgbs->nprimes; i++){
-          uint32_t prime = modgbs->primes[i];
-          mpz_mul_ui(mod_p[0], mod_p[0], prime);
-        }
-        mpz_set(prod_p[0], mod_p[0]);
-
-      }
-      else{
-        for(int i = 0; i < thrds; i++){
-          uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i)];
-          mpz_mul_ui(mod_p[0], mod_p[i], prime);
-        }
-        mpz_set(prod_p[0], mod_p[0]);
-      }
-    }
-  }
-  else{
-    incremental_dlift_crt(modgbs, dlift,
-                          dlift->coef, mod_p, prod_p,
-                          thrds);
-  }
-
-  *st_crt += realtime() - st;
-
-  /********************************************************/
-  /********************************************************/
-
-  /********************************************************/
-  /*                       RATRECON                       */
-  /********************************************************/
-
-  st = realtime();
-
-  if(dlift->lstart == 0){
-    mpz_set_ui(dlift->gden, 1);
-  }
-
-  int32_t start = dlift->lstart;
-  dlift->start = start;
-  dlift->end = start-1;
-
-  mpz_fdiv_q_2exp(recdata1->N, mod_p[0], 1);
-
-  if(dlift->cstep){
-
-    mpz_set(recdata2->N, recdata1->N);
-
-    mpz_sqrt(recdata2->N, recdata2->N);
-    mpz_set(recdata2->D, recdata2->N);
-
-    mpz_root(recdata1->D, recdata1->N, 3);
-    mpz_fdiv_q(recdata1->N, recdata1->N, recdata1->D);
-
-  }
-  else{
-    mpz_sqrt(recdata1->N, recdata1->N);
-    mpz_set(recdata1->D, recdata1->N);
-
-    mpz_set(recdata2->N, recdata1->N);
-    mpz_set(recdata2->D, recdata1->D);
-
-  }
-
-
-  if(modgbs->nprimes % dlift->rr == 0){
-    int32_t ls = dlift->lstart;
-    for(int32_t i = ls; i <= dlift->lend; i++){
-
-      dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
-                                  dlift->crt[i], mod_p[0], dlift->gden, recdata1);
-
-      if(dlift->recon){
-        mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
-        mpz_gcd(dlift->tmp, dlift->den[i], dlift->num[i]);
-
-        mpz_divexact(dlift->num[i], dlift->num[i], dlift->tmp);
-        mpz_divexact(dlift->den[i], dlift->den[i], dlift->tmp);
-
-        mpz_set(dlift->gden, dlift->den[i]);
-
-        dlift->lstart++;
-        dlift->end++;
-
-      }
-      else{
-
-        dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
-                                dlift->crt[i], mod_p[0], recdata2);
-        if(dlift->recon){
-          dlift->lstart++;
-          dlift->end++;
-          mpz_set(dlift->gden, dlift->den[i]);
-        }
-        else{
-          dlift->recon = 0;
-          break;
-        }
-      }
-    }
-  }
-  *st_rrec += realtime()-st;
-
-  /********************************************************/
-  /********************************************************/
-  int b = -1;
-  if(dlift->lstart != start){
-
-    /* lifting over all the polynomials in the range */
-    st = realtime();
-    crt_lift_modgbs(modgbs, dlift, start, dlift->lend);
-    *st_crt += realtime() - st;
-
-    st = realtime();
-    b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
-                             mod_p, recdata1);
-    *st_rrec += realtime() - st;
-
-
-
-  /********************************************************/
-  /*                       RATRECON                       */
-  /********************************************************/
-
-  mpz_fdiv_q_2exp(recdata->N, mod_p[0], 1);
-  mpz_sqrt(recdata->N, recdata->N);
-  mpz_set(recdata->D, recdata->N);
-
-  if(dlift->cstep){
-
-    long bg = mpz_sizeinbase(dlift->gden, 2);
-    long bt = mpz_sizeinbase(recdata->N, 2);
-
-    mpz_root(recdata->D, recdata->N, 3);
-    mpz_fdiv_q(recdata->N, recdata->N, recdata->D);
-
-  }
-  else{
-    mpz_sqrt(recdata->N, recdata->N);
-    mpz_set(recdata->D, recdata->N);
-
-  }
-
-  for(int32_t i = dlift->lstart; i <= dlift->lend; i++){
-
-      if(dlift->check1[i]==1)fprintf(stderr, "*");
-
-      dlift->recon = ratreconwden(dlift->num[i], dlift->den[i],
-                                  dlift->crt[i], mod_p[0], dlift->gden, recdata);
-
-      if(dlift->recon){
-        mpz_mul(dlift->den[i], dlift->den[i], dlift->gden);
-        dlift->lstart++;
-        dlift->end++;
-
-      }
-      else{
-
-        dlift->recon = ratrecon(dlift->num[i], dlift->den[i],
-                                dlift->crt[i], mod_p[0], recdata2);
-        if(dlift->recon){
-          dlift->lstart++;
-          dlift->end++;
-          mpz_set(dlift->gden, dlift->den[i]);
-        }
-        else{
-          dlift->recon = 0;
-          break;
-        }
-      }
-    }
-  }
-  *st_rrec += realtime()-st;
-
-  /********************************************************/
-  /********************************************************/
-  int b = -1;
-  if(dlift->lstart != start){
-
-    /* lifting over all the polynomials in the range */
-    st = realtime();
-    crt_lift_modgbs(modgbs, dlift, start, dlift->lend);
-    *st_crt += realtime() - st;
-
-    st = realtime();
-    b = ratrecon_lift_modgbs(modgbs, dlift, start, dlift->lend,
-                             mod_p, recdata1);
-    *st_rrec += realtime() - st;
-
-    if(b >= 0 && b <= dlift->lend){
-      dlift->lstart = b;
-    }
-    else{
-      dlift->lstart = dlift->lend + 1;
-      dlift->lend += dlift->steps[dlift->cstep + 1] ;
-      dlift->cstep++;
-      dlift->crt_mult = 0;
-    }
-  }
-  else{
-    dlift->recon = 0;
-  }
-
-  /* all polynomials have been lifted */
-  if(dlift->lstart >= modgbs->ld){
-    dlift->lend = dlift->lstart;
-    dlift->end = dlift->lstart;
-    return;
-  }
-  return;
-}
-#endif
 
 /*
 

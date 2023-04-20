@@ -1030,7 +1030,7 @@ static inline void get_poly_bin(FILE *file, mpz_upoly_t pol){
   for(int32_t i = 0; i < pol->length; i++){
     mpz_init(pol->coeffs[i]);
     if(!mpz_inp_raw(pol->coeffs[i], file)){
-      fprintf(stderr, "An error occured when reading file (i=%d)\n", i);
+      fprintf(stderr, "An error occurred when reading file (i=%d)\n", i);
       exit(1);
     }
   }
@@ -1047,7 +1047,7 @@ static inline void get_poly(FILE *file, mpz_upoly_t pol){
   for(int32_t i = 0; i < pol->length; i++){
     mpz_init(pol->coeffs[i]);
     if(!mpz_inp_str(pol->coeffs[i], file, 10)){
-      fprintf(stderr, "An error occured when reading file (i=%d)\n", i);
+      fprintf(stderr, "An error occurred when reading file (i=%d)\n", i);
       exit(1);
     }
   }

@@ -636,7 +636,7 @@ int main(int argc, char **argv){
   initialize_flags(flags);
 
   initialize_heap_flags(flags, deg);
-  fprintf(stderr, "Time for intialization = %f\n", realtime()-t);
+  fprintf(stderr, "Time for initialization = %f\n", realtime()-t);
   mpz_random_dense_poly(pol1, deg, nbits);
   //  USOLVEmpz_poly_print_maple(pol1, deg);
 

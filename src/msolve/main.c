@@ -105,7 +105,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
   fprintf(stdout, "         format please see the general output data format section\n");
   fprintf(stdout, "         above.\n");
-  fprintf(stdout, "-q Q     Uses signature-based algotithms.\n");
+  fprintf(stdout, "-q Q     Uses signature-based algorithms.\n");
   fprintf(stdout, "         Default: 0 (no).\n");
   fprintf(stdout, "-r RED   Reduce Groebner basis.\n");
   fprintf(stdout, "         Default: 1 (yes).\n");

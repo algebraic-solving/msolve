@@ -919,13 +919,13 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   set_recdata(dl, rd1, rd2, mod_p);
   for(int32_t k = start; k < end; k++){
     if(dl->check1[k]){
-
+      mpz_set_ui(dl->tmp, 1);
       for(int32_t l = 0; l < polys[k]->len; l++){
 
         if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p, dl->den[k], rd1)){
           mpz_set(polys[k]->cf_qq[2*l], rnum);
           mpz_set(polys[k]->cf_qq[2*l + 1], rden);
-
+          mpz_lcm(dl->tmp, dl->tmp, rden);
         }
         else{
           fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
@@ -936,6 +936,12 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         }
       }
       mpz_set(polys[k]->lm, dl->den[k]);
+      for(int32_t l = 0; l < polys[k]->len; l++){
+        mpz_mul(polys[k]->cf_qq[2*l], polys[k]->cf_qq[2*l], dl->tmp);
+        mpz_divexact(polys[k]->cf_qq[2*l], polys[k]->cf_qq[2*l], polys[k]->cf_qq[2*l+1]);
+        mpz_set_ui(polys[k]->cf_qq[2*l+1], 1);
+      }
+      mpz_mul(polys[k]->lm, polys[k]->lm, dl->tmp);
       /* dl->S++; */
     }
     else{

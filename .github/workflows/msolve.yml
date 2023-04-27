@@ -8,23 +8,23 @@ on:
 
 jobs:
   build:
-  runs-on: ${{ matrix.os }}
-  timeout-minutes: 10
-  strategy:
-    fail-fast: false
-    matrix:
-      os:
-        - ubuntu-latest
-        - macos-latest
-  steps:
-    - uses: actions/checkout@v3
-    - name: autogen
-      run: ./autogen.sh
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: autogen
+        run: ./autogen.sh
+      - name: configure
+        run: ./configure
+      - name: make
+        run: make
+      - name: make check
+        run: make check
+      - name: make distcheck
+        run: make distcheck

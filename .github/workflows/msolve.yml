@@ -9,14 +9,14 @@ on:
 jobs:
   build:
   runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-    steps:
+  timeout-minutes: 10
+  strategy:
+    fail-fast: false
+    matrix:
+      os:
+        - ubuntu-latest
+        - macos-latest
+  steps:
     - uses: actions/checkout@v3
     - name: autogen
       run: ./autogen.sh

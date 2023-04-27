@@ -8,9 +8,14 @@ on:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest, macos-latest
-
+  runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
     steps:
     - uses: actions/checkout@v3
     - name: autogen

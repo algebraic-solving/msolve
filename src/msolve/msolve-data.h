@@ -196,4 +196,19 @@ typedef struct{
   mpz_t prod_p;
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];
+
+typedef struct{
+  int32_t ht_size; /* initial_hts */
+  int32_t nr_threads;
+  int32_t max_nr_pairs;
+  int32_t elim_block_len;
+  int32_t reset_ht;
+  int32_t la_option;
+  int32_t use_signatures;
+  int32_t info_level;
+  int32_t print_gb;
+  int32_t pbm_file;
+  files_gb *files;
+} msolveflags_struct;
+typedef msolveflags_struct msflags_t[1];
 #endif

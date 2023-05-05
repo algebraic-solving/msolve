@@ -5671,11 +5671,27 @@ restart:
             /* experimental code */
             if(print_gb){
               fprintf(stderr, "\n\nWe enter in experimental code\n\n");
-              msolve_gbtrace_qq(&dim, &dquot, gens, initial_hts, nr_threads,
-                                max_pairs, elim_block_len, update_ht,
-                                la_option, use_signatures, info_level,
-                                print_gb, generate_pbm, /* pbm_file, */
-                                files);
+              /* old_msolve_gbtrace_qq(&dim, &dquot, gens, initial_hts, nr_threads, */
+              /*                   max_pairs, elim_block_len, update_ht, */
+              /*                   la_option, use_signatures, info_level, */
+              /*                   print_gb, generate_pbm, /\* pbm_file, *\/ */
+              /*                   files); */
+
+              msflags_t flags;
+
+              flags->ht_size = initial_hts;
+              flags->nr_threads = nr_threads;
+              flags->max_nr_pairs = max_pairs;
+              flags->elim_block_len = elim_block_len;
+              flags->reset_ht = update_ht;
+              flags->la_option = la_option;
+              flags->use_signatures = use_signatures;
+              flags->info_level = info_level;
+              flags->pbm_file = generate_pbm;
+              flags->print_gb = print_gb;
+              flags->files = files;
+
+              print_msolve_gbtrace_qq(gens, flags);
               return 0;
             }
 

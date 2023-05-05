@@ -86,7 +86,17 @@ static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_
 
 static inline void display_monomial(FILE *file, data_gens_ff_t *gens, int64_t pos,
                                     int32_t **bexp){
-  int32_t exp;
+  int32_t exp = 0;
+  for(int k = 0; k < gens->nvars; k++){
+    exp = (*bexp)[(pos)*gens->nvars + k];
+    if(exp > 0){
+      break;
+    }
+  }
+  if(exp == 0){
+    fprintf(file, "1");
+    return;
+  }
   for(int k = 0; k < gens->nvars; k++){
     exp = (*bexp)[(pos)*gens->nvars + k];
     if(exp > 0){

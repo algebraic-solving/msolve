@@ -172,6 +172,7 @@ typedef struct{
   char *bin_out_file;
 } files_gb;
 
+/* data structure for tracing algorithms */
 typedef struct{
   primes_t *lp; /* array of lucky primes, usually of size st->nthrds */
   bs_t *bs_qq; /* basis_qq */

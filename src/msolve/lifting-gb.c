@@ -1540,6 +1540,9 @@ int msolve_gbtrace_qq(
       gb_modpoly_clear(modgbs);
 
       free_mstrace(msd, st);
+      free_rrec_data(recdata1);
+      free_rrec_data(recdata2);
+
       free(st);
 
     }

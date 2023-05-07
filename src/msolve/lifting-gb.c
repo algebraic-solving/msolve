@@ -333,6 +333,31 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
   fprintf(file, "]:\n");
 }
 
+static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
+                                              gb_modpoly_t modgbs,
+                                              data_gens_ff_t *gens){
+  modpolys_t *pols = modgbs->modpolys;
+  int32_t p = modgbs->ld ;
+  fprintf(file, "[");
+  for(int i = 0; i < p-1; i++){
+    if(modgbs->modpolys[i]->len == 0){
+      display_monomial(file, gens, i, &modgbs->ldm);
+    }
+    else{
+      display_monomial_single(file, gens, i, &modgbs->ldm);
+    }
+    fprintf(file, ", \n");
+  }
+  if(modgbs->modpolys[p-1]->len == 0){
+    display_monomial(file, gens, p-1, &modgbs->ldm);
+  }
+  else{
+    display_monomial_single(file, gens, p-1, &modgbs->ldm);
+  }
+  fprintf(file, "\n");
+  fprintf(file, "]:\n");
+}
+
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   free(modgbs->mb);
@@ -623,6 +648,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
             /* } */
             /* print_ff_basis_data( */
             /*                     files->out_file, "a", bs, bht, st, gens, print_gb); */
+            free_basis(&(bs));
             return NULL;
         }
     }
@@ -1344,8 +1370,15 @@ int print_msolve_gbtrace_qq(data_gens_ff_t *gens,
       display_gbmodpoly_cf_qq(stdout, modgbs, gens);
     }
   }
-  else{
-    fprintf(stderr, "To be implemented\n");
+  if(flags->print_gb == 1){
+    if(flags->files->out_file != NULL){
+      FILE *ofile = fopen(flags->files->out_file, "w+");
+      display_lm_gbmodpoly_cf_qq(stdout, modgbs, gens);
+      fclose(ofile);
+    }
+    else{
+      display_lm_gbmodpoly_cf_qq(stdout, modgbs, gens);
+    }
   }
   gb_modpoly_clear(modgbs);
 

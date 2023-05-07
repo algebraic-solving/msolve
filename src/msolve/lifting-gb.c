@@ -167,7 +167,6 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->nv = nv;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * ld);
 
-  fprintf(stderr, " ld = %d\n", ld);
   modgbs->mb = basis;
   modgbs->ldm = calloc(nv*ld, sizeof(int32_t));
   for(int32_t i = 0; i < ld; i++){
@@ -619,11 +618,11 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
         if(is_empty){
             *dquot_ori = 0;
             *dim = 0;
-            if(info_level){
-              fprintf(stderr, "No solution\n");
-            }
-            print_ff_basis_data(
-                                files->out_file, "a", bs, bht, st, gens, print_gb);
+            /* if(info_level){ */
+            /*   fprintf(stderr, "No solution\n"); */
+            /* } */
+            /* print_ff_basis_data( */
+            /*                     files->out_file, "a", bs, bht, st, gens, print_gb); */
             return NULL;
         }
     }
@@ -1678,15 +1677,19 @@ int print_msolve_gbtrace_qq(data_gens_ff_t *gens,
 
   msolve_gbtrace_qq(modgbs, gens, flags);
 
-  if(flags->files->out_file != NULL){
-    FILE *ofile = fopen(flags->files->out_file, "w+");
-    display_gbmodpoly_cf_qq(ofile, modgbs, gens);
-    fclose(ofile);
+  if(flags->print_gb > 1){
+    if(flags->files->out_file != NULL){
+      FILE *ofile = fopen(flags->files->out_file, "w+");
+      display_gbmodpoly_cf_qq(ofile, modgbs, gens);
+      fclose(ofile);
+    }
+    else{
+      display_gbmodpoly_cf_qq(stdout, modgbs, gens);
+    }
   }
   else{
-    display_gbmodpoly_cf_qq(stdout, modgbs, gens);
+    fprintf(stderr, "To be implemented\n");
   }
-
   gb_modpoly_clear(modgbs);
 
 }

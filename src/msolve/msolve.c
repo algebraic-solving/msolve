@@ -5671,11 +5671,6 @@ restart:
             /* experimental code */
             if(print_gb){
               fprintf(stderr, "\n\nWe enter in experimental code\n\n");
-              /* old_msolve_gbtrace_qq(&dim, &dquot, gens, initial_hts, nr_threads, */
-              /*                   max_pairs, elim_block_len, update_ht, */
-              /*                   la_option, use_signatures, info_level, */
-              /*                   print_gb, generate_pbm, /\* pbm_file, *\/ */
-              /*                   files); */
 
               msflags_t flags;
 

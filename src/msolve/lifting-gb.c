@@ -1373,7 +1373,7 @@ int print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   if(flags->print_gb == 1){
     if(flags->files->out_file != NULL){
       FILE *ofile = fopen(flags->files->out_file, "w+");
-      display_lm_gbmodpoly_cf_qq(stdout, modgbs, gens);
+      display_lm_gbmodpoly_cf_qq(ofile, modgbs, gens);
       fclose(ofile);
     }
     else{

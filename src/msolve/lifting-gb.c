@@ -1174,10 +1174,8 @@ int msolve_gbtrace_qq(
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
-    if(lmb_ori == NULL){
-      if(info_level){
+    if(lmb_ori == NULL || print_gb == 1){
         return 0;
-      }
     }
 
     apply = 1;

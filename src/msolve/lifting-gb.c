@@ -1175,7 +1175,15 @@ int msolve_gbtrace_qq(
                                                  files,
                                                  &success);
     if(lmb_ori == NULL || print_gb == 1){
-        return 0;
+      if(dlinit){
+        data_lift_clear(dlift);
+      }
+      free_mstrace(msd, st);
+      free_rrec_data(recdata1);
+      free_rrec_data(recdata2);
+
+      free(st);
+      return 0;
     }
 
     apply = 1;

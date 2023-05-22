@@ -557,6 +557,20 @@ static inline int32_t maxbitsize_gens(data_gens_ff_t *gens, len_t ngens){
   return mbs;
 }
 
+static inline int32_t compute_num_gb(int32_t *bexp_lm, int32_t len, int nv, int nev){
+  if(nev){
+    for(int32_t i = 0; i < len; i++){
+      for(int32_t j = 0; j < nev; j++){
+        if(bexp_lm[i*nv+j]){
+          return i;
+        }
+      }
+    }
+    return len;
+  }
+  return len;
+}
+
 static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            int32_t *mgb,
                                            int32_t *num_gb,
@@ -615,18 +629,27 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     /* Leading monomials from Grobner basis */
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
     leadmons[0] = bexp_lm;
-    num_gb[0] = bs->lml;
+    int32_t len = bs->lml;
+    num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv, st->nev);
+
+    if(st->nev){
+      int32_t *bexp_lm2 = calloc(num_gb[0]*(bht->nv - st->nev), sizeof(int32_t));
+    }
+
+    /************************************************/
+    /************************************************/
 
     long dquot = 0;
-    int32_t *lmb = monomial_basis_enlarged(bs->lml, bht->nv,
+    int32_t *lmb = monomial_basis_enlarged(num_gb[0], bht->nv, 
                                            bexp_lm, &dquot);
 
     /************************************************/
+    fprintf(stderr, " ici dquot = %ld\n", dquot);
     /************************************************/
 
-    int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv);
+    int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv - st->nev);
 
-    gb_modpoly_init(modgbs, 2, lens, bht->nv, bs->lml, leadmons[0], lmb);
+    gb_modpoly_init(modgbs, 2, lens, bht->nv - st->nev, num_gb[0], leadmons[0], lmb);
 
     modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb, start);
 

@@ -22,7 +22,6 @@
 #include <flint/flint.h>
 #include <flint/longlong.h>
 #include <flint/mpn_extras.h>
-#include <flint/nmod.h>
 #include <flint/nmod_poly.h>
 #include <flint/nmod_poly_factor.h>
 

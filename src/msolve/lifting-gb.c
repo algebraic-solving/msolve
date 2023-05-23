@@ -321,7 +321,6 @@ static inline void display_modpoly(FILE *file,
 static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs,
                                            data_gens_ff_t *gens){
-  modpolys_t *pols = modgbs->modpolys;
   int32_t p = modgbs->ld ;
   fprintf(file, "[");
   for(int i = 0; i < p-1; i++){
@@ -336,7 +335,6 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
 static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
                                               gb_modpoly_t modgbs,
                                               data_gens_ff_t *gens){
-  modpolys_t *pols = modgbs->modpolys;
   int32_t p = modgbs->ld ;
   fprintf(file, "[");
   for(int i = 0; i < p-1; i++){
@@ -739,7 +737,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   *stf4 = realtime()-ca0;
 
-  int32_t *lm = NULL;
   if(st->nev){
     get_lm_from_bs_trace_elim(bs, bht[0], leadmons_current[0], num_gb[0]);
   }
@@ -1397,7 +1394,7 @@ int msolve_gbtrace_qq(
   return 0;
 }
 
-int print_msolve_gbtrace_qq(data_gens_ff_t *gens,
+void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
                             msflags_t flags){
   gb_modpoly_t modgbs;
 

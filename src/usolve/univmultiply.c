@@ -37,6 +37,15 @@
 
 #ifdef USEFLINT
 
+
+void fmpz_poly_set_coeff_mpz2(fmpz_poly_t poly, slong n,
+                             const mpz_t x){
+  fmpz_t t;
+  fmpz_init_set_readonly(t, x);
+  fmpz_poly_set_coeff_fmpz(poly, n, t);
+  fmpz_clear_readonly(t);
+}
+
 /* from mpz_t *poly to fmpz_poly_t  */
 
 static void mpz_2_fmpz_poly(fmpz_poly_t poly_flint, const mpz_t *poly_gmp,
@@ -49,7 +58,7 @@ static void mpz_2_fmpz_poly(fmpz_poly_t poly_flint, const mpz_t *poly_gmp,
   unsigned long int i;
 #pragma omp parallel for private(i) num_threads(nthreads)
   for(i = 0; i <= deg; i++){
-    fmpz_poly_set_coeff_mpz(poly_flint, ((slong)i),poly_gmp[i]);
+    fmpz_poly_set_coeff_mpz2(poly_flint, ((slong)i),poly_gmp[i]);
   }
 }
 

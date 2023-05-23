@@ -36,6 +36,7 @@ typedef int32_t nvars_t;
 
 typedef struct{
   int32_t nvars;
+  int32_t elim;
   int32_t ngens;
   int32_t nterms;
   int32_t field_char;
@@ -142,6 +143,7 @@ typedef struct{
   mpz_t trace_den;
   mpz_t det_num;
   mpz_t det_den;
+  mpz_t tmp;
   int done_trace;
   int done_det;
   int check_trace;
@@ -171,6 +173,7 @@ typedef struct{
   char *bin_out_file;
 } files_gb;
 
+/* data structure for tracing algorithms */
 typedef struct{
   primes_t *lp; /* array of lucky primes, usually of size st->nthrds */
   bs_t *bs_qq; /* basis_qq */
@@ -190,8 +193,25 @@ typedef struct{
   ht_t **blht;
   ht_t **btht;
 
-  mpz_t *mod_p;
-  mpz_t *prod_p;
+  mpz_t mod_p;
+  mpz_t prod_p;
 } msolvetrace_data_struct;
 typedef msolvetrace_data_struct mstrace_t[1];
+
+typedef struct{
+  int dim;
+  long dquot;
+  int32_t ht_size; /* initial_hts */
+  int32_t nr_threads;
+  int32_t max_nr_pairs;
+  int32_t elim_block_len;
+  int32_t reset_ht;
+  int32_t la_option;
+  int32_t use_signatures;
+  int32_t info_level;
+  int32_t print_gb;
+  int32_t pbm_file;
+  files_gb *files;
+} msolveflags_struct;
+typedef msolveflags_struct msflags_t[1];
 #endif

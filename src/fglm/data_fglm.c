@@ -20,8 +20,10 @@
 
 #include<stdint.h>
 #include <flint/flint.h>
+#include <flint/longlong.h>
 #include <flint/mpn_extras.h>
 #include <flint/nmod_poly.h>
+#include <flint/nmod_poly_factor.h>
 
 
 typedef uint32_t szmat_t;
@@ -298,6 +300,7 @@ static inline void nmod_poly_set_prime(nmod_poly_t poly,
   poly->mod.n = prime;
   poly->mod.ninv = ninv;
   count_leading_zeros(poly->mod.norm, prime);
+  /* poly->mod.norm = flint_clz(prime); */
 
 }
 

@@ -101,6 +101,27 @@ static inline int is_divisible_lexp(long nvars, long length,
   return 0;
 }
 
+static inline int is_divisible_exp_elim(int32_t nvars, int32_t nev,
+                                        int32_t *exp1, int32_t *exp2){
+  for(int32_t i = nev; i < nvars; i++){
+    if(exp2[i]>exp1[i]){
+      return 0;
+    }
+  }
+  return 1;
+}
+
+static inline int is_divisible_lexp_elim(int32_t nvars, int32_t nev,
+                                         long length,
+                                         int32_t *exp1, int32_t *bexp){
+  for(long i = 0; i < length; i++){
+    if(is_divisible_exp_elim(nvars, nev, exp1, (bexp+i*nvars))){
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static inline int is_divisible_lexp_without_last_variable(long nvars, long length,
 							  int32_t
 							  *exp1,
@@ -124,11 +145,11 @@ static inline int32_t sum(int32_t *ind, int32_t length){
 }
 
 static inline int32_t generate_new_elts_basis(int32_t nvars, int32_t *ind,
-                                           long len1, long len_lm,
-                                           int32_t *basis1, int32_t *new_basis,
-                                           int32_t *bexp_lm){
+                                              long len1, long len_lm,
+                                              int32_t *basis1, int32_t *new_basis,
+                                              int32_t *bexp_lm){
   long c = 0;
-  for(int32_t n = nvars-1; n >=0; n--){
+  for(int32_t n = nvars-1; n >= 0; n--){
     for(int32_t i = ind[nvars-1-n]; i < len1; i++){
       for(int32_t k = 0; k < nvars; k++){
         new_basis[c*nvars+k] = basis1[i*nvars+k];
@@ -141,6 +162,7 @@ static inline int32_t generate_new_elts_basis(int32_t nvars, int32_t *ind,
   }
   return c;
 }
+
 
 static inline int degree_prev_var(int32_t *exp, long n){
   return(exp[n+1]);
@@ -183,7 +205,7 @@ static inline int32_t *monomial_basis(long length, long nvars,
   else{
     (*dquot)++;
   }
-  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
@@ -261,7 +283,7 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   else{
     (*dquot)++;
   }
-  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
@@ -340,7 +362,7 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
   else{
     (*dquot)++;
   }
-  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
@@ -481,6 +503,16 @@ static inline int is_equal_exponent(int32_t *exp1, int32_t *exp2, const long nva
     }
   }
   return ((exp1[nvars-1]) == exp2[nvars-1]);
+}
+
+static inline int is_equal_exponent_elim(int32_t *exp1, int32_t *exp2,
+                                         const long nvars, const long elim){
+  for(long i = 0; i < nvars - elim - 1; i++){
+    if(exp1[i + elim]!=exp2[i]){
+      return 0;
+    }
+  }
+  return ((exp1[nvars-1]) == exp2[nvars - elim -1]);
 }
 
 static inline int is_equal_exponent_bs(const ht_t * const exp1, int32_t hmj,
@@ -1155,12 +1187,8 @@ static inline void copy_poly_in_matrix_from_bs_32(sp_matfglm_t* matrix,
  */
 static inline int32_t *monomial_basis_enlarged(long length, long nvars, 
                                                int32_t *bexp_lm, long *dquot){
-  fprintf(stderr, "\nbexp\n");
-  for(int i = 0; i < nvars; i++){
-    fprintf(stderr, "%d, ", bexp_lm[(length-1)*(nvars) + i]);
-  }
+
   int32_t maxdeg = sum(bexp_lm+(length-1)*(nvars), nvars);
-  fprintf(stderr, "\nmaxdeg = %d\n", maxdeg);
 
   /* basis will contain the monomial basis */
   int32_t *basis = calloc(nvars, sizeof(int32_t));
@@ -1176,23 +1204,24 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
   else{
     (*dquot)++;
   }
-  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
-  int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
+  int32_t *new_basis = malloc(sizeof(int32_t) * (nvars) * (sum(ind, nvars) + nvars));
   int32_t new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                            basis, new_basis, bexp_lm);
+                                               basis, new_basis, bexp_lm);
   deg++;
 #ifdef DEBUGHILBERT
   //  display_monomials_from_array(stderr, new_length, new_basis, gens);
   fprintf(stderr, "%ld new elements.\n", new_length);
 #endif
+
   while(new_length>0 && deg <= maxdeg){
     int32_t *basis2 = realloc(basis,
-                              ((*dquot) + new_length) * nvars * sizeof(int32_t *));
+                              ((*dquot) + new_length) * (nvars) * sizeof(int32_t *));
     if(basis2==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);
@@ -1201,7 +1230,7 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
     basis = basis2;
     for(long i = 0; i < new_length; i++){
       for(long k = 0; k < nvars; k++){
-        (basis)[((*dquot) + i)*nvars+k] = (new_basis)[i*nvars+k];
+        (basis)[((*dquot) + i)*(nvars)+k] = (new_basis)[i*(nvars)+k];
       }
     }
 
@@ -1216,7 +1245,7 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
 #endif
 
     int32_t *new_basis2 = realloc(new_basis,
-                                 sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
+                                  sizeof(int32_t) * (nvars) * (sum(ind, nvars) + nvars));
     if(new_basis==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);
@@ -3055,7 +3084,6 @@ static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
 
   for (long i = 0; i < nelts; ++i) {
     const bl_t bi = bs->lmps[i];
-    //    len[cl] = bs->hm[bi][LENGTH];
 
     dt  = bs->hm[bi] + OFFSET;
     for (int k = 1; k < ebl; ++k) {
@@ -3064,7 +3092,6 @@ static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
     for (int k = ebl+1; k < evl; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
-    //    cc  +=  len[cl];
     cl++;
   }
   return exp;
@@ -3096,6 +3123,30 @@ static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
   }
 }
 
+static inline void get_lm_from_bs_trace_elim(bs_t *bs, const ht_t *ht, int32_t *exp,
+                                             const len_t nelts){
+  hm_t *dt;
+  const len_t ebl = ht->ebl;
+  const len_t evl = ht->evl;
+
+  /* counters for lengths, exponents and coefficients */
+  int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
+
+  for (long i = 0; i < nelts; ++i) {
+    const bl_t bi = bs->lmps[i];
+    //    len[cl] = bs->hm[bi][LENGTH];
+
+    dt  = bs->hm[bi] + OFFSET;
+    /* for (int k = 1; k < ebl; ++k) { */
+    /*   exp[ce++] = (int32_t)ht->ev[dt[0]][k]; */
+    /* } */
+    for (int k = ebl+1; k < evl; ++k) {
+      exp[ce++] = (int32_t)ht->ev[dt[0]][k];
+    }
+    //    cc  +=  len[cl];
+    cl++;
+  }
+}
 
 static inline int equal_staircase(int32_t *lmb, int32_t *lmb_ori,
                                   long dquot, long dquot_ori,

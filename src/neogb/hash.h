@@ -47,11 +47,6 @@ ht_t *copy_hash_table(
     const stat_t *st
     );
 
-ht_t *full_copy_hash_table(
-                      const ht_t *bht,
-                      const stat_t *st
-                      );
-
 ht_t *initialize_secondary_hash_table(
     const ht_t *bht,
     const stat_t *st

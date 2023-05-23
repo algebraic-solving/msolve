@@ -5671,7 +5671,6 @@ restart:
             long dquot = -1;
             /* experimental code */
             if(print_gb){
-              fprintf(stderr, "\n\nWe enter in experimental code\n\n");
 
               msflags_t flags;
 

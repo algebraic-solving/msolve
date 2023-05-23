@@ -424,7 +424,7 @@ int main(int argc, char **argv){
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));
     gens->elim = elim_block_len;
-    
+
     if(0 < field_char && field_char < pow(2, 15) && la_option > 2){
       fprintf(stderr, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
       fprintf(stderr, "\t linear algebra option set to 2\n");

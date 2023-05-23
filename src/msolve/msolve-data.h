@@ -36,6 +36,7 @@ typedef int32_t nvars_t;
 
 typedef struct{
   int32_t nvars;
+  int32_t elim;
   int32_t ngens;
   int32_t nterms;
   int32_t field_char;

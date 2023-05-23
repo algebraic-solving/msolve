@@ -477,10 +477,10 @@ static inline int32_t *array_of_lengths(int32_t *bexp_lm, int len,
 
 /* returns 0 in case of failure else returns 1 */
 static inline int modpgbs_set(gb_modpoly_t modgbs,
-                               const bs_t *bs, const ht_t * const ht,
-                               const int32_t fc,
-                               int32_t *basis, const int dquot,
-                              int *mgb, int32_t start){
+                              const bs_t *bs, const ht_t * const ht,
+                              const int32_t fc,
+                              int32_t *basis, const int dquot,
+                              int *mgb, int32_t start, const long elim){
   if(modgbs->nprimes >= modgbs->alloc-1){
     fprintf(stderr, "Not enough space in modgbs\n");
     exit(1);
@@ -509,7 +509,6 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       evi[i-2]    =   i;
     }
   }
-
   for(i = start; i < modgbs->ld; i++){
     idx = bs->lmps[i];
     if (bs->hm[idx] == NULL) {
@@ -525,7 +524,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       for (k = 0; k < nv; ++k) {
           mgb[k] = ht->ev[hm[j]][evi[k]];
       }
-      while(!is_equal_exponent(mgb, basis + (bc * nv), nv)){
+      while(!is_equal_exponent_elim(mgb, basis + (bc * (nv - elim)), nv, elim)){
         bc--;
       }
       modgbs->modpolys[i]->cf_32[bc][modgbs->nprimes] = c;
@@ -632,6 +631,8 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     int32_t len = bs->lml;
     num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv, st->nev);
+
+
     int32_t *bexp_lm2 = NULL;
     if(st->nev){
       bexp_lm2 = calloc(num_gb[0]*(bht->nv - st->nev), sizeof(int32_t));
@@ -658,15 +659,14 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     }
 
     /************************************************/
-    fprintf(stderr, " ici dquot = %ld\n", dquot);
     /************************************************/
 
-    int32_t *lens = array_of_lengths(bexp_lm, bs->lml, lmb, dquot, bht->nv - st->nev);
+    /* int32_t *lens = array_of_lengths(bexp_lm, num_gb[0], lmb, dquot, bht->nv); */
+    int32_t *lens = array_of_lengths(leadmons[0], num_gb[0], lmb, dquot, bht->nv - st->nev);
 
     gb_modpoly_init(modgbs, 2, lens, bht->nv - st->nev, num_gb[0], leadmons[0], lmb);
 
-    modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb, start);
-
+    modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb, start, st->nev);
     if(bs->lml == 1){
         if(info_level){
             fprintf(stderr, "Grobner basis has a single element\n");
@@ -739,23 +739,22 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   *stf4 = realtime()-ca0;
 
-  if(bs->lml != num_gb[0]){
-    if (bs != NULL) {
-      free_basis(&(bs));
-    }
-    bad_primes[0] = 1;
-    exit(1);
+  int32_t *lm = NULL;
+  if(st->nev){
+    get_lm_from_bs_trace_elim(bs, bht[0], leadmons_current[0], num_gb[0]);
   }
-  get_lm_from_bs_trace(bs, bht[0], leadmons_current[0]);
+  else{
+    get_lm_from_bs_trace(bs, bht[0], leadmons_current[0]);
+  }
 
   if(!equal_staircase(leadmons_current[0], leadmons_ori[0],
-                      num_gb[0], num_gb[0], bht[0]->nv)){
+                      num_gb[0], num_gb[0], bht[0]->nv - st->nev)){
     bad_primes[0] = 1;
   }
 
   if(!bad_primes[0] && bs != NULL){
     /* copy of data for multi-mod computation */
-    modpgbs_set(modgbs, bs, bht[0], lp->p[0], lmb_ori, dquot_ori, mgb, start);
+    modpgbs_set(modgbs, bs, bht[0], lp->p[0], lmb_ori, dquot_ori, mgb, start, st->nev);
   }
 
   if (bs != NULL) {
@@ -1322,6 +1321,7 @@ int msolve_gbtrace_qq(
                                    field_char, 0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
                                    dlift->S, gens, &stf4, msd->bad_primes);
+
 
       nprimes += st->nthrds;
 

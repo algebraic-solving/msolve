@@ -87,8 +87,8 @@ static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_
 static inline void display_monomial(FILE *file, data_gens_ff_t *gens, int64_t pos,
                                     int32_t **bexp){
   int32_t exp = 0;
-  for(int k = 0; k < gens->nvars; k++){
-    exp = (*bexp)[(pos)*gens->nvars + k];
+  for(int k = 0; k < gens->nvars - gens->elim; k++){
+    exp = (*bexp)[(pos)*(gens->nvars - gens->elim) + k];
     if(exp > 0){
       break;
     }
@@ -97,15 +97,15 @@ static inline void display_monomial(FILE *file, data_gens_ff_t *gens, int64_t po
     fprintf(file, "1");
     return;
   }
-  for(int k = 0; k < gens->nvars; k++){
-    exp = (*bexp)[(pos)*gens->nvars + k];
+  for(int k = 0; k < (gens->nvars - gens->elim); k++){
+    exp = (*bexp)[(pos)*(gens->nvars - gens->elim) + k];
     if(exp > 0){
       fprintf(file, "*");
       if(exp==1){
-        fprintf(file, "%s", gens->vnames[k]);
+        fprintf(file, "%s", gens->vnames[k + gens->elim]);
       }
       else{
-        fprintf(file, "%s^%d",gens->vnames[k], exp);
+        fprintf(file, "%s^%d",gens->vnames[k + gens->elim], exp);
       }
     }
   }
@@ -114,23 +114,23 @@ static inline void display_monomial(FILE *file, data_gens_ff_t *gens, int64_t po
 static inline int32_t display_monomial_single(FILE *file, data_gens_ff_t *gens,
                                               int64_t pos, int32_t **bexp){
   int32_t exp, b = 0;
-  for(int k = 0; k < gens->nvars; k++){
-    exp = (*bexp)[(pos)*(gens->nvars) + k];
+  for(int k = 0; k < gens->nvars - gens->elim; k++){
+    exp = (*bexp)[(pos)*(gens->nvars - gens->elim) + k];
     if(exp > 0){
       if(exp==1){
         if(b){
-          fprintf(file, "*%s", gens->vnames[k]);
+          fprintf(file, "*%s", gens->vnames[k + gens->elim]);
         }
         else{
-          fprintf(file, "%s", gens->vnames[k]);
+          fprintf(file, "%s", gens->vnames[k + gens->elim]);
         }
       }
       else{
         if(b){
-          fprintf(file, "*%s^%d",gens->vnames[k], exp);
+          fprintf(file, "*%s^%d",gens->vnames[k + gens->elim], exp);
         }
         else{
-          fprintf(file, "%s^%d",gens->vnames[k], exp);
+          fprintf(file, "%s^%d",gens->vnames[k + gens->elim], exp);
         }
       }
       b = 1;

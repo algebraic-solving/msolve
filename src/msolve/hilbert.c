@@ -205,7 +205,7 @@ static inline int32_t *monomial_basis(long length, long nvars,
   else{
     (*dquot)++;
   }
-  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
@@ -283,7 +283,7 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   else{
     (*dquot)++;
   }
-  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
@@ -362,7 +362,7 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
   else{
     (*dquot)++;
   }
-  int32_t *ind = calloc(nvars, sizeof(int32_t) * nvars);
+  int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);

@@ -161,8 +161,8 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    int32_t *lm, int32_t *basis){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
-  modgbs->primes = calloc(sizeof(uint64_t), alloc);
-  modgbs->cf_64 = calloc(sizeof(uint64_t), alloc);
+  modgbs->primes = calloc(alloc, sizeof(uint64_t));
+  modgbs->cf_64 = calloc(alloc, sizeof(uint64_t));
   modgbs->ld = ld;
   modgbs->nv = nv;
   modgbs->modpolys = malloc(sizeof(modpolys_struct) * ld);
@@ -629,19 +629,33 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     /* Leading monomials from Grobner basis */
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
     leadmons[0] = bexp_lm;
+
     int32_t len = bs->lml;
     num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv, st->nev);
-
+    int32_t *bexp_lm2 = NULL;
     if(st->nev){
-      int32_t *bexp_lm2 = calloc(num_gb[0]*(bht->nv - st->nev), sizeof(int32_t));
+      bexp_lm2 = calloc(num_gb[0]*(bht->nv - st->nev), sizeof(int32_t));
+      for(int32_t i = 0; i < num_gb[0]; i++){
+        for(int j = 0; j < bht->nv - st->nev; j++){
+          bexp_lm2[i*(bht->nv - st->nev) + j] = bexp_lm[i*bht->nv + st->nev + j];
+        }
+      }
+      leadmons[0] = bexp_lm2;
     }
 
     /************************************************/
     /************************************************/
 
     long dquot = 0;
-    int32_t *lmb = monomial_basis_enlarged(num_gb[0], bht->nv, 
-                                           bexp_lm, &dquot);
+    int32_t *lmb;
+    if(st->nev){
+      lmb = monomial_basis_enlarged(num_gb[0], bht->nv - st->nev, 
+                                    bexp_lm2, &dquot);
+    }
+    else{
+      lmb = monomial_basis_enlarged(num_gb[0], bht->nv, 
+                                    bexp_lm, &dquot);
+    }
 
     /************************************************/
     fprintf(stderr, " ici dquot = %ld\n", dquot);

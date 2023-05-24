@@ -71,4 +71,9 @@ AC_CONFIG_FILES([
  src/usolve/Makefile
  src/msolve/Makefile
 ])
+AC_CONFIG_LINKS([
+ test/input_files/radical_shape-31.ms:test/input_files/radical_shape-31.ms
+ test/input_files/nonradical_shape-31.ms:test/input_files/nonradical_shape-31.ms
+ test/input_files/nonradical_radicalshape-31.ms:test/input_files/nonradical_radicalshape-31.ms
+])
 AC_OUTPUT

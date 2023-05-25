@@ -1295,7 +1295,8 @@ int msolve_gbtrace_qq(
         msd->lp->p[0] = prime;
       }
 
-      for(len_t i = 1; i < st->nthrds; i++){
+      int nthrds = 1; /* mono-threaded mult-mid comp */
+      for(len_t i = 1; i < nthrds/* st->nthrds */; i++){
         prime = next_prime(prime);
         msd->lp->p[i] = prime;
         while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
@@ -1303,7 +1304,7 @@ int msolve_gbtrace_qq(
           msd->lp->p[i] = prime;
         }
       }
-      prime = msd->lp->p[st->nthrds - 1];
+      prime = msd->lp->p[nthrds /* st->nthrds */ - 1];
 
       if(modgbs->alloc <= nprimes + 2){
         gb_modpoly_realloc(modgbs, 16*st->nthrds, dlift->S);
@@ -1320,7 +1321,8 @@ int msolve_gbtrace_qq(
                                    dlift->S, gens, &stf4, msd->bad_primes);
 
 
-      nprimes += st->nthrds;
+      /* nprimes += st->nthrds; */
+      nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */
 
       if(nprimes == 1){
         if(info_level>2){
@@ -1337,7 +1339,7 @@ int msolve_gbtrace_qq(
         }
       }
       int bad = 0;
-      for(int i = 0; i < st->nthrds; i++){
+      for(int i = 0; i < nthrds/* st->nthrds */; i++){
         if(msd->bad_primes[i] == 1){
           fprintf(stderr, "badprimes[%d] is 1\n", i);
           bad = 1;
@@ -1348,7 +1350,7 @@ int msolve_gbtrace_qq(
 
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
-                    st->nthrds, &st_crt, &st_rrec);
+                    nthrds/* st->nthrds */, &st_crt, &st_rrec);
       }
       if(/* (st_crt -ost_crt) + */ (st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
@@ -1393,6 +1395,10 @@ int msolve_gbtrace_qq(
 
   return 0;
 }
+
+/*
+ Function which is called by core_msolve
+ */
 
 void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
                             msflags_t flags){

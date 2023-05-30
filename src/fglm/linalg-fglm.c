@@ -764,10 +764,9 @@ static inline void _8mul_matrix_vector_product(uint32_t* vec_res,
 	  //partie basse du registre haut (2^32->2^63)
 	  acc4x64[i]+=((acc4x64[i+4]&((uint64_t)0xFFFFFFFF))*RED_32)%PRIME;
 	  acc64+=acc4x64[i]%PRIME;
-	  //acc64+=acc4x64[i];
 	}
 	
-	/* *vec_res=MODRED32(acc64, PRIME, preinv); */
+	/* *vec_res[j]=MODRED32(acc64, PRIME, preinv); */
 	vec_res[j]=acc64%PRIME;
 	
 	long tmp = 0;

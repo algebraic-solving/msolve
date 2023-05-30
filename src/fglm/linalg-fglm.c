@@ -778,5 +778,3 @@ static inline void _8mul_matrix_vector_product(uint32_t* vec_res,
     }
 }
 #endif
-#undef PARALLEL
-#endif

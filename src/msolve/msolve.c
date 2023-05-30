@@ -1569,8 +1569,8 @@ static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
                                       int nthrds){
   long i;
 
-#pragma omp parallel for num_threads(nthrds)    \
-  private(i) schedule(static)
+/* #pragma omp parallel for num_threads(nthrds)    \ */
+/*   private(i) schedule(static) */
   for(i = 0; i < pol->length; i++){
     mpz_CRT_ui(pol->coeffs[i], pol->coeffs[i], modulus,
                nmod_pol->coeffs[i], prime, prod, tmp, 1);

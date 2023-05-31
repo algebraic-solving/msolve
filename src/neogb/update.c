@@ -127,7 +127,9 @@ static void insert_and_update_spairs(
     for (i = 0; i < pl; ++i) {
         j = ps[i].gen1;
         l = ps[i].gen2;
-        if (pp[j].lcm != ps[i].lcm && pp[l].lcm != ps[i].lcm && check_monomial_division(ps[i].lcm, nch, bht)) {
+        if (pp[j].lcm != ps[i].lcm && pp[l].lcm != ps[i].lcm
+                && pp[j].deg <= ps[i].deg && pp[l].deg <= ps[i].deg
+                && check_monomial_division(ps[i].lcm, nch, bht)) {
             ps[i].deg   =   -1;
         }
     }
@@ -143,7 +145,9 @@ static void insert_and_update_spairs(
             if (i == j || ps[j].deg == -1) {
                 continue;
             }
-            if (ps[i].lcm != ps[j].lcm && check_monomial_division(ps[i].lcm, ps[j].lcm, bht)) {
+            if (ps[i].lcm != ps[j].lcm
+                    && ps[i].deg >= ps[j].deg
+                    && check_monomial_division(ps[i].lcm, ps[j].lcm, bht)) {
                 ps[i].deg   =   -1;
                 break;
             }
@@ -167,7 +171,9 @@ static void insert_and_update_spairs(
         } else { 
             for (j = i-1; j >= pl; --j) {
                 /* printf("i %d | j %d | pl %d\n", i, j, pl); */
-                if (ps[j].deg != -1 && ps[i].lcm == ps[j].lcm) {
+                if (ps[j].deg != -1
+                        && ps[j].deg <= ps[i].deg
+                        && ps[i].lcm == ps[j].lcm) {
                     ps[i].deg   =   -1;
                     break;
                 }
@@ -302,10 +308,11 @@ static void update_basis_f4(
      * monomial divisors, thus we only check down to bs->lo */
 #pragma omp parallel for num_threads(st->nthrds)
     for (int l = bs->lo; l < bs->ld; ++l) {
-        for (int m = l+1; m < bs->ld; ++m) {
+        for (int m = 0; m < l; ++m) {
             hm_t lm =   bs->hm[l][OFFSET];
             if (check_monomial_division(lm, bs->hm[m][OFFSET], bht) == 1
-                && bs->hm[l][DEG] > bs->hm[m][DEG]) {
+                && bs->hm[l][DEG] > bs->hm[m][DEG]
+                ) {
                 bs->red[l]  =   1;
                 st->num_redundant++;
             }

@@ -241,6 +241,7 @@ static void reduce_basis(
     mat->sz = 2 * bs->lml;
 
     /* add all non-redundant basis elements as matrix rows */
+    printf("lml %d\n", bs->lml);
     for (i = 0; i < bs->lml; ++i) {
         mat->rr[mat->nr] = multiplied_poly_to_matrix_row(
                 sht, bht, 0, etmp, bs->hm[bs->lmps[i]]);
@@ -376,6 +377,7 @@ int core_f4(
 
       /* preprocess data for next reduction round */
       select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
+      bs->curdeg = st->current_deg;
       symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
       convert_hashes_to_columns(&hcm, mat, st, sht);
       sort_matrix_rows_decreasing(mat->rr, mat->nru);

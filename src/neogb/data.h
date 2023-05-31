@@ -83,8 +83,8 @@ typedef uint32_t rba_t;  /* reducer binary array */
 typedef uint32_t ind_t;  /* index in hash table structure */
 typedef uint32_t sdm_t;  /* short divmask for faster divisibility checks */
 typedef uint32_t len_t;  /* length type for different structures */
-typedef int16_t exp_t;   /* exponent type */
-typedef int16_t deg_t;   /* (total) degree of polynomial */
+typedef uint16_t exp_t;  /* exponent type */
+typedef int32_t deg_t;   /* (total) degree of polynomial */
 typedef len_t bi_t;      /* basis index of element */
 typedef len_t bl_t;      /* basis load */
 typedef len_t pl_t;      /* pair set load */
@@ -183,6 +183,7 @@ struct bs_t
     bl_t lo;        /* load before current update */
     bl_t constant;  /* 1 if constant is found in basis */
     deg_t mltdeg;   /* maximal appearing degree in lead term in basis */
+    deg_t curdeg;
     bl_t *lmps;     /* position of non-redundant lead monomials in basis */
     sdm_t *lm;      /* non-redundant lead monomials as short divmask */
     bl_t lml;       /* number of lead monomials of non redundant

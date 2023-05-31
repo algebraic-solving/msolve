@@ -665,7 +665,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
                 printf("%u ", bht->ev[bs->hm[bl+k][OFFSET+kk]][jj]);
             }
             /* printf(" || ");
-             * } */
+            } */
             printf("\n");
         }
         if (st->ff_bits == 16) {

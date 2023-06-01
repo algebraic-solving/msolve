@@ -106,7 +106,6 @@ static void intermediate_reduce_basis(
         stat_t *st
         )
 {
-    printf("bs->ld %u\n", bs->ld);
     /* timings */
     double ct0, ct1, rt0, rt1;
     ct0 = cputime();
@@ -241,7 +240,6 @@ static void reduce_basis(
     mat->sz = 2 * bs->lml;
 
     /* add all non-redundant basis elements as matrix rows */
-    printf("lml %d\n", bs->lml);
     for (i = 0; i < bs->lml; ++i) {
         mat->rr[mat->nr] = multiplied_poly_to_matrix_row(
                 sht, bht, 0, etmp, bs->hm[bs->lmps[i]]);

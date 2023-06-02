@@ -375,7 +375,6 @@ int core_f4(
 
       /* preprocess data for next reduction round */
       select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
-      bs->curdeg = st->current_deg;
       symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
       convert_hashes_to_columns(&hcm, mat, st, sht);
       sort_matrix_rows_decreasing(mat->rr, mat->nru);

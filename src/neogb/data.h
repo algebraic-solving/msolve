@@ -183,7 +183,6 @@ struct bs_t
     bl_t lo;        /* load before current update */
     bl_t constant;  /* 1 if constant is found in basis */
     deg_t mltdeg;   /* maximal appearing degree in lead term in basis */
-    deg_t curdeg;
     bl_t *lmps;     /* position of non-redundant lead monomials in basis */
     sdm_t *lm;      /* non-redundant lead monomials as short divmask */
     bl_t lml;       /* number of lead monomials of non redundant

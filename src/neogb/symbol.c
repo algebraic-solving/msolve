@@ -522,11 +522,11 @@ start:
         const hm_t *b = bs->hm[lmps[i]];
         const exp_t * const f = evb[b[OFFSET]];
         for (k=0; k < evl; ++k) {
-            etmp[k] = (exp_t)(e[k]-f[k]);
-            if (etmp[k] < 0) {
+            if (e[k] < f[k]) {
                 i++;
                 goto start;
             }
+            etmp[k] = (exp_t)(e[k]-f[k]);
         }
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);

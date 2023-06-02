@@ -83,8 +83,8 @@ typedef uint32_t rba_t;  /* reducer binary array */
 typedef uint32_t ind_t;  /* index in hash table structure */
 typedef uint32_t sdm_t;  /* short divmask for faster divisibility checks */
 typedef uint32_t len_t;  /* length type for different structures */
-typedef int16_t exp_t;   /* exponent type */
-typedef int16_t deg_t;   /* (total) degree of polynomial */
+typedef uint16_t exp_t;  /* exponent type */
+typedef int32_t deg_t;   /* (total) degree of polynomial */
 typedef len_t bi_t;      /* basis index of element */
 typedef len_t bl_t;      /* basis load */
 typedef len_t pl_t;      /* pair set load */

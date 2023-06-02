@@ -491,6 +491,8 @@ static inline hi_t check_monomial_division(
 
   const exp_t *const ea = ht->ev[a];
   const exp_t *const eb = ht->ev[b];
+
+  /* printf("! no sdm decision !\n"); */
   /* exponent check */
   for (i = 0; i < evl-1; i += 2) {
     if (ea[i] < eb[i] || ea[i+1] < eb[i+1]) {

@@ -127,7 +127,9 @@ static void insert_and_update_spairs(
     for (i = 0; i < pl; ++i) {
         j = ps[i].gen1;
         l = ps[i].gen2;
-        if (pp[j].lcm != ps[i].lcm && pp[l].lcm != ps[i].lcm && check_monomial_division(ps[i].lcm, nch, bht)) {
+        if (pp[j].lcm != ps[i].lcm && pp[l].lcm != ps[i].lcm
+                && pp[j].deg <= ps[i].deg && pp[l].deg <= ps[i].deg
+                && check_monomial_division(ps[i].lcm, nch, bht)) {
             ps[i].deg   =   -1;
         }
     }
@@ -143,7 +145,9 @@ static void insert_and_update_spairs(
             if (i == j || ps[j].deg == -1) {
                 continue;
             }
-            if (ps[i].lcm != ps[j].lcm && check_monomial_division(ps[i].lcm, ps[j].lcm, bht)) {
+            if (ps[i].lcm != ps[j].lcm
+                    && ps[i].deg >= ps[j].deg
+                    && check_monomial_division(ps[i].lcm, ps[j].lcm, bht)) {
                 ps[i].deg   =   -1;
                 break;
             }
@@ -166,8 +170,7 @@ static void insert_and_update_spairs(
             /* try to eliminate this spair with earlier ones */
         } else { 
             for (j = i-1; j >= pl; --j) {
-                /* printf("i %d | j %d | pl %d\n", i, j, pl); */
-                if (ps[j].deg != -1 && ps[i].lcm == ps[j].lcm) {
+                if (ps[j].deg <= ps[i].deg && ps[i].lcm == ps[j].lcm) {
                     ps[i].deg   =   -1;
                     break;
                 }
@@ -192,14 +195,17 @@ static void insert_and_update_spairs(
     const bl_t * const lmps = bs->lmps;
 
     /* mark redundant elements in basis */
+    deg_t dd = ndeg - bht->hd[nch].deg;
     if (bs->mltdeg > ndeg) {
 #if PARALLEL_HASHING
 #pragma omp parallel for num_threads(nthrds) \
     private(i)
 #endif
         for (i = 0; i < lml; ++i) {
+            hm_t lm = bs->hm[lmps[i]][OFFSET];
             if (bs->red[lmps[i]] == 0
-                    && check_monomial_division(bs->hm[lmps[i]][OFFSET], nch, bht)) {
+                    && check_monomial_division(lm, nch, bht)
+                    && bs->hm[lmps[i]][DEG]-bht->hd[lm].deg >= dd) {
                 bs->red[lmps[i]]  = 1;
                 st->num_redundant++;
             }
@@ -302,12 +308,14 @@ static void update_basis_f4(
      * monomial divisors, thus we only check down to bs->lo */
 #pragma omp parallel for num_threads(st->nthrds)
     for (int l = bs->lo; l < bs->ld; ++l) {
-        for (int m = l+1; m < bs->ld; ++m) {
-            hm_t lm =   bs->hm[l][OFFSET];
+        hm_t lm  = bs->hm[l][OFFSET];
+        deg_t dd = bs->hm[l][DEG] - bht->hd[lm].deg;
+        for (int m = bs->lo; m < l; ++m) {
             if (check_monomial_division(lm, bs->hm[m][OFFSET], bht) == 1
-                && bs->hm[l][DEG] > bs->hm[m][DEG]) {
+                && dd > (bs->hm[m][DEG] - bht->hd[bs->hm[m][OFFSET]].deg)) {
                 bs->red[l]  =   1;
                 st->num_redundant++;
+                break;
             }
         }
     }

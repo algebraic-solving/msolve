@@ -106,7 +106,6 @@ static void intermediate_reduce_basis(
         stat_t *st
         )
 {
-    printf("bs->ld %u\n", bs->ld);
     /* timings */
     double ct0, ct1, rt0, rt1;
     ct0 = cputime();

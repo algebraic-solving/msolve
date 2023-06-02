@@ -482,16 +482,6 @@ static inline hi_t check_monomial_division(
 {
   len_t i;
 
-  /* printf("check mon div\n"); */
-
-  /* for (i = 0; i < evl; ++i) {
-      printf("%d ", ea[i]);
-  }
-  printf("\n");
-  for (i = 0; i < evl; ++i) {
-      printf("%d ", eb[i]);
-  }
-  printf("\n---------------------\n"); */
   /* short divisor mask check */
   if (ht->hd[b].sdm & ~ht->hd[a].sdm) {
     return 0;

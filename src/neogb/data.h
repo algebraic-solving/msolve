@@ -370,6 +370,7 @@ struct md_t
     int32_t reset_ht;
     int32_t current_rd;
     int32_t current_deg;
+    deg_t max_gb_degree;
     uint64_t max_bht_size;
     uint64_t max_sht_size;
     uint64_t max_uht_size;

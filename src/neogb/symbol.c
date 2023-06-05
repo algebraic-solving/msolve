@@ -231,6 +231,7 @@ static int32_t select_spairs_by_minimal_degree(
     /* compute a truncated GB? Check maximal degree. */
     if (st->max_gb_degree < md) {
         return 1; 
+    }
 
     /* select pairs of this degree respecting maximal selection size mnsel */
 #if 0
@@ -769,3 +770,5 @@ static int preprocessing(
         const bs_t * const bs,
         md_t *st
         )
+{
+}

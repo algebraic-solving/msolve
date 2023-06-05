@@ -28,7 +28,7 @@
 
 #include "libneogb.h"
 #include "data.c"
-#include "stat.c"     /* computational statistics */
+#include "meta_data.c"/* computational meta data */
 #include "tools.c"    /* tools like inversion mod p,
                        * tracer construction, timings etc. */
 #include "sort_r.h"   /* special quicksort implementation */

@@ -200,7 +200,7 @@ static void print_msolve_polynomials_ff(
         } else {
             fprintf(file, "#Reduced Groebner basis for input in characteristic ");
         }
-        fprintf(file, "%u\n", st->fc);
+        fprintf(file, "%u\n", st->gfc);
         fprintf(file, "#for variable order ");
         for (i = 0; i < nv-1; ++i) {
             fprintf(file, "%s, ", vnames[i]);

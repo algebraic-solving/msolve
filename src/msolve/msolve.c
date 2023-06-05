@@ -1861,13 +1861,13 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         }
     }
     if(print_gb){
-      if(st->fc == 0){
+      if(st->gfc == 0){
         /* to fix display inconsistency when gens->fc = 0 */
-        st->fc = fc;
+        st->gfc = fc;
 
         print_ff_basis_data(
                             files->out_file, "a", bs, bht, st, gens, print_gb);
-        st->fc = 0;
+        st->gfc = 0;
 
       }
       else{
@@ -2434,7 +2434,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     lp->old = 0;
     lp->ld = 1;
     lp->p = calloc(1, sizeof(uint32_t));
-    normalize_initial_basis(bs_qq, st->fc);
+    normalize_initial_basis(bs_qq, st->gfc);
   }
 
   /* generate array to store modular bases */
@@ -4039,11 +4039,11 @@ restart:
                 exit(1);
             }
 
-            st->fc  = gens->field_char;
+            st->gfc  = gens->field_char;
             if(info_level){
                 fprintf(stderr,
                         "NOTE: Field characteristic is now corrected to %u\n",
-                        st->fc);
+                        st->gfc);
             }
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
@@ -4112,12 +4112,12 @@ restart:
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
-            st->fc  = gens->field_char;
-            set_ff_bits(st, st->fc);
+            st->gfc  = gens->field_char;
+            set_ff_bits(st, st->gfc);
             if(info_level){
                 fprintf(stderr,
                         "NOTE: Field characteristic is now corrected to %u\n",
-                        st->fc);
+                        st->gfc);
             }
             if(st->ff_bits < 32){
               fprintf(stderr, "Error: not implemented yet (prime field of too low characteristic\n");
@@ -4141,7 +4141,7 @@ restart:
                                            gens->lens, gens->exps, (void *)gens->cfs);
 
                 sat->ld = sat->lml  =  saturate;
-                /* normalize_initial_basis(tbr, st->fc); */
+                /* normalize_initial_basis(tbr, st->gfc); */
                 for (int k = 0; k < saturate; ++k) {
                     sat->lmps[k]  = k; /* fix input element in tbr */
                 }
@@ -4217,11 +4217,11 @@ restart:
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
-	    st->fc  = gens->field_char;
+	    st->gfc  = gens->field_char;
             if(info_level){
                 fprintf(stderr,
                         "NOTE: Field characteristic is now corrected to %u\n",
-                        st->fc);
+                        st->gfc);
             }
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
@@ -4275,7 +4275,7 @@ restart:
             import_input_data_nf_ff_32(tbr, bht, st, gens->ngens-1, gens->ngens,
 				       gens->lens, gens->exps, (void *)gens->cfs);
             tbr->ld = tbr->lml  =  1;
-            /* normalize_initial_basis(tbr, st->fc); */
+            /* normalize_initial_basis(tbr, st->gfc); */
             for (int k = 0; k < 1; ++k) {
                 tbr->lmps[k]  = k; /* fix input element in tbr */
             }
@@ -4618,11 +4618,11 @@ restart:
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
-            st->fc  = gens->field_char;
+            st->gfc  = gens->field_char;
             if(info_level){
                 fprintf(stderr,
                         "NOTE: Field characteristic is now corrected to %u\n",
-                        st->fc);
+                        st->gfc);
             }
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
@@ -4654,7 +4654,7 @@ restart:
                     tbr, bht, st, gens->ngens-normal_form, gens->ngens,
                     gens->lens, gens->exps, (void *)gens->cfs);
             tbr->ld = tbr->lml  =  normal_form;
-            /* normalize_initial_basis(tbr, st->fc); */
+            /* normalize_initial_basis(tbr, st->gfc); */
             for (int k = 0; k < normal_form; ++k) {
                 tbr->lmps[k]  = k; /* fix input element in tbr */
             }
@@ -5039,7 +5039,7 @@ restart:
                     sat_qq, bht, st, gens->ngens-saturate, gens->ngens,
                     gens->lens, gens->exps, (void *)gens->mpz_cfs);
             sat_qq->ld = sat_qq->lml  =  saturate;
-            /* normalize_initial_basis(tbr, st->fc); */
+            /* normalize_initial_basis(tbr, st->gfc); */
             for (int k = 0; k < saturate; ++k) {
                 sat_qq->lmps[k]  = k; /* fix input element in tbr */
             }

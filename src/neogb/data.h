@@ -324,6 +324,14 @@ struct trace_t
 typedef struct md_t md_t;
 struct md_t
 {
+    /* trace data */
+    trace_t *tr;
+    tl_t trace_level;
+    ht_t tht;
+
+    /* hash table data */
+    ht_t ht;
+
     double round_ctime;
     double select_ctime;
     double symbol_ctime;
@@ -361,6 +369,7 @@ struct md_t
     int32_t nvars;
     int32_t mnsel;
     int32_t homogeneous;
+    uint32_t gfc; /* global field characteristic */
     uint32_t fc;
     int32_t nev; /* number of elimination variables */
     int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
@@ -376,7 +385,6 @@ struct md_t
     uint64_t max_uht_size;
     int64_t nterms_basis;
     int32_t size_basis;
-    tl_t trace_level;
     int32_t ff_bits;
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,

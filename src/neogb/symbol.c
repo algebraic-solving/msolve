@@ -768,7 +768,12 @@ static int preprocessing(
         ht_t *ht,
         ps_t *ps,
         const bs_t * const bs,
-        md_t *st
+        md_t *md
         )
 {
+    if (select_spairs_by_minimal_degree(mat, bs, ps, ht, ))
+                return 1;
+                }
+
+    return done;
 }

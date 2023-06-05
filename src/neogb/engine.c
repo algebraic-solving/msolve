@@ -111,17 +111,15 @@ int initialize_gba_input_data(
     return 1;
 }
 
-int core_gba(
+bs_t *core_gba(
         bs_t **bsp,
-        ht_t **bhtp,
-        md_t **stp
+        ht_t **htp,
+        md_t **mdp,
+        int32_t *errp,
+        const len_t fc
         )
 {
-    if ((*stp)->use_signatures == 0) {
-        return core_f4(bsp, bhtp, stp);
-    } else {
-        return core_sba_schreyer(bsp, bhtp, stp);
-    }
+    return core_f4(bsp, htp, mdp, errp, fc);
 }
 
 int64_t export_results_from_gba(

@@ -1191,7 +1191,7 @@ int msolve_gbtrace_qq(
     msd->lp->old = 0;
     msd->lp->ld = 1;
     msd->lp->p = calloc(1, sizeof(uint32_t));
-    normalize_initial_basis(msd->bs_qq, st->fc);
+    normalize_initial_basis(msd->bs_qq, st->gfc);
   }
 
   uint32_t prime = next_prime(1<<30);

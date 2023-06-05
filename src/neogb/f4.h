@@ -69,10 +69,12 @@ int64_t export_results_from_f4(
     md_t **stp
     );
 
-int core_f4(
+bs_t *core_f4(
         bs_t **bsp,
-        ht_t **bhtp,
-        md_t **stp
+        ht_t **htp,
+        md_t **mdp,
+        int32_t *errp,
+        const len_t fc
         );
 
 bs_t *modular_f4(

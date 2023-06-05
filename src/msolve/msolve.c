@@ -2371,7 +2371,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   len_t i;
 
   /* initialize stuff */
-  md_t *st  = initialize_statistics();
+  md_t *st  = initialize_meta_data();
 
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
@@ -4764,7 +4764,7 @@ restart:
             const uint32_t prime_start = pow(2, 30);
             const int32_t nr_primes = nr_threads;
             /* initialize stuff */
-            md_t *st  = initialize_statistics();
+            md_t *st  = initialize_meta_data();
 
             int *invalid_gens       =   NULL;
             int32_t monomial_order  =   0;
@@ -4945,7 +4945,7 @@ restart:
             bs_t *sat_qq   = NULL;
 
             /* initialize stuff */
-            md_t *st  = initialize_statistics();
+            md_t *st  = initialize_meta_data();
 
             int *invalid_gens       =   NULL;
             int32_t monomial_order  =   0;

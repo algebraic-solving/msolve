@@ -228,7 +228,7 @@ bs_t *f4_trace_application_phase(
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
     /* copy global data as input */
-    md_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     ht_t *bht   = lbht;
 
@@ -418,7 +418,7 @@ bs_t *f4sat_trace_application_test_phase(
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
     /* copy global data as input */
-    md_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = lbht;
@@ -711,7 +711,7 @@ bs_t *f4sat_trace_application_phase(
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
     /* copy global data as input */
-    md_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = lbht;
@@ -1012,7 +1012,7 @@ bs_t *f4_trace_learning_phase(
 
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
-    md_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     ht_t *bht   = gbht;
 
@@ -1211,7 +1211,7 @@ bs_t *f4sat_trace_learning_phase_1(
 
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
-    md_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = *gbhtp;
@@ -1548,7 +1548,7 @@ bs_t *f4sat_trace_learning_phase_2(
 
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
-    md_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = *gbhtp;
@@ -1881,7 +1881,7 @@ int64_t f4_trace_julia(
     primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
 
     /* initialize stuff */
-    md_t *st  = initialize_statistics();
+    md_t *st  = initialize_meta_data();
 
     int *invalid_gens       =   NULL;
     int32_t use_signatures  =   0;
@@ -2003,7 +2003,7 @@ bs_t *modular_f4(
     ps_t * ps   = initialize_pairset();
 
     /* copy global data as input */
-    md_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     ht_t *bht   = gbht;
 

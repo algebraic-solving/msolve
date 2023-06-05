@@ -51,7 +51,7 @@ int initialize_gba_input_data(
     md_t *st  = *stp;
 
     /* initialize stuff */
-    st  = initialize_statistics();
+    st  = initialize_meta_data();
 
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,

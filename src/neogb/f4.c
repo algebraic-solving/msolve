@@ -381,7 +381,7 @@ static void initialize_f4(
     ht  = *ghtp;
 
     if ((*gmdp)->fc != fc) {
-        md = copy_statistics(*gmdp, fc);
+        md = copy_meta_data(*gmdp, fc);
         reset_function_pointers(fc, md->laopt);
         bs = copy_basis_mod_p(*gbsp, md);
         normalize_initial_basis(bs, fc);

@@ -39,17 +39,17 @@ void reset_hash_table_indices(
         );
 
 ht_t *initialize_basis_hash_table(
-    stat_t *st
+    md_t *st
     );
 
 ht_t *copy_hash_table(
     const ht_t *bht,
-    const stat_t *st
+    const md_t *st
     );
 
 ht_t *initialize_secondary_hash_table(
     const ht_t *bht,
-    const stat_t *st
+    const md_t *st
     );
 
 void free_shared_hash_data(

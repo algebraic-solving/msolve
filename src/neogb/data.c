@@ -75,32 +75,32 @@ int64_t (*export_julia_data)(
 void (*sba_linear_algebra)(
         smat_t *smat,
         crit_t *syz,
-        stat_t *st,
+        md_t *st,
         const ht_t * const ht
         );
 void (*linear_algebra)(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 int (*application_linear_algebra)(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 void (*trace_linear_algebra)(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 void (* interreduce_matrix_rows)(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st,
+        md_t *st,
         int free_basis
         );
 
@@ -121,7 +121,7 @@ hm_t *(*sba_reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const hm_t sm,      /* signature monomial of row reduced */
         const len_t si,     /* signature index of row reduced */
         const len_t ri,     /* index of row in matrix */
-        stat_t *st
+        md_t *st
         );
 
 hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
@@ -131,7 +131,7 @@ hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
         hm_t *const *pivs,
         const hi_t dpiv,
         const hm_t tmp_pos,
-        stat_t *st
+        md_t *st
         );
 
 hm_t *(*trace_reduce_dense_row_by_known_pivots_sparse_ff_32)(
@@ -144,7 +144,7 @@ hm_t *(*trace_reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const hm_t tmp_pos,
         const len_t mh,
         const len_t bi,
-        stat_t *st
+        md_t *st
         );
 
 cf32_t *(*reduce_dense_row_by_all_pivots_ff_32)(

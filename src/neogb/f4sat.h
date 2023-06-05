@@ -29,6 +29,6 @@ int core_f4sat(
         bs_t **bsp,
         bs_t **satp,
         ht_t **bhtp,
-        stat_t **stp
+        md_t **stp
         );
 #endif

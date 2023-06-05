@@ -566,7 +566,7 @@ static cf16_t *reduce_dense_row_by_dense_new_pivots_ff_16(
 static void probabilistic_sparse_reduced_echelon_form_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j, k, l, m;
@@ -741,7 +741,7 @@ static void exact_trace_sparse_reduced_echelon_form_ff_16(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j, k;
@@ -868,7 +868,7 @@ static void exact_trace_sparse_reduced_echelon_form_ff_16(
 static void exact_sparse_reduced_echelon_form_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j, k;
@@ -989,7 +989,7 @@ static void exact_sparse_reduced_echelon_form_ff_16(
 static int exact_application_sparse_reduced_echelon_form_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j, k;
@@ -1118,7 +1118,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_16(
 static cf16_t **sparse_AB_CD_linear_algebra_ff_16(
         mat_t *mat,
         const bs_t * bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j;
@@ -1237,7 +1237,7 @@ static cf16_t **interreduce_dense_matrix_ff_16(
 static cf16_t **exact_dense_linear_algebra_ff_16(
         cf16_t **dm,
         mat_t *mat,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i, j, k, l, npivs;
@@ -1350,7 +1350,7 @@ static cf16_t **exact_dense_linear_algebra_ff_16(
 static cf16_t **probabilistic_dense_linear_algebra_ff_16(
         cf16_t **dm,
         mat_t *mat,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i, j, k, l, m, npivs;
@@ -1508,7 +1508,7 @@ static cf16_t **probabilistic_dense_linear_algebra_ff_16(
 static cf16_t **probabilistic_sparse_dense_echelon_form_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j, k, l, m, npivs;
@@ -1731,7 +1731,7 @@ static void convert_to_sparse_matrix_rows_ff_16(
 static void probabilistic_sparse_linear_algebra_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -1761,7 +1761,7 @@ static void probabilistic_sparse_linear_algebra_ff_16(
 static void exact_sparse_linear_algebra_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -1791,7 +1791,7 @@ static void exact_sparse_linear_algebra_ff_16(
 static int exact_application_sparse_linear_algebra_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -1826,7 +1826,7 @@ static void exact_trace_sparse_linear_algebra_ff_16(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -1856,7 +1856,7 @@ static void exact_trace_sparse_linear_algebra_ff_16(
 static void exact_sparse_dense_linear_algebra_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i;
@@ -1905,7 +1905,7 @@ static void exact_sparse_dense_linear_algebra_ff_16(
 static void probabilistic_sparse_dense_linear_algebra_ff_16_2(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i;
@@ -1954,7 +1954,7 @@ static void probabilistic_sparse_dense_linear_algebra_ff_16_2(
 static void probabilistic_sparse_dense_linear_algebra_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i;
@@ -2001,7 +2001,7 @@ static void probabilistic_sparse_dense_linear_algebra_ff_16(
 static void interreduce_matrix_rows_ff_16(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st,
+        md_t *st,
         const int free_basis
         )
 {

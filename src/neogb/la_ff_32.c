@@ -160,7 +160,7 @@ static int is_kernel_trivial(
         hm_t **upivs, /* already sorted by increasing pivot */
         const len_t ncl, /* number of columns left, all of them are zero */
         const len_t ncr, /* number of columns right */
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i, j;
@@ -307,7 +307,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
         hm_t * const * const pivs,
         const hi_t dpiv,    /* pivot of dense row at the beginning */
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
-        stat_t *st
+        md_t *st
         )
 {
     hi_t i, j, k;
@@ -438,7 +438,7 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_17_bit(
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
         const len_t mh,     /* multiplier hash for tracing */
         const len_t bi,     /* basis index of generating element */
-        stat_t *st
+        md_t *st
         )
 {
     hi_t i, j, k;
@@ -524,7 +524,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
         const len_t end,   /* column index up to which we reduce */
         const len_t ncols,
-        stat_t *st
+        md_t *st
         )
 {
     hi_t i, j, k;
@@ -665,7 +665,7 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
         const hm_t sm,      /* signature monomial of row reduced */
         const len_t si,     /* signature index of row reduced */
         const len_t ri,     /* index of row in matrix */
-        stat_t *st
+        md_t *st
         )
 {
     len_t i, j, k;
@@ -820,7 +820,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
         hm_t *const *pivs,
         const hi_t dpiv,    /* pivot of dense row at the beginning */
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
-        stat_t *st
+        md_t *st
         )
 {
     hi_t i, j, k;
@@ -966,7 +966,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         const hm_t tmp_pos, /* position of new coeffs arrays */
         const len_t sat_ld, /* number of current multipliers */
         const len_t ncols,  /* number of columns */
-        stat_t *st,
+        md_t *st,
         const len_t ncl
         )
 {
@@ -1199,7 +1199,7 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
         const len_t mh,     /* multiplier hash for tracing */
         const len_t bi,     /* basis index of generating element */
-        stat_t *st
+        md_t *st
         )
 {
     hi_t i, j, k;
@@ -1346,7 +1346,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_32_bit(
         hm_t *const *pivs,
         const hi_t dpiv,    /* pivot of dense row at the beginning */
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
-        stat_t *st
+        md_t *st
         )
 {
     hi_t i, j, k;
@@ -1442,7 +1442,7 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_32_bit(
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
         const len_t mh,     /* multiplier hash for tracing */
         const len_t bi,     /* basis index of generating element */
-        stat_t *st
+        md_t *st
         )
 {
     hi_t i, j, k;
@@ -1998,7 +1998,7 @@ static cf32_t *reduce_dense_row_by_dense_new_pivots_31_bit(
 static void probabilistic_sparse_reduced_echelon_form_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i = 0, j, k, l, m;
@@ -2192,7 +2192,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_32(
 static void sba_echelon_form_ff_32(
         smat_t *smat,
         crit_t *syz,
-        stat_t *st,
+        md_t *st,
         const ht_t * const ht
         )
 {
@@ -2279,7 +2279,7 @@ static void sba_echelon_form_ff_32(
 static void exact_sparse_reduced_echelon_form_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -2400,7 +2400,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         mat_t *mat,
         bs_t *kernel,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -2632,7 +2632,7 @@ static void exact_sparse_reduced_echelon_form_nf_ff_32(
         mat_t *mat,
         const bs_t * const tbr,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i = 0, j;
@@ -2712,7 +2712,7 @@ static void exact_trace_sparse_reduced_echelon_form_ff_32(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -2838,7 +2838,7 @@ static void exact_trace_sparse_reduced_echelon_form_ff_32(
 static int exact_application_sparse_reduced_echelon_form_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -2969,7 +2969,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_32(
 static cf32_t **sparse_AB_CD_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j;
@@ -3087,7 +3087,7 @@ static cf32_t **interreduce_dense_matrix_ff_32(
 static cf32_t **exact_dense_linear_algebra_ff_32(
         cf32_t **dm,
         mat_t *mat,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i, j, k, l, npivs;
@@ -3199,7 +3199,7 @@ static cf32_t **exact_dense_linear_algebra_ff_32(
 static cf32_t **probabilistic_dense_linear_algebra_ff_32(
         cf32_t **dm,
         mat_t *mat,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i, j, k, l, m, npivs;
@@ -3376,7 +3376,7 @@ static cf32_t **probabilistic_dense_linear_algebra_ff_32(
 static cf32_t **probabilistic_sparse_dense_echelon_form_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j, k, l, m, npivs;
@@ -3599,7 +3599,7 @@ static void convert_to_sparse_matrix_rows_ff_32(
 static void probabilistic_sparse_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -3629,7 +3629,7 @@ static void probabilistic_sparse_linear_algebra_ff_32(
 static void sba_linear_algebra_ff_32(
         smat_t *smat,
         crit_t *syz,
-        stat_t *st,
+        md_t *st,
         const ht_t * const ht
         )
 {
@@ -3655,7 +3655,7 @@ static void sba_linear_algebra_ff_32(
 static void exact_sparse_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -3711,7 +3711,7 @@ static void compute_kernel_sat_ff_32(
         mat_t *mat,
         bs_t *kernel,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -3735,7 +3735,7 @@ static void exact_sparse_linear_algebra_nf_ff_32(
         mat_t *mat,
         const bs_t * const tbr,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -3773,7 +3773,7 @@ static void exact_sparse_linear_algebra_nf_ff_32(
 static int exact_application_sparse_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -3808,7 +3808,7 @@ static void exact_trace_sparse_linear_algebra_ff_32(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -3838,7 +3838,7 @@ static void exact_trace_sparse_linear_algebra_ff_32(
 static void exact_sparse_dense_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i;
@@ -3887,7 +3887,7 @@ static void exact_sparse_dense_linear_algebra_ff_32(
 static void probabilistic_sparse_dense_linear_algebra_ff_32_2(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i;
@@ -3936,7 +3936,7 @@ static void probabilistic_sparse_dense_linear_algebra_ff_32_2(
 static void probabilistic_sparse_dense_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i;
@@ -3983,7 +3983,7 @@ static void probabilistic_sparse_dense_linear_algebra_ff_32(
 static void interreduce_matrix_rows_ff_32(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st,
+        md_t *st,
         const int free_basis
         )
 {

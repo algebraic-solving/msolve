@@ -141,7 +141,7 @@ void free_basis(
 }
 
 bs_t *initialize_basis(
-        const stat_t *st
+        const md_t *st
         )
 {
     bs_t *bs  = (bs_t *)calloc(1, sizeof(bs_t));
@@ -187,7 +187,7 @@ bs_t *initialize_basis(
 void check_enlarge_basis(
         bs_t *bs,
         const len_t added,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     if (bs->ld + added >= bs->sz) {
@@ -359,7 +359,7 @@ static inline void normalize_initial_basis_ff_32(
 /* characteristic zero stuff */
 bs_t *copy_basis_mod_p(
         const bs_t * const gbs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i, j, idx;

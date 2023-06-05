@@ -841,7 +841,7 @@ static inline void
 copy_extrapoly_in_vector(uint32_t* vector, long ncols, int32_t *lmb,
 			 len_t pos, const bs_t * const tbr,
 			 const ht_t * const bht, int32_t* evi,
-			 const stat_t *st, const int nv, const long maxdeg){
+			 const md_t *st, const int nv, const long maxdeg){
   len_t idx = tbr->lmps[pos];
   /* printf ("idx=%d\n",idx); */
   /* if (tbr->hm[idx] == NULL) {*/
@@ -881,7 +881,7 @@ static inline void
 copy_extrapoly_in_vector_no_zero(uint32_t* vector, long ncols,
 				 int32_t *lmb, len_t pos, const bs_t * const tbr,
 				 const ht_t * const bht, int32_t* evi,
-				 const stat_t *st, const int nv,
+				 const md_t *st, const int nv,
 				 const long maxdeg){
 
   len_t idx = tbr->lmps[pos];
@@ -914,7 +914,7 @@ static inline void
 copy_extrapoly_in_matrixcol(sp_matfglmcol_t* matrix, long nrows,
 			    int32_t *lmb, len_t pos, const bs_t * const tbr,
 			    const ht_t * const bht, int32_t* evi,
-			    const stat_t *st, const int nv,
+			    const md_t *st, const int nv,
 			    const long maxdeg){
   len_t idx = tbr->lmps[pos];
   /* printf ("idx=%d\n",idx); */
@@ -956,7 +956,7 @@ static inline void
 copy_extrapoly_in_matrixcol_no_zero(sp_matfglmcol_t* matrix, long nrows,
 				    int32_t *lmb, len_t pos, const bs_t * const tbr,
 				    const ht_t * const bht, int32_t* evi,
-				    const stat_t *st, const int nv,
+				    const md_t *st, const int nv,
 				    const long maxdeg){
 
   len_t idx = tbr->lmps[pos];
@@ -1478,7 +1478,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
 static inline sp_matfglmcol_t *
 build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 		    int32_t **blen, int32_t **bexp, int32_t *bcf, int32_t *bexp_lm,
-		    bs_t *tbr, ht_t *bht, stat_t *st,
+		    bs_t *tbr, ht_t *bht, md_t *st,
 		    const exp_t * const mul, bs_t * bs,
 		    const int nv, const long fc, const long maxdeg,
 		    const data_gens_ff_t *gens,
@@ -1918,7 +1918,7 @@ static inline sp_matfglmcol_t *
 build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 			    int32_t **blen, int32_t **bexp,
 			    int32_t *bcf, int32_t *bexp_lm, bs_t *tbr,
-			    ht_t *bht, stat_t *st,
+			    ht_t *bht, md_t *st,
 			    const exp_t * const mul, bs_t * bs,
 			    const int nv, const long fc, const long maxdeg,
 			    const data_gens_ff_t *gens,

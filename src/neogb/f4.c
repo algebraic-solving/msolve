@@ -141,7 +141,7 @@ static void intermediate_reduce_basis(
         hi_t **hcmp,
         ht_t **bhtp,
         ht_t **shtp,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -257,7 +257,7 @@ static void reduce_basis(
         hi_t **hcmp,
         ht_t **bhtp,
         ht_t **shtp,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -618,7 +618,7 @@ bs_t *core_f4(
 
     bs_t *bs    = *bsp;
     ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
+    md_t *st  = *stp;
 
     /* timings for one round */
     double rrt0, rrt1;
@@ -756,13 +756,13 @@ int64_t export_results_from_f4(
     void *(*mallocp) (size_t),
     bs_t **bsp,
     ht_t **bhtp,
-    stat_t **stp
+    md_t **stp
     )
 {
 
     bs_t *bs    = *bsp;
     ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
+    md_t *st  = *stp;
 
     st->nterms_basis  = export_julia_data(
         bld, blen, bexp, bcf, mallocp, bs, bht, st->fc);
@@ -814,7 +814,7 @@ int64_t f4_julia(
     /* data structures for basis, hash table and statistics */
     bs_t *bs    = NULL;
     ht_t *bht   = NULL;
-    stat_t *st  = NULL;
+    md_t *st  = NULL;
 
     int success = 0;
 

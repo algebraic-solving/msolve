@@ -1789,7 +1789,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         ht_t *tht,
                                         bs_t *bs_qq,
                                         ht_t *bht,
-                                        stat_t *st,
+                                        md_t *st,
                                         const int32_t fc,
                                         int info_level,
                                         int print_gb,
@@ -1948,7 +1948,7 @@ static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
                                              param_t **bparam,
                                              const bs_t *bs_qq,
                                              ht_t *bht,
-                                             stat_t *st,
+                                             md_t *st,
                                              const int32_t fc,
                                              int info_level,
                                              int32_t print_gb,
@@ -2055,7 +2055,7 @@ static void modular_probabilistic_apply(sp_matfglm_t **bmatrix,
                                param_t **nmod_params,
                                const bs_t *bs_qq,
                                ht_t *bht,
-                               stat_t *st,
+                               md_t *st,
                                const int32_t fc,
                                int info_level,
                                bs_t **bs,
@@ -2159,7 +2159,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
                                    ht_t **btht,
                                    const bs_t *bs_qq,
                                    ht_t **bht,
-                                   stat_t *st,
+                                   md_t *st,
                                    const int32_t fc,
                                    int info_level,
                                    bs_t **bs,
@@ -2371,7 +2371,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   len_t i;
 
   /* initialize stuff */
-  stat_t *st  = initialize_statistics();
+  md_t *st  = initialize_statistics();
 
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
@@ -4017,7 +4017,7 @@ restart:
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;
             ht_t *bht   = NULL;
-            stat_t *st  = NULL;
+            md_t *st  = NULL;
 
             /* for (int ii = 0; ii<gens->nvars; ++ii) {
              *     mul[ii] = 1;
@@ -4086,7 +4086,7 @@ restart:
             bs_t *bs    = NULL;
             bs_t *sat   = NULL;
             ht_t *bht   = NULL;
-            stat_t *st  = NULL;
+            md_t *st  = NULL;
 
             /* for (int ii = 0; ii<gens->nvars; ++ii) {
              *     mul[ii] = 1;
@@ -4183,7 +4183,7 @@ restart:
             bs_t *bs    = NULL;
             bs_t *tbr   = NULL;
             ht_t *bht   = NULL;
-            stat_t *st  = NULL;
+            md_t *st  = NULL;
 
 	    double ct0, rt0, ct0p, rt0p, ct1, rt1, ct2, rt2, ct3, rt3, ct4, rt4;
 	    ct0 = cputime();
@@ -4587,7 +4587,7 @@ restart:
             bs_t *bs    = NULL;
             bs_t *tbr   = NULL;
             ht_t *bht   = NULL;
-            stat_t *st  = NULL;
+            md_t *st  = NULL;
 
             /* generate array for storing multiplier for polynomial
              * to be reduced by basis */
@@ -4764,7 +4764,7 @@ restart:
             const uint32_t prime_start = pow(2, 30);
             const int32_t nr_primes = nr_threads;
             /* initialize stuff */
-            stat_t *st  = initialize_statistics();
+            md_t *st  = initialize_statistics();
 
             int *invalid_gens       =   NULL;
             int32_t monomial_order  =   0;
@@ -4945,7 +4945,7 @@ restart:
             bs_t *sat_qq   = NULL;
 
             /* initialize stuff */
-            stat_t *st  = initialize_statistics();
+            md_t *st  = initialize_statistics();
 
             int *invalid_gens       =   NULL;
             int32_t monomial_order  =   0;

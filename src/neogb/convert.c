@@ -28,7 +28,7 @@
 static void convert_multipliers_to_columns(
         hi_t **hcmp,
         bs_t *sat,
-        stat_t *st,
+        md_t *st,
         ht_t *ht
         )
 {
@@ -81,7 +81,7 @@ static void convert_hashes_to_columns_sat(
         hi_t **hcmp,
         mat_t *mat,
         bs_t *sat,
-        stat_t *st,
+        md_t *st,
         ht_t *sht
         )
 {
@@ -209,7 +209,7 @@ static void convert_hashes_to_columns_sat(
 static void sba_convert_hashes_to_columns(
         hi_t **hcmp,
         smat_t *smat,
-        stat_t *st,
+        md_t *st,
         ht_t *ht
         )
 {
@@ -300,7 +300,7 @@ static void sba_convert_hashes_to_columns(
 static void convert_hashes_to_columns(
         hi_t **hcmp,
         mat_t *mat,
-        stat_t *st,
+        md_t *st,
         ht_t *sht
         )
 {
@@ -465,7 +465,7 @@ static void add_kernel_elements_to_basis(
         bs_t *kernel,
         const ht_t * const ht,
         const hi_t * const hcm,
-        stat_t *st
+        md_t *st
         )
 {
     len_t *terms  = (len_t *)calloc((unsigned long)sat->ld, sizeof(len_t));
@@ -548,7 +548,7 @@ static void return_normal_forms_to_basis(
         ht_t *bht,
         const ht_t * const sht,
         const hi_t * const hcm,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i;
@@ -594,7 +594,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         ht_t *bht,
         const ht_t * const sht,
         const hi_t * const hcm,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i, j, k;
@@ -710,7 +710,7 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
         bs_t *bs,
         const ht_t * const sht,
         const hi_t * const hcm,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i, j, k;

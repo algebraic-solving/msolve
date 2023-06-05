@@ -93,7 +93,7 @@ static inline void duplicate_tracer(int nthreads, trace_t **btrace){
 }
 
 static inline void duplicate_data_mthread_trace(int nthreads,
-                                                stat_t *st,
+                                                md_t *st,
                                                 int32_t *num_gb,
                                                 int32_t **leadmons_ori,
                                                 int32_t **leadmons_current,
@@ -338,7 +338,7 @@ static inline void duplicate_data_mthread(int nthreads,
 }
 
 static inline void duplicate_data_mthread_gbtrace(int nthreads,
-                                                  stat_t *st,
+                                                  md_t *st,
                                                   int32_t *num_gb,
                                                   int32_t **leadmons_ori,
                                                   int32_t **leadmons_current,

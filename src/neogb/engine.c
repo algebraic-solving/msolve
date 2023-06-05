@@ -24,7 +24,7 @@
 int initialize_gba_input_data(
         bs_t **bsp,
         ht_t **bhtp,
-        stat_t **stp,
+        md_t **stp,
         /* input values */
         const int32_t *lens,
         const int32_t *exps,
@@ -48,7 +48,7 @@ int initialize_gba_input_data(
 {
     bs_t *bs    = *bsp;
     ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
+    md_t *st  = *stp;
 
     /* initialize stuff */
     st  = initialize_statistics();
@@ -114,7 +114,7 @@ int initialize_gba_input_data(
 int core_gba(
         bs_t **bsp,
         ht_t **bhtp,
-        stat_t **stp
+        md_t **stp
         )
 {
     if ((*stp)->use_signatures == 0) {
@@ -133,7 +133,7 @@ int64_t export_results_from_gba(
     void *(*mallocp) (size_t),
     bs_t **bsp,
     ht_t **bhtp,
-    stat_t **stp
+    md_t **stp
     )
 {
     if ((*stp)->use_signatures == 0) {
@@ -150,7 +150,7 @@ bs_t *gba_trace_learning_phase(
         const bs_t * const ggb,   /* global basis */
         ht_t *gbht,               /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         )
 {
@@ -167,7 +167,7 @@ bs_t *gba_trace_application_phase(
         const bs_t * const ggb,   /* global basis */
         ht_t *lbht,               /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         )
 {

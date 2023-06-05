@@ -92,7 +92,7 @@ static int is_already_saturated(
         hi_t **hcmp,
         ht_t **bhtp,
         ht_t **shtp,
-        stat_t *st
+        md_t *st
         )
 {
     printf("testing if system is already saturated: ");
@@ -376,7 +376,7 @@ static void update_multipliers(
         ht_t **bhtp,
         ht_t **shtp,
         bs_t *sat,
-        stat_t *st,
+        md_t *st,
         const bs_t *bs,
         const deg_t max_deg
         )
@@ -499,12 +499,12 @@ int core_f4sat(
         bs_t **bsp,
         bs_t **satp,
         ht_t **bhtp,
-        stat_t **stp
+        md_t **stp
         )
 {
     bs_t *bs    = *bsp;
     ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
+    md_t *st  = *stp;
 
     /* global saturation data */
     len_t sat_test  = 0;

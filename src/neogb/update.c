@@ -65,7 +65,7 @@ static void insert_and_update_spairs(
         ps_t *psl,
         bs_t *bs,
         ht_t *bht,
-        stat_t *st,
+        md_t *st,
         const int32_t check_redundancy
         )
 {
@@ -222,7 +222,7 @@ static void insert_and_update_spairs(
 static void update_lm(
         bs_t *bs,
         const ht_t * const bht,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i, j, k, l;
@@ -277,7 +277,7 @@ static void update_basis_f4(
         ps_t *ps,
         bs_t *bs,
         ht_t *bht,
-        stat_t *st,
+        md_t *st,
         const len_t npivs,
         const int32_t check_redundancy
         )
@@ -359,7 +359,7 @@ static void update_basis_sba_schreyer(
         bs_t *bs,
         ht_t *bht,
         ht_t *uht,
-        stat_t *st,
+        md_t *st,
         const len_t npivs,
         const int32_t check_redundancy
         )

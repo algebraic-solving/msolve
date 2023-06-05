@@ -31,7 +31,7 @@ static void select_all_spairs(
         mat_t *mat,
         const bs_t * const bs,
         ps_t *psl,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         ht_t *bht,
         ht_t *tht
@@ -201,7 +201,7 @@ static int32_t select_spairs_by_minimal_degree(
         mat_t *mat,
         const bs_t * const bs,
         ps_t *psl,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         ht_t *bht,
         ht_t *tht
@@ -409,7 +409,7 @@ static int32_t select_spairs_by_minimal_degree(
 static void select_saturation(
         bs_t *sat,
         mat_t *mat,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         ht_t *bht
         )
@@ -457,7 +457,7 @@ static void select_tbr(
         const exp_t * const mul,
         const len_t start,
         mat_t *mat,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         ht_t *bht,
         ht_t *tht
@@ -561,7 +561,7 @@ start:
 static void symbolic_preprocessing(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         ht_t *tht,
         const ht_t * const bht
@@ -640,7 +640,7 @@ static void generate_matrix_from_trace(
         const trace_t * const trace,
         const len_t idx,
         const bs_t * const bs,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         const ht_t * const bht,
         const ht_t * const tht
@@ -713,7 +713,7 @@ static void generate_saturation_reducer_rows_from_trace(
         const trace_t * const trace,
         const len_t idx,
         const bs_t * const bs,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         const ht_t * const bht,
         const ht_t * const tht
@@ -767,5 +767,5 @@ static int preprocessing(
         ht_t *ht,
         ps_t *ps,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )

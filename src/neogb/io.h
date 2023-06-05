@@ -24,10 +24,10 @@
 #include "data.h"
 
 void set_function_pointers(
-        const stat_t *st
+        const md_t *st
         );
 
-void set_ff_bits(stat_t *st, int32_t fc);
+void set_ff_bits(md_t *st, int32_t fc);
 
 void sort_terms_ff_8(
     cf8_t **cfp,
@@ -56,7 +56,7 @@ void sort_terms_qq(
 void import_input_data(
         bs_t *bs,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *vcfs,
@@ -64,7 +64,7 @@ void import_input_data(
         );
 
 int32_t check_and_set_meta_data(
-        stat_t *st,
+        md_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
@@ -87,7 +87,7 @@ int32_t check_and_set_meta_data(
         );
 
 int32_t check_and_set_meta_data_trace(
-        stat_t *st,
+        md_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
@@ -115,7 +115,7 @@ int32_t check_and_set_meta_data_trace(
 void import_input_data_nf_ff_32(
         bs_t *tbr,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t start,
         const int32_t stop,
         const int32_t *lens,
@@ -137,7 +137,7 @@ void import_input_data_nf_ff_16(
 void import_input_data_nf_qq(
         bs_t *tbr,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t start,
         const int32_t stop,
         const int32_t *lens,

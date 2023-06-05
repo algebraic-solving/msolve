@@ -112,7 +112,7 @@ void reduce_basis_no_hash_table_switching(
         hi_t **hcmp,
         ht_t *bht,
         ht_t *sht,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -205,7 +205,7 @@ bs_t *f4_trace_application_phase(
         const ht_t * const tht,       /* trace hash table for multipliers */
         const bs_t * const ggb,       /* global basis */
         ht_t *lbht,                   /* local basis hash table, not shared */
-        stat_t *gst,                  /* global statistics */
+        md_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */
         )
 {
@@ -228,7 +228,7 @@ bs_t *f4_trace_application_phase(
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
     /* copy global data as input */
-    stat_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_statistics(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     ht_t *bht   = lbht;
 
@@ -389,7 +389,7 @@ bs_t *f4sat_trace_application_test_phase(
         const bs_t * const ggb,       /* global basis */
         const bs_t * const gsat,      /* global saturation element */
         ht_t *lbht,                   /* local basis hash table, not shared */
-        stat_t *gst,                  /* global statistics */
+        md_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */
         )
 {
@@ -418,7 +418,7 @@ bs_t *f4sat_trace_application_test_phase(
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
     /* copy global data as input */
-    stat_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_statistics(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = lbht;
@@ -680,7 +680,7 @@ bs_t *f4sat_trace_application_phase(
         const bs_t * const ggb,       /* global basis */
         const bs_t * const gsat,      /* global saturation element */
         ht_t *lbht,                   /* local basis hash table, not shared */
-        stat_t *gst,                  /* global statistics */
+        md_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */
         )
 {
@@ -711,7 +711,7 @@ bs_t *f4sat_trace_application_phase(
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
     /* copy global data as input */
-    stat_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_statistics(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = lbht;
@@ -989,7 +989,7 @@ bs_t *f4_trace_learning_phase(
         const bs_t * const ggb,   /* global basis */
         ht_t *gbht,               /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         )
 {
@@ -1012,7 +1012,7 @@ bs_t *f4_trace_learning_phase(
 
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
-    stat_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_statistics(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     ht_t *bht   = gbht;
 
@@ -1177,7 +1177,7 @@ bs_t *f4sat_trace_learning_phase_1(
         const bs_t * const gsat,  /* global saturation element */
         ht_t **gbhtp,             /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         )
 {
@@ -1211,7 +1211,7 @@ bs_t *f4sat_trace_learning_phase_1(
 
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
-    stat_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_statistics(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = *gbhtp;
@@ -1517,7 +1517,7 @@ bs_t *f4sat_trace_learning_phase_2(
         const bs_t * const gsat,  /* global saturation element */
         ht_t **gbhtp,             /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         )
 {
@@ -1548,7 +1548,7 @@ bs_t *f4sat_trace_learning_phase_2(
 
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
-    stat_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_statistics(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = *gbhtp;
@@ -1881,7 +1881,7 @@ int64_t f4_trace_julia(
     primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
 
     /* initialize stuff */
-    stat_t *st  = initialize_statistics();
+    md_t *st  = initialize_statistics();
 
     int *invalid_gens       =   NULL;
     int32_t use_signatures  =   0;
@@ -1978,7 +1978,7 @@ int64_t f4_trace_julia(
 bs_t *modular_f4(
         const bs_t * const ggb,       /* global basis */
         ht_t * gbht,                  /* global basis hash table, shared */
-        stat_t *gst,                  /* global statistics */
+        md_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */
         )
 {
@@ -2003,7 +2003,7 @@ bs_t *modular_f4(
     ps_t * ps   = initialize_pairset();
 
     /* copy global data as input */
-    stat_t *st  = copy_statistics(gst, fc);
+    md_t *st  = copy_statistics(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     ht_t *bht   = gbht;
 

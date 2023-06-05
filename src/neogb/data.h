@@ -295,6 +295,8 @@ struct td_t
     len_t nlm;    /* number of new leading monomials in this step */
 };
 
+/* possible trace levels */
+typedef enum {NO_TRACER, LEARN_TRACER, APPLY_TRACER} tl_t;
 typedef struct trace_t trace_t;
 struct trace_t
 {
@@ -318,9 +320,9 @@ struct trace_t
 };
 
 
-/* statistic stuff */
-typedef struct stat_t stat_t;
-struct stat_t
+/* meta data stuff */
+typedef struct md_t md_t;
+struct md_t
 {
     double round_ctime;
     double select_ctime;
@@ -373,6 +375,7 @@ struct stat_t
     uint64_t max_uht_size;
     int64_t nterms_basis;
     int32_t size_basis;
+    tl_t trace_level;
     int32_t ff_bits;
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,

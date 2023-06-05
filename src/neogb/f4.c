@@ -358,12 +358,264 @@ start:
     }
 }
 
-int core_f4(
-        bs_t **bsp,
-        ht_t **bhtp,
-        stat_t **stp
+static void initialize_f4(
+        md_t **lmdp,
+        bs_t **lbsp,
+        ht_t **lhtp,
+        ps_t **psp,
+        mat_t **matp,
+        int32_t *donep,
+        md_t **gmdp,
+        bs_t **gbsp,
+        ht_t **ghtp,
+        len_t fc
         )
 {
+    md_t *md     = *lmdp;
+    bs_t *bs     = *lbsp;
+    ht_t *ht     = *lhtp;
+    ps_t *ps     = *psp;
+    mat_t *mat   = *matp;
+    int32_t done = *donep;
+
+    ht  = *ghtp;
+
+    if ((*gmdp)->fc != fc) {
+        md = copy_statistics(*gmdp, fc);
+        reset_function_pointers(fc, md->laopt);
+        bs = copy_basis_mod_p(*gbsp, md);
+        normalize_initial_basis(bs, fc);
+    } else {
+        bs = *gbsp;
+        md = *gmdp;
+    }
+
+    /* matrix holding sparse information generated
+       during symbolic preprocessing */
+    mat = (mat_t *)calloc(1, sizeof(mat_t));
+
+    if (md->trace_level != APPLY_TRACER) {
+        /* pair set */
+        ps = initialize_pairset();
+
+        /* reset bs->ld for first update process */
+        bs->ld  = 0;
+    } else {
+        bs->ld = md->ngens;
+    }
+
+    /* TODO: make this a command line argument */
+    md->max_gb_degree = INT32_MAX;
+
+    /* link tracer into basis */
+    if (md->trace_level == LEARN_TRACER) {
+        bs->tr = initialize_trace();
+    }
+
+    /* move input generators to basis and generate first spairs.
+       always check redundancy since input generators may be redundant
+       even so they are homogeneous. */
+    if (md->trace_level != APPLY_TRACER) {
+        update_basis_f4(ps, bs, ht, md, md->ngens, 1-md->homogeneous);
+        done = ps->ld == 0 ? 1 : 0;
+    }
+
+    /* TO BE REMOVED */
+    md->info_level = 2;
+
+    *lmdp  = md;
+    *lbsp  = bs;
+    *lhtp  = ht;
+    *psp   = ps;
+    *matp  = mat;
+    *donep = done;
+}
+
+bs_t *core_f4(
+        bs_t **bsp,
+        ht_t **bhtp,
+        md_t **mdp,
+        int32_t *errp,
+        const len_t fc
+        )
+{
+    double ct = cputime();
+    double rt = realtime();
+
+    len_t i, j;
+
+    bs_t *bs   = NULL;
+    md_t *md   = NULL;
+    ht_t *ht   = NULL;
+    ps_t *ps   = NULL;
+    mat_t *mat = NULL;
+
+    /* marker for end of computation */
+    int32_t done = 0;
+
+    /* tracer round, if available */
+    len_t tr_rd = 0;
+
+    /* timings for one round */
+    double rrt, crt;
+
+    initialize_f4(&md, &bs, &ht, &ps, &mat, &done, stp, bsp, htp, fc);
+
+    /* let's start the f4 rounds, we are done when no more spairs
+       are left in the pairset or if we found a constant in the basis. */
+    print_round_information_header(stdout, md);
+    
+    while (!done) {
+        rrt = realtime();
+        crt = cputime();
+        st->max_bht_size = st->max_bht_size > ht->esz ?
+            st->max_bht_size :ht->esz;
+
+        if (st->trace_level != APPLY_TRACER) {
+            done = select_spairs_by_minimal_degree(mat, ht, ps, bs, st);
+            if (done) {
+                continue;
+            }
+            symbolic_preprocessing(mat, ht, bs, st);
+        } else {
+            get_matrix_data_from_trace(mat, ht, bs, tr_rd, st);
+        }
+        convert_hashes_to_columns_with_matrix(ht, mat, bs, st);
+        /* generate_reducer_matrix_part(mat, ht, bs, st); */
+        exact_sparse_linear_algebra_cd_ff_32(mat, bs, ht, st);
+        reset_hash_table_index_data(ht);
+        /* columns indices are mapped back to exponent hashes */
+        if (mat->np > 0) {
+            convert_sparse_cd_matrix_rows_to_basis_elements(mat, bs, ht, st);
+        }
+
+        if (st->trace_level != APPLY_TRACER) {
+            /* if we found a constant we are done, so remove all remaining pairs */
+            if (bs->constant  == 1) {
+                not_done =  0;
+                bs->ld += mat->np;
+                continue;
+            }
+            /* check redundancy only if input is not homogeneous */
+            update_basis_f4(ps, bs, ht, st, mat->np, 1-st->homogeneous);
+            not_done = ps->ld == 0 ? 0 : 1;
+        } else {
+            bs->ld += mat->np;
+            /* unlink rrd and trd from trace data before clearing the matrix */
+            mat->rrd = mat->trd = NULL;
+            tr_rd++;
+            not_done = tr_rd >= bs->tr->ltd ? 0 : 1;
+        }
+        /* all rows in mat are now polynomials in the basis,
+         * so we do not need the rows anymore */
+        clear_matrix(mat);
+
+        print_round_timings(stdout, st, rrt, crt);
+    }
+    print_round_information_footer(stdout, st);
+
+    /* remove possible redudant elements */
+    for (i = 0; i < bs->lml; ++i) {
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], ht)) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
+    j = 0;
+    for (i = 0; i < bs->lml; ++i) {
+        if (bs->red[bs->lmps[i]] == 0) {
+            bs->lm[j]   = bs->lm[i];
+            bs->lmps[j] = bs->lmps[i];
+            ++j;
+        }
+    }
+    bs->lml = j;
+
+    /* At the moment we do not directly remove the eliminated polynomials from
+     * the resulting basis. */
+#if 0
+    if (st->nev > 0) {
+        j = 0;
+        for (i = 0; i < bs->lml; ++i) {
+            if (ht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+                bs->lm[j]   = bs->lm[i];
+                bs->lmps[j] = bs->lmps[i];
+                ++j;
+            }
+        }
+        bs->lml = j;
+    }
+#endif
+
+    if (st->trace_level == APPLY_TRACER) {
+        /* apply non-redundant basis data from trace to basis
+         * before interreduction */
+        bs->lml  = bs->tr->lml;
+        free(bs->lmps);
+        bs->lmps = (bl_t *)calloc((unsigned long)bs->lml,
+                sizeof(bl_t));
+        memcpy(bs->lmps, bs->tr->lmps,
+                (unsigned long)bs->lml * sizeof(bl_t));
+        free(bs->lm);
+        bs->lm   = (sdm_t *)calloc((unsigned long)bs->lml,
+                sizeof(sdm_t));
+        memcpy(bs->lm, bs->tr->lm,
+                (unsigned long)bs->lml * sizeof(sdm_t));
+    }
+
+    if (st->trace_level == LEARN_TRACER) {
+        /* store information in trace */
+        bs->tr->lml  = bs->lml;
+        bs->tr->lmps = (bl_t *)calloc((unsigned long)bs->tr->lml,
+                sizeof(bl_t));
+        memcpy(bs->tr->lmps, bs->lmps,
+                (unsigned long)bs->tr->lml * sizeof(bl_t));
+        bs->tr->lm   = (sdm_t *)calloc((unsigned long)bs->tr->lml,
+                sizeof(sdm_t));
+        memcpy(bs->tr->lm, bs->lm,
+                (unsigned long)bs->tr->lml * sizeof(sdm_t));
+        (*bsp)->tr = bs->tr;
+        /* do not track the final reduction step */
+        st->trace_level = APPLY_TRACER;
+    }
+
+    /* reduce final basis? */
+    if (st->reduce_gb == 1) {
+        reduce_basis_cd(bs, mat, ht, st);
+        /* note: bht will become sht, and sht will become NULL,
+         * thus we need pointers */
+        /* reduce_basis(bs, mat, &hcm, &bht, &sht, st); */
+    }
+
+    *htp       = ht;
+
+    st->f4_rtime = realtime() - rt;
+    st->f4_ctime = cputime() - ct;
+    
+    print_final_statistics(stdout, st);
+    /* free and clean up */
+    /* note that all rows kept from mat during the overall computation are
+     * basis elements and thus we do not need to free the rows itself, but
+     * just the matrix structure */
+    free(mat);
+    if (ps != NULL) {
+        free_pairset(&ps);
+    }
+
+    *errp = 0;
+    return bs;
+}
+
+
+
+
+
+
+
+
+
     bs_t *bs    = *bsp;
     ht_t *bht   = *bhtp;
     stat_t *st  = *stp;

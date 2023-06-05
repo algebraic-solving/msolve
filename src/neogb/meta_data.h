@@ -18,23 +18,23 @@
  * Christian Eder
  * Mohab Safey El Din */
 
-#ifndef GB_STAT_H
-#define GB_STAT_H
+#ifndef GB_META_DATA_H
+#define GB_META_DATA_H
 
 
 #include "data.h"
 
-stat_t *initialize_statistics(
+md_t *initialize_meta_data(
                               void
     );
 
 void print_initial_statistics(
                               FILE *,
-                              const stat_t *st
+                              const md_t *md
     );
 
 void print_final_statistics(
                             FILE *file, 
-                            const stat_t * const st
+                            const md_t * const md
         );
 #endif

@@ -193,7 +193,11 @@ static void select_all_spairs(
 }
 #endif
 
-static void select_spairs_by_minimal_degree(
+/* selection of spairs, at the moment only selection
+by minial degree of the spairs is supported
+
+NOTE: The pair list is already sorted! */
+static int32_t select_spairs_by_minimal_degree(
         mat_t *mat,
         const bs_t * const bs,
         ps_t *psl,
@@ -223,6 +227,10 @@ static void select_spairs_by_minimal_degree(
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_cmp, bht);
     /* get minimal degree */
     md  = ps[0].deg;
+
+    /* compute a truncated GB? Check maximal degree. */
+    if (st->max_gb_degree < md) {
+        return 1; 
 
     /* select pairs of this degree respecting maximal selection size mnsel */
 #if 0
@@ -393,6 +401,8 @@ static void select_spairs_by_minimal_degree(
     rt1 = realtime();
     st->select_ctime  +=  ct1 - ct0;
     st->select_rtime  +=  rt1 - rt0;
+
+    return 0;
 }
 
 /* write elements straight to sat, not to a matrix */
@@ -751,3 +761,11 @@ static void generate_saturation_reducer_rows_from_trace(
     st->symbol_ctime  +=  ct1 - ct0;
     st->symbol_rtime  +=  rt1 - rt0;
 }
+
+static int preprocessing(
+        mat_t *mat,
+        ht_t *ht,
+        ps_t *ps,
+        const bs_t * const bs,
+        stat_t *st
+        )

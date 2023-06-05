@@ -16,7 +16,7 @@ EXTRA_DIST	=		basis.h \
 								nf.h \
 								f4sat.h \
 								sort_r.h \
-								stat.h \
+								meta_data.h \
 								tools.h \
 								update.h \
 								basis.c \
@@ -35,7 +35,7 @@ EXTRA_DIST	=		basis.h \
 								modular.c \
 								nf.c \
 								order.c \
-								stat.c \
+								meta_data.c \
 								symbol.c \
 								tools.c \
 								update.c

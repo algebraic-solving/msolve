@@ -213,7 +213,7 @@ static int32_t select_spairs_by_minimal_degree(
     len_t *gens;
     exp_t *elcm, *eb;
     exp_t *etmp = bht->ev[0];
-    ht_t *tht   = md->tr->tht;
+    ht_t *tht   = md->tr->ht;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -329,7 +329,7 @@ static int32_t select_spairs_by_minimal_degree(
          * lcm we add exactly one row to mat->rr */
         rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
-        if (md->tl == LEARN_TRACER) { 
+        if (md->trace_level == LEARN_TRACER) { 
            rrows[nrr][BINDEX]  = prev;
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
@@ -364,7 +364,7 @@ static int32_t select_spairs_by_minimal_degree(
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
             /* track trace information ? */
-            if (md->tl == LEARN_TRACER) {
+            if (md->trace_level == LEARN_TRACER) {
                 trows[ntr][BINDEX]  = prev;
                 if (tht->eld == tht->esz-1) {
                     enlarge_hash_table(tht);
@@ -388,7 +388,7 @@ static int32_t select_spairs_by_minimal_degree(
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
-    md->tht = tht;
+    md->tr->ht = tht;
 
     md->num_rowsred +=  mat->nr - mat->nc;
     md->current_deg =   mdeg;
@@ -579,7 +579,7 @@ static void symbolic_preprocessing(
     /* at the moment we have as many reducers as we have different lcms */
     len_t nrr = mat->nc;
 
-    ht_t *tht = md->tht;
+    ht_t *tht = md->tr->ht;
 
     /* note that we have already counted the different lcms, i.e.
      * ncols until this step. moreover, we have also already marked
@@ -628,7 +628,7 @@ static void symbolic_preprocessing(
         mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
     }
 
-    md->tht = tht;
+    md->tr->ht = tht;
 
     /* statistics */
     md->max_sht_size  = md->max_sht_size > sht->esz ?
@@ -637,8 +637,8 @@ static void symbolic_preprocessing(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->symbol_ctime  +=  ct1 - ct0;
-    st->symbol_rtime  +=  rt1 - rt0;
+    md->symbol_ctime  +=  ct1 - ct0;
+    md->symbol_rtime  +=  rt1 - rt0;
 }
 
 static void generate_matrix_from_trace(
@@ -770,18 +770,18 @@ static void generate_saturation_reducer_rows_from_trace(
 
 static int preprocessing(
         mat_t *mat,
-        const bs_t * const bs
-        md_t *md,
+        const bs_t * const bs,
+        md_t *md
         )
 {
     if (md->trace_level != APPLY_TRACER) {
-        if (select_spairs_by_minimal_degree(mat, bs, md->ps, md, md->sht, md->ht)) {
+        if (select_spairs_by_minimal_degree(mat, bs, md->ps, md, md->sht, bs->ht)) {
             return 1;
         }
-        symbolic_prepcoressing(mat, bs, md, md->sht, md->ht);
+        symbolic_preprocessing(mat, bs, md, md->sht, bs->ht);
     } else {
-        trace_t *tr = md->tr
-        generate_matrix_from_trace(mat, tr, md->trace_rd, bs, md, md->sht, md->ht, tr->tht);
+        trace_t *tr = md->tr;
+        generate_matrix_from_trace(mat, tr, md->trace_rd, bs, md, md->sht, bs->ht, tr->ht);
     }
     return 0;
 }

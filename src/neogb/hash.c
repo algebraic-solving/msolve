@@ -182,8 +182,8 @@ ht_t *copy_hash_table(
 
 
 ht_t *initialize_secondary_hash_table(
-    const ht_t *bht,
-    const md_t *st
+    const ht_t * const bht,
+    const md_t * const md
     )
 {
     hl_t j;
@@ -194,7 +194,7 @@ ht_t *initialize_secondary_hash_table(
     ht->ebl   = bht->ebl;
 
     /* generate map */
-    int32_t min = 3 > st->init_hts-5 ? 3 : st->init_hts-5;
+    int32_t min = 3 > md->init_hts-5 ? 3 : md->init_hts-5;
     ht->hsz   = (hl_t)pow(2, min);
     ht->esz   = ht->hsz / 2;
     ht->hmap  = calloc(ht->hsz, sizeof(hi_t));

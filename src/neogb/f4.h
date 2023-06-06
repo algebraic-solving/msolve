@@ -70,9 +70,8 @@ int64_t export_results_from_f4(
     );
 
 bs_t *core_f4(
-        bs_t **bsp,
-        ht_t **htp,
-        md_t **mdp,
+        bs_t *gbs,
+        md_t *gmd,
         int32_t *errp,
         const len_t fc
         );

@@ -187,6 +187,7 @@ struct bs_t
     sdm_t *lm;      /* non-redundant lead monomials as short divmask */
     bl_t lml;       /* number of lead monomials of non redundant
                        elements in basis */
+    ht_t *ht;       /* hash table for basis elements */
     int8_t *red;    /* tracks redundancy of basis elements */
     hm_t **hm;      /* hashed monomials representing exponents */
     sm_t *sm;       /* signatures for F5-style computations */
@@ -317,6 +318,7 @@ struct trace_t
                    * non-trivial kernels */
     len_t rld;    /* load of rounds stored, i.e. how often do saturate */
     len_t rsz;    /* size of rounds stored */
+    ht_t *ht;     /* hash table for tracer multipliers */
 };
 
 
@@ -327,10 +329,15 @@ struct md_t
     /* trace data */
     trace_t *tr;
     tl_t trace_level;
-    ht_t tht;
+    int32_t trace_rd;
 
     /* hash table data */
-    ht_t ht;
+    ht_t *sht;
+
+    len_t np; /* new pivots */
+
+    hi_t *hcm;
+    ps_t *ps;
 
     double round_ctime;
     double select_ctime;

@@ -32,7 +32,7 @@ void remove_content_of_initial_basis(
         );
 
 bs_t *initialize_basis(
-        const md_t *st
+        md_t *md
         );
 
 bs_t *copy_basis_mod_p(

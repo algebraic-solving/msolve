@@ -123,6 +123,7 @@ void free_basis(
         free(bs->hm);
         bs->hm  = NULL;
     }
+    free_hash_table(&(bs->ht));
     free(bs->lmps);
     bs->lmps  = NULL;
     free(bs->lm);
@@ -141,7 +142,7 @@ void free_basis(
 }
 
 bs_t *initialize_basis(
-        const md_t *st
+        md_t *md
         )
 {
     bs_t *bs  = (bs_t *)calloc(1, sizeof(bs_t));
@@ -150,8 +151,9 @@ bs_t *initialize_basis(
     bs->ld        = 0;
     bs->lml       = 0;
     bs->constant  = 0;
-    bs->sz        = st->init_bs_sz;
+    bs->sz        = md->init_bs_sz;
     bs->mltdeg    = 0;
+    bs->ht        = initialize_basis_hash_table(md);
 
     /* initialize basis elements data */
     bs->hm    = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
@@ -159,12 +161,12 @@ bs_t *initialize_basis(
     bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
     /* signature-based groebner basis computation? */
-    if (st->use_signatures > 0) {
+    if (md->use_signatures > 0) {
         bs->sm  =   (sm_t *)malloc((unsigned long)bs->sz * sizeof(sm_t));
         bs->si  =   (si_t *)malloc((unsigned long)bs->sz * sizeof(si_t));
     }
     /* initialize coefficients depending on ground field */
-    switch (st->ff_bits) {
+    switch (md->ff_bits) {
         case 8:
             bs->cf_8  = (cf8_t **)malloc((unsigned long)bs->sz * sizeof(cf8_t *));
             break;
@@ -359,7 +361,7 @@ static inline void normalize_initial_basis_ff_32(
 /* characteristic zero stuff */
 bs_t *copy_basis_mod_p(
         const bs_t * const gbs,
-        const md_t * const st
+        const md_t *const st
         )
 {
     len_t i, j, idx;
@@ -374,6 +376,7 @@ bs_t *copy_basis_mod_p(
     bs->lml         = gbs->lml;
     bs->sz          = gbs->sz;
     bs->constant    = gbs->constant;
+    bs->ht          = copy_hash_table(gbs->ht, st);
     bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
     bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));

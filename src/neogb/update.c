@@ -416,4 +416,15 @@ static void update_basis_sba_schreyer(
     st->update_ctime  +=  ct1 - ct0;
     st->update_rtime  +=  rt1 - rt0;
 }
+
+static int update(
+        bs_t *bs,
+        md_t *md,
+        const intt check_redundancy
+        )
+{
+        /* check redundancy only if input is not homogeneous */
+        update_basis_f4(md->ps, bs, md->ht, md, md->np, check_redundancy);
+        return md->ps->ld == 0;
+}
 #endif

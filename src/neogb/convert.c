@@ -697,6 +697,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
 #endif
     }
 
+    st->np = mat->np;
     /* timings */
     ct1 = cputime();
     rt1 = realtime();

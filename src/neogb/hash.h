@@ -48,8 +48,8 @@ ht_t *copy_hash_table(
     );
 
 ht_t *initialize_secondary_hash_table(
-    const ht_t *bht,
-    const md_t *st
+    const ht_t * const ht,
+    const md_t * const md
     );
 
 void free_shared_hash_data(

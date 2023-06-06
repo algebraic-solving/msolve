@@ -201,19 +201,19 @@ static int32_t select_spairs_by_minimal_degree(
         mat_t *mat,
         const bs_t * const bs,
         ps_t *psl,
-        md_t *st,
+        md_t *md,
         ht_t *sht,
-        ht_t *bht,
-        ht_t *tht
+        ht_t *bht
         )
 {
-    len_t i, j, k, l, md, nps, npd, nrr = 0, ntr = 0;
+    len_t i, j, k, l, mdeg, nps, npd, nrr = 0, ntr = 0;
     hm_t *b;
     len_t load = 0;
     hi_t lcm;
     len_t *gens;
     exp_t *elcm, *eb;
     exp_t *etmp = bht->ev[0];
+    ht_t *tht   = md->tr->tht;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -226,10 +226,10 @@ static int32_t select_spairs_by_minimal_degree(
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_cmp, bht);
     /* get minimal degree */
-    md  = ps[0].deg;
+    mdeg  = ps[0].deg;
 
     /* compute a truncated GB? Check maximal degree. */
-    if (st->max_gb_degree < md) {
+    if (md->max_gb_degree < mdeg) {
         return 1; 
     }
 
@@ -255,7 +255,7 @@ static int32_t select_spairs_by_minimal_degree(
     printf("\n");
 #endif
     for (i = 0; i < psl->ld; ++i) {
-        if (ps[i].deg > md) {
+        if (ps[i].deg > mdeg) {
             break;
         }
     }
@@ -266,8 +266,8 @@ static int32_t select_spairs_by_minimal_degree(
     
     /* if we stopped due to maximal selection size we still get the following
      * pairs of the same lcm in this matrix */
-    if (npd > st->mnsel) {
-        nps = st->mnsel;
+    if (npd > md->mnsel) {
+        nps = md->mnsel;
         lcm = ps[nps].lcm;
         while (nps < npd && ps[nps+1].lcm == lcm) {
             nps++;
@@ -275,12 +275,12 @@ static int32_t select_spairs_by_minimal_degree(
     } else {
         nps = npd;
     }
-    if (st->info_level > 1) {
-        printf("%3d  %6d %7d", md, nps, psl->ld);
+    if (md->info_level > 1) {
+        printf("%3d  %6d %7d", mdeg, nps, psl->ld);
         fflush(stdout);
     }
     /* statistics */
-    st->num_pairsred  +=  nps;
+    md->num_pairsred  +=  nps;
     /* list for generators */
     gens  = (len_t *)malloc(2 * (unsigned long)nps * sizeof(len_t));
     /* preset matrix meta data */
@@ -329,7 +329,7 @@ static int32_t select_spairs_by_minimal_degree(
          * lcm we add exactly one row to mat->rr */
         rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
-        if (tht != NULL) { 
+        if (md->tl == LEARN_TRACER) { 
            rrows[nrr][BINDEX]  = prev;
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
@@ -364,7 +364,7 @@ static int32_t select_spairs_by_minimal_degree(
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
             /* track trace information ? */
-            if (tht != NULL) {
+            if (md->tl == LEARN_TRACER) {
                 trows[ntr][BINDEX]  = prev;
                 if (tht->eld == tht->esz-1) {
                     enlarge_hash_table(tht);
@@ -382,14 +382,16 @@ static int32_t select_spairs_by_minimal_degree(
         ctr++;
         i = j;
     }
-    /* printf("%u pairs in degree %u\n", ctr, md); */
+    /* printf("%u pairs in degree %u\n", ctr, mdeg); */
     /* clear ht-ev[0] */
     memset(bht->ev[0], 0, (unsigned long)evl * sizeof(exp_t));
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
-    st->num_rowsred +=  mat->nr - mat->nc;
-    st->current_deg =   md;
+    md->tht = tht;
+
+    md->num_rowsred +=  mat->nr - mat->nc;
+    md->current_deg =   mdeg;
 
     free(gens);
 
@@ -400,8 +402,8 @@ static int32_t select_spairs_by_minimal_degree(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->select_ctime  +=  ct1 - ct0;
-    st->select_rtime  +=  rt1 - rt0;
+    md->select_ctime  +=  ct1 - ct0;
+    md->select_rtime  +=  rt1 - rt0;
 
     return 0;
 }
@@ -562,9 +564,8 @@ start:
 static void symbolic_preprocessing(
         mat_t *mat,
         const bs_t * const bs,
-        md_t *st,
+        md_t *md,
         ht_t *sht,
-        ht_t *tht,
         const ht_t * const bht
         )
 {
@@ -576,7 +577,9 @@ static void symbolic_preprocessing(
     rt0 = realtime();
 
     /* at the moment we have as many reducers as we have different lcms */
-    len_t nrr = mat->nc; 
+    len_t nrr = mat->nc;
+
+    ht_t *tht = md->tht;
 
     /* note that we have already counted the different lcms, i.e.
      * ncols until this step. moreover, we have also already marked
@@ -625,9 +628,11 @@ static void symbolic_preprocessing(
         mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
     }
 
+    md->tht = tht;
+
     /* statistics */
-    st->max_sht_size  = st->max_sht_size > sht->esz ?
-        st->max_sht_size : sht->esz;
+    md->max_sht_size  = md->max_sht_size > sht->esz ?
+        md->max_sht_size : sht->esz;
 
     /* timings */
     ct1 = cputime();
@@ -765,15 +770,18 @@ static void generate_saturation_reducer_rows_from_trace(
 
 static int preprocessing(
         mat_t *mat,
-        ht_t *ht,
-        ps_t *ps,
-        const bs_t * const bs,
-        md_t *md
+        const bs_t * const bs
+        md_t *md,
         )
 {
-    if (select_spairs_by_minimal_degree(mat, bs, ps, ht, ))
-                return 1;
-                }
-
-    return done;
+    if (md->trace_level != APPLY_TRACER) {
+        if (select_spairs_by_minimal_degree(mat, bs, md->ps, md, md->sht, md->ht)) {
+            return 1;
+        }
+        symbolic_prepcoressing(mat, bs, md, md->sht, md->ht);
+    } else {
+        trace_t *tr = md->tr
+        generate_matrix_from_trace(mat, tr, md->trace_rd, bs, md, md->sht, md->ht, tr->tht);
+    }
+    return 0;
 }

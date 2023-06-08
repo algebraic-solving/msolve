@@ -1331,7 +1331,6 @@ end_sat_step:
                 update_multipliers(&qb, &bht, &sht, sat, st, bs, ii);
                 /* check for monomial multiples of elements from saturation list */
                 select_saturation(sat, mat, st, sht, bht);
-
                 symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
 
                 /* It may happen that there is no reducer at all for the

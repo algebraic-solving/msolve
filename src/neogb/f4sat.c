@@ -441,11 +441,11 @@ sat_restart:
             j--;
         }
         for (k = 0; k <= bht->nv; ++k) {
-            etmp[k] = bht->ev[qb[i]][k] - bht->ev[sat->hm[j][MULT]][k];
-            if (etmp[k] < 0) {
+            if (bht->ev[qb[i]][k] < bht->ev[sat->hm[j][MULT]][k]) {
                 j--;
                 goto sat_restart;
             }
+            etmp[k] = bht->ev[qb[i]][k] - bht->ev[sat->hm[j][MULT]][k];
         }
         const hi_t h      = bht->hd[m].val - bht->hd[sat->hm[j][MULT]].val;
         sat->hm[i]        = multiplied_poly_to_matrix_row(

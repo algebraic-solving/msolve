@@ -528,6 +528,7 @@ start:
             }
             etmp[k] = (exp_t)(e[k]-f[k]);
         }
+
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */

@@ -1405,6 +1405,17 @@ end_sat_step:
                                     sht->ev[sat->hm[i][j]], bht);
                         }
                     }
+                    deg_t deg = bht->hd[sat->hm[i][OFFSET]].deg;
+                    if (st->nev > 0) {
+                        const len_t len = sat->hm[i][LENGTH]+OFFSET;
+                        for (j = OFFSET+1; j < len; ++j) {
+                            if (deg < bht->hd[sat->hm[i][j]].deg) {
+                                deg = bht->hd[sat->hm[i][j]].deg;
+                            }
+                        }
+                    }
+                    sat->hm[i][DEG] = deg;
+
                 }
                 clean_hash_table(sht);
 
@@ -1546,8 +1557,6 @@ bs_t *f4sat_trace_learning_phase_2(
     hm_t *qb    = NULL;
 
     len_t next_deg  = 0;
-    /* global saturation data */
-    len_t sat_test  = 0;
     /* int sat_done    = 0; */
 
     /* hashes-to-columns map, initialized with length 1, is reallocated
@@ -1630,7 +1639,6 @@ bs_t *f4sat_trace_learning_phase_2(
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
                     -1, mat, bs, bht, sht, hcm, st);
-            sat_test++;
         }
         clean_hash_table(sht);
         /* add lead monomials to trace, stores hashes in basis hash

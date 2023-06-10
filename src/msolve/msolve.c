@@ -4309,6 +4309,8 @@ int real_msolve_qq(mpz_param_t mp_param,
     -4 if bad prime
   */
 
+  double ct0 = cputime();
+  double rt0 = realtime();
   int b = msolve_trace_qq(mp_param,
                           nmod_param,
                           dim_ptr,
@@ -4326,6 +4328,13 @@ int real_msolve_qq(mpz_param_t mp_param,
                           pbm_file,
                           files,
                           round);
+  double ct1 = cputime();
+  double rt1 = realtime();
+
+  if(info_level){
+    fprintf(stderr, "Time for rational param: %13.2f (elapsed) sec / %5.2f sec (cpu)\n\n",
+            rt1 - rt0, ct1 - ct0);
+  }
 
   real_point_t *pts = NULL;
 

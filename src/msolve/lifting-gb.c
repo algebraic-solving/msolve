@@ -1039,9 +1039,19 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
 
 }
 
+long max_bit_size_gb(gb_modpoly_t modgbs){
+  long nb = 0;
+  for(uint32_t i = 0; i < modgbs->ld; i++){
+    for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
+      nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->cf_qq[2*j], 2));
+      nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->cf_qq[2*j + 1], 2));
+    }
+    nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->lm, 2));
+  }
+  return nb;
+}
 
 
-/****TOTO*/
 
 /*
 
@@ -1381,6 +1391,8 @@ int msolve_gbtrace_qq(
     }
   }
   if(info_level){
+    long nbits = max_bit_size_gb(modgbs);
+    fprintf(stderr, "Maximum bit size of the coefficients: %ld\n", nbits);
     fprintf(stderr, "%d primes used. \nElapsed time: %.2f\n", nprimes, realtime()-st0);
   }
   free_mstrace(msd, st);

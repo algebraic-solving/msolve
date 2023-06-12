@@ -30,4 +30,10 @@ ps_t *initialize_pairset(
 void free_pairset(
         ps_t **psp
         );
+
+int32_t update(
+        bs_t *bs,
+        md_t *md,
+        const int32_t check_redundancy
+        );
 #endif

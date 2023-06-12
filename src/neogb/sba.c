@@ -581,7 +581,7 @@ static void sba_final_reduction_step(
     mat_t *mat = (mat_t *)calloc(1, sizeof(mat_t));
     /* note: bht will become sht, and sht will become NULL,
      * thus we need pointers */
-    reduce_basis(bs, mat, &hcm, &ht, &sht, st);
+    reduce_basis(bs, mat, st);
     if (sht != NULL) {
         free_hash_table(&sht);
     }
@@ -759,8 +759,8 @@ int core_sba_schreyer(
     free(hcm);
 
     printf("size of basis     %7u\n", bs->ld);
-    printf("#syzygy criteria  %7ld\n", st->num_syz_crit);
-    printf("#rewrite criteria %7ld\n", st->num_rew_crit);
+    printf("#syzygy criteria  %7ld\n", (long)st->num_syz_crit);
+    printf("#rewrite criteria %7ld\n", (long)st->num_rew_crit);
 
     return 1;
 }

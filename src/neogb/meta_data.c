@@ -152,39 +152,39 @@ void print_final_statistics(
 {
     if (st->info_level > 0) {
         fprintf(file, "\n---------------- TIMINGS ---------------\n");
-        fprintf(file, "overall(elapsed) %11.2f sec\n", st->overall_rtime);
-        fprintf(file, "overall(cpu) %15.2f sec\n", st->overall_ctime);
+        fprintf(file, "overall(elapsed) %11.2f sec\n", st->f4_rtime);
+        fprintf(file, "overall(cpu) %15.2f sec\n", st->f4_ctime);
         fprintf(file, "select       %15.2f sec %5.1f%%\n",
                 st->select_rtime,
                 (double)100*(double)st->select_rtime
-                / (double)(st->overall_rtime));
+                / (double)(st->f4_rtime));
         fprintf(file, "symbolic prep.       %7.2f sec %5.1f%%\n",
                 st->symbol_rtime,
                 (double)100*(double)st->symbol_rtime
-                / (double)(st->overall_rtime));
+                / (double)(st->f4_rtime));
         fprintf(file, "update       %15.2f sec %5.1f%%\n",
                 st->update_rtime,
                 (double)100*(double)st->update_rtime
-                / (double)(st->overall_rtime));
+                / (double)(st->f4_rtime));
         fprintf(file, "convert      %15.2f sec %5.1f%%\n",
                 st->convert_rtime,
                 (double)100*(double)st->convert_rtime
-                / (double)(st->overall_rtime));
+                / (double)(st->f4_rtime));
         fprintf(file, "linear algebra   %11.2f sec %5.1f%%\n",
                 st->la_rtime,
                 (double)100*(double)st->la_rtime
-                / (double)(st->overall_rtime));
+                / (double)(st->f4_rtime));
         if (st->reduce_gb == 1) {
             fprintf(file, "reduce gb    %15.2f sec %5.1f%%\n",
                     st->reduce_gb_rtime,
                     (double)100*(double)st->reduce_gb_rtime
-                    / (double)(st->overall_rtime));
+                    / (double)(st->f4_rtime));
         }
         if (st->reset_ht != 2147483647) {
             fprintf(file, "rht          %15.2f sec %5.1f%%\n",
                     st->rht_rtime,
                     (double)100*(double)st->rht_rtime
-                    / (double)(st->overall_rtime));
+                    / (double)(st->f4_rtime));
         }
         fprintf(file, "-----------------------------------------\n");
         fprintf(file, "\n---------- COMPUTATIONAL DATA -----------\n");

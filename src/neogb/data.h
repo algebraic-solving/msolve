@@ -345,7 +345,7 @@ struct md_t
     double la_ctime;
     double update_ctime;
     double convert_ctime;
-    double overall_ctime;
+    double f4_ctime;
     double reduce_gb_ctime;
     double rht_ctime;
 
@@ -355,7 +355,7 @@ struct md_t
     double la_rtime;
     double update_rtime;
     double convert_rtime;
-    double overall_rtime;
+    double f4_rtime;
     double reduce_gb_rtime;
     double rht_rtime;
 

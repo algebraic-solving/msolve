@@ -350,7 +350,7 @@ bs_t *f4_trace_application_phase(
     ct1 = cputime();
     rt1 = realtime();
     st->overall_ctime = ct1 - ct0;
-    st->overall_rtime = rt1 - rt0;
+    st->f4_rtime = rt1 - rt0;
 
     /* get basis meta data */
     st->size_basis  = bs->lml;
@@ -642,7 +642,7 @@ bs_t *f4sat_trace_application_test_phase(
     ct1 = cputime();
     rt1 = realtime();
     st->overall_ctime = ct1 - ct0;
-    st->overall_rtime = rt1 - rt0;
+    st->f4_rtime = rt1 - rt0;
 
     /* get basis meta data */
     st->size_basis  = bs->lml;
@@ -939,7 +939,7 @@ bs_t *f4sat_trace_application_phase(
     ct1 = cputime();
     rt1 = realtime();
     st->overall_ctime = ct1 - ct0;
-    st->overall_rtime = rt1 - rt0;
+    st->f4_rtime = rt1 - rt0;
 
     /* get basis meta data */
     st->size_basis  = bs->lml;
@@ -1129,7 +1129,7 @@ bs_t *f4_trace_learning_phase(
     ct1 = cputime();
     rt1 = realtime();
     st->overall_ctime = ct1 - ct0;
-    st->overall_rtime = rt1 - rt0;
+    st->f4_rtime = rt1 - rt0;
 
     if (st->info_level > 0) {
       fflush(stdout);
@@ -1461,7 +1461,7 @@ end_sat_step:
     ct1 = cputime();
     rt1 = realtime();
     st->overall_ctime = ct1 - ct0;
-    st->overall_rtime = rt1 - rt0;
+    st->f4_rtime = rt1 - rt0;
 
     if (st->info_level > 0) {
       fflush(stdout);
@@ -1788,7 +1788,7 @@ bs_t *f4sat_trace_learning_phase_2(
     ct1 = cputime();
     rt1 = realtime();
     st->overall_ctime = ct1 - ct0;
-    st->overall_rtime = rt1 - rt0;
+    st->f4_rtime = rt1 - rt0;
 
     if (st->info_level > 0) {
       fflush(stdout);
@@ -2099,7 +2099,7 @@ bs_t *modular_f4(
     ct1 = cputime();
     rt1 = realtime();
     st->overall_ctime = ct1 - ct0;
-    st->overall_rtime = rt1 - rt0;
+    st->f4_rtime = rt1 - rt0;
 
     /* get basis meta data */
     st->size_basis  = bs->lml;

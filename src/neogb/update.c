@@ -401,7 +401,7 @@ static void update_basis_sba_schreyer(
     for (i = bs->lo; i < bs->ld; ++i) {
         if (bs->red[i] == 0) {
             bs->lm[k]   = bht->hd[bs->hm[i][OFFSET]].sdm;
-            bs->lmps[k] = i;
+            j>lmps[k] = i;
             k++;
         }
     }
@@ -417,10 +417,10 @@ static void update_basis_sba_schreyer(
     st->update_rtime  +=  rt1 - rt0;
 }
 
-static int update(
+int32_t update(
         bs_t *bs,
         md_t *md,
-        const intt check_redundancy
+        const int32_t check_redundancy
         )
 {
         /* check redundancy only if input is not homogeneous */

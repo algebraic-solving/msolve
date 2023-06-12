@@ -112,14 +112,13 @@ int initialize_gba_input_data(
 }
 
 bs_t *core_gba(
-        bs_t **bsp,
-        ht_t **htp,
-        md_t **mdp,
+        bs_t *bs,
+        md_t *md,
         int32_t *errp,
         const len_t fc
         )
 {
-    return core_f4(bsp, htp, mdp, errp, fc);
+    return core_f4(bs, md, errp, fc);
 }
 
 int64_t export_results_from_gba(

@@ -50,9 +50,8 @@ int initialize_gba_input_data(
         );
 
 bs_t *core_gba(
-        bs_t **bsp,
-        ht_t **htp,
-        md_t **mdp,
+        bs_t *bs,
+        md_t *md,
         int32_t *errp,
         const len_t fc
         );

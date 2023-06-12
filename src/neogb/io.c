@@ -525,7 +525,7 @@ void import_input_data_nf_qq(
         const void *vcfs
         )
 {
-    int32_t i, j;
+    int32_t i, j, k;
     mpz_t *cf;
     hm_t *hm;
     mpz_t prod_den, mul;
@@ -586,6 +586,30 @@ void import_input_data_nf_qq(
         off +=  lens[i];
         /* sort terms in polynomial w.r.t. given monomial order */
         sort_terms_qq(&cf, &hm, ht);
+    }
+    /* set total degree of input polynomials */
+    deg_t deg = 0;
+    if (st->nev) {
+        for (i = 0; i < stop-start; ++i) {
+            hm  = bs->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg < ht->hd[hm[j]].deg) {
+                    deg = ht->hd[hm[j]].deg;
+                    st->homogeneous = 1;
+                }
+            }
+            bs->hm[i][DEG]  = deg;
+        }
+    } else {
+        for (i = 0; i < stop-start; ++i) {
+            hm  = bs->hm[i];
+            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
+        }
+    }
+    for (i = 0; i < stop-start; ++i) {
+        printf("sat->hm[%d][DEG] = %d\n", i, bs->hm[i][DEG]);
     }
     mpz_clears(prod_den, mul, NULL);
 }

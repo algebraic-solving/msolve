@@ -747,7 +747,7 @@ bs_t *f4sat_trace_application_phase(
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
     if (st->info_level > 1) {
-        printf("\ndeg     sel   pairs        mat          density \
+        printf("\nround   deg          mat          density \
           new data             time(rd)\n");
         printf("-------------------------------------------------\
 ----------------------------------------\n");

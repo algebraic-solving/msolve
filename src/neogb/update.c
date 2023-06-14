@@ -306,19 +306,19 @@ static void update_basis_f4(
     /* Check new elements on redundancy:
      * Only elements coming from the same matrix are possible leading
      * monomial divisors, thus we only check down to bs->lo */
-#pragma omp parallel for num_threads(st->nthrds)
+/* #pragma omp parallel for num_threads(st->nthrds)
     for (int l = bs->lo; l < bs->ld; ++l) {
         hm_t lm  = bs->hm[l][OFFSET];
         deg_t dd = bs->hm[l][DEG] - bht->hd[lm].deg;
         for (int m = bs->lo; m < l; ++m) {
             if (check_monomial_division(lm, bs->hm[m][OFFSET], bht) == 1
-                && dd > (bs->hm[m][DEG] - bht->hd[bs->hm[m][OFFSET]].deg)) {
+                && dd >= (bs->hm[m][DEG] - bht->hd[bs->hm[m][OFFSET]].deg)) {
                 bs->red[l]  =   1;
                 st->num_redundant++;
                 break;
             }
         }
-    }
+    } */
     if (st->mo == 0 && st->num_redundant_old < st->num_redundant) {
         const sdm_t *lms  = bs->lm;
         for (i = 0; i < lml; ++i) {

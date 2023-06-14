@@ -207,12 +207,12 @@ static void add_minimal_lmh_to_trace(
 
     const len_t ld    = trace->lts;
     const len_t lml   = bs->lml;
-    trace->ts[ld].lmh = realloc(trace->ts[ld].lmh,
+    /* trace->ts[ld].lmh = realloc(trace->ts[ld].lmh,
             (unsigned long)lml * sizeof(hm_t));
 
     for (i = 0; i < lml; ++i) {
         trace->ts[ld].lmh[i]  = bs->hm[bs->lmps[i]][OFFSET];
-    }
+    } */
     trace->ts[ld].lml = lml;
 }
 

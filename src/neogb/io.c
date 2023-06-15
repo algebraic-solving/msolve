@@ -608,9 +608,6 @@ void import_input_data_nf_qq(
             bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
         }
     }
-    for (i = 0; i < stop-start; ++i) {
-        printf("sat->hm[%d][DEG] = %d\n", i, bs->hm[i][DEG]);
-    }
     mpz_clears(prod_den, mul, NULL);
 }
 

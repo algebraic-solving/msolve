@@ -268,10 +268,9 @@ struct ts_t
     len_t *tri;   /* to be reduced rows information in the format */
                   /* basis index1, multiplier1,
                    * basis index2, multiplier2,... */
-    hm_t *lmh;    /* minimal generators of current leading ideal
-                   * presented in the basis hash table */
     len_t lml;    /* number of non-redundant elements in basis */
     deg_t deg;    /* minimal degree to start saturation process */
+    len_t f4rd;   /* round of f4 */
     hm_t *nlms;   /* hashes of new leading monomials represented
                    * in basis hash table */
     len_t rld;    /* load of reducer rows information*/

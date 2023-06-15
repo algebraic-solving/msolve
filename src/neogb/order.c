@@ -408,10 +408,10 @@ static int initial_input_cmp_drl(
 
     /* DRL */
     if (ea[DEG] < eb[DEG]) {
-        return 1;
+        return -1;
     } else {
         if (ea[DEG] != eb[DEG]) {
-            return -1;
+            return 1;
         }
     }
 
@@ -420,7 +420,7 @@ static int initial_input_cmp_drl(
     while (i > 1 && ea[i] == eb[i]) {
         --i;
     }
-    return ea[i] - eb[i];
+    return eb[i] - ea[i];
 }
 
 static int initial_gens_cmp_drl(

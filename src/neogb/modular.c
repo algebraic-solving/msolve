@@ -71,7 +71,7 @@ void free_trace(
         free(tr->ts[i].tri);
         free(tr->ts[i].rri);
         free(tr->ts[i].nlms);
-        free(tr->ts[i].lmh);
+        /* free(tr->ts[i].lmh); */
     }
     for (i = 0; i < tr->ltd; ++i) {
         free(tr->td[i].tri);
@@ -604,23 +604,7 @@ bs_t *f4sat_trace_application_test_phase(
                 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
     /* apply non-redundant basis data from trace to basis
      * before interreduction */
@@ -747,7 +731,7 @@ bs_t *f4sat_trace_application_phase(
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
     if (st->info_level > 1) {
-        printf("\ndeg     sel   pairs        mat          density \
+        printf("\nround   deg          mat          density \
           new data             time(rd)\n");
         printf("-------------------------------------------------\
 ----------------------------------------\n");
@@ -906,7 +890,7 @@ bs_t *f4sat_trace_application_phase(
     }
     if (st->info_level > 1) {
         printf("-------------------------------------------------\
-                ----------------------------------------\n");
+----------------------------------------\n");
     }
 
     /* apply non-redundant basis data from trace to basis
@@ -1081,22 +1065,7 @@ bs_t *f4_trace_learning_phase(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
+    final_remove_redundant_elements(bs, bht);
 
     bs->lml = j;
 
@@ -1365,8 +1334,9 @@ end_sat_step:
                         if (mat->np > 0) {
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
                                     -1, mat, bs, bht, hcmm, st);
-                            add_minimal_lmh_to_trace(trace, bs);
+                            /* add_minimal_lmh_to_trace(trace, bs); */
                             trace->ts[trace->lts].deg = ii;
+                            trace->ts[trace->lts].f4rd = round;
                             trace->lts++;
                             if (trace->lts == trace->sts) {
                                 trace->sts  *=  2;
@@ -1425,6 +1395,7 @@ end_sat_step:
                 }
                 if (bld != bs->ld) {
                     next_deg  = ii;
+                    round++;
                     goto end_sat_step;
                 }
             }
@@ -1437,23 +1408,7 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
     /* store leading ideal hashes in trace */
     trace->lml  = bs->lml;
@@ -1668,7 +1623,8 @@ bs_t *f4sat_trace_learning_phase_2(
         clean_hash_table(sht);
 
         /* saturation step starts here */
-        if (ts_ctr < trace->lts && minimal_traced_lm_is_equal(trace->ts[ts_ctr].lmh, trace->ts[ts_ctr].lml, bs) == 1) {
+        /* if (ts_ctr < trace->lts && minimal_traced_lm_is_equal(trace->ts[ts_ctr].lmh, trace->ts[ts_ctr].lml, bs) == 1) { */
+        if (ts_ctr < trace->lts && trace->ts[ts_ctr].f4rd == round) {
             next_deg  = trace->ts[ts_ctr].deg;
             rrt0  = realtime();
             /* printf("sat->deg %u\n", sat_deg); */
@@ -1766,23 +1722,7 @@ bs_t *f4sat_trace_learning_phase_2(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
     /* store information in trace */
     trace->lml  = bs->lml;
@@ -2101,23 +2041,7 @@ bs_t *modular_f4(
     }
 
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
 #if 0
     /* eliminate variables if accessible */

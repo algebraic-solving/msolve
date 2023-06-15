@@ -30,7 +30,6 @@ void static final_remove_redundant_elements(
     len_t i, j;
     for (i = 0; i < bs->lml; ++i) {
         hm_t nch = bs->hm[bs->lmps[i]][OFFSET];
-        deg_t dd = bs->hm[bs->lmps[i]][DEG] - ht->hd[nch].deg;
         for (j = 0; j < i; ++j) {
             if (bs->red[bs->lmps[j]] == 0
                     && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)

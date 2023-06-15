@@ -604,23 +604,7 @@ bs_t *f4sat_trace_application_test_phase(
                 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
     /* apply non-redundant basis data from trace to basis
      * before interreduction */
@@ -1081,22 +1065,7 @@ bs_t *f4_trace_learning_phase(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
+    final_remove_redundant_elements(bs, bht);
 
     bs->lml = j;
 
@@ -1439,23 +1408,7 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
     /* store leading ideal hashes in trace */
     trace->lml  = bs->lml;
@@ -1769,23 +1722,7 @@ bs_t *f4sat_trace_learning_phase_2(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
     /* store information in trace */
     trace->lml  = bs->lml;
@@ -2104,23 +2041,7 @@ bs_t *modular_f4(
     }
 
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
 #if 0
     /* eliminate variables if accessible */

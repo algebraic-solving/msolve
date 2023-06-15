@@ -724,23 +724,7 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
     /* reduce final basis? */
     if (st->reduce_gb == 1) {

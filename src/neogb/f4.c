@@ -21,6 +21,44 @@
 
 #include "f4.h"
 
+
+void static final_remove_redundant_elements(
+        bs_t *bs,
+        const ht_t * const ht
+        )
+{
+    len_t i, j;
+    for (i = 0; i < bs->lml; ++i) {
+        hm_t nch = bs->hm[bs->lmps[i]][OFFSET];
+        deg_t dd = bs->hm[bs->lmps[i]][DEG] - ht->hd[nch].deg;
+        for (j = 0; j < i; ++j) {
+            if (bs->red[bs->lmps[j]] == 0
+                    && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
+                    ) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+        for (j = i+1; j < bs->lml; ++j) {
+            if (bs->red[bs->lmps[j]] == 0
+                    && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
+                    ) {
+                bs->red[bs->lmps[i]]  =   1;
+                break;
+            }
+        }
+    }
+    j = 0;
+    for (i = 0; i < bs->lml; ++i) {
+        if (bs->red[bs->lmps[i]] == 0) {
+            bs->lm[j]   = bs->lm[i];
+            bs->lmps[j] = bs->lmps[i];
+            ++j;
+        }
+    }
+    bs->lml = j;
+}
+
 /* The parameters themselves are handled by julia, thus we only
  * free what they are pointing to, julia's garbage collector then
  * takes care of everything leftover. */
@@ -412,23 +450,7 @@ int core_f4(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    for (i = 0; i < bs->lml; ++i) {
-        for (j = i+1; j < bs->lml; ++j) {
-            if (bs->red[bs->lmps[j]] == 0 && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET], bs->hm[bs->lmps[j]][OFFSET], bht)) {
-                bs->red[bs->lmps[i]]  =   1;
-                break;
-            }
-        }
-    }
-    j = 0;
-    for (i = 0; i < bs->lml; ++i) {
-        if (bs->red[bs->lmps[i]] == 0) {
-            bs->lm[j]   = bs->lm[i];
-            bs->lmps[j] = bs->lmps[i];
-            ++j;
-        }
-    }
-    bs->lml = j;
+    final_remove_redundant_elements(bs, bht);
 
     /* At the moment we do not directly remove the eliminated polynomials from
      * the resulting basis. */

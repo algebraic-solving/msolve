@@ -70,36 +70,37 @@ bs_t *core_nf(
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
     md->hcm = (hi_t *)malloc(sizeof(hi_t));
-    md->sht = initialize_secondary_hash_table(bht, md);
+    md->ht  = initialize_secondary_hash_table(bht, md);
 
-    select_tbr(tbr, mul, 0, mat, md, md->sht, bht, NULL);
+    select_tbr(tbr, mul, 0, mat, md, md->ht, bht, NULL);
 
-    symbolic_preprocessing(mat, bs, md, md->sht, bht);
+    symbolic_preprocessing(mat, bs, md, md->ht, bht);
     if (md->info_level > 1) {
         printf("nf computation data");
     }
-    convert_hashes_to_columns(&(md->hcm), mat, md, md->sht);
+    convert_hashes_to_columns(&(md->hcm), mat, md, md->ht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
     /* linear algebra, depending on choice, see set_function_pointers() */
     exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, md);
     /* columns indices are mapped back to exponent hashes */
     return_normal_forms_to_basis(
-            mat, tbr, bht, md->sht, md->hcm, md);
+            mat, tbr, bht, md->ht, md->hcm, md);
 
     /* all rows in mat are now polynomials in the basis,
      * so we do not need the rows anymore */
     clear_matrix(mat);
 
     if (md->info_level > 1) {
-        printf("%13.2f sec\n", rt-realtime());
+        printf("%13.2f | %-13.2f\n",
+                realtime() - rt, cputime() - ct);
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
     /* free and clean up */
     free(md->hcm);
-    if (md->sht != NULL) {
-        free_hash_table(&(md->sht));
+    if (md->ht != NULL) {
+        free_hash_table(&(md->ht));
     }
     /* note that all rows kept from mat during the overall computation are
      * basis elements and thus we do not need to free the rows itself, but

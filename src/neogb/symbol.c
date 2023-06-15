@@ -200,10 +200,7 @@ NOTE: The pair list is already sorted! */
 static int32_t select_spairs_by_minimal_degree(
         mat_t *mat,
         const bs_t * const bs,
-        ps_t *psl,
-        md_t *md,
-        ht_t *sht,
-        ht_t *bht
+        md_t *md
         )
 {
     len_t i, j, k, l, mdeg, nps, npd, nrr = 0, ntr = 0;
@@ -212,8 +209,11 @@ static int32_t select_spairs_by_minimal_degree(
     hi_t lcm;
     len_t *gens;
     exp_t *elcm, *eb;
+    ht_t *bht   = bs->ht;
     exp_t *etmp = bht->ev[0];
     ht_t *tht   = md->tr->ht;
+    ps_t *psl   = md->ps;
+    ht_t *sht   = md->ht;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -775,13 +775,13 @@ static int preprocessing(
         )
 {
     if (md->trace_level != APPLY_TRACER) {
-        if (select_spairs_by_minimal_degree(mat, bs, md->ps, md, md->sht, bs->ht)) {
+        if (select_spairs_by_minimal_degree(mat, bs, md)) {
             return 1;
         }
-        symbolic_preprocessing(mat, bs, md, md->sht, bs->ht);
+        symbolic_preprocessing(mat, bs, md, md->ht, bs->ht);
     } else {
         trace_t *tr = md->tr;
-        generate_matrix_from_trace(mat, tr, md->trace_rd, bs, md, md->sht, bs->ht, tr->ht);
+        generate_matrix_from_trace(mat, tr, md->trace_rd, bs, md, md->ht, bs->ht, tr->ht);
     }
     return 0;
 }

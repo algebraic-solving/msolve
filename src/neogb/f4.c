@@ -264,7 +264,7 @@ static void reduce_basis(
     len_t i, j, k;
 
     ht_t *bht   = bs->ht;
-    ht_t *sht   = md->sht;
+    ht_t *sht   = md->ht;
     hi_t *hcm   = md->hcm;
     exp_t *etmp = bht->ev[0];
     memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
@@ -311,7 +311,7 @@ static void reduce_basis(
     /* set sht = NULL, otherwise we might run in a double-free
      * of sht and bht at the end */
     sht     = NULL;
-    md->sht = sht;
+    md->ht  = sht;
 
     bs->ld  = mat->np;
 
@@ -379,7 +379,7 @@ static int32_t initialize_f4(
     } else {
         bs = gbs;
     }
-    md->sht = initialize_secondary_hash_table(bs->ht, md);
+    md->ht = initialize_secondary_hash_table(bs->ht, md);
 
     /* matrix holding sparse information generated
        during symbolic preprocessing */
@@ -429,7 +429,7 @@ static int32_t compute_new_elements(
     )
 {
     ht_t *ht  = bs->ht;
-    ht_t *sht = md->sht;
+    ht_t *sht = md->ht;
     hi_t *hcm = md->hcm;
 
     convert_hashes_to_columns(&hcm, mat, md, sht);
@@ -556,8 +556,8 @@ static void free_local_data(
 {
     md_t *md = *mdp;
 
-    if (md->sht != NULL) {
-        free_hash_table(&(md->sht));
+    if (md->ht != NULL) {
+        free_hash_table(&(md->ht));
     }
     if (md->ps != NULL) {
         free_pairset(&(md->ps));

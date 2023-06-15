@@ -332,7 +332,7 @@ struct md_t
     int32_t trace_rd;
 
     /* hash table data */
-    ht_t *sht;
+    ht_t *ht;
 
     len_t np; /* new pivots */
 

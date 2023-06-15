@@ -198,6 +198,7 @@ static void add_lms_to_trace(
     trace->td[ld].nlm = np;
 }
 
+#if 0
 static void add_minimal_lmh_to_trace(
         trace_t *trace,
         const bs_t * const bs
@@ -215,6 +216,7 @@ static void add_minimal_lmh_to_trace(
     } */
     trace->ts[ld].lml = lml;
 }
+#endif
 
 /* 
  * static inline val_t compare_and_swap(

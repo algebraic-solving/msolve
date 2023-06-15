@@ -35,11 +35,11 @@ void get_normal_form_matrix(
         mat_t **matp
         );
 
-int core_nf(
-        bs_t **tbrp,
-        ht_t **bhtp,
-        md_t **stp,
+bs_t *core_nf(
+        bs_t *tbr,
+        md_t *md,
         const exp_t * const mul,
-        const bs_t * const bs
+        const bs_t * const bs,
+        int32_t *errp
         );
 #endif

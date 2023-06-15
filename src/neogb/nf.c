@@ -52,68 +52,61 @@ void get_normal_form_matrix(
 }
 
 
-int core_nf(
-        bs_t **tbrp,
-        ht_t **bhtp,
-        md_t **stp,
+bs_t *core_nf(
+        bs_t *tbr,
+        md_t *md,
         const exp_t * const mul,
-        const bs_t * const bs
+        const bs_t * const bs,
+        int32_t *errp
         )
 {
-    double rt0, rt1;
-    rt0 = realtime();
+    double ct = cputime();
+    double rt = realtime();
 
-    bs_t *tbr   = *tbrp;
-    ht_t *bht   = *bhtp;
-    md_t *st  = *stp;
+    ht_t *bht = tbr->ht;
 
-    /* hashes-to-columns map, initialized with length 1, is reallocated
-     * in each call when generating matrices for linear algebra */
-    hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
     /* matrix holding sparse information generated
      * during symbolic preprocessing */
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
-    ht_t *sht = initialize_secondary_hash_table(bht, st);
+    md->hcm = (hi_t *)malloc(sizeof(hi_t));
+    md->sht = initialize_secondary_hash_table(bht, md);
 
-    select_tbr(tbr, mul, 0, mat, st, sht, bht, NULL);
+    select_tbr(tbr, mul, 0, mat, md, md->sht, bht, NULL);
 
-    symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
-    if (st->info_level > 1) {
+    symbolic_preprocessing(mat, bs, md, md->sht, bht);
+    if (md->info_level > 1) {
         printf("nf computation data");
     }
-    convert_hashes_to_columns(&hcm, mat, st, sht);
+    convert_hashes_to_columns(&(md->hcm), mat, md, md->sht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
     /* linear algebra, depending on choice, see set_function_pointers() */
-    exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, st);
+    exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, md);
     /* columns indices are mapped back to exponent hashes */
     return_normal_forms_to_basis(
-            mat, tbr, bht, sht, hcm, st);
+            mat, tbr, bht, md->sht, md->hcm, md);
 
     /* all rows in mat are now polynomials in the basis,
      * so we do not need the rows anymore */
     clear_matrix(mat);
 
-    rt1 = realtime();
-    if (st->info_level > 1) {
-        printf("%13.2f sec\n", rt1-rt0);
+    if (md->info_level > 1) {
+        printf("%13.2f sec\n", rt-realtime());
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
     /* free and clean up */
-    free(hcm);
-    if (sht != NULL) {
-        free_hash_table(&sht);
+    free(md->hcm);
+    if (md->sht != NULL) {
+        free_hash_table(&(md->sht));
     }
     /* note that all rows kept from mat during the overall computation are
      * basis elements and thus we do not need to free the rows itself, but
      * just the matrix structure */
     free(mat);
 
-    *tbrp = tbr;
-    *bhtp = bht;
-    *stp  = st;
+    *errp = 0;
 
-    return 1;
+    return tbr;
 }

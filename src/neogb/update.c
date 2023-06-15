@@ -65,8 +65,7 @@ static void insert_and_update_spairs(
         ps_t *psl,
         bs_t *bs,
         ht_t *bht,
-        md_t *st,
-        const int32_t check_redundancy
+        md_t *st
         )
 {
     int i, j, l;
@@ -278,8 +277,7 @@ static void update_basis_f4(
         bs_t *bs,
         ht_t *bht,
         md_t *st,
-        const len_t npivs,
-        const int32_t check_redundancy
+        const len_t npivs
         )
 {
     len_t i;
@@ -297,7 +295,7 @@ static void update_basis_f4(
     check_enlarge_pairset(ps, np);
 
     for (i = 0; i < npivs; ++i) {
-        insert_and_update_spairs(ps, bs, bht, st, check_redundancy);
+        insert_and_update_spairs(ps, bs, bht, st);
     }
 
     const bl_t lml          = bs->lml;
@@ -360,8 +358,7 @@ static void update_basis_sba_schreyer(
         ht_t *bht,
         ht_t *uht,
         md_t *st,
-        const len_t npivs,
-        const int32_t check_redundancy
+        const len_t npivs
         )
 {
     len_t i;
@@ -379,7 +376,7 @@ static void update_basis_sba_schreyer(
     check_enlarge_pairset(ps, np);
 
     for (i = 0; i < npivs; ++i) {
-        insert_and_update_spairs(ps, bs, bht, uht, st, check_redundancy);
+        insert_and_update_spairs(ps, bs, bht, uht, st);
     }
 
     const bl_t lml          = bs->lml;
@@ -419,12 +416,10 @@ static void update_basis_sba_schreyer(
 
 int32_t update(
         bs_t *bs,
-        md_t *md,
-        const int32_t check_redundancy
+        md_t *md
         )
 {
-        /* check redundancy only if input is not homogeneous */
-        update_basis_f4(md->ps, bs, md->ht, md, md->np, check_redundancy);
+        update_basis_f4(md->ps, bs, md->ht, md, md->np);
         return md->ps->ld == 0;
 }
 #endif

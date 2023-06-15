@@ -409,7 +409,7 @@ static int32_t initialize_f4(
        always check redundancy since input generators may be redundant
        even so they are homogeneous. */
     if (md->trace_level != APPLY_TRACER) {
-        done = update(bs, md, 1-md->homogeneous);
+        done = update(bs, md);
     }
 
     /* TO BE REMOVED */
@@ -622,7 +622,7 @@ bs_t *core_f4(
             done = compute_new_elements(mat, bs, md);
         }
         if (!done) {
-            done = update(bs, md, 1 - md->homogeneous);
+            done = update(bs, md);
         }
 
         print_round_timings(stdout, md, rrt, crt);

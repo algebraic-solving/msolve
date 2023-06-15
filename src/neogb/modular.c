@@ -349,7 +349,7 @@ bs_t *f4_trace_application_phase(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->overall_ctime = ct1 - ct0;
+    st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
     /* get basis meta data */
@@ -641,7 +641,7 @@ bs_t *f4sat_trace_application_test_phase(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->overall_ctime = ct1 - ct0;
+    st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
     /* get basis meta data */
@@ -938,7 +938,7 @@ bs_t *f4sat_trace_application_phase(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->overall_ctime = ct1 - ct0;
+    st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
     /* get basis meta data */
@@ -1128,7 +1128,7 @@ bs_t *f4_trace_learning_phase(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->overall_ctime = ct1 - ct0;
+    st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
     if (st->info_level > 0) {
@@ -1460,7 +1460,7 @@ end_sat_step:
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->overall_ctime = ct1 - ct0;
+    st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
     if (st->info_level > 0) {
@@ -1787,7 +1787,7 @@ bs_t *f4sat_trace_learning_phase_2(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->overall_ctime = ct1 - ct0;
+    st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
     if (st->info_level > 0) {
@@ -1988,7 +1988,7 @@ bs_t *modular_f4(
     ct0 = cputime();
     rt0 = realtime();
 
-    int32_t round, i, j;
+    int32_t round, i;
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
     hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
@@ -2098,7 +2098,7 @@ bs_t *modular_f4(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->overall_ctime = ct1 - ct0;
+    st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
     /* get basis meta data */

@@ -1067,8 +1067,6 @@ bs_t *f4_trace_learning_phase(
     /* remove possible redudant elements */
     final_remove_redundant_elements(bs, bht);
 
-    bs->lml = j;
-
     /* store information in trace */
     trace->lml  = bs->lml;
     trace->lmps = (bl_t *)calloc((unsigned long)trace->lml,

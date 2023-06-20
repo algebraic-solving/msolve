@@ -740,7 +740,7 @@ end_sat_step:
     if (st->reduce_gb == 1) {
         /* note: bht will become sht, and sht will become NULL,
          * thus we need pointers */
-        reduce_basis(bs, mat, &hcm, &bht, &sht, st);
+        reduce_basis(bs, mat, st);
     }
 /*     printf("basis has  %u elements.\n", bs->lml);
  *

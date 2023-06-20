@@ -470,7 +470,7 @@ bs_t *f4sat_trace_application_test_phase(
         st->current_rd  = round;
 
         /* preprocess data for next reduction round */
-        select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
+        select_spairs_by_minimal_degree(mat, bs, st);
         symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
@@ -1046,7 +1046,7 @@ bs_t *f4_trace_learning_phase(
       st->current_rd  = round;
 
       /* preprocess data for next reduction round */
-      select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, tht);
+      select_spairs_by_minimal_degree(mat, bs, st);
       symbolic_preprocessing(mat, bs, st, sht, tht, bht);
       convert_hashes_to_columns(&hcm, mat, st, sht);
       sort_matrix_rows_decreasing(mat->rr, mat->nru);
@@ -1259,7 +1259,7 @@ end_sat_step:
         st->current_rd  = round;
 
         /* preprocess data for next reduction round */
-        select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, tht);
+        select_spairs_by_minimal_degree(mat, bs, st);
         symbolic_preprocessing(mat, bs, st, sht, tht, bht);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
@@ -1603,7 +1603,7 @@ bs_t *f4sat_trace_learning_phase_2(
         st->current_rd  = round;
 
         /* preprocess data for next reduction round */
-        select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, tht);
+        select_spairs_by_minimal_degree(mat, bs, st);
         symbolic_preprocessing(mat, bs, st, sht, tht, bht);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
@@ -2036,7 +2036,7 @@ bs_t *modular_f4(
       st->current_rd  = round;
 
       /* preprocess data for next reduction round */
-      select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
+      select_spairs_by_minimal_degree(mat, bs, st);
       symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
       convert_hashes_to_columns(&hcm, mat, st, sht);
       sort_matrix_rows_decreasing(mat->rr, mat->nru);

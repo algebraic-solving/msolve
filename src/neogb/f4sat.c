@@ -144,7 +144,7 @@ static int is_already_saturated(
     st->info_level  = 0;
     while (ps->ld > 0) {
 
-        select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
+        select_spairs_by_minimal_degree(mat, bs, st);
         /* select_all_spairs(mat, bs, ps, st, sht, bht, NULL); */
         symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
         convert_hashes_to_columns(&hcm, mat, st, sht);
@@ -571,7 +571,7 @@ end_sat_step:
         st->current_rd  = round;
 
         /* preprocess data for next reduction round */
-        select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
+        select_spairs_by_minimal_degree(mat, bs, st);
         symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);

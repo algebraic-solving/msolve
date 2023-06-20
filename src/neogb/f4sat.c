@@ -146,7 +146,7 @@ static int is_already_saturated(
 
         select_spairs_by_minimal_degree(mat, bs, st);
         /* select_all_spairs(mat, bs, ps, st, sht, bht, NULL); */
-        symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+        symbolic_preprocessing(mat, bs, st);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
@@ -572,7 +572,7 @@ end_sat_step:
 
         /* preprocess data for next reduction round */
         select_spairs_by_minimal_degree(mat, bs, st);
-        symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+        symbolic_preprocessing(mat, bs, st);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
@@ -639,7 +639,7 @@ end_sat_step:
                 /* check for monomial multiples of elements from saturation list */
                 select_saturation(sat, mat, st, sht, bht);
 
-                symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+                symbolic_preprocessing(mat, bs, st);
 
                 /* It may happen that there is no reducer at all for the
                  * saturation elements, then nothing has to be done. */

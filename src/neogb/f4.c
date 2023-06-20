@@ -281,7 +281,7 @@ static void reduce_basis(
         mat->nr++;
     }
     mat->nc = mat->nr; /* needed for correct counting in symbol */
-    symbolic_preprocessing(mat, bs, md, sht, bht);
+    symbolic_preprocessing(mat, bs, md);
     /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
     for (i = 0; i < sht->eld; ++i) {
         sht->hd[i].idx = 1;

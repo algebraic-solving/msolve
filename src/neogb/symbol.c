@@ -564,9 +564,7 @@ start:
 static void symbolic_preprocessing(
         mat_t *mat,
         const bs_t * const bs,
-        md_t *md,
-        ht_t *sht,
-        const ht_t * const bht
+        md_t *md
         )
 {
     hl_t i;
@@ -579,6 +577,8 @@ static void symbolic_preprocessing(
     /* at the moment we have as many reducers as we have different lcms */
     len_t nrr = mat->nc;
 
+    const ht_t * const bht = bs->ht; 
+    ht_t *sht = md->ht;
     ht_t *tht = md->tr->ht;
 
     /* note that we have already counted the different lcms, i.e.
@@ -778,7 +778,7 @@ static int preprocessing(
         if (select_spairs_by_minimal_degree(mat, bs, md)) {
             return 1;
         }
-        symbolic_preprocessing(mat, bs, md, md->ht, bs->ht);
+        symbolic_preprocessing(mat, bs, md);
     } else {
         trace_t *tr = md->tr;
         generate_matrix_from_trace(mat, tr, md->trace_rd, bs, md, md->ht, bs->ht, tr->ht);

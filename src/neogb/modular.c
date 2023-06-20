@@ -138,7 +138,7 @@ void reduce_basis_no_hash_table_switching(
         mat->nr++;
     }
     mat->nc = mat->nr; /* needed for correct counting in symbol */
-    symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+    symbolic_preprocessing(mat, bs, st);
     /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
     for (i = 0; i < sht->eld; ++i) {
         sht->hd[i].idx = 1;
@@ -471,7 +471,7 @@ bs_t *f4sat_trace_application_test_phase(
 
         /* preprocess data for next reduction round */
         select_spairs_by_minimal_degree(mat, bs, st);
-        symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+        symbolic_preprocessing(mat, bs, st);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
@@ -512,7 +512,7 @@ bs_t *f4sat_trace_application_test_phase(
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
 
-            symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+            symbolic_preprocessing(mat, bs, st);
 
             /* It may happen that there is no reducer at all for the
              * saturation elements, then nothing has to be done. */
@@ -999,7 +999,7 @@ bs_t *f4_trace_learning_phase(
     ct0 = cputime();
     rt0 = realtime();
 
-    int32_t round, i, j;
+    int32_t round, i;
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
     hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
@@ -1047,7 +1047,7 @@ bs_t *f4_trace_learning_phase(
 
       /* preprocess data for next reduction round */
       select_spairs_by_minimal_degree(mat, bs, st);
-      symbolic_preprocessing(mat, bs, st, sht, tht, bht);
+      symbolic_preprocessing(mat, bs, st);
       convert_hashes_to_columns(&hcm, mat, st, sht);
       sort_matrix_rows_decreasing(mat->rr, mat->nru);
       sort_matrix_rows_increasing(mat->tr, mat->nrl);
@@ -1260,7 +1260,7 @@ end_sat_step:
 
         /* preprocess data for next reduction round */
         select_spairs_by_minimal_degree(mat, bs, st);
-        symbolic_preprocessing(mat, bs, st, sht, tht, bht);
+        symbolic_preprocessing(mat, bs, st);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
@@ -1320,7 +1320,7 @@ end_sat_step:
                 update_multipliers(&qb, &bht, &sht, sat, st, bs, ii);
                 /* check for monomial multiples of elements from saturation list */
                 select_saturation(sat, mat, st, sht, bht);
-                symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+                symbolic_preprocessing(mat, bs, st);
 
                 /* It may happen that there is no reducer at all for the
                  * saturation elements, then nothing has to be done. */
@@ -1604,7 +1604,7 @@ bs_t *f4sat_trace_learning_phase_2(
 
         /* preprocess data for next reduction round */
         select_spairs_by_minimal_degree(mat, bs, st);
-        symbolic_preprocessing(mat, bs, st, sht, tht, bht);
+        symbolic_preprocessing(mat, bs, st);
         convert_hashes_to_columns(&hcm, mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
@@ -1652,7 +1652,7 @@ bs_t *f4sat_trace_learning_phase_2(
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
 
-            symbolic_preprocessing(mat, bs, st, sht, tht, bht);
+            symbolic_preprocessing(mat, bs, st);
 
             /* It may happen that there is no reducer at all for the
              * saturation elements, then nothing has to be done. */
@@ -2037,7 +2037,7 @@ bs_t *modular_f4(
 
       /* preprocess data for next reduction round */
       select_spairs_by_minimal_degree(mat, bs, st);
-      symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+      symbolic_preprocessing(mat, bs, st);
       convert_hashes_to_columns(&hcm, mat, st, sht);
       sort_matrix_rows_decreasing(mat->rr, mat->nru);
       sort_matrix_rows_increasing(mat->tr, mat->nrl);

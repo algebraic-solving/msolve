@@ -74,7 +74,7 @@ bs_t *core_nf(
 
     select_tbr(tbr, mul, 0, mat, md, md->ht, bht, NULL);
 
-    symbolic_preprocessing(mat, bs, md, md->ht, bht);
+    symbolic_preprocessing(mat, bs, md);
     if (md->info_level > 1) {
         printf("nf computation data");
     }

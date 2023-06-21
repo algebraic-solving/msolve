@@ -1805,8 +1805,9 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     bs_t *bs = NULL;
     if(gens->field_char){
       bs = bs_qq;
-      int boo = core_gba(&bs, &bht, &st);
-      if (!boo) {
+      int32_t err = 0;
+      bs = core_gba(bs, st, &err, gens->field_char);
+      if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
       }
@@ -4062,8 +4063,8 @@ restart:
             /* timings */
             ct1 = cputime();
             rt1 = realtime();
-            st->overall_ctime = ct1 - ct0;
-            st->overall_rtime = rt1 - rt0;
+            st->f4_ctime = ct1 - ct0;
+            st->f4_rtime = rt1 - rt0;
 
             if (st->info_level > 1) {
                 print_final_statistics(stderr, st);
@@ -4159,8 +4160,8 @@ restart:
                 /* timings */
                 ct1 = cputime();
                 rt1 = realtime();
-                st->overall_ctime = ct1 - ct0;
-                st->overall_rtime = rt1 - rt0;
+                st->f4_ctime = ct1 - ct0;
+                st->f4_rtime = rt1 - rt0;
 
                 if (st->info_level > 1) {
                     print_final_statistics(stderr, st);
@@ -4197,7 +4198,7 @@ restart:
             /* for (int ii = 0; ii<gens->nvars; ++ii) {
              *     mul[ii] = 1;
              * } */
-            int success = 0;
+            int32_t err = 0;
 
             /* initialize generators of ideal, note the "gens->ngens-1_form" which
              * means that we only take the first nr_gens-1 generators from
@@ -4209,7 +4210,7 @@ restart:
              * routines are the 32-bit implementations (since nf is at the moment
              * only implemented for 32-bit elements). Later on we set st-fc by hand
              * to the correct field characteristic. */
-            success = initialize_gba_input_data(&bs, &bht, &st,
+            int success = initialize_gba_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
                     1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
@@ -4247,9 +4248,9 @@ restart:
             } else {
 
                 /* compute a gb for initial generators */
-                success = core_gba(&bs, &bht, &st);
+                bs = core_gba(bs, st, &err, gens->field_char);
 
-                if (!success) {
+                if (err) {
                     printf("Problem with F4, stopped computation.\n");
                     exit(1);
                 }
@@ -4281,9 +4282,10 @@ restart:
             }
 
             /* compute normal form of last element in tbr */
-            success = core_nf(&tbr, &bht, &st, mul, bs);
 
-            if (!success) {
+            tbr = core_nf(tbr, st, mul, bs, &err);
+
+            if (err) {
                 printf("Problem with normalform, stopped computation.\n");
                 exit(1);
             }
@@ -4598,6 +4600,7 @@ restart:
              *     mul[ii] = 1;
              * } */
 
+            int32_t err = 0;
             int success = 0;
 
             /* initialize generators of ideal, note the "gens->ngens-normal_form" which
@@ -4638,9 +4641,9 @@ restart:
             } else {
 
                 /* compute a gb for initial generators */
-                success = core_gba(&bs, &bht, &st);
+                bs = core_gba(bs, st, &err, gens->field_char);
 
-                if (!success) {
+                if (err) {
                     printf("Problem with F4, stopped computation.\n");
                     exit(1);
                 }
@@ -4659,9 +4662,9 @@ restart:
                 tbr->lmps[k]  = k; /* fix input element in tbr */
             }
             /* compute normal form of last element in tbr */
-            success = core_nf(&tbr, &bht, &st, mul, bs);
+            tbr = core_nf(tbr, st, mul, bs, &err);
 
-            if (!success) {
+            if (err) {
                 printf("Problem with normalform, stopped computation.\n");
                 exit(1);
             }
@@ -4872,8 +4875,8 @@ restart:
             /* timings */
             ct1 = cputime();
             rt1 = realtime();
-            st->overall_ctime = ct1 - ct0;
-            st->overall_rtime = rt1 - rt0;
+            st->f4_ctime = ct1 - ct0;
+            st->f4_rtime = rt1 - rt0;
 
             if (st->info_level > 1) {
                 print_final_statistics(stderr, st);
@@ -5060,8 +5063,8 @@ restart:
             /* timings */
             ct1 = cputime();
             rt1 = realtime();
-            st->overall_ctime = ct1 - ct0;
-            st->overall_rtime = rt1 - rt0;
+            st->f4_ctime = ct1 - ct0;
+            st->f4_rtime = rt1 - rt0;
 
             if (st->info_level > 1) {
                 print_final_statistics(stderr, st);
@@ -5090,8 +5093,8 @@ restart:
             /* timings */
             ct1 = cputime();
             rt1 = realtime();
-            st->overall_ctime = ct1 - ct0;
-            st->overall_rtime = rt1 - rt0;
+            st->f4_ctime = ct1 - ct0;
+            st->f4_rtime = rt1 - rt0;
 
             if (st->info_level > 1) {
                 print_final_statistics(stderr, st);

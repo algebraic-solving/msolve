@@ -4331,13 +4331,6 @@ int real_msolve_qq(mpz_param_t mp_param,
   double ct1 = cputime();
   double rt1 = realtime();
 
-  if(info_level){
-    fprintf(stderr, "Time for rational param: %13.2f (elapsed) sec / %5.2f sec (cpu)\n\n",
-            rt1 - rt0, ct1 - ct0);
-  }
-
-  real_point_t *pts = NULL;
-
   if(get_param>1){
     return b;
   }
@@ -4346,6 +4339,12 @@ int real_msolve_qq(mpz_param_t mp_param,
     return 0;
   }
 
+  if(info_level){
+    fprintf(stderr, "Time for rational param: %13.2f (elapsed) sec / %5.2f sec (cpu)\n\n",
+            rt1 - rt0, ct1 - ct0);
+  }
+
+  real_point_t *pts = NULL;
 
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
 

@@ -1644,8 +1644,9 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* printf ("polynomials to be reduced\n"); */
   /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
-  int success = core_nf(&tbr, &bht, &st, mul, bs);
-  if (!success) {
+  int32_t err = 0;
+  tbr = core_nf(tbr, st, mul, bs, &err);
+  if (err) {
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
   }
@@ -2092,8 +2093,9 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   /* printf ("polynomials to be reduced\n"); */
   /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
-  int success = core_nf(&tbr, &bht, &st, mul, bs);
-  if (!success) {
+  int32_t err = 0;
+  tbr = core_nf(tbr, st, mul, bs, &err);
+  if (err) {
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
   }

@@ -350,6 +350,15 @@ static void update_basis_f4(
     st->update_rtime  +=  rt1 - rt0;
 }
 
+static int32_t update(
+        bs_t *bs,
+        md_t *md
+        )
+{
+        update_basis_f4(md->ps, bs, md->ht, md, md->np);
+        return md->ps->ld == 0;
+}
+
 /* not needed right now, maybe in a later iteration of sba implementations */
 #if 0
 static void update_basis_sba_schreyer(
@@ -412,14 +421,5 @@ static void update_basis_sba_schreyer(
     rt1 = realtime();
     st->update_ctime  +=  ct1 - ct0;
     st->update_rtime  +=  rt1 - rt0;
-}
-
-int32_t update(
-        bs_t *bs,
-        md_t *md
-        )
-{
-        update_basis_f4(md->ps, bs, md->ht, md, md->np);
-        return md->ps->ld == 0;
 }
 #endif

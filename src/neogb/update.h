@@ -31,8 +31,4 @@ void free_pairset(
         ps_t **psp
         );
 
-int32_t update(
-        bs_t *bs,
-        md_t *md
-        );
 #endif

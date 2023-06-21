@@ -322,6 +322,10 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs,
                                            data_gens_ff_t *gens){
   int32_t p = modgbs->ld ;
+  if(p==0){
+    fprintf(file, "[0]:\n");
+    return;
+  }
   fprintf(file, "[");
   for(int i = 0; i < p-1; i++){
     display_modpoly(file, modgbs, i, gens);
@@ -630,6 +634,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     int32_t len = bs->lml;
     num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv, st->nev);
 
+    fprintf(stderr, "num_gb[0] = %d\n", num_gb[0]);
 
     int32_t *bexp_lm2 = NULL;
     if(st->nev){

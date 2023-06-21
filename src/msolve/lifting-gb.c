@@ -243,9 +243,9 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
   fprintf(file, "nprimes = %d\n", modgbs->nprimes);
   fprintf(stderr, "primes = [");
   for(uint32_t i = 0; i < modgbs->alloc-1; i++){
-    fprintf(file, "%lu, ", modgbs->primes[i]);
+    fprintf(file, "%lu, ", (unsigned long)modgbs->primes[i]);
   }
-  fprintf(file, "%lu]\n", modgbs->primes[modgbs->alloc -1]);
+  fprintf(file, "%lu]\n", (unsigned long)modgbs->primes[modgbs->alloc -1]);
   fprintf(file, "numpolys = %d\n", modgbs->ld);
   fprintf(file, "[\n");
   for(uint32_t i = 0; i < modgbs->ld; i++){
@@ -598,8 +598,9 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     bs_t *bs = NULL;
     if(gens->field_char){
       bs = bs_qq;
-      int boo = core_gba(&bs, &bht, &st);
-      if (!boo) {
+      int32_t err = 0;
+      bs = core_gba(bs, st, &err, gens->field_char);
+      if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
       }

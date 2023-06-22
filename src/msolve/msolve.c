@@ -5677,7 +5677,15 @@ restart:
 
             int dim = - 2;
             long dquot = -1;
-            /* experimental code */
+
+            if(elim_block_len && print_gb == 0){
+              if(info_level){
+                fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
+                fprintf(stderr, "Computing Groebner basis\n");
+                print_gb=1;
+              }
+            }
+
             if(print_gb){
 
               msflags_t flags;

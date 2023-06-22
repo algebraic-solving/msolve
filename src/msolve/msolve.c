@@ -5014,18 +5014,25 @@ restart:
 	  int dim = - 2;
 	  long dquot = -1;
 
+    if(elim_block_len > 0 && print_gb == 0){
+      if(info_level){
+        fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
+        fprintf(stderr, "Computing Groebner basis\n");
+        print_gb=1;
+      }
+    }
 	  b = real_msolve_qq(*mpz_paramp,
-			     &param,
-                             &dim,
-                             &dquot,
-                             nb_real_roots_ptr,
-                             real_roots_ptr,
-                             real_pts_ptr,
-                             gens,
-                             initial_hts, nr_threads, max_pairs,
-                             elim_block_len, update_ht,
-                             la_option, use_signatures, info_level, print_gb,
-                             generate_pbm, precision, files, round, get_param);
+                       &param,
+                       &dim,
+                       &dquot,
+                       nb_real_roots_ptr,
+                       real_roots_ptr,
+                       real_pts_ptr,
+                       gens,
+                       initial_hts, nr_threads, max_pairs,
+                       elim_block_len, update_ht,
+                       la_option, use_signatures, info_level, print_gb,
+                       generate_pbm, precision, files, round, get_param);
           if(print_gb){
             return 0;
           }

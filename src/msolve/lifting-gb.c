@@ -634,8 +634,6 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     int32_t len = bs->lml;
     num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv, st->nev);
 
-    fprintf(stderr, "num_gb[0] = %d\n", num_gb[0]);
-
     int32_t *bexp_lm2 = NULL;
     if(st->nev){
       bexp_lm2 = calloc(num_gb[0]*(bht->nv - st->nev), sizeof(int32_t));

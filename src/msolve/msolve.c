@@ -4645,7 +4645,7 @@ restart:
              *             to the correct field characteristic. */
             success = initialize_gba_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
-                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
+                    gens->field_char/* 1073741827 */, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens, saturate, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
@@ -4670,9 +4670,19 @@ restart:
                 }
             } else {
                 sat = initialize_basis(st);
-                import_input_data_nf_ff_32(
-                        sat, bht, st, gens->ngens-saturate, gens->ngens,
-                        gens->lens, gens->exps, (void *)gens->cfs);
+                if (st->fc > 0) {
+                  normalize_initial_basis(bs, st->fc);
+                }
+                if(st->ff_bits == 16){
+                  import_input_data_nf_ff_16(
+                                             sat, bht, st, gens->ngens-saturate, gens->ngens,
+                                             gens->lens, gens->exps, (void *)gens->cfs);
+                }
+                else{
+                  import_input_data_nf_ff_32(
+                                             sat, bht, st, gens->ngens-saturate, gens->ngens,
+                                             gens->lens, gens->exps, (void *)gens->cfs);
+                }
                 sat->ld = sat->lml  =  saturate;
                 /* normalize_initial_basis(tbr, st->fc); */
                 for (int k = 0; k < saturate; ++k) {

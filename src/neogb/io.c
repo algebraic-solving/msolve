@@ -512,6 +512,87 @@ void import_input_data_nf_ff_32(
     }
 }
 
+void import_input_data_nf_ff_16(
+        bs_t *tbr,
+        ht_t *ht,
+        stat_t *st,
+        const int32_t start,
+        const int32_t stop,
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *vcfs
+        )
+{
+    int32_t i, j, k;
+    cf16_t *cf    = NULL;
+    int64_t tmpcf = 0;
+    hm_t *hm      = NULL;
+
+    int16_t *cfs  = (int16_t *)vcfs;
+
+    int32_t off       = 0; /* offset in arrays */
+    const len_t fc    = st->fc;
+
+    for (i = 0; i < start; ++i) {
+        off +=  lens[i];
+    }
+
+    /* check basis size first */
+    check_enlarge_basis(tbr, stop-start, st);
+
+    exp_t *e  = ht->ev[0]; /* use as temporary storage */
+
+    for (i = start; i < stop; ++i) {
+        while (lens[i] >= ht->esz-ht->eld) {
+            enlarge_hash_table(ht);
+            e  = ht->ev[0]; /* reset e if enlarging */
+        }
+        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
+        cf  = (cf16_t *)malloc((unsigned long)(lens[i]) * sizeof(cf16_t));
+        tbr->hm[i-start]    = hm;
+        tbr->cf_16[i-start] = cf;
+
+        hm[COEFFS]  = i-start; /* link to matcf entry */
+        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
+        hm[LENGTH]  = lens[i]; /* length */
+
+        tbr->red[i-start] = 0;
+
+        for (j = off; j < off+lens[i]; ++j) {
+            set_exponent_vector(e, exps, j, ht, st);
+            hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
+            /* make coefficient positive */
+            tmpcf             =   (int64_t)cfs[j];
+            tmpcf             +=  (tmpcf >> 63) & fc;
+            cf[j-off]         =   (cf16_t)tmpcf;
+        }
+        off +=  lens[i];
+        /* sort terms in polynomial w.r.t. given monomial order */
+        sort_terms_ff_16(&cf, &hm, ht);
+    }
+    /* set total degree of input polynomials */
+    deg_t deg = 0;
+    if (st->nev) {
+        for (i = 0; i < stop-start; ++i) {
+            hm  = tbr->hm[i];
+            deg = ht->hd[hm[OFFSET]].deg;
+            k   = hm[LENGTH] + OFFSET;
+            for (j = OFFSET+1; j < k; ++j) {
+                if (deg < ht->hd[hm[j]].deg) {
+                    deg = ht->hd[hm[j]].deg;
+                    st->homogeneous = 1;
+                }
+            }
+            tbr->hm[i][DEG]  = deg;
+        }
+    } else {
+        for (i = 0; i < stop-start; ++i) {
+            hm  = tbr->hm[i];
+            tbr->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
+        }
+    }
+}
+
 
 
 void import_input_data_nf_qq(

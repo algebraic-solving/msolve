@@ -123,6 +123,17 @@ void import_input_data_nf_ff_32(
         const void *vcfs
         );
 
+void import_input_data_nf_ff_16(
+                                bs_t *tbr,
+                                ht_t *ht,
+                                stat_t *st,
+                                const int32_t start,
+                                const int32_t stop,
+                                const int32_t *lens,
+                                const int32_t *exps,
+                                const void *vcfs
+                                );
+
 void import_input_data_nf_qq(
         bs_t *tbr,
         ht_t *ht,

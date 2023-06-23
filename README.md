@@ -73,7 +73,8 @@ is doing. Try this.
 
 # Computing Groebner bases
 
-`msolve` computes Groebner bases when the base field is either 0 or a prime one
+`msolve` computes Groebner bases when the base field is either the field of rational numbers 
+or a prime field
 (characteristic should be less than 2^31).
 
 

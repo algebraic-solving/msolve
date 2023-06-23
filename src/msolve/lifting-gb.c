@@ -322,6 +322,10 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs,
                                            data_gens_ff_t *gens){
   int32_t p = modgbs->ld ;
+  if(p==0){
+    fprintf(file, "[0]:\n");
+    return;
+  }
   fprintf(file, "[");
   for(int i = 0; i < p-1; i++){
     display_modpoly(file, modgbs, i, gens);
@@ -629,7 +633,6 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     int32_t len = bs->lml;
     num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv, st->nev);
-
 
     int32_t *bexp_lm2 = NULL;
     if(st->nev){
@@ -1039,9 +1042,19 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
 
 }
 
+long max_bit_size_gb(gb_modpoly_t modgbs){
+  long nb = 0;
+  for(uint32_t i = 0; i < modgbs->ld; i++){
+    for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
+      nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->cf_qq[2*j], 2));
+      nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->cf_qq[2*j + 1], 2));
+    }
+    nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->lm, 2));
+  }
+  return nb;
+}
 
 
-/****TOTO*/
 
 /*
 
@@ -1381,6 +1394,8 @@ int msolve_gbtrace_qq(
     }
   }
   if(info_level){
+    long nbits = max_bit_size_gb(modgbs);
+    fprintf(stderr, "Maximum bit size of the coefficients: %ld\n", nbits);
     fprintf(stderr, "%d primes used. \nElapsed time: %.2f\n", nprimes, realtime()-st0);
   }
   free_mstrace(msd, st);

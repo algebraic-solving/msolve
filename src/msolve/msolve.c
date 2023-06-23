@@ -4309,6 +4309,8 @@ int real_msolve_qq(mpz_param_t mp_param,
     -4 if bad prime
   */
 
+  double ct0 = cputime();
+  double rt0 = realtime();
   int b = msolve_trace_qq(mp_param,
                           nmod_param,
                           dim_ptr,
@@ -4326,8 +4328,8 @@ int real_msolve_qq(mpz_param_t mp_param,
                           pbm_file,
                           files,
                           round);
-
-  real_point_t *pts = NULL;
+  double ct1 = cputime();
+  double rt1 = realtime();
 
   if(get_param>1){
     return b;
@@ -4337,6 +4339,12 @@ int real_msolve_qq(mpz_param_t mp_param,
     return 0;
   }
 
+  if(info_level){
+    fprintf(stderr, "Time for rational param: %13.2f (elapsed) sec / %5.2f sec (cpu)\n\n",
+            rt1 - rt0, ct1 - ct0);
+  }
+
+  real_point_t *pts = NULL;
 
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
 
@@ -4644,10 +4652,15 @@ restart:
                     info_level);
 
             st->fc  = gens->field_char;
+            set_ff_bits(st, st->fc);
             if(info_level){
                 fprintf(stderr,
                         "NOTE: Field characteristic is now corrected to %u\n",
                         st->fc);
+            }
+            if(st->ff_bits < 32){
+              fprintf(stderr, "Error: not implemented yet (prime field of too low characteristic\n");
+              return 1;
             }
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
@@ -4663,8 +4676,9 @@ restart:
             } else {
                 sat = initialize_basis(st);
                 import_input_data_nf_ff_32(
-                        sat, bht, st, gens->ngens-saturate, gens->ngens,
-                        gens->lens, gens->exps, (void *)gens->cfs);
+                                           sat, bht, st, gens->ngens-saturate, gens->ngens,
+                                           gens->lens, gens->exps, (void *)gens->cfs);
+
                 sat->ld = sat->lml  =  saturate;
                 /* normalize_initial_basis(tbr, st->fc); */
                 for (int k = 0; k < saturate; ++k) {
@@ -5006,18 +5020,25 @@ restart:
 	  int dim = - 2;
 	  long dquot = -1;
 
+    if(elim_block_len > 0 && print_gb == 0){
+      if(info_level){
+        fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
+        fprintf(stderr, "Computing Groebner basis\n");
+        print_gb=1;
+      }
+    }
 	  b = real_msolve_qq(*mpz_paramp,
-			     &param,
-                             &dim,
-                             &dquot,
-                             nb_real_roots_ptr,
-                             real_roots_ptr,
-                             real_pts_ptr,
-                             gens,
-                             initial_hts, nr_threads, max_pairs,
-                             elim_block_len, update_ht,
-                             la_option, use_signatures, info_level, print_gb,
-                             generate_pbm, precision, files, round, get_param);
+                       &param,
+                       &dim,
+                       &dquot,
+                       nb_real_roots_ptr,
+                       real_roots_ptr,
+                       real_pts_ptr,
+                       gens,
+                       initial_hts, nr_threads, max_pairs,
+                       elim_block_len, update_ht,
+                       la_option, use_signatures, info_level, print_gb,
+                       generate_pbm, precision, files, round, get_param);
           if(print_gb){
             return 0;
           }
@@ -5669,7 +5690,15 @@ restart:
 
             int dim = - 2;
             long dquot = -1;
-            /* experimental code */
+
+            if(elim_block_len && print_gb == 0){
+              if(info_level){
+                fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
+                fprintf(stderr, "Computing Groebner basis\n");
+                print_gb=1;
+              }
+            }
+
             if(print_gb){
 
               msflags_t flags;

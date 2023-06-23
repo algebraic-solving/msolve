@@ -36,7 +36,7 @@ static void initialize_mstrace(mstrace_t msd, md_t *st){
   /* initialize tracers */
   msd->btrace = (trace_t **)calloc(st->nthrds,
                                         sizeof(trace_t *));
-  msd->btrace[0]  = initialize_trace();
+  msd->btrace[0]  = initialize_trace(msd->bs_qq, st);
   /* initialization of other tracers is done through duplication */
 
   msd->num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));

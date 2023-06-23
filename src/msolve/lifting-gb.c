@@ -1303,7 +1303,7 @@ int msolve_gbtrace_qq(
 
     }
     /* duplicate data for multi-threaded multi-mod computation */
-    duplicate_data_mthread_gbtrace(st->nthrds, st, msd->num_gb,
+    duplicate_data_mthread_gbtrace(st->nthrds, msd->bs_qq, st, msd->num_gb,
                                    msd->leadmons_ori, msd->leadmons_current,
                                    msd->btrace);
 

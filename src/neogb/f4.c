@@ -372,12 +372,24 @@ static int32_t initialize_f4(
     md->fc  = fc;
     md->hcm = (hi_t *)malloc(sizeof(hi_t));
 
-    if (md->gfc != fc) {
+    if (gmd->fc != fc) {
         reset_function_pointers(fc, md->laopt);
         bs = copy_basis_mod_p(gbs, md);
         normalize_initial_basis(bs, fc);
     } else {
         bs = gbs;
+    }
+    for (int ii = 0; ii < gbs->ld; ++ii) {
+        printf("gbs[%d] = ", ii);
+        for (int jj = 0; jj < bs->ht->evl; ++jj) {
+            printf("%d", bs->ht->ev[gbs->hm[ii][OFFSET]][jj]);
+        }
+        printf("\n");
+        printf("bs[%d] = ", ii);
+        for (int jj = 0; jj < bs->ht->evl; ++jj) {
+            printf("%d", bs->ht->ev[gbs->hm[ii][OFFSET]][jj]);
+        }
+        printf("\n");
     }
     md->ht = initialize_secondary_hash_table(bs->ht, md);
 
@@ -398,10 +410,10 @@ static int32_t initialize_f4(
     /* TODO: make this a command line argument */
     md->max_gb_degree = INT32_MAX;
 
+    printf("md->trace_level = %d\n", md->trace_level);
     /* link tracer into basis */
     if (md->trace_level == LEARN_TRACER) {
-        md->tr     = initialize_trace();
-        md->tr->ht = initialize_secondary_hash_table(bs->ht, md);
+        md->tr     = initialize_trace(bs, md);
     }
 
 
@@ -409,7 +421,10 @@ static int32_t initialize_f4(
        always check redundancy since input generators may be redundant
        even so they are homogeneous. */
     if (md->trace_level != APPLY_TRACER) {
-        done = update(bs, md);
+        md->np = md->ngens;
+        printf("done %d --> ", done);
+        done   = update(bs, md);
+        printf("%d\n", done);
     }
 
     /* TO BE REMOVED */

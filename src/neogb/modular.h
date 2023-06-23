@@ -25,7 +25,8 @@
 #include "data.h"
 
 trace_t *initialize_trace(
-        void
+        const bs_t * const bs,
+        const md_t * const md
         );
 
 

@@ -22,9 +22,14 @@ static inline void duplicate_linear_data(int nthreads, int nvars, int nlins,
   }
 }
 
-static inline void duplicate_tracer(int nthreads, trace_t **btrace){
+static inline void duplicate_tracer(
+        const int nthreads,
+        const bs_t * const bs,
+        const md_t * const md,
+        trace_t **btrace)
+{
   for(int i = 1; i < nthreads; i++){
-    btrace[i]  = initialize_trace();
+    btrace[i]  = initialize_trace(bs, md);
 
     /* size for trace data */
     btrace[i]->std  = btrace[0]->std;
@@ -93,6 +98,7 @@ static inline void duplicate_tracer(int nthreads, trace_t **btrace){
 }
 
 static inline void duplicate_data_mthread_trace(int nthreads,
+                                                bs_t *bs,
                                                 md_t *st,
                                                 int32_t *num_gb,
                                                 int32_t **leadmons_ori,
@@ -211,7 +217,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
     }
   }
 
-  duplicate_tracer(nthreads, btrace);
+  duplicate_tracer(nthreads, bs, st, btrace);
 
   duplicate_linear_data(nthreads, st->nvars, nlins,
                         blinvars, blineqs,
@@ -338,6 +344,7 @@ static inline void duplicate_data_mthread(int nthreads,
 }
 
 static inline void duplicate_data_mthread_gbtrace(int nthreads,
+                                                  bs_t *bs,
                                                   md_t *st,
                                                   int32_t *num_gb,
                                                   int32_t **leadmons_ori,
@@ -360,6 +367,6 @@ static inline void duplicate_data_mthread_gbtrace(int nthreads,
   }
 
 
-  duplicate_tracer(nthreads, btrace);
+  duplicate_tracer(nthreads, bs, st, btrace);
 
 }

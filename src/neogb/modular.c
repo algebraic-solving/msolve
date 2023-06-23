@@ -42,7 +42,8 @@ static int minimal_traced_lm_is_equal(
 }
 
 trace_t *initialize_trace(
-        void
+        const bs_t * const bs,
+        const md_t * const md
         )
 {
     trace_t *tr = (trace_t *)calloc(1, sizeof(trace_t));
@@ -57,6 +58,7 @@ trace_t *initialize_trace(
     tr->rsz = 8;
     tr->rld = 0;
     tr->rd  = calloc((unsigned long)tr->rsz, sizeof(len_t));
+    tr->ht  = initialize_secondary_hash_table(bs->ht, md);;
 
     return tr;
 }
@@ -1942,7 +1944,7 @@ int64_t f4_trace_julia(
     bs_t **bs = (bs_t **)calloc((unsigned long)st->nprimes, sizeof(bs_t *));
 
     /* initialize tracer */
-    trace_t *trace  = initialize_trace();
+    trace_t *trace  = initialize_trace(bs_qq, st);
 
     /* learning phase */
     bs[0] = f4_trace_learning_phase(trace, tht, bs_qq, bht, st, lp->p[0]);

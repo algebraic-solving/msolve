@@ -1806,6 +1806,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     if(gens->field_char){
       bs = bs_qq;
       int32_t err = 0;
+      printf("here\n");
       bs = core_gba(bs, st, &err, gens->field_char);
       if (err) {
         printf("Problem with F4, stopped computation.\n");
@@ -2406,7 +2407,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   *******************/
   bs_t *bs_qq = initialize_basis(st);
   /* initialize basis hash table, update hash table, symbolic hash table */
-  ht_t *bht = initialize_basis_hash_table(st);
+  ht_t *bht = bs_qq->ht;
   /* hash table to store the hashes of the multiples of
     * the basis elements stored in the trace */
   ht_t *tht = initialize_secondary_hash_table(bht, st);
@@ -2449,7 +2450,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* initialize tracers */
   trace_t **btrace = (trace_t **)calloc(st->nthrds,
                                        sizeof(trace_t *));
-  btrace[0]  = initialize_trace();
+  btrace[0]  = initialize_trace(bs_qq, st);
   /* initialization of other tracers is done through duplication */
 
   uint32_t prime = next_prime(1<<30);
@@ -2614,7 +2615,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 #endif
 
   /* duplicate data for multi-threaded multi-mod computation */
-  duplicate_data_mthread_trace(st->nthrds, st, num_gb,
+  duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
                                leadmons_ori, leadmons_current,
                                btrace,
                                bdata_bms, bdata_fglm,
@@ -4834,7 +4835,7 @@ restart:
             bs_t **bs = (bs_t **)calloc((unsigned long)st->nprimes, sizeof(bs_t *));
 
             /* initialize tracer */
-            trace_t *trace  = initialize_trace();
+            trace_t *trace  = initialize_trace(bs_qq, st);
 
             srand(time(0));
             uint32_t prime = next_prime(1<<30);
@@ -5017,7 +5018,7 @@ restart:
             bs_t **bs = (bs_t **)calloc((unsigned long)st->nprimes, sizeof(bs_t *));
 
             /* initialize tracer */
-            trace_t *trace  = initialize_trace();
+            trace_t *trace  = initialize_trace(bs_qq, st);
 
             srand(time(0));
             uint32_t prime = next_prime(1<<30);

@@ -211,7 +211,6 @@ static int32_t select_spairs_by_minimal_degree(
     exp_t *elcm, *eb;
     ht_t *bht   = bs->ht;
     exp_t *etmp = bht->ev[0];
-    ht_t *tht   = md->tr->ht;
     ps_t *psl   = md->ps;
     ht_t *sht   = md->ht;
 
@@ -222,6 +221,12 @@ static int32_t select_spairs_by_minimal_degree(
 
     spair_t *ps     = psl->p;
     const len_t evl = bht->evl;
+
+    /* check for tracing */
+    ht_t *tht = NULL;
+    if (md->trace_level == LEARN_TRACER) {
+        tht = md->tr->ht;
+    }
 
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_cmp, bht);
@@ -388,7 +393,9 @@ static int32_t select_spairs_by_minimal_degree(
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
-    md->tr->ht = tht;
+    if (md->trace_level == LEARN_TRACER) {
+        md->tr->ht = tht;
+    }
 
     md->num_rowsred +=  mat->nr - mat->nc;
     md->current_deg =   mdeg;
@@ -579,7 +586,12 @@ static void symbolic_preprocessing(
 
     const ht_t * const bht = bs->ht; 
     ht_t *sht = md->ht;
-    ht_t *tht = md->tr->ht;
+    ht_t *tht = NULL;
+    /* check for tracing */
+    if (md->trace_level == LEARN_TRACER) {
+        tht = md->tr->ht;
+    }
+
 
     /* note that we have already counted the different lcms, i.e.
      * ncols until this step. moreover, we have also already marked
@@ -628,7 +640,10 @@ static void symbolic_preprocessing(
         mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
     }
 
-    md->tr->ht = tht;
+    if (md->trace_level == LEARN_TRACER) {
+        md->tr->ht = tht;
+    }
+
 
     /* statistics */
     md->max_sht_size  = md->max_sht_size > sht->esz ?

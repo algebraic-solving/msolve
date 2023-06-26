@@ -297,8 +297,6 @@ static int32_t select_spairs_by_minimal_degree(
     mat->nc = mat->ncl = mat->ncr = 0;
     mat->nr = 0;
 
-    int ctr = 0;
-
     i = 0;
 
     while (i < nps) {
@@ -384,7 +382,6 @@ static int32_t select_spairs_by_minimal_degree(
             sht->hd[trows[ntr++][OFFSET]].idx = 2;
             mat->nr++;
         }
-        ctr++;
         i = j;
     }
     /* printf("%u pairs in degree %u\n", ctr, mdeg); */
@@ -551,6 +548,16 @@ start:
 
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
+        printf("reducer -> %2d -> ", lmps[i]);
+        for (int ii = 0; ii < bht->evl; ++ii) {
+            printf("%d ", bht->ev[b[OFFSET]][ii]);
+        }
+        printf("\n");
+        printf("rows[%d] = ", rr);
+        for (int ii = 0; ii < rows[rr][LENGTH]+OFFSET; ++ii) {
+            printf("%d ", rows[rr][ii]);
+        }
+        printf("\n");
         /* track trace information ? */
         if (tht != NULL) {
             rows[rr][BINDEX]  = lmps[i];

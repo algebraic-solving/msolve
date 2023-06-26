@@ -522,7 +522,7 @@ void import_input_data_nf_ff_32(
 void import_input_data_nf_ff_16(
         bs_t *tbr,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t start,
         const int32_t stop,
         const int32_t *lens,
@@ -1712,11 +1712,11 @@ static void write_pbm_file(
     const len_t nru   = mat->nru;
     const len_t nrl   = mat->nrl;
 
-    sprintf(fn, "%d-%d-%d-%d.pbm", st->current_rd, nru+nrl, ncols, st->current_deg);
+    snprintf(fn, 200, "%d-%d-%d-%d.pbm", st->current_rd, nru+nrl, ncols, st->current_deg);
     FILE *fh  = fopen(fn, "wb");
 
     /* magic header */
-    sprintf(buffer, "P4\n# matrix size(%u, %u)\n%u %u\n", nru+nrl, ncols, ncols, nru+nrl);
+    snprintf(buffer, 512, "P4\n# matrix size(%u, %u)\n%u %u\n", nru+nrl, ncols, ncols, nru+nrl);
 
     fwrite(buffer, sizeof(char), strlen(buffer), fh);
 

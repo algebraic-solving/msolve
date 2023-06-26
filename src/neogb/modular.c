@@ -151,7 +151,7 @@ void reduce_basis_no_hash_table_switching(
         printf("reduce basis       ");
         fflush(stdout);
     }
-    convert_hashes_to_columns(&hcm, mat, st, sht);
+    convert_hashes_to_columns(mat, st, sht);
     mat->nc = mat->ncl + mat->ncr;
     /* sort rows */
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
@@ -159,7 +159,7 @@ void reduce_basis_no_hash_table_switching(
     interreduce_matrix_rows(mat, bs, st, 1);
     /* remap rows to basis elements (keeping their position in bs) */
     convert_sparse_matrix_rows_to_basis_elements(
-        1, mat, bs, bht, sht, hcm, st);
+        1, mat, bs, bht, sht, st);
 
     bs->ld  = mat->np;
 
@@ -271,7 +271,7 @@ bs_t *f4_trace_application_phase(
             printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
             fflush(stdout);
         }
-      convert_hashes_to_columns(&hcm, mat, st, sht);
+      convert_hashes_to_columns(mat, st, sht);
       /* linear algebra, depending on choice, see set_function_pointers() */
       ret = application_linear_algebra(mat, bs, st);
       if (ret != 0) {
@@ -286,7 +286,7 @@ bs_t *f4_trace_application_phase(
               goto stop;
           }
           convert_sparse_matrix_rows_to_basis_elements(
-                  -1, mat, bs, bht, sht, hcm, st);
+                  -1, mat, bs, bht, sht, st);
           for (i = 0; i < mat->np; ++i) {
               if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
                   fprintf(stderr, "Wrong leading term for new element %u/%u.",
@@ -474,7 +474,7 @@ bs_t *f4sat_trace_application_test_phase(
         /* preprocess data for next reduction round */
         select_spairs_by_minimal_degree(mat, bs, st);
         symbolic_preprocessing(mat, bs, st);
-        convert_hashes_to_columns(&hcm, mat, st, sht);
+        convert_hashes_to_columns(mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* print pbm files of the matrices */
@@ -486,7 +486,7 @@ bs_t *f4sat_trace_application_test_phase(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    -1, mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, st);
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -560,7 +560,7 @@ bs_t *f4sat_trace_application_test_phase(
                     /* columns indices are mapped back to exponent hashes */
                     if (mat->np > 0) {
                         convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                -1, mat, bs, bht, hcmm, st);
+                                -1, mat, bs, bht, st);
                     }
                     st->nr_kernel_elts  +=  kernel->ld;
                     free_kernel_coefficients(kernel);
@@ -765,7 +765,7 @@ bs_t *f4sat_trace_application_phase(
             printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
             fflush(stdout);
         }
-        convert_hashes_to_columns(&hcm, mat, st, sht);
+        convert_hashes_to_columns(mat, st, sht);
         /* linear algebra, depending on choice, see set_function_pointers() */
         ret = application_linear_algebra(mat, bs, st);
         if (ret != 0) {
@@ -780,7 +780,7 @@ bs_t *f4sat_trace_application_phase(
                 goto stop;
             }
             convert_sparse_matrix_rows_to_basis_elements(
-                    -1, mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, st);
             for (i = 0; i < mat->np; ++i) {
                 if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
                     fprintf(stderr, "Wrong leading term for new element %u/%u.",
@@ -866,7 +866,7 @@ bs_t *f4sat_trace_application_phase(
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                            -1, mat, bs, bht, hcmm, st);
+                            -1, mat, bs, bht, st);
                     bs->ld  +=  mat->np;
                     update_lm(bs, bht, st);
                 }
@@ -1050,7 +1050,7 @@ bs_t *f4_trace_learning_phase(
       /* preprocess data for next reduction round */
       select_spairs_by_minimal_degree(mat, bs, st);
       symbolic_preprocessing(mat, bs, st);
-      convert_hashes_to_columns(&hcm, mat, st, sht);
+      convert_hashes_to_columns(mat, st, sht);
       sort_matrix_rows_decreasing(mat->rr, mat->nru);
       sort_matrix_rows_increasing(mat->tr, mat->nrl);
       /* linear algebra, depending on choice, see set_function_pointers() */
@@ -1058,7 +1058,7 @@ bs_t *f4_trace_learning_phase(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            -1, mat, bs, bht, sht, hcm, st);
+            -1, mat, bs, bht, sht, st);
       }
       clean_hash_table(sht);
       /* add lead monomials to trace, stores hashes in basis hash
@@ -1263,7 +1263,7 @@ end_sat_step:
         /* preprocess data for next reduction round */
         select_spairs_by_minimal_degree(mat, bs, st);
         symbolic_preprocessing(mat, bs, st);
-        convert_hashes_to_columns(&hcm, mat, st, sht);
+        convert_hashes_to_columns(mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
@@ -1271,7 +1271,7 @@ end_sat_step:
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    -1, mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, st);
             sat_test++;
         }
         clean_hash_table(sht);
@@ -1355,7 +1355,7 @@ end_sat_step:
                         /* columns indices are mapped back to exponent hashes */
                         if (mat->np > 0) {
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                    -1, mat, bs, bht, hcmm, st);
+                                    -1, mat, bs, bht, st);
                             /* add_minimal_lmh_to_trace(trace, bs); */
                             trace->ts[trace->lts].deg = ii;
                             trace->ts[trace->lts].f4rd = round;
@@ -1607,7 +1607,7 @@ bs_t *f4sat_trace_learning_phase_2(
         /* preprocess data for next reduction round */
         select_spairs_by_minimal_degree(mat, bs, st);
         symbolic_preprocessing(mat, bs, st);
-        convert_hashes_to_columns(&hcm, mat, st, sht);
+        convert_hashes_to_columns(mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
@@ -1615,7 +1615,7 @@ bs_t *f4sat_trace_learning_phase_2(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    -1, mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, st);
         }
         clean_hash_table(sht);
         /* add lead monomials to trace, stores hashes in basis hash
@@ -1684,7 +1684,7 @@ bs_t *f4sat_trace_learning_phase_2(
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                            -1, mat, bs, bht, hcmm, st);
+                            -1, mat, bs, bht, st);
                 }
                 /* track round in which kernel computation is not trivial */
                 if (trace->rld == trace->rsz) {
@@ -2040,7 +2040,7 @@ bs_t *modular_f4(
       /* preprocess data for next reduction round */
       select_spairs_by_minimal_degree(mat, bs, st);
       symbolic_preprocessing(mat, bs, st);
-      convert_hashes_to_columns(&hcm, mat, st, sht);
+      convert_hashes_to_columns(mat, st, sht);
       sort_matrix_rows_decreasing(mat->rr, mat->nru);
       sort_matrix_rows_increasing(mat->tr, mat->nrl);
       /* print pbm files of the matrices */
@@ -2052,7 +2052,7 @@ bs_t *modular_f4(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            -1, mat, bs, bht, sht, hcm, st);
+            -1, mat, bs, bht, sht, st);
       }
       clean_hash_table(sht);
       /* all rows in mat are now polynomials in the basis,

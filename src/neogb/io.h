@@ -126,7 +126,7 @@ void import_input_data_nf_ff_32(
 void import_input_data_nf_ff_16(
                                 bs_t *tbr,
                                 ht_t *ht,
-                                stat_t *st,
+                                md_t *st,
                                 const int32_t start,
                                 const int32_t stop,
                                 const int32_t *lens,

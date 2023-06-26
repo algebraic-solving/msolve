@@ -101,7 +101,7 @@ static int is_already_saturated(
 
     len_t i;
 
-    hi_t *hcm = *hcmp;
+    /* hi_t *hcm = *hcmp; */
     ht_t *bht = *bhtp;
     ht_t *sht = *shtp;
 
@@ -147,7 +147,7 @@ static int is_already_saturated(
         select_spairs_by_minimal_degree(mat, bs, st);
         /* select_all_spairs(mat, bs, ps, st, sht, bht, NULL); */
         symbolic_preprocessing(mat, bs, st);
-        convert_hashes_to_columns(&hcm, mat, st, sht);
+        convert_hashes_to_columns(mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
@@ -156,7 +156,7 @@ static int is_already_saturated(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    -1, mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, st);
         }
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
@@ -201,7 +201,7 @@ static int is_already_saturated(
     free(bs->red);
     bs->red   = red;
 
-    *hcmp = hcm;
+    /* *hcmp = hcm; */
     *bhtp = bht;
     *shtp = sht;
 
@@ -573,7 +573,7 @@ end_sat_step:
         /* preprocess data for next reduction round */
         select_spairs_by_minimal_degree(mat, bs, st);
         symbolic_preprocessing(mat, bs, st);
-        convert_hashes_to_columns(&hcm, mat, st, sht);
+        convert_hashes_to_columns(mat, st, sht);
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
@@ -581,7 +581,7 @@ end_sat_step:
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
-                    -1, mat, bs, bht, sht, hcm, st);
+                    -1, mat, bs, bht, sht, st);
             sat_test++;
         }
         clean_hash_table(sht);
@@ -672,7 +672,7 @@ end_sat_step:
                         /* columns indices are mapped back to exponent hashes */
                         if (mat->np > 0) {
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                    -1, mat, bs, bht, hcmm, st);
+                                    -1, mat, bs, bht, st);
                         }
 
                         st->nr_kernel_elts  +=  kernel->ld;

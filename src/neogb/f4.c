@@ -179,14 +179,14 @@ static void intermediate_reduce_basis(
         printf("reduce intermediate basis ");
         fflush(stdout);
     }
-    convert_hashes_to_columns(&hcm, mat, st, sht);
+    convert_hashes_to_columns(mat, st, sht);
     mat->nc = mat->ncl + mat->ncr;
     /* sort rows */
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
     /* do the linear algebra reduction, do NOT free basis data */
     interreduce_matrix_rows(mat, bs, st, 0);
     /* remap rows to basis elements (keeping their position in bs) */
-    convert_sparse_matrix_rows_to_basis_elements(mat, bs, bht, sht, hcm, st);
+    convert_sparse_matrix_rows_to_basis_elements(mat, bs, bht, sht, st);
 
     clear_matrix(mat);
     clean_hash_table(sht);
@@ -265,7 +265,6 @@ static void reduce_basis(
 
     ht_t *bht   = bs->ht;
     ht_t *sht   = md->ht;
-    hi_t *hcm   = md->hcm;
     exp_t *etmp = bht->ev[0];
     memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
@@ -295,14 +294,14 @@ static void reduce_basis(
         printf("reduce final basis ");
         fflush(stdout);
     }
-    convert_hashes_to_columns(&hcm, mat, md, sht);
+    convert_hashes_to_columns(mat, md, sht);
     mat->nc = mat->ncl + mat->ncr;
     /* sort rows */
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
     /* do the linear algebra reduction and free basis data afterwards */
     interreduce_matrix_rows(mat, bs, md, 1);
     /* remap rows to basis elements (keeping their position in bs) */
-    convert_sparse_matrix_rows_to_basis_elements_use_sht(1, mat, bs, sht, hcm, md);
+    convert_sparse_matrix_rows_to_basis_elements_use_sht(1, mat, bs, sht, md);
 
     /* bht becomes sht, so we do not have to convert the hash entries */
     bht    = sht;
@@ -336,8 +335,6 @@ start:
         bs->lm[k++] = bht->hd[bs->hm[bs->ld-1-i][OFFSET]].sdm;
     }
     bs->lml = k;
-
-    md->hcm = hcm;
 
     /* timings */
     ct1 = cputime();
@@ -375,10 +372,10 @@ static int32_t initialize_f4(
     if (gmd->fc != fc) {
         reset_function_pointers(fc, md->laopt);
         bs = copy_basis_mod_p(gbs, md);
-        normalize_initial_basis(bs, fc);
     } else {
         bs = gbs;
     }
+    normalize_initial_basis(bs, fc);
     for (int ii = 0; ii < gbs->ld; ++ii) {
         printf("gbs[%d] = ", ii);
         for (int jj = 0; jj < bs->ht->evl; ++jj) {
@@ -445,14 +442,16 @@ static int32_t compute_new_elements(
 {
     ht_t *ht  = bs->ht;
     ht_t *sht = md->ht;
-    hi_t *hcm = md->hcm;
 
-    convert_hashes_to_columns(&hcm, mat, md, sht);
+    convert_hashes_to_columns(mat, md, sht);
+    sort_matrix_rows_decreasing(mat->rr, mat->nru);
+    printf("hcm external %p\n", md->hcm);
     linear_algebra(mat, bs, md);
+    printf("md->np %d\n", md->np);
     /* columns indices are mapped back to exponent hashes */
     if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            -1, mat, bs, ht, sht, hcm, md);
+            -1, mat, bs, ht, sht, md);
     }
     clean_hash_table(sht);
     /* all rows in mat are now polynomials in the basis,
@@ -472,6 +471,7 @@ static int32_t compute_new_elements(
             return 1;
         }
     }
+    printf("2 md->np %d\n", md->np);
 
     return 0;
 }
@@ -487,10 +487,20 @@ static void process_redundant_elements(
 
     if (md->trace_level != APPLY_TRACER) {
         for (i = 0; i < bs->lml; ++i) {
+            hm_t nch = bs->hm[bs->lmps[i]][OFFSET];
+            deg_t dd = bs->hm[bs->lmps[i]][DEG] - ht->hd[nch].deg;
+            for (j = 0; j < i; ++j) {
+                if (bs->red[bs->lmps[j]] == 0
+                        && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
+                        ) {
+                    bs->red[bs->lmps[i]]  =   1;
+                    break;
+                }
+            }
             for (j = i+1; j < bs->lml; ++j) {
                 if (bs->red[bs->lmps[j]] == 0
-                        && check_monomial_division(bs->hm[bs->lmps[i]][OFFSET],
-                            bs->hm[bs->lmps[j]][OFFSET], ht)) {
+                        && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
+                        ) {
                     bs->red[bs->lmps[i]]  =   1;
                     break;
                 }
@@ -621,6 +631,19 @@ bs_t *core_f4(
 
     done = initialize_f4(&bs, &md, &mat, gmd, gbs, fc);
 
+    printf("initial generators:\n");
+    for (int ii = 0; ii < bs->ld; ++ii) {
+        printf("[%d] -> ", ii);
+        for (int j = OFFSET; j < bs->hm[ii][LENGTH]+OFFSET; ++j) {
+            printf("%d ", bs->cf_32[bs->hm[ii][COEFFS]][j-OFFSET]);
+            for (int k = 0; k < bs->ht->evl; ++k) {
+                printf("%d",bs->ht->ev[bs->hm[ii][j]][k]);
+            }
+            printf(" ");
+        }
+        printf("\n");
+    }
+
     /* let's start the f4 rounds, we are done when no more spairs
        are left in the pairset or if we found a constant in the basis. */
     print_round_information_header(stdout, md);
@@ -636,6 +659,7 @@ bs_t *core_f4(
         if (!done) {
             done = compute_new_elements(mat, bs, md);
         }
+    printf("3 md->np %d\n", md->np);
         if (!done) {
             done = update(bs, md);
         }

@@ -298,7 +298,6 @@ static void sba_convert_hashes_to_columns(
 
 
 static void convert_hashes_to_columns(
-        hi_t **hcmp,
         mat_t *mat,
         md_t *st,
         ht_t *sht
@@ -309,7 +308,7 @@ static void convert_hashes_to_columns(
     hm_t *row;
     int64_t nterms = 0;
 
-    hi_t *hcm = *hcmp;
+    hi_t *hcm = st->hcm;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -337,14 +336,14 @@ static void convert_hashes_to_columns(
     }
     sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
 
-    /* printf("hcm\n");
-     * for (int ii=0; ii<j; ++ii) {
-     *     printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, sht->ev[hcm[ii]][DEG]+sht->ev[hcm[ii]][sht->ebl]);
-     *     for (int jj = 0; jj < sht->evl; ++jj) {
-     *         printf("%d ", sht->ev[hcm[ii]][jj]);
-     *     }
-     *     printf("\n");
-     * } */
+    printf("hcm\n");
+    for (int ii=0; ii<j; ++ii) {
+        printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, sht->ev[hcm[ii]][DEG]+sht->ev[hcm[ii]][sht->ebl]);
+        for (int jj = 0; jj < sht->evl; ++jj) {
+            printf("%d ", sht->ev[hcm[ii]][jj]);
+        }
+        printf("\n");
+    }
 
     mat->ncl  = k;
     mat->ncr  = (len_t)esld - 1 - mat->ncl;
@@ -355,6 +354,7 @@ static void convert_hashes_to_columns(
     const hi_t ld = (hi_t)(esld - 1);
     for (k = 0; k < ld; ++k) {
         hds[hcm[k]].idx  = (hi_t)k;
+        printf("hds[hcm[%d]].idx = %d\n", k, hds[hcm[k]].idx);
     }
 
     /* map column positions to matrix rows */
@@ -421,7 +421,8 @@ static void convert_hashes_to_columns(
         printf(" %7d x %-7d %8.2f%%", mat->nr, mat->nc, density);
         fflush(stdout);
     }
-    *hcmp = hcm;
+    st->hcm = hcm;
+    printf("hcm internal %p\m", hcm);
 }
 
 static void sba_convert_columns_to_hashes(
@@ -593,7 +594,6 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         bs_t *bs,
         ht_t *bht,
         const ht_t * const sht,
-        const hi_t * const hcm,
         md_t *st
         )
 {
@@ -602,6 +602,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
 
     const len_t bl  = bs->ld;
     const len_t np  = mat->np;
+    const hi_t * const hcm = st->hcm;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -655,7 +656,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         if (deg == 0) {
             bs->constant  = 1;
         }
-#if 0
+#if 1
         if (st->ff_bits == 32) {
             printf("new element (%u): length %u | degree %d | ", bl+k, bs->hm[bl+k][LENGTH], bs->hm[bl+k][DEG]);
             int kk = 0;
@@ -697,7 +698,6 @@ static void convert_sparse_matrix_rows_to_basis_elements(
 #endif
     }
 
-    st->np = mat->np;
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
@@ -710,7 +710,6 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
         mat_t *mat,
         bs_t *bs,
         const ht_t * const sht,
-        const hi_t * const hcm,
         md_t *st
         )
 {
@@ -720,6 +719,7 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
 
     const len_t bl  = bs->ld;
     const len_t np  = mat->np;
+    const hi_t * const hcm = st->hcm;
 
     /* timings */
     double ct0, ct1, rt0, rt1;

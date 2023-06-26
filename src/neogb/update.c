@@ -299,6 +299,7 @@ static void update_basis_f4(
 
     /* compute number of new pairs we need to handle at most */
     len_t np  = bs->ld * npivs;
+    printf("npivs %d | md->np %d\n", npivs, st->np);
     for (i = 1; i < npivs; ++i) {
         np  = np + i;
     }

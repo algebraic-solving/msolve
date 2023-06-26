@@ -31,7 +31,7 @@ void get_normal_form_matrix(
         mat_t **matp
         )
 {
-    hi_t *hcm   = *hcmp;
+    /* hi_t *hcm   = *hcmp; */
     ht_t *sht   = *shtp;
     mat_t*mat   = *matp;
 
@@ -43,10 +43,10 @@ void get_normal_form_matrix(
      * here we have to set it by hand; same holds for mat->nrl */
     mat->nrl  = mat->nr;
     mat->nc   = sht->eld-1;
-    convert_hashes_to_columns(&hcm, mat, st, sht);
+    convert_hashes_to_columns(mat, st, sht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
-    *hcmp = hcm;
+    /* *hcmp = hcm; */
     *shtp = sht;
     *matp = mat;
 }
@@ -78,7 +78,7 @@ bs_t *core_nf(
     if (md->info_level > 1) {
         printf("nf computation data");
     }
-    convert_hashes_to_columns(&(md->hcm), mat, md, md->ht);
+    convert_hashes_to_columns(mat, md, md->ht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
     /* linear algebra, depending on choice, see set_function_pointers() */

@@ -854,6 +854,11 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
             k++;
             continue;
         }
+        printf("red via [%d]\n", i); 
+        for (int ii = OFFSET; ii < pivs[i][LENGTH]+OFFSET; ++ii) {
+            printf("%d ", pivs[i][ii]);
+        }
+        printf("\n");
 
         /* found reducer row, get multiplier */
         const int64_t mul = (int64_t)dr[i];
@@ -2322,6 +2327,11 @@ static void exact_sparse_reduced_echelon_form_ff_32(
             drl[ds[j+2]]  = (int64_t)cfs[j+2];
             drl[ds[j+3]]  = (int64_t)cfs[j+3];
         }
+        printf("drl[%d] = ", i);
+        for (j = 0; j < mat->nc; ++j) {
+            printf("%lld ", drl[j]);
+        }
+        printf("\n");
         cfs = NULL;
         do {
             sc  = npiv[OFFSET];
@@ -2338,7 +2348,12 @@ static void exact_sparse_reduced_echelon_form_ff_32(
              * threads might directly use the new pivot once it is synced. */
             if (mat->cf_32[npiv[COEFFS]][0] != 1) {
                 normalize_sparse_matrix_row_ff_32(
-                        mat->cf_32[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
+                    mat->cf_32[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
+                printf("reduced to ");
+                for (j = 0; j < npiv[LENGTH]; ++j) {
+                    printf("%u ", mat->cf_32[npiv[COEFFS]][j]);
+                }
+                printf("\n");
             }
             k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
             cfs = mat->cf_32[npiv[COEFFS]];
@@ -2392,7 +2407,7 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 static void exact_sparse_reduced_echelon_form_sat_ff_32(

@@ -24,7 +24,7 @@
 
 #include "data.h"
 
-md_t *initialize_meta_data(
+md_t *allocate_meta_data(
                               void
     );
 

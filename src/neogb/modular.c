@@ -1865,7 +1865,7 @@ int64_t f4_trace_julia(
     primes_t *lp  = (primes_t *)calloc(1, sizeof(primes_t));
 
     /* initialize stuff */
-    md_t *st  = initialize_meta_data();
+    md_t *st  = allocate_meta_data();
 
     int *invalid_gens       =   NULL;
     int32_t use_signatures  =   0;

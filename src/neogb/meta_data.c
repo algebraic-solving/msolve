@@ -47,7 +47,7 @@ static md_t *copy_meta_data(
     return md;
 }
 
-md_t *initialize_meta_data(
+md_t *allocate_meta_data(
     void
     )
 {

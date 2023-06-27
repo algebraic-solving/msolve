@@ -1137,7 +1137,7 @@ int msolve_gbtrace_qq(
   const uint32_t prime_start = pow(2, 30);
 
   /* initialize stuff */
-  md_t *st  = initialize_meta_data();
+  md_t *st  = allocate_meta_data();
 
   int *invalid_gens   =   NULL;
   int res = validate_input_data(&invalid_gens, cfs, gens->lens, &field_char, &mon_order,

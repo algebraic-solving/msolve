@@ -548,12 +548,12 @@ We obtain in \verb+out.ms+ the following
 input polynomial system as an equivalent system which reveals properties of the
 solution set (dimension, degree) and to compute ``modulo'' the input equations.
 
-\msolve mainly provides Gr\"obner bases computations for the so-called
-\emph{grevlex} ordering (see e.g.~\cite{CLO}) in the prime field
-case. For instance,
-assume the file \verb+in.ms+ contains the following:
-\msolveinput{examples/grevlex_char1073741827.ms}
-Now, typing the following command:
+\msolve provides Gr\"obner bases computations for the so-called \emph{grevlex}
+ordering (see e.g.~\cite{CLO}) when the coefficients either lie in the field of
+rational numbers or when they lie in the prime field case. For instance, assume
+the file \verb+in.ms+ contains the following:
+\msolveinput{examples/grevlex_char1073741827.ms} Now, typing the following
+command:
 \begin{tcolorbox}
   \begin{verbatim}
     ./msolve -g 2 -f in.ms -o out.ms 
@@ -639,7 +639,10 @@ The output is
   \end{lstlisting}
 \end{tcolorbox}
 where we see that the first $6$ polynomials are only in $w,x,y,z$,
-which corresponds to the elimination of the variable $t$.
+which corresponds to the elimination of the variable $t$. When the input
+coefficients lie in the field of rational numbers (hence, characteristic $0$),
+the returned Gröbner basis is the one of the {\em elimination ideal}, i.e. they
+have partial degree $0$ in the variables to eliminate.
 
 More generally, using \verb+-e k+ will eliminate the $k$ first
 variables. Thus

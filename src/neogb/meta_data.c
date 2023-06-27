@@ -145,11 +145,29 @@ void print_round_information_footer(
     }
 }
 
-void print_final_statistics(
-        FILE *file, 
-        const md_t * const st
+static void get_final_statistics(
+        md_t *md,
+        const bs_t * const bs
         )
 {
+    len_t i = 0;
+    int64_t nterms = 0;
+    md->size_basis = bs->lml;
+    for (i = 0; i < bs->lml; ++i) {
+        nterms += bs->hm[bs->lmps[i]][LENGTH];
+    }
+    md->nterms_basis = nterms;
+
+}
+
+void get_and_print_final_statistics(
+        FILE *file, 
+        md_t *st,
+        const bs_t * const bs
+        )
+{
+    get_final_statistics(st, bs);
+
     if (st->info_level > 0) {
         fprintf(file, "\n---------------- TIMINGS ---------------\n");
         fprintf(file, "overall(elapsed) %11.2f sec\n", st->f4_rtime);
@@ -193,11 +211,8 @@ void print_final_statistics(
         fprintf(file, "#pairs reduced     %16lu\n", (unsigned long)st->num_pairsred);
         fprintf(file, "#GM criterion      %16lu\n", (unsigned long)st->num_gb_crit);
         fprintf(file, "#redundant elements      %10lu\n", (unsigned long)st->num_redundant);
-        fprintf(file, "#reset basis hash table    %8lu\n", (unsigned long)st->num_rht);
         fprintf(file, "#rows reduced      %16lu\n", (unsigned long)st->num_rowsred);
         fprintf(file, "#zero reductions   %16lu\n", (unsigned long)st->num_zerored);
-        fprintf(file, "max. update hash table size    2^%d\n",
-                (uint32_t)(ceil(log((double)st->max_uht_size)/log(2))));
         fprintf(file, "max. symbolic hash table size  2^%d\n",
                 (int32_t)(ceil(log((double)st->max_sht_size)/log(2))));
         fprintf(file, "max. basis hash table size     2^%d\n",

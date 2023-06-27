@@ -734,7 +734,7 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    final_remove_redundant_elements(bs, bht);
+    final_remove_redundant_elements(bs, st, bht);
 
     /* reduce final basis? */
     if (st->reduce_gb == 1) {

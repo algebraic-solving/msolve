@@ -24,6 +24,7 @@
 
 void static final_remove_redundant_elements(
         bs_t *bs,
+        md_t *md,
         const ht_t * const ht
         )
 {
@@ -35,6 +36,7 @@ void static final_remove_redundant_elements(
                     && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
                     ) {
                 bs->red[bs->lmps[i]]  =   1;
+                md->num_redundant++;
                 break;
             }
         }
@@ -43,6 +45,7 @@ void static final_remove_redundant_elements(
                     && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
                     ) {
                 bs->red[bs->lmps[i]]  =   1;
+                md->num_redundant++;
                 break;
             }
         }
@@ -494,6 +497,7 @@ static void process_redundant_elements(
                         && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
                         ) {
                     bs->red[bs->lmps[i]]  =   1;
+                    md->num_redundant++;
                     break;
                 }
             }
@@ -502,6 +506,7 @@ static void process_redundant_elements(
                         && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
                         ) {
                     bs->red[bs->lmps[i]]  =   1;
+                    md->num_redundant++;
                     break;
                 }
             }
@@ -677,7 +682,7 @@ bs_t *core_f4(
     md->f4_rtime = realtime() - rt;
     md->f4_ctime = cputime() - ct;
     
-    print_final_statistics(stdout, md);
+    get_and_print_final_statistics(stdout, md, bs);
    
     finalize_f4(gmd, &md, &mat);
 
@@ -789,9 +794,7 @@ int64_t f4_julia(
     md->f4_ctime = ct1 - ct0;
     md->f4_rtime = rt1 - rt0;
 
-    if (md->info_level > 1) {
-      print_final_statistics(stderr, md);
-    }
+    get_and_print_final_statistics(stderr, md, bs);
 
     /* free and clean up */
     free_shared_hash_data(bht);

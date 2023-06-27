@@ -359,9 +359,7 @@ bs_t *f4_trace_application_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    if (st->info_level > 0) {
-      print_final_statistics(stderr, st);
-    }
+    get_and_print_final_statistics(stderr, st, bs);
 
 stop:
     /* free and clean up */
@@ -618,7 +616,7 @@ bs_t *f4sat_trace_application_test_phase(
                 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    final_remove_redundant_elements(bs, bht);
+    final_remove_redundant_elements(bs, st, bht);
 
     /* apply non-redundant basis data from trace to basis
      * before interreduction */
@@ -651,9 +649,7 @@ bs_t *f4sat_trace_application_test_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    if (st->info_level > 0) {
-        print_final_statistics(stderr, st);
-    }
+    get_and_print_final_statistics(stderr, st, bs);
 
     /* free and clean up */
     free(hcm);
@@ -948,9 +944,7 @@ bs_t *f4sat_trace_application_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    if (st->info_level > 0) {
-        print_final_statistics(stderr, st);
-    }
+    get_and_print_final_statistics(stderr, st, bs);
 
 stop:
     /* free and clean up */
@@ -1089,7 +1083,7 @@ bs_t *f4_trace_learning_phase(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    final_remove_redundant_elements(bs, bht);
+    final_remove_redundant_elements(bs, st, bht);
 
     /* store information in trace */
     trace->lml  = bs->lml;
@@ -1133,11 +1127,7 @@ bs_t *f4_trace_learning_phase(
     st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
-    if (st->info_level > 0) {
-      fflush(stdout);
-      print_final_statistics(stderr, st);
-      fflush(stderr);
-    }
+    get_and_print_final_statistics(stderr, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -1430,7 +1420,7 @@ end_sat_step:
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    final_remove_redundant_elements(bs, bht);
+    final_remove_redundant_elements(bs, st, bht);
 
     /* store leading ideal hashes in trace */
     trace->lml  = bs->lml;
@@ -1465,11 +1455,7 @@ end_sat_step:
     st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
-    if (st->info_level > 0) {
-      fflush(stdout);
-      print_final_statistics(stderr, st);
-      fflush(stderr);
-    }
+    get_and_print_final_statistics(stderr, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -1754,7 +1740,7 @@ bs_t *f4sat_trace_learning_phase_2(
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
-    final_remove_redundant_elements(bs, bht);
+    final_remove_redundant_elements(bs, st, bht);
 
     /* store information in trace */
     trace->lml  = bs->lml;
@@ -1792,11 +1778,7 @@ bs_t *f4sat_trace_learning_phase_2(
     st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
-    if (st->info_level > 0) {
-      fflush(stdout);
-      print_final_statistics(stderr, st);
-      fflush(stderr);
-    }
+    get_and_print_final_statistics(stderr, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -2073,7 +2055,7 @@ bs_t *modular_f4(
     }
 
     /* remove possible redudant elements */
-    final_remove_redundant_elements(bs, bht);
+    final_remove_redundant_elements(bs, st, bht);
 
 #if 0
     /* eliminate variables if accessible */
@@ -2108,9 +2090,7 @@ bs_t *modular_f4(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    if (st->info_level > 0) {
-      print_final_statistics(stderr, st);
-    }
+    get_and_print_final_statistics(stderr, st, bs);
 
     /* free and clean up */
     free(hcm);

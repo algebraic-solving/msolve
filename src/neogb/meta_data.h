@@ -33,8 +33,9 @@ void print_initial_statistics(
                               const md_t *md
     );
 
-void print_final_statistics(
+void get_and_print_final_statistics(
                             FILE *file, 
-                            const md_t * const md
+                            md_t *md,
+                            const bs_t * const bs
         );
 #endif

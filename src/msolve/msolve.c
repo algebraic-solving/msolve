@@ -4067,9 +4067,7 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            if (st->info_level > 1) {
-                print_final_statistics(stderr, st);
-            }
+            get_and_print_final_statistics(stderr, st, bs);
 
             if(nb==0){
                 fprintf(stderr, "Something went wrong during the computation\n");
@@ -4164,9 +4162,7 @@ restart:
                 st->f4_ctime = ct1 - ct0;
                 st->f4_rtime = rt1 - rt0;
 
-                if (st->info_level > 1) {
-                    print_final_statistics(stderr, st);
-                }
+                get_and_print_final_statistics(stderr, st, bs);
 
                 if(nb==0){
                     fprintf(stderr, "Something went wrong during the computation\n");
@@ -5067,9 +5063,8 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            if (st->info_level > 1) {
-                print_final_statistics(stderr, st);
-            }
+            get_and_print_final_statistics(stderr, st, bs_qq);
+
             if(info_level){
                 fprintf(stderr, "\nStarts trace based multi-modular computations\n");
             }
@@ -5097,9 +5092,8 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            if (st->info_level > 1) {
-                print_final_statistics(stderr, st);
-            }
+            get_and_print_final_statistics(stderr, st, bs_qq);
+
             if(info_level){
                 fprintf(stderr, "\nStarts trace based multi-modular computations\n");
             }

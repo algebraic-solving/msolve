@@ -2416,9 +2416,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   free(invalid_gens);
   invalid_gens  =   NULL;
 
-  if (st->info_level > 0) {
-    print_initial_statistics(stderr, st);
-  }
+  print_initial_statistics(stderr, st);
 
   /* for faster divisibility checks, needs to be done after we have
     * read some input data for applying heuristics */
@@ -4810,9 +4808,7 @@ restart:
             import_input_data(bs_qq, bht, st, gens->lens, gens->exps,
                     (void *)gens->mpz_cfs, invalid_gens);
 
-            if (st->info_level > 0) {
-                print_initial_statistics(stderr, st);
-            }
+            print_initial_statistics(stderr, st);
 
             /* for faster divisibility checks, needs to be done after we have
              * read some input data for applying heuristics */
@@ -4993,9 +4989,7 @@ restart:
             free(invalid_gens);
             invalid_gens    =   NULL;
 
-            if (st->info_level > 0) {
-                print_initial_statistics(stderr, st);
-            }
+            print_initial_statistics(stderr, st);
 
             /* for faster divisibility checks, needs to be done after we have
              * read some input data for applying heuristics */

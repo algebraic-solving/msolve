@@ -1172,9 +1172,7 @@ int msolve_gbtrace_qq(
   free(invalid_gens);
   invalid_gens  =   NULL;
 
-  if (st->info_level > 0) {
-    print_initial_statistics(stderr, st);
-  }
+  print_initial_statistics(stderr, st);
 
   /* for faster divisibility checks, needs to be done after we have
     * read some input data for applying heuristics */

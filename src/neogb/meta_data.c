@@ -61,44 +61,45 @@ void print_initial_statistics(
     const md_t *st
     )
 {
-
-    fprintf(file, "\n--------------- INPUT DATA ---------------\n");
-    fprintf(file, "#variables             %11d\n", st->nvars);
-    fprintf(file, "#equations             %11d\n", st->ngens);
-    fprintf(file, "#invalid equations     %11d\n", st->ngens_invalid);
-    fprintf(file, "field characteristic   %11u\n", st->fc);
-    fprintf(file, "homogeneous input?     %11d\n", st->homogeneous);
-    fprintf(file, "signature-based computation %6d\n", st->use_signatures);
-    if (st->mo == 0 && st->nev == 0) {
-        fprintf(file, "monomial order                 DRL\n");
+    if (st->info_level > 0) {
+        fprintf(file, "\n--------------- INPUT DATA ---------------\n");
+        fprintf(file, "#variables             %11d\n", st->nvars);
+        fprintf(file, "#equations             %11d\n", st->ngens);
+        fprintf(file, "#invalid equations     %11d\n", st->ngens_invalid);
+        fprintf(file, "field characteristic   %11u\n", st->fc);
+        fprintf(file, "homogeneous input?     %11d\n", st->homogeneous);
+        fprintf(file, "signature-based computation %6d\n", st->use_signatures);
+        if (st->mo == 0 && st->nev == 0) {
+            fprintf(file, "monomial order                 DRL\n");
+        }
+        if (st->mo == 0 && st->nev > 0) {
+            fprintf(file, "monomial order             ELIM(%d)\n", st->nev);
+        }
+        if (st->mo == 1 && st->nev == 0) {
+            fprintf(file, "monomial order                 LEX\n");
+        }
+        if ((st->mo != 0) && (st->mo != 1)) {
+            fprintf(file, "monomial order           DONT KNOW\n");
+        }
+        if (st->reset_ht == 2147483647) {
+            fprintf(file, "basis hash table resetting     OFF\n");
+        } else {
+            fprintf(file, "basis hash table resetting  %6d\n", st->reset_ht);
+        }
+        fprintf(file, "linear algebra option  %11d\n", st->laopt);
+        fprintf(file, "initial hash table size %11lu (2^%d)\n",
+                (unsigned long)pow(2,st->init_hts), st->init_hts);
+        if (st->mnsel == 2147483647) {
+            fprintf(file, "max pair selection             ALL\n");
+        } else {
+            fprintf(file, "max pair selection     %11d\n", st->mnsel);
+        }
+        fprintf(file, "reduce gb              %11d\n", st->reduce_gb);
+        fprintf(file, "#threads               %11d\n", st->nthrds);
+        fprintf(file, "info level             %11d\n", st->info_level);
+        fprintf(file, "generate pbm files     %11d\n", st->gen_pbm_file);
+        fprintf(file, "------------------------------------------\n");
     }
-    if (st->mo == 0 && st->nev > 0) {
-        fprintf(file, "monomial order             ELIM(%d)\n", st->nev);
-    }
-    if (st->mo == 1 && st->nev == 0) {
-        fprintf(file, "monomial order                 LEX\n");
-    }
-    if ((st->mo != 0) && (st->mo != 1)) {
-        fprintf(file, "monomial order           DONT KNOW\n");
-    }
-    if (st->reset_ht == 2147483647) {
-        fprintf(file, "basis hash table resetting     OFF\n");
-    } else {
-        fprintf(file, "basis hash table resetting  %6d\n", st->reset_ht);
-    }
-    fprintf(file, "linear algebra option  %11d\n", st->laopt);
-    fprintf(file, "initial hash table size %11lu (2^%d)\n",
-            (unsigned long)pow(2,st->init_hts), st->init_hts);
-    if (st->mnsel == 2147483647) {
-        fprintf(file, "max pair selection             ALL\n");
-    } else {
-        fprintf(file, "max pair selection     %11d\n", st->mnsel);
-    }
-    fprintf(file, "reduce gb              %11d\n", st->reduce_gb);
-    fprintf(file, "#threads               %11d\n", st->nthrds);
-    fprintf(file, "info level             %11d\n", st->info_level);
-    fprintf(file, "generate pbm files     %11d\n", st->gen_pbm_file);
-    fprintf(file, "------------------------------------------\n");
 }
 
 void print_round_information_header(

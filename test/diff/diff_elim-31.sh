@@ -3,7 +3,11 @@
 file=elim-31
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res -e 1 -g 2
+<<<<<<< HEAD
 if [ $? -gt 0 ]; then
+=======
+if [ ! $? ]; then
+>>>>>>> 65e0890 (files for make check with diff)
     exit 1
 fi
 

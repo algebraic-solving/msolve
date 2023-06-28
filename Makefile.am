@@ -11,6 +11,7 @@ check_PROGRAMS		= neogb_io \
 			  fglm_build_matrixn_radical_shape-31 \
 			  fglm_build_matrixn_nonradical_shape-31 \
 			  fglm_build_matrixn_nonradical_radicalshape-31
+
 checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_eco11-31.sh \
 			  test/diff/diff_elim-31.sh \
@@ -28,7 +29,6 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_radical_shape-qq.sh \
 			  test/diff/diff_reals_dim0.sh \
 			  test/diff/diff_xy-qq.sh 
-
 
 # dist_check_DATA         = test/input_files
 neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c

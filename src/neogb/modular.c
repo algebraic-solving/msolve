@@ -589,6 +589,16 @@ bs_t *f4sat_trace_application_test_phase(
                         sat->hm[i][j] = insert_in_hash_table(
                                 sht->ev[sat->hm[i][j]], bht);
                     }
+                    deg_t deg = bht->hd[sat->hm[i][OFFSET]].deg;
+                    if (st->nev > 0) {
+                        const len_t len = sat->hm[i][LENGTH]+OFFSET;
+                        for (j = OFFSET+1; j < len; ++j) {
+                            if (deg < bht->hd[sat->hm[i][j]].deg) {
+                                deg = bht->hd[sat->hm[i][j]].deg;
+                            }
+                        }
+                    }
+                    sat->hm[i][DEG] = deg;
                 }
             }
             clean_hash_table(sht);
@@ -878,6 +888,16 @@ bs_t *f4sat_trace_application_phase(
                         sat->hm[i][j] = insert_in_hash_table(
                                 sht->ev[sat->hm[i][j]], bht);
                     }
+                    deg_t deg = bht->hd[sat->hm[i][OFFSET]].deg;
+                    if (st->nev > 0) {
+                        const len_t len = sat->hm[i][LENGTH]+OFFSET;
+                        for (j = OFFSET+1; j < len; ++j) {
+                            if (deg < bht->hd[sat->hm[i][j]].deg) {
+                                deg = bht->hd[sat->hm[i][j]].deg;
+                            }
+                        }
+                    }
+                    sat->hm[i][DEG] = deg;
                 }
             }
             clean_hash_table(sht);
@@ -1372,17 +1392,17 @@ end_sat_step:
                             sat->hm[i][j] = insert_in_hash_table(
                                     sht->ev[sat->hm[i][j]], bht);
                         }
-                    }
-                    deg_t deg = bht->hd[sat->hm[i][OFFSET]].deg;
-                    if (st->nev > 0) {
-                        const len_t len = sat->hm[i][LENGTH]+OFFSET;
-                        for (j = OFFSET+1; j < len; ++j) {
-                            if (deg < bht->hd[sat->hm[i][j]].deg) {
-                                deg = bht->hd[sat->hm[i][j]].deg;
+                        deg_t deg = bht->hd[sat->hm[i][OFFSET]].deg;
+                        if (st->nev > 0) {
+                            const len_t len = sat->hm[i][LENGTH]+OFFSET;
+                            for (j = OFFSET+1; j < len; ++j) {
+                                if (deg < bht->hd[sat->hm[i][j]].deg) {
+                                    deg = bht->hd[sat->hm[i][j]].deg;
+                                }
                             }
                         }
+                        sat->hm[i][DEG] = deg;
                     }
-                    sat->hm[i][DEG] = deg;
 
                 }
                 clean_hash_table(sht);
@@ -1703,6 +1723,16 @@ bs_t *f4sat_trace_learning_phase_2(
                         sat->hm[i][j] = insert_in_hash_table(
                                 sht->ev[sat->hm[i][j]], bht);
                     }
+                    deg_t deg = bht->hd[sat->hm[i][OFFSET]].deg;
+                    if (st->nev > 0) {
+                        const len_t len = sat->hm[i][LENGTH]+OFFSET;
+                        for (j = OFFSET+1; j < len; ++j) {
+                            if (deg < bht->hd[sat->hm[i][j]].deg) {
+                                deg = bht->hd[sat->hm[i][j]].deg;
+                            }
+                        }
+                    }
+                    sat->hm[i][DEG] = deg;
                 }
             }
             clean_hash_table(sht);

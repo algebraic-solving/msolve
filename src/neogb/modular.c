@@ -798,7 +798,7 @@ bs_t *f4sat_trace_application_phase(
             printf("%13.2f sec\n", rrt1-rrt0);
         }
         /* saturation step starts here */
-        if (trace->rd[ctr]  ==  round) {
+        while (ctr <= trace->rld && trace->rd[ctr]  ==  round) {
             ctr++;
             sat_deg = trace->ts[ts_ctr].deg;
             /* check for new elements to be tested for adding saturation

@@ -735,8 +735,8 @@ bs_t *f4sat_trace_application_phase(
     update_lm(bs, bht, st);
 
     if(st->info_level>1){
-        printf("Application phase with prime p = %d, overall there are %u rounds\n",
-                fc, trace->ltd);
+        printf("Application phase with prime p = %d\n%u f4 rounds and %u saturation rounds\n",
+                fc, trace->ltd, trace->rld);
     }
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
@@ -817,7 +817,7 @@ bs_t *f4sat_trace_application_phase(
             if (mat->nru > 0) {
                 if (st->info_level > 1) {
                     /* printf("kernel computation "); */
-                    printf("%5u kernel", sat_deg);
+                    printf("%5u kernel", ctr);
                 }
                 /* int ctr = 0;
                  * for (int ii = 1; ii < sat->ld; ++ii) {

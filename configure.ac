@@ -81,9 +81,11 @@ AC_CONFIG_LINKS([
  test/diff/diff_eco11-31.sh:test/diff/diff_eco11-31.sh
  input_files/elim-31.ms:input_files/elim-31.ms
  output_files/elim-31.res:output_files/elim-31.res
+ output_files/elim-31.e2.res:output_files/elim-31.e2.res
  test/diff/diff_elim-31.sh:test/diff/diff_elim-31.sh
  input_files/elim-qq.ms:input_files/elim-qq.ms
  output_files/elim-qq.res:output_files/elim-qq.res
+ output_files/elim-qq.e2.res:output_files/elim-qq.e2.res
  test/diff/diff_elim-qq.sh:test/diff/diff_elim-qq.sh
  input_files/F4SAT-31.ms:input_files/F4SAT-31.ms
  output_files/F4SAT-31.res:output_files/F4SAT-31.res
@@ -101,11 +103,13 @@ AC_CONFIG_LINKS([
  output_files/nonradical_shape-31.res:output_files/nonradical_shape-31.res
  input_files/nonradical_shape-qq.ms:input_files/nonradical_shape-qq.ms
  output_files/nonradical_shape-qq.res:output_files/nonradical_shape-qq.res
+ output_files/nonradical_shape-qq.p1024.res:output_files/nonradical_shape-qq.p1024.res
  test/diff/diff_nonradical_shape-qq.sh:test/diff/diff_nonradical_shape-qq.sh
  input_files/nonradical_radicalshape-31.ms:input_files/nonradical_radicalshape-31.ms
  output_files/nonradical_radicalshape-31.res:output_files/nonradical_radicalshape-31.res
  input_files/nonradical_radicalshape-qq.ms:input_files/nonradical_radicalshape-qq.ms
  output_files/nonradical_radicalshape-qq.res:output_files/nonradical_radicalshape-qq.res
+ output_files/nonradical_radicalshape-qq.p3.res:output_files/nonradical_radicalshape-qq.p3.res
  test/diff/diff_nonradical_radicalshape-qq.sh:test/diff/diff_nonradical_radicalshape-qq.sh
  input_files/one-16.ms:input_files/one-16.ms
  output_files/one-16.res:output_files/one-16.res
@@ -115,6 +119,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_one-31.sh:test/diff/diff_one-31.sh
  input_files/one-qq.ms:input_files/one-qq.ms
  output_files/one-qq.res:output_files/one-qq.res
+ output_files/one-qq.g2.res:output_files/one-qq.g2.res
  test/diff/diff_one-qq.sh:test/diff/diff_one-qq.sh
  input_files/radical_shape-31.ms:input_files/radical_shape-31.ms
  output_files/radical_shape-31.res:output_files/radical_shape-31.res
@@ -124,6 +129,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_radical_shape-qq.sh:test/diff/diff_radical_shape-qq.sh
  input_files/reals_dim0.ms:input_files/reals_dim0.ms
  output_files/reals_dim0.res:output_files/reals_dim0.res
+ output_files/reals_dim0.p256.res:output_files/reals_dim0.p256.res
  test/diff/diff_reals_dim0.sh:test/diff/diff_reals_dim0.sh
  input_files/xy-qq.ms:input_files/xy-qq.ms
  output_files/xy-qq.res:output_files/xy-qq.res

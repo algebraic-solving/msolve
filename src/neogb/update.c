@@ -170,7 +170,9 @@ static void insert_and_update_spairs(
             /* try to eliminate this spair with earlier ones */
         } else { 
             for (j = i-1; j >= pl; --j) {
-                if (ps[j].deg <= ps[i].deg && ps[i].lcm == ps[j].lcm) {
+                if (ps[j].deg != -1
+                        && ps[j].deg <= ps[i].deg
+                        && ps[i].lcm == ps[j].lcm) {
                     ps[i].deg   =   -1;
                     break;
                 }

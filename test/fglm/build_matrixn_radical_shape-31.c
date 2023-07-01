@@ -24,7 +24,7 @@ int main(void)
     int32_t refine                = 0; /* not used at the moment */
     int32_t isolate               = 0; /* not used at the moment */
     files_gb *files = malloc(sizeof(files_gb));
-    files->in_file  = "test/input_files/radical_shape-31.ms";
+    files->in_file  = "input_files/radical_shape-31.ms";
     files->out_file  = NULL;
     FILE *fh  = fopen(files->in_file, "r");
 

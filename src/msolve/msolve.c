@@ -625,7 +625,6 @@ static int add_random_linear_form_to_input_system(
 {
 
     int64_t i, j;
-    int32_t k;
     int32_t nvars_old, nvars_new;
     int64_t len_old = 0, len_new;
 
@@ -698,7 +697,6 @@ static int add_random_linear_form_to_input_system(
     }
     gens->linear_form_base_coef++;
     /* const int32_t bcf = gens->linear_form_base_coef; */
-    k = 1;
     if (info_level > 0) {
         printf("\nAdding a linear form with an extra variable ");
         printf("(lowest w.r.t. monomial order)\n");
@@ -717,7 +715,6 @@ static int add_random_linear_form_to_input_system(
             gens->random_linear_form[j] = ((int8_t)(rand()) % gens->field_char);
        }
         gens->cfs[i]  = gens->random_linear_form[j];
-        k++;
         j++;
       }
     }
@@ -733,7 +730,6 @@ static int add_random_linear_form_to_input_system(
         mpz_set_si(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
         mpz_set_ui(*(gens->mpz_cfs[i+1]), 1);
 
-        k++;
         j++;
       }
     }

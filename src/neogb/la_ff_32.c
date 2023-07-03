@@ -2186,7 +2186,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_32(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 static void sba_echelon_form_ff_32(
@@ -2832,7 +2832,7 @@ static void exact_trace_sparse_reduced_echelon_form_ff_32(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 static int exact_application_sparse_reduced_echelon_form_ff_32(
@@ -2961,7 +2961,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_32(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 
     return 0;
 }
@@ -2969,7 +2969,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_32(
 static cf32_t **sparse_AB_CD_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j;
@@ -3043,7 +3043,7 @@ static cf32_t **sparse_AB_CD_linear_algebra_ff_32(
         free(drs);
         drs = NULL;
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     return drs;
 }
@@ -3087,7 +3087,7 @@ static cf32_t **interreduce_dense_matrix_ff_32(
 static cf32_t **exact_dense_linear_algebra_ff_32(
         cf32_t **dm,
         mat_t *mat,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i, j, k, l, npivs;
@@ -3188,7 +3188,7 @@ static cf32_t **exact_dense_linear_algebra_ff_32(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     free(tbr);
     free(dr);
@@ -3199,7 +3199,7 @@ static cf32_t **exact_dense_linear_algebra_ff_32(
 static cf32_t **probabilistic_dense_linear_algebra_ff_32(
         cf32_t **dm,
         mat_t *mat,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i, j, k, l, m, npivs;
@@ -3364,7 +3364,7 @@ static cf32_t **probabilistic_dense_linear_algebra_ff_32(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     free(mul);
     free(tbr);
@@ -3376,7 +3376,7 @@ static cf32_t **probabilistic_dense_linear_algebra_ff_32(
 static cf32_t **probabilistic_sparse_dense_echelon_form_ff_32(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k, l, m, npivs;
@@ -3501,7 +3501,7 @@ static cf32_t **probabilistic_sparse_dense_echelon_form_ff_32(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
 
     for (i = 0; i < nru; ++i) {

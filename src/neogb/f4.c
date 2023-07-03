@@ -379,18 +379,6 @@ static int32_t initialize_f4(
         bs = gbs;
     }
     normalize_initial_basis(bs, fc);
-    for (int ii = 0; ii < gbs->ld; ++ii) {
-        printf("gbs[%d] = ", ii);
-        for (int jj = 0; jj < bs->ht->evl; ++jj) {
-            printf("%d", bs->ht->ev[gbs->hm[ii][OFFSET]][jj]);
-        }
-        printf("\n");
-        printf("bs[%d] = ", ii);
-        for (int jj = 0; jj < bs->ht->evl; ++jj) {
-            printf("%d", bs->ht->ev[gbs->hm[ii][OFFSET]][jj]);
-        }
-        printf("\n");
-    }
     md->ht = initialize_secondary_hash_table(bs->ht, md);
 
     /* matrix holding sparse information generated
@@ -410,7 +398,6 @@ static int32_t initialize_f4(
     /* TODO: make this a command line argument */
     md->max_gb_degree = INT32_MAX;
 
-    printf("md->trace_level = %d\n", md->trace_level);
     /* link tracer into basis */
     if (md->trace_level == LEARN_TRACER) {
         md->tr     = initialize_trace(bs, md);
@@ -422,9 +409,7 @@ static int32_t initialize_f4(
        even so they are homogeneous. */
     if (md->trace_level != APPLY_TRACER) {
         md->np = md->ngens;
-        printf("done %d --> ", done);
         done   = update(bs, md);
-        printf("%d\n", done);
     }
 
     /* TO BE REMOVED */
@@ -448,9 +433,7 @@ static int32_t compute_new_elements(
 
     convert_hashes_to_columns(mat, md, sht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
-    printf("hcm external %p\n", md->hcm);
     linear_algebra(mat, bs, md);
-    printf("md->np %d\n", md->np);
     /* columns indices are mapped back to exponent hashes */
     if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
@@ -474,7 +457,6 @@ static int32_t compute_new_elements(
             return 1;
         }
     }
-    printf("2 md->np %d\n", md->np);
 
     return 0;
 }
@@ -635,18 +617,6 @@ bs_t *core_f4(
 
     done = initialize_f4(&bs, &md, &mat, gmd, gbs, fc);
 
-    printf("initial generators:\n");
-    for (int ii = 0; ii < bs->ld; ++ii) {
-        printf("[%d] -> ", ii);
-        for (int j = OFFSET; j < bs->hm[ii][LENGTH]+OFFSET; ++j) {
-            printf("%d ", bs->cf_32[bs->hm[ii][COEFFS]][j-OFFSET]);
-            for (int k = 0; k < bs->ht->evl; ++k) {
-                printf("%d",bs->ht->ev[bs->hm[ii][j]][k]);
-            }
-            printf(" ");
-        }
-        printf("\n");
-    }
 
     /* let's start the f4 rounds, we are done when no more spairs
        are left in the pairset or if we found a constant in the basis. */
@@ -663,7 +633,6 @@ bs_t *core_f4(
         if (!done) {
             done = compute_new_elements(mat, bs, md);
         }
-    printf("3 md->np %d\n", md->np);
         if (!done) {
             done = update(bs, md);
         }

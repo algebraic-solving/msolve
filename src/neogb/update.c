@@ -80,14 +80,7 @@ static void insert_and_update_spairs(
     const int pl  = psl->ld;
     const int bl  = bs->ld;
 
-    printf("bl %d\n", bl);
     const hm_t nch = bs->hm[bl][OFFSET];
-
-    printf("lm = ");
-    for(i = 0; i < bht->evl; ++i) {
-        printf("%d", bht->ev[nch][i]);
-    }
-    printf("\n");
 
     deg_t ndeg  = bs->hm[bl][DEG];
 
@@ -123,7 +116,6 @@ static void insert_and_update_spairs(
                 }
             }
         }
-        printf("pair[%d] = %d %d -> %d\n", pl+i, pp[i].gen1, pp[i].gen2, pp[i].deg);
     }
 
     len_t nl  = pl+bl;
@@ -224,7 +216,6 @@ static void insert_and_update_spairs(
     st->num_gb_crit +=  nl - psl->ld;
 
     bs->ld++;
-    printf("bs->ld %d\n", bs->ld);
 }
 
 static void update_lm(
@@ -299,16 +290,13 @@ static void update_basis_f4(
 
     /* compute number of new pairs we need to handle at most */
     len_t np  = bs->ld * npivs;
-    printf("npivs %d | md->np %d\n", npivs, st->np);
     for (i = 1; i < npivs; ++i) {
         np  = np + i;
     }
     check_enlarge_pairset(ps, np);
 
     for (i = 0; i < npivs; ++i) {
-        printf("i %d\n", i);
         insert_and_update_spairs(ps, bs, bht, st);
-        printf("ps->ld %d\n", ps->ld);
     }
 
     const bl_t lml          = bs->lml;

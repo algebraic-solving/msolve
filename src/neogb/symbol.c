@@ -548,16 +548,6 @@ start:
 
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
-        printf("reducer -> %2d -> ", lmps[i]);
-        for (int ii = 0; ii < bht->evl; ++ii) {
-            printf("%d ", bht->ev[b[OFFSET]][ii]);
-        }
-        printf("\n");
-        printf("rows[%d] = ", rr);
-        for (int ii = 0; ii < rows[rr][LENGTH]+OFFSET; ++ii) {
-            printf("%d ", rows[rr][ii]);
-        }
-        printf("\n");
         /* track trace information ? */
         if (tht != NULL) {
             rows[rr][BINDEX]  = lmps[i];

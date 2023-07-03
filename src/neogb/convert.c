@@ -336,14 +336,14 @@ static void convert_hashes_to_columns(
     }
     sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
 
-    printf("hcm\n");
+    /* printf("hcm\n");
     for (int ii=0; ii<j; ++ii) {
         printf("hcm[%d] = %d | idx %u | deg %u |", ii, hcm[ii], hds[hcm[ii]].idx, sht->ev[hcm[ii]][DEG]+sht->ev[hcm[ii]][sht->ebl]);
         for (int jj = 0; jj < sht->evl; ++jj) {
             printf("%d ", sht->ev[hcm[ii]][jj]);
         }
         printf("\n");
-    }
+    } */
 
     mat->ncl  = k;
     mat->ncr  = (len_t)esld - 1 - mat->ncl;
@@ -354,8 +354,8 @@ static void convert_hashes_to_columns(
     const hi_t ld = (hi_t)(esld - 1);
     for (k = 0; k < ld; ++k) {
         hds[hcm[k]].idx  = (hi_t)k;
-        printf("hds[hcm[%d]].idx = %d\n", k, hds[hcm[k]].idx);
     }
+
 
     /* map column positions to matrix rows */
 #pragma omp parallel for num_threads(st->nthrds) private(k, j, row)
@@ -422,7 +422,6 @@ static void convert_hashes_to_columns(
         fflush(stdout);
     }
     st->hcm = hcm;
-    printf("hcm internal %p\m", hcm);
 }
 
 static void sba_convert_columns_to_hashes(
@@ -656,7 +655,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         if (deg == 0) {
             bs->constant  = 1;
         }
-#if 1
+#if 0
         if (st->ff_bits == 32) {
             printf("new element (%u): length %u | degree %d | ", bl+k, bs->hm[bl+k][LENGTH], bs->hm[bl+k][DEG]);
             int kk = 0;

@@ -260,9 +260,9 @@ static void reduce_basis(
         )
 {
     /* timings */
-    double ct0, ct1, rt0, rt1;
-    ct0 = cputime();
-    rt0 = realtime();
+    double ct, rt;
+    ct = cputime();
+    rt = realtime();
 
     len_t i, j, k;
 
@@ -339,19 +339,8 @@ start:
     }
     bs->lml = k;
 
-    /* timings */
-    ct1 = cputime();
-    rt1 = realtime();
-    md->reduce_gb_ctime = ct1 - ct0;
-    md->reduce_gb_rtime = rt1 - rt0;
-    if (md->info_level > 1) {
-        printf("%13.2f sec\n", rt1-rt0);
-    }
-
-    if (md->info_level > 1) {
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_timings(stdout, md, rt, ct);
+    print_round_information_footer(stdout, md);
 }
 
 static int32_t initialize_f4(

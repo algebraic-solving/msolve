@@ -1782,9 +1782,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         uint64_t *bsz,
                                         param_t **bparam,
                                         trace_t *trace,
-                                        ht_t *tht,
                                         bs_t *bs_qq,
-                                        ht_t *bht,
                                         md_t *st,
                                         const int32_t fc,
                                         int info_level,
@@ -1808,14 +1806,14 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         printf("Problem with F4, stopped computation.\n");
         exit(1);
       }
-      free_shared_hash_data(bht);
+      /* free_shared_hash_data(bht); */
     }
     else{
       if(st->laopt > 40){
-        bs = modular_f4(bs_qq, bht, st, fc);
+        bs = modular_f4(bs_qq, bs->ht, st, fc);
       }
       else{
-        bs = gba_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
+        bs = gba_trace_learning_phase(trace, st->tr->ht, bs_qq, bs->ht, st, fc);
       }
     }
     rt = realtime()-ca0;
@@ -1833,6 +1831,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     }
 
     /* Leading monomials from Grobner basis */
+    ht_t *bht = bs->ht;
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
     leadmons[0] = bexp_lm;
     num_gb[0] = bs->lml;
@@ -2402,13 +2401,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   * initialize basis
   *******************/
   bs_t *bs_qq = initialize_basis(st);
-  /* initialize basis hash table, update hash table, symbolic hash table */
-  ht_t *bht = bs_qq->ht;
-  /* hash table to store the hashes of the multiples of
-    * the basis elements stored in the trace */
-  ht_t *tht = initialize_secondary_hash_table(bht, st);
   /* read in ideal, move coefficients to integers */
-  import_input_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+  import_input_data(bs_qq, st, lens, exps, cfs, invalid_gens);
   free(invalid_gens);
   invalid_gens  =   NULL;
 
@@ -2416,11 +2410,11 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* for faster divisibility checks, needs to be done after we have
     * read some input data for applying heuristics */
-  calculate_divmask(bht);
+  calculate_divmask(bs_qq->ht);
 
   /* sort initial elements, smallest lead term first */
   sort_r(bs_qq->hm, (unsigned long)bs_qq->ld, sizeof(hm_t *),
-          initial_input_cmp, bht);
+          initial_input_cmp, bs_qq->ht);
   if(gens->field_char == 0){
     remove_content_of_initial_basis(bs_qq);
     /* generate lucky prime numbers */
@@ -2482,7 +2476,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   long nlins = 0;
   long *bnlins = (long *)calloc(st->nthrds, sizeof(long));
   uint64_t **blinvars = (uint64_t **)calloc(st->nthrds, sizeof(uint64_t *));
-  uint64_t *linvars = calloc(bht->nv, sizeof(uint64_t));
+  uint64_t *linvars = calloc(bs_qq->ht->nv, sizeof(uint64_t));
   blinvars[0] = linvars;
   uint32_t **lineqs_ptr = calloc(st->nthrds, sizeof(uint32_t *));
   uint64_t **bsquvars = (uint64_t **) calloc(st->nthrds, sizeof(uint64_t *));
@@ -2505,7 +2499,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                             num_gb, leadmons_ori,
 
                                             &bsz, nmod_params, btrace[0],
-                                            tht, bs_qq, bht, st,
+                                            bs_qq, st,
                                             lp->p[0], //prime,
                                             info_level,
                                             print_gb,
@@ -2535,16 +2529,16 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     }
     free(btrace);
     if(gens->field_char==0){
-      free_shared_hash_data(bht);
+      /* free_shared_hash_data(bht);
       if(bht!=NULL){
         free_hash_table(&bht);
       }
-      free(bht);
+      free(bht); */
     }
-    if(tht!=NULL){
+    /* if(tht!=NULL){
       free_hash_table(&tht);
     }
-    free(tht);
+    free(tht); */
     /* for (i = 0; i < st->nthrds; ++i) { */
     /*   free_basis(&(bs[i])); */
     /* } */
@@ -2620,15 +2614,15 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* copy of hash tables for tracer application */
   ht_t **blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-  blht[0] = bht;
+  blht[0] = bs_qq->ht;
   for(int i = 1; i < st->nthrds; i++){
-    ht_t *lht = copy_hash_table(bht, st);
+    ht_t *lht = copy_hash_table(bs_qq->ht, st);
     blht[i] = lht;
   }
   ht_t **btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-  btht[0] = tht;
+  btht[0] = st->tr->ht;
   for(int i = 1; i < st->nthrds; i++){
-    btht[i] = copy_hash_table(tht, st);
+    btht[i] = copy_hash_table(st->tr->ht, st);
   }
 
   normalize_nmod_param(nmod_params[0]);
@@ -2927,7 +2921,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   trace_det_clear(trace_det);
 
   /* free and clean up */
-  free_shared_hash_data(bht);
+  /* free_shared_hash_data(bht); */
   for(int i = 0; i < st->nthrds; i++){
     free_hash_table(blht+i);
     free_hash_table(btht+i);
@@ -4980,7 +4974,7 @@ restart:
              * the basis elements stored in the trace */
             ht_t *tht = initialize_secondary_hash_table(bht, st);
             /* read in ideal, move coefficients to integers */
-            import_input_data(bs_qq, bht, st, gens->lens, gens->exps,
+            import_input_data(bs_qq, st, gens->lens, gens->exps,
                     (void *)gens->mpz_cfs, invalid_gens);
             free(invalid_gens);
             invalid_gens    =   NULL;

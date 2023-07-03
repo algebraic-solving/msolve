@@ -250,7 +250,6 @@ void sort_terms_qq(
 
 void import_input_data(
         bs_t *bs,
-        ht_t *ht,
         md_t *st,
         const int32_t *lens,
         const int32_t *exps,
@@ -269,6 +268,8 @@ void import_input_data(
     mpz_t *cfq      =   NULL;
     int32_t *cfs_ff =   NULL;
     mpz_t **cfs_qq  =   NULL;
+
+    ht_t *ht = bs->ht;
 
     int32_t off             = 0; /* offset in arrays */
     const len_t ngens       = st->ngens;

@@ -491,7 +491,6 @@ static void process_redundant_elements(
     if (md->trace_level != APPLY_TRACER) {
         for (i = 0; i < bs->lml; ++i) {
             hm_t nch = bs->hm[bs->lmps[i]][OFFSET];
-            deg_t dd = bs->hm[bs->lmps[i]][DEG] - ht->hd[nch].deg;
             for (j = 0; j < i; ++j) {
                 if (bs->red[bs->lmps[j]] == 0
                         && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)

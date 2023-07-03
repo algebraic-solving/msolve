@@ -1901,7 +1901,7 @@ int64_t f4_trace_julia(
      * the basis elements stored in the trace */
     ht_t *tht = initialize_secondary_hash_table(bht, st);
     /* read in ideal, move coefficients to integers */
-    import_input_data(bs_qq, bht, st, lens, exps, cfs, invalid_gens);
+    import_input_data(bs_qq, st, lens, exps, cfs, invalid_gens);
 
     free(invalid_gens);
     invalid_gens = NULL;

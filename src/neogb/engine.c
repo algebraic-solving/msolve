@@ -80,7 +80,7 @@ int initialize_gba_input_data(
     /* initialize basis hash table */
     bht = initialize_basis_hash_table(st);
 
-    import_input_data(bs, bht, st, lens, exps, cfs, invalid_gens);
+    import_input_data(bs, st, lens, exps, cfs, invalid_gens);
 
     print_initial_statistics(stderr, st);
 

@@ -55,7 +55,6 @@ void sort_terms_qq(
 
 void import_input_data(
         bs_t *bs,
-        ht_t *ht,
         md_t *st,
         const int32_t *lens,
         const int32_t *exps,

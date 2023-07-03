@@ -110,14 +110,14 @@ void print_round_information_header(
     if (st->info_level > 1) {
         if (st->trace_level != APPLY_TRACER) {
             fprintf(f, "\ndeg     sel   pairs        mat          density \
-              new data         time(rd) in sec (real|cpu)\n");
+           new data         time(rd) in sec (real|cpu)\n");
             fprintf(f, "-------------------------------------------------\
---------------------------------------------------------\n");
+-----------------------------------------------------\n");
         } else {
             fprintf(f, "\n    round     deg          mat          density \
-              new data         time(rd) in sec (real|cpu)\n");
+           new data         time(rd) in sec (real|cpu)\n");
             fprintf(f, "-------------------------------------------------\
---------------------------------------------------------\n");
+-----------------------------------------------------\n");
         }
     }
 }

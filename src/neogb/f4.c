@@ -361,11 +361,20 @@ static int32_t initialize_f4(
     md->fc  = fc;
     md->hcm = (hi_t *)malloc(sizeof(hi_t));
 
+    printf("gmd->fc %d ] fc %d\n", gmd->fc, fc);
     if (gmd->fc != fc) {
         reset_function_pointers(fc, md->laopt);
         bs = copy_basis_mod_p(gbs, md);
+        if (md->laopt < 40) {
+            printf("md->trace_level = %d\n", md->trace_level);
+            if (md->trace_level != APPLY_TRACER) {
+                md->trace_level = LEARN_TRACER;
+            }
+            printf("md->trace_level = %d\n", md->trace_level);
+        }
     } else {
         bs = gbs;
+        md->trace_level = NO_TRACER;
     }
     normalize_initial_basis(bs, fc);
     md->ht = initialize_secondary_hash_table(bs->ht, md);
@@ -577,7 +586,8 @@ static void finalize_f4(
         mat_t **matp
         )
 {
-    if (gmd->trace_level == LEARN_TRACER) {
+    if ((*lmdp)->trace_level == LEARN_TRACER) {
+        printf("finalize\n");
         gmd->tr = (*lmdp)->tr;
         gmd->trace_level = APPLY_TRACER;
     }

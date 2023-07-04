@@ -1797,11 +1797,11 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
     ca0 = realtime();
 
     bs_t *bs = NULL;
+    int32_t err = 0;
+    printf("gens->field_char %d ] fc %d\n", gens->field_char, fc);
+    bs = core_gba(bs_qq, st, &err, fc);
+#if 0
     if(gens->field_char){
-      bs = bs_qq;
-      int32_t err = 0;
-      printf("here\n");
-      bs = core_gba(bs, st, &err, gens->field_char);
       if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
@@ -1816,6 +1816,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         bs = gba_trace_learning_phase(trace, st->tr->ht, bs_qq, bs->ht, st, fc);
       }
     }
+#endif
     rt = realtime()-ca0;
 
     if(info_level > 1){

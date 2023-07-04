@@ -5024,7 +5024,7 @@ restart:
       if(info_level){
         fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
         fprintf(stderr, "Computing Groebner basis\n");
-        print_gb=1;
+        print_gb=2;
       }
     }
 	  b = real_msolve_qq(*mpz_paramp,
@@ -5695,7 +5695,7 @@ restart:
               if(info_level){
                 fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
                 fprintf(stderr, "Computing Groebner basis\n");
-                print_gb=1;
+                print_gb=2;
               }
             }
 

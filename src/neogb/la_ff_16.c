@@ -2012,7 +2012,7 @@ static void interreduce_matrix_rows_ff_16(
 
     /* adjust displaying timings for statistic printout */
     if (st->info_level > 1) {
-        printf("                        ");
+        printf("                          ");
     }
     mat->tr = realloc(mat->tr, (unsigned long)ncols * sizeof(hm_t *));
 

@@ -56,6 +56,25 @@ md_t *allocate_meta_data(
     return md;
 }
 
+void print_tracer_statistics(
+    FILE *file,
+    const double rt,
+    const md_t *st
+    )
+{
+    if(st->info_level > 1){
+        fprintf(stderr, "Learning phase %.2f Gops/sec\n",
+                (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/rt-realtime());
+    }
+    if(st->info_level > 2){
+        fprintf(stderr, "------------------------------------------\n");
+        fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
+        fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
+        fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
+        fprintf(stderr, "------------------------------------------\n");
+    }
+}
+
 void print_initial_statistics(
     FILE *file,
     const md_t *st

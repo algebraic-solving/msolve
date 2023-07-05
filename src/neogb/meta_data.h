@@ -33,6 +33,12 @@ void print_initial_statistics(
                               const md_t *md
     );
 
+void print_tracer_statistics(
+                              FILE *,
+                              const double rt,
+                              const md_t *md
+    );
+
 void get_and_print_final_statistics(
                             FILE *file, 
                             md_t *md,

@@ -1793,8 +1793,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         files_gb *files,
                                         int *success)
 {
-    double ca0, rt;
-    ca0 = realtime();
+    double rt = realtime();
 
     bs_t *bs = NULL;
     int32_t err = 0;
@@ -1817,19 +1816,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
       }
     }
 #endif
-    rt = realtime()-ca0;
-
-    if(info_level > 1){
-        fprintf(stderr, "Learning phase %.2f Gops/sec\n",
-                (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/rt);
-    }
-    if(info_level > 2){
-        fprintf(stderr, "------------------------------------------\n");
-        fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
-        fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
-        fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
-        fprintf(stderr, "------------------------------------------\n");
-    }
+    print_tracer_statistics(stdout, rt, st);
 
     /* Leading monomials from Grobner basis */
     ht_t *bht = bs->ht;

@@ -1793,7 +1793,6 @@ static int32_t check_for_single_element_groebner_basis(
         }
         for (i = 0; i < bs->ht->nv; i++) {
             if (leadmons[pos][i] != 0) {
-                empty_solution_set = 0;
                 break;
             }
         }
@@ -1804,6 +1803,8 @@ static int32_t check_for_single_element_groebner_basis(
                 fprintf(stdout, "No solution\n");
             }
         }
+    } else {
+        empty_solution_set = 0;
     }
 
     return empty_solution_set;
@@ -1861,7 +1862,6 @@ static int32_t *initial_modular_step(
 
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bs->ht,
             leadmons[0], bs);
-
     if (has_dimension_zero(bs->lml, bs->ht->nv, leadmons[0])) {
         long dquot = 0;
         int32_t *lmb = monomial_basis(bs->lml, bs->ht->nv, leadmons[0], &dquot);
@@ -1903,7 +1903,6 @@ static int32_t *initial_modular_step(
         free_basis(&(bs));
         return NULL;
     }
-
 }
 
 
@@ -2634,7 +2633,28 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   int success = 1;
   int squares = 1;
+#if 0
+  int32_t *lmb_ori = modular_trace_learning(bmatrix, bdiv_xn, blen_gb_xn,
+                                            bstart_cf_gb_xn,
 
+                                            &nlins, blinvars[0], lineqs_ptr,
+                                            squvars,
+
+                                            bdata_fglm, bdata_bms,
+
+                                            num_gb, leadmons_ori,
+
+                                            &bsz, nmod_params,
+                                            btrace[0],
+                                            bs_qq, st,
+                                            lp->p[0], //prime,
+                                            st->info_level,
+                                            print_gb,
+                                            dim_ptr, dquot_ptr,
+                                            gens,
+                                            files,
+                                            &success);
+#else
   int32_t *lmb_ori = initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn,
                                             bstart_cf_gb_xn,
 
@@ -2653,7 +2673,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                             gens,
                                             files,
                                             &success);
-
+#endif
   if(*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0){
     if(nmod_params[0]->elim->length - 1 != *dquot_ptr){
       for(int i = 0; i < nr_vars - 1; i++){
@@ -2747,6 +2767,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpq_matfglm_initset(mpq_mat, *bmatrix);
   mpz_matfglm_initset(mpz_mat, *bmatrix);
 #endif
+
+  btrace[0] = st->tr;
+  printf("st->tr %p\n", st->tr);
 
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,

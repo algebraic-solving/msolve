@@ -2300,7 +2300,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
                                    param_t **nmod_params,
                                    trace_t **btrace,
                                    ht_t **btht,
-                                   const bs_t *bs_qq,
+                                   bs_t *bs_qq,
                                    ht_t **bht,
                                    md_t *st,
                                    const int32_t fc,
@@ -2319,6 +2319,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
   /* tracing phase */
   len_t i;
   double ca0;
+  int32_t error = 0;
 
   /* F4 and FGLM are run using a single thread */
   /* st->nthrds is reset to its original value afterwards */
@@ -2330,12 +2331,13 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
     private(i) schedule(static)
   for (i = 0; i < st->nprimes; ++i){
     ca0 = realtime();
-    if(st->laopt > 40){
+    bs[i] = core_gba(bs_qq, st, &error, lp->p[i]);
+    /* if(st->laopt > 40){
       bs[i] = modular_f4(bs_qq, bht[i], st, lp->p[i]);
     }
     else{
       bs[i] = gba_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
-    }
+    } */
     *stf4 = realtime()-ca0;
     /* printf("F4 trace timing %13.2f\n", *stf4); */
 

@@ -52,6 +52,8 @@ static void construct_trace(
     const len_t nrl = mat->nrl;
     rba_t **rba     = mat->rba;
 
+    printf("ld %d | nru %d | nrl %d\n", ld, nru, nrl);
+
     /* check if there are any non zero new elements, otherwise we
      * do not need to do this matrix at all in the application steps. */
     i = 0;
@@ -88,6 +90,7 @@ static void construct_trace(
     mat->rba  = rba = realloc(rba, (unsigned long)mat->rbal * sizeof(rba_t *));
 
     const len_t ntr = ctr;
+    printf("ntr %d\n", ntr);
 
     /* construct rows to be reduced */
     trace->td[ld].tri  = realloc(trace->td[ld].tri,
@@ -97,7 +100,9 @@ static void construct_trace(
     ctr = 0;
     for (i = 0; i < nrl; ++i) {
         if (mat->tr[i] != NULL) {
+            printf("tri[%d] -> %d\n", ctr, mat->tr[i][BINDEX]);
             trace->td[ld].tri[ctr++]  = mat->tr[i][BINDEX];
+            printf("tri[%d] -> %d\n", ctr, mat->tr[i][MULT]);
             trace->td[ld].tri[ctr++]  = mat->tr[i][MULT];
         }
     }
@@ -116,7 +121,9 @@ static void construct_trace(
     ctr = 0;
     for (i = 0; i < nru; ++i) {
         if (reds[i/32] >> (i%32) & 1U) {
+            printf("rri[%d] -> %d\n", ctr, mat->rr[i][BINDEX]);
             trace->td[ld].rri[ctr++]  = mat->rr[i][BINDEX];
+            printf("rri[%d] -> %d\n", ctr, mat->rr[i][MULT]);
             trace->td[ld].rri[ctr++]  = mat->rr[i][MULT];
         }
     }
@@ -150,6 +157,7 @@ static void construct_trace(
         }
     }
     free(reds);
+    trace->ltd++;
 }
 
 /* Only trace reducer rows for saturation steps to keep

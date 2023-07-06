@@ -110,6 +110,8 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
         hm_t * const * const pivs,
         const hi_t dpiv,    /* pivot of dense row at the beginning */
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
+        const len_t mh,     /* multiplier hash for tracing */
+        const len_t bi,     /* basis index of generating element */
         const uint32_t fc
         )
 {
@@ -121,6 +123,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf16_t * const * const mcf  = mat->cf_16;
+    rba_t *rba                  = mat->rba[tmp_pos];
 
 #ifdef HAVE_AVX2
     uint32_t mone32   = (uint32_t)0xFFFFFFFF;
@@ -154,6 +157,8 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
         dts   = pivs[i];
         if (i < ncl) {
             cfs   = bs->cf_16[dts[COEFFS]];
+            /* set corresponding bit of reducer in reducer bit array */
+            rba[i/32] |= 1U << (i % 32);
         } else {
             cfs   = mcf[dts[COEFFS]];
         }
@@ -657,7 +662,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
                     free(npiv);
                     npiv  = NULL;
                     npiv  = reduce_dense_row_by_known_pivots_sparse_ff_16(
-                            drl, mat, bs, pivs, sc, cfp, st->fc);
+                            drl, mat, bs, pivs, sc, cfp, 0, 0, st->fc);
                     if (!npiv) {
                         bctr  = nrbl;
                         break;
@@ -685,6 +690,11 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
     free(mul);
     mul   = NULL;
 
+    /* construct the trace */
+    if (st->tr != NULL) {
+        construct_trace(st->tr, mat);
+    }
+
     /* we do not need the old pivots anymore */
     for (i = 0; i < ncl; ++i) {
         free(pivs[i]);
@@ -706,6 +716,8 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
             memset(dr, 0, (unsigned long)ncols * sizeof(int64_t));
             cfs = mat->cf_16[pivs[k][COEFFS]];
             cfp = pivs[k][COEFFS];
+            const len_t bi  = pivs[k][BINDEX];
+            const len_t mh  = pivs[k][MULT];
             const len_t os  = pivs[k][PRELOOP];
             const len_t len = pivs[k][LENGTH];
             const hm_t * const ds = pivs[k] + OFFSET;
@@ -724,7 +736,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
             pivs[k] = NULL;
             pivs[k] = mat->tr[npivs++] =
                 reduce_dense_row_by_known_pivots_sparse_ff_16(
-                        dr, mat, bs, pivs, sc, cfp, st->fc);
+                        dr, mat, bs, pivs, sc, cfp, mh, bi, st->fc);
         }
     }
     free(pivs);
@@ -834,6 +846,8 @@ static void exact_trace_sparse_reduced_echelon_form_ff_16(
             memset(dr, 0, (unsigned long)ncols * sizeof(int64_t));
             cfs = mat->cf_16[pivs[k][COEFFS]];
             cf_array_pos    = pivs[k][COEFFS];
+            const len_t bi  = pivs[k][BINDEX];
+            const len_t mh  = pivs[k][MULT];
             const len_t os  = pivs[k][PRELOOP];
             const len_t len = pivs[k][LENGTH];
             const hm_t * const ds = pivs[k] + OFFSET;
@@ -852,7 +866,7 @@ static void exact_trace_sparse_reduced_echelon_form_ff_16(
             pivs[k] = NULL;
             pivs[k] = mat->tr[npivs++] =
                 reduce_dense_row_by_known_pivots_sparse_ff_16(
-                        dr, mat, bs, pivs, sc, cf_array_pos, st->fc);
+                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, st->fc);
         }
     }
     free(pivs);
@@ -897,6 +911,8 @@ static void exact_sparse_reduced_echelon_form_ff_16(
         int64_t *drl    = dr + (omp_get_thread_num() * ncols);
         hm_t *npiv      = upivs[i];
         cf16_t *cfs     = bs->cf_16[npiv[COEFFS]];
+        const len_t bi  = npiv[BINDEX];
+        const len_t mh  = npiv[MULT];
         const len_t os  = npiv[PRELOOP];
         const len_t len = npiv[LENGTH];
         const hm_t * const ds = npiv + OFFSET;
@@ -918,8 +934,8 @@ static void exact_sparse_reduced_echelon_form_ff_16(
             npiv  = NULL;
             free(cfs);
             cfs = NULL;
-            npiv  = reduce_dense_row_by_known_pivots_sparse_ff_16(
-                    drl, mat, bs, pivs, sc, i, st->fc);
+            npiv  = mat->tr[i] = reduce_dense_row_by_known_pivots_sparse_ff_16(
+                    drl, mat, bs, pivs, sc, i, mh, bi, st->fc);
             if (!npiv) {
                 break;
             }
@@ -956,6 +972,8 @@ static void exact_sparse_reduced_echelon_form_ff_16(
             memset(dr, 0, (unsigned long)ncols * sizeof(int64_t));
             cfs = mat->cf_16[pivs[k][COEFFS]];
             cf_array_pos    = pivs[k][COEFFS];
+            const len_t bi  = pivs[k][BINDEX];
+            const len_t mh  = pivs[k][MULT];
             const len_t os  = pivs[k][PRELOOP];
             const len_t len = pivs[k][LENGTH];
             const hm_t * const ds = pivs[k] + OFFSET;
@@ -974,7 +992,7 @@ static void exact_sparse_reduced_echelon_form_ff_16(
             pivs[k] = NULL;
             pivs[k] = mat->tr[npivs++] =
                 reduce_dense_row_by_known_pivots_sparse_ff_16(
-                        dr, mat, bs, pivs, sc, cf_array_pos, st->fc);
+                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, st->fc);
         }
     }
     free(pivs);
@@ -1020,6 +1038,8 @@ static int exact_application_sparse_reduced_echelon_form_ff_16(
             int64_t *drl    = dr + (omp_get_thread_num() * ncols);
             hm_t *npiv      = upivs[i];
             cf16_t *cfs     = bs->cf_16[npiv[COEFFS]];
+            const len_t bi  = npiv[BINDEX];
+            const len_t mh  = npiv[MULT];
             const len_t os  = npiv[PRELOOP];
             const len_t len = npiv[LENGTH];
             const hm_t * const ds = npiv + OFFSET;
@@ -1040,7 +1060,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_16(
                 free(npiv);
                 free(cfs);
                 npiv  = mat->tr[i]  = reduce_dense_row_by_known_pivots_sparse_ff_16(
-                        drl, mat, bs, pivs, sc, i, st->fc);
+                        drl, mat, bs, pivs, sc, i, mh, bi, st->fc);
                 if (!npiv) {
                     fprintf(stderr, "Unlucky prime detected, row reduced to zero.");
                     flag  = 0;
@@ -1083,6 +1103,8 @@ static int exact_application_sparse_reduced_echelon_form_ff_16(
             memset(dr, 0, (unsigned long)ncols * sizeof(int64_t));
             cfs = mat->cf_16[pivs[k][COEFFS]];
             cf_array_pos    = pivs[k][COEFFS];
+            const len_t bi  = pivs[k][BINDEX];
+            const len_t mh  = pivs[k][MULT];
             const len_t os  = pivs[k][PRELOOP];
             const len_t len = pivs[k][LENGTH];
             const hm_t * const ds = pivs[k] + OFFSET;
@@ -1101,7 +1123,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_16(
             pivs[k] = NULL;
             pivs[k] = mat->tr[npivs++] =
                 reduce_dense_row_by_known_pivots_sparse_ff_16(
-                        dr, mat, bs, pivs, sc, cf_array_pos, st->fc);
+                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, st->fc);
         }
     }
     free(pivs);
@@ -2038,6 +2060,8 @@ static void interreduce_matrix_rows_ff_16(
         if (pivs[l] != NULL) {
             memset(dr, 0, (unsigned long)ncols * sizeof(int64_t));
             cfs = bs->cf_16[pivs[l][COEFFS]];
+            const len_t bi  = pivs[l][BINDEX];
+            const len_t mh  = pivs[l][MULT];
             const len_t os  = pivs[l][PRELOOP];
             const len_t len = pivs[l][LENGTH];
             const hm_t * const ds = pivs[l] + OFFSET;
@@ -2055,7 +2079,7 @@ static void interreduce_matrix_rows_ff_16(
             pivs[l] = NULL;
             pivs[l] = mat->tr[k--] =
                 reduce_dense_row_by_known_pivots_sparse_ff_16(
-                        dr, mat, bs, pivs, sc, l, st->fc);
+                        dr, mat, bs, pivs, sc, l, mh, bi, st->fc);
         }
     }
     if (free_basis != 0) {

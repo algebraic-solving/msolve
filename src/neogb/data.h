@@ -531,6 +531,8 @@ extern hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
         hm_t *const *pivs,
         const hi_t dpiv,
         const hm_t tmp_pos,
+        const len_t mh,     /* multiplier hash for tracing */
+        const len_t bi,     /* basis index of generating element */
         md_t *st
         );
 

@@ -565,9 +565,9 @@ static void free_local_data(
 {
     md_t *md = *mdp;
 
-    if (md->ht != NULL) {
+    /* if (md->ht != NULL) {
         free_hash_table(&(md->ht));
-    }
+    } */
     if (md->ps != NULL) {
         free_pairset(&(md->ps));
     }

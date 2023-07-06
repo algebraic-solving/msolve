@@ -413,6 +413,8 @@ struct md_t
     double application_nr_add;
     uint64_t application_nr_red;
 
+    int32_t print_gb;
+
     /* for f4sat */
     uint32_t new_multipliers;
     uint32_t nr_kernel_elts;

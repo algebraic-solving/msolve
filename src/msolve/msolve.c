@@ -1747,6 +1747,165 @@ static inline int check_param_modular(const mpz_param_t mp_param,
 }
 
 
+static void get_leading_ideal_information(
+        int32_t *num_gb,
+        int32_t **lead_mons,
+        const int32_t pos,
+        const bs_t * const bs
+        )
+{
+    lead_mons[pos] = get_lm_from_bs(bs, bs->ht);
+    num_gb[pos]    = bs->lml;
+}
+
+static void print_groebner_basis(
+        files_gb *files,
+        const data_gens_ff_t * const gens,
+        const bs_t * const bs,
+        md_t *md,
+        const int32_t fc
+        )
+{
+    if(md->print_gb){
+        int32_t gfc = md->gfc;
+        md->gfc     = fc;
+        print_ff_basis_data(files->out_file, "a", bs, bs->ht, md,
+                gens, md->print_gb);
+        md->gfc     = gfc;
+    }
+}
+
+static int32_t check_for_single_element_groebner_basis(
+        int *dim,
+        long *dquot_ori,
+        const bs_t * const bs,
+        int32_t **leadmons,
+        const int32_t pos,
+        const md_t * const md
+        )
+{
+    int32_t empty_solution_set = 1;
+    int32_t i;
+
+    if (bs->lml == 1) {
+        if (md->info_level > 0) {
+            fprintf(stdout, "Grobner basis has a single element\n");
+        }
+        for (i = 0; i < bs->ht->nv; i++) {
+            if (leadmons[pos][i] != 0) {
+                empty_solution_set = 0;
+                break;
+            }
+        }
+        if (empty_solution_set == 1) {
+            *dquot_ori = 0;
+            *dim = 0;
+            if (md->info_level > 0) {
+                fprintf(stdout, "No solution\n");
+            }
+        }
+    }
+
+    return empty_solution_set;
+}
+
+static int32_t *initial_modular_step(
+        sp_matfglm_t **bmatrix,
+        int32_t **bdiv_xn,
+        int32_t **blen_gb_xn,
+        int32_t **bstart_cf_gb_xn,
+
+        long *nlins_ptr,
+        uint64_t *linvars,
+        uint32_t** lineqs_ptr,
+        uint64_t *squvars,
+
+        fglm_data_t **bdata_fglm,
+        fglm_bms_data_t **bdata_bms,
+
+        int32_t *num_gb,
+        int32_t **leadmons,
+        uint64_t *bsz,
+        param_t **bparam,
+        bs_t *gbg,
+        md_t *md,
+        const int32_t fc,
+        int print_gb,
+        int *dim,
+        long *dquot_ori,
+        data_gens_ff_t *gens,
+        files_gb *files,
+        int *success)
+{
+    double rt = realtime();
+
+    md->print_gb = print_gb;
+
+    int32_t error              = 0;
+    int32_t empty_solution_set = 1;
+    printf("gens->field_char %d ] fc %d\n", gens->field_char, fc);
+    bs_t *bs = core_gba(gbg, md, &error, fc);
+
+    print_tracer_statistics(stdout, rt, md);
+
+    get_leading_ideal_information(num_gb, leadmons, 0, bs);
+
+    print_groebner_basis(files, gens, bs, md, fc);
+
+    empty_solution_set = check_for_single_element_groebner_basis(dim, dquot_ori,
+            bs, leadmons, 0, md);
+
+    if (empty_solution_set == 1) {
+        return NULL;
+    }
+
+    check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bs->ht,
+            leadmons[0], bs);
+
+    if (has_dimension_zero(bs->lml, bs->ht->nv, leadmons[0])) {
+        long dquot = 0;
+        int32_t *lmb = monomial_basis(bs->lml, bs->ht->nv, leadmons[0], &dquot);
+
+        if(md->info_level){
+            fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
+        }
+        if(print_gb==0){
+            *bmatrix = build_matrixn_from_bs_trace(bdiv_xn,
+                    blen_gb_xn,
+                    bstart_cf_gb_xn,
+                    lmb, dquot, bs, bs->ht,
+                    leadmons[0], bs->ht->nv,
+                    fc,
+                    md->info_level);
+            if(*bmatrix == NULL){
+                *success = 0;
+                *dim = 0;
+                *dquot_ori = dquot;
+                return NULL;
+            }
+
+            *bsz = bs->ht->nv - (*nlins_ptr); //nlins ;
+
+            check_and_set_vars_squared_in_monomial_basis(squvars, lmb,
+                    dquot, gens->nvars);
+            *bparam = nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
+                    *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
+                    md->info_level, bdata_fglm, bdata_bms, success, md);
+        }
+        free_basis(&(bs));
+        *dim = 0;
+        *dquot_ori = dquot;
+        return lmb;
+    }
+    else{
+        *dim  = 1;
+        *dquot_ori = -1;
+        free_basis(&(bs));
+        return NULL;
+    }
+
+}
+
 
 
 /**
@@ -2476,7 +2635,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int success = 1;
   int squares = 1;
 
-  int32_t *lmb_ori = modular_trace_learning(bmatrix, bdiv_xn, blen_gb_xn,
+  int32_t *lmb_ori = initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn,
                                             bstart_cf_gb_xn,
 
                                             &nlins, blinvars[0], lineqs_ptr,
@@ -2486,10 +2645,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
                                             num_gb, leadmons_ori,
 
-                                            &bsz, nmod_params, btrace[0],
+                                            &bsz, nmod_params,
                                             bs_qq, st,
                                             lp->p[0], //prime,
-                                            info_level,
                                             print_gb,
                                             dim_ptr, dquot_ptr,
                                             gens,

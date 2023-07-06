@@ -3073,7 +3073,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
 
 #undef REDUCTION_ALLINONE
 
-static inline int32_t *get_lm_from_bs(bs_t *bs, const ht_t *ht){
+static inline int32_t *get_lm_from_bs(const bs_t * const bs, const ht_t * const ht){
   hm_t *dt;
   const len_t nelts = bs->lml;
   const int nv    = ht->nv;

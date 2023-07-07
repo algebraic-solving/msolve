@@ -691,7 +691,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
     mul   = NULL;
 
     /* construct the trace */
-    if (st->tr != NULL) {
+    if (st->trace_level == LEARN_TRACER) {
         construct_trace(st->tr, mat);
     }
 

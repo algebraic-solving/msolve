@@ -1002,7 +1002,7 @@ static void exact_sparse_reduced_echelon_form_ff_8(
     }
 
     /* construct the trace */
-    if (st->tr != NULL) {
+    if (st->trace_level == LEARN_TRACER) {
         construct_trace(st->tr, mat);
     }
 

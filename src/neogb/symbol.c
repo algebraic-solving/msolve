@@ -334,7 +334,6 @@ static int32_t select_spairs_by_minimal_degree(
         /* track trace information ? */
         if (md->trace_level == LEARN_TRACER) { 
            rrows[nrr][BINDEX]  = prev;
-           printf("here rrows");
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
             }
@@ -343,7 +342,6 @@ static int32_t select_spairs_by_minimal_degree(
 #else
             rrows[nrr][MULT]    = insert_in_hash_table(etmp, tht);
 #endif
-            printf("sr[%d] -> %d | %d\n", nrr, rrows[nrr][BINDEX], rrows[nrr][MULT]);
         }
 
         /* mark lcm column as lead term column */
@@ -370,7 +368,6 @@ static int32_t select_spairs_by_minimal_degree(
             trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
             /* track trace information ? */
             if (md->trace_level == LEARN_TRACER) {
-           printf("here trows");
                 trows[ntr][BINDEX]  = prev;
                 if (tht->eld == tht->esz-1) {
                     enlarge_hash_table(tht);
@@ -553,7 +550,6 @@ start:
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
         if (tht != NULL) {
-           printf("here fmrrtrows");
             rows[rr][BINDEX]  = lmps[i];
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
@@ -563,7 +559,6 @@ start:
 #else
             rows[rr][MULT]    = insert_in_hash_table(etmp, tht);
 #endif
-            printf("r[%d] -> %d | %d\n", rr, rows[rr][BINDEX], rows[rr][MULT]);
         }
         sht->hd[m].idx  = 2;
         *nr             = rr + 1;
@@ -680,7 +675,6 @@ static void generate_matrix_from_trace(
     hi_t h;
 
     td_t td       = trace->td[idx];
-    printf("idx %d | rld %d | tld %d\n", idx, td.rld, td.tld);
     mat->rr       = (hm_t **)malloc((unsigned long)td.rld * sizeof(hm_t *));
     hm_t **rrows  = mat->rr;
     mat->tr       = (hm_t **)malloc((unsigned long)td.tld * sizeof(hm_t *));
@@ -696,7 +690,6 @@ static void generate_matrix_from_trace(
         emul  = tht->ev[td.rri[i]];
         h     = tht->hd[td.rri[i++]].val;
 
-        printf("b -> %d ? %d / %d\n", td.rri[i-2], td.rri[i-1], bs->ld);
 
         rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         sht->hd[rrows[nr][OFFSET]].idx = 2;

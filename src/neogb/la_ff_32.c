@@ -958,7 +958,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
             j++;
         }
     }
-    printf("setting bi %d and mh %d\n", bi, mh);
     row[BINDEX]   = bi;
     row[MULT]     = mh;
     row[COEFFS]   = tmp_pos;
@@ -2372,7 +2371,7 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     }
 
     /* construct the trace */
-    if (st->tr != NULL) {
+    if (st->trace_level == LEARN_TRACER) {
         construct_trace(st->tr, mat);
     }
 
@@ -2384,7 +2383,6 @@ static void exact_sparse_reduced_echelon_form_ff_32(
 
     len_t npivs = 0; /* number of new pivots */
 
-    printf("trala\n");
     dr      = realloc(dr, (unsigned long)ncols * sizeof(int64_t));
     mat->tr = realloc(mat->tr, (unsigned long)ncr * sizeof(hm_t *));
 

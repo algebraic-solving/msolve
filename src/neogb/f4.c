@@ -587,7 +587,6 @@ static void finalize_f4(
         )
 {
     if ((*lmdp)->trace_level == LEARN_TRACER) {
-        printf("finalize\n");
         gmd->tr = (*lmdp)->tr;
         gmd->trace_level = APPLY_TRACER;
     }
@@ -632,7 +631,7 @@ bs_t *core_f4(
         if (!done) {
             done = compute_new_elements(mat, bs, md);
         }
-        if (!done) {
+        if (!done && md->trace_level != APPLY_TRACER) {
             done = update(bs, md);
         }
 

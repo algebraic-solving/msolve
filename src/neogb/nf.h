@@ -39,7 +39,7 @@ bs_t *core_nf(
         bs_t *tbr,
         md_t *md,
         const exp_t * const mul,
-        const bs_t * const bs,
+        bs_t *bs,
         int32_t *errp
         );
 #endif

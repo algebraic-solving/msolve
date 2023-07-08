@@ -318,7 +318,6 @@ struct trace_t
                    * non-trivial kernels */
     len_t rld;    /* load of rounds stored, i.e. how often do saturate */
     len_t rsz;    /* size of rounds stored */
-    ht_t *ht;     /* hash table for tracer multipliers */
 };
 
 

@@ -58,7 +58,6 @@ trace_t *initialize_trace(
     tr->rsz = 8;
     tr->rld = 0;
     tr->rd  = calloc((unsigned long)tr->rsz, sizeof(len_t));
-    tr->ht  = initialize_secondary_hash_table(bs->ht, md);;
 
     return tr;
 }
@@ -265,7 +264,7 @@ bs_t *f4_trace_application_phase(
 
       /* generate matrix out of tracer data, rows are then already
        * sorted correspondingly */
-      generate_matrix_from_trace(mat, trace, round, bs, st, sht, bht, tht);
+      generate_matrix_from_trace(mat, bs, st);
         if (st->info_level > 1) {
             printf("%5d", round+1);
             printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
@@ -755,7 +754,7 @@ bs_t *f4sat_trace_application_phase(
 
         /* generate matrix out of tracer data, rows are then already
          * sorted correspondingly */
-        generate_matrix_from_trace(mat, trace, round, bs, st, sht, bht, tht);
+        generate_matrix_from_trace(mat, bs, st);
         if (st->info_level > 1) {
             printf("%5d", round+1);
             printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);

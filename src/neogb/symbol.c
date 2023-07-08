@@ -199,7 +199,7 @@ by minial degree of the spairs is supported
 NOTE: The pair list is already sorted! */
 static int32_t select_spairs_by_minimal_degree(
         mat_t *mat,
-        const bs_t * const bs,
+        bs_t *bs,
         md_t *md
         )
 {
@@ -221,12 +221,6 @@ static int32_t select_spairs_by_minimal_degree(
 
     spair_t *ps     = psl->p;
     const len_t evl = bht->evl;
-
-    /* check for tracing */
-    ht_t *tht = NULL;
-    if (md->trace_level == LEARN_TRACER) {
-        tht = md->tr->ht;
-    }
 
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_cmp, bht);
@@ -334,13 +328,13 @@ static int32_t select_spairs_by_minimal_degree(
         /* track trace information ? */
         if (md->trace_level == LEARN_TRACER) { 
            rrows[nrr][BINDEX]  = prev;
-            if (tht->eld == tht->esz-1) {
-                enlarge_hash_table(tht);
+            if (bs->ht->eld == bs->ht->esz-1) {
+                enlarge_hash_table(bs->ht);
             }
 #if PARALLEL_HASHING
-            rrows[nrr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+            rrows[nrr][MULT]    = check_insert_in_hash_table(etmp, h, bs->ht);
 #else
-            rrows[nrr][MULT]    = insert_in_hash_table(etmp, tht);
+            rrows[nrr][MULT]    = insert_in_hash_table(etmp, bs->ht);
 #endif
         }
 
@@ -369,13 +363,13 @@ static int32_t select_spairs_by_minimal_degree(
             /* track trace information ? */
             if (md->trace_level == LEARN_TRACER) {
                 trows[ntr][BINDEX]  = prev;
-                if (tht->eld == tht->esz-1) {
-                    enlarge_hash_table(tht);
+                if (bs->ht->eld == bs->ht->esz-1) {
+                    enlarge_hash_table(bs->ht);
                 }
 #if PARALLEL_HASHING
-                trows[ntr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+                trows[ntr][MULT]    = check_insert_in_hash_table(etmp, h, bs->ht);
 #else
-                trows[ntr][MULT]    = insert_in_hash_table(etmp, tht);
+                trows[ntr][MULT]    = insert_in_hash_table(etmp, bs->ht);
 #endif
             }
             /* mark lcm column as lead term column */
@@ -389,10 +383,6 @@ static int32_t select_spairs_by_minimal_degree(
     memset(bht->ev[0], 0, (unsigned long)evl * sizeof(exp_t));
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
-
-    if (md->trace_level == LEARN_TRACER) {
-        md->tr->ht = tht;
-    }
 
     md->num_rowsred +=  mat->nr - mat->nc;
     md->current_deg =   mdeg;
@@ -502,16 +492,17 @@ static void select_tbr(
 
 
 static inline void find_multiplied_reducer(
-        const bs_t * const bs,
+        bs_t *bs,
         const hm_t m,
-        const ht_t * const bht,
         len_t *nr,
         hm_t **rows,
         ht_t *sht,
-        ht_t *tht
+        const md_t * const md
         )
 {
     len_t i, k;
+
+    ht_t *bht = bs->ht;
 
     const len_t rr  = *nr;
 
@@ -549,15 +540,15 @@ start:
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
-        if (tht != NULL) {
+        if (md->trace_level == LEARN_TRACER) {
             rows[rr][BINDEX]  = lmps[i];
-            if (tht->eld == tht->esz-1) {
-                enlarge_hash_table(tht);
+            if (bht->eld == bht->esz-1) {
+                enlarge_hash_table(bht);
             }
 #if PARALLEL_HASHING
-            rows[rr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+            rows[rr][MULT]    = check_insert_in_hash_table(etmp, h, bht);
 #else
-            rows[rr][MULT]    = insert_in_hash_table(etmp, tht);
+            rows[rr][MULT]    = insert_in_hash_table(etmp, bht);
 #endif
         }
         sht->hd[m].idx  = 2;
@@ -567,7 +558,7 @@ start:
 
 static void symbolic_preprocessing(
         mat_t *mat,
-        const bs_t * const bs,
+        bs_t *bs,
         md_t *md
         )
 {
@@ -581,14 +572,7 @@ static void symbolic_preprocessing(
     /* at the moment we have as many reducers as we have different lcms */
     len_t nrr = mat->nc;
 
-    const ht_t * const bht = bs->ht; 
     ht_t *sht = md->ht;
-    ht_t *tht = NULL;
-    /* check for tracing */
-    if (md->trace_level == LEARN_TRACER) {
-        tht = md->tr->ht;
-    }
-
 
     /* note that we have already counted the different lcms, i.e.
      * ncols until this step. moreover, we have also already marked
@@ -610,7 +594,7 @@ static void symbolic_preprocessing(
         if (!sht->hd[i].idx) {
             sht->hd[i].idx = 1;
             mat->nc++;
-            find_multiplied_reducer(bs, i, bht, &nrr, mat->rr, sht, tht);
+            find_multiplied_reducer(bs, i, &nrr, mat->rr, sht, md);
         }
     }
     for (; i < sht->eld; ++i) {
@@ -620,7 +604,7 @@ static void symbolic_preprocessing(
         }
         sht->hd[i].idx = 1;
         mat->nc++;
-        find_multiplied_reducer(bs, i, bht, &nrr, mat->rr, sht, tht);
+        find_multiplied_reducer(bs, i, &nrr, mat->rr, sht, md);
     }
     /* realloc to real size */
     mat->rr   =   realloc(mat->rr, (unsigned long)nrr * sizeof(hm_t *));
@@ -637,11 +621,6 @@ static void symbolic_preprocessing(
         mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
     }
 
-    if (md->trace_level == LEARN_TRACER) {
-        md->tr->ht = tht;
-    }
-
-
     /* statistics */
     md->max_sht_size  = md->max_sht_size > sht->esz ?
         md->max_sht_size : sht->esz;
@@ -655,26 +634,26 @@ static void symbolic_preprocessing(
 
 static void generate_matrix_from_trace(
         mat_t *mat,
-        const trace_t * const trace,
-        const len_t idx,
         const bs_t * const bs,
-        md_t *st,
-        ht_t *sht,
-        const ht_t * const bht,
-        const ht_t * const tht
+        md_t *md
         )
 {
     /* timings */
-    double ct0, ct1, rt0, rt1;
-    ct0 = cputime();
-    rt0 = realtime();
+    double ct, rt;
+    ct = cputime();
+    rt = realtime();
 
     len_t i, nr;
     hm_t *b;
     exp_t *emul;
     hi_t h;
 
-    td_t td       = trace->td[idx];
+    const len_t idx = md->trace_rd;
+
+    td_t td   = md->tr->td[idx];
+    ht_t *bht = bs->ht;
+    ht_t *sht = md->ht;
+
     mat->rr       = (hm_t **)malloc((unsigned long)td.rld * sizeof(hm_t *));
     hm_t **rrows  = mat->rr;
     mat->tr       = (hm_t **)malloc((unsigned long)td.tld * sizeof(hm_t *));
@@ -687,8 +666,8 @@ static void generate_matrix_from_trace(
     nr  = 0;
     while (i < td.rld) {
         b     = bs->hm[td.rri[i++]];
-        emul  = tht->ev[td.rri[i]];
-        h     = tht->hd[td.rri[i++]].val;
+        emul  = bht->ev[td.rri[i]];
+        h     = bht->hd[td.rri[i++]].val;
 
 
         rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
@@ -701,8 +680,8 @@ static void generate_matrix_from_trace(
     nr  = 0;
     while (i < td.tld) {
         b     = bs->hm[td.tri[i++]];
-        emul  = tht->ev[td.tri[i]];
-        h     = tht->hd[td.tri[i]].val;
+        emul  = bht->ev[td.tri[i]];
+        h     = bht->hd[td.tri[i]].val;
 
         trows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         /* At the moment rba is unused */
@@ -717,14 +696,12 @@ static void generate_matrix_from_trace(
     mat->nc   = sht->eld-1;
 
     /* statistics */
-    st->max_sht_size  = st->max_sht_size > sht->esz ?
-        st->max_sht_size : sht->esz;
+    md->max_sht_size  = md->max_sht_size > sht->esz ?
+        md->max_sht_size : sht->esz;
 
     /* timings */
-    ct1 = cputime();
-    rt1 = realtime();
-    st->symbol_ctime  +=  ct1 - ct0;
-    st->symbol_rtime  +=  rt1 - rt0;
+    md->symbol_ctime  +=  cputime() - ct;
+    md->symbol_rtime  +=  cputime() - rt;
 }
 
 static void generate_saturation_reducer_rows_from_trace(
@@ -783,7 +760,7 @@ static void generate_saturation_reducer_rows_from_trace(
 
 static int preprocessing(
         mat_t *mat,
-        const bs_t * const bs,
+        bs_t *bs,
         md_t *md
         )
 {
@@ -793,8 +770,7 @@ static int preprocessing(
         }
         symbolic_preprocessing(mat, bs, md);
     } else {
-        trace_t *tr = md->tr;
-        generate_matrix_from_trace(mat, tr, md->trace_rd, bs, md, md->ht, bs->ht, tr->ht);
+        generate_matrix_from_trace(mat, bs, md);
     }
     return 0;
 }

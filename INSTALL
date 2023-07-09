@@ -5,7 +5,8 @@ You will need to have autotools installed on your system.
 2. Run `./configure` (possibly with options, see `./configure -h` for
    more information).
 3. Run make (possibly with CFLAGS and LDFLAGS adjusted).
-4. Run `make install` in order to globally install the library and the binary
+4. Run make check.
+5. Run `make install` in order to globally install the library and the binary
    of msolve.
 
 If you are working on a distriubtion (downloaded *.tar.gz)
@@ -13,12 +14,15 @@ If you are working on a distriubtion (downloaded *.tar.gz)
 1. Run ./configure (possibly with options, see ./configure -h for more
    information).
 2. Run `make` (possibly with CFLAGS and LDFLAGS adjusted).
-3. Run `make install` in order to globally install the library and the binary
+3. Run make check.
+4. Run `make install` in order to globally install the library and the binary
    of msolve.
 
 NOTE TO MAC OS users
 ====================
-You need to proceed slightly differently by modifying the `Makefile` file as follows
+To build a static binary file, you will need to run `./configure -static`.
+
+You may also need to proceed slightly differently by modifying the `Makefile` file as follows
 - add to the `LIBS` variable the `-fopenmp` option
 ```
 LIBS = -lflint -lmpfr -lgmp -lm -fopenmp
@@ -35,4 +39,4 @@ Run `make dist`.
 
 If you want to generate a static binary
 =======================================
-Add `-all-static` to your LDFLAGS as follows `make LDFLAGS="all-static"`.
+Add `-all-static` to your LDFLAGS as follows `make LDFLAGS="-all-static"`.

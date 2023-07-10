@@ -215,7 +215,7 @@ bs_t *f4_trace_application_phase(
     ct0 = cputime();
     rt0 = realtime();
 
-    int32_t ret, round, i;
+    int32_t round, i;
     /* hashes-to-columns map, initialized with length 1, is reallocated
      * in each call when generating matrices for linear algebra */
     hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
@@ -237,6 +237,8 @@ bs_t *f4_trace_application_phase(
 
     /* initialize specialized hash table */
     ht_t *sht = initialize_secondary_hash_table(bht, st);
+
+    int32_t ret = 0;
 
     /* reset bs->ld for first update process */
     bs->ld  = st->ngens;

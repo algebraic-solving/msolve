@@ -1171,7 +1171,7 @@ int msolve_gbtrace_qq(
     normalize_initial_basis(msd->bs_qq, st->fc);
   }
 
-  uint32_t prime = next_prime(1<<30);
+  uint32_t prime = next_prime(next_prime(1<<30));
   uint32_t primeinit;
   srand(time(0));
 
@@ -1295,7 +1295,7 @@ int msolve_gbtrace_qq(
     }
 
     if(info_level){
-      fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+      fprintf(stderr, "\nStarts multi-modular computations\n");
     }
 
     learn = 0;

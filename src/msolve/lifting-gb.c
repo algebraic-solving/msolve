@@ -740,6 +740,13 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   *stf4 = realtime()-ca0;
 
+  if (bs == NULL || bs->lml != num_gb[0]) {
+      if (bs != NULL) {
+        free_basis(&bs);
+      }
+      return;
+  }
+
   if(st->nev){
     get_lm_from_bs_trace_elim(bs, bht[0], leadmons_current[0], num_gb[0]);
   }

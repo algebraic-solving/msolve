@@ -3,6 +3,8 @@
 *.so
 *.lo
 *.la
+*.log
+*.trs
 *~
 *.libs
 *.in

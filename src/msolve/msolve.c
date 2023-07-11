@@ -2755,7 +2755,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
     /* printf("F4 trace timing %13.2f\n", *stf4); */
 
     if (bs[i] == NULL) {
-        nmod_params[i] = NULL;
+        /* nmod_params[i] = NULL; */
         bad_primes[i] = 1;
         continue;
     }

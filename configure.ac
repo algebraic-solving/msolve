@@ -131,6 +131,9 @@ AC_CONFIG_LINKS([
  output_files/reals_dim0.res:output_files/reals_dim0.res
  output_files/reals_dim0.p256.res:output_files/reals_dim0.p256.res
  test/diff/diff_reals_dim0.sh:test/diff/diff_reals_dim0.sh
+ input_files/bug-empty-tracer.ms:input_files/bug-empty-tracer.ms
+ output_files/bug-empty-tracer.res:output_files/bug-empty-tracer.res
+ test/diff/diff_bug_empty_tracer.sh:test/diff/diff_bug_empty_tracer.sh
  input_files/xy-qq.ms:input_files/xy-qq.ms
  output_files/xy-qq.res:output_files/xy-qq.res
  test/diff/diff_xy-qq.sh:test/diff/diff_xy-qq.sh

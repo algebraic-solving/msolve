@@ -2754,12 +2754,18 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
     *stf4 = realtime()-ca0;
     /* printf("F4 trace timing %13.2f\n", *stf4); */
 
+    if (bs[i] == NULL) {
+        nmod_params[i] = NULL;
+        bad_primes[i] = 1;
+        continue;
+    }
     if(bs[i]->lml != num_gb[i]){
       if (bs[i] != NULL) {
         free_basis(&(bs[i]));
       }
-      nmod_params[i] = NULL;
+      /* nmod_params[i] = NULL; */
       bad_primes[i] = 1;
+      continue;
       /* return; */
     }
     get_lm_from_bs_trace(bs[i], bht[i], leadmons_current[i]);

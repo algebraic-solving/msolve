@@ -2893,6 +2893,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_32(
                 if (!npiv) {
                     fprintf(stderr, "Unlucky prime detected, row reduced to zero.");
                     flag  = 0;
+                    break;
                 }
 
                 /* normalize coefficient array

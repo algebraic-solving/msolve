@@ -5,7 +5,7 @@ includedir=@includedir@
 
 Name: msolve
 URL: https://msolve.lip6.fr/
-Description: C library for for solving multivariate polynomial systems
+Description: C library for solving multivariate polynomial systems
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lmsolve -lflint -lmpfr -lgmp
 Cflags: -I${includedir}

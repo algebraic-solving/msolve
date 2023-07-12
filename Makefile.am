@@ -37,3 +37,6 @@ fglm_build_matrixn_nonradical_shape_31_SOURCES = test/fglm/build_matrixn_nonradi
 fglm_build_matrixn_nonradical_radicalshape_31_SOURCES = test/fglm/build_matrixn_nonradical_radicalshape-31.c
 
 TESTS = $(check_PROGRAMS) $(checkdiff)
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = msolve.pc

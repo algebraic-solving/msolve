@@ -66,6 +66,7 @@ AC_CHECK_FUNCS([floor getdelim gettimeofday memmove memset pow sqrt strchr strst
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
  Makefile
+ msolve.pc
  src/fglm/Makefile
  src/neogb/Makefile
  src/usolve/Makefile

@@ -423,25 +423,48 @@ static int32_t initialize_f4(
 static int32_t compute_new_elements(
     mat_t *mat,
     bs_t *bs,
-    md_t *md
+    md_t *md,
+    int32_t *errp
     )
 {
+    len_t i;
+
     ht_t *ht  = bs->ht;
     ht_t *sht = md->ht;
 
     convert_hashes_to_columns(mat, md, sht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
     linear_algebra(mat, bs, md);
+
+    /* check for bad prime */
+    if (md->trace_level == APPLY_TRACER) {
+        if (mat->np != md->tr->td[md->trace_rd].nlm) {
+            fprintf(stdout, "Wrong number of new elements, bad prime.");
+            *errp = 1;
+            return 1;
+        }
+    }
     /* columns indices are mapped back to exponent hashes */
     if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            -1, mat, bs, ht, sht, md);
+                -1, mat, bs, ht, sht, md);
     }
     clean_hash_table(sht);
     /* all rows in mat are now polynomials in the basis,
-    * so we do not need the rows anymore */
+     * so we do not need the rows anymore */
     clear_matrix(mat);
 
+    /* check for bad prime */
+    if (md->trace_level == APPLY_TRACER) {
+        for (i = 0; i < mat->np; ++i) {
+            if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
+                fprintf(stdout, "Wrong leading term for new element %u/%u, bad prime.",
+                        i, mat->np);
+                *errp = 2;
+                return 1;
+            }
+        }
+    }
     if (md->trace_level != APPLY_TRACER) {
         /* if we found a constant we are done, so remove all remaining pairs */
         if (bs->constant  == 1) {
@@ -620,6 +643,7 @@ bs_t *core_f4(
        are left in the pairset or if we found a constant in the basis. */
     print_round_information_header(stdout, md);
     
+    *errp = 0;
     while (!done) {
         rrt = realtime();
         crt = cputime();
@@ -629,7 +653,7 @@ bs_t *core_f4(
         done = preprocessing(mat, bs, md);
 
         if (!done) {
-            done = compute_new_elements(mat, bs, md);
+            done = compute_new_elements(mat, bs, md, errp);
         }
         if (!done && md->trace_level != APPLY_TRACER) {
             done = update(bs, md);
@@ -650,9 +674,9 @@ bs_t *core_f4(
     
     get_and_print_final_statistics(stdout, md, bs);
    
+    TODO USE errp to probably set bs = NULL
     finalize_f4(gmd, &md, &mat);
 
-    *errp = 0;
     return bs;
 }
 

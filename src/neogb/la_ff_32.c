@@ -2313,6 +2313,8 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     const len_t ncr   = mat->ncr;
     const len_t ncl   = mat->ncl;
 
+    len_t bad_prime = 0;
+
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
     memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
@@ -2328,46 +2330,60 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     private(i, j, k, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {
-        int64_t *drl  = dr + (omp_get_thread_num() * ncols);
-        hm_t *npiv      = upivs[i];
-        cf32_t *cfs     = bs->cf_32[npiv[COEFFS]];
-        const len_t os  = npiv[PRELOOP];
-        const len_t len = npiv[LENGTH];
-        const len_t bi  = npiv[BINDEX];
-        const len_t mh  = npiv[MULT];
-        const hm_t * const ds = npiv + OFFSET;
-        k = 0;
-        memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
-        for (j = 0; j < os; ++j) {
-            drl[ds[j]]  = (int64_t)cfs[j];
-        }
-        for (; j < len; j += UNROLL) {
-            drl[ds[j]]    = (int64_t)cfs[j];
-            drl[ds[j+1]]  = (int64_t)cfs[j+1];
-            drl[ds[j+2]]  = (int64_t)cfs[j+2];
-            drl[ds[j+3]]  = (int64_t)cfs[j+3];
-        }
-        cfs = NULL;
-        do {
-            sc  = npiv[OFFSET];
-            free(npiv);
-            free(cfs);
-            npiv  = mat->tr[i] = reduce_dense_row_by_known_pivots_sparse_ff_32(
-                    drl, mat, bs, pivs, sc, i, mh, bi, st);
-            if (!npiv) {
-                break;
+        while (bad_prime == 0) {
+            int64_t *drl  = dr + (omp_get_thread_num() * ncols);
+            hm_t *npiv      = upivs[i];
+            cf32_t *cfs     = bs->cf_32[npiv[COEFFS]];
+            const len_t os  = npiv[PRELOOP];
+            const len_t len = npiv[LENGTH];
+            const len_t bi  = npiv[BINDEX];
+            const len_t mh  = npiv[MULT];
+            const hm_t * const ds = npiv + OFFSET;
+            k = 0;
+            memset(drl, 0, (unsigned long)ncols * sizeof(int64_t));
+            for (j = 0; j < os; ++j) {
+                drl[ds[j]]  = (int64_t)cfs[j];
             }
-            /* normalize coefficient array
-             * NOTE: this has to be done here, otherwise the reduction may
-             * lead to wrong results in a parallel computation since other
-             * threads might directly use the new pivot once it is synced. */
-            if (mat->cf_32[npiv[COEFFS]][0] != 1) {
-                normalize_sparse_matrix_row_ff_32(
-                    mat->cf_32[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
+            for (; j < len; j += UNROLL) {
+                drl[ds[j]]    = (int64_t)cfs[j];
+                drl[ds[j+1]]  = (int64_t)cfs[j+1];
+                drl[ds[j+2]]  = (int64_t)cfs[j+2];
+                drl[ds[j+3]]  = (int64_t)cfs[j+3];
             }
-            k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
-            cfs = mat->cf_32[npiv[COEFFS]];
-        } while (!k);
+            cfs = NULL;
+            do {
+                sc  = npiv[OFFSET];
+                free(npiv);
+                free(cfs);
+                npiv  = mat->tr[i] = reduce_dense_row_by_known_pivots_sparse_ff_32(
+                        drl, mat, bs, pivs, sc, i, mh, bi, st);
+                if (!npiv) {
+                    if (st->trace_level == APPLY_TRACER) {
+                        bad_prime = 1;
+                    }
+                }
+                /* normalize coefficient array
+                 * NOTE: this has to be done here, otherwise the reduction may
+                 * lead to wrong results in a parallel computation since other
+                 * threads might directly use the new pivot once it is synced. */
+                if (mat->cf_32[npiv[COEFFS]][0] != 1) {
+                    normalize_sparse_matrix_row_ff_32(
+                            mat->cf_32[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
+                }
+                k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
+                cfs = mat->cf_32[npiv[COEFFS]];
+            } while (!k);
+        }
+    }
+
+    if (bad_prime == 1) {
+        for (i = 0; i < ncl+ncr; ++i) {
+            free(pivs[i]);
+            pivs[i] = NULL;
+        }
+        fprintf(stdout, "Zero reduction while applying tracer, bad prime.\n");
+        mat->np = 0;
+        return;
     }
 
     /* construct the trace */

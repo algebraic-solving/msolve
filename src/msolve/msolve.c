@@ -2790,11 +2790,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     ht_t *lht = copy_hash_table(bs_qq->ht, st);
     blht[i] = lht;
   }
-  ht_t **btht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-  btht[0] = st->tr->ht;
-  for(int i = 1; i < st->nthrds; i++){
-    btht[i] = copy_hash_table(st->tr->ht, st);
-  }
 
   normalize_nmod_param(nmod_params[0]);
 

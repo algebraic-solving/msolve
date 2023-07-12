@@ -457,7 +457,7 @@ static int32_t compute_new_elements(
     /* check for bad prime */
     if (md->trace_level == APPLY_TRACER) {
         for (i = 0; i < mat->np; ++i) {
-            if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
+            if (bs->hm[bs->ld+i][OFFSET] != md->tr->td[md->trace_rd].nlms[i]) {
                 fprintf(stdout, "Wrong leading term for new element %u/%u, bad prime.",
                         i, mat->np);
                 *errp = 2;
@@ -605,10 +605,16 @@ static void free_local_data(
 
 static void finalize_f4(
         md_t *gmd,
+        bs_t **bsp,
         md_t **lmdp,
-        mat_t **matp
+        mat_t **matp,
+        int32_t err
         )
 {
+    if (err > 0) {
+        free_basis(bsp);
+    }
+
     if ((*lmdp)->trace_level == LEARN_TRACER) {
         gmd->tr = (*lmdp)->tr;
         gmd->trace_level = APPLY_TRACER;
@@ -674,8 +680,7 @@ bs_t *core_f4(
     
     get_and_print_final_statistics(stdout, md, bs);
    
-    TODO USE errp to probably set bs = NULL
-    finalize_f4(gmd, &md, &mat);
+    finalize_f4(gmd, &bs, &md, &mat, *errp);
 
     return bs;
 }

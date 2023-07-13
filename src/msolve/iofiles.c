@@ -1086,7 +1086,7 @@ static inline void get_single_param_from_file_bin(FILE *file, mpz_param_t param)
 
     mpz_init(param->cfs[i]);
     if(!mpz_inp_raw(param->cfs[i], file)){
-      fprintf(stderr, "An error occured when reading file (lcm coord i=%d)\n", i);
+      fprintf(stderr, "An error occurred when reading file (lcm coord i=%d)\n", i);
       exit(1);
     }
 
@@ -1115,7 +1115,7 @@ static inline void get_single_param_from_file(FILE *file, mpz_param_t param){
     mpz_init(param->cfs[i]);
 
     if(!mpz_inp_str(param->cfs[i], file, 10)){
-      fprintf(stderr, "An error occured when reading file (i=%d)\n", i);
+      fprintf(stderr, "An error occurred when reading file (i=%d)\n", i);
       exit(1);
     }
 

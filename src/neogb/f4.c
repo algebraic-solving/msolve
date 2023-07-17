@@ -377,7 +377,6 @@ static int32_t initialize_f4(
             if (md->trace_level != APPLY_TRACER) {
                 md->trace_level = LEARN_TRACER;
             }
-            printf("md->trace_level = %d\n", md->trace_level);
         }
     } else {
         bs = gbs;

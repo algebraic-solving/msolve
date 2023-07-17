@@ -1844,10 +1844,7 @@ static int32_t *initial_modular_step(
 
     int32_t error              = 0;
     int32_t empty_solution_set = 1;
-    printf("gens->field_char %d ] fc %d\n", gens->field_char, fc);
     bs_t *bs = core_gba(gbg, md, &error, fc);
-    printf("bs->ht->eld %d\n", bs->ht->eld);
-    printf("gbg->ht->eld %d\n", gbg->ht->eld);
 
     print_tracer_statistics(stdout, rt, md);
 
@@ -2874,7 +2871,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 #endif
 
   btrace[0] = st->tr;
-  printf("st->tr %p\n", st->tr);
 
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
@@ -2896,7 +2892,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   normalize_nmod_param(nmod_params[0]);
 
-  if(info_level){
+  if(info_level && st->trace_level == APPLY_TRACER){
     fprintf(stderr, "\nStarts trace based multi-modular computations\n");
   }
 

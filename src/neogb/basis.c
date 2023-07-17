@@ -76,6 +76,14 @@ void free_basis(
         bs_t **bsp
         )
 {
+    free_hash_table(&((*bsp)->ht));
+    free_basis_without_hash_table(bsp);
+}
+
+void free_basis_without_hash_table(
+        bs_t **bsp
+        )
+{
     len_t i, j, len;
     bs_t *bs  = *bsp;
     if (bs->cf_8) {
@@ -123,7 +131,6 @@ void free_basis(
         free(bs->hm);
         bs->hm  = NULL;
     }
-    free_hash_table(&(bs->ht));
     free(bs->lmps);
     bs->lmps  = NULL;
     free(bs->lm);
@@ -376,13 +383,12 @@ bs_t *copy_basis_mod_p(
     bs->lml         = gbs->lml;
     bs->sz          = gbs->sz;
     bs->constant    = gbs->constant;
-    bs->ht          = copy_hash_table(gbs->ht, st);
+    bs->ht          = gbs->ht;
     bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
     bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red         = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
 
-    printf("copy basis\n");
     /* copy data */
     memcpy(bs->lm, gbs->lm, (unsigned long)bs->sz * sizeof(sdm_t));
     memcpy(bs->lmps, gbs->lmps, (unsigned long)bs->sz * sizeof(bl_t));

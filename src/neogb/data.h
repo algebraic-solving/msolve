@@ -228,6 +228,7 @@ struct mat_t
     len_t ncl;          /* number of left columns (in ABCD splicing) */
     len_t ncr;          /* number of right columns (in ABCD splicing) */
     len_t rbal;         /* length of reducer binary array */
+    deg_t cd;           /* current degree */
 };
 
 /* signature matrix stuff, stores information from previous and current step */
@@ -291,6 +292,7 @@ struct td_t
     hm_t *nlms;   /* hashes of new leading monomials represented
                    * in basis hash table */
     rba_t **rba;  /* reducer binary array for each to be reduced row */
+    deg_t deg;    /* degree of elements in trace */
     len_t rld;    /* load of reducer rows information*/
     len_t tld;    /* load of to be reduced rows information*/
     len_t nlm;    /* number of new leading monomials in this step */

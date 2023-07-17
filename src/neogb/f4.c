@@ -289,8 +289,6 @@ static void reduce_basis(
         sht->hd[i].idx = 1;
     }
 
-    /* free data from bht, we use sht later on */
-    free_hash_table(&bht);
 
     /* generate hash <-> column mapping */
     if (md->info_level > 1) {
@@ -303,12 +301,23 @@ static void reduce_basis(
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
     /* do the linear algebra reduction and free basis data afterwards */
     interreduce_matrix_rows(mat, bs, md, 1);
-    /* remap rows to basis elements (keeping their position in bs) */
-    convert_sparse_matrix_rows_to_basis_elements_use_sht(1, mat, bs, sht, md);
 
-    /* bht becomes sht, so we do not have to convert the hash entries */
-    bht    = sht;
-    bs->ht = bht;
+    /* Switch sht and bht for memory efficient hash table storage.
+    NOTE: Only applicable for finite field computation in which
+          we are not learning or applying a tracer. */
+    if (md->trace_level == NO_TRACER) {
+        /* remap rows to basis elements (keeping their position in bs) */
+        convert_sparse_matrix_rows_to_basis_elements_use_sht(1, mat, bs, sht, md);
+        /* free data from bht, we use sht later on */
+        free_hash_table(&bht);
+        /* bht becomes sht, so we do not have to convert the hash entries */
+        bht    = sht;
+        bs->ht = bht;
+    } else {
+        /* remap rows to basis elements (keeping their position in bs) */
+        convert_sparse_matrix_rows_to_basis_elements(
+                1, mat, bs, bht, sht, md);
+    }
 
     /* set sht = NULL, otherwise we might run in a double-free
      * of sht and bht at the end */
@@ -361,12 +370,10 @@ static int32_t initialize_f4(
     md->fc  = fc;
     md->hcm = (hi_t *)malloc(sizeof(hi_t));
 
-    printf("gmd->fc %d ] fc %d\n", gmd->fc, fc);
     if (gmd->fc != fc) {
         reset_function_pointers(fc, md->laopt);
         bs = copy_basis_mod_p(gbs, md);
         if (md->laopt < 40) {
-            printf("md->trace_level = %d\n", md->trace_level);
             if (md->trace_level != APPLY_TRACER) {
                 md->trace_level = LEARN_TRACER;
             }
@@ -456,7 +463,7 @@ static int32_t compute_new_elements(
 
     /* check for bad prime */
     if (md->trace_level == APPLY_TRACER) {
-        for (i = 0; i < mat->np; ++i) {
+        for (i = 0; i < md->np; ++i) {
             if (bs->hm[bs->ld+i][OFFSET] != md->tr->td[md->trace_rd].nlms[i]) {
                 fprintf(stdout, "Wrong leading term for new element %u/%u, bad prime.",
                         i, mat->np);
@@ -464,6 +471,10 @@ static int32_t compute_new_elements(
                 return 1;
             }
         }
+    }
+    if (md->trace_level == LEARN_TRACER && md->np > 0) {
+        add_lms_to_trace(md->tr, bs, md->np);
+        md->tr->ltd++;
     }
     if (md->trace_level != APPLY_TRACER) {
         /* if we found a constant we are done, so remove all remaining pairs */
@@ -588,9 +599,6 @@ static void free_local_data(
 {
     md_t *md = *mdp;
 
-    /* if (md->ht != NULL) {
-        free_hash_table(&(md->ht));
-    } */
     if (md->ps != NULL) {
         free_pairset(&(md->ps));
     }
@@ -605,12 +613,14 @@ static void free_local_data(
 
 static void finalize_f4(
         md_t *gmd,
+        bs_t *gbs,
         bs_t **bsp,
         md_t **lmdp,
         mat_t **matp,
         int32_t err
         )
 {
+    gbs->ht = (*bsp)->ht;
     if (err > 0) {
         free_basis(bsp);
     }
@@ -649,6 +659,7 @@ bs_t *core_f4(
        are left in the pairset or if we found a constant in the basis. */
     print_round_information_header(stdout, md);
     
+    /* reset error */
     *errp = 0;
     while (!done) {
         rrt = realtime();
@@ -680,7 +691,7 @@ bs_t *core_f4(
     
     get_and_print_final_statistics(stdout, md, bs);
    
-    finalize_f4(gmd, &bs, &md, &mat, *errp);
+    finalize_f4(gmd, gbs, &bs, &md, &mat, *errp);
 
     return bs;
 }

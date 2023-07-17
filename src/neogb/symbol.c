@@ -702,6 +702,8 @@ static void generate_matrix_from_trace(
     /* timings */
     md->symbol_ctime  +=  cputime() - ct;
     md->symbol_rtime  +=  cputime() - rt;
+
+    print_current_trace_meta_data(md);
 }
 
 static void generate_saturation_reducer_rows_from_trace(

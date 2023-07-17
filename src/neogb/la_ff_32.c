@@ -2330,7 +2330,7 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     private(i, j, k, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {
-        while (bad_prime == 0) {
+        if (bad_prime == 0) {
             int64_t *drl  = dr + (omp_get_thread_num() * ncols);
             hm_t *npiv      = upivs[i];
             cf32_t *cfs     = bs->cf_32[npiv[COEFFS]];
@@ -2361,6 +2361,7 @@ static void exact_sparse_reduced_echelon_form_ff_32(
                     if (st->trace_level == APPLY_TRACER) {
                         bad_prime = 1;
                     }
+                    break;
                 }
                 /* normalize coefficient array
                  * NOTE: this has to be done here, otherwise the reduction may

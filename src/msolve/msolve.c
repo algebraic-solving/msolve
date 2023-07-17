@@ -1846,6 +1846,8 @@ static int32_t *initial_modular_step(
     int32_t empty_solution_set = 1;
     printf("gens->field_char %d ] fc %d\n", gens->field_char, fc);
     bs_t *bs = core_gba(gbg, md, &error, fc);
+    printf("bs->ht->eld %d\n", bs->ht->eld);
+    printf("gbg->ht->eld %d\n", gbg->ht->eld);
 
     print_tracer_statistics(stdout, rt, md);
 
@@ -1892,7 +1894,7 @@ static int32_t *initial_modular_step(
                     *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
                     md->info_level, bdata_fglm, bdata_bms, success, md);
         }
-        free_basis(&(bs));
+        free_basis_without_hash_table(&(bs));
         *dim = 0;
         *dquot_ori = dquot;
         return lmb;
@@ -2278,6 +2280,107 @@ for (i = 0; i < st->nprimes; ++i){
  }
 }
 #endif
+
+static void secondary_modular_steps(sp_matfglm_t **bmatrix,
+                                   int32_t **div_xn,
+                                   int32_t **len_gb_xn,
+                                   int32_t **start_cf_gb_xn,
+
+                                   long *bnlins,
+                                   uint64_t **blinvars,
+                                   uint32_t **blineqs,
+                                   uint64_t **bsquvars,
+
+                                   fglm_data_t **bdata_fglm,
+                                   fglm_bms_data_t **bdata_bms,
+
+                                   int32_t *num_gb,
+                                   int32_t **leadmons_ori,
+                                   int32_t **leadmons_current,
+
+                                   uint64_t bsz,
+                                   param_t **nmod_params,
+                                   trace_t **btrace,
+                                   bs_t *bs_qq,
+                                   md_t *st,
+                                   const int32_t fc,
+                                   int info_level,
+                                   bs_t **bs,
+                                   int32_t *lmb_ori,
+                                   int32_t dquot_ori,
+                                   primes_t *lp,
+                                   data_gens_ff_t *gens,
+                                   double *stf4,
+                                   const long nbsols,
+                                   int *bad_primes)
+{
+    st->info_level = 0;
+
+    double rt = realtime();
+    /* tracing phase */
+    len_t i;
+    int32_t error = 0;
+
+    /* F4 and FGLM are run using a single thread */
+    /* st->nthrds is reset to its original value afterwards */
+    const int nthrds = st->nthrds;
+    st->nthrds = 1;
+
+    memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
+#pragma omp parallel for num_threads(nthrds)  \
+    private(i) schedule(static)
+    for (i = 0; i < st->nprimes; ++i){
+        bs[i] = core_gba(bs_qq, st, &error, lp->p[i]);
+        *stf4 = realtime()-rt;
+        /* printf("F4 trace timing %13.2f\n", *stf4); */
+
+        if (error > 0) {
+            if (bs[i] != NULL) {
+                free(bs[i]);
+                bs[i] = NULL;
+            }
+            nmod_params[i] = NULL;
+            bad_primes[i] = 1;
+            continue;
+        }
+        get_lm_from_bs_trace(bs[i], bs[i]->ht, leadmons_current[i]);
+
+        if(equal_staircase(leadmons_current[i], leadmons_ori[i],
+                    num_gb[i], num_gb[i], bs[i]->ht->nv)){
+
+            set_linear_poly(bnlins[i], blineqs[i], blinvars[i], bs[i]->ht,
+                    leadmons_current[i], bs[i]);
+
+            build_matrixn_from_bs_trace_application(bmatrix[i],
+                    div_xn[i],
+                    len_gb_xn[i],
+                    start_cf_gb_xn[i],
+                    lmb_ori, dquot_ori, bs[i], bs[i]->ht,
+                    leadmons_ori[i], bs[i]->ht->nv,
+                    lp->p[i]);
+            if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
+                        nmod_params[i],
+                        bs[i]->ht->nv,
+                        bsz,
+                        bnlins[i], blinvars[i], blineqs[i],
+                        bsquvars[i],
+                        bdata_fglm[i],
+                        bdata_bms[i],
+                        nbsols,
+                        info_level,
+                        st)){
+                bad_primes[i] = 1;
+            }
+        }
+        else{
+            bad_primes[i] = 1;
+        }
+        if (bs[i] != NULL) {
+            free_basis_without_hash_table(&(bs[i]));
+        }
+    }
+    st->nthrds = nthrds;
+}
 
 static void modular_trace_application(sp_matfglm_t **bmatrix,
                                    int32_t **div_xn,
@@ -2907,7 +3010,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     double ca0 = realtime();
 
     double stf4 = 0;
-    modular_trace_application(bmatrix,
+    secondary_modular_steps(bmatrix,
                               bdiv_xn,
                               blen_gb_xn,
                               bstart_cf_gb_xn,
@@ -2925,7 +3028,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
                               bsz,
                               nmod_params, btrace,
-                              btht, bs_qq, blht, st,
+                              bs_qq, st,
                               field_char, 0, /* info_level, */
                               bs, lmb_ori, *dquot_ptr, lp,
                               gens, &stf4, nsols, bad_primes);
@@ -3088,10 +3191,10 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   /* free and clean up */
   /* free_shared_hash_data(bht); */
-  for(int i = 0; i < st->nthrds; i++){
+  /* for(int i = 0; i < st->nthrds; i++){
     free_hash_table(blht+i);
     free_hash_table(btht+i);
-  }
+  } */
 
   //here we should clean nmod_params
 

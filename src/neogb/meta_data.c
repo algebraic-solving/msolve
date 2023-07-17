@@ -167,6 +167,19 @@ void print_round_information_footer(
     }
 }
 
+static void print_current_trace_meta_data(
+        md_t *md
+        )
+{
+    len_t rd  = md->trace_rd;
+    len_t deg = md->tr->td[rd].deg;
+
+    if (md->info_level > 1) {
+        printf("%9d  %6d  ", rd, deg);
+        fflush(stdout);
+    }
+}
+
 static void get_final_statistics(
         md_t *md,
         const bs_t * const bs

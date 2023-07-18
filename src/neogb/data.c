@@ -133,6 +133,7 @@ hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const hm_t tmp_pos,
         const len_t mh,     /* multiplier hash for tracing */
         const len_t bi,     /* basis index of generating element */
+        const len_t tr,     /* trace data? */
         md_t *st
         );
 

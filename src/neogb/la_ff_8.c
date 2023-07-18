@@ -107,6 +107,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
         const hm_t tmp_pos, /* position of new coeffs array in tmpcf */
         const len_t mh,     /* multiplier hash for tracing */
         const len_t bi,     /* basis index of generating element */
+        const len_t tr,     /* trace data? */
         const uint32_t fc
         )
 {
@@ -118,8 +119,13 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf8_t * const * const mcf  = mat->cf_8;
-    rba_t *rba                  = mat->rba[tmp_pos];
 
+    rba_t *rba;
+    if (tr > 0) {
+        rba = mat->rba[tmp_pos];
+    } else {
+        rba = NULL;
+    }
     k = 0;
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
@@ -141,7 +147,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
         if (i < ncl) {
             cfs   = bs->cf_8[dts[COEFFS]];
             /* set corresponding bit of reducer in reducer bit array */
-            rba[i/32] |= 1U << (i % 32);
+            if (tr > 0) {
+                rba[i/32] |= 1U << (i % 32);
+            }
         } else {
             cfs   = mcf[dts[COEFFS]];
         }
@@ -583,7 +591,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_8(
                     free(npiv);
                     npiv  = NULL;
                     npiv  = reduce_dense_row_by_known_pivots_sparse_ff_8(
-                            drl, mat, bs, pivs, sc, cfp, 0, 0, st->fc);
+                            drl, mat, bs, pivs, sc, cfp, 0, 0, 0, st->fc);
                     if (!npiv) {
                         bctr  = nrbl;
                         break;
@@ -652,7 +660,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_8(
             pivs[k] = NULL;
             pivs[k] = mat->tr[npivs++] =
                 reduce_dense_row_by_known_pivots_sparse_ff_8(
-                        dr, mat, bs, pivs, sc, cfp, mh, bi, st->fc);
+                        dr, mat, bs, pivs, sc, cfp, mh, bi, 0, st->fc);
         }
     }
     free(mat->rr);
@@ -724,7 +732,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_8(
                 free(npiv);
                 free(cfs);
                 npiv  = mat->tr[i]  = reduce_dense_row_by_known_pivots_sparse_ff_8(
-                        drl, mat, bs, pivs, sc, i, mh, bi, st->fc);
+                        drl, mat, bs, pivs, sc, i, mh, bi, 0, st->fc);
                 if (!npiv) {
                     fprintf(stderr, "Unlucky prime detected, row reduced to zero.");
                     flag = 0;
@@ -787,7 +795,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_8(
             pivs[k] = NULL;
             pivs[k] = mat->tr[npivs++] =
                 reduce_dense_row_by_known_pivots_sparse_ff_8(
-                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, st->fc);
+                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st->fc);
         }
     }
     free(pivs);
@@ -918,7 +926,7 @@ static void exact_trace_sparse_reduced_echelon_form_ff_8(
             pivs[k] = NULL;
             pivs[k] = mat->tr[npivs++] =
                 reduce_dense_row_by_known_pivots_sparse_ff_8(
-                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, st->fc);
+                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st->fc);
         }
     }
     free(pivs);
@@ -984,7 +992,7 @@ static void exact_sparse_reduced_echelon_form_ff_8(
             free(npiv);
             free(cfs);
             npiv  = mat->tr[i] = reduce_dense_row_by_known_pivots_sparse_ff_8(
-                    drl, mat, bs, pivs, sc, i, mh, bi, st->fc);
+                    drl, mat, bs, pivs, sc, i, mh, bi, 1, st->fc);
             if (!npiv) {
                 break;
             }
@@ -1046,7 +1054,7 @@ static void exact_sparse_reduced_echelon_form_ff_8(
             pivs[k] = NULL;
             pivs[k] = mat->tr[npivs++] =
                 reduce_dense_row_by_known_pivots_sparse_ff_8(
-                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, st->fc);
+                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st->fc);
         }
     }
     free(pivs);
@@ -2008,7 +2016,7 @@ static void interreduce_matrix_rows_ff_8(
             pivs[l] = NULL;
             pivs[l] = mat->tr[k--] =
                 reduce_dense_row_by_known_pivots_sparse_ff_8(
-                        dr, mat, bs, pivs, sc, l, mh, bi, st->fc);
+                        dr, mat, bs, pivs, sc, l, mh, bi, 0, st->fc);
         }
     }
     for (i = 0; i < ncols; ++i) {

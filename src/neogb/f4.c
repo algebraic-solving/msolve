@@ -604,7 +604,7 @@ static void finalize_f4(
         int32_t err
         )
 {
-    gbs->ht = (*bsp)->ht;
+    /* gbs->ht = (*bsp)->ht; */
     if (err > 0) {
         free_basis(bsp);
     }

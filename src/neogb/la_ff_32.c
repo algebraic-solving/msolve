@@ -841,7 +841,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf32_t * const * const mcf  = mat->cf_32;
-    printf("tmp_pos %d / %d nrl\n", tmp_pos, mat->nrl);
     rba_t *rba                  = mat->rba[tmp_pos];
 #ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));

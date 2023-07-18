@@ -841,6 +841,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf32_t * const * const mcf  = mat->cf_32;
+    printf("tmp_pos %d / %d nrl\n", tmp_pos, mat->nrl);
     rba_t *rba                  = mat->rba[tmp_pos];
 #ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
@@ -4053,6 +4054,16 @@ static void interreduce_matrix_rows_ff_32(
     if (st->info_level > 1) {
         printf("                          ");
     }
+
+    /* for interreduction steps like the final basis reduction we
+    need to allocate memory for rba here, even so we do not use
+    it at all */
+    mat->rba  = (rba_t **)malloc((unsigned long)ncols * sizeof(rba_t *));
+    const unsigned long len = ncols / 32 + ((ncols % 32) != 0);
+    for (i = 0; i < ncols; ++i) {
+        mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
+    }
+
     mat->tr = realloc(mat->tr, (unsigned long)ncols * sizeof(hm_t *));
 
     mat->cf_32  = realloc(mat->cf_32,
@@ -4098,6 +4109,10 @@ static void interreduce_matrix_rows_ff_32(
                 reduce_dense_row_by_known_pivots_sparse_ff_32(
                         dr, mat, bs, pivs, sc, l, mh, bi, st);
         }
+    }
+    for (i = 0; i < ncols; ++i) {
+        free(mat->rba[i]);
+        mat->rba[i] = NULL;
     }
     if (free_basis != 0) {
         /* free now all polynomials in the basis and reset bs->ld to 0. */

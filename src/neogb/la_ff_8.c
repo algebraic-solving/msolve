@@ -1955,6 +1955,16 @@ static void interreduce_matrix_rows_ff_8(
     if (st->info_level > 1) {
         printf("                          ");
     }
+
+    /* for interreduction steps like the final basis reduction we
+    need to allocate memory for rba here, even so we do not use
+    it at all */
+    mat->rba  = (rba_t **)malloc((unsigned long)ncols * sizeof(rba_t *));
+    const unsigned long len = ncols / 32 + ((ncols % 32) != 0);
+    for (i = 0; i < ncols; ++i) {
+        mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
+    }
+
     mat->tr = realloc(mat->tr, (unsigned long)ncols * sizeof(hm_t *));
 
     mat->cf_8  = realloc(mat->cf_8,
@@ -2000,6 +2010,10 @@ static void interreduce_matrix_rows_ff_8(
                 reduce_dense_row_by_known_pivots_sparse_ff_8(
                         dr, mat, bs, pivs, sc, l, mh, bi, st->fc);
         }
+    }
+    for (i = 0; i < ncols; ++i) {
+        free(mat->rba[i]);
+        mat->rba[i] = NULL;
     }
     if (free_basis != 0) {
         /* free now all polynomials in the basis and reset bs->ld to 0. */

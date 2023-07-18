@@ -348,6 +348,7 @@ struct md_t
     double convert_ctime;
     double f4_ctime;
     double reduce_gb_ctime;
+    double tracer_ctime;
     double rht_ctime;
 
     double round_rtime;
@@ -358,6 +359,7 @@ struct md_t
     double convert_rtime;
     double f4_rtime;
     double reduce_gb_rtime;
+    double tracer_rtime;
     double rht_rtime;
 
     int64_t num_pairsred;

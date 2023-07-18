@@ -207,18 +207,25 @@ void get_and_print_final_statistics(
         fprintf(file, "\n---------------- TIMINGS ---------------\n");
         fprintf(file, "overall(elapsed) %11.2f sec\n", st->f4_rtime);
         fprintf(file, "overall(cpu) %15.2f sec\n", st->f4_ctime);
-        fprintf(file, "select       %15.2f sec %5.1f%%\n",
-                st->select_rtime,
-                (double)100*(double)st->select_rtime
-                / (double)(st->f4_rtime));
-        fprintf(file, "symbolic prep.       %7.2f sec %5.1f%%\n",
-                st->symbol_rtime,
-                (double)100*(double)st->symbol_rtime
-                / (double)(st->f4_rtime));
-        fprintf(file, "update       %15.2f sec %5.1f%%\n",
-                st->update_rtime,
-                (double)100*(double)st->update_rtime
-                / (double)(st->f4_rtime));
+        if(st->trace_level == APPLY_TRACER) {
+            fprintf(file, "tracer       %15.2f sec %5.1f%%\n",
+                    st->tracer_rtime,
+                    (double)100*(double)st->tracer_rtime
+                    / (double)(st->f4_rtime));
+        } else {
+            fprintf(file, "select       %15.2f sec %5.1f%%\n",
+                    st->select_rtime,
+                    (double)100*(double)st->select_rtime
+                    / (double)(st->f4_rtime));
+            fprintf(file, "symbolic prep.       %7.2f sec %5.1f%%\n",
+                    st->symbol_rtime,
+                    (double)100*(double)st->symbol_rtime
+                    / (double)(st->f4_rtime));
+            fprintf(file, "update       %15.2f sec %5.1f%%\n",
+                    st->update_rtime,
+                    (double)100*(double)st->update_rtime
+                    / (double)(st->f4_rtime));
+        }
         fprintf(file, "convert      %15.2f sec %5.1f%%\n",
                 st->convert_rtime,
                 (double)100*(double)st->convert_rtime

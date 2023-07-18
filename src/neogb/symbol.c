@@ -700,8 +700,8 @@ static void generate_matrix_from_trace(
         md->max_sht_size : sht->esz;
 
     /* timings */
-    md->symbol_ctime  +=  cputime() - ct;
-    md->symbol_rtime  +=  cputime() - rt;
+    md->tracer_ctime += cputime() - ct;
+    md->tracer_rtime += realtime() - rt;
 
     print_current_trace_meta_data(md);
 }

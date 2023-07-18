@@ -67,31 +67,33 @@ void free_trace(
         )
 {
     trace_t *tr = *trp;
-    len_t i, j;
-    for (i = 0; i < tr->lts; ++i) {
-        free(tr->ts[i].tri);
-        free(tr->ts[i].rri);
-        free(tr->ts[i].nlms);
-        /* free(tr->ts[i].lmh); */
-    }
-    for (i = 0; i < tr->ltd; ++i) {
-        free(tr->td[i].tri);
-        free(tr->td[i].rri);
-        for (j = 0; j < tr->td[i].tld/2; ++j) {
-            free(tr->td[i].rba[j]);
+    if (tr != NULL) {
+        len_t i, j;
+        for (i = 0; i < tr->lts; ++i) {
+            free(tr->ts[i].tri);
+            free(tr->ts[i].rri);
+            free(tr->ts[i].nlms);
+            /* free(tr->ts[i].lmh); */
         }
-        free(tr->td[i].rba);
-        free(tr->td[i].nlms);
+        for (i = 0; i < tr->ltd; ++i) {
+            free(tr->td[i].tri);
+            free(tr->td[i].rri);
+            for (j = 0; j < tr->td[i].tld/2; ++j) {
+                free(tr->td[i].rba[j]);
+            }
+            free(tr->td[i].rba);
+            free(tr->td[i].nlms);
+        }
+        free(tr->lm);
+        free(tr->lmh);
+        free(tr->lmps);
+        free(tr->ts);
+        free(tr->td);
+        free(tr->rd);
+        free(tr);
+        tr    = NULL;
+        *trp  = tr;
     }
-    free(tr->lm);
-    free(tr->lmh);
-    free(tr->lmps);
-    free(tr->ts);
-    free(tr->td);
-    free(tr->rd);
-    free(tr);
-    tr    = NULL;
-    *trp  = tr;
 }
 
 void free_lucky_primes(

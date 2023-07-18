@@ -289,7 +289,6 @@ static void reduce_basis(
         sht->hd[i].idx = 1;
     }
 
-
     /* generate hash <-> column mapping */
     if (md->info_level > 1) {
         printf("reduce final basis ");
@@ -302,22 +301,8 @@ static void reduce_basis(
     /* do the linear algebra reduction and free basis data afterwards */
     interreduce_matrix_rows(mat, bs, md, 1);
 
-    /* Switch sht and bht for memory efficient hash table storage.
-    NOTE: Only applicable for finite field computation in which
-          we are not learning or applying a tracer. */
-    if (md->trace_level == NO_TRACER) {
-        /* remap rows to basis elements (keeping their position in bs) */
-        convert_sparse_matrix_rows_to_basis_elements_use_sht(1, mat, bs, sht, md);
-        /* free data from bht, we use sht later on */
-        free_hash_table(&bht);
-        /* bht becomes sht, so we do not have to convert the hash entries */
-        bht    = sht;
-        bs->ht = bht;
-    } else {
-        /* remap rows to basis elements (keeping their position in bs) */
-        convert_sparse_matrix_rows_to_basis_elements(
-                1, mat, bs, bht, sht, md);
-    }
+    convert_sparse_matrix_rows_to_basis_elements(
+            1, mat, bs, bht, sht, md);
 
     /* set sht = NULL, otherwise we might run in a double-free
      * of sht and bht at the end */
@@ -404,7 +389,7 @@ static int32_t initialize_f4(
 
     /* link tracer into basis */
     if (md->trace_level == LEARN_TRACER) {
-        md->tr     = initialize_trace(bs, md);
+        md->tr = initialize_trace(bs, md);
     }
 
 

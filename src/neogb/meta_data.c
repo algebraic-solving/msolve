@@ -47,6 +47,27 @@ static md_t *copy_meta_data(
     return md;
 }
 
+void free_meta_data(
+     md_t **mdp
+     )
+{
+    md_t *md = *mdp;
+
+    if (md->ps != NULL) {
+        free_pairset(&(md->ps));
+    }
+    free(md->hcm);
+
+    if (md->ht != NULL) {
+        free_hash_table(&(md->ht));
+    }
+
+    free(md);
+    md = NULL;
+
+    *mdp = md;
+}
+
 md_t *allocate_meta_data(
     void
     )

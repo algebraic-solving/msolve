@@ -578,15 +578,7 @@ static void free_local_data(
         md_t **mdp
         )
 {
-    md_t *md = *mdp;
-
-    if (md->ps != NULL) {
-        free_pairset(&(md->ps));
-    }
-    free(md->hcm);
-
-    free(md);
-    *mdp = NULL;
+    free_meta_data(mdp);
 
     free(*matp);
     *matp = NULL;

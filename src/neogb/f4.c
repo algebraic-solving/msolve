@@ -401,9 +401,6 @@ static int32_t initialize_f4(
         done   = update(bs, md);
     }
 
-    /* TO BE REMOVED */
-    md->info_level = 2;
-
     *lbsp  = bs;
     *matp  = mat;
     *lmdp  = md;

@@ -65,7 +65,7 @@ void print_tracer_statistics(
     if (st->trace_level == APPLY_TRACER) {
         if(st->info_level > 1){
             fprintf(stderr, "Learning phase %.2f Gops/sec\n",
-                    (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/rt-realtime());
+                    (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(realtime()-rt));
         }
         if(st->info_level > 2){
             fprintf(stderr, "------------------------------------------\n");

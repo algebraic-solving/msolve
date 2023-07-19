@@ -156,7 +156,7 @@ static void intermediate_reduce_basis(
     ht_t *bht   = *bhtp;
     ht_t *sht   = *shtp;
     hi_t *hcm   = *hcmp;
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
     memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
@@ -268,7 +268,7 @@ static void reduce_basis(
 
     ht_t *bht   = bs->ht;
     ht_t *sht   = md->ht;
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
     memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
@@ -604,7 +604,6 @@ static void finalize_f4(
         int32_t err
         )
 {
-    /* gbs->ht = (*bsp)->ht; */
     if (err > 0) {
         free_basis(bsp);
     }

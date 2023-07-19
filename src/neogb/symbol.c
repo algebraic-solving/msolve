@@ -43,7 +43,7 @@ static void select_all_spairs(
     hi_t lcm;
     len_t *gens;
     exp_t *elcm, *eb;
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -210,7 +210,7 @@ static int32_t select_spairs_by_minimal_degree(
     len_t *gens;
     exp_t *elcm, *eb;
     ht_t *bht   = bs->ht;
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
     ps_t *psl   = md->ps;
     ht_t *sht   = md->ht;
 
@@ -517,7 +517,7 @@ static inline void find_multiplied_reducer(
     const sdm_t * const lms = bs->lm;
     const bl_t * const lmps = bs->lmps;
 
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
     const hd_t * const hdb  = bht->hd;
     exp_t * const * const evb = bht->ev;
 
@@ -682,7 +682,6 @@ static void generate_matrix_from_trace(
         b     = bs->hm[td.tri[i++]];
         emul  = bht->ev[td.tri[i]];
         h     = bht->hd[td.tri[i]].val;
-
         trows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         /* At the moment rba is unused */
         rba[nr]   = td.rba[i/2];

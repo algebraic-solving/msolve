@@ -319,7 +319,6 @@ static void enlarge_hash_table(
     ht_t *ht
     )
 {
-    printf("enlarging hash table\n");
     hl_t i, j;
     val_t h, k;
 
@@ -1059,7 +1058,6 @@ static inline void insert_in_basis_hash_table_pivots(
     
     exp_t *evt  = (exp_t *)malloc(
         (unsigned long)(st->nthrds * evl) * sizeof(exp_t));
-    printf("st->nthrds %d\n", st->nthrds);
 #if PARALLEL_HASHING
 #pragma omp parallel for num_threads(st->nthrds) \
     private(l)

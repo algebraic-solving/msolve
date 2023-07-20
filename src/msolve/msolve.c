@@ -1747,7 +1747,7 @@ static inline int check_param_modular(const mpz_param_t mp_param,
 }
 
 
-static void get_leading_ideal_information(
+static inline void get_leading_ideal_information(
         int32_t *num_gb,
         int32_t **lead_mons,
         const int32_t pos,
@@ -1758,7 +1758,7 @@ static void get_leading_ideal_information(
     num_gb[pos]    = bs->lml;
 }
 
-static void print_groebner_basis(
+static inline void print_groebner_basis(
         files_gb *files,
         const data_gens_ff_t * const gens,
         const bs_t * const bs,
@@ -2672,7 +2672,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     lp->old = 0;
     lp->ld = 1;
     lp->p = calloc(1, sizeof(uint32_t));
-    normalize_initial_basis(bs_qq, st->gfc);
+    normalize_initial_basis(bs_qq, st->fc);
   }
 
   /* generate array to store modular bases */

@@ -741,6 +741,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   *stf4 = realtime()-ca0;
 
   if (bs == NULL) {
+      bad_primes[0] = 1;
       return;
   }
   int32_t lml = bs->lml;

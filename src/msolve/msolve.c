@@ -3034,6 +3034,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   primeinit = prime;
   lp->p[0] = primeinit;
+
   if(gens->field_char){
     lp->p[0] = gens->field_char;
   }
@@ -3289,7 +3290,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int lpow2 = 0;
   int clog = 0;
   int br = 0;
-  prime = next_prime(1<<30);
+  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
 
   rrec_data_t recdata;
   initialize_rrec_data(recdata);

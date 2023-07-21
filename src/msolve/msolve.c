@@ -2654,7 +2654,22 @@ for (i = 0; i < st->nprimes; ++i){
   bs[i] = modular_f4(bs_qq, bht, st, lp->p[i]);
   *stf4 = realtime()-ca0;
 
-  if(bs[i]->lml != num_gb[i]){
+  if (bs[i] == NULL) {
+      return;
+  }
+  int32_t lml = bs[i]->lml;
+  if (st->nev > 0) {
+      int32_t j = 0;
+      for (len_t k = 0; k < bs[i]->lml; ++k) {
+          if ((*bht)->ev[bs[i]->hm[bs[i]->lmps[k]][OFFSET]][0] == 0) {
+              bs[i]->lm[j]   = bs[i]->lm[k];
+              bs[i]->lmps[j] = bs[i]->lmps[k];
+              ++j;
+          }
+      }
+      lml = j;
+  }
+  if(lml != num_gb[i]){
     /* nmod_params[i] = NULL; */
     bad_primes[i] = 1;
     return;
@@ -2754,12 +2769,30 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
     *stf4 = realtime()-ca0;
     /* printf("F4 trace timing %13.2f\n", *stf4); */
 
-    if(bs[i]->lml != num_gb[i]){
+    if (bs[i] == NULL) {
+        /* nmod_params[i] = NULL; */
+        bad_primes[i] = 1;
+        continue;
+    }
+    int32_t lml = bs[i]->lml;
+    if (st->nev > 0) {
+        int32_t j = 0;
+        for (len_t k = 0; k < bs[i]->lml; ++k) {
+            if ((*bht)->ev[bs[i]->hm[bs[i]->lmps[k]][OFFSET]][0] == 0) {
+                bs[i]->lm[j]   = bs[i]->lm[k];
+                bs[i]->lmps[j] = bs[i]->lmps[k];
+                ++j;
+            }
+        }
+        lml = j;
+    }
+    if(lml != num_gb[i]){
       if (bs[i] != NULL) {
         free_basis(&(bs[i]));
       }
-      nmod_params[i] = NULL;
+      /* nmod_params[i] = NULL; */
       bad_primes[i] = 1;
+      continue;
       /* return; */
     }
     get_lm_from_bs_trace(bs[i], bht[i], leadmons_current[i]);
@@ -3001,6 +3034,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   primeinit = prime;
   lp->p[0] = primeinit;
+
   if(gens->field_char){
     lp->p[0] = gens->field_char;
   }
@@ -3256,7 +3290,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int lpow2 = 0;
   int clog = 0;
   int br = 0;
-  prime = next_prime(1<<30);
+  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
 
   rrec_data_t recdata;
   initialize_rrec_data(recdata);

@@ -740,6 +740,29 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   *stf4 = realtime()-ca0;
 
+  if (bs == NULL) {
+      bad_primes[0] = 1;
+      return;
+  }
+  int32_t lml = bs->lml;
+  if (st->nev > 0) {
+      int32_t j = 0;
+      for (len_t i = 0; i < bs->lml; ++i) {
+          if ((*bht)->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+              bs->lm[j]   = bs->lm[i];
+              bs->lmps[j] = bs->lmps[i];
+              ++j;
+          }
+      }
+      lml = j;
+  }
+  if (lml != num_gb[0]) {
+      if (bs != NULL) {
+        free_basis(&bs);
+      }
+      return;
+  }
+
   if(st->nev){
     get_lm_from_bs_trace_elim(bs, bht[0], leadmons_current[0], num_gb[0]);
   }
@@ -1243,7 +1266,7 @@ int msolve_gbtrace_qq(
     if(!dlinit){
       int nb = 0;
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
-                                      msd->bht->nv, &nb);
+                                      msd->bht->nv - st->nev, &nb);
       data_lift_init(dlift, modgbs->ld, ldeg, nb);
       choose_coef_to_lift(modgbs, dlift);
       free(ldeg);

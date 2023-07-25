@@ -1074,6 +1074,7 @@ static inline void insert_in_basis_hash_table_pivots(
         row[l] = insert_in_hash_table(evtl, bht);
 #endif
     }
+    free(evt);
 }
 
 static inline void insert_multiplied_poly_in_hash_table(

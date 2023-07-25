@@ -58,8 +58,9 @@ void free_meta_data(
     }
     free(md->hcm);
 
-    if (md->ht != NULL) {
-        free_hash_table(&(md->ht));
+    ht_t *ht = md->ht;
+    if (ht != NULL) {
+        free_hash_table(&ht);
     }
 
     free(md);

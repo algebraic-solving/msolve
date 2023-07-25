@@ -306,8 +306,8 @@ static void reduce_basis(
 
     /* set sht = NULL, otherwise we might run in a double-free
      * of sht and bht at the end */
-    sht     = NULL;
-    md->ht  = sht;
+    /* sht     = NULL;
+    md->ht  = sht; */
 
     bs->ld  = mat->np;
 
@@ -662,7 +662,7 @@ bs_t *core_f4(
     md->f4_ctime = cputime() - ct;
     
     get_and_print_final_statistics(stdout, md, bs);
-   
+
     finalize_f4(gmd, gbs, &bs, &md, &mat, *errp);
 
     return bs;

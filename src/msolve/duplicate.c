@@ -105,7 +105,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
                                                 int32_t *num_gb,
                                                 int32_t **leadmons_ori,
                                                 int32_t **leadmons_current,
-                                                trace_t **btrace,
+                                                /* trace_t **btrace, */
                                                 fglm_bms_data_t **bdata_bms,
                                                 fglm_data_t **bdata_fglm,
                                                 int32_t **bstart_cf_gb_xn,
@@ -219,7 +219,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
     }
   }
 
-  duplicate_tracer(nthreads, bs, st, btrace);
+  /* duplicate_tracer(nthreads, bs, st, btrace); */
 
   duplicate_linear_data(nthreads, st->nvars, nlins,
                         blinvars, blineqs,

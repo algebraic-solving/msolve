@@ -2297,7 +2297,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 
                                    uint64_t bsz,
                                    param_t **nmod_params,
-                                   trace_t **btrace,
+                                   /* trace_t **btrace, */
                                    bs_t *bs_qq,
                                    md_t *st,
                                    const int32_t fc,
@@ -2339,6 +2339,27 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             nmod_params[i] = NULL;
             bad_primes[i] = 1;
             continue;
+        }
+        int32_t lml = bs[i]->lml;
+        if (st->nev > 0) {
+            int32_t j = 0;
+            for (len_t k = 0; k < bs[i]->lml; ++k) {
+                if (bs[i]->ht->ev[bs[i]->hm[bs[i]->lmps[k]][OFFSET]][0] == 0) {
+                    bs[i]->lm[j]   = bs[i]->lm[k];
+                    bs[i]->lmps[j] = bs[i]->lmps[k];
+                    ++j;
+                }
+            }
+            lml = j;
+        }
+        if(lml != num_gb[i]){
+            if (bs[i] != NULL) {
+                free_basis(&(bs[i]));
+            }
+            /* nmod_params[i] = NULL; */
+            bad_primes[i] = 1;
+            continue;
+            /* return; */
         }
         get_lm_from_bs_trace(bs[i], bs[i]->ht, leadmons_current[i]);
 
@@ -2398,7 +2419,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
 
                                    uint64_t bsz,
                                    param_t **nmod_params,
-                                   trace_t **btrace,
+                                   /* trace_t **btrace, */
                                    ht_t **btht,
                                    bs_t *bs_qq,
                                    ht_t **bht,
@@ -2684,9 +2705,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int *bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
 
   /* initialize tracers */
-  trace_t **btrace = (trace_t **)calloc(st->nthrds,
+  /* trace_t **btrace = (trace_t **)calloc(st->nthrds,
                                        sizeof(trace_t *));
-  btrace[0]  = initialize_trace(bs_qq, st);
+  btrace[0]  = initialize_trace(bs_qq, st); */
   /* initialization of other tracers is done through duplication */
 
   uint32_t prime = next_prime(1<<30);
@@ -2792,10 +2813,10 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   if(lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
       /* print_msolve_message(stderr, 1); */
-    for(int i = 0; i < st->nthrds; i++){
-      /* free_trace(&btrace[i]); */
+    /* for(int i = 0; i < st->nthrds; i++){
+      free_trace(&btrace[i]);
     }
-    free(btrace);
+    free(btrace); */
     if(gens->field_char==0){
       /* free_shared_hash_data(bht);
       if(bht!=NULL){
@@ -2810,9 +2831,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     /* for (i = 0; i < st->nthrds; ++i) { */
     /*   free_basis(&(bs[i])); */
     /* } */
-    free(bs);
+    free_basis(bs);
     if(gens->field_char==0){
-      free(bs_qq);
+      free_basis(bs_qq);
     }
     //here we should clean nmod_params
     free_lucky_primes(&lp);
@@ -2822,6 +2843,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     if(nlins){
       free(lineqs_ptr[0]);
     }
+    free(bnlins);
     free(lineqs_ptr);
     free(squvars);
     if(print_gb){
@@ -2870,25 +2892,17 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpz_matfglm_initset(mpz_mat, *bmatrix);
 #endif
 
-  btrace[0] = st->tr;
+  /* btrace[0] = st->tr; */
 
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
                                leadmons_ori, leadmons_current,
-                               btrace,
+                               /* btrace, */
                                bdata_bms, bdata_fglm,
                                bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix,
                                nmod_params, nlins, bnlins,
                                blinvars, lineqs_ptr,
                                bsquvars);
-
-  /* copy of hash tables for tracer application */
-  ht_t **blht = (ht_t **)malloc((st->nthrds) * sizeof(ht_t *));
-  blht[0] = bs_qq->ht;
-  for(int i = 1; i < st->nthrds; i++){
-    ht_t *lht = copy_hash_table(bs_qq->ht, st);
-    blht[i] = lht;
-  }
 
   normalize_nmod_param(nmod_params[0]);
 
@@ -3023,7 +3037,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                               leadmons_current,
 
                               bsz,
-                              nmod_params, btrace,
+                              nmod_params, /* btrace, */
                               bs_qq, st,
                               field_char, 0, /* info_level, */
                               bs, lmb_ori, *dquot_ptr, lp,
@@ -3121,6 +3135,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
         nbadprimes++;
         if(nbadprimes > nprimes){
           free(linvars);
+          free(bnlins);
           free(lineqs_ptr[0]);
           free(lineqs_ptr);
           free(squvars);
@@ -3211,7 +3226,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(bmatrix[i]);
     free(leadmons_ori[i]);
     free(leadmons_current[i]);
-    free_trace(&btrace[i]);
+    /* free_trace(&btrace[i]); */
     free(nmod_params[i]);
 
     free(blinvars[i]);
@@ -3229,8 +3244,10 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   free(nmod_params);
 
   free_lucky_primes(&lp);
+  free_trace(&(st->tr));
   free(st);
   free(bad_primes);
+  free(bnlins);
   free(blinvars);
   free(lineqs_ptr);
   free(bsquvars);
@@ -3239,7 +3256,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   free(blen_gb_xn);
   free(bstart_cf_gb_xn);
   free(bdiv_xn);
-  free(btrace);
+  /* free(btrace); */
 
   return 0;
 }

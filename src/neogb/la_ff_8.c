@@ -1702,7 +1702,7 @@ static void probabilistic_sparse_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
         fflush(stdout);
     }
 }
@@ -1734,7 +1734,7 @@ static int exact_application_sparse_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
         fflush(stdout);
     }
 
@@ -1767,7 +1767,7 @@ static void exact_trace_sparse_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
         fflush(stdout);
     }
 }
@@ -1797,7 +1797,7 @@ static void exact_sparse_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
         fflush(stdout);
     }
 }
@@ -1846,7 +1846,7 @@ static void exact_sparse_dense_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
         fflush(stdout);
     }
 }
@@ -1895,7 +1895,7 @@ static void probabilistic_sparse_dense_linear_algebra_ff_8_2(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
         fflush(stdout);
     }
 }
@@ -1942,7 +1942,7 @@ static void probabilistic_sparse_dense_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
         fflush(stdout);
     }
 }

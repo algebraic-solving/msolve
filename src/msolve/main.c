@@ -483,7 +483,6 @@ int main(int argc, char **argv){
     free(gens->cfs);
     free(gens->exps);
     free(gens->random_linear_form); */
-    free(gens);
     free(files);
     return ret;
 }

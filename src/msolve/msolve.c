@@ -1954,7 +1954,6 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
 
     bs_t *bs = NULL;
     int32_t err = 0;
-    printf("gens->field_char %d ] fc %d\n", gens->field_char, fc);
     bs = core_gba(bs_qq, st, &err, fc);
 #if 0
     if(gens->field_char){
@@ -2828,12 +2827,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       free_hash_table(&tht);
     }
     free(tht); */
-    /* for (i = 0; i < st->nthrds; ++i) { */
-    /*   free_basis(&(bs[i])); */
-    /* } */
+    for (i = 0; i < st->nthrds; ++i) {
+        free_basis_without_hash_table(&(bs[i]));
+    }
     free_basis(bs);
     if(gens->field_char==0){
-      free_basis(bs_qq);
+      free_basis(&bs_qq);
     }
     //here we should clean nmod_params
     free_lucky_primes(&lp);

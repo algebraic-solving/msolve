@@ -596,11 +596,11 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     ca0 = realtime();
 
     bs_t *bs = NULL;
-    if(gens->field_char){
-      bs = bs_qq;
+    /* if(gens->field_char){ */
       int32_t err = 0;
-      bs = core_gba(bs, st, &err, gens->field_char);
-      if (err) {
+      bs = core_gba(bs_qq, st, &err, fc);
+      printf("bs->ht->eld %d == %d bs_qq->ht->eld\n", bs->ht->eld, bs_qq->ht->eld);
+      /* if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
       }
@@ -613,7 +613,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
       else{
         bs = gba_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
       }
-    }
+    } */
     rt = realtime()-ca0;
 
     if(info_level > 1){
@@ -694,7 +694,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     /**************************************************/
 
-    free_basis(&(bs));
+    free_basis_without_hash_table(&(bs));
     return lmb;
 }
 
@@ -731,15 +731,17 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
 
   bs_t *bs = NULL;
-
+  int32_t error = 0;
   ca0 = realtime();
-  if(st->laopt > 40){
+  printf("bsqqht ld %d == %d\n", bs_qq->ht->eld, (*bht)->eld);
+  bs = core_gba(bs_qq, st, &error, lp->p[0]);
+  /* if(st->laopt > 40){
     bs = modular_f4(bs_qq, bht[0], st, lp->p[0]);
   }
   else{
     bs = gba_trace_application_phase(btrace[0], btht[0], bs_qq, bht[0], st, lp->p[0]);
   }
-  *stf4 = realtime()-ca0;
+  *stf4 = realtime()-ca0; */
 
   if (bs == NULL) {
       bad_primes[0] = 1;
@@ -782,7 +784,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
 
   if (bs != NULL) {
-    free_basis(&bs);
+    free_basis_without_hash_table(&bs);
   }
 
 }
@@ -1242,6 +1244,7 @@ int msolve_gbtrace_qq(
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
+    printf("--> %d == %d ?\n", msd->bs_qq->ht->eld, msd->bht->eld);
     if(lmb_ori == NULL || print_gb == 1){
       if(dlinit){
         data_lift_clear(dlift);
@@ -1253,6 +1256,7 @@ int msolve_gbtrace_qq(
       free(st);
       return 0;
     }
+    printf("--> %d == %d ?\n", msd->bs_qq->ht->eld, msd->bht->eld);
 
     apply = 1;
 

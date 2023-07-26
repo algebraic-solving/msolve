@@ -26,8 +26,11 @@ static void initialize_mstrace(mstrace_t msd, md_t *st){
    *******************/
   msd->bs_qq = initialize_basis(st);
   /* initialize basis hash table, update hash table, symbolic hash table */
-  msd->bht = initialize_basis_hash_table(st);
-  msd->tht = initialize_secondary_hash_table(msd->bht, st);
+  /* msd->bht = initialize_basis_hash_table(st);
+  msd->tht = initialize_secondary_hash_table(msd->bht, st); */
+
+  msd->bht = msd->bs_qq->ht;
+  msd->tht = NULL;
 
   /* generate array to store modular bases */
   msd->bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
@@ -75,10 +78,10 @@ static void free_mstrace(mstrace_t msd, md_t *st){
     to be checked if that is to be done when st->ff_bits != 0
      This was previously done only when characteristic is zero
   ************************************************************/
-  free_shared_hash_data(msd->bht);
+  /* free_shared_hash_data(msd->bht);
   if(msd->bht != NULL){
     free_hash_table(&(msd->bht));
-  }
+  } */
   /***********************************************************/
 
   if(msd->tht!=NULL){

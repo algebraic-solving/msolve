@@ -1309,10 +1309,6 @@ int msolve_gbtrace_qq(
       ht_t *lht = copy_hash_table(msd->bht, st);
       msd->blht[i] = lht;
     }
-    msd->btht[0] = msd->tht;
-    for(int i = 1; i < st->nthrds; i++){
-      msd->btht[i] = copy_hash_table(msd->tht, st);
-    }
 
     if(info_level){
       fprintf(stderr, "\nStarts trace based multi-modular computations\n");

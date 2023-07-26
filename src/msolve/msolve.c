@@ -4855,6 +4855,7 @@ restart:
         }
 	else {
           /* normal_form is 1 */
+        printf("normal form active? %d\n", normal_form);
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;
             bs_t *tbr   = NULL;
@@ -4951,7 +4952,7 @@ restart:
                 mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
                 printf("\nStarts computation of normal form matrix\n");
-                get_normal_form_matrix(tbr, bht, normal_form,
+                get_normal_form_matrix(tbr, tbr->ht, normal_form,
                         st, &sht, &hcm, &mat);
 
                 printf("\n\nLength of union of support of all normal forms: %u\n",

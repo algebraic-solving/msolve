@@ -306,9 +306,11 @@ static inline void free_data_gens(data_gens_ff_t *gens){
     free(gens->vnames[i]);
   }
   free(gens->vnames);
-  for(long i = 0; i < 2*gens->nterms; i++){
-    mpz_clear(*(gens->mpz_cfs[i]));
-    free(gens->mpz_cfs[i]);
+  if (gens->field_char == 0) {
+      for(long i = 0; i < 2*gens->nterms; i++){
+          mpz_clear(*(gens->mpz_cfs[i]));
+          free(gens->mpz_cfs[i]);
+      }
   }
   free(gens->mpz_cfs);
   free(gens->lens);
@@ -2831,10 +2833,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       free_hash_table(&tht);
     }
     free(tht); */
-    for (i = 0; i < st->nthrds; ++i) {
-        free_basis_without_hash_table(&(bs[i]));
+    if (gens->field_char == 0) {
+        for (i = 0; i < st->nthrds; ++i) {
+            free_basis_without_hash_table(&(bs[i]));
+        }
     }
-    free_basis(bs);
+    free(bs);
     if(gens->field_char==0){
       free_basis(&bs_qq);
     }

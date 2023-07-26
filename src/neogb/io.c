@@ -261,6 +261,7 @@ void import_input_data(
     int32_t i, j;
     len_t k;
     hm_t *hm;
+    len_t ctr = 0; /* ctr for valid input elements */
 
     cf8_t *cf8      =   NULL;
     cf16_t *cf16    =   NULL;
@@ -286,37 +287,42 @@ void import_input_data(
                 e  = ht->ev[0]; /* reset e if enlarging */
             }
             hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
-            bs->hm[i]   = hm;
+            bs->hm[ctr] = hm;
 
-            hm[COEFFS]  = i; /* link to matcf entry */
+            hm[COEFFS]  = ctr; /* link to matcf entry */
             hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
             hm[LENGTH]  = lens[i]; /* length */
 
-            bs->red[i] = 0;
+            bs->red[ctr] = 0;
 
             for (j = off; j < off+lens[i]; ++j) {
                 set_exponent_vector(e, exps, j, ht, st);
                 hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
             }
+            ctr++;
         }
         off +=  lens[i];
     }
     /* import coefficients */
     off =   0;
+    printf("ff_bits %d\n", st->ff_bits);
+    ctr = 0;
     switch (st->ff_bits) {
         case 8:
             cfs_ff  =   (int32_t *)vcfs;
             for (i = 0; i < ngens_input; ++i) {
+                printf("i %d | ngensinput %d | invalid %d\n", i, ngens_input, invalid_gens[i]);
                 if (invalid_gens[i] == 0) {
                     cf8 = (cf8_t *)malloc((unsigned long)(lens[i]) * sizeof(cf8_t));
-                    bs->cf_8[i] = cf8;
+                    bs->cf_8[ctr] = cf8;
 
                     for (j = off; j < off+lens[i]; ++j) {
                         /* make coefficient positive */
                         cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
                         cf8[j-off]  =   (cf8_t)cfs_ff[j];
                     }
-                    sort_terms_ff_8(&(bs->cf_8[i]), &(bs->hm[i]), ht);
+                    sort_terms_ff_8(&(bs->cf_8[ctr]), &(bs->hm[ctr]), ht);
+                    ctr++;
                 }
                 off +=  lens[i];
             }
@@ -324,16 +330,18 @@ void import_input_data(
         case 16:
             cfs_ff  =   (int32_t *)vcfs;
             for (i = 0; i < ngens_input; ++i) {
+                printf("i %d | ngensinput %d | invalid %d\n", i, ngens_input, invalid_gens[i]);
                 if (invalid_gens[i] == 0) {
                     cf16    = (cf16_t *)malloc((unsigned long)(lens[i]) * sizeof(cf16_t));
-                    bs->cf_16[i] = cf16;
+                    bs->cf_16[ctr] = cf16;
 
                     for (j = off; j < off+lens[i]; ++j) {
                         /* make coefficient positive */
                         cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
                         cf16[j-off] =   (cf16_t)cfs_ff[j];
                     }
-                    sort_terms_ff_16(&(bs->cf_16[i]), &(bs->hm[i]), ht);
+                    sort_terms_ff_16(&(bs->cf_16[ctr]), &(bs->hm[ctr]), ht);
+                    ctr++;
                 }
                 off +=  lens[i];
             }
@@ -343,14 +351,15 @@ void import_input_data(
             for (i = 0; i < ngens_input; ++i) {
                 if (invalid_gens[i] == 0) {
                     cf32    = (cf32_t *)malloc((unsigned long)(lens[i]) * sizeof(cf32_t));
-                    bs->cf_32[i] = cf32;
+                    bs->cf_32[ctr] = cf32;
 
                     for (j = off; j < off+lens[i]; ++j) {
                         /* make coefficient positive */
                         cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
                         cf32[j-off] =   (cf32_t)cfs_ff[j];
                     }
-                    sort_terms_ff_32(&(bs->cf_32[i]), &(bs->hm[i]), ht);
+                    sort_terms_ff_32(&(bs->cf_32[ctr]), &(bs->hm[ctr]), ht);
+                    ctr++;
                 }
                 off +=  lens[i];
             }
@@ -370,7 +379,7 @@ void import_input_data(
                     }
                     cfq = (mpz_t *)malloc((unsigned long)(lens[i]) * sizeof(mpz_t));
 
-                    bs->cf_qq[i]  = cfq;
+                    bs->cf_qq[ctr]  = cfq;
 
                     for (j = 0; j < lens[i]; ++j) {
                         mpz_init(cfq[j]);
@@ -379,7 +388,8 @@ void import_input_data(
                         mpz_divexact(mul, prod_den, *(cfs_qq[2*j+1]));
                         mpz_mul(cfq[j-off], mul, *(cfs_qq[2*j]));
                     }
-                    sort_terms_qq(&(bs->cf_qq[i]), &(bs->hm[i]), ht);
+                    sort_terms_qq(&(bs->cf_qq[ctr]), &(bs->hm[ctr]), ht);
+                    ctr++;
                 }
                 off +=  lens[i];
             }
@@ -1112,6 +1122,7 @@ int validate_input_data(
         int32_t *cf =   (int32_t *)cfs;
         for (int i = 0; i < ngens; ++i) {
             for (int j = 0; j < lens[i]; ++j) {
+                printf("cf[%d+%d] = %d\n", j, len, cf[j+len]);
                 if (cf[j+len] == 0) {
                     invalid_gens[i]   =   1;
                     ctr++;
@@ -1129,6 +1140,7 @@ int validate_input_data(
     }
 
     *nr_gensp   -=  ctr;
+    printf("ngens %d ] %d ctr\n", *nr_gensp, ctr);
     /* recheck number of generators, if the input was only (0) then
      * no more generators are left over. */
     if (*nr_gensp < 1) {

@@ -495,15 +495,15 @@ sat_restart:
 }
 
 int core_f4sat(
-        bs_t **bsp,
-        bs_t **satp,
-        ht_t **bhtp,
-        md_t **stp
+        bs_t *gbs,
+        bs_t *gsat,
+        md_t *gmd,
+        int32_t*errp
         )
 {
-    bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
-    md_t *st  = *stp;
+    bs_t *bs  = gbs;
+    ht_t *bht = bs->ht;
+    md_t *st  = gmd;
 
     /* global saturation data */
     len_t sat_test  = 0;
@@ -511,7 +511,7 @@ int core_f4sat(
     deg_t sat_deg   = 0;
 
     /* elements to saturate input ideal with */
-    bs_t *sat   = *satp;
+    bs_t *sat   = gsat;
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
     memset(bht->ev[0], 0, (unsigned long)bht->evl * sizeof(exp_t));
@@ -529,19 +529,21 @@ int core_f4sat(
 
     /* initialize update hash table, symbolic hash table */
     ht_t *sht = initialize_secondary_hash_table(bht, st);
+    st->ht    = sht;
 
-    /* hashes-to-columns map, initialized with length 1, is reallocated
-     * in each call when generating matrices for linear algebra */
-    hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
-    /* hashes-to-columns maps for multipliers in saturation step */
-    hi_t *hcmm  = (hi_t *)malloc(sizeof(hi_t));
     /* matrix holding sparse information generated
      * during symbolic preprocessing */
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
     ps_t *ps = initialize_pairset();
+    st->ps   = ps;
+    st->hcm  = (hi_t *)malloc(sizeof(hi_t));
+    /* hashes-to-columns maps for multipliers in saturation step */
+    hi_t *hcmm  = (hi_t *)malloc(sizeof(hi_t));
 
     int32_t round, i, j;
+
+    st->max_gb_degree = INT32_MAX;
 
     /* elements of kernel in saturation step, to be added to basis bs */
     bs_t *kernel  = initialize_basis(st);
@@ -654,7 +656,7 @@ end_sat_step:
                     compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                     if (st->info_level > 1) {
-                        printf("%54d new kernel elements", kernel->ld);
+                        printf("%56d new kernel elements", kernel->ld);
                         fflush(stdout);
                     }
 
@@ -750,13 +752,7 @@ end_sat_step:
  *         printf("\n");
  *     } */
 
-    *bsp  = bs;
-    *satp = sat;
-    *bhtp = bht;
-    *stp  = st;
-
     /* free and clean up */
-    free(hcm);
     free(hcmm);
     free(qb);
 

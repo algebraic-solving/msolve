@@ -4365,7 +4365,8 @@ restart:
              *     mul[ii] = 1;
              * } */
 
-            int success = 0;
+            int32_t error = 0;
+            int success   = 0;
 
             /*             initialize generators of ideal, note the "gens->ngens-normal_form" which
              *             means that we only take the first nr_gens-normal_form generators from
@@ -4420,7 +4421,7 @@ restart:
                 }
 
                 /* compute a gb for initial generators */
-                success = core_f4sat(&bs, &sat, &bht, &st);
+                success = core_f4sat(bs, sat, st, &error);
 
                 if (!success) {
                     printf("Problem with f4sat, stopped computation.\n");

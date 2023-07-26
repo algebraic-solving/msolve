@@ -2573,7 +2573,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     /* timings */
     rt1 = realtime();
 
-    printf("        normal form time %12.2f sec\n", rt1-rt0);
+    printf("        normal form time %14.2f sec\n", rt1-rt0);
     /* compute kernel */
     for (i = 0; i < sat->ld; ++i) {
         if (sat->hm[i] != NULL) {

@@ -84,7 +84,6 @@ static inline int is_lucky_prime(
 void reduce_basis_no_hash_table_switching(
         bs_t *bs,
         mat_t *mat,
-        hi_t **hcmp,
         ht_t *bht,
         ht_t *sht,
         md_t *st

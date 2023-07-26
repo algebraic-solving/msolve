@@ -89,7 +89,6 @@ static int is_already_saturated(
         bs_t *bs,
         const bs_t * const sat,
         mat_t *mat,
-        hi_t **hcmp,
         ht_t **bhtp,
         ht_t **shtp,
         md_t *st
@@ -619,7 +618,7 @@ end_sat_step:
                     ps->ld == 0 &&
                     is_zero_dimensional(bs, bht) &&
                     is_already_saturated(
-                        bs, sat, mat, &hcm, &bht, &sht, st)) {
+                        bs, sat, mat, &bht, &sht, st)) {
                 /* sat_done  = 1; */
                 goto end_sat_step;
             }
@@ -648,7 +647,7 @@ end_sat_step:
                         /* printf("kernel computation "); */
                         printf("%3u  compute kernel", sat_deg);
                     }
-                    convert_hashes_to_columns_sat(&hcm, mat, sat, st, sht);
+                    convert_hashes_to_columns_sat(mat, sat, st, sht);
                     convert_multipliers_to_columns(&hcmm, sat, st, bht);
                     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
@@ -686,7 +685,7 @@ end_sat_step:
                     }
                     /* all rows in mat are now polynomials in the basis,
                      * so we do not need the rows anymore */
-                    convert_columns_to_hashes(sat, hcm, hcmm);
+                    convert_columns_to_hashes(sat, st, hcmm);
                     for (i = 0; i < sat->ld; ++i) {
                         bht->hd[hcmm[i]].idx = 0;
                     }

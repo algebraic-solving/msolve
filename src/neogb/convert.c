@@ -78,7 +78,6 @@ static void convert_multipliers_to_columns(
 }
 
 static void convert_hashes_to_columns_sat(
-        hi_t **hcmp,
         mat_t *mat,
         bs_t *sat,
         md_t *st,
@@ -90,7 +89,7 @@ static void convert_hashes_to_columns_sat(
     hm_t *row;
     int64_t nterms = 0;
 
-    hi_t *hcm = *hcmp;
+    hi_t *hcm = st->hcm;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -202,7 +201,7 @@ static void convert_hashes_to_columns_sat(
         printf(" %7d x %-7d %8.2f%%", mat->nr + sat->ld, mat->nc, density);
         fflush(stdout);
     }
-    *hcmp = hcm;
+    st->hcm = hcm;
 }
 
 
@@ -441,11 +440,13 @@ static void sba_convert_columns_to_hashes(
 
 static void convert_columns_to_hashes(
         bs_t *bs,
-        const hi_t * const hcm,
+        const md_t *md,
         const hi_t * const hcmm
         )
 {
     len_t i, j;
+
+    const hi_t *hcm = md->hcm;
 
     for (i = 0; i < bs->ld; ++i) {
         if (bs->hm[i] != NULL) {

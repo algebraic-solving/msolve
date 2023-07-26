@@ -1921,6 +1921,7 @@ static int32_t *initial_modular_step(
 
 **/
 
+#if 0
 static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         int32_t **bdiv_xn,
                                         int32_t **blen_gb_xn,
@@ -2068,6 +2069,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
         return NULL;
     }
 }
+#endif
 
 #if 0
 static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
@@ -2399,6 +2401,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
     st->nthrds = nthrds;
 }
 
+#if 0
 static void modular_trace_application(sp_matfglm_t **bmatrix,
                                    int32_t **div_xn,
                                    int32_t **len_gb_xn,
@@ -2525,6 +2528,7 @@ static void modular_trace_application(sp_matfglm_t **bmatrix,
   }
   st->nthrds = nthrds;
 }
+#endif
 
 /* sets function pointer */
 void set_linear_function_pointer(int32_t fc){

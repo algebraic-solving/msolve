@@ -599,7 +599,6 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     /* if(gens->field_char){ */
       int32_t err = 0;
       bs = core_gba(bs_qq, st, &err, fc);
-      printf("bs->ht->eld %d == %d bs_qq->ht->eld\n", bs->ht->eld, bs_qq->ht->eld);
       /* if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
@@ -707,7 +706,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
                                          trace_t **btrace,
                                          ht_t **btht,
-                                         const bs_t *bs_qq,
+                                         bs_t *bs_qq,
                                          ht_t **bht,
                                          md_t *st,
                                          const int32_t fc,
@@ -723,7 +722,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
   st->info_level = 0;
   /* tracing phase */
-  double ca0;
 
   /* F4 and FGLM are run using a single thread */
   /* st->nthrds is reset to its original value afterwards */
@@ -732,8 +730,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
   bs_t *bs = NULL;
   int32_t error = 0;
-  ca0 = realtime();
-  printf("bsqqht ld %d == %d\n", bs_qq->ht->eld, (*bht)->eld);
   bs = core_gba(bs_qq, st, &error, lp->p[0]);
   /* if(st->laopt > 40){
     bs = modular_f4(bs_qq, bht[0], st, lp->p[0]);
@@ -1244,7 +1240,6 @@ int msolve_gbtrace_qq(
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
-    printf("--> %d == %d ?\n", msd->bs_qq->ht->eld, msd->bht->eld);
     if(lmb_ori == NULL || print_gb == 1){
       if(dlinit){
         data_lift_clear(dlift);
@@ -1256,7 +1251,6 @@ int msolve_gbtrace_qq(
       free(st);
       return 0;
     }
-    printf("--> %d == %d ?\n", msd->bs_qq->ht->eld, msd->bht->eld);
 
     apply = 1;
 

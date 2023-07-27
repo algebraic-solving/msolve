@@ -1171,10 +1171,10 @@ bs_t *f4sat_trace_learning_phase_1(
         )
 {
     /* timings */
-    double ct0, ct1, rt0, rt1;
-    double rrt0, rrt1; /* for one round only */
-    ct0 = cputime();
-    rt0 = realtime();
+    double ct = cputime();
+    double rt = realtime();
+
+    double rrt, crt; /* for one round only */
 
     int32_t round, i, j;
     /* current quotient basis up to max lm degree in intermediate basis */
@@ -1236,17 +1236,12 @@ bs_t *f4sat_trace_learning_phase_1(
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
-    if (st->info_level > 1) {
-        printf("Learning phase with prime p = %d\n", fc);
-        printf("\ndeg     sel   pairs        mat          density \
-          new data             time(rd)\n");
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_information_header(stdout, st);
     round = 1;
 end_sat_step:
     for (; ps->ld > 0; ++round) {
-        rrt0  = realtime();
+        rrt = realtime();
+        crt = cputime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
             st->max_bht_size : bht->esz;
         st->current_rd  = round;
@@ -1265,7 +1260,6 @@ end_sat_step:
                     -1, mat, bs, bht, sht, st);
             sat_test++;
         }
-        clean_hash_table(sht);
         /* all rows in mat are now polynomials in the basis,
          * so we do not need the rows anymore */
         clear_matrix(mat);
@@ -1273,18 +1267,13 @@ end_sat_step:
         /* check redundancy only if input is not homogeneous */
         update_basis_f4(ps, bs, bht, st, mat->np);
 
-        /* if we found a constant we are done, so remove all remaining pairs */
-        rrt1 = realtime();
-        if (st->info_level > 1) {
-            printf("%13.2f sec\n", rrt1-rrt0);
-        }
-
         if (bs->constant  == 1) {
             printf("basis is constant\n");
             ps->ld  = 0;
             break;
         }
         clean_hash_table(sht);
+        print_round_timings(stdout, st, rrt, crt);
 
         /* saturation step starts here */
         if ((bs->mltdeg >= sat->hm[0][DEG] && sat_test != 0) || ps->ld == 0) {
@@ -1308,7 +1297,8 @@ end_sat_step:
             len_t bld = bs->ld;
 
             for (deg_t ii = next_deg; ii < sat_deg; ++ii) {
-                rrt0  = realtime();
+                rrt  = realtime();
+                crt  = cputime();
                 /* printf("sat->deg %u\n", sat_deg); */
                 update_multipliers(&qb, &bht, &sht, sat, st, bs, ii);
                 /* check for monomial multiples of elements from saturation list */
@@ -1329,7 +1319,7 @@ end_sat_step:
                     compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                     if (st->info_level > 1) {
-                        printf("%54d new kernel elements", kernel->ld);
+                        printf("%56d new kernel elements", kernel->ld);
                         fflush(stdout);
                     }
 
@@ -1401,11 +1391,8 @@ end_sat_step:
 
                 }
                 clean_hash_table(sht);
+                print_sat_round_timings(stdout, st, rrt, crt);
 
-                rrt1 = realtime();
-                if (st->info_level > 1) {
-                    printf("%10.2f sec\n", rrt1-rrt0);
-                }
                 if (bld != bs->ld) {
                     next_deg  = ii;
                     round++;
@@ -1416,10 +1403,8 @@ end_sat_step:
         }
     }
 
-    if (st->info_level > 1) {
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_information_footer(stdout, st);
+
     /* remove possible redudant elements */
     final_remove_redundant_elements(bs, st, bht);
 
@@ -1451,10 +1436,8 @@ end_sat_step:
     }
 
     /* timings */
-    ct1 = cputime();
-    rt1 = realtime();
-    st->f4_ctime = ct1 - ct0;
-    st->f4_rtime = rt1 - rt0;
+    st->f4_rtime = realtime() - rt;
+    st->f4_ctime = cputime() - ct;
 
     get_and_print_final_statistics(stderr, st, bs);
 

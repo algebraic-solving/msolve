@@ -598,12 +598,6 @@ end_sat_step:
         /* check redundancy only if input is not homogeneous */
         update_basis_f4(ps, bs, bht, st, mat->np);
 
-        /* if we found a constant we are done, so remove all remaining pairs */
-        /* rrt1 = realtime();
-        if (st->info_level > 1) {
-            printf("%13.2f sec\n", rrt1-rrt0);
-        } */
-
         if (bs->constant  == 1) {
             printf("basis is constant\n");
             ps->ld  = 0;

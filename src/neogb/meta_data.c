@@ -165,6 +165,32 @@ void print_round_information_header(
     }
 }
 
+void print_sat_nf_round_timings(
+        FILE *f,
+        const md_t * const st,
+        const double rrt,
+        const double crt
+        )
+{
+    if (st->info_level > 1) {
+        printf("%15.2f | %-13.2f\n",
+                realtime() - rrt, cputime() - crt);
+    }
+}
+
+void print_sat_round_timings(
+        FILE *f,
+        const md_t * const st,
+        const double rrt,
+        const double crt
+        )
+{
+    if (st->info_level > 1) {
+        printf("%10.2f | %-13.2f\n",
+                realtime() - rrt, cputime() - crt);
+    }
+}
+
 void print_round_timings(
         FILE *f,
         const md_t * const st,

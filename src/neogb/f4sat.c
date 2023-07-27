@@ -501,6 +501,9 @@ int core_f4sat(
         int32_t*errp
         )
 {
+    double ct = cputime();
+    double rt = realtime();
+
     bs_t *bs  = gbs;
     ht_t *bht = bs->ht;
     md_t *st  = gmd;
@@ -525,7 +528,7 @@ int core_f4sat(
      * elements in tbr. They represent the multipliers
      * of the elements we saturate with. */
     /* timings for one round */
-    double rrt0, rrt1;
+    double rrt, crt;
 
     /* initialize update hash table, symbolic hash table */
     ht_t *sht = initialize_secondary_hash_table(bht, st);
@@ -557,16 +560,12 @@ int core_f4sat(
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
-    if (st->info_level > 1) {
-        printf("\ndeg     sel   pairs        mat          density \
-          new data             time(rd)\n");
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_information_header(stdout, st);
     round = 1;
 end_sat_step:
     for (; ps->ld > 0; ++round) {
-        rrt0  = realtime();
+        rrt = realtime();
+        crt = cputime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
             st->max_bht_size : bht->esz;
         st->current_rd  = round;
@@ -600,10 +599,10 @@ end_sat_step:
         update_basis_f4(ps, bs, bht, st, mat->np);
 
         /* if we found a constant we are done, so remove all remaining pairs */
-        rrt1 = realtime();
+        /* rrt1 = realtime();
         if (st->info_level > 1) {
             printf("%13.2f sec\n", rrt1-rrt0);
-        }
+        } */
 
         if (bs->constant  == 1) {
             printf("basis is constant\n");
@@ -611,6 +610,7 @@ end_sat_step:
             break;
         }
         clean_hash_table(sht);
+        print_round_timings(stdout, st, rrt, crt);
 
         /* saturation step starts here */
         if ((bs->mltdeg >= sat->hm[0][DEG] && sat_test != 0) || ps->ld == 0) {
@@ -634,7 +634,8 @@ end_sat_step:
             len_t bld = bs->ld;
 
             for (deg_t ii = next_deg; ii < sat_deg; ++ii) {
-                rrt0  = realtime();
+                rrt  = realtime();
+                crt  = cputime();
                 /* printf("sat->deg %u\n", sat_deg); */
                 update_multipliers(&qb, &bht, &sht, sat, st, bs, ii);
                 /* check for monomial multiples of elements from saturation list */
@@ -718,10 +719,7 @@ end_sat_step:
                 }
                 clean_hash_table(sht);
 
-                rrt1 = realtime();
-                if (st->info_level > 1) {
-                    printf("%10.2f sec\n", rrt1-rrt0);
-                }
+                print_sat_round_timings(stdout, st, rrt, crt);
                 if (bld != bs->ld) {
                     next_deg  = ii;
                     goto end_sat_step;
@@ -730,10 +728,7 @@ end_sat_step:
             next_deg  = sat_deg;
         }
     }
-    if (st->info_level > 1) {
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_information_footer(stdout, st);
     /* remove possible redudant elements */
     final_remove_redundant_elements(bs, st, bht);
 
@@ -743,6 +738,10 @@ end_sat_step:
          * thus we need pointers */
         reduce_basis(bs, mat, st);
     }
+    st->f4_rtime = realtime() - rt;
+    st->f4_ctime = cputime() - ct;
+
+    get_and_print_final_statistics(stdout, st, bs);
 /*     printf("basis has  %u elements.\n", bs->lml);
  *
  *     for (i = 0; i < bs->lml; ++i) {

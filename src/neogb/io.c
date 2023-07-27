@@ -305,13 +305,11 @@ void import_input_data(
     }
     /* import coefficients */
     off =   0;
-    printf("ff_bits %d\n", st->ff_bits);
     ctr = 0;
     switch (st->ff_bits) {
         case 8:
             cfs_ff  =   (int32_t *)vcfs;
             for (i = 0; i < ngens_input; ++i) {
-                printf("i %d | ngensinput %d | invalid %d\n", i, ngens_input, invalid_gens[i]);
                 if (invalid_gens[i] == 0) {
                     cf8 = (cf8_t *)malloc((unsigned long)(lens[i]) * sizeof(cf8_t));
                     bs->cf_8[ctr] = cf8;
@@ -330,7 +328,6 @@ void import_input_data(
         case 16:
             cfs_ff  =   (int32_t *)vcfs;
             for (i = 0; i < ngens_input; ++i) {
-                printf("i %d | ngensinput %d | invalid %d\n", i, ngens_input, invalid_gens[i]);
                 if (invalid_gens[i] == 0) {
                     cf16    = (cf16_t *)malloc((unsigned long)(lens[i]) * sizeof(cf16_t));
                     bs->cf_16[ctr] = cf16;

@@ -1121,9 +1121,11 @@ int msolve_ff(param_t **bparam,
     uint64_t *squvars = calloc(gens->nvars-1, sizeof(uint64_t));
     check_and_set_vars_squared_in_monomial_basis(squvars, lmb,
 						 dquot, gens->nvars);
+    stat_t st;
+    memset(&st, 0, sizeof(st));
     *bparam = nmod_fglm_compute(matrix, gens->field_char,
                                 gens->nvars, nlins, linvars, lineqs_ptr[0],
-                                squvars, info_level);
+                                squvars, info_level, &st);
 
 #if DEBUGGB>0
     if(files->out_file != NULL){
@@ -1411,7 +1413,7 @@ int msolve_ff_alloc(param_t **bparam,
                 dquot, gens->nvars);
         *bparam = nmod_fglm_compute(matrix, gens->field_char, gens->nvars,
                 nlins, linvars, lineqs_ptr[0],
-                squvars, info_level);
+                squvars, info_level, st);
 #if DEBUGGB>0
         if(files->out_file != NULL){
             FILE *ofile = fopen(files->out_file, "w");
@@ -4980,7 +4982,7 @@ restart:
 	    param_t * param = nmod_fglm_guess_colon(matrix, gens->field_char,
 						    leftvector, leftvectorsparam,
 						    gens->nvars,
-						    0, linvars, lineqs, squvars, 1);
+						    0, linvars, lineqs, squvars, 1, st);
 	    ct4 = cputime();
 	    rt4 = realtime();
 	    if (info_level) {

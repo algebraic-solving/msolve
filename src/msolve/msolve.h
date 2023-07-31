@@ -23,39 +23,6 @@
 
 #include "msolve-data.h"
 
-int msolve_ff_alloc(
-        param_t **bparam,
-        int32_t *bld,
-        int32_t **blen,
-        int32_t **bexp,
-        void **bcf,
-        data_gens_ff_t *gens,
-        int32_t initial_hts,
-        int32_t nr_threads,
-        int32_t max_pairs,
-        int32_t elim_block_len,
-        int32_t update_ht,
-        int32_t la_option,
-        int32_t use_signatures,
-        int32_t info_level,
-        int32_t print_gb,
-        files_gb *files
-        );
-
-int modular_run_msolve(
-        param_t **bparam,
-        data_gens_ff_t *gens,
-        int32_t initial_hts,
-        int32_t nr_threads,
-        int32_t max_pairs,
-        int32_t elim_block_len,
-        int32_t update_ht,
-        int32_t la_option,
-        int32_t info_level,
-        files_gb *files,
-        int32_t prime
-        );
-
 int msolve_trace_qq(
         mpz_param_t mpz_param,
         param_t **nmod_param,

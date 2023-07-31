@@ -46,8 +46,8 @@ int sgn_mpz_poly_eval_at_point_2exp_ui(mpz_t *, unsigned long int,
 
 int sgn_mpz_poly_eval_at_point_naive(mpz_t *, unsigned long int, mpz_t *, int);
 
-void mpz_poly_eval_2exp_naive(mpz_t *, unsigned long int,
-                                       mpz_t *, int, mpz_t *, mpz_t *);
+void mpz_poly_eval_2exp_naive(mpz_t *, long int,
+                                       mpz_t *, const long int, mpz_t *, mpz_t *);
 
 int sgn_mpz_poly_eval_at_point_2exp_naive(mpz_t *, unsigned long int, mpz_t*, int);
 int sgn_mpz_poly_eval_at_point_2exp_naive2(mpz_t *, unsigned long int, mpz_t, int);

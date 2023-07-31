@@ -1120,7 +1120,6 @@ int validate_input_data(
         int32_t *cf =   (int32_t *)cfs;
         for (int i = 0; i < ngens; ++i) {
             for (int j = 0; j < lens[i]; ++j) {
-                printf("cf[%d+%d] = %d\n", j, len, cf[j+len]);
                 if (cf[j+len] == 0) {
                     invalid_gens[i]   =   1;
                     ctr++;

@@ -992,7 +992,7 @@ static void exact_sparse_reduced_echelon_form_ff_8(
             free(npiv);
             free(cfs);
             npiv  = mat->tr[i] = reduce_dense_row_by_known_pivots_sparse_ff_8(
-                    drl, mat, bs, pivs, sc, i, mh, bi, 1, st->fc);
+                    drl, mat, bs, pivs, sc, i, mh, bi, st->trace_level == LEARN_TRACER, st->fc);
             if (!npiv) {
                 break;
             }

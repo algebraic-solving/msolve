@@ -2381,7 +2381,7 @@ static void exact_sparse_reduced_echelon_form_ff_32(
                 free(npiv);
                 free(cfs);
                 npiv  = mat->tr[i] = reduce_dense_row_by_known_pivots_sparse_ff_32(
-                        drl, mat, bs, pivs, sc, i, mh, bi, 1, st);
+                        drl, mat, bs, pivs, sc, i, mh, bi, st->trace_level == LEARN_TRACER, st);
                 if (!npiv) {
                     if (st->trace_level == APPLY_TRACER) {
                         bad_prime = 1;

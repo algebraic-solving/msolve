@@ -799,7 +799,7 @@ bs_t *f4sat_trace_application_phase(
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
 
-            generate_saturation_reducer_rows_from_trace(mat, trace, ts_ctr, bs, st, sht, bht, tht);
+            generate_saturation_reducer_rows_from_trace(mat, trace, ts_ctr, bs, st, sht, bht);
             ts_ctr++;
             /* symbolic_preprocessing(mat, bs, st, sht, NULL, bht); */
 
@@ -838,7 +838,7 @@ bs_t *f4sat_trace_application_phase(
                 if (st->info_level > 1) {
                     printf("%56d new kernel elements", kernel->ld);
                     fflush(stdout);
-                    printf("\n                                        ");
+                    printf("\n                                               ");
                 }
                 if (kernel->ld == 0) {
                     fprintf(stderr, "Trivial kernel when applying tracer.");

@@ -355,13 +355,13 @@ static len_t quotient_basis(
         qbd   +=  nqbd;
         deg++;
         /* printf("qb after adding\n");
-         * for (len_t ii = 0; ii < qbd; ++ii) {
-         *     printf("pos %u --> ", ii);
-         *     for (len_t jj = 0; jj < nv; ++jj) {
-         *         printf("%d ", (*htp)->ev[qb[ii]][jj]);
-         *     }
-         *     printf("\n");
-         * } */
+        for (len_t ii = 0; ii < qbd; ++ii) {
+            printf("pos %u --> ", ii);
+            for (len_t jj = 0; jj < (*htp)->evl; ++jj) {
+                printf("%d ", (*htp)->ev[qb[ii]][jj]);
+            }
+            printf("\n");
+        } */
     }
     free(nqb);
     free(ind);
@@ -391,7 +391,8 @@ static void update_multipliers(
     check_enlarge_basis(sat, qdim, st);
 
     hm_t *qb  = *qdp;
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
+    memset(etmp, 0, (unsigned long)bht->evl * sizeof(exp_t));
 
     /* remove elements that moved directly to kernel, i.e. monomials
      * added to the basis during the first stage of saturation
@@ -439,7 +440,7 @@ sat_restart:
         while (j > 0 && bht->hd[sat->hm[j][MULT]].sdm & ns) {
             j--;
         }
-        for (k = 0; k <= bht->nv; ++k) {
+        for (k = 0; k < bht->evl; ++k) {
             if (bht->ev[qb[i]][k] < bht->ev[sat->hm[j][MULT]][k]) {
                 j--;
                 goto sat_restart;
@@ -478,12 +479,12 @@ sat_restart:
         }
     }
     /* for (i = 0; i < sht->eld; ++i) {
-     *     printf("sht[%u] = ", i);
-     *     for (j = 0 ; j < sht->nv; ++j) {
-     *         printf("%u ", sht->ev[i][j]);
-     *     }
-     *     printf("\n");
-     * } */
+        printf("sht[%u] = ", i);
+        for (j = 0 ; j < sht->evl; ++j) {
+            printf("%u ", sht->ev[i][j]);
+        }
+        printf("\n");
+    } */
     sat->ld = qdim;
     st->new_multipliers = sat->ld - sat->lo;
 
@@ -667,8 +668,12 @@ end_sat_step:
                         /* linear_algebra(mat, kernel, st); */
                         /* columns indices are mapped back to exponent hashes */
                         if (mat->np > 0) {
+                            /* we need to use the right hcmm */
+                            hi_t *tmp = st->hcm;
+                            st->hcm = hcmm;
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
-                                    -1, mat, bs, bht, st);
+                                    -1, mat, bs, bs->ht, st);
+                            st->hcm = tmp;
                         }
 
                         st->nr_kernel_elts  +=  kernel->ld;

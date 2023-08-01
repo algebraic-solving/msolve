@@ -401,9 +401,6 @@ bs_t *f4sat_trace_application_test_phase(
     hm_t *qb    = NULL;
     int32_t round, ctr, i, j;
     ctr = 0;
-    /* hashes-to-columns map, initialized with length 1, is reallocated
-     * in each call when generating matrices for linear algebra */
-    hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
     /* hashes-to-columns maps for multipliers in saturation step */
     hi_t *hcmm  = (hi_t *)malloc(sizeof(hi_t));
 
@@ -649,11 +646,7 @@ bs_t *f4sat_trace_application_test_phase(
     get_and_print_final_statistics(stderr, st, bs);
 
     /* free and clean up */
-    free(hcm);
     free(hcmm);
-    if (sht != NULL) {
-        free_hash_table(&sht);
-    }
     free_basis_elements(sat);
     free_basis(&sat);
     free_basis(&kernel);
@@ -664,7 +657,7 @@ bs_t *f4sat_trace_application_test_phase(
     gst->application_nr_add   = st->application_nr_add;
     gst->application_nr_mult  = st->application_nr_mult;
     gst->application_nr_red   = st->application_nr_red;
-    free(st);
+    free_meta_data(&st);
 
     return bs;
 }
@@ -687,19 +680,15 @@ bs_t *f4sat_trace_application_phase(
 
     /* current quotient basis up to max lm degree in intermediate basis */
     hm_t *qb    = NULL;
-    int32_t ret, round, ctr, i, j;
+    int32_t round, ctr, i, j;
     ctr = 0;
 
-    len_t ts_ctr  = 0;
 
-    /* hashes-to-columns map, initialized with length 1, is reallocated
-     * in each call when generating matrices for linear algebra */
-    hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
+    len_t ts_ctr  = 0;
+    int32_t ret   = 0;
+
     /* hashes-to-columns maps for multipliers in saturation step */
     hi_t *hcmm  = (hi_t *)malloc(sizeof(hi_t));
-
-    /* set routines corresponding to prime size */
-    reset_trace_function_pointers(fc);
 
     /* matrix holding sparse information generated
      * during symbolic preprocessing */
@@ -709,12 +698,22 @@ bs_t *f4sat_trace_application_phase(
     md_t *st  = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
-    ht_t *bht   = lbht;
+    ht_t *bht   = bs->ht;
 
+    st->trace_level = APPLY_TRACER;
+
+    /* set routines corresponding to prime size */
+    reset_function_pointers(fc, st->laopt);
+
+    printf("st->fc %d\n", st->fc);
+
+    printf("bs->ht %p\n", bs->ht);
+    printf("evl %d\n", bht->evl);
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
-    memset(bht->ev[0], 0, (unsigned long)(bht->evl) * sizeof(exp_t));
-    sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
+    exp_t zero[bht->evl];;
+    memset(zero, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
+    sat->hm[0][MULT]  = insert_in_hash_table(zero, bht);
     sat->ld = 1;
     len_t sat_deg = 0;
 
@@ -723,6 +722,7 @@ bs_t *f4sat_trace_application_phase(
 
     /* initialize specialized hash table */
     ht_t *sht = initialize_secondary_hash_table(bht, st);
+    st->ht    = sht;
 
     /* elements of kernel in saturation step, to be added to basis bs */
     bs_t *kernel  = initialize_basis(st);
@@ -744,7 +744,9 @@ bs_t *f4sat_trace_application_phase(
 ----------------------------------------\n");
     }
     round = 0;
+    printf("trace->ltd %d\n", trace->ltd);
     for (; round < trace->ltd; ++round) {
+        printf("round %d\n", round);
         rrt0  = realtime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
             st->max_bht_size : bht->esz;
@@ -753,6 +755,7 @@ bs_t *f4sat_trace_application_phase(
         /* generate matrix out of tracer data, rows are then already
          * sorted correspondingly */
         generate_matrix_from_trace(mat, bs, st);
+        st->trace_rd++;
         if (st->info_level > 1) {
             printf("%5d", round+1);
             printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
@@ -760,8 +763,9 @@ bs_t *f4sat_trace_application_phase(
         }
         convert_hashes_to_columns(mat, st, sht);
         /* linear algebra, depending on choice, see set_function_pointers() */
-        ret = application_linear_algebra(mat, bs, st);
+        linear_algebra(mat, bs, st);
         if (ret != 0) {
+            printf("ret %d\n", ret);
             goto stop;
         }
 
@@ -795,8 +799,11 @@ bs_t *f4sat_trace_application_phase(
             printf("%13.2f sec\n", rrt1-rrt0);
         }
         /* saturation step starts here */
-        while (ctr <= trace->rld && trace->rd[ctr]  ==  round) {
+        printf("ctr %d -- rld %d\n", ctr, trace->rld);
+        printf("tr->rd %d -- round %d\n", trace->rd[ctr], round);
+        while (ctr < trace->rld && trace->rd[ctr]  ==  round) {
             ctr++;
+            printf("trace->ts %p -- %p\n", trace->ts, st->tr->ts);
             sat_deg = trace->ts[ts_ctr].deg;
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
@@ -945,13 +952,8 @@ bs_t *f4sat_trace_application_phase(
 
 stop:
     /* free and clean up */
-    free(hcm);
     free(hcmm);
-    if (sht != NULL) {
-        free_hash_table(&sht);
-    }
-    free_basis_elements(sat);
-    free_basis(&sat);
+    free_basis_without_hash_table(&sat);
     free_basis(&kernel);
     /* note that all rows kept from mat during the overall computation are
      * basis elements and thus we do not need to free the rows itself, but
@@ -963,7 +965,7 @@ stop:
     free(st);
 
     if (ret != 0) {
-        free_basis(&bs);
+        free_basis_without_hash_table(&bs);
     }
 
     return bs;
@@ -1208,8 +1210,9 @@ bs_t *f4sat_trace_learning_phase_1(
     st->ps  = ps;
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
-    memset(bht->ev[0], 0, (unsigned long)(bht->evl) * sizeof(exp_t));
-    sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
+    exp_t zero[bht->evl];;
+    memset(zero, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
+    sat->hm[0][MULT]  = insert_in_hash_table(zero, bht);
     sat->ld = 1;
 
     next_deg  = 2*bht->ev[sat->hm[0][OFFSET]][DEG];
@@ -1511,15 +1514,17 @@ bs_t *f4sat_trace_learning_phase_2(
      * during symbolic preprocessing */
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
-    /* set routines corresponding to prime size */
-    reset_trace_function_pointers(fc);
-
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
     md_t *st    = copy_meta_data(gst, fc);
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = bs->ht;
+
+    st->trace_level = LEARN_TRACER;
+
+    /* set routines corresponding to prime size */
+    reset_function_pointers(fc, st->laopt);
 
     int ts_ctr  = 0;
     /* hashes-to-columns map, initialized with length 1, is reallocated
@@ -1529,8 +1534,9 @@ bs_t *f4sat_trace_learning_phase_2(
 
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
-    memset(bht->ev[0], 0, (unsigned long)(bht->evl) * sizeof(exp_t));
-    sat->hm[0][MULT]  = insert_in_hash_table(bht->ev[0], bht);
+    exp_t zero[bht->evl];;
+    memset(zero, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
+    sat->hm[0][MULT]  = insert_in_hash_table(zero, bht);
     sat->ld = 1;
 
     next_deg  = 2*bht->ev[sat->hm[0][OFFSET]][DEG];
@@ -1579,7 +1585,7 @@ bs_t *f4sat_trace_learning_phase_2(
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
-        trace_linear_algebra(trace, mat, bs, st);
+        linear_algebra(mat, bs, st);
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(

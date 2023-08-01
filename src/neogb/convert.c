@@ -780,12 +780,12 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
         }
 #if 0
         if (st->ff_bits == 32) {
-            printf("new element (%u): length %u | degree %d | ", bl+i, bs->hm[bl+i][LENGTH], bs->hm[bl+i][DEG]);
+            printf("new element (%u): length %u | degree %d | ", bl+k, bs->hm[bl+k][LENGTH], bs->hm[bl+k][DEG]);
             int kk = 0;
-            /* for (int kk=0; kk<bs->hm[bl+i][LENGTH]; ++kk) { */
-            printf("%u | ", bs->cf_32[bl+i][kk]);
+            /* for (int kk=0; kk<bs->hm[bl+k][LENGTH]; ++kk) { */
+            printf("%u | ", bs->cf_32[bl+k][kk]);
             for (int jj=0; jj < sht->evl; ++jj) {
-                printf("%u ", sht->ev[bs->hm[bl+i][OFFSET+kk]][jj]);
+                printf("%u ", sht->ev[bs->hm[bl+k][OFFSET+kk]][jj]);
             }
             /* printf(" || ");
              * } */

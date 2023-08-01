@@ -47,7 +47,6 @@ int initialize_gba_input_data(
         )
 {
     bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
     md_t *st  = *stp;
 
     /* initialize stuff */
@@ -77,8 +76,7 @@ int initialize_gba_input_data(
 
     /* initialize basis */
     bs  = initialize_basis(st);
-    /* initialize basis hash table */
-    bht = initialize_basis_hash_table(st);
+    ht_t *bht = bs->ht;
 
     import_input_data(bs, st, lens, exps, cfs, invalid_gens);
 

@@ -5291,6 +5291,8 @@ restart:
             /* initialize tracer */
             trace_t *trace  = initialize_trace(bs_qq, st);
 
+            st->tr = trace;
+
             srand(time(0));
             uint32_t prime = next_prime(1<<30);
             prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));

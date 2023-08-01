@@ -5260,7 +5260,7 @@ restart:
              *******************/
             bs_t *bs_qq = initialize_basis(st);
             /* initialize basis hash table, update hash table, symbolic hash table */
-            ht_t *bht = initialize_basis_hash_table(st);
+            ht_t *bht = bs_qq->ht;
             /* hash table to store the hashes of the multiples of
              * the basis elements stored in the trace */
             ht_t *tht = initialize_secondary_hash_table(bht, st);

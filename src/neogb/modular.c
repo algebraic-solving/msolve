@@ -551,8 +551,12 @@ bs_t *f4sat_trace_application_test_phase(
                     exact_sparse_linear_algebra_ff_32(mat, kernel, st);
                     /* columns indices are mapped back to exponent hashes */
                     if (mat->np > 0) {
+                        /* use the correct hcmm for kernel elements! */
+                        hi_t *tmp = st->hcm;
+                        st->hcm = hcmm;
                         convert_sparse_matrix_rows_to_basis_elements_use_sht(
                                 -1, mat, bs, bht, st);
+                        st->hcm = tmp;
                     }
                     st->nr_kernel_elts  +=  kernel->ld;
                     free_kernel_coefficients(kernel);
@@ -705,10 +709,6 @@ bs_t *f4sat_trace_application_phase(
     /* set routines corresponding to prime size */
     reset_function_pointers(fc, st->laopt);
 
-    printf("st->fc %d\n", st->fc);
-
-    printf("bs->ht %p\n", bs->ht);
-    printf("evl %d\n", bht->evl);
     /* initialize multiplier of first element in sat to be the hash of
      * the all-zeroes exponent vector. */
     exp_t zero[bht->evl];;
@@ -744,9 +744,7 @@ bs_t *f4sat_trace_application_phase(
 ----------------------------------------\n");
     }
     round = 0;
-    printf("trace->ltd %d\n", trace->ltd);
     for (; round < trace->ltd; ++round) {
-        printf("round %d\n", round);
         rrt0  = realtime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
             st->max_bht_size : bht->esz;
@@ -765,7 +763,6 @@ bs_t *f4sat_trace_application_phase(
         /* linear algebra, depending on choice, see set_function_pointers() */
         linear_algebra(mat, bs, st);
         if (ret != 0) {
-            printf("ret %d\n", ret);
             goto stop;
         }
 
@@ -799,11 +796,8 @@ bs_t *f4sat_trace_application_phase(
             printf("%13.2f sec\n", rrt1-rrt0);
         }
         /* saturation step starts here */
-        printf("ctr %d -- rld %d\n", ctr, trace->rld);
-        printf("tr->rd %d -- round %d\n", trace->rd[ctr], round);
         while (ctr < trace->rld && trace->rd[ctr]  ==  round) {
             ctr++;
-            printf("trace->ts %p -- %p\n", trace->ts, st->tr->ts);
             sat_deg = trace->ts[ts_ctr].deg;
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
@@ -865,8 +859,12 @@ bs_t *f4sat_trace_application_phase(
                 exact_sparse_linear_algebra_ff_32(mat, kernel, st);
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
+                    /* use the correct hcmm for kernel elements! */
+                    hi_t *tmp = st->hcm;
+                    st->hcm = hcmm;
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
                             -1, mat, bs, bht, st);
+                    st->hcm = tmp;
                     bs->ld  +=  mat->np;
                     update_lm(bs, bht, st);
                 }
@@ -1338,8 +1336,12 @@ end_sat_step:
                         /* linear_algebra(mat, kernel, st); */
                         /* columns indices are mapped back to exponent hashes */
                         if (mat->np > 0) {
+                            /* use the correct hcmm for kernel elements! */
+                            hi_t *tmp = st->hcm;
+                            st->hcm = hcmm;
                             convert_sparse_matrix_rows_to_basis_elements_use_sht(
                                     -1, mat, bs, bht, st);
+                            st->hcm = tmp;
                             /* add_minimal_lmh_to_trace(trace, bs); */
                             trace->ts[trace->lts].deg = ii;
                             trace->ts[trace->lts].f4rd = round;
@@ -1654,8 +1656,12 @@ bs_t *f4sat_trace_learning_phase_2(
                 /* linear_algebra(mat, kernel, st); */
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
+                    /* use the correct hcmm for kernel elements! */
+                    hi_t *tmp = st->hcm;
+                    st->hcm = hcmm;
                     convert_sparse_matrix_rows_to_basis_elements_use_sht(
                             -1, mat, bs, bht, st);
+                    st->hcm = tmp;
                 }
                 /* track round in which kernel computation is not trivial */
                 if (trace->rld == trace->rsz) {

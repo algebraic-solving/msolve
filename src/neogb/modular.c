@@ -677,10 +677,9 @@ bs_t *f4sat_trace_application_phase(
         )
 {
     /* timings */
-    double ct0, ct1, rt0, rt1;
-    double rrt0, rrt1; /* for one round only */
-    ct0 = cputime();
-    rt0 = realtime();
+    double ct = cputime();
+    double rt = realtime();
+    double rrt, crt; /* for one round only */
 
     /* current quotient basis up to max lm degree in intermediate basis */
     hm_t *qb    = NULL;
@@ -737,15 +736,11 @@ bs_t *f4sat_trace_application_phase(
     }
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
-    if (st->info_level > 1) {
-        printf("\nround   deg          mat          density \
-          new data             time(rd)\n");
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_information_header(stdout, st);
     round = 0;
     for (; round < trace->ltd; ++round) {
-        rrt0  = realtime();
+        rrt = realtime();
+        crt = cputime();
         st->max_bht_size  = st->max_bht_size > bht->esz ?
             st->max_bht_size : bht->esz;
         st->current_rd  = round;
@@ -754,11 +749,11 @@ bs_t *f4sat_trace_application_phase(
          * sorted correspondingly */
         generate_matrix_from_trace(mat, bs, st);
         st->trace_rd++;
-        if (st->info_level > 1) {
+        /* if (st->info_level > 1) {
             printf("%5d", round+1);
             printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
             fflush(stdout);
-        }
+        } */
         convert_hashes_to_columns(mat, st, sht);
         /* linear algebra, depending on choice, see set_function_pointers() */
         linear_algebra(mat, bs, st);
@@ -791,17 +786,15 @@ bs_t *f4sat_trace_application_phase(
          * so we do not need the rows anymore */
         clear_matrix(mat);
 
-        rrt1 = realtime();
-        if (st->info_level > 1) {
-            printf("%13.2f sec\n", rrt1-rrt0);
-        }
+        print_round_timings(stdout, st, rrt, crt);
         /* saturation step starts here */
         while (ctr < trace->rld && trace->rd[ctr]  ==  round) {
             ctr++;
             sat_deg = trace->ts[ts_ctr].deg;
             /* check for new elements to be tested for adding saturation
              * information to the intermediate basis */
-            rrt0  = realtime();
+            rrt  = realtime();
+            crt  = cputime();
             update_multipliers(&qb, &bht, &sht, sat, st, bs, sat_deg);
             /* check for monomial multiples of elements from saturation list */
             select_saturation(sat, mat, st, sht, bht);
@@ -815,7 +808,7 @@ bs_t *f4sat_trace_application_phase(
             if (mat->nru > 0) {
                 if (st->info_level > 1) {
                     /* printf("kernel computation "); */
-                    printf("%5u kernel", ctr);
+                    printf("sat %5u %7u  ", ctr, sat_deg);
                 }
                 /* int ctr = 0;
                  * for (int ii = 1; ii < sat->ld; ++ii) {
@@ -843,7 +836,7 @@ bs_t *f4sat_trace_application_phase(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (st->info_level > 1) {
-                    printf("%47d new kernel elements", kernel->ld);
+                    printf("%56d new kernel elements", kernel->ld);
                     fflush(stdout);
                     printf("\n                                        ");
                 }
@@ -904,16 +897,10 @@ bs_t *f4sat_trace_application_phase(
             }
             clean_hash_table(sht);
 
-            rrt1 = realtime();
-            if (st->info_level > 1) {
-                printf("%13.2f sec\n", rrt1-rrt0);
-            }
+            print_round_timings(stdout, st, rrt, crt);
         }
     }
-    if (st->info_level > 1) {
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_information_footer(stdout, st);
 
     /* apply non-redundant basis data from trace to basis
      * before interreduction */
@@ -936,10 +923,8 @@ bs_t *f4sat_trace_application_phase(
             bs, mat, bht, sht, st);
 
     /* timings */
-    ct1 = cputime();
-    rt1 = realtime();
-    st->f4_ctime = ct1 - ct0;
-    st->f4_rtime = rt1 - rt0;
+    st->f4_ctime = cputime() - ct;
+    st->f4_rtime = realtime() - rt;
 
     /* get basis meta data */
     st->size_basis  = bs->lml;
@@ -1644,7 +1629,7 @@ bs_t *f4sat_trace_learning_phase_2(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (st->info_level > 1) {
-                    printf("%54d new kernel elements", kernel->ld);
+                    printf("%56d new kernel elements", kernel->ld);
                     fflush(stdout);
                     printf("\n                                               ");
                 }

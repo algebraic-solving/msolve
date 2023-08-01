@@ -386,6 +386,7 @@ static int32_t select_spairs_by_minimal_degree(
 
     md->num_rowsred +=  mat->nr - mat->nc;
     md->current_deg =   mdeg;
+    mat->cd         =   mdeg;
 
     free(gens);
 

@@ -223,7 +223,7 @@ static void print_current_trace_meta_data(
     len_t deg = md->tr->td[rd].deg;
 
     if (md->info_level > 1) {
-        printf("%9d  %6d  ", rd, deg);
+        printf("%9d  %6d  ", rd+1, deg);
         fflush(stdout);
     }
 }

@@ -713,8 +713,7 @@ static void generate_saturation_reducer_rows_from_trace(
         const bs_t * const bs,
         md_t *st,
         ht_t *sht,
-        const ht_t * const bht,
-        const ht_t * const tht
+        const ht_t * const bht
         )
 {
     /* timings */
@@ -736,8 +735,8 @@ static void generate_saturation_reducer_rows_from_trace(
     nr  = 0;
     while (i < ts.rld) {
         b     = bs->hm[ts.rri[i++]];
-        emul  = tht->ev[ts.rri[i]];
-        h     = tht->hd[ts.rri[i++]].val;
+        emul  = bht->ev[ts.rri[i]];
+        h     = bht->hd[ts.rri[i++]].val;
 
         rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         sht->hd[rrows[nr][OFFSET]].idx = 2;

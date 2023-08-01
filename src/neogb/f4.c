@@ -457,13 +457,7 @@ static int32_t compute_new_elements(
         add_lms_to_trace(md->tr, bs, md->np);
         md->tr->ltd++;
     }
-    if (md->trace_level != APPLY_TRACER) {
-        /* if we found a constant we are done, so remove all remaining pairs */
-        if (bs->constant  == 1) {
-            bs->ld += md->np;
-            return 1;
-        }
-    } else {
+    if (md->trace_level == APPLY_TRACER) {
         bs->ld += md->np;
         md->trace_rd++;
         if (md->trace_rd >= md->tr->ltd) {

@@ -500,7 +500,7 @@ static cf8_t *reduce_dense_row_by_dense_new_pivots_ff_8(
 static void probabilistic_sparse_reduced_echelon_form_ff_8(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k, l, m;
@@ -673,13 +673,13 @@ static void probabilistic_sparse_reduced_echelon_form_ff_8(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 static int exact_application_sparse_reduced_echelon_form_ff_8(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -804,7 +804,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_8(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 
     return 0;
 }
@@ -813,7 +813,7 @@ static void exact_trace_sparse_reduced_echelon_form_ff_8(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -935,13 +935,13 @@ static void exact_trace_sparse_reduced_echelon_form_ff_8(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 static void exact_sparse_reduced_echelon_form_ff_8(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -1063,13 +1063,13 @@ static void exact_sparse_reduced_echelon_form_ff_8(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 static cf8_t **sparse_AB_CD_linear_algebra_ff_8(
         mat_t *mat,
         const bs_t * bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j;
@@ -1143,7 +1143,7 @@ static cf8_t **sparse_AB_CD_linear_algebra_ff_8(
         free(drs);
         drs = NULL;
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     return drs;
 }
@@ -1187,7 +1187,7 @@ static cf8_t **interreduce_dense_matrix_ff_8(
 static cf8_t **exact_dense_linear_algebra_ff_8(
         cf8_t **dm,
         mat_t *mat,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i, j, k, l, npivs;
@@ -1288,7 +1288,7 @@ static cf8_t **exact_dense_linear_algebra_ff_8(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     free(tbr);
     free(dr);
@@ -1299,7 +1299,7 @@ static cf8_t **exact_dense_linear_algebra_ff_8(
 static cf8_t **probabilistic_dense_linear_algebra_ff_8(
         cf8_t **dm,
         mat_t *mat,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i, j, k, l, m, npivs;
@@ -1445,7 +1445,7 @@ static cf8_t **probabilistic_dense_linear_algebra_ff_8(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     free(mul);
     free(tbr);
@@ -1457,7 +1457,7 @@ static cf8_t **probabilistic_dense_linear_algebra_ff_8(
 static cf8_t **probabilistic_sparse_dense_echelon_form_ff_8(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k, l, m, npivs;
@@ -1582,7 +1582,7 @@ static cf8_t **probabilistic_sparse_dense_echelon_form_ff_8(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
 
     for (i = 0; i < nru; ++i) {
@@ -2029,7 +2029,7 @@ static void interreduce_matrix_rows_ff_8(
     }    
     free(mat->rr);
     mat->rr = NULL;
-    mat->np = nrows;
+    st->np = mat->np = nrows;
     free(pivs);
     free(dr);
 }

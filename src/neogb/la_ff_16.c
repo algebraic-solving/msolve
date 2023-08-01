@@ -579,7 +579,7 @@ static cf16_t *reduce_dense_row_by_dense_new_pivots_ff_16(
 static void probabilistic_sparse_reduced_echelon_form_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k, l, m;
@@ -754,14 +754,14 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 static void exact_trace_sparse_reduced_echelon_form_ff_16(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -883,14 +883,14 @@ static void exact_trace_sparse_reduced_echelon_form_ff_16(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 
 static void exact_sparse_reduced_echelon_form_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -1009,13 +1009,13 @@ static void exact_sparse_reduced_echelon_form_ff_16(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 }
 
 static int exact_application_sparse_reduced_echelon_form_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k;
@@ -1140,7 +1140,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_16(
     dr  = NULL;
 
     mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));
-    mat->np = mat->nr = mat->sz = npivs;
+    st->np = mat->np = mat->nr = mat->sz = npivs;
 
     return 0;
 }
@@ -1148,7 +1148,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_16(
 static cf16_t **sparse_AB_CD_linear_algebra_ff_16(
         mat_t *mat,
         const bs_t * bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j;
@@ -1222,7 +1222,7 @@ static cf16_t **sparse_AB_CD_linear_algebra_ff_16(
         free(drs);
         drs = NULL;
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     return drs;
 }
@@ -1267,7 +1267,7 @@ static cf16_t **interreduce_dense_matrix_ff_16(
 static cf16_t **exact_dense_linear_algebra_ff_16(
         cf16_t **dm,
         mat_t *mat,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i, j, k, l, npivs;
@@ -1369,7 +1369,7 @@ static cf16_t **exact_dense_linear_algebra_ff_16(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     free(tbr);
     free(dr);
@@ -1380,7 +1380,7 @@ static cf16_t **exact_dense_linear_algebra_ff_16(
 static cf16_t **probabilistic_dense_linear_algebra_ff_16(
         cf16_t **dm,
         mat_t *mat,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i, j, k, l, m, npivs;
@@ -1526,7 +1526,7 @@ static cf16_t **probabilistic_dense_linear_algebra_ff_16(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
     free(mul);
     free(tbr);
@@ -1538,7 +1538,7 @@ static cf16_t **probabilistic_dense_linear_algebra_ff_16(
 static cf16_t **probabilistic_sparse_dense_echelon_form_ff_16(
         mat_t *mat,
         const bs_t * const bs,
-        const md_t * const st
+        md_t *st
         )
 {
     len_t i = 0, j, k, l, m, npivs;
@@ -1663,7 +1663,7 @@ static cf16_t **probabilistic_sparse_dense_echelon_form_ff_16(
             npivs++;
         }
     }
-    mat->np = npivs;
+    st->np = mat->np = npivs;
 
 
     for (i = 0; i < nru; ++i) {
@@ -2110,7 +2110,7 @@ static void interreduce_matrix_rows_ff_16(
     }
     free(mat->rr);
     mat->rr = NULL;
-    mat->np = nrows;
+    st->np = mat->np = nrows;
     free(pivs);
     free(dr);
 }

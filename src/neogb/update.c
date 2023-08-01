@@ -357,7 +357,11 @@ static int32_t update(
         )
 {
         update_basis_f4(md->ps, bs, bs->ht, md, md->np);
-        return md->ps->ld == 0;
+        if (bs->constant) {
+            return 1;
+        } else {
+            return md->ps->ld == 0;
+        }
 }
 
 /* not needed right now, maybe in a later iteration of sba implementations */

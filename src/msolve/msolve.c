@@ -2835,7 +2835,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     free(tht); */
     if (gens->field_char == 0) {
         for (i = 0; i < st->nthrds; ++i) {
-            free_basis_without_hash_table(&(bs[i]));
+            if (bs[i] != NULL) {
+                free_basis_without_hash_table(&(bs[i]));
+            }
         }
     }
     free(bs);

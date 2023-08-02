@@ -842,7 +842,6 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
 
     gens->cfs = (int32_t*)(malloc(sizeof(int32_t) * all_nterms));
 
-    printf("all terms %d\n", all_nterms);
     gens->mpz_cfs = (mpz_t **)(malloc(sizeof(mpz_t *) * 2 * all_nterms));
     for(long i = 0; i < 2 * all_nterms; i++){
       gens->mpz_cfs[i]  = (mpz_t *)malloc(sizeof(mpz_t));

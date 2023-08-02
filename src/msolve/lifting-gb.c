@@ -687,7 +687,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
             /* } */
             /* print_ff_basis_data( */
             /*                     files->out_file, "a", bs, bht, st, gens, print_gb); */
-            free_basis(&(bs));
+            free_basis_without_hash_table(&(bs));
             return NULL;
         }
     }
@@ -759,7 +759,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   if (lml != num_gb[0]) {
       if (bs != NULL) {
-        free_basis(&bs);
+        free_basis_without_hash_table(&bs);
       }
       return;
   }
@@ -926,7 +926,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
           mpz_lcm(dl->tmp, dl->tmp, rden);
         }
         else{
-          fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
+          /* fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1); */
           mpz_set_ui(dl->gden, 1);
           mpz_clear(rnum);
           mpz_clear(rden);
@@ -1372,7 +1372,6 @@ int msolve_gbtrace_qq(
       int bad = 0;
       for(int i = 0; i < nthrds/* st->nthrds */; i++){
         if(msd->bad_primes[i] == 1){
-          fprintf(stderr, "badprimes[%d] is 1\n", i);
           bad = 1;
         }
       }
@@ -1384,9 +1383,7 @@ int msolve_gbtrace_qq(
                     nthrds/* st->nthrds */, &st_crt, &st_rrec);
       }
       if(/* (st_crt -ost_crt) + */ (st_rrec - ost_rrec) > dlift->rr * stf4){
-          printf("rr %d --> ", dlift->rr);
         dlift->rr = 2*dlift->rr;
-        printf("%d\n", dlift->rr);
         if(info_level){
           fprintf(stderr, "(->%d)", dlift->rr);
         }

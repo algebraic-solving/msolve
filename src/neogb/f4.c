@@ -427,7 +427,9 @@ static int32_t compute_new_elements(
     /* check for bad prime */
     if (md->trace_level == APPLY_TRACER) {
         if (mat->np != md->tr->td[md->trace_rd].nlm) {
-            fprintf(stdout, "Wrong number of new elements, bad prime.");
+            if (md->info_level > 0) {
+                fprintf(stderr, "Wrong number of new elements, bad prime.");
+            }
             *errp = 1;
             return 1;
         }
@@ -446,8 +448,10 @@ static int32_t compute_new_elements(
     if (md->trace_level == APPLY_TRACER) {
         for (i = 0; i < md->np; ++i) {
             if (bs->hm[bs->ld+i][OFFSET] != md->tr->td[md->trace_rd].nlms[i]) {
-                fprintf(stdout, "Wrong leading term for new element %u/%u, bad prime.",
+                if (md->info_level > 0) {
+                fprintf(stderr, "Wrong leading term for new element %u/%u, bad prime.",
                         i, mat->np);
+                }
                 *errp = 2;
                 return 1;
             }
@@ -646,7 +650,7 @@ bs_t *core_f4(
     }
     if (*errp > 0) {
         free_basis_without_hash_table(&bs);
-    } else {
+    } else {
         print_round_information_footer(stdout, md);
 
         /* remove possible redudant elements */

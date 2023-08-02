@@ -2407,8 +2407,10 @@ static void exact_sparse_reduced_echelon_form_ff_32(
             free(pivs[i]);
             pivs[i] = NULL;
         }
-        fprintf(stdout, "Zero reduction while applying tracer, bad prime.\n");
         mat->np = 0;
+        if (st->info_level > 0) {
+            fprintf(stderr, "Zero reduction while applying tracer, bad prime.\n");
+        }
         return;
     }
 

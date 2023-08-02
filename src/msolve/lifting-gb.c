@@ -599,10 +599,11 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     /* if(gens->field_char){ */
       int32_t err = 0;
       bs = core_gba(bs_qq, st, &err, fc);
-      /* if (err) {
+      if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
       }
+      /*
       free_shared_hash_data(bht);
     }
     else{
@@ -720,6 +721,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          double *stf4,
                                          int *bad_primes){
 
+  double rt = realtime();
   st->info_level = 0;
   /* tracing phase */
 
@@ -731,14 +733,14 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   bs_t *bs = NULL;
   int32_t error = 0;
   bs = core_gba(bs_qq, st, &error, lp->p[0]);
+  *stf4 = realtime()-rt;
   /* if(st->laopt > 40){
     bs = modular_f4(bs_qq, bht[0], st, lp->p[0]);
   }
   else{
     bs = gba_trace_application_phase(btrace[0], btht[0], bs_qq, bht[0], st, lp->p[0]);
   }
-  *stf4 = realtime()-ca0; */
-
+  */
   if (bs == NULL) {
       bad_primes[0] = 1;
       return;
@@ -1382,7 +1384,9 @@ int msolve_gbtrace_qq(
                     nthrds/* st->nthrds */, &st_crt, &st_rrec);
       }
       if(/* (st_crt -ost_crt) + */ (st_rrec - ost_rrec) > dlift->rr * stf4){
+          printf("rr %d --> ", dlift->rr);
         dlift->rr = 2*dlift->rr;
+        printf("%d\n", dlift->rr);
         if(info_level){
           fprintf(stderr, "(->%d)", dlift->rr);
         }

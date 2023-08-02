@@ -644,21 +644,24 @@ bs_t *core_f4(
 
         print_round_timings(stdout, md, rrt, crt);
     }
-    print_round_information_footer(stdout, md);
+    if (*errp > 0) {
+        free_basis_without_hash_table(&bs);
+    } else {
+        print_round_information_footer(stdout, md);
 
-    /* remove possible redudant elements */
-    process_redundant_elements(bs, md);
+        /* remove possible redudant elements */
+        process_redundant_elements(bs, md);
 
-    /* reduce final basis? */
-    reduce_final_basis(bs, mat, md);
+        /* reduce final basis? */
+        reduce_final_basis(bs, mat, md);
 
-    md->f4_rtime = realtime() - rt;
-    md->f4_ctime = cputime() - ct;
-    
-    get_and_print_final_statistics(stdout, md, bs);
+        md->f4_rtime = realtime() - rt;
+        md->f4_ctime = cputime() - ct;
 
-    finalize_f4(gmd, gbs, &bs, &md, &mat, *errp);
+        get_and_print_final_statistics(stdout, md, bs);
 
+        finalize_f4(gmd, gbs, &bs, &md, &mat, *errp);
+    }
     return bs;
 }
 

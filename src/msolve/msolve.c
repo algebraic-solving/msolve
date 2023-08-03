@@ -1795,6 +1795,7 @@ static int32_t check_for_single_element_groebner_basis(
         }
         for (i = 0; i < bs->ht->nv; i++) {
             if (leadmons[pos][i] != 0) {
+                empty_solution_set = 0;
                 break;
             }
         }

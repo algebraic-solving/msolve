@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=bug_68
+file=mq_2_1
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res -l 2
 if [ $? -gt 0 ]; then

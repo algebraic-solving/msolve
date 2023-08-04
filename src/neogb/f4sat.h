@@ -26,9 +26,9 @@
 #include "f4.h"
 
 int core_f4sat(
-        bs_t **bsp,
-        bs_t **satp,
-        ht_t **bhtp,
-        stat_t **stp
+        bs_t *gbs,
+        bs_t *gsat,
+        md_t *gmd,
+        int32_t*errp
         );
 #endif

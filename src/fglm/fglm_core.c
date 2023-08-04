@@ -441,7 +441,7 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
                                             const uint32_t preinv,
                                             const uint32_t pi1,
                                             const uint32_t pi2,
-					    stat_t *st){
+					    md_t *st){
 
   szmat_t ncols = mat->ncols;
   szmat_t nrows = mat->nrows;
@@ -481,7 +481,7 @@ static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *ma
 						  const uint32_t preinv,
 						  const uint32_t pi1,
 						  const uint32_t pi2,
-						  stat_t *st){
+						  md_t *st){
 
   szmat_t ncols = mat->ncols;
   szmat_t nrows = mat->nrows;
@@ -647,7 +647,7 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
                                      uint64_t* linvars,
                                      long nvars,
                                      mod_t prime,
-                                     stat_t *st){
+                                     md_t *st){
   uint32_t RED_32 = ((uint64_t)2<<31) % prime;
   uint32_t RED_64 = ((uint64_t)1<<63) % prime;
   RED_64 = (RED_64*2) % prime;
@@ -707,7 +707,7 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
 				    uint64_t* linvars,
 				    long nvars,
 				    mod_t prime,
-				    stat_t *st){
+				    md_t *st){
   uint32_t RED_32 = ((uint64_t)2<<31) % prime;
 
 
@@ -1473,7 +1473,7 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const long n
                            uint32_t *lineqs,
                            uint64_t *squvars,
                            const int info_level,
-			   stat_t *st){
+			   md_t *st){
 #if DEBUGFGLM > 0
   fprintf(stderr, "prime = %u\n", prime);
 #endif
@@ -1620,7 +1620,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                       fglm_data_t **bdata,
                                       fglm_bms_data_t **bdata_bms,
                                       int *success,
-				      stat_t *st){
+				      md_t *st){
 #if DEBUGFGLM > 0
   fprintf(stderr, "prime = %u\n", prime);
 #endif
@@ -1776,7 +1776,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
                                        fglm_bms_data_t *data_bms,
                                        const long deg_init,
                                        const int info_level,
-				       stat_t *st){
+				       md_t *st){
 #if DEBUGFGLM > 0
   fprintf(stderr, "prime = %u\n", prime);
 #endif
@@ -1911,7 +1911,7 @@ guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
 		     szmat_t block_size, long dimquot, mod_t prime,
 		     param_t * param, fglm_bms_data_t * data_bms,
 		     uint64_t *linvars, uint32_t *lineqs, const long nvars,
-		     long *dim_ptr, const int info_level, stat_t *st){
+		     long *dim_ptr, const int info_level, md_t *st){
   /* printf ("modulo %d\n",prime); */
   /* printf ("size   %d\n",matrix->ncols); */
   /* printf ("leftvec\n"); */
@@ -2019,7 +2019,7 @@ static inline void generate_sequence_colon(sp_matfglmcol_t *matrix,
 					   fglm_data_t * data,
 					   CF_t * leftvec,
 					   szmat_t block_size, long dimquot,
-					   mod_t prime, stat_t *st){
+					   mod_t prime, md_t *st){
 
   uint32_t RED_32 = ((uint64_t)2<<31) % prime;
 
@@ -2129,7 +2129,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 			       uint32_t *lineqs,
 			       uint64_t *squvars,
 			       const int info_level,
-			       stat_t *st){
+			       md_t *st){
 #if DEBUGFGLM > 0
   fprintf(stderr, "prime = %u\n", prime);
 #endif

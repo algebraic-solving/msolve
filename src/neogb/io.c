@@ -27,7 +27,7 @@ static inline void set_exponent_vector(
         const int32_t *iev,  /* input exponent vectors */
         const int32_t idx,
         const ht_t *ht,
-        const stat_t *st
+        const md_t *st
         )
 {
     len_t i;
@@ -250,8 +250,7 @@ void sort_terms_qq(
 
 void import_input_data(
         bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *vcfs,
@@ -269,6 +268,8 @@ void import_input_data(
     mpz_t *cfq      =   NULL;
     int32_t *cfs_ff =   NULL;
     mpz_t **cfs_qq  =   NULL;
+
+    ht_t *ht = bs->ht;
 
     int32_t off             = 0; /* offset in arrays */
     const len_t ngens       = st->ngens;
@@ -441,7 +442,7 @@ done:
 void import_input_data_nf_ff_32(
         bs_t *tbr,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t start,
         const int32_t stop,
         const int32_t *lens,
@@ -522,7 +523,7 @@ void import_input_data_nf_ff_32(
 void import_input_data_nf_ff_16(
         bs_t *tbr,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t start,
         const int32_t stop,
         const int32_t *lens,
@@ -605,7 +606,7 @@ void import_input_data_nf_ff_16(
 void import_input_data_nf_qq(
         bs_t *bs,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t start,
         const int32_t stop,
         const int32_t *lens,
@@ -1010,7 +1011,7 @@ static int64_t export_julia_data_qq(
     return nterms;
 }
 
-void set_ff_bits(stat_t *st, int32_t fc){
+void set_ff_bits(md_t *st, int32_t fc){
   if (fc == 0) {
     st->ff_bits = 0;
   } else {
@@ -1119,7 +1120,6 @@ int validate_input_data(
         int32_t *cf =   (int32_t *)cfs;
         for (int i = 0; i < ngens; ++i) {
             for (int j = 0; j < lens[i]; ++j) {
-                printf("cf[%d+%d] = %d\n", j, len, cf[j+len]);
                 if (cf[j+len] == 0) {
                     invalid_gens[i]   =   1;
                     ctr++;
@@ -1148,7 +1148,7 @@ int validate_input_data(
 }
 
 int32_t check_and_set_meta_data(
-        stat_t *st,
+        md_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
@@ -1264,7 +1264,7 @@ int32_t check_and_set_meta_data(
 }
 
 void set_function_pointers(
-        const stat_t *st
+        const md_t *st
         )
 {
   /* todo: this needs to be generalized for different monomial orders */
@@ -1486,7 +1486,7 @@ void set_function_pointers(
 }
 
 int32_t check_and_set_meta_data_trace(
-        stat_t *st,
+        md_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
@@ -1699,7 +1699,7 @@ static inline void reset_trace_function_pointers(
 
 static void write_pbm_file(
     mat_t *mat,
-    const stat_t * const st
+    const md_t * const st
     )
 {
     len_t i, j, k;
@@ -1712,11 +1712,11 @@ static void write_pbm_file(
     const len_t nru   = mat->nru;
     const len_t nrl   = mat->nrl;
 
-    sprintf(fn, "%d-%d-%d-%d.pbm", st->current_rd, nru+nrl, ncols, st->current_deg);
+    snprintf(fn, 200, "%d-%d-%d-%d.pbm", st->current_rd, nru+nrl, ncols, st->current_deg);
     FILE *fh  = fopen(fn, "wb");
 
     /* magic header */
-    sprintf(buffer, "P4\n# matrix size(%u, %u)\n%u %u\n", nru+nrl, ncols, ncols, nru+nrl);
+    snprintf(buffer, 512, "P4\n# matrix size(%u, %u)\n%u %u\n", nru+nrl, ncols, ncols, nru+nrl);
 
     fwrite(buffer, sizeof(char), strlen(buffer), fh);
 

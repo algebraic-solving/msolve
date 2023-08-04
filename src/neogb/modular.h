@@ -25,7 +25,8 @@
 #include "data.h"
 
 trace_t *initialize_trace(
-        void
+        const bs_t * const bs,
+        const md_t * const md
         );
 
 
@@ -83,10 +84,9 @@ static inline int is_lucky_prime(
 void reduce_basis_no_hash_table_switching(
         bs_t *bs,
         mat_t *mat,
-        hi_t **hcmp,
         ht_t *bht,
         ht_t *sht,
-        stat_t *st
+        md_t *st
         );
 
 static inline void generate_lucky_primes(
@@ -127,7 +127,7 @@ bs_t *f4_trace_learning_phase(
         const bs_t * const ggb,   /* global basis */
         ht_t *gbht,               /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         );
 
@@ -138,7 +138,7 @@ bs_t *f4sat_trace_learning_phase_1(
         const bs_t * const gsat,  /* global saturation elements */
         ht_t **gbhtp,               /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         );
 
@@ -149,7 +149,7 @@ bs_t *f4sat_trace_learning_phase_2(
         const bs_t * const gsat,  /* global saturation elements */
         ht_t **gbhtp,               /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         );
 
@@ -158,7 +158,7 @@ bs_t *f4_trace_application_phase(
         const ht_t * const tht,       /* trace hash table for multipliers */
         const bs_t * const ggb,       /* global basis */
         ht_t *lbht,                   /* local basis hash table, not shared */
-        stat_t *gst,                  /* global statistics */
+        md_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */
         );
 
@@ -168,7 +168,7 @@ bs_t *f4sat_trace_application_phase(
         const bs_t * const ggb,       /* global basis */
         const bs_t * const gsat,      /* global saturation elements */
         ht_t *lbht,                   /* local basis hash table, not shared */
-        stat_t *gst,                  /* global statistics */
+        md_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */
         );
 
@@ -200,7 +200,7 @@ int64_t f4_trace_julia(
 bs_t *modular_f4(
         const bs_t * const ggb,       /* global basis */
         ht_t * gbht,                  /* global basis hash table, shared */
-        stat_t *gst,                  /* global statistics */
+        md_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */
         );
 #endif

@@ -19,11 +19,11 @@
  * Mohab Safey El Din */
 
 param_t *nmod_fglm_compute(sp_matfglm_t *, mod_t, long,
-                           long, uint64_t *, uint32_t *, uint64_t*, int, stat_t *);
+                           long, uint64_t *, uint32_t *, uint64_t*, int, md_t *);
 param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *, mod_t,
 			       CF_t *, CF_t **, long,
 			       long, uint64_t *, uint32_t *, uint64_t *, int,
-			       stat_t *);
+			       md_t *);
 param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *, mod_t, long,
                                       szmat_t,
                                       long,
@@ -34,7 +34,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *, mod_t, long,
                                       fglm_data_t **,
                                       fglm_bms_data_t **,
                                       int *,
-				      stat_t *);
+				      md_t *);
 int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *,
                                        const mod_t,
                                        param_t *,
@@ -48,7 +48,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *,
                                        fglm_bms_data_t *,
                                        const long,
                                        const int,
-                                       stat_t *);
+                                       md_t *);
 
 void display_fglm_param(FILE *, param_t *);
 void display_fglm_param_maple(FILE *, param_t *);

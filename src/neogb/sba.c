@@ -22,7 +22,7 @@
 #include "sba.h"
 
 static inline crit_t *initialize_signature_criteria(
-        const stat_t * const st
+        const md_t * const st
         )
 {
     crit_t *crit    =   calloc((unsigned long)st->ngens, sizeof(crit_t));
@@ -40,7 +40,7 @@ static inline crit_t *initialize_signature_criteria(
 
 static inline void reset_signature_criteria(
         crit_t *crit,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     for (len_t i = 0; i < st->ngens; ++i) {
@@ -50,7 +50,7 @@ static inline void reset_signature_criteria(
 
 static inline void free_signature_criteria(
         crit_t **critp,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     crit_t *crit    =   *critp;
@@ -71,7 +71,7 @@ static len_t sba_add_new_elements_to_basis(
         const smat_t * const smat,
         const ht_t * const ht,
         bs_t *bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i, j, k, ne;
@@ -188,7 +188,7 @@ static int is_signature_needed(
         const len_t idx,
         const len_t var_idx,
         ht_t *ht,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i;
@@ -363,7 +363,7 @@ static void add_multiples_of_previous_degree_row(
         const crit_t * const syz,
         crit_t *rew,
         ht_t *ht,
-        stat_t *st)
+        md_t *st)
 {
     const len_t nv  =   ht->nv;
 
@@ -487,7 +487,7 @@ static void sba_prepare_next_degree(
         smat_t *smat,
         const bs_t * const in,
         const len_t ni, /* number of input generators added */
-        const stat_t * const st
+        const md_t * const st
         )
 {
     smat->pr   = smat->cr;
@@ -549,7 +549,7 @@ static void generate_next_degree_matrix_from_previous(
         const crit_t * const syz,
         crit_t *rew,
         ht_t *ht,
-        stat_t *st
+        md_t *st
         )
 {
     const len_t pld = smat->pld;
@@ -564,7 +564,7 @@ static void sba_final_reduction_step(
         bs_t *bs,
         ht_t **htp,
         hi_t **hcmp,
-        stat_t *st
+        md_t *st
         )
 {
     ht_t *ht  = *htp;
@@ -581,7 +581,7 @@ static void sba_final_reduction_step(
     mat_t *mat = (mat_t *)calloc(1, sizeof(mat_t));
     /* note: bht will become sht, and sht will become NULL,
      * thus we need pointers */
-    reduce_basis(bs, mat, &hcm, &ht, &sht, st);
+    reduce_basis(bs, mat, st);
     if (sht != NULL) {
         free_hash_table(&sht);
     }
@@ -615,7 +615,7 @@ static void generate_next_degree_sba_matrix(
                 crit_t *syz,
                 crit_t *rew,
                 ht_t *ht,
-                stat_t *st
+                md_t *st
                 )
 {
     /* check if we have initial generators not handled in lower degree
@@ -638,12 +638,12 @@ static void generate_next_degree_sba_matrix(
 int core_sba_schreyer(
         bs_t **bsp,
         ht_t **htp,
-        stat_t **stp
+        md_t **stp
         )
 {
     bs_t *in    = *bsp;
     ht_t *ht    = *htp;
-    stat_t *st  = *stp;
+    md_t *st  = *stp;
 
     /* timings for one round */
     double rrt0, rrt1;
@@ -759,8 +759,8 @@ int core_sba_schreyer(
     free(hcm);
 
     printf("size of basis     %7u\n", bs->ld);
-    printf("#syzygy criteria  %7ld\n", st->num_syz_crit);
-    printf("#rewrite criteria %7ld\n", st->num_rew_crit);
+    printf("#syzygy criteria  %7ld\n", (long)st->num_syz_crit);
+    printf("#rewrite criteria %7ld\n", (long)st->num_rew_crit);
 
     return 1;
 }

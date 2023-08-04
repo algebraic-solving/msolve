@@ -66,19 +66,20 @@ int64_t export_results_from_f4(
     void *(*mallocp) (size_t),
     bs_t **bsp,
     ht_t **bhtp,
-    stat_t **stp
+    md_t **stp
     );
 
-int core_f4(
-        bs_t **bsp,
-        ht_t **bhtp,
-        stat_t **stp
+bs_t *core_f4(
+        bs_t *gbs,
+        md_t *gmd,
+        int32_t *errp,
+        const len_t fc
         );
 
 bs_t *modular_f4(
         const bs_t * const ggb,       /* global basis */
         ht_t * gbht,                  /* global basis hash table, shared */
-        stat_t *gst,                  /* global statistics */
+        md_t *gst,                  /* global statistics */
         const uint32_t fc             /* characteristic of field */
         );
 #endif

@@ -179,7 +179,7 @@ static void print_msolve_polynomials_ff(
         const bi_t to,
         const bs_t * const bs,
         const ht_t * const ht,
-        const stat_t *st,
+        const md_t *st,
         char **vnames,
         const int lead_ideal_only
         )
@@ -200,7 +200,7 @@ static void print_msolve_polynomials_ff(
         } else {
             fprintf(file, "#Reduced Groebner basis for input in characteristic ");
         }
-        fprintf(file, "%u\n", st->fc);
+        fprintf(file, "%u\n", st->gfc);
         fprintf(file, "#for variable order ");
         for (i = 0; i < nv-1; ++i) {
             fprintf(file, "%s, ", vnames[i]);
@@ -321,7 +321,7 @@ static void print_ff_basis_data(
         const char *mode,
         const bs_t *bs,
         const ht_t *ht,
-        const stat_t *st,
+        const md_t *st,
         const data_gens_ff_t *gens,
         const int32_t print_gb)
 {
@@ -556,6 +556,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
         i++;
     }
     *linep  = line;
+    gens->nterms = *all_nterms;
 }
 
 

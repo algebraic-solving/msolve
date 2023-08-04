@@ -34,6 +34,6 @@ void add_syzygy_schreyer(
 int core_sba_schreyer(
         bs_t **bsp,
         ht_t **bhtp,
-        stat_t **stp
+        md_t **stp
         );
 #endif

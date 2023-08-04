@@ -70,15 +70,16 @@ int main(void)
     bexp  = malloc(sizeof(int32_t *));
     bcf   = malloc(sizeof(void *));
 
-    bs_t *bs    = NULL;
-    ht_t *bht   = NULL;
-    stat_t *st  = NULL;
+    bs_t *bs  = NULL;
+    ht_t *bht = NULL;
+    md_t *st  = NULL;
 
-    int success = 0;
+    int success   = 0;
+    int32_t error = 0;
 
     success = initialize_gba_input_data(&bs, &bht, &st,gens->lens, gens->exps, (void *)gens->cfs,	1073741827, 0 /* DRL order */,elim_block_len, gens->nvars,/* gens->field_char,0 [> DRL order <], gens->nvars, */ gens->ngens, saturate,	initial_hts, nr_threads, max_pairs,	update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,	info_level);
-    success = core_gba(&bs, &bht, &st);
-    if (!success) {
+    bs = core_gba(bs, st, &error, 1073741827);
+    if (!success || error) {
       printf("Problem with F4, stopped computation.\n");
       return 104;
     }

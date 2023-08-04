@@ -84,7 +84,7 @@ static inline void non_avx_matrix_vector_product(uint32_t* vec_res, const uint32
                                          const uint32_t* vec, const uint32_t ncols,
                                          const uint32_t nrows, const uint32_t PRIME,
 					 const uint32_t RED_32, const uint32_t RED_64,
-					 stat_t *st)
+					 md_t *st)
 {
     uint32_t i, j;
     int64_t prod1, prod2, prod3, prod4;
@@ -634,7 +634,7 @@ static inline void _8mul_matrix_vector_product(uint32_t* vec_res,
                                                const uint32_t RED_32,
                                                const uint32_t RED_64,
                                                const uint32_t preinv,
-					       stat_t *st){
+					       md_t *st){
     //mask pour recuperer les parties basses
     __m256i mask=AVX2SET1_64(MONE32);
     const long quo0 = LENGTHQ8(ncols);

@@ -22,82 +22,90 @@ static inline void duplicate_linear_data(int nthreads, int nvars, int nlins,
   }
 }
 
-static inline void duplicate_tracer(int nthreads, trace_t **btrace){
-  for(int i = 1; i < nthreads; i++){
-    btrace[i]  = initialize_trace();
+static inline void duplicate_tracer(
+        const int nthreads,
+        const bs_t * const bs,
+        const md_t * const md,
+        trace_t **btrace)
+{
+    if (btrace[0] != NULL) {
+        for(int i = 1; i < nthreads; i++){
+            btrace[i]  = initialize_trace(bs, md);
 
-    /* size for trace data */
-    btrace[i]->std  = btrace[0]->std;
-    /* load of trace data */
-    btrace[i]->ltd  = btrace[0]->ltd;
-    /* number of lead monomials of non-redundant elements in Gbasis */
-    btrace[i]->lml  = btrace[0]->lml;
+            /* size for trace data */
+            btrace[i]->std  = btrace[0]->std;
+            /* load of trace data */
+            btrace[i]->ltd  = btrace[0]->ltd;
+            /* number of lead monomials of non-redundant elements in Gbasis */
+            btrace[i]->lml  = btrace[0]->lml;
 
-    /* position of non redundant elements in Gbasis */
-    btrace[i]->lmps = (bl_t *)calloc((unsigned long)btrace[0]->lml,
-            sizeof(bl_t));
-    memcpy(btrace[i]->lmps, btrace[0]->lmps,
-            (unsigned long)btrace[0]->lml * sizeof(bl_t));
+            /* position of non redundant elements in Gbasis */
+            btrace[i]->lmps = (bl_t *)calloc((unsigned long)btrace[0]->lml,
+                    sizeof(bl_t));
+            memcpy(btrace[i]->lmps, btrace[0]->lmps,
+                    (unsigned long)btrace[0]->lml * sizeof(bl_t));
 
-    /* non-redundant lead mon. as short divmask */
-    btrace[i]->lm   = (sdm_t *)calloc((unsigned long)btrace[0]->lml,
-            sizeof(sdm_t));
-    memcpy(btrace[0]->lm, btrace[i]->lm,
-            (unsigned long)btrace[0]->lml * sizeof(sdm_t));
+            /* non-redundant lead mon. as short divmask */
+            btrace[i]->lm   = (sdm_t *)calloc((unsigned long)btrace[0]->lml,
+                    sizeof(sdm_t));
+            memcpy(btrace[0]->lm, btrace[i]->lm,
+                    (unsigned long)btrace[0]->lml * sizeof(sdm_t));
 
-    /* array of trace data per F4 round */
-    btrace[i]->td  = calloc((unsigned long)btrace[0]->ltd, sizeof(td_t));
+            /* array of trace data per F4 round */
+            btrace[i]->td  = calloc((unsigned long)btrace[0]->ltd, sizeof(td_t));
 
-    for(len_t l = 0; l < btrace[0]->ltd; ++l){
+            for(len_t l = 0; l < btrace[0]->ltd; ++l){
 
-      btrace[i]->td[l].rld = btrace[0]->td[l].rld;
-      btrace[i]->td[l].tld = btrace[0]->td[l].tld;
-      btrace[i]->td[l].nlm = btrace[0]->td[l].nlm;
+                btrace[i]->td[l].rld = btrace[0]->td[l].rld;
+                btrace[i]->td[l].tld = btrace[0]->td[l].tld;
+                btrace[i]->td[l].nlm = btrace[0]->td[l].nlm;
 
-      btrace[i]->td[l].rri = calloc(btrace[0]->td[l].rld,
-                                    sizeof(len_t));
-      for(len_t k = 0; k < (btrace[0]->td[l].rld ); ++k){
-        btrace[i]->td[l].rri[k] = btrace[0]->td[l].rri[k] ;
-      }
+                btrace[i]->td[l].rri = calloc(btrace[0]->td[l].rld,
+                        sizeof(len_t));
+                for(len_t k = 0; k < (btrace[0]->td[l].rld ); ++k){
+                    btrace[i]->td[l].rri[k] = btrace[0]->td[l].rri[k] ;
+                }
 
-      btrace[i]->td[l].tri = calloc(btrace[0]->td[l].tld,
-                                    sizeof(len_t));
-      for(len_t k = 0; k < (btrace[0]->td[l].tld); ++k){
-        btrace[i]->td[l].tri[k] = btrace[0]->td[l].tri[k] ;
-      }
+                btrace[i]->td[l].tri = calloc(btrace[0]->td[l].tld,
+                        sizeof(len_t));
+                for(len_t k = 0; k < (btrace[0]->td[l].tld); ++k){
+                    btrace[i]->td[l].tri[k] = btrace[0]->td[l].tri[k] ;
+                }
 
-      btrace[i]->td[l].nlms = calloc(btrace[0]->td[l].nlm,
-                                    sizeof(len_t));
-      for(len_t k = 0; k < (btrace[0]->td[l].nlm); ++k){
-        btrace[i]->td[l].nlms[k] = btrace[0]->td[l].nlms[k];
-      }
+                btrace[i]->td[l].nlms = calloc(btrace[0]->td[l].nlm,
+                        sizeof(len_t));
+                for(len_t k = 0; k < (btrace[0]->td[l].nlm); ++k){
+                    btrace[i]->td[l].nlms[k] = btrace[0]->td[l].nlms[k];
+                }
 
-      btrace[i]->td[l].rba = (rba_t **)malloc((unsigned long)btrace[0]->td[l].tld * sizeof(rba_t *));
+                btrace[i]->td[l].rba = (rba_t **)malloc((unsigned long)btrace[0]->td[l].tld * sizeof(rba_t *));
 
-      const len_t nrr   = btrace[0]->td[l].rld;
+                const len_t nrr   = btrace[0]->td[l].rld;
 
-      const unsigned long nlrba = nrr / 2 / 32 + (((nrr / 2) % 32) != 0);
+                const unsigned long nlrba = nrr / 2 / 32 + (((nrr / 2) % 32) != 0);
 
-      for(len_t j = 0; j < (btrace[0]->td[l].tld / 2); ++j) {
-        btrace[i]->td[l].rba[j]  = calloc(nlrba, sizeof(rba_t));
-      }
+                for(len_t j = 0; j < (btrace[0]->td[l].tld / 2); ++j) {
+                    btrace[i]->td[l].rba[j]  = calloc(nlrba, sizeof(rba_t));
+                }
 
-      for (len_t j = 0; j < (btrace[0]->td[l].tld / 2); ++j) {
-        for(len_t k = 0; k < nlrba; k++){
-          btrace[i]->td[l].rba[j][k]  = btrace[0]->td[l].rba[j][k];
+                for (len_t j = 0; j < (btrace[0]->td[l].tld / 2); ++j) {
+                    for(len_t k = 0; k < nlrba; k++){
+                        btrace[i]->td[l].rba[j][k]  = btrace[0]->td[l].rba[j][k];
+                    }
+                }
+
+            }
         }
-      }
-
     }
-  }
 }
 
 static inline void duplicate_data_mthread_trace(int nthreads,
-                                                stat_t *st,
+                                                bs_t *bs,
+                                                md_t *st,
                                                 int32_t *num_gb,
                                                 int32_t **leadmons_ori,
                                                 int32_t **leadmons_current,
-                                                trace_t **btrace,
+                                                /* trace_t **btrace, */
                                                 fglm_bms_data_t **bdata_bms,
                                                 fglm_data_t **bdata_fglm,
                                                 int32_t **bstart_cf_gb_xn,
@@ -211,7 +219,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
     }
   }
 
-  duplicate_tracer(nthreads, btrace);
+  /* duplicate_tracer(nthreads, bs, st, btrace); */
 
   duplicate_linear_data(nthreads, st->nvars, nlins,
                         blinvars, blineqs,
@@ -338,7 +346,8 @@ static inline void duplicate_data_mthread(int nthreads,
 }
 
 static inline void duplicate_data_mthread_gbtrace(int nthreads,
-                                                  stat_t *st,
+                                                  bs_t *bs,
+                                                  md_t *st,
                                                   int32_t *num_gb,
                                                   int32_t **leadmons_ori,
                                                   int32_t **leadmons_current,
@@ -360,6 +369,6 @@ static inline void duplicate_data_mthread_gbtrace(int nthreads,
   }
 
 
-  duplicate_tracer(nthreads, btrace);
+  duplicate_tracer(nthreads, bs, st, btrace);
 
 }

@@ -25,13 +25,13 @@ void get_normal_form_matrix(
         const bs_t * const tbr,
         ht_t *bht,
         const len_t start,
-        stat_t *st,
+        md_t *st,
         ht_t **shtp,
         hi_t **hcmp,
         mat_t **matp
         )
 {
-    hi_t *hcm   = *hcmp;
+    /* hi_t *hcm   = *hcmp; */
     ht_t *sht   = *shtp;
     mat_t*mat   = *matp;
 
@@ -43,77 +43,71 @@ void get_normal_form_matrix(
      * here we have to set it by hand; same holds for mat->nrl */
     mat->nrl  = mat->nr;
     mat->nc   = sht->eld-1;
-    convert_hashes_to_columns(&hcm, mat, st, sht);
+    convert_hashes_to_columns(mat, st, sht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
-    *hcmp = hcm;
+    /* *hcmp = hcm; */
     *shtp = sht;
     *matp = mat;
 }
 
 
-int core_nf(
-        bs_t **tbrp,
-        ht_t **bhtp,
-        stat_t **stp,
+bs_t *core_nf(
+        bs_t *tbr,
+        md_t *md,
         const exp_t * const mul,
-        const bs_t * const bs
+        bs_t *bs,
+        int32_t *errp
         )
 {
-    double rt0, rt1;
-    rt0 = realtime();
+    double ct = cputime();
+    double rt = realtime();
 
-    bs_t *tbr   = *tbrp;
-    ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
+    ht_t *bht = tbr->ht;
 
-    /* hashes-to-columns map, initialized with length 1, is reallocated
-     * in each call when generating matrices for linear algebra */
-    hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
     /* matrix holding sparse information generated
      * during symbolic preprocessing */
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
-    ht_t *sht = initialize_secondary_hash_table(bht, st);
+    md->hcm = (hi_t *)malloc(sizeof(hi_t));
+    md->ht  = initialize_secondary_hash_table(bht, md);
 
-    select_tbr(tbr, mul, 0, mat, st, sht, bht, NULL);
+    select_tbr(tbr, mul, 0, mat, md, md->ht, bht, NULL);
 
-    symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
-    if (st->info_level > 1) {
+    symbolic_preprocessing(mat, bs, md);
+    if (md->info_level > 1) {
         printf("nf computation data");
     }
-    convert_hashes_to_columns(&hcm, mat, st, sht);
+    convert_hashes_to_columns(mat, md, md->ht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
     /* linear algebra, depending on choice, see set_function_pointers() */
-    exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, st);
+    exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, md);
     /* columns indices are mapped back to exponent hashes */
     return_normal_forms_to_basis(
-            mat, tbr, bht, sht, hcm, st);
+            mat, tbr, bht, md->ht, md->hcm, md);
 
     /* all rows in mat are now polynomials in the basis,
      * so we do not need the rows anymore */
     clear_matrix(mat);
 
-    rt1 = realtime();
-    if (st->info_level > 1) {
-        printf("%13.2f sec\n", rt1-rt0);
+    if (md->info_level > 1) {
+        printf("%13.2f | %-13.2f\n",
+                realtime() - rt, cputime() - ct);
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
     /* free and clean up */
-    free(hcm);
-    if (sht != NULL) {
-        free_hash_table(&sht);
+    free(md->hcm);
+    if (md->ht != NULL) {
+        free_hash_table(&(md->ht));
     }
     /* note that all rows kept from mat during the overall computation are
      * basis elements and thus we do not need to free the rows itself, but
      * just the matrix structure */
     free(mat);
 
-    *tbrp = tbr;
-    *bhtp = bht;
-    *stp  = st;
+    *errp = 0;
 
-    return 1;
+    return tbr;
 }

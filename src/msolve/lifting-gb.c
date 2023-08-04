@@ -243,9 +243,9 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
   fprintf(file, "nprimes = %d\n", modgbs->nprimes);
   fprintf(stderr, "primes = [");
   for(uint32_t i = 0; i < modgbs->alloc-1; i++){
-    fprintf(file, "%lu, ", modgbs->primes[i]);
+    fprintf(file, "%lu, ", (unsigned long)modgbs->primes[i]);
   }
-  fprintf(file, "%lu]\n", modgbs->primes[modgbs->alloc -1]);
+  fprintf(file, "%lu]\n", (unsigned long)modgbs->primes[modgbs->alloc -1]);
   fprintf(file, "numpolys = %d\n", modgbs->ld);
   fprintf(file, "[\n");
   for(uint32_t i = 0; i < modgbs->ld; i++){
@@ -580,7 +580,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            ht_t *tht,
                                            bs_t *bs_qq,
                                            ht_t *bht,
-                                           stat_t *st,
+                                           md_t *st,
                                            const int32_t fc,
                                            int info_level,
                                            int print_gb,
@@ -596,13 +596,14 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     ca0 = realtime();
 
     bs_t *bs = NULL;
-    if(gens->field_char){
-      bs = bs_qq;
-      int boo = core_gba(&bs, &bht, &st);
-      if (!boo) {
+    /* if(gens->field_char){ */
+      int32_t err = 0;
+      bs = core_gba(bs_qq, st, &err, fc);
+      if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
       }
+      /*
       free_shared_hash_data(bht);
     }
     else{
@@ -612,7 +613,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
       else{
         bs = gba_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
       }
-    }
+    } */
     rt = realtime()-ca0;
 
     if(info_level > 1){
@@ -686,14 +687,14 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
             /* } */
             /* print_ff_basis_data( */
             /*                     files->out_file, "a", bs, bht, st, gens, print_gb); */
-            free_basis(&(bs));
+            free_basis_without_hash_table(&(bs));
             return NULL;
         }
     }
 
     /**************************************************/
 
-    free_basis(&(bs));
+    free_basis_without_hash_table(&(bs));
     return lmb;
 }
 
@@ -706,9 +707,9 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
                                          trace_t **btrace,
                                          ht_t **btht,
-                                         const bs_t *bs_qq,
+                                         bs_t *bs_qq,
                                          ht_t **bht,
-                                         stat_t *st,
+                                         md_t *st,
                                          const int32_t fc,
                                          int info_level,
                                          bs_t **obs,
@@ -720,9 +721,9 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          double *stf4,
                                          int *bad_primes){
 
+  double rt = realtime();
   st->info_level = 0;
   /* tracing phase */
-  double ca0;
 
   /* F4 and FGLM are run using a single thread */
   /* st->nthrds is reset to its original value afterwards */
@@ -730,16 +731,16 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
 
   bs_t *bs = NULL;
-
-  ca0 = realtime();
-  if(st->laopt > 40){
+  int32_t error = 0;
+  bs = core_gba(bs_qq, st, &error, lp->p[0]);
+  *stf4 = realtime()-rt;
+  /* if(st->laopt > 40){
     bs = modular_f4(bs_qq, bht[0], st, lp->p[0]);
   }
   else{
     bs = gba_trace_application_phase(btrace[0], btht[0], bs_qq, bht[0], st, lp->p[0]);
   }
-  *stf4 = realtime()-ca0;
-
+  */
   if (bs == NULL) {
       bad_primes[0] = 1;
       return;
@@ -758,7 +759,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   if (lml != num_gb[0]) {
       if (bs != NULL) {
-        free_basis(&bs);
+        free_basis_without_hash_table(&bs);
       }
       return;
   }
@@ -781,7 +782,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
 
   if (bs != NULL) {
-    free_basis(&bs);
+    free_basis_without_hash_table(&bs);
   }
 
 }
@@ -925,7 +926,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
           mpz_lcm(dl->tmp, dl->tmp, rden);
         }
         else{
-          fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1);
+          /* fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1); */
           mpz_set_ui(dl->gden, 1);
           mpz_clear(rnum);
           mpz_clear(rden);
@@ -1136,7 +1137,7 @@ int msolve_gbtrace_qq(
   const uint32_t prime_start = pow(2, 30);
 
   /* initialize stuff */
-  stat_t *st  = initialize_statistics();
+  md_t *st  = allocate_meta_data();
 
   int *invalid_gens   =   NULL;
   int res = validate_input_data(&invalid_gens, cfs, gens->lens, &field_char, &mon_order,
@@ -1167,13 +1168,11 @@ int msolve_gbtrace_qq(
   initialize_mstrace(msd, st);
 
   /* read in ideal, move coefficients to integers */
-  import_input_data(msd->bs_qq, msd->bht, st, gens->lens, gens->exps, cfs, invalid_gens);
+  import_input_data(msd->bs_qq, st, gens->lens, gens->exps, cfs, invalid_gens);
   free(invalid_gens);
   invalid_gens  =   NULL;
 
-  if (st->info_level > 0) {
-    print_initial_statistics(stderr, st);
-  }
+  print_initial_statistics(stderr, st);
 
   /* for faster divisibility checks, needs to be done after we have
     * read some input data for applying heuristics */
@@ -1191,7 +1190,7 @@ int msolve_gbtrace_qq(
     msd->lp->old = 0;
     msd->lp->ld = 1;
     msd->lp->p = calloc(1, sizeof(uint32_t));
-    normalize_initial_basis(msd->bs_qq, st->fc);
+    normalize_initial_basis(msd->bs_qq, st->gfc);
   }
 
   uint32_t prime = next_prime(1<<30);
@@ -1302,7 +1301,7 @@ int msolve_gbtrace_qq(
 
     }
     /* duplicate data for multi-threaded multi-mod computation */
-    duplicate_data_mthread_gbtrace(st->nthrds, st, msd->num_gb,
+    duplicate_data_mthread_gbtrace(st->nthrds, msd->bs_qq, st, msd->num_gb,
                                    msd->leadmons_ori, msd->leadmons_current,
                                    msd->btrace);
 
@@ -1311,10 +1310,6 @@ int msolve_gbtrace_qq(
     for(int i = 1; i < st->nthrds; i++){
       ht_t *lht = copy_hash_table(msd->bht, st);
       msd->blht[i] = lht;
-    }
-    msd->btht[0] = msd->tht;
-    for(int i = 1; i < st->nthrds; i++){
-      msd->btht[i] = copy_hash_table(msd->tht, st);
     }
 
     if(info_level){
@@ -1377,7 +1372,6 @@ int msolve_gbtrace_qq(
       int bad = 0;
       for(int i = 0; i < nthrds/* st->nthrds */; i++){
         if(msd->bad_primes[i] == 1){
-          fprintf(stderr, "badprimes[%d] is 1\n", i);
           bad = 1;
         }
       }

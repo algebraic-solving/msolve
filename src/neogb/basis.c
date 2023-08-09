@@ -76,7 +76,7 @@ void free_basis(
         bs_t **bsp
         )
 {
-    free_hash_table(&((*bsp)->ht));
+    full_free_hash_table(&((*bsp)->ht));
     free_basis_without_hash_table(bsp);
 }
 

@@ -1902,7 +1902,7 @@ static int32_t *initial_modular_step(
     else{
         *dim  = 1;
         *dquot_ori = -1;
-        free_basis(&(bs));
+        free_basis_without_hash_table(&(bs));
         return NULL;
     }
 }

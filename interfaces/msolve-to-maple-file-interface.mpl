@@ -19,6 +19,9 @@
 #  * Huu Phuoc Le
 #  * Mohab Safey El Din */
 
+#WARNING: this file uses a sed command which does not work for mac users
+#Mac users should use the msolve-to-maple-file-interface-macos.mpl file
+
 FormatOutputMSolve:=proc(ll, _Z)
 local dim, deg, degquot, params, nvars, elim, den, cfs, i, varstr, linearform:
   dim:=ll[1]:
@@ -90,8 +93,8 @@ local i, fd, F2, str;
      fprintf(fd, "%a\n", F2[nops(F2)]):
    fi:
    fclose(fd):
-#   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\n//g' ", fname):
-   str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
+   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
+#   str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
    system(str):
 end proc:
 

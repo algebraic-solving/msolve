@@ -1036,6 +1036,26 @@ restart:
     psl->ld = m;
 }
 
+static inline void switch_hcm_data_to_basis_hash_table(
+    hi_t *hcm,
+    ht_t *bht,
+    const mat_t *mat,
+    const ht_t * const sht
+    )
+{
+    const len_t start = mat->ncl;
+    const len_t end   = mat->nc;
+
+    while (bht->esz - bht->eld < mat->ncr) {
+        enlarge_hash_table(bht);
+    }
+
+    for (len_t i = start; i < end; ++i) {
+        hcm[i] = check_insert_in_hash_table(
+                sht->ev[hcm[i]], sht->hd[hcm[i]].val, bht);
+    }
+}
+
 static inline void insert_in_basis_hash_table_pivots(
     hm_t *row,
     ht_t *bht,

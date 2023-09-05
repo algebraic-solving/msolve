@@ -1046,9 +1046,9 @@ static inline void insert_in_basis_hash_table_pivots(
 {
     len_t l;
 
-    while (bht->esz - bht->eld < row[LENGTH]) {
+    /* while (bht->esz - bht->eld < row[LENGTH]) {
         enlarge_hash_table(bht);
-    }
+    } */
 
     const len_t len = row[LENGTH]+OFFSET;
     const len_t evl = bht->evl;
@@ -1058,10 +1058,10 @@ static inline void insert_in_basis_hash_table_pivots(
     
     exp_t *evt  = (exp_t *)malloc(
         (unsigned long)(st->nthrds * evl) * sizeof(exp_t));
-#if PARALLEL_HASHING
+/* #if PARALLEL_HASHING
 #pragma omp parallel for num_threads(st->nthrds) \
     private(l)
-#endif
+#endif */
     for (l = OFFSET; l < len; ++l) {
         exp_t *evtl = evt + (omp_get_thread_num() * evl);
         memcpy(evtl, evs[hcm[row[l]]],

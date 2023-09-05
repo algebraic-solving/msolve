@@ -611,9 +611,13 @@ static void convert_sparse_matrix_rows_to_basis_elements(
 
     /* fix size of basis for entering new elements directly */
     check_enlarge_basis(bs, mat->np, st);
+    while (bht->esz - bht->eld < mat->ncr) {
+        enlarge_hash_table(bht);
+    }
 
     hm_t **rows = mat->tr;
-
+#pragma omp parallel for num_threads(st->nthrds) \
+    private(i, j, k)
     for (k = 0; k < np; ++k) {
         /* We first insert the highest leading monomial element to the basis
          * for a better Gebauer-Moeller application when updating the pair

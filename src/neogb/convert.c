@@ -600,9 +600,9 @@ static void convert_sparse_matrix_rows_to_basis_elements(
     len_t i, j, k;
     deg_t deg;
 
-    const len_t bl  = bs->ld;
-    const len_t np  = mat->np;
-    const hi_t * const hcm = st->hcm;
+    const len_t bl = bs->ld;
+    const len_t np = mat->np;
+    hi_t *hcm      = st->hcm;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -613,7 +613,9 @@ static void convert_sparse_matrix_rows_to_basis_elements(
     check_enlarge_basis(bs, mat->np, st);
 
     hm_t **rows = mat->tr;
-
+    switch_hcm_data_to_basis_hash_table(hcm, bht, mat, sht);
+#pragma omp parallel for num_threads(st->nthrds) \
+    private(i, j, k)
     for (k = 0; k < np; ++k) {
         /* We first insert the highest leading monomial element to the basis
          * for a better Gebauer-Moeller application when updating the pair
@@ -623,7 +625,10 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         } else {
             i = k;
         }
-        insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm, st);
+        const len_t len = rows[i][LENGTH]+OFFSET;
+        for (j = OFFSET; j < len; ++j) {
+            rows[i][j] = hcm[rows[i][j]];
+        }
         deg = bht->hd[rows[i][OFFSET]].deg;
         if (st->nev > 0) {
             const len_t len = rows[i][LENGTH]+OFFSET;

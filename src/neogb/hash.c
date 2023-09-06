@@ -1036,6 +1036,26 @@ restart:
     psl->ld = m;
 }
 
+static inline void switch_hcm_data_to_basis_hash_table(
+    hi_t *hcm,
+    ht_t *bht,
+    const mat_t *mat,
+    const ht_t * const sht
+    )
+{
+    const len_t start = mat->ncl;
+    const len_t end   = mat->nc;
+
+    while (bht->esz - bht->eld < mat->ncr) {
+        enlarge_hash_table(bht);
+    }
+
+    for (len_t i = start; i < end; ++i) {
+        hcm[i] = check_insert_in_hash_table(
+                sht->ev[hcm[i]], sht->hd[hcm[i]].val, bht);
+    }
+}
+
 static inline void insert_in_basis_hash_table_pivots(
     hm_t *row,
     ht_t *bht,
@@ -1046,9 +1066,9 @@ static inline void insert_in_basis_hash_table_pivots(
 {
     len_t l;
 
-    while (bht->esz - bht->eld < row[LENGTH]) {
+    /* while (bht->esz - bht->eld < row[LENGTH]) {
         enlarge_hash_table(bht);
-    }
+    } */
 
     const len_t len = row[LENGTH]+OFFSET;
     const len_t evl = bht->evl;
@@ -1058,10 +1078,10 @@ static inline void insert_in_basis_hash_table_pivots(
     
     exp_t *evt  = (exp_t *)malloc(
         (unsigned long)(st->nthrds * evl) * sizeof(exp_t));
-#if PARALLEL_HASHING
+/* #if PARALLEL_HASHING
 #pragma omp parallel for num_threads(st->nthrds) \
     private(l)
-#endif
+#endif */
     for (l = OFFSET; l < len; ++l) {
         exp_t *evtl = evt + (omp_get_thread_num() * evl);
         memcpy(evtl, evs[hcm[row[l]]],

@@ -2916,8 +2916,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   normalize_nmod_param(nmod_params[0]);
 
-  if(info_level && st->trace_level == APPLY_TRACER){
-    fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+  if(info_level){
+    fprintf(stderr, "\nStarts multi-modular computations\n");
   }
 
   mpz_param_t tmp_mpz_param;

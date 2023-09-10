@@ -318,7 +318,7 @@ void import_input_data(
                     for (j = off; j < off+lens[i]; ++j) {
                         /* make coefficient positive */
                         cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
-                        cf8[j-off]  =   (cf8_t)cfs_ff[j];
+                        cf8[j-off]  =   (cf8_t)(cfs_ff[j] % fc);
                     }
                     sort_terms_ff_8(&(bs->cf_8[ctr]), &(bs->hm[ctr]), ht);
                     ctr++;
@@ -336,7 +336,7 @@ void import_input_data(
                     for (j = off; j < off+lens[i]; ++j) {
                         /* make coefficient positive */
                         cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
-                        cf16[j-off] =   (cf16_t)cfs_ff[j];
+                        cf16[j-off] =   (cf16_t)(cfs_ff[j] % fc);
                     }
                     sort_terms_ff_16(&(bs->cf_16[ctr]), &(bs->hm[ctr]), ht);
                     ctr++;
@@ -354,7 +354,7 @@ void import_input_data(
                     for (j = off; j < off+lens[i]; ++j) {
                         /* make coefficient positive */
                         cfs_ff[j]   +=  (cfs_ff[j] >> 31) & fc;
-                        cf32[j-off] =   (cf32_t)cfs_ff[j];
+                        cf32[j-off] =   (cf32_t)(cfs_ff[j] % fc);
                     }
                     sort_terms_ff_32(&(bs->cf_32[ctr]), &(bs->hm[ctr]), ht);
                     ctr++;

@@ -56,11 +56,7 @@
 
 #define PMBASIS_THRES 32
 
-#include "nmod_poly_mat_forms.h" // for testing form of approx basis, for orientation_t
-
-#include <flint/nmod_mat.h>
 #include <flint/nmod_poly_mat.h>
-#include <flint/perm.h> 
 
 #ifdef __cplusplus
 extern "C" {

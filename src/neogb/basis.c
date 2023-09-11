@@ -362,10 +362,6 @@ static inline void normalize_initial_basis_ff_32(
             row[j+2]  =   (cf32_t)tmp3;
             row[j+3]  =   (cf32_t)tmp4;
         }
-        for (j = 0; j < len; ++j) {
-            printf("%u\n", row[j]);
-        }
-        printf("\n");
     }
 }
 

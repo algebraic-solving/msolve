@@ -808,6 +808,7 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   if(param->cfs != NULL){
     for(int i = 0; i < param->nvars - 1; i++){
       mpz_init(param->cfs[i]);
+      mpz_set_ui(param->cfs[i], 1);
     }
   }
   else{
@@ -3065,7 +3066,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       if(info_level>1){
         fprintf(stderr, "Application phase %.2f Gops/sec\n",
                 (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
-        fprintf(stderr, "Tracer + fglm time (elapsed): %.2f sec\n",
+        fprintf(stderr, "Multi-mod time:GB+ fglm (elapsed): %.2f sec\n",
                 (ca1) );
       }
     }

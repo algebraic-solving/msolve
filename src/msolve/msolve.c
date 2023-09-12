@@ -462,11 +462,6 @@ static int undo_variable_order_change(
             len +=  gens->lens[i]*nvars;
         }
     }
-    /* printf("undone:  ");
-     * for(int i = 0; i < nvars-1; i++){
-     *     fprintf(stdout, "%s, ", gens->vnames[i]);
-     * }
-     * fprintf(stdout, "%s\n", gens->vnames[nvars-1]); */
     /* all cyclic changes already done, stop here, try to add
      * a linear form with additional variable afterwards */
     gens->change_var_order++;
@@ -3066,7 +3061,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       if(info_level>1){
         fprintf(stderr, "Application phase %.2f Gops/sec\n",
                 (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
-        fprintf(stderr, "Multi-mod time:GB+ fglm (elapsed): %.2f sec\n",
+        fprintf(stderr, "Multi-mod time: GB+ fglm (elapsed): %.2f sec\n",
                 (ca1) );
       }
     }
@@ -4105,13 +4100,15 @@ int real_msolve_qq(mpz_param_t mp_param,
       }
       /* If we changed the variable order for genericity reasons we have
        * to rechange the entries in the solution points. */
+
       if (gens->change_var_order != -1 &&
           gens->change_var_order != mp_param->nvars-1) {
         coord_t *tmp = malloc(sizeof(coord_t));
-        int32_t lidx  = pts[0]->nvars - 1 - gens->change_var_order;
+        const int32_t nvars = gens->nvars;
+        int32_t lidx  = gens->change_var_order;
         for (long i = 0; i < nb; ++i) {
-          memcpy(tmp,pts[i]->coords[0], sizeof(coord_t));
-          memcpy(pts[i]->coords[0], pts[i]->coords[lidx], sizeof(coord_t));
+          memcpy(tmp, pts[i]->coords[nvars - 1], sizeof(coord_t));
+          memcpy(pts[i]->coords[nvars - 1], pts[i]->coords[lidx], sizeof(coord_t));
           memcpy(pts[i]->coords[lidx], tmp, sizeof(coord_t));
         }
         free(tmp);

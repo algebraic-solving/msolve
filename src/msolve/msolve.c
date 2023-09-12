@@ -3861,6 +3861,34 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
 }
 
+void normalize_points(real_point_t *pts, int64_t nb, int32_t nv){
+
+  for(int64_t i = 0; i < nb; i++){
+    for(int32_t j = 0; j < nv; j++){
+      int64_t b = 0;
+      while(mpz_cmp_ui(pts[i]->coords[j]->val_up, 0) !=0 && mpz_divisible_2exp_p(pts[i]->coords[j]->val_up, b + 1) != 0){
+        b++;
+      }
+      b = MIN(b, pts[i]->coords[j]->k_up);
+      if(b){
+        mpz_tdiv_q_2exp(pts[i]->coords[j]->val_up, pts[i]->coords[j]->val_up, b);
+        pts[i]->coords[j]->k_up -= b;
+      }
+
+      b = 0;
+
+      while(mpz_cmp_ui(pts[i]->coords[j]->val_do, 0) !=0 && mpz_divisible_2exp_p(pts[i]->coords[j]->val_do, b + 1) != 0){
+        b++;
+      }
+      b = MIN(b, pts[i]->coords[j]->k_do);
+      if(b){
+        mpz_tdiv_q_2exp(pts[i]->coords[j]->val_do, pts[i]->coords[j]->val_do, b);
+        pts[i]->coords[j]->k_do -= b;
+      }
+
+    }
+  }
+}
 
 void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
                               real_point_t *pts, long prec, long nbits,
@@ -3880,7 +3908,10 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
     mpz_init_set_ui(xdo[i], 1);
   }
   mpz_t *tab = (mpz_t*)(calloc(8,sizeof(mpz_t)));//table for some intermediate values
-  for(int i=0;i<8;i++)mpz_init(tab[i]);
+  for(int i=0;i<8;i++){
+    mpz_init(tab[i]);
+    mpz_set_ui(tab[i], 0);
+  }
 
   mpz_t *polelim = calloc(param->elim->length, sizeof(mpz_t));
   for(long i = 0; i < param->elim->length; i++){
@@ -3933,6 +3964,8 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
   free(polelim);
   mpz_clear(pos_root->numer);
   free(pos_root);
+
+  normalize_points(pts, nb, param->nvars);
 }
 
 

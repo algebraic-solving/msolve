@@ -30,6 +30,9 @@
 */
 
 #include <stdlib.h>
+#if __FLINT_VERSION >= 3
+#  include <flint/nmod.h>
+#endif
 //#include "nmod_poly.h"
 //#include "mpn_extras.h"
 

@@ -20,27 +20,21 @@
 
 static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
 {
-    nvars_t k;
-    /* /\** first we have to fill the buffers with zeroes *\/ */
-    /* memset(ht->exp + (ht->load * ht->nv), 0, ht->nv * sizeof(exp_t)); */
-    const char mult_splicer = '*';
-    const char exp_splicer  = '^';
-    exp_t exp = 0;
-    //  deg_t deg = 0;
+    len_t i, j, k;
 
-    int op = 0;
+    len_t op = 0;
     char *var = NULL;
     char *ev  = NULL;
-    for (int i = 0; i < strlen(term)+1; ++i) {
+    for (i = 0; i < strlen(term)+1; ++i) {
         if (term[i] == '*' || i == strlen(term)) {
-            int j = op;
+            j = op;
             while (j < i && term[j] != '^') {
                 ++j;
             }
-            if (term[j-1] == ',') {
+            if (term[j-1] == ',') {
                 --j;
             }
-            while(term[op] == ' ' || term[op] == '+' || term[op] == '-') {
+            while(term[op] == ' ' || term[op] == '+' || term[op] == '-') {
                 ++op;
             }
             var = realloc(var, sizeof(char)*(j-op+1));

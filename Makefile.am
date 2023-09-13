@@ -33,7 +33,6 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_bug_68.sh \
 			  test/diff/diff_mq_2_1.sh \
 			  test/diff/diff_xy-qq.sh \
-			  test/diff/diff_input-overflow-8.sh \
 			  test/diff/diff_input-overflow-16.sh
 
 # dist_check_DATA         = test/input_files

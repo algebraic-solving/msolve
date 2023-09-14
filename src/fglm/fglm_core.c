@@ -46,6 +46,7 @@ double omp_get_wtime(void) { return realtime();}
 #include "matrix-mult.c"
 #include "berlekamp_massey.c"
 #include "libfglm.h"
+#include "../upolmat/nmod_poly_mat_pmbasis.c"
 
 
 void display_nmod_poly(FILE *file, nmod_poly_t pol){

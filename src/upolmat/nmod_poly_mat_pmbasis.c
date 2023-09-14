@@ -20,7 +20,7 @@
  * Mohab Safey El Din */
 
 #include "nmod_poly_mat_utils.h"  // truncate, shift
-#include "nmod_poly_mat_approximant.h"
+#include "nmod_poly_mat_pmbasis.h"
 
 
 

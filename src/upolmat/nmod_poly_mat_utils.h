@@ -37,6 +37,9 @@
 #include <flint/nmod_mat.h>
 #include <flint/fmpz_mat.h>
 
+// for nmod_mat_poly_t
+#include "nmod_mat_poly.h"
+
 
 #ifdef __cplusplus
 extern "C" {

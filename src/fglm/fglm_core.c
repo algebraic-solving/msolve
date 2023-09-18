@@ -54,6 +54,7 @@ double omp_get_wtime(void) { return realtime();}
 #include <flint/fmpz_mat.h>
 #include "../upolmat/nmod_mat_extra.h"
 #include "../upolmat/nmod_mat_left_nullspace.c"
+#include "../upolmat/nmod_mat_permute_rows.c"
 #include "../upolmat/nmod_mat_poly.h"
 #include "../upolmat/nmod_mat_poly_mem.c"
 #include "../upolmat/nmod_mat_poly_set_from.c"

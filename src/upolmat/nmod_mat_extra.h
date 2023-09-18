@@ -34,6 +34,10 @@
 extern "C" {
 #endif
 
+#if __FLINT_VERSION < 3
+void nmod_mat_permute_rows(nmod_mat_t mat, const slong * perm_act, slong * perm_store);
+#endif
+
 /** Left nullspace of A.
  *
  *  Computes a basis X for the left nullspace of A, in reduced row echelon form

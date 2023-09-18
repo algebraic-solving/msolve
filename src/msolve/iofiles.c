@@ -20,66 +20,46 @@
 
 static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
 {
-  nvars_t k;
-  /* /\** first we have to fill the buffers with zeroes *\/ */
-  /* memset(ht->exp + (ht->load * ht->nv), 0, ht->nv * sizeof(exp_t)); */
-  const char mult_splicer = '*';
-  const char exp_splicer  = '^';
-  exp_t exp = 0;
-  //  deg_t deg = 0;
+    len_t i, j, k;
 
-  for (k=0; k<gens->nvars; ++k) {
-    exp = 0;
-    char *var = strstr(term, gens->vnames[k]);
-    //    char *var = gens->vnames[k];
-    if (var != NULL) {
-      var   = strtok(var, "\n");
-      var   = strtok(var, ",");
-      /** if the next variable follows directly => exp = 1 */
-      if (strncmp(&mult_splicer, var+strlen(gens->vnames[k]), 1) == 0) {
-        exp = 1;
-      } else {
-        /** if there follows an exp symbol "^" */
-        if (strncmp(&exp_splicer, var+strlen(gens->vnames[k]), 1) == 0) {
-          char exp_str[1000];
-          char *mult_pos;
-          mult_pos  = strchr(var, mult_splicer);
-          if (mult_pos != NULL) {
-            size_t exp_len = (size_t)(mult_pos - (var+strlen(gens->vnames[k])) - 1);
-            memcpy(exp_str, var+strlen(gens->vnames[k])+1, exp_len);
-            exp_str[exp_len] = '\0';
-            //            exp = (exp_s)strtol(exp_str, NULL, 10);
-            exp = strtol(exp_str, NULL, 10);
-          } else { /** no further variables in this term */
-            size_t exp_len = (size_t)((var+strlen(var)) + 1 - (var+strlen(gens->vnames[k])) - 1);
-            memcpy(exp_str, var+strlen(gens->vnames[k])+1, exp_len);
-            //            exp = (exp_s)strtol(exp_str, NULL, 10);
-            exp = strtol(exp_str, NULL, 10);
-            exp_str[exp_len] = '\0';
-          }
+    len_t op = 0;
+    char *var = NULL;
+    char *ev  = NULL;
+    for (i = 0; i < strlen(term)+1; ++i) {
+        if (term[i] == '*' || i == strlen(term)) {
+            j = op;
+            while (j < i && term[j] != '^') {
+                ++j;
+            }
+            if (term[j-1] == ',') {
+                --j;
+            }
+            while(term[op] == ' ' || term[op] == '+' || term[op] == '-') {
+                ++op;
+            }
+            var = realloc(var, sizeof(char)*(j-op+1));
+            memcpy(var, term+op, j-op);
+            var[j-op] = '\0';
+            if (term[j] == '^') {
+                ev = realloc(ev, (sizeof(char)*(i-j)));
+                ev = memcpy(ev, term+(j+1), i-j-1);
+                ev[i-j-1] = '\0';
+            } else {
+                ev = realloc(ev, (sizeof(char)*2));
+                ev[0] = '1';
+                ev[1] ='\0';
+            }
+            for (k = 0; k < gens->nvars; ++k) {
+                if (strcmp(gens->vnames[k], var) == 0) {
+                    ((gens->exps) + pos)[k] = strtol(ev, NULL, 10);
+                    break;
+                }
+            }
+            op = i+1;
         }
-        else { /** we are at the last variable with exp = 1 */
-          if (strcmp(gens->vnames[k], var) == 0)
-            exp = 1;
-          else
-            continue;
-        }
-      }
     }
-
-    /* /\** if we use graded reverse lexicographical order (basis->ord = 0) or */
-    /*   * lexicographic order (basis->ord = 1)  we store */
-    /*   * the exponents in reverse order so that we can use memcmp to sort the terms */
-    /*   * efficiently later on *\/ */
-    /* if (basis->ord == 0) */
-    /*   deg +=  ht->exp[(ht->load * ht->nv) + ht->nv-1-k] = exp; */
-    /* else */
-    /*   deg +=  ht->exp[(ht->load * ht->nv) + k] = exp; */
-
-    //    ((gens->exps) + pos)[gens->nvars-k-1] = exp;
-    ((gens->exps) + pos)[k] = exp;
-    /* ht->deg[ht->load] = deg; */
-  }
+    free(var);
+    free(ev);
 }
 
 

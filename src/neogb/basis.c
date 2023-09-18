@@ -254,7 +254,7 @@ static inline void normalize_initial_basis_ff_8(
     for (i = 0; i < ld; ++i) {
         cf8_t *row  = cf[hm[i][COEFFS]];
 
-        const uint8_t inv = mod_p_inverse_8(row[0], fc8);
+        const uint8_t inv = mod_p_inverse_8((int16_t)row[0], (int16_t)fc8);
         const len_t os    = hm[i][PRELOOP];
         const len_t len   = hm[i][LENGTH];
 
@@ -297,7 +297,7 @@ static inline void normalize_initial_basis_ff_16(
     for (i = 0; i < ld; ++i) {
         cf16_t *row = cf[hm[i][COEFFS]];
 
-        const uint16_t inv  = mod_p_inverse_16(row[0], fc16);
+        const uint16_t inv  = mod_p_inverse_16((int32_t)row[0], (int32_t)fc16);
         const len_t os      = hm[i][PRELOOP];
         const len_t len     = hm[i][LENGTH];
 

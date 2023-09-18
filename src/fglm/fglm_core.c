@@ -18,9 +18,6 @@
  * Christian Eder
  * Mohab Safey El Din */
 
-#include <flint/nmod_mat.h>
-#include <flint/nmod_poly.h>
-#include <flint/nmod_poly_mat.h>
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -51,6 +48,9 @@ double omp_get_wtime(void) { return realtime();}
 #include "libfglm.h"
 
 #ifdef BLOCKWIED
+#include <flint/nmod_mat.h>
+#include <flint/nmod_poly.h>
+#include <flint/nmod_poly_mat.h>
 #include <flint/fmpz_mat.h>
 #include "../upolmat/nmod_mat_extra.h"
 #include "../upolmat/nmod_mat_left_nullspace.c"

@@ -45,7 +45,11 @@ void nmod_mat_poly_init_preinv(nmod_mat_poly_t matp,
 
     matp->mod.n = n;
     matp->mod.ninv = ninv;
+#if __FLINT_VERSION < 3
+    count_leading_zeros(matp->mod.norm, n);
+#else
     matp->mod.norm = flint_clz(n);
+#endif
 }
 
 void nmod_mat_poly_init(nmod_mat_poly_t matp,
@@ -78,7 +82,11 @@ void nmod_mat_poly_init2_preinv(nmod_mat_poly_t matp,
     matp->mod.n = n;
     matp->mod.ninv = ninv;
 
+#if __FLINT_VERSION < 3
+    count_leading_zeros(matp->mod.norm, n);
+#else
     matp->mod.norm = flint_clz(n);
+#endif
 }
 
 void nmod_mat_poly_init2(nmod_mat_poly_t matp,

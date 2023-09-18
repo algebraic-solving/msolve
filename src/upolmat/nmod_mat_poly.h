@@ -467,6 +467,31 @@ FLINT_DLL void nmod_mat_poly_print_pretty(const nmod_mat_poly_t matp);
 
 //@} // doxygen group:  Input / Output
 
+/*------------------------------------------------------------*/
+/* Basic arithmetic                                           */
+/*------------------------------------------------------------*/
+
+/** @name Basic arithmetic
+ * \todo doc
+ */
+//@{
+
+/** Compute the coefficient of degree `k` in the product of the two matrix
+ * polynomials. Precisely, if `mat1` is some matrix `A = sum^{deg_A}_{i=0} a_i
+ * x^i` and `mat2` is some matrix `B = sum^{deg_B}_{i=0} b_i x^i`, then `coeff`
+ * will get the coefficient `k` of the product `AB`, which is `c_k =
+ * sum^{i=0}_{k} a_i b_{k-i}`. It is not checked that dimensions or moduli are
+ * compatible. The output `coeff` must already be initialized with dimensions
+ * `mat1->r x mat2->c`.
+ */
+FLINT_DLL void
+nmod_mat_poly_mul_coeff(nmod_mat_t coeff,
+                        const nmod_mat_poly_t mat1,
+                        const nmod_mat_poly_t mat2,
+                        slong k);
+
+//@} // doxygen group:  Basic arithmetic
+
 
 /*------------------------------------------------------------*/
 /*------------------------------------------------------------*/

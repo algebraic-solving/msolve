@@ -93,6 +93,7 @@ extern "C" {
 
 // TODO DOC
 // appbas must be initialized with right dimensions
+// shift=NULL for uniform shift
 FLINT_DLL void
 nmod_poly_mat_mbasis(nmod_poly_mat_t appbas,
                      slong * shift,
@@ -127,6 +128,8 @@ nmod_poly_mat_mbasis(nmod_poly_mat_t appbas,
 //@{
 
 // TODO DOC
+// appbas must be initialized with right dimensions
+// shift=NULL for uniform shift
 FLINT_DLL void
 nmod_poly_mat_pmbasis(nmod_poly_mat_t appbas,
                       slong * shift,

@@ -21,6 +21,7 @@
 
 #include <flint/nmod_poly.h>
 #include "nmod_mat_poly.h"
+#include "nmod_poly_mat_utils.h"
 
 void nmod_poly_mat_shift_right(nmod_poly_mat_t smat, const nmod_poly_mat_t pmat, slong k)
 {
@@ -74,6 +75,13 @@ void nmod_poly_mat_degree_matrix(fmpz_mat_t dmat,
     for(slong i = 0; i < mat->r; i++)
         for(slong j = 0; j < mat->c; j++)
             *fmpz_mat_entry(dmat, i, j) = nmod_poly_degree(nmod_poly_mat_entry(mat, i, j));
+}
+
+void nmod_poly_mat_truncate(nmod_poly_mat_t pmat, long len)
+{
+    for (slong i = 0; i < pmat->r; i++)
+        for (slong j = 0; j < pmat->c; j++)
+            nmod_poly_truncate(pmat->rows[i] + j, len);
 }
 
 

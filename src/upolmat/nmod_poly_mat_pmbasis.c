@@ -19,7 +19,8 @@
  * Vincent Neiger
  * Mohab Safey El Din */
 
-#include "nmod_poly_mat_utils.h"  // truncate, shift
+#include "nmod_mat_poly.h"  // truncate, shift, middle_product
+#include "nmod_poly_mat_utils.h"  // truncate, shift, middle_product
 #include "nmod_poly_mat_pmbasis.h"
 
 
@@ -62,7 +63,7 @@ void nmod_poly_mat_pmbasis(nmod_poly_mat_t appbas,
 
     nmod_poly_mat_pmbasis(appbas, shift, pmat, order1);
 
-    middle_product(residual, appbas, pmat, order1, order);
+    nmod_poly_mat_middle_product(residual, appbas, pmat, order1, order);
 
     nmod_poly_mat_pmbasis(appbas2, shift, residual, order2);
 

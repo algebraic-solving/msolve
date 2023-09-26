@@ -2,7 +2,8 @@
 
 file=reals_dim0
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
+      -l 2 -t 1
 if [ $? -gt 0 ]; then
     exit 1
 fi
@@ -12,7 +13,8 @@ if [ $? -gt 0 ]; then
     exit 2
 fi
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res -p 256
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
+      -p 256 -l 2 -t 1
 if [ $? -gt 0 ]; then
     exit 3
 fi
@@ -23,7 +25,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -t 2
+      -l 2 -t 2
 if [ $? -gt 0 ]; then
     exit 21
 fi
@@ -34,7 +36,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -p 256 -t 2
+      -p 256 -l 2 -t 2
 if [ $? -gt 0 ]; then
     exit 23
 fi
@@ -45,7 +47,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -l 44
+      -l 44 -t 1
 if [ $? -gt 0 ]; then
     exit 41
 fi
@@ -56,7 +58,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -p 256 -l 44
+      -p 256 -l 44 -t 1
 if [ $? -gt 0 ]; then
     exit 43
 fi
@@ -67,7 +69,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -t 2 -l 44
+      -l 44 -t 2
 if [ $? -gt 0 ]; then
     exit 61
 fi
@@ -78,7 +80,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -p 256 -t 2 -l 44
+      -p 256 -l 44 -t 2
 if [ $? -gt 0 ]; then
     exit 63
 fi

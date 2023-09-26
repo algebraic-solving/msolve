@@ -2,8 +2,8 @@
 
 file=F4SAT-31
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res -S \
-      -g 2
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
+      -S -g 2 -l 2 -t 1
 if [ $? -gt 0 ]; then
     exit 1
 fi
@@ -13,8 +13,8 @@ if [ $? -gt 0 ]; then
     exit 2
 fi
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res -S \
-      -g 2 -l 44
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
+      -S -g 2 -l 44 -t 1
 if [ $? -gt 0 ]; then
     exit 41
 fi

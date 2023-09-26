@@ -5,7 +5,7 @@ file=nonradical_radicalshape-qq
 source test/diff/diff_source.sh
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -p 3
+      -p 3 -l 2 -t 1
 if [ $?  -gt 0 ]; then
     exit 3
 fi
@@ -16,7 +16,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -p 3 -t 2
+      -p 3 -l 2 -t 2
 if [ $?  -gt 0 ]; then
     exit 23
 fi
@@ -27,7 +27,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -p 3 -l 44
+      -p 3 -l 44 -t 1
 if [ $?  -gt 0 ]; then
     exit 43
 fi
@@ -38,7 +38,7 @@ if [ $? -gt 0 ]; then
 fi
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -p 3 -t 2 -l 44
+      -p 3 -l 44 -t 2
 if [ $?  -gt 0 ]; then
     exit 63
 fi

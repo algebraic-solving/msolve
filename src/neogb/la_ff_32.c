@@ -2574,7 +2574,9 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     upivs     = (hm_t **)calloc((unsigned long)sat->ld, sizeof(hm_t *));
     len_t ctr = 0;
 
-    printf("        normal form time");
+    if (st->info_level > 1) {
+      printf("        normal form time");
+    }
     print_sat_nf_round_timings(stdout, st, rt, ct);
     /* compute kernel */
     for (i = 0; i < sat->ld; ++i) {

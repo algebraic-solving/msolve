@@ -4401,7 +4401,7 @@ restart:
                         st->gfc);
             }
             if(st->ff_bits < 32){
-              fprintf(stderr, "Error: not implemented yet (prime field of too low characteristic\n");
+              fprintf(stderr, "Error: not implemented yet (prime field of too low characteristic)\n");
               return 1;
             }
             if (!success) {

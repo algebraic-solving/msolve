@@ -17,6 +17,7 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_elim-31.sh \
 			  test/diff/diff_elim-qq.sh \
 			  test/diff/diff_F4SAT-31.sh \
+			  test/diff/diff_F4SAT-byone-31.sh \
 			  test/diff/diff_kat6-31.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_multy-16.sh \

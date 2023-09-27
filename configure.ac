@@ -92,6 +92,9 @@ AC_CONFIG_LINKS([
  input_files/F4SAT-31.ms:input_files/F4SAT-31.ms
  output_files/F4SAT-31.res:output_files/F4SAT-31.res
  test/diff/diff_F4SAT-31.sh:test/diff/diff_F4SAT-31.sh
+ input_files/F4SAT-byone-31.ms:input_files/F4SAT-byone-31.ms
+ output_files/F4SAT-byone-31.res:output_files/F4SAT-byone-31.res
+ test/diff/diff_F4SAT-byone-31.sh:test/diff/diff_F4SAT-byone-31.sh
  input_files/kat6-31.ms:input_files/kat6-31.ms
  output_files/kat6-31.res:output_files/kat6-31.res
  test/diff/diff_kat6-31.sh:test/diff/diff_kat6-31.sh

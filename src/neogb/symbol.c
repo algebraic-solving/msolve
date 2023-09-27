@@ -171,8 +171,6 @@ static void select_all_spairs(
     }
     /* printf("nc %u | nr %u || %u\n", mat->nc, mat->nr, sht->eld); */
     /* printf("%u pairs in degree %u\n", ctr, md); */
-    /* clear ht-ev[0] */
-    memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
@@ -379,8 +377,6 @@ static int32_t select_spairs_by_minimal_degree(
         i = j;
     }
     /* printf("%u pairs in degree %u\n", ctr, mdeg); */
-    /* clear ht-ev[0] */
-    memset(bht->ev[0], 0, (unsigned long)evl * sizeof(exp_t));
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 

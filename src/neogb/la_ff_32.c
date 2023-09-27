@@ -2543,6 +2543,8 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
         npiv  = reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
                 drl, sat, bs, pivs, sc, cf_idx, i, ncl, ncols, st);
         if (!npiv) {
+#pragma omp critical
+            {
             sat->hm[i]  = NULL;
             kernel->hm[kernel->ld]    = (hm_t *)malloc(
                     (unsigned long)(OFFSET+1) * sizeof(hm_t));
@@ -2554,6 +2556,7 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
             kernel->hm[kernel->ld][COEFFS]  = kernel->ld;
             kernel->cf_32[kernel->ld][0]    = 1;
             kernel->ld++;
+            }
             continue;
         }
         /* write non zero normal form to sat for reusage in a later

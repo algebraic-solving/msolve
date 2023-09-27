@@ -319,15 +319,14 @@ static len_t quotient_basis(
 
     const len_t nv  = (*htp)->nv;
 
-    /* clear ht-ev[0] */
-    memset((*htp)->ev[0], 0, (unsigned long)(nv+1) * sizeof(exp_t));
-
+    exp_t ev[nv+1];
+    memset(ev, 0, (unsigned long)(nv+1) * sizeof(exp_t));
 
     len_t *ind      = calloc((unsigned long)nv, sizeof(len_t));
 
     qb  = (hm_t *)calloc((unsigned long)1, sizeof(hm_t));
     qb[0] = check_lm_divisibility_and_insert_in_hash_table(
-                            (*htp)->ev[0], (*htp), bs);
+                            ev, (*htp), bs);
 
     while (nqbd > 0 && deg < max_deg) {
         nqb = realloc(nqb, (sum(ind, nv) + nv) * sizeof(hm_t));

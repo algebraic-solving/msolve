@@ -305,13 +305,21 @@ static inline int64_t rat_recon_dense_rows(mpq_matfglm_t mpq_mat,
 
 void initialize_rrec_data(rrec_data_t recdata){
   mpz_init(recdata->r0);
+  mpz_set_ui(recdata->r0, 0);
   mpz_init(recdata->r1);
+  mpz_set_ui(recdata->r1, 0);
   mpz_init(recdata->t0);
+  mpz_set_ui(recdata->t0, 0);
   mpz_init(recdata->t1);
+  mpz_set_ui(recdata->t1, 0);
   mpz_init(recdata->q);
+  mpz_set_ui(recdata->q, 0);
   mpz_init(recdata->tmp);
+  mpz_set_ui(recdata->tmp, 0);
   mpz_init(recdata->N);
+  mpz_set_ui(recdata->N, 0);
   mpz_init(recdata->D);
+  mpz_set_ui(recdata->D, 0);
 }
 
 void free_rrec_data(rrec_data_t recdata){

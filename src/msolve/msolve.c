@@ -790,7 +790,6 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
     for(long i = 0; i < param->nvars - 1; i++){
 
       mpz_upoly_init(param->coords[i], MAX(1,bparam->elim->alloc - 1));
-      /* param->coords[i]->length = bparam->coords[i]->length; */
       param->coords[i]->length = bparam->elim->length - 1;
 
     }
@@ -2954,7 +2953,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpq_init(test);
   mpz_t rnum, rden; /* num and den of reconstructed rationals */
   mpz_init(rnum);
+  mpz_set_ui(rnum, 0);
   mpz_init(rden);
+  mpz_set_ui(rden, 0);
   set_mpz_param_nmod(tmp_mpz_param, nmod_params[0]);
 
 
@@ -2971,8 +2972,10 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   mpz_t guessed_den;
   mpz_init2(guessed_den, 32*nsols);
+  mpz_set_ui(guessed_den, 1);
   mpz_t guessed_num;
   mpz_init2(guessed_num, 32*nsols);
+  mpz_set_ui(guessed_num, 0);
 
   long maxrec = 0;
   long matrec = 0;

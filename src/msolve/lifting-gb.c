@@ -1439,6 +1439,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   msolve_gbtrace_qq(modgbs, gens, flags);
 
   if(flags->print_gb > 1){
+
     if(flags->files->out_file != NULL){
       FILE *ofile = fopen(flags->files->out_file, "w+");
       display_gbmodpoly_cf_qq(ofile, modgbs, gens);

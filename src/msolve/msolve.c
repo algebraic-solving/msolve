@@ -3292,38 +3292,6 @@ void real_point_clear(real_point_t pt){
 }
 
 
-void display_real_point_middle(FILE *fstream, real_point_t pt){
-  mpz_t c;
-  mpz_init(c);
-  fprintf(fstream, "[");
-  for(long i = 0; i < pt->nvars - 1; i++){
-    mpz_add(c, pt->coords[i]->val_do, pt->coords[i]->val_up);
-    mpz_out_str(fstream, 10, c);
-    fprintf(fstream, " / ");
-    fprintf(fstream, "2^%ld, ", pt->coords[i]->k_do + 1);
-  }
-  mpz_add(c, pt->coords[pt->nvars - 1]->val_do, pt->coords[pt->nvars - 1]->val_up);
-  mpz_out_str(fstream, 10, c);
-  fprintf(fstream, " / ");
-  fprintf(fstream, "2^%ld ", pt->coords[pt->nvars - 1]->k_do + 1);
-  fprintf(fstream, "]");
-  mpz_clear(c);
-}
-
-void display_real_points_middle(FILE *fstream, real_point_t *pts, long nb){
-  fprintf(fstream, "[");
-  for(long i = 0; i < nb - 1; i++){
-    display_real_point_middle(fstream, pts[i]);
-    fprintf(fstream, ", ");
-  }
-  /* There might be no real solutions, so nb could be zero and
-   * we have to recheck this here again. */
-  if (nb > 0) {
-    display_real_point_middle(fstream, pts[nb - 1]);
-  }
-  fprintf(fstream, "]:\n");
-}
-
 void display_real_point(FILE *fstream, real_point_t pt){
 
   fprintf(fstream, "[");

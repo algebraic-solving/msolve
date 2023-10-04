@@ -27,7 +27,7 @@
 
 
 
-#if __FLINT_VERSION < 3
+#if __FLINT_VERSION < 2
 
 /*
     Copyright (C) 2023 Albin Ahlbäck

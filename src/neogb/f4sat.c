@@ -150,7 +150,7 @@ static int is_already_saturated(
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
-        probabilistic_sparse_linear_algebra_ff_32(mat, bs, st);
+        probabilistic_sparse_linear_algebra_ff_32(mat, bs, bs, st);
 
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
@@ -577,7 +577,7 @@ end_sat_step:
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
-        linear_algebra(mat, bs, st);
+        linear_algebra(mat, bs, bs, st);
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
@@ -663,7 +663,7 @@ end_sat_step:
                         /* interreduce kernel */
                         copy_kernel_to_matrix(mat, kernel, sat->ld);
                         /* linear algebra, depending on choice, see set_function_pointers() */
-                        probabilistic_sparse_linear_algebra_ff_32(mat, kernel, st);
+                        probabilistic_sparse_linear_algebra_ff_32(mat, kernel, kernel, st);
                         /* linear_algebra(mat, kernel, st); */
                         /* columns indices are mapped back to exponent hashes */
                         if (mat->np > 0) {

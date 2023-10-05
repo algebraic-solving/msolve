@@ -371,6 +371,9 @@ struct md_t
     int64_t num_rht;
     int64_t num_rowsred;
     int64_t num_zerored;
+    int64_t mat_max_nrows;
+    int64_t mat_max_ncols;
+    double  mat_max_density;
 
     int32_t ngens_input;
     int32_t ngens_invalid;

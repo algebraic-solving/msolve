@@ -4870,10 +4870,6 @@ restart:
             ht_t *bht   = NULL;
             md_t *st  = NULL;
 
-            /* generate array for storing multiplier for polynomial
-             * to be reduced by basis */
-
-            exp_t *mul  = (exp_t *)calloc(gens->nvars, sizeof(exp_t));
 
             /* for (int ii = 0; ii<gens->nvars; ++ii) {
              *     mul[ii] = 1;
@@ -4940,6 +4936,10 @@ restart:
             for (int k = 0; k < normal_form; ++k) {
                 tbr->lmps[k]  = k; /* fix input element in tbr */
             }
+
+            /* generate array for storing multiplier for polynomial
+             * to be reduced by basis */
+            exp_t *mul  = (exp_t *)calloc(bht->evl, sizeof(exp_t));
             /* compute normal form of last element in tbr */
             tbr = core_nf(tbr, st, mul, bs, &err);
 
@@ -5027,10 +5027,6 @@ restart:
             }
             free(st);
             st  = NULL;
-            free_shared_hash_data(bht);
-            if (bht != NULL) {
-                free_hash_table(&bht);
-            }
 
         }
         return 0;

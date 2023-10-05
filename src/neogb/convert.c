@@ -409,7 +409,7 @@ static void convert_hashes_to_columns(
 
     /* compute density of matrix */
     nterms  *=  100; /* for percentage */
-    double density = (double)nterms / (double)mnr / (double)mat->nc;
+    double density = (double)nterms / (double)mnr / (double)ld;
 
     /* timings */
     ct1 = cputime();
@@ -419,6 +419,11 @@ static void convert_hashes_to_columns(
     if (st->info_level > 1) {
         printf(" %7d x %-7d %8.2f%%", mat->nr, mat->nc, density);
         fflush(stdout);
+    }
+    if ((int64_t)mat->nr * mat->nc > st->mat_max_nrows * st->mat_max_ncols) {
+        st->mat_max_nrows = mat->nr;
+        st->mat_max_ncols = mat->nc;
+        st->mat_max_density = density;
     }
     st->hcm = hcm;
 }

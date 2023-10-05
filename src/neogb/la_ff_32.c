@@ -2386,10 +2386,11 @@ static void exact_sparse_reduced_echelon_form_ff_32(
                 if (st->nf > 0) {
                     if (!npiv) {
                         mat->tr[i]  = NULL;
-                        continue;
+                        break;
                     }
                     mat->tr[i]  = npiv;
                     cfs = mat->cf_32[npiv[COEFFS]];
+                    break;
                 } else {
                     if (!npiv) {
                         if (st->trace_level == APPLY_TRACER) {

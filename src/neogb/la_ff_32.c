@@ -3756,45 +3756,6 @@ static void compute_kernel_sat_ff_32(
     st->la_rtime  +=  rt1 - rt0;
 }
 
-static void exact_sparse_linear_algebra_nf_ff_32(
-        mat_t *mat,
-        const bs_t * const tbr,
-        const bs_t * const bs,
-        md_t *st
-        )
-{
-    /* timings */
-    double ct0, ct1, rt0, rt1;
-    ct0 = cputime();
-    rt0 = realtime();
-
-    len_t i;
-
-    /* allocate temporary storage space for sparse
-     * coefficients of new pivot rows */
-    mat->cf_32  = realloc(mat->cf_32,
-            (unsigned long)mat->nrl * sizeof(cf32_t *));
-    exact_sparse_reduced_echelon_form_nf_ff_32(mat, tbr, bs, st);
-
-    /* timings */
-    ct1 = cputime();
-    rt1 = realtime();
-    st->la_ctime  +=  ct1 - ct0;
-    st->la_rtime  +=  rt1 - rt0;
-
-    st->num_zerored += (mat->nrl - mat->np);
-    uint32_t zeroes = 0;
-    for (i = 0; i < mat->nrl; ++i) {
-        if (mat->tr[i] == NULL) {
-	    zeroes  +=  1;
-        }
-    }
-    if (st->info_level > 1) {
-        printf("%9d new    %7d zero", mat->np, zeroes);
-        fflush(stdout);
-    }
-}
-
 static int exact_application_sparse_linear_algebra_ff_32(
         mat_t *mat,
         const bs_t * const bs,

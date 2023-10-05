@@ -72,7 +72,7 @@ bs_t *core_nf(
     md->hcm = (hi_t *)malloc(sizeof(hi_t));
     md->ht  = initialize_secondary_hash_table(bht, md);
 
-    md-nf = 1;
+    md->nf = 1;
     select_tbr(tbr, mul, 0, mat, md, md->ht, bht, NULL);
 
     symbolic_preprocessing(mat, bs, md);

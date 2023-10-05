@@ -80,6 +80,7 @@ void (*sba_linear_algebra)(
         );
 void (*linear_algebra)(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         );

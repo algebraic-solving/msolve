@@ -1760,6 +1760,7 @@ static void convert_to_sparse_matrix_rows_ff_16(
  * linear algebra */
 static void probabilistic_sparse_linear_algebra_ff_16(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         )
@@ -1790,6 +1791,7 @@ static void probabilistic_sparse_linear_algebra_ff_16(
 
 static void exact_sparse_linear_algebra_ff_16(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         )
@@ -1885,6 +1887,7 @@ static void exact_trace_sparse_linear_algebra_ff_16(
 
 static void exact_sparse_dense_linear_algebra_ff_16(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         )
@@ -1934,6 +1937,7 @@ static void exact_sparse_dense_linear_algebra_ff_16(
 
 static void probabilistic_sparse_dense_linear_algebra_ff_16_2(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         )
@@ -1983,6 +1987,7 @@ static void probabilistic_sparse_dense_linear_algebra_ff_16_2(
 
 static void probabilistic_sparse_dense_linear_algebra_ff_16(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         )

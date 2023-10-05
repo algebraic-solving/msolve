@@ -736,6 +736,7 @@ static void exact_sparse_reduced_echelon_form_qq(
 
 static void exact_sparse_linear_algebra_ab_first_qq(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         )
@@ -767,6 +768,7 @@ static void exact_sparse_linear_algebra_ab_first_qq(
 }
 static void exact_sparse_linear_algebra_qq(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         )

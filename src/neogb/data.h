@@ -399,6 +399,7 @@ struct md_t
     int64_t nterms_basis;
     int32_t size_basis;
     int32_t ff_bits;
+    int32_t nf;
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,
                                1=SCHREYER,
@@ -486,6 +487,7 @@ extern void (*sba_linear_algebra)(
 
 extern void (*linear_algebra)(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         );

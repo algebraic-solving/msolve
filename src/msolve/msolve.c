@@ -4889,7 +4889,7 @@ restart:
              * to the correct field characteristic. */
             success = initialize_gba_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
-                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
+                    gens->field_char, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens, normal_form, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,

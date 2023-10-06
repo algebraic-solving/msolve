@@ -954,7 +954,7 @@ static void exact_sparse_reduced_echelon_form_ff_16(
                         break;
                     }
                     mat->tr[i]  = npiv;
-                    cfs = mat->cf_32[npiv[COEFFS]];
+                    cfs = mat->cf_16[npiv[COEFFS]];
                     break;
                 } else {
                     if (!npiv) {

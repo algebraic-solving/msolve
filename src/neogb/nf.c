@@ -65,6 +65,10 @@ bs_t *core_nf(
 
     ht_t *bht = bs->ht;
 
+    /* reset to exact linear algebra for normal form computation */
+    md->laopt = 2;
+    set_function_pointers(md);
+
     /* matrix holding sparse information generated
      * during symbolic preprocessing */
     mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
@@ -83,7 +87,7 @@ bs_t *core_nf(
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
     /* linear algebra, depending on choice, see set_function_pointers() */
-    exact_sparse_linear_algebra_ff_32(mat, tbr, bs, md);
+    linear_algebra(mat, tbr, bs, md);
     /* columns indices are mapped back to exponent hashes */
     return_normal_forms_to_basis(
             mat, tbr, bht, md->ht, md->hcm, md);

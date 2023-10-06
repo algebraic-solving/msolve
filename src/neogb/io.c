@@ -251,6 +251,8 @@ void sort_terms_qq(
 void import_input_data(
         bs_t *bs,
         md_t *st,
+        const int32_t start,
+        const int32_t stop,
         const int32_t *lens,
         const int32_t *exps,
         const void *vcfs,
@@ -272,17 +274,24 @@ void import_input_data(
     ht_t *ht = bs->ht;
 
     int32_t off             = 0; /* offset in arrays */
-    const len_t ngens       = st->ngens;
+    int32_t init_off        = 0;
+    const len_t ngens       = stop - start;
     const len_t ngens_input = st->ngens_input;
     const len_t fc          = st->fc;
 
+    for (i = 0; i < start; ++i) {
+        init_off +=  lens[i];
+    }
+
     /* check basis size first */
-    check_enlarge_basis(bs, ngens_input, st);
+    /* check_enlarge_basis(bs, ngens_input, st); */
+    check_enlarge_basis(bs, ngens, st);
 
     /* import monomials */
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
-    for (i = 0; i < ngens_input; ++i) {
-        if (invalid_gens[i] == 0) {
+    off = init_off;
+    for (i = start; i < stop; ++i) {
+        if (invalid_gens == NULL || invalid_gens[i] == 0) {
             while (lens[i] >= ht->esz-ht->eld) {
                 enlarge_hash_table(ht);
                 e  = ht->ev[0]; /* reset e if enlarging */
@@ -305,13 +314,13 @@ void import_input_data(
         off +=  lens[i];
     }
     /* import coefficients */
-    off =   0;
+    off = init_off;
     ctr = 0;
     switch (st->ff_bits) {
         case 8:
             cfs_ff  =   (int32_t *)vcfs;
-            for (i = 0; i < ngens_input; ++i) {
-                if (invalid_gens[i] == 0) {
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     cf8 = (cf8_t *)malloc((unsigned long)(lens[i]) * sizeof(cf8_t));
                     bs->cf_8[ctr] = cf8;
 
@@ -328,8 +337,8 @@ void import_input_data(
             break;
         case 16:
             cfs_ff  =   (int32_t *)vcfs;
-            for (i = 0; i < ngens_input; ++i) {
-                if (invalid_gens[i] == 0) {
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     cf16    = (cf16_t *)malloc((unsigned long)(lens[i]) * sizeof(cf16_t));
                     bs->cf_16[ctr] = cf16;
 
@@ -346,8 +355,8 @@ void import_input_data(
             break;
         case 32:
             cfs_ff  =   (int32_t *)vcfs;
-            for (i = 0; i < ngens_input; ++i) {
-                if (invalid_gens[i] == 0) {
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     cf32    = (cf32_t *)malloc((unsigned long)(lens[i]) * sizeof(cf32_t));
                     bs->cf_32[ctr] = cf32;
 
@@ -366,8 +375,8 @@ void import_input_data(
             cfs_qq  =   (mpz_t **)vcfs;
             mpz_t prod_den, mul;
             mpz_inits(prod_den, mul, NULL);
-            for (i = 0; i < ngens_input; ++i) {
-                if (invalid_gens[i] == 0) {
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     mpz_set_si(prod_den, 1);
 
                     for (j = off; j < off+lens[i]; ++j) {

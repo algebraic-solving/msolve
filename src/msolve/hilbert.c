@@ -1631,9 +1631,9 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   tbr = initialize_basis(st);
+  tbr->ht = bht;
 #if REDUCTION_ALLINONE
-  import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
-			     lens, exps, (void *)cfs);
+  import_input_data(tbr, st, 0, tobereduced, lens, exps, (void *)cfs, NULL);
   tbr->ld = tbr->lml  =  tobereduced;
   /* printf ("%ld imported\n",tobereduced); */
   for (int k = 0; k < tobereduced; ++k) {
@@ -1816,8 +1816,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 				      tbr, bht, evi, st, nv, maxdeg);
 #else /* reduction one by one */
 	  int success;
-	  import_input_data_nf_ff_32(tbr, bht, st, count_nf, count_nf+1,
-				     lens, exps, (void *)cfs);
+	  import_input_data(tbr, st, count_nf, count_nf+1, lens, exps, (void *)cfs, NULL);
 	  tbr->ld = tbr->lml  =  1;
 	  /* printf ("1 imported\n"); */
 	  for (int k = 0; k < 1; ++k) {
@@ -1866,8 +1865,8 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
 #else /* the shifts of phi are now reduced */
   tbr = initialize_basis(st);
-  import_input_data_nf_ff_32(tbr, bht, st, count_not_lm, tobereduced,
-			     lens, exps, (void *)cfs);
+  tbr->ht = bht;
+  import_input_data(tbr, st, count_not_lm, tobereduced, lens, exps, (void *)cfs);
   tbr->ld = tbr->lml  =  2*nv-2;
   /* printf ("%d imported\n",2*nv-2); */
   for (int k = 0; k < 2*nv-2; ++k) {
@@ -2081,8 +2080,8 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   tbr = initialize_basis(st);
-  import_input_data_nf_ff_32(tbr, bht, st, 0, tobereduced,
-			     lens, exps, (void *)cfs);
+  tbr->ht = bht;
+  import_input_data(tbr, st, 0, tobereduced, lens, exps, (void *)cfs, NULL);
   tbr->ld = tbr->lml  =  tobereduced;
   /* printf ("%ld imported\n",tobereduced); */
   for (int k = 0; k < tobereduced; ++k) {

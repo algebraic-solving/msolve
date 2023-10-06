@@ -1168,7 +1168,7 @@ int msolve_gbtrace_qq(
   initialize_mstrace(msd, st);
 
   /* read in ideal, move coefficients to integers */
-  import_input_data(msd->bs_qq, st, gens->lens, gens->exps, cfs, invalid_gens);
+  import_input_data(msd->bs_qq, st, 0, st->ngens_input, gens->lens, gens->exps, cfs, invalid_gens);
   free(invalid_gens);
   invalid_gens  =   NULL;
 

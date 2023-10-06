@@ -973,7 +973,7 @@ static void exact_sparse_reduced_echelon_form_ff_8(
         if (bad_prime == 0) {
             int64_t *drl  = dr + (omp_get_thread_num() * ncols);
             hm_t *npiv      = upivs[i];
-            cf8_t *cfs     = tbr->cf_8[npiv[COEFFS]];
+            cf8_t *cfs      = tbr->cf_8[npiv[COEFFS]];
             const len_t os  = npiv[PRELOOP];
             const len_t len = npiv[LENGTH];
             const len_t bi  = npiv[BINDEX];
@@ -996,7 +996,7 @@ static void exact_sparse_reduced_echelon_form_ff_8(
                 free(npiv);
                 free(cfs);
                 npiv  = mat->tr[i] = reduce_dense_row_by_known_pivots_sparse_ff_8(
-                        drl, mat, bs, pivs, sc, i, mh, bi, st->trace_level == LEARN_TRACER, st);
+                        drl, mat, bs, pivs, sc, i, mh, bi, st->trace_level == LEARN_TRACER, st->fc);
                 if (st->nf > 0) {
                     if (!npiv) {
                         mat->tr[i]  = NULL;
@@ -1085,7 +1085,7 @@ static void exact_sparse_reduced_echelon_form_ff_8(
                 pivs[k] = NULL;
                 pivs[k] = mat->tr[npivs++] =
                     reduce_dense_row_by_known_pivots_sparse_ff_8(
-                            dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st);
+                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st->fc);
             }
         }
         mat->tr = realloc(mat->tr, (unsigned long)npivs * sizeof(hi_t *));

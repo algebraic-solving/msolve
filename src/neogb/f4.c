@@ -664,7 +664,6 @@ bs_t *core_f4(
 
         get_and_print_final_statistics(stdout, md, bs);
 
-        printf("%ld, %ld, %.2f\n", md->mat_max_nrows, md->mat_max_ncols, md->mat_max_density);
         finalize_f4(gmd, gbs, &bs, &md, &mat, *errp);
     }
     return bs;

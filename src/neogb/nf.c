@@ -102,7 +102,6 @@ bs_t *core_nf(
         printf("-------------------------------------------------\
 ----------------------------------------\n");
     }
-    printf("%ld, %ld, %.2f\n", md->mat_max_nrows, md->mat_max_ncols, md->mat_max_density);
     /* free and clean up */
     free(md->hcm);
     if (md->ht != NULL) {

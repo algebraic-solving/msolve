@@ -303,6 +303,8 @@ void get_and_print_final_statistics(
         fprintf(file, "#redundant elements      %10lu\n", (unsigned long)st->num_redundant);
         fprintf(file, "#rows reduced      %16lu\n", (unsigned long)st->num_rowsred);
         fprintf(file, "#zero reductions   %16lu\n", (unsigned long)st->num_zerored);
+        fprintf(file, "max. matrix data   %16ld x %ld (%.3f%%)\n",
+                (long)st->mat_max_nrows, (long)st->mat_max_ncols, st->mat_max_density);
         fprintf(file, "max. symbolic hash table size  2^%d\n",
                 (int32_t)(ceil(log((double)st->max_sht_size)/log(2))));
         fprintf(file, "max. basis hash table size     2^%d\n",

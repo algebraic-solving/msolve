@@ -96,12 +96,9 @@ bs_t *core_nf(
      * so we do not need the rows anymore */
     clear_matrix(mat);
 
-    if (md->info_level > 1) {
-        printf("%13.2f | %-13.2f\n",
-                realtime() - rt, cputime() - ct);
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_timings(stdout, md, rt, ct);
+    print_round_information_footer(stdout, md);
+
     /* free and clean up */
     free(md->hcm);
     if (md->ht != NULL) {

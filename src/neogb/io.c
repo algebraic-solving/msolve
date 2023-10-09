@@ -273,11 +273,10 @@ void import_input_data(
 
     ht_t *ht = bs->ht;
 
-    int32_t off             = 0; /* offset in arrays */
-    int32_t init_off        = 0;
-    const len_t ngens       = stop - start;
-    const len_t ngens_input = st->ngens_input;
-    const len_t fc          = st->fc;
+    int32_t off       = 0; /* offset in arrays */
+    int32_t init_off  = 0;
+    const len_t ngens = stop - start;
+    const len_t fc    = st->fc;
 
     for (i = 0; i < start; ++i) {
         init_off +=  lens[i];

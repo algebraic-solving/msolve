@@ -754,7 +754,7 @@ end_sat_step:
     free(qb);
 
     free_basis_elements(sat);
-    free_basis(&sat);
+    free_basis_without_hash_table(&sat);
     free_basis(&kernel);
     /* note that all rows kept from mat during the overall computation are
      * basis elements and thus we do not need to free the rows itself, but

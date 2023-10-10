@@ -1866,7 +1866,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 #else /* the shifts of phi are now reduced */
   tbr = initialize_basis(st);
   tbr->ht = bht;
-  import_input_data(tbr, st, count_not_lm, tobereduced, lens, exps, (void *)cfs);
+  import_input_data(tbr, st, count_not_lm, tobereduced, lens, exps, (void *)cfs, NULL);
   tbr->ld = tbr->lml  =  2*nv-2;
   /* printf ("%d imported\n",2*nv-2); */
   for (int k = 0; k < 2*nv-2; ++k) {

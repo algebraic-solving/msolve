@@ -159,6 +159,15 @@ AC_CONFIG_LINKS([
  test/diff/diff_mq_2_1.sh:test/diff/diff_mq_2_1.sh
  input_files/input-overflow-16.ms:input_files/input-overflow-16.ms
  output_files/input-overflow-16.res:output_files/input-overflow-16.res
- test/diff/diff_input-overflow-16.sh:test/diff/diff_input-overflow-16.sh
+ test/diff/diff_nf-31.sh:test/diff/diff_nf-31.sh
+ input_files/nf-8.ms:input_files/nf-8.ms
+ output_files/nf-8.res:output_files/nf-8.res
+ test/diff/diff_nf_8.sh:test/diff/diff_nf_8.sh
+ input_files/nf-16.ms:input_files/nf-16.ms
+ output_files/nf-16.res:output_files/nf-16.res
+ test/diff/diff_nf_16.sh:test/diff/diff_nf_16.sh
+ input_files/nf-31.ms:input_files/nf-31.ms
+ output_files/nf-31.res:output_files/nf-31.res
+ test/diff/diff_nf_31.sh:test/diff/diff_nf_31.sh
 ])
 AC_OUTPUT

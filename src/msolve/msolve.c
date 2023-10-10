@@ -4946,8 +4946,8 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
-            print_msolve_polynomials_ff(stdout, normal_form,
-					tbr->lml, tbr, bht, st, gens->vnames, 0);
+            print_ff_nf_data(files->out_file, "a", normal_form,
+					tbr->lml, tbr, bht, st, gens, 1);
             if (normal_form_matrix > 0) {
                 /* sht and hcm will store the union of the support
                  * of all normal forms in tbr. */

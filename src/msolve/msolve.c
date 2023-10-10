@@ -4862,7 +4862,6 @@ restart:
         }
 	else {
           /* normal_form is 1 */
-        printf("normal form active? %d\n", normal_form);
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;
             bs_t *tbr   = NULL;

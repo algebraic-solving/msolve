@@ -275,8 +275,9 @@ void import_input_data(
 
     int32_t off       = 0; /* offset in arrays */
     int32_t init_off  = 0;
-    const len_t ngens = stop - start;
     const len_t fc    = st->fc;
+
+    len_t ngens = stop - start;
 
     for (i = 0; i < start; ++i) {
         init_off +=  lens[i];
@@ -403,6 +404,8 @@ void import_input_data(
         default:
             exit(1);
     }
+    /* maybe some input elements are invalid, so reset ngens here */
+    ngens = ctr;
             
     /* set total degree of input polynomials */
     deg_t deg = 0;
@@ -884,7 +887,6 @@ int validate_input_data(
     }
 
     *nr_gensp   -=  ctr;
-    printf("ngens %d ] %d ctr\n", *nr_gensp, ctr);
     /* recheck number of generators, if the input was only (0) then
      * no more generators are left over. */
     if (*nr_gensp < 1) {

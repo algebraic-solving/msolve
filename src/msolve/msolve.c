@@ -1124,6 +1124,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
   mpz_set(tmp_den[*maxrec], rden);
 
   for(long i = *maxrec + 1; i < len; i++){
+    fprintf(stderr, "[%ld]", i);
     mpz_set(gnum, pol[i]);
     int b = ratreconwden(rnum, rden, gnum, modulus, guessed_den, rdata);
 
@@ -1148,6 +1149,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
   mpz_mul(rdata->N, rdata->N, lcm);
 
   for(long i = *maxrec-1; i >=0; i--){
+    fprintf(stderr, "{%ld}", i);
     mpz_set(gnum, pol[i]);
     int b = ratreconwden(tmp_num[i], tmp_den[i],
                          gnum, modulus, newlcm, rdata);
@@ -1536,11 +1538,11 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
     for(int i = 0; i < nc; i++){
       *maxrec = MIN(MAX(0, trace_det->det_idx-1), MAX(0,nmod_param->coords[i]->length - 1));
       fprintf(stderr, "maxrec = %ld\n", *maxrec);
-      fprintf(stderr, "gden = ");
-      mpz_out_str(stderr, 10, *guessed_den);
-      fprintf(stderr, "\n");
-      exit(1);
       if(is_lifted[0]>0 && is_lifted[i+1]==0){
+
+        fprintf(stderr, "gden = ");
+        mpz_out_str(stderr, 10, *guessed_den);
+        fprintf(stderr, "\n");
 
         b = rational_reconstruction_upoly_with_denom(mpz_param->coords[i],
                                                      denominator,
@@ -1558,7 +1560,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                                      *guessed_den,
                                                      recdata,
                                                      info_level);
-
+        exit(1);
         if(b == 0){
           mpz_set_ui(recdata->D, 1);
           mpz_mul_2exp(recdata->D, recdata->D, nc);
@@ -2735,7 +2737,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
   prime = next_prime(1<<30); /* added to hunt a bug */
-
+  fprintf(stderr, "starts with prime %d\n", prime);
   primeinit = prime;
   lp->p[0] = primeinit;
 
@@ -3012,7 +3014,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int lpow2 = 0;
   int clog = 0;
   int br = 0;
-  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
 
   rrec_data_t recdata;
   initialize_rrec_data(recdata);

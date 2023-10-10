@@ -1560,7 +1560,6 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                                      *guessed_den,
                                                      recdata,
                                                      info_level);
-        exit(1);
         if(b == 0){
           mpz_set_ui(recdata->D, 1);
           mpz_mul_2exp(recdata->D, recdata->D, nc);

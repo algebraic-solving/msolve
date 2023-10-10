@@ -1113,9 +1113,11 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
                                                   rrec_data_t rdata,
                                                   int info_level){
 
-  mpz_set(guessed_num, pol[*maxrec]);
+  mpz_t gnum;
+  mpz_init(gnum);
+  mpz_set(gnum, pol[*maxrec]);
 
-  if(ratreconwden(rnum, rden, guessed_num, modulus, guessed_den, rdata) == 0){
+  if(ratreconwden(rnum, rden, gnum, modulus, guessed_den, rdata) == 0){
     return 0;
   }
 
@@ -1123,8 +1125,8 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
   mpz_set(tmp_den[*maxrec], rden);
 
   for(long i = *maxrec + 1; i < len; i++){
-    mpz_set(guessed_num, pol[i]);
-    int b = ratreconwden(rnum, rden, guessed_num, modulus, guessed_den, rdata);
+    mpz_set(gnum, pol[i]);
+    int b = ratreconwden(rnum, rden, gnum, modulus, guessed_den, rdata);
 
     if(b == 0){
       *maxrec = MAX(0, i - 1);
@@ -1147,13 +1149,14 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
   mpz_mul(rdata->N, rdata->N, lcm);
 
   for(long i = *maxrec-1; i >=0; i--){
-    mpz_set(guessed_num, pol[i]);
+    mpz_set(gnum, pol[i]);
     int b = ratreconwden(tmp_num[i], tmp_den[i],
-                         guessed_num, modulus, newlcm, rdata);
+                         gnum, modulus, newlcm, rdata);
 
       if(b == 0){
         *maxrec = MAX(i + 1, 0);
         mpz_clear(newlcm);
+        mpz_clear(gnum);
         return b;
       }
 
@@ -1179,6 +1182,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
     mpz_set(recons[i], tmp_num[i]);
   }
   mpz_set(denominator, lcm);
+  mpz_clear(gnum);
   mpz_clear(newlcm);
   return 1;
 

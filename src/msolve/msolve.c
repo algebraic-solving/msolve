@@ -1108,13 +1108,12 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
                                                   mpz_t *tmp_num,
                                                   mpz_t *tmp_den,
                                                   mpz_t lcm,
-                                                  mpz_t guessed_num,
+                                                  mpz_t gnum,
                                                   mpz_t guessed_den,
                                                   rrec_data_t rdata,
                                                   int info_level){
 
-  mpz_t gnum;
-  mpz_init(gnum);
+
   mpz_set(gnum, pol[*maxrec]);
 
   if(ratreconwden(rnum, rden, gnum, modulus, guessed_den, rdata) == 0){
@@ -1156,7 +1155,6 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
       if(b == 0){
         *maxrec = MAX(i + 1, 0);
         mpz_clear(newlcm);
-        mpz_clear(gnum);
         return b;
       }
 
@@ -1182,7 +1180,6 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
     mpz_set(recons[i], tmp_num[i]);
   }
   mpz_set(denominator, lcm);
-  mpz_clear(gnum);
   mpz_clear(newlcm);
   return 1;
 
@@ -1428,6 +1425,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden);
   if(b && trace_det->done_trace == 1 && trace_det->done_det == 1){
 
+    fprintf(stderr, "Test coefficients could be lifted\n");
     mpz_t denominator;
     mpz_init(denominator);
     mpz_t lcm;
@@ -1457,7 +1455,9 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
       mpz_root(recdata->D, *modulus, 3);
       mpz_fdiv_q(recdata->N, *modulus, recdata->D);
       mpz_fdiv_q_2exp(recdata->N, recdata->N, 1);
-
+      fprintf(stderr, "modulus before = ");
+      mpz_out_str(stderr, 10,  *modulus);
+      fprintf(stderr, "\n");
       b = rational_reconstruction_upoly_with_denom(mpz_param->elim,
                                         denominator,
                                         tmp_mpz_param->elim,
@@ -1474,7 +1474,14 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                         *guessed_den,
                                         recdata,
                                         info_level);
+      fprintf(stderr, "modulus after = ");
+      mpz_out_str(stderr, 10,  *modulus);
+      fprintf(stderr, "\n");
+      fprintf(stderr, "coeff = ");
+      mpz_out_str(stderr, 10,  tmp_mpz_param->coords[0]->coeffs[0]);
+      fprintf(stderr, "\n");
       if(b == 0){
+        fprintf(stderr, "[!]");
         mpz_root(recdata->D, *modulus, 16);
         mpz_fdiv_q(recdata->N, *modulus, recdata->D);
         mpz_fdiv_q_2exp(recdata->N, recdata->N, 1);
@@ -1496,6 +1503,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                                      recdata,
                                                      info_level);
         if(b==0){
+          fprintf(stderr, "[!!]");
           is_lifted[0] = 0;
           mpz_clear(denominator);
           mpz_clear(lcm);
@@ -1527,7 +1535,11 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
     for(int i = 0; i < nc; i++){
       *maxrec = MIN(MAX(0, trace_det->det_idx-1), MAX(0,nmod_param->coords[i]->length - 1));
-
+      fprintf(stderr, "maxrec = %ld\n", *maxrec);
+      fprintf(stderr, "gden = ");
+      mpz_out_str(stderr, 10, *guessed_den);
+      fprintf(stderr, "\n");
+      exit(1);
       if(is_lifted[0]>0 && is_lifted[i+1]==0){
 
         b = rational_reconstruction_upoly_with_denom(mpz_param->coords[i],
@@ -2644,20 +2656,20 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   /* initialize stuff */
   md_t *st  = allocate_meta_data();
 
-    int *invalid_gens   =   NULL;
-    int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
-            &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
-            &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
-            &info_level);
+  int *invalid_gens   =   NULL;
+  int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
+                                &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
+                                &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
+                                &info_level);
 
-    /* all data is corrupt */
-    if (res == -1) {
-        fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
-        free(invalid_gens);
-        return -3;
-    }
-    /* checks and set all meta data. if a nonzero value is returned then
-     * some of the input data is corrupted. */
+  /* all data is corrupt */
+  if (res == -1) {
+    fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
+    free(invalid_gens);
+    return -3;
+  }
+  /* checks and set all meta data. if a nonzero value is returned then
+   * some of the input data is corrupted. */
 
   if (check_and_set_meta_data_trace(st, lens, exps, cfs, invalid_gens,
               field_char, mon_order, elim_block_len, nr_vars, nr_gens,
@@ -2722,6 +2734,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   while(gens->field_char==0 && is_lucky_prime_ui(prime, bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
+  prime = next_prime(1<<30); /* added to hunt a bug */
 
   primeinit = prime;
   lp->p[0] = primeinit;
@@ -3068,7 +3081,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       if(info_level>1){
         fprintf(stderr, "Application phase %.2f Gops/sec\n",
                 (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
-        fprintf(stderr, "Multi-mod time: GB+ fglm (elapsed): %.2f sec\n",
+        fprintf(stderr, "Multi-mod time: GB + fglm (elapsed): %.2f sec\n",
                 (ca1) );
       }
     }

@@ -4921,7 +4921,6 @@ restart:
                     exit(1);
                 }
             }
-            printf("size of basis %u\n", bs->lml);
             /* initialize data for elements to be reduced,
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
@@ -4947,7 +4946,6 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
-	    printf ("normal form:\n");
             print_msolve_polynomials_ff(stdout, normal_form,
 					tbr->lml, tbr, bht, st, gens->vnames, 0);
             if (normal_form_matrix > 0) {

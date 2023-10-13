@@ -474,7 +474,7 @@ bs_t *f4sat_trace_application_test_phase(
             write_pbm_file(mat, st);
         }
         /* linear algebra, depending on choice, see set_function_pointers() */
-        exact_sparse_linear_algebra_ff_32(mat, bs, st);
+        exact_sparse_linear_algebra_ff_32(mat, bs, bs, st);
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
@@ -548,7 +548,7 @@ bs_t *f4sat_trace_application_test_phase(
                     /* interreduce kernel */
                     copy_kernel_to_matrix(mat, kernel, sat->ld);
                     /* linear algebra, depending on choice, see set_function_pointers() */
-                    exact_sparse_linear_algebra_ff_32(mat, kernel, st);
+                    exact_sparse_linear_algebra_ff_32(mat, kernel, kernel, st);
                     /* columns indices are mapped back to exponent hashes */
                     if (mat->np > 0) {
                         /* use the correct hcmm for kernel elements! */
@@ -756,7 +756,7 @@ bs_t *f4sat_trace_application_phase(
         } */
         convert_hashes_to_columns(mat, st, sht);
         /* linear algebra, depending on choice, see set_function_pointers() */
-        linear_algebra(mat, bs, st);
+        linear_algebra(mat, bs, bs, st);
         if (ret != 0) {
             goto stop;
         }
@@ -849,7 +849,7 @@ bs_t *f4sat_trace_application_phase(
                 /* interreduce kernel */
                 copy_kernel_to_matrix(mat, kernel, sat->ld);
                 /* linear algebra, depending on choice, see set_function_pointers() */
-                exact_sparse_linear_algebra_ff_32(mat, kernel, st);
+                exact_sparse_linear_algebra_ff_32(mat, kernel, kernel, st);
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
                     /* use the correct hcmm for kernel elements! */
@@ -1239,7 +1239,7 @@ end_sat_step:
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
-        probabilistic_sparse_linear_algebra_ff_32(mat, bs, st);
+        probabilistic_sparse_linear_algebra_ff_32(mat, bs, bs, st);
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
@@ -1317,7 +1317,7 @@ end_sat_step:
                         /* interreduce kernel */
                         copy_kernel_to_matrix(mat, kernel, sat->ld);
                         /* linear algebra, depending on choice, see set_function_pointers() */
-                        probabilistic_sparse_linear_algebra_ff_32(mat, kernel, st);
+                        probabilistic_sparse_linear_algebra_ff_32(mat, kernel, kernel, st);
                         /* linear_algebra(mat, kernel, st); */
                         /* columns indices are mapped back to exponent hashes */
                         if (mat->np > 0) {
@@ -1572,7 +1572,7 @@ bs_t *f4sat_trace_learning_phase_2(
         sort_matrix_rows_decreasing(mat->rr, mat->nru);
         sort_matrix_rows_increasing(mat->tr, mat->nrl);
         /* linear algebra, depending on choice, see set_function_pointers() */
-        linear_algebra(mat, bs, st);
+        linear_algebra(mat, bs, bs, st);
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             convert_sparse_matrix_rows_to_basis_elements(
@@ -1637,7 +1637,7 @@ bs_t *f4sat_trace_learning_phase_2(
                 /* interreduce kernel */
                 copy_kernel_to_matrix(mat, kernel, sat->ld);
                 /* linear algebra, depending on choice, see set_function_pointers() */
-                probabilistic_sparse_linear_algebra_ff_32(mat, kernel, st);
+                probabilistic_sparse_linear_algebra_ff_32(mat, kernel, kernel, st);
                 /* linear_algebra(mat, kernel, st); */
                 /* columns indices are mapped back to exponent hashes */
                 if (mat->np > 0) {
@@ -1868,7 +1868,7 @@ int64_t f4_trace_julia(
      * the basis elements stored in the trace */
     ht_t *tht = initialize_secondary_hash_table(bht, st);
     /* read in ideal, move coefficients to integers */
-    import_input_data(bs_qq, st, lens, exps, cfs, invalid_gens);
+    import_input_data(bs_qq, st, 0, st->ngens_input, lens, exps, cfs, invalid_gens);
 
     free(invalid_gens);
     invalid_gens = NULL;
@@ -1995,7 +1995,7 @@ bs_t *modular_f4(
         write_pbm_file(mat, st);
       }
       /* linear algebra, depending on choice, see set_function_pointers() */
-      linear_algebra(mat, bs, st);
+      linear_algebra(mat, bs, bs, st);
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(

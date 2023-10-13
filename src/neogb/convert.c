@@ -409,7 +409,7 @@ static void convert_hashes_to_columns(
 
     /* compute density of matrix */
     nterms  *=  100; /* for percentage */
-    double density = (double)nterms / (double)mnr / (double)mat->nc;
+    double density = (double)nterms / (double)mnr / (double)ld;
 
     /* timings */
     ct1 = cputime();
@@ -419,6 +419,11 @@ static void convert_hashes_to_columns(
     if (st->info_level > 1) {
         printf(" %7d x %-7d %8.2f%%", mat->nr, mat->nc, density);
         fflush(stdout);
+    }
+    if ((int64_t)mat->nr * mat->nc > st->mat_max_nrows * st->mat_max_ncols) {
+        st->mat_max_nrows = mat->nr;
+        st->mat_max_ncols = mat->nc;
+        st->mat_max_density = density;
     }
     st->hcm = hcm;
 }
@@ -557,9 +562,10 @@ static void return_normal_forms_to_basis(
     const len_t np  = mat->np;
 
     /* timings */
-    double ct0, ct1, rt0, rt1;
-    ct0 = cputime();
-    rt0 = realtime();
+
+    double ct = cputime();
+    double rt = realtime();
+
     /* fix size of basis for entering new elements directly */
     check_enlarge_basis(bs, mat->np, st);
 
@@ -569,11 +575,43 @@ static void return_normal_forms_to_basis(
     for (i = 0; i < np; ++i) {
         if (rows[i] != NULL) {
             insert_in_basis_hash_table_pivots(rows[i], bht, sht, hcm, st);
-            bs->cf_32[bs->ld] = mat->cf_32[rows[i][COEFFS]];
+            switch (st->ff_bits) {
+                case 0:
+                    bs->cf_qq[bs->ld] = mat->cf_qq[rows[i][COEFFS]];
+                    break;
+                case 8:
+                    bs->cf_8[bs->ld]  = mat->cf_8[rows[i][COEFFS]];
+                    break;
+                case 16:
+                    bs->cf_16[bs->ld] = mat->cf_16[rows[i][COEFFS]];
+                    break;
+                case 32:
+                    bs->cf_32[bs->ld] = mat->cf_32[rows[i][COEFFS]];
+                    break;
+                default:
+                    bs->cf_32[bs->ld] = mat->cf_32[rows[i][COEFFS]];
+                    break;
+            }
             rows[i][COEFFS]   = bs->ld;
             bs->hm[bs->ld]    = rows[i];
         } else {
-            bs->cf_32[bs->ld] = NULL;
+            switch (st->ff_bits) {
+                case 0:
+                    bs->cf_qq[bs->ld] = NULL;
+                    break;
+                case 8:
+                    bs->cf_8[bs->ld]  = NULL;
+                    break;
+                case 16:
+                    bs->cf_16[bs->ld] = NULL;
+                    break;
+                case 32:
+                    bs->cf_32[bs->ld] = NULL;
+                    break;
+                default:
+                    bs->cf_32[bs->ld] = NULL;
+                    break;
+            }
             bs->hm[bs->ld]    = NULL;
         }
         bs->lmps[bs->ld]  = bs->ld;
@@ -582,10 +620,8 @@ static void return_normal_forms_to_basis(
     }
 
     /* timings */
-    ct1 = cputime();
-    rt1 = realtime();
-    st->convert_ctime +=  ct1 - ct0;
-    st->convert_rtime +=  rt1 - rt0;
+    st->convert_ctime +=  cputime() - ct;
+    st->convert_rtime +=  realtime() - rt;
 }
 
 static void convert_sparse_matrix_rows_to_basis_elements(

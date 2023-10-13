@@ -422,7 +422,7 @@ static int32_t compute_new_elements(
 
     convert_hashes_to_columns(mat, md, sht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
-    linear_algebra(mat, bs, md);
+    linear_algebra(mat, bs, bs, md);
 
     /* check for bad prime */
     if (md->trace_level == APPLY_TRACER) {

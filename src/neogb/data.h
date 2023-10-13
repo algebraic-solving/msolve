@@ -371,6 +371,9 @@ struct md_t
     int64_t num_rht;
     int64_t num_rowsred;
     int64_t num_zerored;
+    int64_t mat_max_nrows;
+    int64_t mat_max_ncols;
+    double  mat_max_density;
 
     int32_t ngens_input;
     int32_t ngens_invalid;
@@ -396,6 +399,7 @@ struct md_t
     int64_t nterms_basis;
     int32_t size_basis;
     int32_t ff_bits;
+    int32_t nf;
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,
                                1=SCHREYER,
@@ -483,6 +487,7 @@ extern void (*sba_linear_algebra)(
 
 extern void (*linear_algebra)(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
         );

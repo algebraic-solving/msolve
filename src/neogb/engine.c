@@ -78,7 +78,7 @@ int initialize_gba_input_data(
     bs  = initialize_basis(st);
     ht_t *bht = bs->ht;
 
-    import_input_data(bs, st, lens, exps, cfs, invalid_gens);
+    import_input_data(bs, st, 0, st->ngens_input, lens, exps, cfs, invalid_gens);
 
     print_initial_statistics(stderr, st);
 

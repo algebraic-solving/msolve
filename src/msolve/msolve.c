@@ -2677,7 +2677,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   *******************/
   bs_t *bs_qq = initialize_basis(st);
   /* read in ideal, move coefficients to integers */
-  import_input_data(bs_qq, st, lens, exps, cfs, invalid_gens);
+  import_input_data(bs_qq, st, 0, st->ngens_input, lens, exps, cfs, invalid_gens);
   free(invalid_gens);
   invalid_gens  =   NULL;
 
@@ -4417,9 +4417,8 @@ restart:
                 }
             } else {
                 sat = initialize_basis(st);
-                import_input_data_nf_ff_32(
-                                           sat, bht, st, gens->ngens-saturate, gens->ngens,
-                                           gens->lens, gens->exps, (void *)gens->cfs);
+                sat->ht = bht;
+                import_input_data(sat, st, gens->ngens-saturate, gens->ngens, gens->lens, gens->exps, (void *)gens->cfs, NULL);
 
                 sat->ld = sat->lml  =  saturate;
                 /* normalize_initial_basis(tbr, st->gfc); */
@@ -4551,8 +4550,8 @@ restart:
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
             tbr = initialize_basis(st);
-            import_input_data_nf_ff_32(tbr, bht, st, gens->ngens-1, gens->ngens,
-				       gens->lens, gens->exps, (void *)gens->cfs);
+            tbr->ht = bht;
+            import_input_data(tbr, st, gens->ngens-1, gens->ngens, gens->lens, gens->exps, (void *)gens->cfs, NULL);
             tbr->ld = tbr->lml  =  1;
             /* normalize_initial_basis(tbr, st->gfc); */
             for (int k = 0; k < 1; ++k) {
@@ -4863,17 +4862,12 @@ restart:
         }
 	else {
           /* normal_form is 1 */
-        printf("normal form active? %d\n", normal_form);
             /* data structures for basis, hash table and statistics */
             bs_t *bs    = NULL;
             bs_t *tbr   = NULL;
             ht_t *bht   = NULL;
             md_t *st  = NULL;
 
-            /* generate array for storing multiplier for polynomial
-             * to be reduced by basis */
-
-            exp_t *mul  = (exp_t *)calloc(gens->nvars, sizeof(exp_t));
 
             /* for (int ii = 0; ii<gens->nvars; ++ii) {
              *     mul[ii] = 1;
@@ -4894,7 +4888,7 @@ restart:
              * to the correct field characteristic. */
             success = initialize_gba_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
-                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
+                    gens->field_char, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens, normal_form, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
@@ -4927,19 +4921,22 @@ restart:
                     exit(1);
                 }
             }
-            printf("size of basis %u\n", bs->lml);
             /* initialize data for elements to be reduced,
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
             tbr = initialize_basis(st);
-            import_input_data_nf_ff_32(
-                    tbr, bht, st, gens->ngens-normal_form, gens->ngens,
-                    gens->lens, gens->exps, (void *)gens->cfs);
+            tbr->ht = bht;
+            import_input_data(tbr, st, gens->ngens-normal_form, gens->ngens,
+                    gens->lens, gens->exps, (void *)gens->cfs, NULL);
             tbr->ld = tbr->lml  =  normal_form;
             /* normalize_initial_basis(tbr, st->gfc); */
             for (int k = 0; k < normal_form; ++k) {
                 tbr->lmps[k]  = k; /* fix input element in tbr */
             }
+
+            /* generate array for storing multiplier for polynomial
+             * to be reduced by basis */
+            exp_t *mul  = (exp_t *)calloc(bht->evl, sizeof(exp_t));
             /* compute normal form of last element in tbr */
             tbr = core_nf(tbr, st, mul, bs, &err);
 
@@ -4949,9 +4946,8 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
-	    printf ("normal form:\n");
-            print_msolve_polynomials_ff(stdout, normal_form,
-					tbr->lml, tbr, bht, st, gens->vnames, 0);
+            print_ff_nf_data(files->out_file, "a", normal_form,
+					tbr->lml, tbr, bht, st, gens, 1);
             if (normal_form_matrix > 0) {
                 /* sht and hcm will store the union of the support
                  * of all normal forms in tbr. */
@@ -5020,17 +5016,13 @@ restart:
             }
             /* free and clean up */
             if (bs != NULL) {
-                free_basis(&bs);
+                free_basis_without_hash_table(&bs);
             }
             if (tbr != NULL) {
                 free_basis(&tbr);
             }
             free(st);
             st  = NULL;
-            free_shared_hash_data(bht);
-            if (bht != NULL) {
-                free_hash_table(&bht);
-            }
 
         }
         return 0;
@@ -5089,7 +5081,7 @@ restart:
              * the basis elements stored in the trace */
             ht_t *tht = initialize_secondary_hash_table(bht, st);
             /* read in ideal, move coefficients to integers */
-            import_input_data(bs_qq, bht, st, gens->lens, gens->exps,
+            import_input_data(bs_qq, st, 0, st->ngens_input, gens->lens, gens->exps,
                     (void *)gens->mpz_cfs, invalid_gens);
 
             print_initial_statistics(stderr, st);
@@ -5268,7 +5260,7 @@ restart:
              * the basis elements stored in the trace */
             ht_t *tht = initialize_secondary_hash_table(bht, st);
             /* read in ideal, move coefficients to integers */
-            import_input_data(bs_qq, st, gens->lens, gens->exps,
+            import_input_data(bs_qq, st, 0, st->ngens_input, gens->lens, gens->exps,
                     (void *)gens->mpz_cfs, invalid_gens);
             free(invalid_gens);
             invalid_gens    =   NULL;
@@ -5315,9 +5307,10 @@ restart:
                 }
             }
             sat_qq = initialize_basis(st);
-            import_input_data_nf_qq(
-                    sat_qq, bht, st, gens->ngens-saturate, gens->ngens,
-                    gens->lens, gens->exps, (void *)gens->mpz_cfs);
+            sat_qq->ht = bht;
+            import_input_data(
+                    sat_qq, st, gens->ngens-saturate, gens->ngens,
+                    gens->lens, gens->exps, (void *)gens->mpz_cfs, NULL);
             sat_qq->ld = sat_qq->lml  =  saturate;
             /* normalize_initial_basis(tbr, st->gfc); */
             for (int k = 0; k < saturate; ++k) {

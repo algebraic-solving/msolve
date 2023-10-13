@@ -251,6 +251,8 @@ void sort_terms_qq(
 void import_input_data(
         bs_t *bs,
         md_t *st,
+        const int32_t start,
+        const int32_t stop,
         const int32_t *lens,
         const int32_t *exps,
         const void *vcfs,
@@ -271,18 +273,25 @@ void import_input_data(
 
     ht_t *ht = bs->ht;
 
-    int32_t off             = 0; /* offset in arrays */
-    const len_t ngens       = st->ngens;
-    const len_t ngens_input = st->ngens_input;
-    const len_t fc          = st->fc;
+    int32_t off       = 0; /* offset in arrays */
+    int32_t init_off  = 0;
+    const len_t fc    = st->fc;
+
+    len_t ngens = stop - start;
+
+    for (i = 0; i < start; ++i) {
+        init_off +=  lens[i];
+    }
 
     /* check basis size first */
-    check_enlarge_basis(bs, ngens_input, st);
+    /* check_enlarge_basis(bs, ngens_input, st); */
+    check_enlarge_basis(bs, ngens, st);
 
     /* import monomials */
     exp_t *e  = ht->ev[0]; /* use as temporary storage */
-    for (i = 0; i < ngens_input; ++i) {
-        if (invalid_gens[i] == 0) {
+    off = init_off;
+    for (i = start; i < stop; ++i) {
+        if (invalid_gens == NULL || invalid_gens[i] == 0) {
             while (lens[i] >= ht->esz-ht->eld) {
                 enlarge_hash_table(ht);
                 e  = ht->ev[0]; /* reset e if enlarging */
@@ -305,13 +314,13 @@ void import_input_data(
         off +=  lens[i];
     }
     /* import coefficients */
-    off =   0;
+    off = init_off;
     ctr = 0;
     switch (st->ff_bits) {
         case 8:
             cfs_ff  =   (int32_t *)vcfs;
-            for (i = 0; i < ngens_input; ++i) {
-                if (invalid_gens[i] == 0) {
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     cf8 = (cf8_t *)malloc((unsigned long)(lens[i]) * sizeof(cf8_t));
                     bs->cf_8[ctr] = cf8;
 
@@ -328,8 +337,8 @@ void import_input_data(
             break;
         case 16:
             cfs_ff  =   (int32_t *)vcfs;
-            for (i = 0; i < ngens_input; ++i) {
-                if (invalid_gens[i] == 0) {
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     cf16    = (cf16_t *)malloc((unsigned long)(lens[i]) * sizeof(cf16_t));
                     bs->cf_16[ctr] = cf16;
 
@@ -346,8 +355,8 @@ void import_input_data(
             break;
         case 32:
             cfs_ff  =   (int32_t *)vcfs;
-            for (i = 0; i < ngens_input; ++i) {
-                if (invalid_gens[i] == 0) {
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     cf32    = (cf32_t *)malloc((unsigned long)(lens[i]) * sizeof(cf32_t));
                     bs->cf_32[ctr] = cf32;
 
@@ -366,8 +375,8 @@ void import_input_data(
             cfs_qq  =   (mpz_t **)vcfs;
             mpz_t prod_den, mul;
             mpz_inits(prod_den, mul, NULL);
-            for (i = 0; i < ngens_input; ++i) {
-                if (invalid_gens[i] == 0) {
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     mpz_set_si(prod_den, 1);
 
                     for (j = off; j < off+lens[i]; ++j) {
@@ -395,6 +404,8 @@ void import_input_data(
         default:
             exit(1);
     }
+    /* maybe some input elements are invalid, so reset ngens here */
+    ngens = ctr;
             
     /* set total degree of input polynomials */
     deg_t deg = 0;
@@ -437,267 +448,6 @@ done:
     /* we have to reset the ld value once we have normalized the initial
      * elements in order to start update correctly */
     bs->ld  = st->ngens;
-}
-
-void import_input_data_nf_ff_32(
-        bs_t *tbr,
-        ht_t *ht,
-        md_t *st,
-        const int32_t start,
-        const int32_t stop,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
-        )
-{
-    int32_t i, j, k;
-    cf32_t *cf    = NULL;
-    int64_t tmpcf = 0;
-    hm_t *hm      = NULL;
-
-    int32_t *cfs  = (int32_t *)vcfs;
-
-    int32_t off       = 0; /* offset in arrays */
-    const len_t fc    = st->fc;
-
-    for (i = 0; i < start; ++i) {
-        off +=  lens[i];
-    }
-
-    /* check basis size first */
-    check_enlarge_basis(tbr, stop-start, st);
-
-    exp_t *e  = ht->ev[0]; /* use as temporary storage */
-
-    for (i = start; i < stop; ++i) {
-        while (lens[i] >= ht->esz-ht->eld) {
-            enlarge_hash_table(ht);
-            e  = ht->ev[0]; /* reset e if enlarging */
-        }
-        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
-        cf  = (cf32_t *)malloc((unsigned long)(lens[i]) * sizeof(cf32_t));
-        tbr->hm[i-start]    = hm;
-        tbr->cf_32[i-start] = cf;
-
-        hm[COEFFS]  = i-start; /* link to matcf entry */
-        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
-        hm[LENGTH]  = lens[i]; /* length */
-
-        tbr->red[i-start] = 0;
-
-        for (j = off; j < off+lens[i]; ++j) {
-            set_exponent_vector(e, exps, j, ht, st);
-            hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
-            /* make coefficient positive */
-            tmpcf             =   (int64_t)cfs[j];
-            tmpcf             +=  (tmpcf >> 63) & fc;
-            cf[j-off]         =   (cf32_t)tmpcf;
-        }
-        off +=  lens[i];
-        /* sort terms in polynomial w.r.t. given monomial order */
-        sort_terms_ff_32(&cf, &hm, ht);
-    }
-    /* set total degree of input polynomials */
-    deg_t deg = 0;
-    if (st->nev) {
-        for (i = 0; i < stop-start; ++i) {
-            hm  = tbr->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg < ht->hd[hm[j]].deg) {
-                    deg = ht->hd[hm[j]].deg;
-                    st->homogeneous = 1;
-                }
-            }
-            tbr->hm[i][DEG]  = deg;
-        }
-    } else {
-        for (i = 0; i < stop-start; ++i) {
-            hm  = tbr->hm[i];
-            tbr->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
-        }
-    }
-}
-
-void import_input_data_nf_ff_16(
-        bs_t *tbr,
-        ht_t *ht,
-        md_t *st,
-        const int32_t start,
-        const int32_t stop,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
-        )
-{
-    int32_t i, j, k;
-    cf16_t *cf    = NULL;
-    int64_t tmpcf = 0;
-    hm_t *hm      = NULL;
-
-    int16_t *cfs  = (int16_t *)vcfs;
-
-    int32_t off       = 0; /* offset in arrays */
-    const len_t fc    = st->fc;
-
-    for (i = 0; i < start; ++i) {
-        off +=  lens[i];
-    }
-
-    /* check basis size first */
-    check_enlarge_basis(tbr, stop-start, st);
-
-    exp_t *e  = ht->ev[0]; /* use as temporary storage */
-
-    for (i = start; i < stop; ++i) {
-        while (lens[i] >= ht->esz-ht->eld) {
-            enlarge_hash_table(ht);
-            e  = ht->ev[0]; /* reset e if enlarging */
-        }
-        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
-        cf  = (cf16_t *)malloc((unsigned long)(lens[i]) * sizeof(cf16_t));
-        tbr->hm[i-start]    = hm;
-        tbr->cf_16[i-start] = cf;
-
-        hm[COEFFS]  = i-start; /* link to matcf entry */
-        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
-        hm[LENGTH]  = lens[i]; /* length */
-
-        tbr->red[i-start] = 0;
-
-        for (j = off; j < off+lens[i]; ++j) {
-            set_exponent_vector(e, exps, j, ht, st);
-            hm[j-off+OFFSET]  =   insert_in_hash_table(e, ht);
-            /* make coefficient positive */
-            tmpcf             =   (int64_t)cfs[j];
-            tmpcf             +=  (tmpcf >> 63) & fc;
-            cf[j-off]         =   (cf16_t)tmpcf;
-        }
-        off +=  lens[i];
-        /* sort terms in polynomial w.r.t. given monomial order */
-        sort_terms_ff_16(&cf, &hm, ht);
-    }
-    /* set total degree of input polynomials */
-    deg_t deg = 0;
-    if (st->nev) {
-        for (i = 0; i < stop-start; ++i) {
-            hm  = tbr->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg < ht->hd[hm[j]].deg) {
-                    deg = ht->hd[hm[j]].deg;
-                    st->homogeneous = 1;
-                }
-            }
-            tbr->hm[i][DEG]  = deg;
-        }
-    } else {
-        for (i = 0; i < stop-start; ++i) {
-            hm  = tbr->hm[i];
-            tbr->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
-        }
-    }
-}
-
-
-
-void import_input_data_nf_qq(
-        bs_t *bs,
-        ht_t *ht,
-        md_t *st,
-        const int32_t start,
-        const int32_t stop,
-        const int32_t *lens,
-        const int32_t *exps,
-        const void *vcfs
-        )
-{
-    int32_t i, j, k;
-    mpz_t *cf;
-    hm_t *hm;
-    mpz_t prod_den, mul;
-    mpz_inits(prod_den, mul, NULL);
-
-    /* these coefficients are numerator, denominator, numerator, denominator, ...
-     * i.e. the array has length 2*nterms */
-    mpz_t **cfs = (mpz_t **)vcfs;
-
-    int32_t off = 0; /* offset in arrays */
-
-    /* we want to get rid of denominators, i.e. we want to handle
-     * the coefficients as integers resp. mpz_t numbers. for this we
-     * first get the product of all denominators of a polynomial and
-     * then multiply with this product each term. the polynomials are
-    * then be made content free by another function. */
-    for (i = 0; i < start; ++i) {
-        off +=  lens[i];
-    }
-
-    /* check basis size first */
-    check_enlarge_basis(bs, stop-start, st);
-
-    exp_t *e  = ht->ev[0]; /* use as temporary storage */
-    for (i = start; i < stop; ++i) {
-        while (lens[i] >= ht->esz) {
-            enlarge_hash_table(ht);
-            e  = ht->ev[0]; /* reset e if enlarging */
-        }
-        mpz_set_si(prod_den, 1);
-
-        for (j = off; j < off+lens[i]; ++j) {
-            mpz_mul(prod_den, prod_den, *(cfs[2*j+1]));
-        }
-
-        hm  = (hm_t *)malloc(((unsigned long)lens[i]+OFFSET) * sizeof(hm_t));
-        cf  = (mpz_t *)malloc((unsigned long)(lens[i]) * sizeof(mpz_t));
-
-        bs->hm[i-start]     = hm;
-        bs->cf_qq[i-start]  = cf;
-
-        for (j = 0; j < lens[i]; ++j) {
-          mpz_init(cf[j]);
-        }
-        hm[COEFFS]  = i-start; /* link to matcf entry */
-        hm[PRELOOP] = (lens[i] % UNROLL); /* offset */
-        hm[LENGTH]  = lens[i]; /* length */
-
-        bs->red[i-start] = 0;
-
-        for (j = off; j < off+lens[i]; ++j) {
-            set_exponent_vector(e, exps, j, ht, st);
-            hm[j-off+OFFSET] = insert_in_hash_table(e, ht);
-            mpz_divexact(mul, prod_den, *(cfs[2*j+1]));
-            mpz_mul(cf[j-off], mul, *(cfs[2*j]));
-        }
-        /* mark initial generators, they have to be added to the basis first */
-        off +=  lens[i];
-        /* sort terms in polynomial w.r.t. given monomial order */
-        sort_terms_qq(&cf, &hm, ht);
-    }
-    /* set total degree of input polynomials */
-    deg_t deg = 0;
-    if (st->nev) {
-        for (i = 0; i < stop-start; ++i) {
-            hm  = bs->hm[i];
-            deg = ht->hd[hm[OFFSET]].deg;
-            k   = hm[LENGTH] + OFFSET;
-            for (j = OFFSET+1; j < k; ++j) {
-                if (deg < ht->hd[hm[j]].deg) {
-                    deg = ht->hd[hm[j]].deg;
-                    st->homogeneous = 1;
-                }
-            }
-            bs->hm[i][DEG]  = deg;
-        }
-    } else {
-        for (i = 0; i < stop-start; ++i) {
-            hm  = bs->hm[i];
-            bs->hm[i][DEG]  = ht->hd[hm[OFFSET]].deg;
-        }
-    }
-    mpz_clears(prod_den, mul, NULL);
 }
 
 /* return zero generator if all input generators are invalid */
@@ -1137,7 +887,6 @@ int validate_input_data(
     }
 
     *nr_gensp   -=  ctr;
-    printf("ngens %d ] %d ctr\n", *nr_gensp, ctr);
     /* recheck number of generators, if the input was only (0) then
      * no more generators are left over. */
     if (*nr_gensp < 1) {

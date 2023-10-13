@@ -63,7 +63,11 @@ bs_t *core_nf(
     double ct = cputime();
     double rt = realtime();
 
-    ht_t *bht = tbr->ht;
+    ht_t *bht = bs->ht;
+
+    /* reset to exact linear algebra for normal form computation */
+    md->laopt = 2;
+    set_function_pointers(md);
 
     /* matrix holding sparse information generated
      * during symbolic preprocessing */
@@ -72,6 +76,7 @@ bs_t *core_nf(
     md->hcm = (hi_t *)malloc(sizeof(hi_t));
     md->ht  = initialize_secondary_hash_table(bht, md);
 
+    md->nf = 1;
     select_tbr(tbr, mul, 0, mat, md, md->ht, bht, NULL);
 
     symbolic_preprocessing(mat, bs, md);
@@ -82,7 +87,7 @@ bs_t *core_nf(
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
 
     /* linear algebra, depending on choice, see set_function_pointers() */
-    exact_sparse_linear_algebra_nf_ff_32(mat, tbr, bs, md);
+    linear_algebra(mat, tbr, bs, md);
     /* columns indices are mapped back to exponent hashes */
     return_normal_forms_to_basis(
             mat, tbr, bht, md->ht, md->hcm, md);
@@ -91,12 +96,9 @@ bs_t *core_nf(
      * so we do not need the rows anymore */
     clear_matrix(mat);
 
-    if (md->info_level > 1) {
-        printf("%13.2f | %-13.2f\n",
-                realtime() - rt, cputime() - ct);
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_timings(stdout, md, rt, ct);
+    print_round_information_footer(stdout, md);
+
     /* free and clean up */
     free(md->hcm);
     if (md->ht != NULL) {

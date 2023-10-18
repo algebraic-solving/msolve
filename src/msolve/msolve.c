@@ -4072,7 +4072,7 @@ int real_msolve_qq(mpz_param_t mp_param,
   double ct1 = cputime();
   double rt1 = realtime();
 
-  if(info_level){
+  if(info_level && print_gb == 0){
     fprintf(stderr, "Time for rational param: %13.2f (elapsed) sec / %5.2f sec (cpu)\n\n",
             rt1 - rt0, ct1 - ct0);
   }

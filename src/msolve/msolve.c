@@ -3296,20 +3296,44 @@ void display_real_point(FILE *fstream, real_point_t pt){
   for(long i = 0; i < pt->nvars - 1; i++){
     fprintf(fstream, "[");
     mpz_out_str(fstream, 10, pt->coords[i]->val_do);
-    fprintf(fstream, " / ");
-    fprintf(fstream, "2^%ld, ", pt->coords[i]->k_do);
+    if(pt->coords[i]->k_do && mpz_sgn(pt->coords[i]->val_do)){
+      fprintf(fstream, " / ");
+      fprintf(fstream, "2");
+      if(pt->coords[i]->k_do> 1){
+        fprintf(fstream, "^%ld", pt->coords[i]->k_do);
+      }
+    }
+    fprintf(fstream, ", ");
     mpz_out_str(fstream, 10, pt->coords[i]->val_up);
-    fprintf(fstream, " / ");
-    fprintf(fstream, "2^%ld", pt->coords[i]->k_up);
+    if(pt->coords[i]->k_up && mpz_sgn(pt->coords[i]->val_up)){
+      fprintf(fstream, " / ");
+      fprintf(fstream, "2");
+      if(pt->coords[i]->k_up> 1){
+        fprintf(fstream, "^%ld", pt->coords[i]->k_up);
+      }
+    }
     fprintf(fstream, "], ");
   }
   fprintf(fstream, "[");
   mpz_out_str(fstream, 10, pt->coords[pt->nvars - 1]->val_do);
-  fprintf(fstream, " / ");
-  fprintf(fstream, "2^%ld, ", pt->coords[pt->nvars - 1]->k_do);
+  if(pt->coords[pt->nvars - 1]->k_do && mpz_sgn(pt->coords[pt->nvars - 1]->val_do)){
+    fprintf(fstream, " / ");
+    fprintf(fstream, "2");
+    if(pt->coords[pt->nvars - 1]->k_do> 1){
+      fprintf(fstream, "^%ld", pt->coords[pt->nvars - 1]->k_do);
+    }
+  }
+  fprintf(fstream, ", ");
+
   mpz_out_str(fstream, 10, pt->coords[pt->nvars - 1]->val_up);
-  fprintf(fstream, " / ");
-  fprintf(fstream, "2^%ld", pt->coords[pt->nvars - 1]->k_up);
+  if(pt->coords[pt->nvars - 1]->k_up && mpz_sgn(pt->coords[pt->nvars - 1]->val_up)){
+    fprintf(fstream, " / ");
+    fprintf(fstream, "2");
+    if(pt->coords[pt->nvars - 1]->k_up> 1){
+      fprintf(fstream, "^%ld", pt->coords[pt->nvars - 1]->k_up);
+    }
+  }
+
   fprintf(fstream, "]");
   fprintf(fstream, "]");
 
@@ -4102,8 +4126,9 @@ int real_msolve_qq(mpz_param_t mp_param,
       }
       /* If we changed the variable order for genericity reasons we have
        * to rechange the entries in the solution points. */
-
-      if (gens->change_var_order != -1 &&
+      /* This is to be done only when the parametrization is not requested */
+      if (get_param == 0 &&
+          gens->change_var_order != -1 &&
           gens->change_var_order != mp_param->nvars-1) {
         coord_t *tmp = malloc(sizeof(coord_t));
         const int32_t nvars = gens->nvars;

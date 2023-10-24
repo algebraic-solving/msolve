@@ -515,6 +515,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
     idx = bs->lmps[i];
     if (bs->hm[idx] == NULL) {
       fprintf(stderr, " poly is 0\n");
+      free(evi);
       exit(1);
     } else {
       hm  = bs->hm[idx]+OFFSET;
@@ -645,7 +646,6 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
       }
       leadmons[0] = bexp_lm2;
     }
-
     /************************************************/
     /************************************************/
 
@@ -1208,7 +1208,6 @@ int msolve_gbtrace_qq(
     msd->lp->p[0] = gens->field_char;
     primeinit = gens->field_char;
   }
-  prime = next_prime(1<<30);
 
   int success = 1;
 
@@ -1222,8 +1221,10 @@ int msolve_gbtrace_qq(
   initialize_rrec_data(recdata2);
 
   data_lift_t dlift;
+
   /* indicates that dlift has been already initialized */
   int dlinit = 0;
+
   double st_crt = 0;
   double st_rrec = 0;
 
@@ -1242,6 +1243,7 @@ int msolve_gbtrace_qq(
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
+
     if(lmb_ori == NULL || print_gb == 1){
       if(dlinit){
         data_lift_clear(dlift);

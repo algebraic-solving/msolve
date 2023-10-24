@@ -144,32 +144,47 @@ static inline int32_t sum(int32_t *ind, int32_t length){
   return s;
 }
 
+/*
+  - len1 is the current dimension of the quotient
+  - len_lm is the number of polynomials in the GB
+  - basis will contain the final monomial basis
+  - new_basis
+*/
 static inline int32_t generate_new_elts_basis(int32_t nvars, int32_t *ind,
-                                              long len1, long len_lm,
-                                              int32_t *basis1, int32_t *new_basis,
+                                              len_t len1, 
+                                              int32_t *basis, int32_t *new_basis,
+                                              len_t len_lm,
                                               int32_t *bexp_lm){
-  long c = 0;
-  for(int32_t n = nvars-1; n >= 0; n--){
-    for(int32_t i = ind[nvars-1-n]; i < len1; i++){
-      for(int32_t k = 0; k < nvars; k++){
-        new_basis[c*nvars+k] = basis1[i*nvars+k];
+
+  len_t c = 0;
+  len_t def = 0;
+  for(int64_t n = nvars-1; n >= 0; n--){
+    for(len_t i = ind[nvars-1-n]; i < len1; i++){
+      for(int64_t k = 0; k < nvars; k++){
+        new_basis[c*nvars+k] = basis[i*nvars+k];
       }
       new_basis[c*nvars+n]++;
       if(!is_divisible_lexp(nvars, len_lm, (new_basis+c*nvars), bexp_lm)){
         c++;
       }
+      else{
+        def++;
+      }
     }
   }
+
   return c;
 }
 
-
+/* takes as input an exponent and an index and returns the degree of the
+   variable next to the index */
 static inline int degree_prev_var(int32_t *exp, long n){
   return(exp[n+1]);
 }
 
 static inline void update_indices(int32_t *ind, int32_t *basis,
                                   long dquot, long new_length, long nvars){
+
   ind[0] = dquot;
   for(long n = nvars - 2; n >= 0 ; n--){
     for(long i = ind[nvars-1-n-1]; i < dquot + new_length; i++){
@@ -211,8 +226,9 @@ static inline int32_t *monomial_basis(long length, long nvars,
 #endif
 
   int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
-  int32_t new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                            basis, new_basis, bexp_lm);
+  int32_t new_length = generate_new_elts_basis(nvars, ind, (*dquot),
+                                               basis, new_basis,
+                                               length, bexp_lm);
 #ifdef DEBUGHILBERT
   //  display_monomials_from_array(stderr, new_length, new_basis, gens);
   fprintf(stderr, "%ld new elements.\n", new_length);
@@ -249,8 +265,9 @@ static inline int32_t *monomial_basis(long length, long nvars,
       exit(1);
     }
     new_basis=new_basis2;
-    new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                         basis, new_basis, bexp_lm);
+    new_length = generate_new_elts_basis(nvars, ind, (*dquot),
+                                         basis, new_basis,
+                                         length, bexp_lm);
 #ifdef DEBUGHILBERT
     fprintf(stderr, "%ld new elements.\n", new_length);
 #endif
@@ -290,8 +307,9 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
 
 
   int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars)); 
-  long new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                            basis, new_basis, bexp_lm);
+  long new_length = generate_new_elts_basis(nvars, ind, (*dquot),
+                                            basis, new_basis,
+                                            length, bexp_lm);
 #ifdef DEBUGHILBERT
   display_monomials_from_array(stderr, new_length, new_basis, gens);
   fprintf(stderr, "%ld new elements.\n", new_length);
@@ -328,8 +346,9 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
       exit(1);
     }
     new_basis=new_basis2;
-    new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                         basis, new_basis, bexp_lm);
+    new_length = generate_new_elts_basis(nvars, ind, (*dquot),
+                                         basis, new_basis,
+                                         length, bexp_lm);
 #ifdef DEBUGHILBERT
     fprintf(stderr, "%ld new elements.\n", new_length);
 #endif
@@ -368,8 +387,9 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
 #endif
 
   int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars)); 
-  long new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                            basis, new_basis, bexp_lm);
+  long new_length = generate_new_elts_basis(nvars, ind, (*dquot),
+                                            basis, new_basis,
+                                            length, bexp_lm);
 #ifdef DEBUGHILBERT
   display_monomials_from_array(stderr, new_length, new_basis, gens);
   fprintf(stderr, "%ld new elements.\n", new_length);
@@ -406,8 +426,9 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
       exit(1);
     }
     new_basis=new_basis2;
-    new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                         basis, new_basis, bexp_lm);
+    new_length = generate_new_elts_basis(nvars, ind, (*dquot),
+                                         basis, new_basis,
+                                         length, bexp_lm);
 #ifdef DEBUGHILBERT
     fprintf(stderr, "%ld new elements.\n", new_length);
 #endif
@@ -1195,22 +1216,26 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
 
   int32_t deg = 0;
 
-  if(is_divisible_lexp(nvars, length, (basis), bexp_lm)){
+  if(is_divisible_lexp(nvars, length, basis, bexp_lm)){
     free(basis);
     return NULL;
   }
   else{
     (*dquot)++;
   }
+
   int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
   fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
+  uint64_t len_newbs = nvars * (sum(ind, nvars) + nvars);
 
-  int32_t *new_basis = malloc(sizeof(int32_t) * (nvars) * (sum(ind, nvars) + nvars));
-  int32_t new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                               basis, new_basis, bexp_lm);
+  int32_t *new_basis = malloc(sizeof(int32_t) * len_newbs);
+  /* generates monomial basis candidates of degree 1 */
+  int32_t new_length = generate_new_elts_basis(nvars, ind, (*dquot), 
+                                               basis, new_basis, length, bexp_lm);
+
   deg++;
 #ifdef DEBUGHILBERT
   //  display_monomials_from_array(stderr, new_length, new_basis, gens);
@@ -1218,14 +1243,16 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
 #endif
 
   while(new_length>0 && deg <= maxdeg){
+    uint64_t len_bs = ((*dquot) + new_length) * (nvars);
     int32_t *basis2 = realloc(basis,
-                              ((*dquot) + new_length) * (nvars) * sizeof(int32_t *));
+                              ((*dquot) + new_length) * (nvars) * sizeof(int32_t));
     if(basis2==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);
     }
 
     basis = basis2;
+
     for(long i = 0; i < new_length; i++){
       for(long k = 0; k < nvars; k++){
         (basis)[((*dquot) + i)*(nvars)+k] = (new_basis)[i*(nvars)+k];
@@ -1233,6 +1260,8 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
     }
 
     update_indices(ind, basis, *dquot, new_length, nvars);
+
+
     (*dquot) += new_length;
 
 #ifdef DEBUGHILBERT
@@ -1242,16 +1271,21 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
     fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
+    len_newbs = nvars * (sum(ind, nvars) + nvars);
+
     int32_t *new_basis2 = realloc(new_basis,
-                                  sizeof(int32_t) * (nvars) * (sum(ind, nvars) + nvars));
+                                  sizeof(int32_t) * len_newbs);
     if(new_basis==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);
     }
     new_basis=new_basis2;
-    new_length = generate_new_elts_basis(nvars, ind, (*dquot), length,
-                                         basis, new_basis, bexp_lm);
+
+    new_length = generate_new_elts_basis(nvars, ind, (*dquot),
+                                         basis, new_basis,
+                                         length, bexp_lm);
     deg++;
+
 #ifdef DEBUGHILBERT
     fprintf(stderr, "%ld new elements.\n", new_length);
 #endif

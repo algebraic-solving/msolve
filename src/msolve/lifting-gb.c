@@ -1193,8 +1193,9 @@ int msolve_gbtrace_qq(
     normalize_initial_basis(msd->bs_qq, st->gfc);
   }
 
-  uint32_t prime = next_prime(next_prime(1<<30));
-  uint32_t primeinit;
+  uint32_t prime = 0;
+  uint32_t primeinit = 0;
+  uint32_t lprime = 1303905299;
   srand(time(0));
 
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
@@ -1321,6 +1322,9 @@ int msolve_gbtrace_qq(
     learn = 0;
     while(apply){
 
+      if(prime >= lprime){
+        prime = next_prime(1<<30);
+      }
       /* generate lucky prime numbers */
       msd->lp->p[0] = next_prime(prime);
       while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){

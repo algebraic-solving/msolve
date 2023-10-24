@@ -2710,8 +2710,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   btrace[0]  = initialize_trace(bs_qq, st); */
   /* initialization of other tracers is done through duplication */
 
-  uint32_t prime = next_prime(1<<30);
-  uint32_t primeinit;
+  uint32_t prime = 0; 
+  uint32_t primeinit = 0;
+  uint32_t lprime = 1303905299;
   srand(time(0));
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   while(gens->field_char==0 && is_lucky_prime_ui(prime, bs_qq)){
@@ -3006,6 +3007,9 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     /* controls call to rational reconstruction */
     doit = ((prdone%nbdoit) == 0);
 
+    if(prime >= lprime){
+      prime = next_prime(1<<30);
+    }
     /* generate lucky prime numbers */
     prime = next_prime(prime);
     lp->p[0] = prime;

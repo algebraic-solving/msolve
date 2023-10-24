@@ -237,7 +237,11 @@ static void get_final_statistics(
     int64_t nterms = 0;
     md->size_basis = bs->lml;
     for (i = 0; i < bs->lml; ++i) {
-        nterms += bs->hm[bs->lmps[i]][LENGTH];
+        if (bs->hm[bs->lmps[i]] == NULL) {
+            nterms++;
+        } else {
+            nterms += bs->hm[bs->lmps[i]][LENGTH];
+        }
     }
     md->nterms_basis = nterms;
 

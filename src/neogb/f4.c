@@ -682,12 +682,12 @@ int64_t export_results_from_f4(
     )
 {
 
-    bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
+    bs_t *bs  = *bsp;
+    ht_t *bht = *bhtp;
     md_t *st  = *stp;
 
-    st->nterms_basis  = export_julia_data(
-        bld, blen, bexp, bcf, mallocp, bs, bht, st->fc);
+    st->nterms_basis  = export_data(
+        bld, blen, bexp, bcf, mallocp, bs, bht, st);
     st->size_basis    = *bld;
 
     return st->nterms_basis;
@@ -702,7 +702,7 @@ int64_t export_results_from_f4(
  *     first all exponents of generator 1, then all of generator 2, ...
  *
  *  RETURNs the length of the jl_basis array */
-int64_t f4_julia(
+int64_t export_f4(
         void *(*mallocp) (size_t),
         /* return values */
         int32_t *bld,   /* basis load */
@@ -757,9 +757,10 @@ int64_t f4_julia(
         exit(1);
     }
 
-    bs = core_f4(bs, md, &success, field_char);
+    int err = 0;
+    bs = core_f4(bs, md, &err, field_char);
 
-    if (!success) {
+    if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
     }
@@ -777,10 +778,6 @@ int64_t f4_julia(
 
     /* free and clean up */
     free_shared_hash_data(bht);
-    if (bht != NULL) {
-        free_hash_table(&bht);
-    }
-
     if (bs != NULL) {
         free_basis(&bs);
     }

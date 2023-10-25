@@ -3007,22 +3007,31 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     /* controls call to rational reconstruction */
     doit = ((prdone%nbdoit) == 0);
 
+    /* generate lucky prime numbers */
+    prime = next_prime(prime);
     if(prime >= lprime){
       prime = next_prime(1<<30);
     }
-    /* generate lucky prime numbers */
-    prime = next_prime(prime);
     lp->p[0] = prime;
     while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
       prime = next_prime(prime);
+      if(prime >= lprime){
+        prime = next_prime(1<<30);
+      }
       lp->p[0] = prime;
     }
 
     for(len_t i = 1; i < st->nthrds; i++){
       prime = next_prime(prime);
+      if(prime >= lprime){
+        prime = next_prime(1<<30);
+      }
       lp->p[i] = prime;
       while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
         prime = next_prime(prime);
+        if(prime >= lprime){
+          prime = next_prime(1<<30);
+        }
         lp->p[i] = prime;
       }
     }

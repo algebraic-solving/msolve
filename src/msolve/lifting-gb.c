@@ -1322,22 +1322,32 @@ int msolve_gbtrace_qq(
     learn = 0;
     while(apply){
 
+      prime = next_prime(prime);
       if(prime >= lprime){
         prime = next_prime(1<<30);
       }
       /* generate lucky prime numbers */
-      msd->lp->p[0] = next_prime(prime);
+      msd->lp->p[0] = prime;
       while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
         prime = next_prime(prime);
+        if(prime >= lprime){
+          prime = next_prime(1<<30);
+        }
         msd->lp->p[0] = prime;
       }
 
       int nthrds = 1; /* mono-threaded mult-mid comp */
       for(len_t i = 1; i < nthrds/* st->nthrds */; i++){
         prime = next_prime(prime);
+        if(prime >= lprime){
+          prime = next_prime(1<<30);
+        }
         msd->lp->p[i] = prime;
         while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
           prime = next_prime(prime);
+          if(prime >= lprime){
+            prime = next_prime(1<<30);
+          }
           msd->lp->p[i] = prime;
         }
       }

@@ -184,7 +184,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
         const uint16_t mul16 = (uint16_t)(fc - dr[i]);
         mulv  = _mm512_set1_epi16(mul16);
         const len_t len = dts[LENGTH];
-        const len_t os  = len % 16;
+        const len_t os  = len % 32;
         const hm_t * const ds  = dts + OFFSET;
         for (j = 0; j < os; ++j) {
             dr[ds[j]]  +=  mul * cfs[j];
@@ -214,7 +214,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
             dr[ds[j+21]]  = res[5];
             dr[ds[j+25]]  = res[6];
             dr[ds[j+29]]  = res[7];
-            drv   = _mm512_setr_epi64x(
+            drv   = _mm512_setr_epi64(
                 dr[ds[j+3]],
                 dr[ds[j+7]],
                 dr[ds[j+11]],

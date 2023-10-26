@@ -477,7 +477,7 @@ static void return_zero(
     }
 }
 
-static int64_t export_julia_data_ff_8(
+static int64_t export_data(
         int32_t *bload,
         int32_t **blen,
         int32_t **bexp,
@@ -485,11 +485,14 @@ static int64_t export_julia_data_ff_8(
         void *(*mallocp) (size_t),
         const bs_t * const bs,
         const ht_t * const ht,
-        const uint32_t fc
+        const md_t * const md
         )
 {
     len_t i, j, k;
     hm_t *dt;
+
+    void *cf;
+    mpz_t *tmp_cf_q;
 
     const len_t nv  = ht->nv;
     const len_t evl = ht->evl;
@@ -500,7 +503,11 @@ static int64_t export_julia_data_ff_8(
     int64_t nelts   = 0; /* # elemnts in basis */
 
     for (i = 0; i < lml; ++i) {
+        if (bs->hm[bs->lmps[i]] != NULL) {
         nterms +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
+        } else {
+            nterms++; /* allocate one term for 0 polynomial */
+        }
     }
     nelts = lml;
 
@@ -513,233 +520,60 @@ static int64_t export_julia_data_ff_8(
             (unsigned long)(nelts) * sizeof(int32_t));
     int32_t *exp  = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * (unsigned long)(nv) * sizeof(int32_t));
-    int32_t *cf   = (int32_t *)(*mallocp)(
-            (unsigned long)(nterms) * sizeof(int32_t));
-
-    /* counters for lengths, exponents and coefficients */
-    int64_t cl = 0, ce = 0, cc = 0;
-
-    for (i = 0; i < lml; ++i) {
-        const bl_t bi = bs->lmps[i];
-        len[cl] = bs->hm[bi][LENGTH];
-        for (j = 0; j < len[cl]; ++j) {
-            (cf+cc)[j] = (int32_t)bs->cf_8[bs->hm[bi][COEFFS]][j];
-        }
-        dt  = bs->hm[bi] + OFFSET;
-        for (j = 0; j < len[cl]; ++j) {
-            for (k = 1; k < ebl; ++k) {
-                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
-            }
-            for (k = ebl+1; k < evl; ++k) {
-                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
-            }
-        }
-        cc  +=  len[cl];
-        cl++;
-    }
-
-    *bload  = (int32_t)nelts;
-    *blen   = len;
-    *bexp   = exp;
-    *bcf    = (void *)cf;
-
-    return nterms;
-}
-
-static int64_t export_julia_data_ff_16(
-        int32_t *bload,
-        int32_t **blen,
-        int32_t **bexp,
-        void **bcf,
-        void *(*mallocp) (size_t),
-        const bs_t * const bs,
-        const ht_t * const ht,
-        const uint32_t fc
-        )
-{
-    len_t i, j, k;
-    hm_t *dt;
-
-    const len_t nv  = ht->nv;
-    const len_t evl = ht->evl;
-    const len_t ebl = ht->ebl;
-    const len_t lml = bs->lml;
-
-    int64_t nterms  = 0; /* # of terms in basis */
-    int64_t nelts   = 0; /* # elemnts in basis */
-
-    for (i = 0; i < lml; ++i) {
-        nterms +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
-    }
-    nelts = lml;
-
-    if (nelts > (int64_t)(pow(2, 31))) {
-        printf("Basis has more than 2^31 elements, cannot store it.\n");
-        return 0;
-    }
-
-    int32_t *len  = (int32_t *)(*mallocp)(
-            (unsigned long)(nelts) * sizeof(int32_t));
-    int32_t *exp  = (int32_t *)(*mallocp)(
-            (unsigned long)(nterms) * (unsigned long)(nv) * sizeof(int32_t));
-    int32_t *cf   = (int32_t *)(*mallocp)(
-            (unsigned long)(nterms) * sizeof(int32_t));
-
-    /* counters for lengths, exponents and coefficients */
-    int64_t cl = 0, ce = 0, cc = 0;
-
-    for (i = 0; i < lml; ++i) {
-        const bl_t bi = bs->lmps[i];
-        len[cl] = bs->hm[bi][LENGTH];
-        for (j = 0; j < len[cl]; ++j) {
-            (cf+cc)[j] = (int32_t)bs->cf_16[bs->hm[bi][COEFFS]][j];
-        }
-        dt  = bs->hm[bi] + OFFSET;
-        for (j = 0; j < len[cl]; ++j) {
-            for (k = 1; k < ebl; ++k) {
-                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
-            }
-            for (k = ebl+1; k < evl; ++k) {
-                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
-            }
-        }
-        cc  +=  len[cl];
-        cl++;
-    }
-
-    *bload  = (int32_t)nelts;
-    *blen   = len;
-    *bexp   = exp;
-    *bcf    = (void *)cf;
-
-    return nterms;
-}
-
-static int64_t export_julia_data_ff_32(
-        int32_t *bload,
-        int32_t **blen,
-        int32_t **bexp,
-        void **bcf,
-        void *(*mallocp) (size_t),
-        const bs_t * const bs,
-        const ht_t * const ht,
-        const uint32_t fc
-        )
-{
-    len_t i, j, k;
-    hm_t *dt;
-
-    const len_t nv  = ht->nv;
-    const len_t evl = ht->evl;
-    const len_t ebl = ht->ebl;
-    const len_t lml = bs->lml;
-
-    int64_t nterms  = 0; /* # of terms in basis */
-    int64_t nelts   = 0; /* # elemnts in basis */
-
-    for (i = 0; i < lml; ++i) {
-        nterms +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
-    }
-    nelts = lml;
-
-    if (nelts > (int64_t)(pow(2, 31))) {
-        printf("Basis has more than 2^31 elements, cannot store it.\n");
-        return 0;
-    }
-
-    int32_t *len  = (int32_t *)(*mallocp)(
-            (unsigned long)(nelts) * sizeof(int32_t));
-    int32_t *exp  = (int32_t *)(*mallocp)(
-            (unsigned long)(nterms) * (unsigned long)(nv) * sizeof(int32_t));
-    int32_t *cf   = (int32_t *)(*mallocp)(
-            (unsigned long)(nterms) * sizeof(int32_t));
-
-    /* counters for lengths, exponents and coefficients */
-    int64_t cl = 0, ce = 0, cc = 0, ctmp  = 0;;
-
-    for (i = 0; i < lml; ++i) {
-        const bl_t bi = bs->lmps[i];
-        len[cl] = bs->hm[bi][LENGTH];
-        /* we may need to make coefficients negative since we
-         * output int32_t but cf32_t is uint_32. */
-        for (j = 0; j < len[cl]; ++j) {
-            ctmp  = (int64_t)bs->cf_32[bs->hm[bi][COEFFS]][j];
-            ctmp  -=  (ctmp >> 31) & fc;
-            (cf+cc)[j] = (int32_t)ctmp;
-        }
-        memcpy(cf+cc, bs->cf_32[bs->hm[bi][COEFFS]],
-                (unsigned long)(len[cl]) * sizeof(cf32_t));
-
-        dt  = bs->hm[bi] + OFFSET;
-        for (j = 0; j < len[cl]; ++j) {
-            for (k = 1; k < ebl; ++k) {
-                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
-            }
-            for (k = ebl+1; k < evl; ++k) {
-                exp[ce++] = (int32_t)ht->ev[dt[j]][k];
-            }
-        }
-        cc  +=  len[cl];
-        cl++;
-    }
-
-    *bload  = (int32_t)nelts;
-    *blen   = len;
-    *bexp   = exp;
-    *bcf    = (void *)cf;
-
-    return nterms;
-}
-
-static int64_t export_julia_data_qq(
-        int32_t *bload,
-        int32_t **blen,
-        int32_t **bexp,
-        void **bcf,
-        void *(*mallocp) (size_t),
-        const bs_t * const bs,
-        const ht_t * const ht,
-        const uint32_t fc
-        )
-{
-    len_t i, j, k;
-    hm_t *dt;
-
-    const len_t nv  = ht->nv;
-    const len_t evl = ht->evl;
-    const len_t ebl = ht->ebl;
-    const len_t lml = bs->lml;
-
-    int64_t nterms  = 0; /* # of terms in basis */
-    int64_t nelts   = 0; /* # elemnts in basis */
-
-    for (i = 0; i < lml; ++i) {
-        nterms +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
-    }
-    nelts = lml;
-
-    if (nelts > (int64_t)(pow(2, 31))) {
-        printf("Basis has more than 2^31 elements, cannot store it.\n");
-        return 0;
-    }
-
-    int32_t *len  = (int32_t *)(*mallocp)(
-            (unsigned long)(nelts) * sizeof(int32_t));
-    int32_t *exp  = (int32_t *)(*mallocp)(
-            (unsigned long)(nterms) * (unsigned long)(nv) * sizeof(int32_t));
-    mpz_t *cf     = (mpz_t *)(*mallocp)(
+    if (md->ff_bits == 0) {
+        cf = (mpz_t *)(*mallocp)(
             (unsigned long)(nterms) * sizeof(mpz_t));
+    } else {
+        cf = (int32_t *)(*mallocp)(
+            (unsigned long)(nterms) * sizeof(int32_t));
+    }
 
     /* counters for lengths, exponents and coefficients */
     int64_t cl = 0, ce = 0, cc = 0;
+
     for (i = 0; i < lml; ++i) {
         const bl_t bi = bs->lmps[i];
-        len[cl] = bs->hm[bi][LENGTH];
-        mpz_t *coeffs =  bs->cf_qq[bs->hm[bi][COEFFS]];
-        for (j = 0; j < len[cl]; ++j) {
-            mpz_init_set((cf+cc)[j], coeffs[j]);
+        /* polynomial is zero */
+        if (bs->hm[bi] == NULL) {
+            if (md->ff_bits == 0) {
+                mpz_init(((mpz_t *)cf+cc)[0]);
+            } else {
+                ((int32_t *)cf+cc)[0] = (int32_t)0;
+            }
+            for (k = 1; k < evl; ++k) {
+                exp[ce++] = (int32_t)0;
+            }
+            cc += 1;
+            cl++;
+            continue;
         }
-
+        /* polynomial is nonzero */
+        len[cl] = bs->hm[bi][LENGTH];
+        switch (md->ff_bits) {
+            case 8:
+                for (j = 0; j < len[cl]; ++j) {
+                    ((int32_t *)cf+cc)[j] = (int32_t)bs->cf_8[bs->hm[bi][COEFFS]][j];
+                }
+                break;
+            case 16:
+                for (j = 0; j < len[cl]; ++j) {
+                    ((int32_t *)cf+cc)[j] = (int32_t)bs->cf_16[bs->hm[bi][COEFFS]][j];
+                }
+                break;
+            case 32:
+                for (j = 0; j < len[cl]; ++j) {
+                    ((int32_t *)cf+cc)[j] = (int32_t)bs->cf_32[bs->hm[bi][COEFFS]][j];
+                }
+                break;
+            case 0:
+                tmp_cf_q =  bs->cf_qq[bs->hm[bi][COEFFS]];
+                for (j = 0; j < len[cl]; ++j) {
+                    mpz_init_set(((mpz_t *)cf+cc)[j], tmp_cf_q[j]);
+                }
+                break;
+            default:
+                exit(1);
+        }
         dt  = bs->hm[bi] + OFFSET;
         for (j = 0; j < len[cl]; ++j) {
             for (k = 1; k < ebl; ++k) {
@@ -749,7 +583,7 @@ static int64_t export_julia_data_qq(
                 exp[ce++] = (int32_t)ht->ev[dt[j]][k];
             }
         }
-        cc  += len[cl];
+        cc  +=  len[cl];
         cl++;
     }
 
@@ -1063,7 +897,6 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_qq;
       }
       interreduce_matrix_rows = interreduce_matrix_rows_qq;
-      export_julia_data       = export_julia_data_qq;
       break;
 
     case 8:
@@ -1087,7 +920,6 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_8;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-      export_julia_data           = export_julia_data_ff_8;
       normalize_initial_basis     = normalize_initial_basis_ff_8;
       break;
 
@@ -1112,7 +944,6 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_16;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-      export_julia_data           = export_julia_data_ff_16;
       normalize_initial_basis     = normalize_initial_basis_ff_16;
       break;
 
@@ -1137,7 +968,6 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      export_julia_data           = export_julia_data_ff_32;
       normalize_initial_basis     = normalize_initial_basis_ff_32;
       sba_linear_algebra          = sba_linear_algebra_ff_32;
 
@@ -1197,7 +1027,6 @@ void set_function_pointers(
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
       interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      export_julia_data           = export_julia_data_ff_32;
       normalize_initial_basis     = normalize_initial_basis_ff_32;
 
       /* if coeffs are smaller than 17 bit we can optimize reductions */
@@ -1280,7 +1109,6 @@ static inline void reset_function_pointers(
 {
     if (prime < pow(2,8)) {
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        export_julia_data           = export_julia_data_ff_8;
         normalize_initial_basis     = normalize_initial_basis_ff_8;
         switch (laopt) {
           case 1:
@@ -1304,7 +1132,6 @@ static inline void reset_function_pointers(
     } else {
         if (prime < pow(2,16)) {
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            export_julia_data           = export_julia_data_ff_16;
             normalize_initial_basis     = normalize_initial_basis_ff_16;
             switch (laopt) {
               case 1:
@@ -1327,7 +1154,6 @@ static inline void reset_function_pointers(
             }
         } else {
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            export_julia_data           = export_julia_data_ff_32;
             normalize_initial_basis     = normalize_initial_basis_ff_32;
             switch (laopt) {
               case 1:
@@ -1388,20 +1214,17 @@ static inline void reset_trace_function_pointers(
 {
     if (prime < pow(2,8)) {
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        export_julia_data           = export_julia_data_ff_8;
         normalize_initial_basis     = normalize_initial_basis_ff_8;
         application_linear_algebra  = exact_application_sparse_linear_algebra_ff_8;
         trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_8;
     } else {
         if (prime < pow(2,16)) {
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            export_julia_data           = export_julia_data_ff_16;
             normalize_initial_basis     = normalize_initial_basis_ff_16;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_16;
             trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_16;
         } else {
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            export_julia_data           = export_julia_data_ff_32;
             normalize_initial_basis     = normalize_initial_basis_ff_32;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_32;
             trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_32;

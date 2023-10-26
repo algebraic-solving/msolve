@@ -350,6 +350,7 @@ struct md_t
     double reduce_gb_ctime;
     double tracer_ctime;
     double rht_ctime;
+    double nf_ctime;
 
     double round_rtime;
     double select_rtime;
@@ -361,6 +362,7 @@ struct md_t
     double reduce_gb_rtime;
     double tracer_rtime;
     double rht_rtime;
+    double nf_rtime;
 
     int64_t num_pairsred;
     int64_t num_gb_crit;
@@ -464,17 +466,6 @@ extern int (*hcm_cmp)(
         const void *a,
         const void *b,
         void *htp
-        );
-
-extern int64_t (*export_julia_data)(
-        int32_t *bload,
-        int32_t **blen,
-        int32_t **bexp,
-        void **bcf,
-        void *(*mallocp) (size_t),
-        const bs_t * const bs,
-        const ht_t * const ht,
-        const uint32_t fc
         );
 
 /* linear algebra routines */

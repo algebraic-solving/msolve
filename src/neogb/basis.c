@@ -69,7 +69,7 @@ static void free_basis_elements(
     free(bs->si);
     bs->si  =   NULL;
 
-    bs->ld  = bs->lo  = 0;
+    bs->ld  = bs->lo  = bs->lml = 0;
 }
 
 void free_basis(

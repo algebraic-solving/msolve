@@ -4895,11 +4895,6 @@ restart:
                     info_level);
 
             st->gfc  = gens->field_char;
-            if(info_level){
-                fprintf(stderr,
-                        "NOTE: Field characteristic is now corrected to %u\n",
-                        st->gfc);
-            }
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
                 exit(1);
@@ -4946,8 +4941,7 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
-            print_ff_nf_data(files->out_file, "a", normal_form,
-					tbr->lml, tbr, bht, st, gens, 1);
+            print_ff_nf_data(files->out_file, "a", 0, normal_form, tbr, bht, st, gens, 1);
             if (normal_form_matrix > 0) {
                 /* sht and hcm will store the union of the support
                  * of all normal forms in tbr. */

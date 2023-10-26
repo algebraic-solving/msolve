@@ -33,7 +33,7 @@ void free_f4_julia_result_data(
         const int64_t field_char
         );
 
-int64_t f4_julia(
+int64_t export_f4(
         void *(*mallocp) (size_t),
         int32_t *bld,   /* basis load */
         int32_t **blen, /* length of each poly in basis */

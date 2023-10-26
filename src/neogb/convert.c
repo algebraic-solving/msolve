@@ -566,6 +566,8 @@ static void return_normal_forms_to_basis(
     double ct = cputime();
     double rt = realtime();
 
+    free_basis_elements(bs);
+
     /* fix size of basis for entering new elements directly */
     check_enlarge_basis(bs, mat->np, st);
 

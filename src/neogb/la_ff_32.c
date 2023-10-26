@@ -374,7 +374,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
         for (j = 0; j < os; ++j) {
             dr[ds[j]]  +=  mul * cfs[j];
         }
-        for (; j < len; j += 8) {
+        for (; j < len; j += 16) {
             redv  = _mm512_loadu_si512((__m512i*)(cfs+j));
             drv   = _mm512_setr_epi64(
                 dr[ds[j+1]],

@@ -77,15 +77,18 @@ void nmod_poly_mat_degree_matrix(fmpz_mat_t dmat,
             *fmpz_mat_entry(dmat, i, j) = nmod_poly_degree(nmod_poly_mat_entry(mat, i, j));
 }
 
+#if __FLINT_VERSION < 3
 void nmod_poly_mat_truncate(nmod_poly_mat_t pmat, long len)
 {
     for (slong i = 0; i < pmat->r; i++)
         for (slong j = 0; j < pmat->c; j++)
             nmod_poly_truncate(pmat->rows[i] + j, len);
 }
+#endif
 
 
-void nmod_poly_mat_print_pretty(const nmod_poly_mat_t mat, const char * var)
+#if __FLINT_VERSION < 3
+void nmod_poly_mat_print(const nmod_poly_mat_t mat, const char * var)
 {
     slong rdim = mat->r, cdim = mat->c;
 
@@ -107,6 +110,7 @@ void nmod_poly_mat_print_pretty(const nmod_poly_mat_t mat, const char * var)
     }
     flint_printf("]\n");
 }
+#endif
 
 
 void nmod_poly_mat_degree_matrix_print_pretty(const nmod_poly_mat_t mat)

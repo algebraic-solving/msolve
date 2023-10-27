@@ -30,7 +30,8 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_one-qq.sh \
 			  test/diff/diff_radical_shape-31.sh \
 			  test/diff/diff_radical_shape-qq.sh \
-			  test/diff/diff_reals_dim0.sh \
+				test/diff/diff_reals_dim0.sh \
+				test/diff/diff_reals_dim0-swapvar.sh \
 			  test/diff/diff_bug_empty_tracer.sh \
 			  test/diff/diff_bug_2nd_prime_bad.sh \
 			  test/diff/diff_bug_68.sh \

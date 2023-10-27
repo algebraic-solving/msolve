@@ -140,10 +140,23 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
 
   fprintf(file, "[");
   if(gens->rand_linear){
+    int32_t sum = 0;
+    if(gens->field_char == 0){
+      for(int i = 0; i < param->nvars; i++){
+        sum += abs(gens->random_linear_form[i]) * param->nvars - 1;
+      }
+    }
     for(int i = 0; i < param->nvars - 1; i++){
       fprintf(file, "%d,", gens->random_linear_form[i]);
+      if(gens->field_char == 0){
+        fprintf(file, "/%d", sum);
+      }
+      fprintf(file, ",");
     }
     fprintf(file, "%d", gens->random_linear_form[param->nvars-1]);
+    if(gens->field_char == 0){
+      fprintf(file, "/%d", sum);
+    }
   }
   else{
     if (gens->linear_form_base_coef > 0) {
@@ -717,13 +730,19 @@ static int add_random_linear_form_to_input_system(
     }
     else {
       int j = 0;
+      int32_t sum = 0;
       for (i = 2*len_old; i < 2*len_new; i += 2) {
         gens->random_linear_form[j] = ((int8_t)(rand()));
 
         while(gens->random_linear_form[j] == 0){
             gens->random_linear_form[j] = ((int8_t)(rand()));
         }
-
+        if(i < 2*len_new -1){
+          sum += nvars_old * abs(gens->random_linear_form[j]);
+        }
+        else{
+          gens->random_linear_form[j] = sum;
+        }
         mpz_set_si(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
         mpz_set_ui(*(gens->mpz_cfs[i+1]), 1);
 
@@ -3173,7 +3192,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     double t = ((double)nbdoit)*ca1;
     if((t == 0) || (scrr >= 0.2*t && br == 0)){
       nbdoit=2*nbdoit;
-      lpow2 = nprimes - lpow2;
+      lpow2 = 2*nprimes - lpow2;
       doit = 0;
       if(info_level){
         fprintf(stderr, "\n<Step:%d/%.2f/%.2f>",nbdoit,scrr,t);
@@ -3189,6 +3208,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
           fprintf(stderr, "{%d}", nprimes);
         }
         clog++;
+        lpow2 = 2*lpow2;
     }
 
   }

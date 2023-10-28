@@ -11,7 +11,7 @@ You will need to have autotools installed on your system.
 
 If you are working on a distriubtion (downloaded *.tar.gz)
 ==========================================================
-1. Run `./configure` (possibly with options, see ./configure -h for more
+1. Run `./configure` (possibly with options, see ./configure -help for more
    information).
 2. Run `make` (possibly with CFLAGS and LDFLAGS adjusted).
 3. Run `make check`.

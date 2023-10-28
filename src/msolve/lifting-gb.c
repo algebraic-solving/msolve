@@ -340,6 +340,12 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
                                               gb_modpoly_t modgbs,
                                               data_gens_ff_t *gens){
   int32_t p = modgbs->ld ;
+
+  if(p==0){
+    fprintf(file, "[0]:\n");
+    return;
+  }
+
   fprintf(file, "[");
   for(int i = 0; i < p-1; i++){
     if(modgbs->modpolys[i]->len == 0){

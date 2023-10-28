@@ -63,8 +63,10 @@ void nmod_poly_mat_middle_product(nmod_poly_mat_t res,
                                   slong d,
                                   slong h);
 
+#if __FLINT_VERSION < 3
 /** Truncate `pmat` at order `len` */
 void nmod_poly_mat_truncate(nmod_poly_mat_t pmat, long len);
+#endif
 
 
 
@@ -144,8 +146,10 @@ nmod_poly_mat_set_from_mat_poly(nmod_poly_mat_t pmat,
 /*------------------------------------------------------------*/
 /*------------------------------------------------------------*/
 
+#if __FLINT_VERSION < 3
 /** Matrix pretty print to standard output */
-void nmod_poly_mat_print_pretty(const nmod_poly_mat_t mat, const char * var);
+void nmod_poly_mat_print(const nmod_poly_mat_t mat, const char * var);
+#endif
 
 
 /** Print the degree matrix, see @ref DegreeMatrix */

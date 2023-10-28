@@ -33,7 +33,7 @@
  * from `nmod_poly_mat` format and use the relevant functions for that format.
  *
  * \todo benchmark performance
- * \todo test for memory leaks
+ * \todo more tests for memory leaks
  * \todo Note: all parameters are supposed init
  *
  * \todo transpose, swap/permute rows/cols

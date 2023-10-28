@@ -721,6 +721,7 @@ int validate_input_data(
     }
 
     *nr_gensp   -=  ctr;
+
     /* recheck number of generators, if the input was only (0) then
      * no more generators are left over. */
     if (*nr_gensp < 1) {

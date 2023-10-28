@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=reals_dim0
+file=reals_dim0-swapvar
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
       -l 2 -t 1

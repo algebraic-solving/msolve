@@ -19,9 +19,6 @@
 #  * Huu Phuoc Le
 #  * Mohab Safey El Din */
 
-#WARNING: this file uses a sed command which does not work for mac users
-#Mac users should use the msolve-to-maple-file-interface-macos.mpl file
-
 FormatOutputMSolve:=proc(ll, _Z)
 local dim, deg, degquot, params, nvars, elim, den, cfs, i, varstr, linearform:
   dim:=ll[1]:
@@ -93,8 +90,9 @@ local i, fd, F2, str;
      fprintf(fd, "%a\n", F2[nops(F2)]):
    fi:
    fclose(fd):
-   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
-#   str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
+#   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\n//g' ", fname):
+   str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
+   lprint(str);
    system(str):
 end proc:
 
@@ -251,6 +249,7 @@ field_char, lsols, nl, i, gb, output, nthreads, str, elim;
    fi;
    ToMSolve(F, field_char, vars, fname1);
    str := cat(msolve_path, " -v ", verb, " -g ", gb, " -e ", elim, " -P ", param, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
+
    try
    system(str):
    read(fname2):
@@ -316,7 +315,7 @@ lsols, nl, i, j, gb, output, nthreads, str, sols, prec;
    else
      prec:= iquo(Digits/10)*128:
    fi:
-   str := cat(msolve_path, " -v ", verb, " -P ", param, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
+   str := cat(msolve_path, " -v ", verb, " -P ", param, " -p ", prec, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
    gb:=0; #Needed to avoid the user stops GB comp once a prime computation is done
    param:=0;
    try

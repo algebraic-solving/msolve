@@ -340,6 +340,12 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
                                               gb_modpoly_t modgbs,
                                               data_gens_ff_t *gens){
   int32_t p = modgbs->ld ;
+
+  if(p==0){
+    fprintf(file, "[0]:\n");
+    return;
+  }
+
   fprintf(file, "[");
   for(int i = 0; i < p-1; i++){
     if(modgbs->modpolys[i]->len == 0){
@@ -515,6 +521,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
     idx = bs->lmps[i];
     if (bs->hm[idx] == NULL) {
       fprintf(stderr, " poly is 0\n");
+      free(evi);
       exit(1);
     } else {
       hm  = bs->hm[idx]+OFFSET;
@@ -645,7 +652,6 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
       }
       leadmons[0] = bexp_lm2;
     }
-
     /************************************************/
     /************************************************/
 
@@ -1193,8 +1199,9 @@ int msolve_gbtrace_qq(
     normalize_initial_basis(msd->bs_qq, st->gfc);
   }
 
-  uint32_t prime = next_prime(1<<30);
-  uint32_t primeinit;
+  uint32_t prime = 0;
+  uint32_t primeinit = 0;
+  uint32_t lprime = 1303905299;
   srand(time(0));
 
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
@@ -1208,7 +1215,6 @@ int msolve_gbtrace_qq(
     msd->lp->p[0] = gens->field_char;
     primeinit = gens->field_char;
   }
-  prime = next_prime(1<<30);
 
   int success = 1;
 
@@ -1222,8 +1228,10 @@ int msolve_gbtrace_qq(
   initialize_rrec_data(recdata2);
 
   data_lift_t dlift;
+
   /* indicates that dlift has been already initialized */
   int dlinit = 0;
+
   double st_crt = 0;
   double st_rrec = 0;
 
@@ -1242,6 +1250,7 @@ int msolve_gbtrace_qq(
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
+
     if(lmb_ori == NULL || print_gb == 1){
       if(dlinit){
         data_lift_clear(dlift);
@@ -1313,25 +1322,38 @@ int msolve_gbtrace_qq(
     }
 
     if(info_level){
-      fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+      fprintf(stderr, "\nStarts multi-modular computations\n");
     }
 
     learn = 0;
     while(apply){
 
+      prime = next_prime(prime);
+      if(prime >= lprime){
+        prime = next_prime(1<<30);
+      }
       /* generate lucky prime numbers */
-      msd->lp->p[0] = next_prime(prime);
+      msd->lp->p[0] = prime;
       while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
         prime = next_prime(prime);
+        if(prime >= lprime){
+          prime = next_prime(1<<30);
+        }
         msd->lp->p[0] = prime;
       }
 
       int nthrds = 1; /* mono-threaded mult-mid comp */
       for(len_t i = 1; i < nthrds/* st->nthrds */; i++){
         prime = next_prime(prime);
+        if(prime >= lprime){
+          prime = next_prime(1<<30);
+        }
         msd->lp->p[i] = prime;
         while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
           prime = next_prime(prime);
+          if(prime >= lprime){
+            prime = next_prime(1<<30);
+          }
           msd->lp->p[i] = prime;
         }
       }
@@ -1439,6 +1461,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   msolve_gbtrace_qq(modgbs, gens, flags);
 
   if(flags->print_gb > 1){
+
     if(flags->files->out_file != NULL){
       FILE *ofile = fopen(flags->files->out_file, "w+");
       display_gbmodpoly_cf_qq(ofile, modgbs, gens);

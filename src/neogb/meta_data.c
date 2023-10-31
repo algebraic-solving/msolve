@@ -152,11 +152,35 @@ void print_round_information_header(
 {
     if (st->info_level > 1) {
         if (st->trace_level != APPLY_TRACER) {
+            fprintf(f, "\n");
+            fprintf(f, "Legend for f4 information\n");
+            fprintf(f, "--------------------------------------------------------\n");
+            fprintf(f, "deg       current degree of pairs selected in this round\n");
+            fprintf(f, "sel       number of pairs selected in this round\n");
+            fprintf(f, "pairs     total number of pairs in pair list\n");
+            fprintf(f, "mat       matrix dimensions (# rows x # columns)\n");
+            fprintf(f, "density   density of the matrix\n");
+            fprintf(f, "new data  # new elements for basis in this round\n");
+            fprintf(f, "          # zero reductions during linear algebra\n");
+            fprintf(f, "time(rd)  time of the current f4 round in seconds given\n");
+            fprintf(f, "          for real and cpu time\n");
+            fprintf(f, "--------------------------------------------------------\n");
             fprintf(f, "\ndeg     sel   pairs        mat          density \
            new data         time(rd) in sec (real|cpu)\n");
             fprintf(f, "-------------------------------------------------\
 -----------------------------------------------------\n");
         } else {
+            fprintf(f, "Legend for f4 information\n");
+            fprintf(f, "--------------------------------------------------------\n");
+            fprintf(f, "round     # of current tracer round\n");
+            fprintf(f, "deg       current degree of pairs selected in this round\n");
+            fprintf(f, "mat       matrix dimensions (# rows x # columns)\n");
+            fprintf(f, "density   density of the matrix\n");
+            fprintf(f, "new data  # new elements for basis in this round\n");
+            fprintf(f, "          # zero reductions during linear algebra\n");
+            fprintf(f, "time(rd)  time of the current f4 round in seconds given\n");
+            fprintf(f, "          for real and cpu time\n");
+            fprintf(f, "--------------------------------------------------------\n");
             fprintf(f, "\n    round     deg          mat          density \
            new data         time(rd) in sec (real|cpu)\n");
             fprintf(f, "-------------------------------------------------\

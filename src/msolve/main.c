@@ -68,7 +68,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "         first prime characteristic w.r.t. grevlex ordering.\n");
   fprintf(stdout, "         One element per line is printed, commata separated.\n");
   fprintf(stdout, "         0 - Nothing is printed. (default)\n");
-  fprintf(stdout, "         1 - Lead ideal is printed.\n");
+  fprintf(stdout, "         1 - Leading ideal is printed.\n");
   fprintf(stdout, "         2 - Full reduced Groebner basis is printed.\n");
   fprintf(stdout, "-c GEN   Handling genericity: If the staircase is not generic\n");
   fprintf(stdout, "         enough, msolve can automatically try to fix this\n");

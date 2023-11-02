@@ -189,7 +189,15 @@ static void print_msolve_polynomials_ff(
             fprintf(file, "%s, ", vnames[i]);
         }
         fprintf(file, "%s\n", vnames[nv-1]);
+        if (st->nev == 0) {
         fprintf(file, "monomial order:       graded reverse lexicographical\n");
+        } else {
+            if (st->nev == 1) {
+                fprintf(file, "monomial order:       eliminating first variable, blocks: graded reverse lexicographical\n");
+            } else {
+                fprintf(file, "monomial order:       eliminating first %d variables, blocks: graded reverse lexicographical\n", st->nev);
+            }
+        }
         fprintf(file, "length of basis:      %u elements sorted by increasing leading monomials\n", bs->lml);
         fprintf(file, "---\n");
     }

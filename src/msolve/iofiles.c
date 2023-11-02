@@ -178,18 +178,20 @@ static void print_msolve_polynomials_ff(
     /* state context if full basis is printed */
     if (is_nf == 0 && from == 0 && to == bs->lml) {
         if (lead_ideal_only != 0) {
-            fprintf(file, "#Lead ideal for input in characteristic ");
+            fprintf(file, "Leading ideal data\n");
         } else {
-            fprintf(file, "#Reduced Groebner basis for input in characteristic ");
+            fprintf(file, "Reduced Groebner basis data\n");
         }
-        fprintf(file, "%u\n", st->gfc);
-        fprintf(file, "#for variable order ");
+        fprintf(file, "---\n");
+        fprintf(file, "field characteristic: %u\n", st->gfc);
+        fprintf(file, "variable order:       ");
         for (i = 0; i < nv-1; ++i) {
             fprintf(file, "%s, ", vnames[i]);
         }
         fprintf(file, "%s\n", vnames[nv-1]);
-        fprintf(file, "#w.r.t. grevlex monomial ordering\n");
-        fprintf(file, "#consisting of %u elements:\n", bs->lml);
+        fprintf(file, "monomial order:       graded reverse lexicographical\n");
+        fprintf(file, "length of basis:      %u elements sorted by increasing leading monomials\n", bs->lml);
+        fprintf(file, "---\n");
     }
 
     int *evi    =   (int *)malloc((unsigned long)ht->nv * sizeof(int));

@@ -1459,11 +1459,41 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   gb_modpoly_t modgbs;
 
   msolve_gbtrace_qq(modgbs, gens, flags);
+    FILE *ofile;
+    if (flags->files->out_file != NULL) {
+        ofile = fopen(flags->files->out_file, "w+");
+    } else {
+        ofile = stdout;
+    }
+    if (flags->print_gb == 1) {
+        fprintf(ofile, "Leading ideal data\n");
+    } else {
+        if (flags->print_gb > 1) {
+            fprintf(ofile, "Reduced Groebner basis data\n");
+        }
+    }
+    fprintf(ofile, "---\n");
+    fprintf(ofile, "field characteristic: 0\n");
+    fprintf(ofile, "variable order:       ");
+    for (int i = gens->elim; i < gens->nvars-1; ++i) {
+        fprintf(ofile, "%s, ", gens->vnames[i]);
+    }
+    fprintf(ofile, "%s\n", gens->vnames[gens->nvars-1]);
+    fprintf(ofile, "monomial order:       graded reverse lexicographical\n");
+    if (modgbs->ld == 1) {
+        fprintf(ofile, "length of basis:      1 element\n");
+    } else {
+        fprintf(ofile, "length of basis:      %u elements sorted by increasing leading monomials\n", modgbs->ld);
+    }
+    fprintf(ofile, "---\n");
+    if (flags->files->out_file != NULL) {
+        fclose(ofile);
+    }
 
   if(flags->print_gb > 1){
 
     if(flags->files->out_file != NULL){
-      FILE *ofile = fopen(flags->files->out_file, "w+");
+      FILE *ofile = fopen(flags->files->out_file, "a+");
       display_gbmodpoly_cf_qq(ofile, modgbs, gens);
       fclose(ofile);
     }
@@ -1473,7 +1503,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   }
   if(flags->print_gb == 1){
     if(flags->files->out_file != NULL){
-      FILE *ofile = fopen(flags->files->out_file, "w+");
+      FILE *ofile = fopen(flags->files->out_file, "a+");
       display_lm_gbmodpoly_cf_qq(ofile, modgbs, gens);
       fclose(ofile);
     }

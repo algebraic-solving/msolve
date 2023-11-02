@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([msolve], [0.6.0], [ederc@mathematik.uni-kl.de,mohab.safey@lip6.fr])
+AC_INIT([msolve], [0.6.1], [ederc@mathematik.uni-kl.de,mohab.safey@lip6.fr])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign silent-rules subdir-objects color-tests parallel-tests])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_MACRO_DIR([m4])

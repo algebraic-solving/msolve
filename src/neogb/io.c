@@ -544,6 +544,7 @@ static int64_t export_data(
                 exp[ce++] = (int32_t)0;
             }
             cc += 1;
+            len[cl] = 1;
             cl++;
             continue;
         }

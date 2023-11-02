@@ -4999,7 +4999,7 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
-            print_ff_nf_data(files->out_file, "a", 0, normal_form, tbr, bht, st, gens, 1);
+            print_ff_nf_data(files->out_file, "a", 0, normal_form, tbr, bht, st, gens, 2);
             if (normal_form_matrix > 0) {
                 /* sht and hcm will store the union of the support
                  * of all normal forms in tbr. */

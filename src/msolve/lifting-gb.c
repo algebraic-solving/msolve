@@ -1459,7 +1459,12 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   gb_modpoly_t modgbs;
 
   msolve_gbtrace_qq(modgbs, gens, flags);
-    FILE *ofile = fopen(flags->files->out_file, "w+");
+    FILE *ofile;
+    if (flags->files->out_file != NULL) {
+        ofile = fopen(flags->files->out_file, "w+");
+    } else {
+        ofile = stdout;
+    }
     if (flags->print_gb == 1) {
         fprintf(ofile, "Leading ideal data\n");
     } else {
@@ -1475,9 +1480,15 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
     }
     fprintf(ofile, "%s\n", gens->vnames[gens->nvars-1]);
     fprintf(ofile, "monomial order:       graded reverse lexicographical\n");
-    fprintf(ofile, "length of basis:      %u elements sorted by increasing leading monomials\n", modgbs->ld);
+    if (modgbs->ld == 1) {
+        fprintf(ofile, "length of basis:      1 element\n");
+    } else {
+        fprintf(ofile, "length of basis:      %u elements sorted by increasing leading monomials\n", modgbs->ld);
+    }
     fprintf(ofile, "---\n");
-    fclose(ofile);
+    if (flags->files->out_file != NULL) {
+        fclose(ofile);
+    }
 
   if(flags->print_gb > 1){
 

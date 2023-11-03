@@ -2,7 +2,7 @@
 #---
 #field characteristic: 1073741827
 #variable order:       w, x, y, z
-m#onomial order:       graded reverse lexicographical
+#monomial order:       graded reverse lexicographical
 #length of basis:      6 elements sorted by increasing leading monomials
 #---
 [1*w^1*y^3+1073741826*x^1*z^3,

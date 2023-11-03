@@ -1,10 +1,10 @@
-Reduced Groebner basis data
----
-field characteristic: 0
-variable order:       z1, z2, z3, z4, z5, z6, z7, z8
-monomial order:       graded reverse lexicographical
-length of basis:      27 elements sorted by increasing leading monomials
----
+#Reduced Groebner basis data
+#---
+#field characteristic: 0
+#variable order:       z1, z2, z3, z4, z5, z6, z7, z8
+#monomial order:       graded reverse lexicographical
+#length of basis:      27 elements sorted by increasing leading monomials
+#---
 [z5-1, 
 64*z4*z8-1, 
 z4*z7+64*z7*z8+64*z8, 

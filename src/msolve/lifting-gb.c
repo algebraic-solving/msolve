@@ -1088,22 +1088,13 @@ long max_bit_size_gb(gb_modpoly_t modgbs){
 
 /*
 
-  - renvoie 0 si le calcul est ok.
-  => GB = [1] dim =0 dquot = 0
-  => Positive dimension dim > 0
-  => Dimension zero + calcul qui a pu etre fait. dim=0 dquot > 0
+  - returns 0 if the computation went ok 
 
-  - renvoie 1 si le calcul a echoue
-  => Dimension 0 => pas en position generique
+  - returns 1 in case of failure
 
-  - renvoie 2 si besoin de plus de genericite.
-  => (tous les carres ne sont pas sous l'escalier)
+  - returns -3 if meta data were not ok
 
-  - renvoie -2 si la carac est > 0
-
-  - renvoie -3 si meta data pas bonnes
-
-  - renvoie -4 si bad prime
+  - returns -4 if there are too many bad primes
 */
 
 int msolve_gbtrace_qq(
@@ -1166,6 +1157,7 @@ int msolve_gbtrace_qq(
                                     use_signatures, reduce_gb, prime_start,
                                     nr_threads /* nr_primes */,
                                     pbm_file, info_level)) {
+    fprintf(stderr, "Something went wrong when checking and setting meta data, msolve now terminates.\n");
     free(st);
     return -3;
   }
@@ -1187,6 +1179,7 @@ int msolve_gbtrace_qq(
   /* sort initial elements, smallest lead term first */
   sort_r(msd->bs_qq->hm, (unsigned long)msd->bs_qq->ld, sizeof(hm_t *),
           initial_input_cmp, msd->bht);
+
   if(gens->field_char == 0){
     remove_content_of_initial_basis(msd->bs_qq);
     /* generate lucky prime numbers */
@@ -1235,6 +1228,8 @@ int msolve_gbtrace_qq(
   double st_crt = 0;
   double st_rrec = 0;
 
+  uint32_t nbadprimes = 0;
+
   while(learn){
 
     int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
@@ -1250,7 +1245,7 @@ int msolve_gbtrace_qq(
                                                  gens, maxbitsize,
                                                  files,
                                                  &success);
-
+    /*lmb_ori can be NULL when gb = [1]*/
     if(lmb_ori == NULL || print_gb == 1){
       if(dlinit){
         data_lift_clear(dlift);
@@ -1307,6 +1302,8 @@ int msolve_gbtrace_qq(
       free_rrec_data(recdata2);
 
       free(st);
+      fprintf(stderr, "Something went wrong in the learning phase, msolve restarts.");
+      return -4;
 
     }
     /* duplicate data for multi-threaded multi-mod computation */
@@ -1395,8 +1392,24 @@ int msolve_gbtrace_qq(
       for(int i = 0; i < nthrds/* st->nthrds */; i++){
         if(msd->bad_primes[i] == 1){
           bad = 1;
+          nbadprimes++;
         }
       }
+
+      if(nbadprimes == nprimes){
+        fprintf(stderr, "Too many bad primes, computation will restart\n");
+        free_mstrace(msd, st);
+        if(dlinit){
+          data_lift_clear(dlift);
+        }
+
+        free_rrec_data(recdata1);
+        free_rrec_data(recdata2);
+
+        free(st);
+        return -4;
+      }
+
       int lstart = dlift->lstart;
       double ost_rrec = st_rrec;
 
@@ -1458,37 +1471,40 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
                             msflags_t flags){
   gb_modpoly_t modgbs;
 
-  msolve_gbtrace_qq(modgbs, gens, flags);
-    FILE *ofile;
-    if (flags->files->out_file != NULL) {
-        ofile = fopen(flags->files->out_file, "w+");
-    } else {
-        ofile = stdout;
+  int b = msolve_gbtrace_qq(modgbs, gens, flags);
+  while(b == -4){
+    b = msolve_gbtrace_qq(modgbs, gens, flags);
+  }
+  FILE *ofile;
+  if (flags->files->out_file != NULL) {
+    ofile = fopen(flags->files->out_file, "w+");
+  } else {
+    ofile = stdout;
+  }
+  if (flags->print_gb == 1) {
+    fprintf(ofile, "#Leading ideal data\n");
+  } else {
+    if (flags->print_gb > 1) {
+      fprintf(ofile, "#Reduced Groebner basis data\n");
     }
-    if (flags->print_gb == 1) {
-        fprintf(ofile, "#Leading ideal data\n");
-    } else {
-        if (flags->print_gb > 1) {
-            fprintf(ofile, "#Reduced Groebner basis data\n");
-        }
-    }
-    fprintf(ofile, "#---\n");
-    fprintf(ofile, "#field characteristic: 0\n");
-    fprintf(ofile, "#variable order:       ");
-    for (int i = gens->elim; i < gens->nvars-1; ++i) {
-        fprintf(ofile, "%s, ", gens->vnames[i]);
-    }
-    fprintf(ofile, "%s\n", gens->vnames[gens->nvars-1]);
-    fprintf(ofile, "#monomial order:       graded reverse lexicographical\n");
-    if (modgbs->ld == 1) {
-        fprintf(ofile, "#length of basis:      1 element\n");
-    } else {
-        fprintf(ofile, "#length of basis:      %u elements sorted by increasing leading monomials\n", modgbs->ld);
-    }
-    fprintf(ofile, "#---\n");
-    if (flags->files->out_file != NULL) {
-        fclose(ofile);
-    }
+  }
+  fprintf(ofile, "#---\n");
+  fprintf(ofile, "#field characteristic: 0\n");
+  fprintf(ofile, "#variable order:       ");
+  for (int i = gens->elim; i < gens->nvars-1; ++i) {
+    fprintf(ofile, "%s, ", gens->vnames[i]);
+  }
+  fprintf(ofile, "%s\n", gens->vnames[gens->nvars-1]);
+  fprintf(ofile, "#monomial order:       graded reverse lexicographical\n");
+  if (modgbs->ld == 1) {
+    fprintf(ofile, "#length of basis:      1 element\n");
+  } else {
+    fprintf(ofile, "#length of basis:      %u elements sorted by increasing leading monomials\n", modgbs->ld);
+  }
+  fprintf(ofile, "#---\n");
+  if (flags->files->out_file != NULL) {
+    fclose(ofile);
+  }
 
   if(flags->print_gb > 1){
 

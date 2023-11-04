@@ -147,7 +147,7 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
       }
     }
     for(int i = 0; i < param->nvars - 1; i++){
-      fprintf(file, "%d,", gens->random_linear_form[i]);
+      fprintf(file, "%d", gens->random_linear_form[i]);
       if(gens->field_char == 0){
         fprintf(file, "/%d", sum);
       }

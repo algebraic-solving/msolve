@@ -132,7 +132,14 @@ AC_CONFIG_LINKS([
  output_files/nonradical_radicalshape-qq.res:output_files/nonradical_radicalshape-qq.res
  output_files/nonradical_radicalshape-qq.p3.res:output_files/nonradical_radicalshape-qq.p3.res
  test/diff/diff_nonradical_radicalshape-qq.sh:test/diff/diff_nonradical_radicalshape-qq.sh
- input_files/one-16.ms:input_files/one-16.ms
+ input_files/nonradical_radicalshape-no-square-31.ms:input_files/nonradical_radicalshape-no-square-31.ms
+ output_files/nonradical_radicalshape-no-square-31.c0.res:output_files/nonradical_radicalshape-no-square-31.c0.res
+ test/diff/diff_nonradical_radicalshape-no-square-31.sh:test/diff/diff_nonradical_radicalshape-no-square-31.sh
+ input_files/nonradical_radicalshape-no-square-qq.ms:input_files/nonradical_radicalshape-no-square-qq.ms
+ output_files/nonradical_radicalshape-no-square-qq.res:output_files/nonradical_radicalshape-no-square-qq.res
+ output_files/nonradical_radicalshape-no-square-qq.p3.res:output_files/nonradical_radicalshape-no-square-qq.p3.res
+ test/diff/diff_nonradical_radicalshape-no-square-qq.sh:test/diff/diff_nonradical_radicalshape-no-square-qq.sh
+input_files/one-16.ms:input_files/one-16.ms
  output_files/one-16.res:output_files/one-16.res
  test/diff/diff_one-16.sh:test/diff/diff_one-16.sh
  input_files/one-31.ms:input_files/one-31.ms

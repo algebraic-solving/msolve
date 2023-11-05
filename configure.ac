@@ -17,11 +17,21 @@ AC_PROG_CC
 
 # Checks for libraries.
 # CAUTION: Order matters for static binary building.
-AC_CHECK_LIB([m], [main], , [AC_MSG_ERROR([Math library not found])])
-AC_CHECK_LIB(gmp, __gmpz_init, , [AC_MSG_ERROR([GNU MP not found, see https://gmplib.org/])])
-AC_CHECK_LIB([mpfr], [mpfr_init], , [AC_MSG_ERROR([MPFR not found])])
-AC_CHECK_LIB([flint], [fmpz_add_ui], , [AC_MSG_ERROR([FLINT not found])])
-# AC_CHECK_LIB([pthread], [posix_spawn])
+AC_SEARCH_LIBS([atan2],[m],
+    [],
+    [AC_MSG_ERROR(["The C math library was not found!"])])
+
+AC_SEARCH_LIBS([__gmpz_init],[gmp],
+    [],
+    [AC_MSG_ERROR(["GMP library was not found."])])
+
+AC_SEARCH_LIBS([mpfr_init],[mpfr],
+    [],
+    [AC_MSG_ERROR([MPFR library was not found.])])
+
+AC_SEARCH_LIBS([fmpz_add_ui],[flint],
+    [],
+    [AC_MSG_ERROR([FLINT library was not found.])])
 
 # check if we want OpenMP support
 AC_ARG_ENABLE([openmp],

@@ -3011,7 +3011,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   int nbdoit = 1;
   int doit = 1;
   int prdone = 0;
-  int lpow2 = 0;
+  int lpow2 = 1;
   int clog = 0;
   int br = 0;
 

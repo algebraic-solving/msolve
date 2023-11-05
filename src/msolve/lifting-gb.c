@@ -1303,7 +1303,7 @@ int msolve_gbtrace_qq(
 
       free(st);
       fprintf(stderr, "Something went wrong in the learning phase, msolve restarts.");
-      return -4;
+      return msolve_gbtrace_qq(modgbs, gens, flags);
 
     }
     /* duplicate data for multi-threaded multi-mod computation */
@@ -1407,7 +1407,8 @@ int msolve_gbtrace_qq(
         free_rrec_data(recdata2);
 
         free(st);
-        return -4;
+        return msolve_gbtrace_qq(modgbs, gens, flags);
+
       }
 
       int lstart = dlift->lstart;
@@ -1471,10 +1472,8 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
                             msflags_t flags){
   gb_modpoly_t modgbs;
 
-  int b = msolve_gbtrace_qq(modgbs, gens, flags);
-  while(b == -4){
-    b = msolve_gbtrace_qq(modgbs, gens, flags);
-  }
+  msolve_gbtrace_qq(modgbs, gens, flags);
+
   FILE *ofile;
   if (flags->files->out_file != NULL) {
     ofile = fopen(flags->files->out_file, "w+");

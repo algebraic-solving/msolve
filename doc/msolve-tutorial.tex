@@ -426,7 +426,7 @@ does not have finitely many complex solutions, let us consider first the example
 below.
 \msolveinput{examples/empty_char0.ms}
 Then, \msolve outputs
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/empty_char0.res
   \begin{lstlisting}[basicstyle=\normalsize\ttfamily]
 [-1]:
   \end{lstlisting}
@@ -437,7 +437,7 @@ is empty.
 If now, one considers the following example.
 \msolveinput{examples/hypersurface_char0.ms}
 Then, \msolve outputs
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/hypersurface_char0.res
   \begin{lstlisting}[basicstyle=\normalsize\ttfamily]
 [1, 3, -1, []]:
   \end{lstlisting}
@@ -457,23 +457,16 @@ For instance, consider the following input to \msolve written in a file
 \verb+in.ms+.
 \msolveinput{examples/reals_dim0.ms}
 Then, typing the following command line
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/reals_dim0.sh
   \begin{verbatim}
     ./msolve -f in.ms -o out.ms 
   \end{verbatim}
 \end{tcolorbox}
 will display in the \verb+out.ms+ file the following content. 
-% \begin{tcolorbox}
-% {\tiny\begin{lstlisting}[breaklines]
-% [0, [1,
-% [[[372241681699630716659 / 2^69, 372241681699630716692 / 2^69], [186120840849815358330 / 2^69, 186120840849815358343 / 2^69], [-77093776520277890820 / 2^69, -77093776520277890819 / 2^69]], [[18446744073709551616 / 2^64, 18446744073709551616 / 2^64], [0 / 2^64, 0 / 2^64], [0 / 2^0, 0 / 2^0]], [[71793683196126133110381699662 / 2^98, 71793683196126133110381699828 / 2^98], [35896841598063066555190849853 / 2^98, 35896841598063066555190849892 / 2^98], [86662641832402542076706200927 / 2^98, 86662641832402542076706200928 / 2^98]], [[98382635059784275201 / 2^68, 98382635059784275370 / 2^68], [-17 / 2^68, 18 / 2^68], [98382635059784275285 / 2^68, 98382635059784275286 / 2^68]]]
-% ]]:
-% \end{lstlisting}}
-% \end{tcolorbox}
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/reals_dim0.res
   \begin{lstlisting}
 [0, [1,
-[[[214582719871260630497170195321507821174 / 2^128, 214582719871260630497170195321507821176 / 2^128], [107291359935630315248585097660753910587 / 2^128, 107291359935630315248585097660753910588 / 2^128], [-1422129165145324760495452531379958894292 / 2^133, -1422129165145324760495452531379958894291 / 2^133]], [[340282366920938463463374607431768211456 / 2^128, 340282366920938463463374607431768211456 / 2^128], [0 / 2^128, 0 / 2^128], [0 / 2^0, 0 / 2^0]], [[77087880346686623900008039620007788622 / 2^128, 77087880346686623900008039620007788667 / 2^128], [38543940173343311950004019810003894316 / 2^128, 38543940173343311950004019810003894328 / 2^128], [372213212455130431326717056383505268332 / 2^130, 372213212455130431326717056383505268333 / 2^130]], [[113427455640312821154458202477256070480 / 2^128, 113427455640312821154458202477256070491 / 2^128], [-2 / 2^128, 2 / 2^128], [1814839290245005138471331239636097127765 / 2^132, 1814839290245005138471331239636097127766 / 2^132]]]
+[[[107291359935630315248585097660753910587 / 2^127, 26822839983907578812146274415188477647 / 2^125], [107291359935630315248585097660753910587 / 2^128, 26822839983907578812146274415188477647 / 2^126], [-355532291286331190123863132844989723573 / 2^131, -1422129165145324760495452531379958894291 / 2^133]], [[1, 1], [0, 0], [0, 0]], [[38543940173343311950004019810003894311 / 2^127, 77087880346686623900008039620007788667 / 2^128], [9635985043335827987501004952500973579 / 2^126, 4817992521667913993750502476250486791 / 2^125], [93053303113782607831679264095876317083 / 2^128, 372213212455130431326717056383505268333 / 2^130]], [[7089215977519551322153637654828504405 / 2^124, 113427455640312821154458202477256070491 / 2^128], [-1 / 2^127, 1 / 2^127], [1814839290245005138471331239636097127765 / 2^132, 907419645122502569235665619818048563883 / 2^131]]]
 ]]:
   \end{lstlisting}
 \end{tcolorbox}
@@ -490,27 +483,16 @@ follows:
   solution. 
 \end{itemize}
 For instance, from the above output, we deduce that the box defined by 
-% \[
-%   \left \{
-%   \begin{array}{l}
-%   \frac{372241681699630716659}{2^{69}}\leq x \leq
-%   \frac{372241681699630716692}{2^{69}}, \\
-%   \frac{186120840849815358330}{2^{69}}\leq
-%   y \leq \frac{186120840849815358343}{2^{69}}, \\
-%   \frac{-77093776520277890820}{2^{69}}
-%   \leq z \leq \frac{-77093776520277890819}{2^{69}}
-% \end{array}\right .
-% \]
 \[
   \left \{
     \begin{array}{l}
-      \frac{214582719871260630497170195321507821174}{2^{128}}
+      \frac{107291359935630315248585097660753910587}{2^{127}}
       \leq x \leq
-      \frac{214582719871260630497170195321507821176}{2^{128}}, \\
+      \frac{26822839983907578812146274415188477647}{2^{125}}, \\
       \frac{107291359935630315248585097660753910587}{2^{128}}
       \leq y \leq
-      \frac{107291359935630315248585097660753910588}{2^{128}}, \\
-      \frac{-1422129165145324760495452531379958894292}{2^{133}}
+      \frac{26822839983907578812146274415188477647}{2^{126}}, \\
+      \frac{-355532291286331190123863132844989723573}{2^{131}}
       \leq z \leq
       \frac{-1422129165145324760495452531379958894291}{2^{133}}
 \end{array}\right .
@@ -520,23 +502,16 @@ contains a single real solution to the input system.
 Sometimes, it makes sense to increase the precision. To do that, we use the
 \verb+-p+ flag, followed by an integer monitoring the used precision, as
 follows.
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/reals_dim0_prec256.sh
   \begin{verbatim}
     ./msolve -p 256 -f in.ms -o out.ms 
   \end{verbatim}
 \end{tcolorbox}
 We obtain in \verb+out.ms+ the following
-% \begin{tcolorbox}
-% {\tiny\begin{lstlisting}[breaklines]
-% [0, [1,
-% [[[6866647035880340175909446250288250277571 / 2^133, 6866647035880340175909446250288250277604 / 2^133], [3433323517940170087954723125144125138787 / 2^133, 3433323517940170087954723125144125138800 / 2^133], [-1422129165145324760495452531379958894292 / 2^133, -1422129165145324760495452531379958894291 / 2^133]], [[340282366920938463463374607431768211456 / 2^128, 340282366920938463463374607431768211456 / 2^128], [0 / 2^128, 0 / 2^128], [0 / 2^0, 0 / 2^0]], [[308351521386746495600032158480031154496 / 2^130, 308351521386746495600032158480031154662 / 2^130], [154175760693373247800016079240015577270 / 2^130, 154175760693373247800016079240015577309 / 2^130], [372213212455130431326717056383505268332 / 2^130, 372213212455130431326717056383505268333 / 2^130]], [[1814839290245005138471331239636097127681 / 2^132, 1814839290245005138471331239636097127850 / 2^132], [-17 / 2^132, 18 / 2^132], [1814839290245005138471331239636097127765 / 2^132, 1814839290245005138471331239636097127766 / 2^132]]]
-% ]]:
-% \end{lstlisting}}
-% \end{tcolorbox}
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/reals_dim0_prec256.res
   \begin{lstlisting}
 [0, [1,
-[[[73018715818125263072259336873146140024974974134201166606002351317893271212110 / 2^256, 73018715818125263072259336873146140024974974134201166606002351317893271212112 / 2^256], [36509357909062631536129668436573070012487487067100583303001175658946635606055 / 2^256, 36509357909062631536129668436573070012487487067100583303001175658946635606056 / 2^256], [-483925478382949291535163019801669955146879417644188306760753898045974604548584 / 2^261, -483925478382949291535163019801669955146879417644188306760753898045974604548583 / 2^261]], [[115792089237316195423570985008687907853269984665640564039457584007913129639936 / 2^256, 115792089237316195423570985008687907853269984665640564039457584007913129639936 / 2^256], [0 / 2^256, 0 / 2^256], [0 / 2^0, 0 / 2^0]], [[26231646385288618719372935991443495277827869864919316856389863546032268479240 / 2^256, 26231646385288618719372935991443495277827869864919316856389863546032268479285 / 2^256], [13115823192644309359686467995721747638913934932459658428194931773016134239626 / 2^256, 13115823192644309359686467995721747638913934932459658428194931773016134239637 / 2^256], [126657592933477915969650226051601834595228489871603860653355713831697185362822 / 2^258, 126657592933477915969650226051601834595228489871603860653355713831697185362823 / 2^258]], [[38597363079105398474523661669562635951089994888546854679819194669304376546640 / 2^256, 38597363079105398474523661669562635951089994888546854679819194669304376546651 / 2^256], [-2 / 2^256, 2 / 2^256], [617557809265686375592378586713002175217439918216749674877107114708870024746325 / 2^260, 617557809265686375592378586713002175217439918216749674877107114708870024746326 / 2^260]]]
+[[[36509357909062631536129668436573070012487487067100583303001175658946635606055 / 2^255, 4563669738632828942016208554571633751560935883387572912875146957368329450757 / 2^252], [36509357909062631536129668436573070012487487067100583303001175658946635606055 / 2^256, 4563669738632828942016208554571633751560935883387572912875146957368329450757 / 2^253], [-60490684797868661441895377475208744393359927205523538345094237255746825568573 / 2^258, -483925478382949291535163019801669955146879417644188306760753898045974604548583 / 2^261]], [[1, 1], [0, 0], [0, 0]], [[3278955798161077339921616998930436909728483733114914607048732943254033559905 / 2^253, 26231646385288618719372935991443495277827869864919316856389863546032268479285 / 2^256], [6557911596322154679843233997860873819456967466229829214097465886508067119813 / 2^255, 13115823192644309359686467995721747638913934932459658428194931773016134239637 / 2^256], [63328796466738957984825113025800917297614244935801930326677856915848592681411 / 2^257, 126657592933477915969650226051601834595228489871603860653355713831697185362823 / 2^258]], [[2412335192444087404657728854347664746943124680534178417488699666831523534165 / 2^252, 38597363079105398474523661669562635951089994888546854679819194669304376546651 / 2^256], [-1 / 2^255, 1 / 2^255], [617557809265686375592378586713002175217439918216749674877107114708870024746325 / 2^260, 308778904632843187796189293356501087608719959108374837438553557354435012373163 / 2^259]]]
 ]]:
   \end{lstlisting}
 \end{tcolorbox}
@@ -554,7 +529,7 @@ rational numbers or when they lie in the prime field case. For instance, assume
 the file \verb+in.ms+ contains the following:
 \msolveinput{examples/grevlex_char1073741827.ms} Now, typing the following
 command:
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/grevlex_char1073741827.sh
   \begin{verbatim}
     ./msolve -g 2 -f in.ms -o out.ms 
   \end{verbatim}
@@ -563,12 +538,15 @@ where the \verb+-g+ flag indicates that one aims at computing a Gr\"obner
 basis. The value \verb+2+ tells \msolve to compute the Gr\"obner basis for the
 \emph{grevlex order} with $z_1\succ z_2 \succ z_3 $. The computed Gr\"obner basis
 is then printed in the file \verb+out.ms+ as follows.
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/grevlex_char1073741827.res
   \begin{lstlisting}
-#Reduced Groebner basis for input in characteristic 1073741827
-#for variable order z1, z2, z3
-#w.r.t. grevlex monomial ordering
-#consisting of 6 elements:
+#Reduced Groebner basis data
+#---
+#field characteristic: 1073741827
+#variable order:       z1, z2, z3
+#monomial order:       graded reverse lexicographical
+#length of basis:      6 elements sorted by increasing leading monomials
+#---
 [1*z2^2+832149913*z1^1*z3^1+876889156*z3^2+295279002*z1^1+724775733*z2^1+143165573*z3^1,
 1*z1^1*z2^1+613566759*z2^1*z3^1+766958448*z3^2+766958448*z1^1+613566759*z3^1+153391691,
 1*z1^2+134217730*z1^1*z3^1+268435458*z3^2+671088642*z1^1+671088642*z2^1,
@@ -579,18 +557,21 @@ is then printed in the file \verb+out.ms+ as follows.
 \end{tcolorbox}
 When one is interested only in the leading monomials of the Gr\"obner basis
 (which is a way smaller output), one simply uses the \verb+-g 1+ flag as follows
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/grevlex_lm_char1073741827.sh
   \begin{verbatim}
     ./msolve -g 1 -f in.ms -o out.ms 
   \end{verbatim}
 \end{tcolorbox}
 and we obtain:
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/grevlex_lm_char1073741827.res
   \begin{lstlisting}
-#Lead ideal for input in characteristic 1073741827
-#for variable order z1, z2, z3
-#w.r.t. grevlex monomial ordering
-#consisting of 6 elements:
+#Leading ideal data
+#---
+#field characteristic: 1073741827
+#variable order:       z1, z2, z3
+#monomial order:       graded reverse lexicographical
+#length of basis:      6 elements sorted by increasing leading monomials
+#---
 [z2^2,
 z1^1*z2^1,
 z1^2,
@@ -613,7 +594,7 @@ leading monomials.
 \msolve also allows you to perform Gröbner bases computations using 
 \emph{one-block elimination monomial order}
 thanks to the \verb+-e+ flag. The following command 
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/elim_char1073741827.sh
   \begin{verbatim}
     ./msolve -e 1 -g 2 -f in.ms -o out.ms
   \end{verbatim}
@@ -625,10 +606,13 @@ variable.
 The output is
 \begin{tcolorbox}
   \begin{lstlisting}
-#Reduced Groebner basis for input in characteristic 1073741827
-#for variable order t, w, x, y, z
-#w.r.t. grevlex monomial ordering
-#consisting of 7 elements:
+#Reduced Groebner basis data
+#---
+#field characteristic: 1073741827
+#variable order:       t, w, x, y, z
+#monomial order:       eliminating first variable, blocks: graded reverse lexicographical
+#length of basis:      7 elements sorted by increasing leading monomials
+#---
 [1*w^1*y^3+1073741826*x^1*z^3,
 1*x^4,
 1*w^1*x^3,
@@ -646,14 +630,28 @@ have partial degree $0$ in the variables to eliminate.
 
 More generally, using \verb+-e k+ will eliminate the $k$ first
 variables. Thus
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/elim2_char1073741827.sh
   \begin{verbatim}
     ./msolve -e 2 -g 2 -f in.ms -o out.ms
   \end{verbatim}
 \end{tcolorbox}
 will eliminate $t$ and $w$, yielding
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/elim2_char1073741827.res
   \begin{lstlisting}
+#Reduced Groebner basis data
+#---
+#field characteristic: 1073741827
+#variable order:       t, w, x, y, z
+#monomial order:       eliminating first 2 variables, blocks: graded reverse lexicographical
+#length of basis:      7 elements sorted by increasing leading monomials
+#---
+[1*x^4,
+1*w^1*y^3+1073741826*x^1*z^3,
+1*w^1*x^3,
+1*t^1*z^1+1073741826,
+1*w^2*x^2,
+1*w^3*x^1,
+1*w^4]:
 #Reduced Groebner basis for input in characteristic 1073741827
 #for variable order t, w, x, y, z
 #w.r.t. grevlex monomial ordering
@@ -714,13 +712,13 @@ rational numbers (the characteristic zero case).
 For an input in the file \verb+in.ms+
 \msolveinput{examples/param_simple.ms}
 the command
-\begin{tcolorbox}
-\begin{verbatim}
+\begin{tcolorbox} % examples/param_simple.sh
+  \begin{verbatim}
 ./msolve -P 2 -f in.ms
-\end{verbatim}
+  \end{verbatim}
 \end{tcolorbox}
 \msolve outputs is
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/param_simple.res
   \begin{lstlisting}
 [0, [0, 
 3, 
@@ -790,7 +788,7 @@ where \verb+A+ is a new variable.
 We illustrate now how the output looks like on input file \verb+in.ms+
 \msolveinput{examples/param_char0.ms}
 Using \verb+./msolve -P 2 -f in.ms+ the output is 
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/param_char0.res
   \begin{lstlisting}
 [0, [0, 
 3, 
@@ -819,7 +817,7 @@ The polynomials $v_1$ and $v_2$ are respectively
 Note that we can get both the parametrization and the real roots.
 For instance, using the command 
 \verb+./msolve -P 1 -f in.ms+, one obtains
-\begin{tcolorbox}
+\begin{tcolorbox} % example/param_and__reals_char0.res
   \begin{lstlisting}
 [0, [0, 
 3, 
@@ -835,7 +833,7 @@ For instance, using the command
 [[3, [-146, -620, -3118, 314]],
 1]
 ]]]],[1,
-[[[589264465040874410081 / 2^68, 589264465040874410090 / 2^68], [-52505887472883547753 / 2^68, -52505887472883547749 / 2^68], [-63034928305251496244 / 2^68, -63034928305251496243 / 2^68]], [[-1312605070920472138202 / 2^69, -1312605070920472138192 / 2^69], [615798372420437543070 / 2^69, 615798372420437543079 / 2^69], [223768045479434234588 / 2^69, 223768045479434234589 / 2^69]]]
+[[[679375673646273705027530285330331715009 / 2^128, 339687836823136852513765142665165857505 / 2^127], [-60535166785954698124918883091179878673 / 2^128, -3783447924122168632807430193198742417 / 2^124], [-1162789190151604508343028862486419979779 / 2^132, -581394595075802254171514431243209989889 / 2^131]], [[-756665306660103909967296571629791504137 / 2^128, -756665306660103909967296571629791504135 / 2^128], [88745898258177294078528671940999802399 / 2^126, 177491796516354588157057343881999604799 / 2^127], [2063895933416661444279689618845660247455 / 2^132, 4127791866833322888559379237691320494911 / 2^133]]]
 ]]:
   \end{lstlisting}
 \end{tcolorbox}
@@ -844,7 +842,7 @@ We end this section with the same example as above but seeing the coefficients i
 \(\Z/65521\Z\).
 \msolveinput{examples/param_char65521.ms}
 The call \verb+./msolve -P 2 -f in.ms+ then outputs
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/param_char65521.res
   \begin{lstlisting}
 [0, [65521, 
 3, 
@@ -887,7 +885,7 @@ For instance, consider the following input to \msolve written in a file
 \verb+in.ms+.
 \msolveinput{examples/saturate_char1073741827.ms}
 Then, typing the following command line
-\begin{tcolorbox}
+\begin{tcolorbox} % examples/saturate_char1073741827.sh
   \begin{verbatim}
     ./msolve  -S -g 2 -f in.ms -o out.ms 
   \end{verbatim}
@@ -895,16 +893,19 @@ Then, typing the following command line
 will display in the \verb+out.ms+ file the following content. 
 \begin{tcolorbox}
   \begin{lstlisting}
-#Reduced Groebner basis for input in characteristic 1073741827
-#for variable order x, y, z, w
-#w.r.t. grevlex monomial ordering
-#consisting of 6 elements:
-[1*x^1*z^3+1073741826*y^1*w^3,
-1*y^4,
-1*x^1*y^3,
-1*x^2*y^2,
-1*x^3*y^1,
-1*x^4]:
+#Reduced Groebner basis data
+#---
+#field characteristic: 1073741827
+#variable order:       w, x, y, z
+#monomial order:       graded reverse lexicographical
+#length of basis:      6 elements sorted by increasing leading monomials
+#---
+[1*w^1*y^3+1073741826*x^1*z^3,
+1*x^4,
+1*w^1*x^3,
+1*w^2*x^2,
+1*w^3*x^1,
+1*w^4]:
   \end{lstlisting}
 \end{tcolorbox}
 

@@ -20,6 +20,7 @@
 
 #include "data.h"
 
+/* That's also enough if AVX512 is avaialable on the system */
 #ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif

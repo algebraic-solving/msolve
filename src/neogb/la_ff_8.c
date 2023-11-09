@@ -20,6 +20,11 @@
 
 #include "data.h"
 
+/* That's also enough if AVX512 is avaialable on the system */
+#ifdef HAVE_AVX2
+#include <immintrin.h>
+#endif
+
 static inline cf8_t *normalize_dense_matrix_row_ff_8(
         cf8_t *row,
         const hm_t len,
@@ -126,7 +131,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
     } else {
         rba = NULL;
     }
-#if defined HAVE_AVX512_F
+#if 0
+//#if defined HAVE_AVX512_F
+    uint32_t mone32   = (uint32_t)0xFFFFFFFF;
     uint32_t mone32   = (uint32_t)0xFFFFFFFF;
     uint16_t mone16   = (uint16_t)0xFFFF;
     uint32_t mone16h  = (uint32_t)0xFFFF0000;
@@ -137,13 +144,18 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
     int64_t res[8] __attribute__((aligned(64)));
     __m512i redv, mulv, prodh, prodl, prod, drv, resv;
 #elif defined HAVE_AVX2
+    __m256i mask1    = _mm256_set1_epi64x(0x000000000000FFFF);
+    __m256i mask2    = _mm256_set1_epi64x(0x00000000FFFF0000);
+    __m256i mask3    = _mm256_set1_epi64x(0x0000FFFF00000000);
+    __m256i mask4    = _mm256_set1_epi64x(0xFFFF000000000000);
+
     uint32_t mone32   = (uint32_t)0xFFFFFFFF;
     uint16_t mone16   = (uint16_t)0xFFFF;
     uint32_t mone16h  = (uint32_t)0xFFFF0000;
     __m256i mask32    = _mm256_set1_epi64x(mone32);
+    __m256i mask8     = _mm256_set1_epi16(0x00FF);
     __m256i mask16    = _mm256_set1_epi32(mone16);
     __m256i mask16h   = _mm256_set1_epi32(mone16h);
-
     int64_t res[4] __attribute__((aligned(32)));
     __m256i redv, mulv, prodh, prodl, prod, drv, resv;
 #endif
@@ -175,7 +187,8 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
         } else {
             cfs   = mcf[dts[COEFFS]];
         }
-#if defined HAVE_AVX512_FLALALA
+#if 0
+//#if defined HAVE_AVX512_F
         const uint16_t mul16 = (uint16_t)(fc - dr[i]);
         mulv  = _mm512_set1_epi16(mul16);
         const len_t len = dts[LENGTH];
@@ -270,8 +283,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
             dr[ds[j+30]]  = res[7];
         }
 #elif defined HAVE_AVX2
-        const uint8_t mul8 = (uint8_t)(fc - dr[i]);
-        mulv  = _mm256_set1_epi8(mul8);
+        int8_t res8[32];
+        const uint16_t mul8 = (uint16_t)(fc - dr[i]);
+        mulv  = _mm256_set1_epi16(mul8);
         const len_t len = dts[LENGTH];
         const len_t os  = len % 32;
         const hm_t * const ds  = dts + OFFSET;
@@ -281,107 +295,109 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
         for (; j < len; j += 32) {
             redv  = _mm256_loadu_si256((__m256i*)(cfs+j));
             /* first 16 mult-adds -- lower */
-            prodh = _mm256_mulhi_epu16(mulv, _mm256_srli_epi16(redv, 8));
-            prodl = _mm256_mullo_epi16(mulv, _mm256_srli_epi16(redv, 8));
-            prod  = _mm256_xor_si256(
-                _mm256_and_si256(prodh, mask16h), _mm256_srli_epi32(prodl, 16));
+            prod = _mm256_mullo_epi16(mulv,_mm256_and_si256(redv, mask8));
+            _mm256_store_si256((__m256i*)(res8),_mm256_and_si256(redv, mask8));
+            /* for (int kk = 0; kk  < 32; ++kk) {
+                printf("res8[%d] = %d -- %d\n", kk, res8[kk], cfs[j+kk]);
+            } */
+            drv   = _mm256_setr_epi64x(
+                dr[ds[j]],
+                dr[ds[j+8]],
+                dr[ds[j+16]],
+                dr[ds[j+24]]);
+            resv  = _mm256_add_epi64(drv, _mm256_and_si256(prod, mask1));
+            _mm256_store_si256((__m256i*)(res),resv);
+            dr[ds[j]]    = res[0];
+            dr[ds[j+8]]  = res[1];
+            dr[ds[j+16]] = res[2];
+            dr[ds[j+24]] = res[3];
             drv   = _mm256_setr_epi64x(
                 dr[ds[j+2]],
                 dr[ds[j+10]],
                 dr[ds[j+18]],
                 dr[ds[j+26]]);
-            resv  = _mm256_add_epi64(drv, _mm256_and_si256(prod, mask32));
+            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(_mm256_and_si256(prod, mask2), 16));
             _mm256_store_si256((__m256i*)(res),resv);
             dr[ds[j+2]]  = res[0];
             dr[ds[j+10]] = res[1];
             dr[ds[j+18]] = res[2];
             dr[ds[j+26]] = res[3];
             drv   = _mm256_setr_epi64x(
-                dr[ds[j+6]],
-                dr[ds[j+14]],
-                dr[ds[j+22]],
-                dr[ds[j+30]]);
-            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(prod, 32));
-            _mm256_store_si256((__m256i*)(res),resv);
-            dr[ds[j+6]]  = res[0];
-            dr[ds[j+14]] = res[1];
-            dr[ds[j+22]] = res[2];
-            dr[ds[j+30]] = res[3];
-            prod  = _mm256_xor_si256(
-                _mm256_slli_epi32(prodh, 16), _mm256_and_si256(prodl, mask16));
-            drv   = _mm256_setr_epi64x(
-                dr[ds[j+0]],
-                dr[ds[j+8]],
-                dr[ds[j+16]],
-                dr[ds[j+24]]);
-            resv  = _mm256_add_epi64(drv, _mm256_and_si256(prod, mask32));
-            _mm256_store_si256((__m256i*)(res),resv);
-            dr[ds[j+0]]  = res[0];
-            dr[ds[j+8]]  = res[1];
-            dr[ds[j+16]] = res[2];
-            dr[ds[j+24]] = res[3];
-            drv   = _mm256_setr_epi64x(
                 dr[ds[j+4]],
                 dr[ds[j+12]],
                 dr[ds[j+20]],
                 dr[ds[j+28]]);
-            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(prod, 32));
+            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(_mm256_and_si256(prod, mask3), 32));
             _mm256_store_si256((__m256i*)(res),resv);
             dr[ds[j+4]]  = res[0];
             dr[ds[j+12]] = res[1];
             dr[ds[j+20]] = res[2];
             dr[ds[j+28]] = res[3];
+            drv   = _mm256_setr_epi64x(
+                dr[ds[j+6]],
+                dr[ds[j+14]],
+                dr[ds[j+22]],
+                dr[ds[j+30]]);
+            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(_mm256_and_si256(prod, mask4), 48));
+            _mm256_store_si256((__m256i*)(res),resv);
+            dr[ds[j+6]]  = res[0];
+            dr[ds[j+14]] = res[1];
+            dr[ds[j+22]] = res[2];
+            dr[ds[j+30]] = res[3];
             /* second 16 mult-adds -- higher */
-            prodh = _mm256_mulhi_epu16(mulv, redv, 8);
-            prodl = _mm256_mullo_epi16(mulv, redv, 8);
-            prod  = _mm256_xor_si256(
-                _mm256_and_si256(prodh, mask16h), _mm256_srli_epi32(prodl, 16));
-            drv   = _mm256_setr_epi64x(
-                dr[ds[j+3]],
-                dr[ds[j+11]],
-                dr[ds[j+19]],
-                dr[ds[j+27]]);
-            resv  = _mm256_add_epi64(drv, _mm256_and_si256(prod, mask32));
-            _mm256_store_si256((__m256i*)(res),resv);
-            dr[ds[j+3]]  = res[0];
-            dr[ds[j+11]] = res[1];
-            dr[ds[j+19]] = res[2];
-            dr[ds[j+27]] = res[3];
-            drv   = _mm256_setr_epi64x(
-                dr[ds[j+7]],
-                dr[ds[j+15]],
-                dr[ds[j+23]],
-                dr[ds[j+31]]);
-            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(prod, 32));
-            _mm256_store_si256((__m256i*)(res),resv);
-            dr[ds[j+7]]  = res[0];
-            dr[ds[j+15]] = res[1];
-            dr[ds[j+23]] = res[2];
-            dr[ds[j+31]] = res[3];
-            prod  = _mm256_xor_si256(
-                _mm256_slli_epi32(prodh, 16), _mm256_and_si256(prodl, mask16));
+            _mm256_store_si256((__m256i*)(res8), _mm256_srli_epi16(redv, 8));
+            /* for (int kk = 0; kk  < 32; ++kk) {
+                printf("res8[%d] = %d -- %d\n", kk, res8[kk], cfs[j+kk]);
+            } */
+            prod = _mm256_mullo_epi16(mulv, _mm256_srli_epi16(redv, 8));
             drv   = _mm256_setr_epi64x(
                 dr[ds[j+1]],
                 dr[ds[j+9]],
                 dr[ds[j+17]],
                 dr[ds[j+25]]);
-            resv  = _mm256_add_epi64(drv, _mm256_and_si256(prod, mask32));
+            resv  = _mm256_add_epi64(drv, _mm256_and_si256(prod, mask1));
             _mm256_store_si256((__m256i*)(res),resv);
             dr[ds[j+1]]  = res[0];
             dr[ds[j+9]]  = res[1];
             dr[ds[j+17]] = res[2];
             dr[ds[j+25]] = res[3];
             drv   = _mm256_setr_epi64x(
+                dr[ds[j+3]],
+                dr[ds[j+11]],
+                dr[ds[j+19]],
+                dr[ds[j+27]]);
+            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(_mm256_and_si256(prod, mask2), 16));
+            _mm256_store_si256((__m256i*)(res),resv);
+            dr[ds[j+3]]  = res[0];
+            dr[ds[j+11]] = res[1];
+            dr[ds[j+19]] = res[2];
+            dr[ds[j+27]] = res[3];
+            drv   = _mm256_setr_epi64x(
                 dr[ds[j+5]],
                 dr[ds[j+13]],
                 dr[ds[j+21]],
                 dr[ds[j+29]]);
-            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(prod, 32));
+            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(_mm256_and_si256(prod, mask3), 32));
             _mm256_store_si256((__m256i*)(res),resv);
             dr[ds[j+5]]  = res[0];
             dr[ds[j+13]] = res[1];
             dr[ds[j+21]] = res[2];
             dr[ds[j+29]] = res[3];
+            drv   = _mm256_setr_epi64x(
+                dr[ds[j+7]],
+                dr[ds[j+15]],
+                dr[ds[j+23]],
+                dr[ds[j+31]]);
+            resv  = _mm256_add_epi64(drv, _mm256_srli_epi64(_mm256_and_si256(prod, mask4), 48));
+            _mm256_store_si256((__m256i*)(res),resv);
+            dr[ds[j+7]]  = res[0];
+            dr[ds[j+15]] = res[1];
+            dr[ds[j+23]] = res[2];
+            dr[ds[j+31]] = res[3];
+
+            /* for (int kk = 0; kk < 32; kk += 1) {
+                printf("dr[%d] = %ld\n", ds[j+kk], dr[ds[j+kk]]);
+            } */
         }
 #else
         const len_t os  = dts[PRELOOP];

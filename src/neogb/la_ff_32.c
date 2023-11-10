@@ -1005,7 +1005,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
             resv  = _mm512_sub_epi64(drv, prodv);
             cmpv  = _mm512_cmpgt_epi64_mask(zerov, resv);
             rresv = _mm512_mask_add_epi64(resv, cmpv, resv, mod2v);
-            //rresv = _mm512_add_epi64(resv, _mm512_and_si512(cmpv, mod2v));
             _mm512_store_si512((__m512i*)(res), rresv);
             dr[ds[j]]    = res[0];
             dr[ds[j+2]]  = res[1];

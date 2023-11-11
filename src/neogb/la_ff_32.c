@@ -20,6 +20,7 @@
 
 #include "data.h"
 
+/* That's also enough if AVX512 is avaialable on the system */
 #ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
@@ -328,8 +329,11 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
     } else {
         rba = NULL;
     }
-#ifdef HAVE_AVX2
-    int64_t res[4];
+#if defined HAVE_AVX512_F
+    int64_t res[8] __attribute__((aligned(64)));
+    __m512i redv, mulv, prodv, drv, resv;
+#elif defined HAVE_AVX2
+    int64_t res[4] __attribute__((aligned(32)));
     __m256i redv, mulv, prodv, drv, resv;
 #endif
 
@@ -361,7 +365,61 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
         } else {
             cfs   = mcf[dts[COEFFS]];
         }
-#ifdef HAVE_AVX2
+#if defined HAVE_AVX512_F
+        const len_t len = dts[LENGTH];
+        const len_t os  = len % 16;
+        const hm_t * const ds  = dts + OFFSET;
+        const uint32_t mul32 = (int32_t)(mod - dr[i]);
+        mulv  = _mm512_set1_epi32(mul32);
+        for (j = 0; j < os; ++j) {
+            dr[ds[j]]  +=  mul * cfs[j];
+        }
+        for (; j < len; j += 16) {
+            redv  = _mm512_loadu_si512((__m512i*)(cfs+j));
+            drv   = _mm512_setr_epi64(
+                dr[ds[j+1]],
+                dr[ds[j+3]],
+                dr[ds[j+5]],
+                dr[ds[j+7]],
+                dr[ds[j+9]],
+                dr[ds[j+11]],
+                dr[ds[j+13]],
+                dr[ds[j+15]]);
+            /* first four mult-adds -- lower */
+            prodv = _mm512_mul_epu32(mulv, _mm512_srli_epi64(redv, 32));
+            resv  = _mm512_add_epi64(drv, prodv);
+            _mm512_store_si512((__m512*)(res), resv);
+            dr[ds[j+1]]  = res[0];
+            dr[ds[j+3]]  = res[1];
+            dr[ds[j+5]]  = res[2];
+            dr[ds[j+7]]  = res[3];
+            dr[ds[j+9]]  = res[4];
+            dr[ds[j+11]] = res[5];
+            dr[ds[j+13]] = res[6];
+            dr[ds[j+15]] = res[7];
+            /* second four mult-adds -- higher */
+            prodv = _mm512_mul_epu32(mulv, redv);
+            drv   = _mm512_setr_epi64(
+                dr[ds[j]],
+                dr[ds[j+2]],
+                dr[ds[j+4]],
+                dr[ds[j+6]],
+                dr[ds[j+8]],
+                dr[ds[j+10]],
+                dr[ds[j+12]],
+                dr[ds[j+14]]);
+            resv  = _mm512_add_epi64(drv, prodv);
+            _mm512_store_si512((__m512i*)(res), resv);
+            dr[ds[j]]    = res[0];
+            dr[ds[j+2]]  = res[1];
+            dr[ds[j+4]]  = res[2];
+            dr[ds[j+6]]  = res[3];
+            dr[ds[j+8]]  = res[4];
+            dr[ds[j+10]] = res[5];
+            dr[ds[j+12]] = res[6];
+            dr[ds[j+14]] = res[7];
+        }
+#elif defined HAVE_AVX2
         const len_t len = dts[LENGTH];
         const len_t os  = len % 8;
         const hm_t * const ds  = dts + OFFSET;
@@ -380,7 +438,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
             /* first four mult-adds -- lower */
             prodv = _mm256_mul_epu32(mulv, _mm256_srli_epi64(redv, 32));
             resv  = _mm256_add_epi64(drv, prodv);
-            _mm256_storeu_si256((__m256i*)(res), resv);
+            _mm256_store_si256((__m256i*)(res), resv);
             dr[ds[j+1]] = res[0];
             dr[ds[j+3]] = res[1];
             dr[ds[j+5]] = res[2];
@@ -393,7 +451,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
                 dr[ds[j+4]],
                 dr[ds[j+6]]);
             resv  = _mm256_add_epi64(drv, prodv);
-            _mm256_storeu_si256((__m256i*)(res), resv);
+            _mm256_store_si256((__m256i*)(res), resv);
             dr[ds[j]]   = res[0];
             dr[ds[j+2]] = res[1];
             dr[ds[j+4]] = res[2];
@@ -857,7 +915,13 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     } else {
         rba = NULL;
     }
-#ifdef HAVE_AVX2
+#if defined HAVE_AVX512_F
+    int64_t res[8] __attribute__((aligned(64)));
+    __m512i redv, drv, mulv, prodv, resv, rresv;
+    __mmask8 cmpv;
+    __m512i zerov = _mm512_set1_epi64(0);
+    __m512i mod2v = _mm512_set1_epi64(mod2);
+#elif defined HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
     __m256i cmpv, redv, drv, mulv, prodv, resv, rresv;
     __m256i zerov= _mm256_set1_epi64x(0);
@@ -892,7 +956,66 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
         } else {
             cfs   = mcf[dts[COEFFS]];
         }
-#ifdef HAVE_AVX2
+#if defined HAVE_AVX512_F
+        const len_t len = dts[LENGTH];
+        const len_t os  = len % 16;
+        const hm_t * const ds  = dts + OFFSET;
+        const uint32_t mul32 = (int32_t)(dr[i]);
+        mulv  = _mm512_set1_epi32(mul32);
+        for (j = 0; j < os; ++j) {
+            dr[ds[j]] -= mul * cfs[j];
+            dr[ds[j]] += (dr[ds[j]] >> 63) & mod2;
+        }
+        for (; j < len; j += 16) {
+            redv  = _mm512_loadu_si512((__m512i*)(cfs+j));
+            drv   = _mm512_setr_epi64(
+                dr[ds[j+1]],
+                dr[ds[j+3]],
+                dr[ds[j+5]],
+                dr[ds[j+7]],
+                dr[ds[j+9]],
+                dr[ds[j+11]],
+                dr[ds[j+13]],
+                dr[ds[j+15]]);
+            /* first four mult-adds -- lower */
+            prodv = _mm512_mul_epu32(mulv, _mm512_srli_epi64(redv, 32));
+            resv  = _mm512_sub_epi64(drv, prodv);
+            cmpv  = _mm512_cmpgt_epi64_mask(zerov, resv);
+            rresv = _mm512_mask_add_epi64(resv, cmpv, resv, mod2v);
+            _mm512_store_si512((__m512*)(res), rresv);
+            dr[ds[j+1]]  = res[0];
+            dr[ds[j+3]]  = res[1];
+            dr[ds[j+5]]  = res[2];
+            dr[ds[j+7]]  = res[3];
+            dr[ds[j+9]]  = res[4];
+            dr[ds[j+11]] = res[5];
+            dr[ds[j+13]] = res[6];
+            dr[ds[j+15]] = res[7];
+            /* second four mult-adds -- higher */
+            prodv = _mm512_mul_epu32(mulv, redv);
+            drv   = _mm512_setr_epi64(
+                dr[ds[j]],
+                dr[ds[j+2]],
+                dr[ds[j+4]],
+                dr[ds[j+6]],
+                dr[ds[j+8]],
+                dr[ds[j+10]],
+                dr[ds[j+12]],
+                dr[ds[j+14]]);
+            resv  = _mm512_sub_epi64(drv, prodv);
+            cmpv  = _mm512_cmpgt_epi64_mask(zerov, resv);
+            rresv = _mm512_mask_add_epi64(resv, cmpv, resv, mod2v);
+            _mm512_store_si512((__m512i*)(res), rresv);
+            dr[ds[j]]    = res[0];
+            dr[ds[j+2]]  = res[1];
+            dr[ds[j+4]]  = res[2];
+            dr[ds[j+6]]  = res[3];
+            dr[ds[j+8]]  = res[4];
+            dr[ds[j+10]] = res[5];
+            dr[ds[j+12]] = res[6];
+            dr[ds[j+14]] = res[7];
+        }
+#elif defined HAVE_AVX2
         const len_t len = dts[LENGTH];
         const len_t os  = len % 8;
         const hm_t * const ds  = dts + OFFSET;

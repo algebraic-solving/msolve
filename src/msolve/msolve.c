@@ -3876,6 +3876,7 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv){
 
   for(int64_t i = 0; i < nb; i++){
     for(int32_t j = 0; j < nv; j++){
+
       int64_t b = 0;
       while(mpz_cmp_ui(pts[i]->coords[j]->val_up, 0) !=0 && mpz_divisible_2exp_p(pts[i]->coords[j]->val_up, b + 1) != 0){
         b++;
@@ -3977,6 +3978,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
   free(pos_root);
 
   normalize_points(pts, nb, param->nvars);
+
 }
 
 
@@ -4138,16 +4140,23 @@ int real_msolve_qq(mpz_param_t mp_param,
       /* If we added a linear form for genericity reasons remove do not
        * return the last (new) variable in the solutions later on */
       if (gens->linear_form_base_coef > 0) {
+        fprintf(stderr, "\nWARNING (CHANGE nb)\n");
+        display_real_points(stderr, pts, nb);
+        fprintf(stderr, "\n");
         for (long i = 0; i < nb; ++i) {
           pts[i]->nvars--;
         }
+        fprintf(stderr, "\nAND NOW\n");
+        display_real_points(stderr, pts, nb);
+        fprintf(stderr, "\n");
       }
       /* If we changed the variable order for genericity reasons we have
        * to rechange the entries in the solution points. */
       /* This is to be done only when the parametrization is not requested */
       if (get_param == 0 &&
           gens->change_var_order != -1 &&
-          gens->change_var_order != mp_param->nvars-1) {
+          gens->change_var_order != mp_param->nvars-1 &&
+          gens->linear_form_base_coef == 0) {
         coord_t *tmp = malloc(sizeof(coord_t));
         const int32_t nvars = gens->nvars;
         int32_t lidx  = gens->change_var_order;

@@ -4139,9 +4139,15 @@ int real_msolve_qq(mpz_param_t mp_param,
       /* If we added a linear form for genericity reasons remove do not
        * return the last (new) variable in the solutions later on */
       if (gens->linear_form_base_coef > 0) {
+        fprintf(stderr, "\nWARNING (CHANGE nb)\n");
+        display_real_points(stderr, pts, nb);
+        fprintf(stderr, "\n");
         for (long i = 0; i < nb; ++i) {
           pts[i]->nvars--;
         }
+        fprintf(stderr, "\nAND NOW\n");
+        display_real_points(stderr, pts, nb);
+        fprintf(stderr, "\n");
       }
       /* If we changed the variable order for genericity reasons we have
        * to rechange the entries in the solution points. */

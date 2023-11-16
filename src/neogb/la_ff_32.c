@@ -21,8 +21,10 @@
 #include "data.h"
 
 /* That's also enough if AVX512 is avaialable on the system */
-#ifdef HAVE_AVX2
+#if defined HAVE_AVX2
 #include <immintrin.h>
+#elif defined __aarch64__
+#include <arm_neon.h>
 #endif
 
 static inline cf32_t *normalize_dense_matrix_row_ff_32(
@@ -335,6 +337,8 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
 #elif defined HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
     __m256i redv, mulv, prodv, drv, resv;
+#elif defined __aarch64__
+    printf("yo\n");
 #endif
 
     k = 0;
@@ -926,6 +930,12 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     __m256i cmpv, redv, drv, mulv, prodv, resv, rresv;
     __m256i zerov= _mm256_set1_epi64x(0);
     __m256i mod2v = _mm256_set1_epi64x(mod2);
+#elif defined __aarch64__
+    const int64x2_t mod2v = vmovq_n_s64(mod2);
+    int64_t tmp[2] __attribute__((aligned(32)));
+    int32x2_t redv;
+    int64x2_t drv;
+    int64x2_t mask, resv;
 #endif
 
     k = 0;
@@ -1058,6 +1068,41 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
             dr[ds[j+4]] = res[2];
             dr[ds[j+6]] = res[3];
         }
+#elif defined __aarch64__
+        const len_t len       = dts[LENGTH];
+        const len_t os        = len % 4;
+        const hm_t * const ds = dts + OFFSET;
+        const int32_t mul32   = (int32_t)(dr[i]);
+        const int32x2_t mulv  = vmov_n_s32(mul32);
+        for (j = 0; j < os; ++j) {
+            dr[ds[j]] -=  mul * cfs[j];
+            dr[ds[j]] +=  (dr[ds[j]] >> 63) & mod2;
+        }
+        for (; j < len; j += 4) {
+            tmp[0] = dr[ds[j]];
+            tmp[1] = dr[ds[j+1]];
+            drv  = vld1q_s64(tmp);
+            redv = vld1_s32((int32_t *)(cfs)+j);
+            /* multiply and subtract */
+            resv = vmlsl_s32(drv, redv, mulv);
+            mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(tmp, resv);
+            dr[ds[j]]   = tmp[0];
+            dr[ds[j+1]] = tmp[1];
+            tmp[0] = dr[ds[j+2]];
+            tmp[1] = dr[ds[j+3]];
+            drv  = vld1q_s64(tmp);
+            redv = vld1_s32((int32_t *)(cfs)+j+2);
+            /* multiply and subtract */
+            resv = vmlsl_s32(drv, redv, mulv);
+            mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(tmp, resv);
+            dr[ds[j+2]] = tmp[0];
+            dr[ds[j+3]] = tmp[1];
+        }
+
 #else
         const len_t os  = dts[PRELOOP];
         const len_t len = dts[LENGTH];

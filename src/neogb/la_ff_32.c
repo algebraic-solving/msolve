@@ -962,7 +962,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
 #elif defined __aarch64__
     const int64x2_t mod2v = vmovq_n_s64(mod2);
     int64_t tmp[2] __attribute__((aligned(32)));
-    int32x2_t redv;
+    int32x4_t redv;
     int64x2_t drv, mask, resv;
 #endif
 
@@ -1098,7 +1098,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
         }
 #elif defined __aarch64__
         const len_t len       = dts[LENGTH];
-        const len_t os        = len % 4;
+        const len_t os        = len % 8;
         const hm_t * const ds = dts + OFFSET;
         const int32_t mul32   = (int32_t)(dr[i]);
         const int32x2_t mulv  = vmov_n_s32(mul32);
@@ -1106,13 +1106,13 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
             dr[ds[j]] -=  mul * cfs[j];
             dr[ds[j]] +=  (dr[ds[j]] >> 63) & mod2;
         }
-        for (; j < len; j += 4) {
+        for (; j < len; j += 8) {
             tmp[0] = dr[ds[j]];
             tmp[1] = dr[ds[j+1]];
             drv  = vld1q_s64(tmp);
-            redv = vld1_s32((int32_t *)(cfs)+j);
+            redv = vld1q_s32((int32_t *)(cfs)+j);
             /* multiply and subtract */
-            resv = vmlsl_s32(drv, redv, mulv);
+            resv = vmlsl_s32(drv, vget_low_s32(redv), mulv);
             mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
             resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
             vst1q_s64(tmp, resv);
@@ -1121,14 +1121,32 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
             tmp[0] = dr[ds[j+2]];
             tmp[1] = dr[ds[j+3]];
             drv  = vld1q_s64(tmp);
-            redv = vld1_s32((int32_t *)(cfs)+j+2);
-            /* multiply and subtract */
-            resv = vmlsl_s32(drv, redv, mulv);
+            resv = vmlsl_s32(drv, vget_high_s32(redv), mulv);
             mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
             resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
             vst1q_s64(tmp, resv);
             dr[ds[j+2]] = tmp[0];
             dr[ds[j+3]] = tmp[1];
+            tmp[0] = dr[ds[j+4]];
+            tmp[1] = dr[ds[j+5]];
+            drv  = vld1q_s64(tmp);
+            redv = vld1q_s32((int32_t *)(cfs)+j+4);
+            /* multiply and subtract */
+            resv = vmlsl_s32(drv, vget_low_s32(redv), mulv);
+            mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(tmp, resv);
+            dr[ds[j+4]]   = tmp[0];
+            dr[ds[j+5]] = tmp[1];
+            tmp[0] = dr[ds[j+6]];
+            tmp[1] = dr[ds[j+7]];
+            drv  = vld1q_s64(tmp);
+            resv = vmlsl_s32(drv, vget_high_s32(redv), mulv);
+            mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(tmp, resv);
+            dr[ds[j+6]] = tmp[0];
+            dr[ds[j+7]] = tmp[1];
         }
 
 #else

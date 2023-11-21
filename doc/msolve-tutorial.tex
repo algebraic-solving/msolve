@@ -767,10 +767,10 @@ where \verb+A+ is a new variable.
   it does not coincide with one of the input variables (else it is an empty list);
 
   In our example, this is a list of three rational numbers,
-  say \verb+[-119/576,-69/576,-5/576]+, 
+  say \verb+[-119/576,69/576,5/576]+, 
   indicating that the linear form used to compute the rational parametrization is 
 \begin{verbatim}
--119/576*z1-69/576*z2-5/576*A
+-119/576*z1+69/576*z2+5/576*A
 \end{verbatim}
 \item the next $1$ indicates that a single parametrization is returned next (the one encoded by \verb+[lw, lwp, param]+);
 \item \verb+lw+ is the encoding of the eliminating polynomial $w$;

@@ -75,8 +75,6 @@ static inline cf16_t *normalize_sparse_matrix_row_ff_16(
 {
     len_t i;
 
-    int64_t tmp1, tmp2, tmp3, tmp4;
-
     const uint16_t fc16  = (uint16_t)fc;
     const uint16_t inv   = mod_p_inverse_16(row[0], fc16);
 

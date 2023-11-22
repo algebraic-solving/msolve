@@ -690,7 +690,7 @@ $\K[t]$ where $t$ is a new variable such that:
 and the solution set to the input polynomials coincides with the set:
 \[
 \left \{\left (-\frac{v_1(\vartheta)}{w'(\vartheta)}, \ldots,
-  -\frac{v_n(\vartheta)}{w'(\vartheta)}\right ) \mid w(\vartheta) = 0
+  -\frac{v_n(\vartheta)}{w'(\vartheta)}\right ) \st w(\vartheta) = 0
 \right\}.
 \]
 In algebraic words, the polynomials \(w' x_i + v_i\) belong to the radical of the 
@@ -724,14 +724,14 @@ the command
 3, 
 4, 
 ['z1', 'z2', 'A'],
-[-35,-123,-5],
+[-119/576,69/576,5/576],
 [1,
-[[2, [-49, 0, 1]],
-[1, [0, 2]],
+[[4, [883600, 0, -18922, 0, 25]],
+[3, [0, -37844, 0, 100]],
 [
-[[1, [14, 0]],
+[[3, [223720, 0, -1190, 0]],
 1],
-[[1, [0, 0]],
+[[3, [129720, 0, 690, 0]],
 1]
 ]]]]]:
   \end{lstlisting}
@@ -766,10 +766,11 @@ where \verb+A+ is a new variable.
 \item \texttt{form} is the list of coefficients for the linear form $\ell$ when
   it does not coincide with one of the input variables (else it is an empty list);
 
-  In our example, this is a list of three integers, say \verb+[-35,-123,-5]+, 
+  In our example, this is a list of three rational numbers,
+  say \verb+[-119/576,69/576,5/576]+, 
   indicating that the linear form used to compute the rational parametrization is 
 \begin{verbatim}
--35*z1-123*z2-5*A
+-119/576*z1+69/576*z2+5/576*A
 \end{verbatim}
 \item the next $1$ indicates that a single parametrization is returned next (the one encoded by \verb+[lw, lwp, param]+);
 \item \verb+lw+ is the encoding of the eliminating polynomial $w$;

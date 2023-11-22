@@ -73,8 +73,8 @@ static inline void display_help(char *str){
   fprintf(stdout, "-c GEN   Handling genericity: If the staircase is not generic\n");
   fprintf(stdout, "         enough, msolve can automatically try to fix this\n");
   fprintf(stdout, "         situation via first trying a change of the order of\n");
-  fprintf(stdout, "         and finally adding a random linear form with a new\n");
-  fprintf(stdout, "         variable (smallest w.r.t. DRL)\n");
+  fprintf(stdout, "         variables and finally adding a random linear form\n");
+  fprintf(stdout, "         with a new variable (smallest w.r.t. DRL)\n");
   fprintf(stdout, "         0 - Nothing is done, msolve quits.\n");
   fprintf(stdout, "         1 - Change order of variables.\n");
   fprintf(stdout, "         2 - Change order of variables, then try adding a\n");

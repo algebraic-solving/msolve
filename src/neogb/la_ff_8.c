@@ -73,30 +73,18 @@ static inline cf8_t *normalize_sparse_matrix_row_ff_8(
 {
     len_t i;
 
-    int64_t tmp1, tmp2, tmp3, tmp4;
-
     const uint8_t fc8 = (uint8_t)fc;
     const uint8_t inv  = mod_p_inverse_8(row[0], fc8);
 
     for (i = 0; i < os; ++i) {
-        tmp1    =   ((int64_t)row[i] * inv) % fc8;
-        tmp1    +=  (tmp1 >> 63) & fc8;
-        row[i]  =   (cf8_t)tmp1;
+        row[i]    =   (cf8_t)(((uint16_t)row[i] * inv) % fc8);
     }
     /* we need to set i to os since os < 1 is possible */
     for (i = os; i < len; i += UNROLL) {
-        tmp1      =   ((int64_t)row[i] * inv) % fc8;
-        tmp2      =   ((int64_t)row[i+1] * inv) % fc8;
-        tmp3      =   ((int64_t)row[i+2] * inv) % fc8;
-        tmp4      =   ((int64_t)row[i+3] * inv) % fc8;
-        tmp1      +=  (tmp1 >> 63) & fc8;
-        tmp2      +=  (tmp2 >> 63) & fc8;
-        tmp3      +=  (tmp3 >> 63) & fc8;
-        tmp4      +=  (tmp4 >> 63) & fc8;
-        row[i]    =   (cf8_t)tmp1;
-        row[i+1]  =   (cf8_t)tmp2;
-        row[i+2]  =   (cf8_t)tmp3;
-        row[i+3]  =   (cf8_t)tmp4;
+        row[i]    =   (cf8_t)(((uint16_t)row[i] * inv) % fc8);
+        row[i+1]  =   (cf8_t)(((uint16_t)row[i+1] * inv) % fc8);
+        row[i+2]  =   (cf8_t)(((uint16_t)row[i+2] * inv) % fc8);
+        row[i+3]  =   (cf8_t)(((uint16_t)row[i+3] * inv) % fc8);
     }
     row[0]  = 1;
 

@@ -21,8 +21,10 @@
 #include "data.h"
 
 /* That's also enough if AVX512 is avaialable on the system */
-#ifdef HAVE_AVX2
+#if defined HAVE_AVX2
 #include <immintrin.h>
+#elif defined __aarch64__
+#include <arm_neon.h>
 #endif
 
 static inline cf32_t *normalize_dense_matrix_row_ff_32(
@@ -335,6 +337,10 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
 #elif defined HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
     __m256i redv, mulv, prodv, drv, resv;
+#elif defined __aarch64__
+    uint64_t tmp[2] __attribute__((aligned(32)));
+    uint32x4_t redv;
+    uint64x2_t drv, resv;
 #endif
 
     k = 0;
@@ -456,6 +462,78 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
             dr[ds[j+2]] = res[1];
             dr[ds[j+4]] = res[2];
             dr[ds[j+6]] = res[3];
+        }
+#elif defined __aarch64__
+        const len_t len       = dts[LENGTH];
+        const len_t os        = len % 16;
+        const hm_t * const ds = dts + OFFSET;
+        const cf32_t mul32   = (cf32_t)(mod - dr[i]);
+        const uint32x2_t mulv = vmov_n_u32(mul32);
+        for (j = 0; j < os; ++j) {
+            dr[ds[j]]  +=  mul * cfs[j];
+        }
+        for (; j < len; j += 16) {
+            tmp[0] = (uint64_t)dr[ds[j]];
+            tmp[1] = (uint64_t)dr[ds[j+1]];
+            drv  = vld1q_u64(tmp);
+            redv = vld1q_u32((cf32_t *)(cfs)+j);
+            resv = vmlal_u32(drv, vget_low_u32(redv), mulv);
+            vst1q_u64(tmp, resv);
+            dr[ds[j]]   = (int64_t)tmp[0];
+            dr[ds[j+1]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+2]];
+            tmp[1] = (uint64_t)dr[ds[j+3]];
+            drv  = vld1q_u64(tmp);
+            resv = vmlal_u32(drv, vget_high_u32(redv), mulv);
+            vst1q_u64(tmp, resv);
+            dr[ds[j+2]] = (int64_t)tmp[0];
+            dr[ds[j+3]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+4]];
+            tmp[1] = (uint64_t)dr[ds[j+5]];
+            drv  = vld1q_u64(tmp);
+            redv = vld1q_u32((cf32_t *)(cfs)+j+4);
+            resv = vmlal_u32(drv, vget_low_u32(redv), mulv);
+            vst1q_u64(tmp, resv);
+            dr[ds[j+4]] = (int64_t)tmp[0];
+            dr[ds[j+5]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+6]];
+            tmp[1] = (uint64_t)dr[ds[j+7]];
+            drv  = vld1q_u64(tmp);
+            resv = vmlal_u32(drv, vget_high_u32(redv), mulv);
+            vst1q_u64(tmp, resv);
+            dr[ds[j+6]] = (int64_t)tmp[0];
+            dr[ds[j+7]] = (int64_t)tmp[1];
+
+            tmp[0] = (uint64_t)dr[ds[j+8]];
+            tmp[1] = (uint64_t)dr[ds[j+9]];
+            drv  = vld1q_u64(tmp);
+            redv = vld1q_u32((cf32_t *)(cfs)+j+8);
+            resv = vmlal_u32(drv, vget_low_u32(redv), mulv);
+            vst1q_u64(tmp, resv);
+            dr[ds[j+8]] = (int64_t)tmp[0];
+            dr[ds[j+9]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+10]];
+            tmp[1] = (uint64_t)dr[ds[j+11]];
+            drv  = vld1q_u64(tmp);
+            resv = vmlal_u32(drv, vget_high_u32(redv), mulv);
+            vst1q_u64(tmp, resv);
+            dr[ds[j+10]] = (int64_t)tmp[0];
+            dr[ds[j+11]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+12]];
+            tmp[1] = (uint64_t)dr[ds[j+13]];
+            drv  = vld1q_u64(tmp);
+            redv = vld1q_u32((cf32_t *)(cfs)+j+12);
+            resv = vmlal_u32(drv, vget_low_u32(redv), mulv);
+            vst1q_u64(tmp, resv);
+            dr[ds[j+12]] = (int64_t)tmp[0];
+            dr[ds[j+13]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+14]];
+            tmp[1] = (uint64_t)dr[ds[j+15]];
+            drv  = vld1q_u64(tmp);
+            resv = vmlal_u32(drv, vget_high_u32(redv), mulv);
+            vst1q_u64(tmp, resv);
+            dr[ds[j+14]] = (int64_t)tmp[0];
+            dr[ds[j+15]] = (int64_t)tmp[1];
         }
 #else
         const len_t os  = dts[PRELOOP];
@@ -926,6 +1004,11 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     __m256i cmpv, redv, drv, mulv, prodv, resv, rresv;
     __m256i zerov= _mm256_set1_epi64x(0);
     __m256i mod2v = _mm256_set1_epi64x(mod2);
+#elif defined __aarch64__
+    const int64x2_t mod2v = vmovq_n_s64(mod2);
+    int64_t tmp[2] __attribute__((aligned(32)));
+    int32x4_t redv;
+    int64x2_t drv, mask, resv;
 #endif
 
     k = 0;
@@ -1058,6 +1141,59 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
             dr[ds[j+4]] = res[2];
             dr[ds[j+6]] = res[3];
         }
+#elif defined __aarch64__
+        const len_t len       = dts[LENGTH];
+        const len_t os        = len % 8;
+        const hm_t * const ds = dts + OFFSET;
+        const int32_t mul32   = (int32_t)(dr[i]);
+        const int32x2_t mulv  = vmov_n_s32(mul32);
+        for (j = 0; j < os; ++j) {
+            dr[ds[j]] -=  mul * cfs[j];
+            dr[ds[j]] +=  (dr[ds[j]] >> 63) & mod2;
+        }
+        for (; j < len; j += 8) {
+            tmp[0] = dr[ds[j]];
+            tmp[1] = dr[ds[j+1]];
+            drv  = vld1q_s64(tmp);
+            redv = vld1q_s32((int32_t *)(cfs)+j);
+            /* multiply and subtract */
+            resv = vmlsl_s32(drv, vget_low_s32(redv), mulv);
+            mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(tmp, resv);
+            dr[ds[j]]   = tmp[0];
+            dr[ds[j+1]] = tmp[1];
+            tmp[0] = dr[ds[j+2]];
+            tmp[1] = dr[ds[j+3]];
+            drv  = vld1q_s64(tmp);
+            resv = vmlsl_s32(drv, vget_high_s32(redv), mulv);
+            mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(tmp, resv);
+            dr[ds[j+2]] = tmp[0];
+            dr[ds[j+3]] = tmp[1];
+            tmp[0] = dr[ds[j+4]];
+            tmp[1] = dr[ds[j+5]];
+            drv  = vld1q_s64(tmp);
+            redv = vld1q_s32((int32_t *)(cfs)+j+4);
+            /* multiply and subtract */
+            resv = vmlsl_s32(drv, vget_low_s32(redv), mulv);
+            mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(tmp, resv);
+            dr[ds[j+4]] = tmp[0];
+            dr[ds[j+5]] = tmp[1];
+            tmp[0] = dr[ds[j+6]];
+            tmp[1] = dr[ds[j+7]];
+            drv  = vld1q_s64(tmp);
+            resv = vmlsl_s32(drv, vget_high_s32(redv), mulv);
+            mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(tmp, resv);
+            dr[ds[j+6]] = tmp[0];
+            dr[ds[j+7]] = tmp[1];
+        }
+
 #else
         const len_t os  = dts[PRELOOP];
         const len_t len = dts[LENGTH];

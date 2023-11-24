@@ -21,8 +21,10 @@
 #include "data.h"
 
 /* That's also enough if AVX512 is avaialable on the system */
-#ifdef HAVE_AVX2
+#if defined HAVE_AVX2
 #include <immintrin.h>
+#elif defined __aarch64__
+#include <arm_neon.h>
 #endif
 
 static inline cf16_t *normalize_dense_matrix_row_ff_16(
@@ -73,31 +75,18 @@ static inline cf16_t *normalize_sparse_matrix_row_ff_16(
 {
     len_t i;
 
-    int64_t tmp1, tmp2, tmp3, tmp4;
-
     const uint16_t fc16  = (uint16_t)fc;
     const uint16_t inv   = mod_p_inverse_16(row[0], fc16);
-    /* printf("inv %u\n", inv); */
 
     for (i = 0; i < os; ++i) {
-        tmp1    =   ((int64_t)row[i] * inv) % fc16;
-        tmp1    +=  (tmp1 >> 63) & fc16;
-        row[i]  =   (cf16_t)tmp1;
+        row[i]  = (cf16_t)(((uint32_t)row[i] * inv) % fc16);
     }
     /* we need to set i to os since os < 1 is possible */
     for (i = os; i < len; i += UNROLL) {
-        tmp1      =   ((int64_t)row[i] * inv) % fc16;
-        tmp2      =   ((int64_t)row[i+1] * inv) % fc16;
-        tmp3      =   ((int64_t)row[i+2] * inv) % fc16;
-        tmp4      =   ((int64_t)row[i+3] * inv) % fc16;
-        tmp1      +=  (tmp1 >> 63) & fc16;
-        tmp2      +=  (tmp2 >> 63) & fc16;
-        tmp3      +=  (tmp3 >> 63) & fc16;
-        tmp4      +=  (tmp4 >> 63) & fc16;
-        row[i]    =   (cf16_t)tmp1;
-        row[i+1]  =   (cf16_t)tmp2;
-        row[i+2]  =   (cf16_t)tmp3;
-        row[i+3]  =   (cf16_t)tmp4;
+        row[i]   = (cf16_t)(((uint32_t)row[i] * inv) % fc16);
+        row[i+1] = (cf16_t)(((uint32_t)row[i+1] * inv) % fc16);
+        row[i+2] = (cf16_t)(((uint32_t)row[i+2] * inv) % fc16);
+        row[i+3] = (cf16_t)(((uint32_t)row[i+3] * inv) % fc16);
     }
     row[0]  = 1;
 
@@ -152,6 +141,11 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
 
     int64_t res[4] __attribute__((aligned(32)));
     __m256i redv, mulv, prodh, prodl, prod, drv, resv;
+#elif defined __aarch64__
+    uint64_t tmp[2] __attribute__((aligned(32)));
+    uint32x4_t prodv;
+    uint16x8_t redv;
+    uint64x2_t drv, resv;
 #endif
 
     k = 0;
@@ -336,6 +330,49 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
             dr[ds[j+6]]   = res[1];
             dr[ds[j+10]]  = res[2];
             dr[ds[j+14]]  = res[3];
+        }
+#elif defined __aarch64__
+        const len_t len       = dts[LENGTH];
+        const len_t os        = len % 8;
+        const hm_t * const ds = dts + OFFSET;
+        const cf16_t mul16   = (cf16_t)(mod - dr[i]);
+        for (j = 0; j < os; ++j) {
+            dr[ds[j]]  +=  mul * cfs[j];
+        }
+        for (; j < len; j += 8) {
+            tmp[0] = (uint64_t)dr[ds[j]];
+            tmp[1] = (uint64_t)dr[ds[j+1]];
+            drv  = vld1q_u64(tmp);
+            redv = vld1q_u16((cf16_t *)(cfs)+j);
+
+            prodv = vmull_n_u16(vget_low_u16(redv), mul16);
+            resv  = vaddw_u32(drv, vget_low_u32(prodv));
+            vst1q_u64(tmp, resv);
+            dr[ds[j]]   = (int64_t)tmp[0];
+            dr[ds[j+1]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+2]];
+            tmp[1] = (uint64_t)dr[ds[j+3]];
+            drv  = vld1q_u64(tmp);
+            resv  = vaddw_u32(drv, vget_high_u32(prodv));
+            vst1q_u64(tmp, resv);
+            dr[ds[j+2]] = (int64_t)tmp[0];
+            dr[ds[j+3]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+4]];
+            tmp[1] = (uint64_t)dr[ds[j+5]];
+            drv  = vld1q_u64(tmp);
+
+            prodv = vmull_n_u16( vget_high_u16(redv), mul16);
+            resv  = vaddw_u32(drv, vget_low_u32(prodv));
+            vst1q_u64(tmp, resv);
+            dr[ds[j+4]] = (int64_t)tmp[0];
+            dr[ds[j+5]] = (int64_t)tmp[1];
+            tmp[0] = (uint64_t)dr[ds[j+6]];
+            tmp[1] = (uint64_t)dr[ds[j+7]];
+            drv  = vld1q_u64(tmp);
+            resv  = vaddw_u32(drv, vget_high_u32(prodv));
+            vst1q_u64(tmp, resv);
+            dr[ds[j+6]] = (int64_t)tmp[0];
+            dr[ds[j+7]] = (int64_t)tmp[1];
         }
 #else
         const len_t os  = dts[PRELOOP];

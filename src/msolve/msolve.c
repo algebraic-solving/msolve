@@ -3192,7 +3192,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
     double t = ((double)nbdoit)*ca1;
     if((t == 0) || (scrr >= 0.2*t && br == 0)){
       nbdoit=2*nbdoit;
-      lpow2 = 2*nprimes - lpow2 + 1;
+      lpow2 = 2*nprimes;
       doit = 0;
       if(info_level){
         fprintf(stderr, "\n<Step:%d/%.2f/%.2f>",nbdoit,scrr,t);

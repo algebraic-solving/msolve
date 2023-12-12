@@ -2637,7 +2637,9 @@ static void exact_sparse_reduced_echelon_form_ff_32(
             }
             cfs = NULL;
             do {
-                sc  = npiv[OFFSET];
+                /* If we do normal form computations the first monomial in the polynomial might not
+                be a known pivot, thus setting it to npiv[OFFSET] can lead to wrong results. */
+                sc  = st->nf == 0 ? npiv[OFFSET] : 0;
                 free(npiv);
                 free(cfs);
                 npiv  = mat->tr[i] = reduce_dense_row_by_known_pivots_sparse_ff_32(

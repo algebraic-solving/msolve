@@ -42,7 +42,8 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_input-overflow-16.sh \
 			  test/diff/diff_nf_8.sh \
 			  test/diff/diff_nf_16.sh \
-			  test/diff/diff_nf_31.sh
+			  test/diff/diff_nf_31.sh \
+			  test/diff/diff_nf_lm_bug.sh
 
 # dist_check_DATA         = test/input_files
 neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c

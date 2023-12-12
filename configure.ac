@@ -190,5 +190,8 @@ input_files/one-16.ms:input_files/one-16.ms
  input_files/nf-31.ms:input_files/nf-31.ms
  output_files/nf-31.res:output_files/nf-31.res
  test/diff/diff_nf_31.sh:test/diff/diff_nf_31.sh
+ input_files/nf-lm-bug.ms:input_files/nf-lm-bug.ms
+ output_files/nf-lm-bug.res:output_files/nf-lm-bug.res
+ test/diff/diff_nf_lm_bug.sh:test/diff/diff_nf_lm_bug.sh
 ])
 AC_OUTPUT

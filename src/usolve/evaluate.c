@@ -173,7 +173,7 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
   mpz_t s;
   mpz_init(s);
 
-  if(mpz_sgn(a) != mpz_sgn(b)){
+  if(mpz_sgn(a) != mpz_sgn(b) && mpz_sgn(a) != 0 && mpz_sgn(b) != 0){
     fprintf(stderr, "Entries of mpz_poly_eval_interval are incorrect\n");
     fprintf(stderr, "a and b should have same sign");
     mpz_out_str(stderr, 10, a);

@@ -3673,8 +3673,8 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k,
   mpz_add_ui(c, r, 1);
   /*boo = 1 if sgn(den_do) != sgn(den_up) else it is 0*/
   int boo = mpz_poly_eval_interval(denom, deg, k,
-                               r, c,
-                               tmp, den_do, den_up);
+                                   r, c,
+                                   tmp, den_do, den_up);
   if(mpz_cmp(den_do, den_up) > 0){
     fprintf(stderr, "BUG (den_do > den_up)\n");
     exit(1);
@@ -3706,6 +3706,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     return ;
   }
 
+
   long b = 16;
   long corr = 2*(ns + rt->k);
 
@@ -3715,7 +3716,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   generate_table_values_full(rt, c, ns, b,
                              corr,
                              xdo, xup);
-
   while(newvalue_denom(param->denom->coeffs,
                        param->denom->length - 1,
                        rt->numer,
@@ -3983,7 +3983,8 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 
 static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
                                               interval **real_roots_ptr, 
-                                              int32_t precision, int32_t nr_threads, int32_t info_level){
+                                              int32_t precision,
+                                              int32_t nr_threads, int32_t info_level){
   mpz_t *pol = calloc(param->elim->length, sizeof(mpz_t));
   for(long i = 0; i < param->elim->length; i++){
     mpz_init_set(pol[i], param->elim->coeffs[i]);

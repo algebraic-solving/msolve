@@ -27,6 +27,8 @@ interval *real_roots(mpz_t *, unsigned long,
 
 void display_roots_system(FILE *, interval *, unsigned long int);
 
+void display_root(FILE *, interval *);
+
 unsigned long int mpz_poly_max_bsize_coeffs(mpz_t *, unsigned long int);
 
 unsigned long int mpz_poly_min_bsize_coeffs(mpz_t *, unsigned long int);

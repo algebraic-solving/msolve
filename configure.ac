@@ -159,6 +159,10 @@ input_files/one-16.ms:input_files/one-16.ms
  output_files/reals_dim0.res:output_files/reals_dim0.res
  output_files/reals_dim0.p256.res:output_files/reals_dim0.p256.res
  test/diff/diff_reals_dim0.sh:test/diff/diff_reals_dim0.sh
+ input_files/realroot-extract.ms:input_files/realroot-extract.ms
+ output_files/realroot-extract.res:output_files/realroot-extract.res
+ output_files/realroot-extract.p256.res:output_files/realroot-extract.p256.res
+ test/diff/diff_reals_extract.sh:test/diff/diff_reals_extract.sh
  input_files/reals_dim0-swapvar.ms:input_files/reals_dim0-swapvar.ms
  output_files/reals_dim0-swapvar.res:output_files/reals_dim0-swapvar.res
  output_files/reals_dim0-swapvar.p256.res:output_files/reals_dim0-swapvar.p256.res

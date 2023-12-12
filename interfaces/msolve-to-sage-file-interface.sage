@@ -76,7 +76,7 @@ def FormatOutputMSolve(foutput):
     # dimension
     dim = R[0]
     if dim > 0:
-        return A(-1), A(1), [], []
+        return None, None, A(-1), None, None, None, None
 
     # parametrization
     nvars       = R[1][1]
@@ -96,7 +96,7 @@ def FormatOutputMSolve(foutput):
     if len(elim) > 0:
         pelim = A(elim[1])
     else:
-        return A(-2), A(1), [], [], []
+        return None, None, A(-2), None, None, None, None
 
     pden, p, c = A(1), [], []
     if qdim > 0:

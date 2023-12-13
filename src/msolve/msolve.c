@@ -3672,8 +3672,7 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k,
 
   mpz_add_ui(c, r, 1);
   /*boo = 1 if sgn(den_do) != sgn(den_up) else it is 0*/
-  int boo = mpz_poly_eval_interval(denom, deg, k,
-                                   r, c,
+  int boo = mpz_poly_eval_interval(denom, deg, k, r, c,
                                    tmp, den_do, den_up);
   if(mpz_cmp(den_do, den_up) > 0){
     fprintf(stderr, "BUG (den_do > den_up)\n");

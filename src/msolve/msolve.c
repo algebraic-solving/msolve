@@ -3191,8 +3191,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
     double t = ((double)nbdoit)*ca1;
     if((t == 0) || (scrr >= 0.2*t && br == 0)){
-      nbdoit=2*nbdoit;
-      lpow2 = 2*nprimes - lpow2;
+      nbdoit = 2*nbdoit;
+      lpow2 = 2*nprimes;
       doit = 0;
       if(info_level){
         fprintf(stderr, "\n<Step:%d/%.2f/%.2f>",nbdoit,scrr,t);
@@ -3203,7 +3203,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       prdone++;
     }
 
-    if( (LOG2(nprimes) > clog) || (nbdoit != 1 && (nprimes % lpow2 == 0) ) ){
+    if( (LOG2(nprimes) > clog) || (nbdoit != 1 && (nprimes % (lpow2+1) == 0) ) ){
         if(info_level){
           fprintf(stderr, "{%d}", nprimes);
         }
@@ -3324,7 +3324,6 @@ void real_point_clear(real_point_t pt){
 
 
 void display_real_point(FILE *fstream, real_point_t pt){
-
   fprintf(fstream, "[");
   for(long i = 0; i < pt->nvars - 1; i++){
     fprintf(fstream, "[");
@@ -3672,9 +3671,9 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k,
                    long corr, mpz_t c){
 
   mpz_add_ui(c, r, 1);
-  int boo = mpz_poly_eval_interval(denom, deg, k,
-                               r, c,
-                               tmp, den_do, den_up);
+  /*boo = 1 if sgn(den_do) != sgn(den_up) else it is 0*/
+  int boo = mpz_poly_eval_interval(denom, deg, k, r, c,
+                                   tmp, den_do, den_up);
   if(mpz_cmp(den_do, den_up) > 0){
     fprintf(stderr, "BUG (den_do > den_up)\n");
     exit(1);
@@ -3706,6 +3705,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     return ;
   }
 
+
   long b = 16;
   long corr = 2*(ns + rt->k);
 
@@ -3715,16 +3715,12 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   generate_table_values_full(rt, c, ns, b,
                              corr,
                              xdo, xup);
-
   while(newvalue_denom(param->denom->coeffs,
                        param->denom->length - 1,
                        rt->numer,
                        rt->k,
                        xdo, xup,
                        tmp, den_do, den_up, corr, s)){
-
-    /* fprintf(stderr, "==> "); mpz_out_str(stderr, 10, rt->numer); */
-    /* fprintf(stderr, " / 2^%ld\n", rt->k); */
 
     /* root is positive */
     if(mpz_sgn(rt->numer)>=0){
@@ -3775,10 +3771,9 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
       ns = param->nsols;
     }
 
-    corr *= 2;  /* *((rt->k) + prec); */
+    corr *= 2;  
     b *= 2;
-    /* generate_table_values(rt, c, ns, b, corr, */
-    /*                       xdo, xup); */
+
     generate_table_values_full(rt, c, ns, b, corr,
                                xdo, xup);
 
@@ -3794,13 +3789,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   for(long nv = 0; nv < param->nvars - 1; nv++){
 
-    /* lazy_mpz_poly_eval_interval(param->coords[nv]->coeffs, */
-    /*                             param->coords[nv]->length - 1, */
-    /*                             rt->k, */
-    /*                             xdo, xup, */
-    /*                             (rt->k)*(param->coords[nv]->length-1), corr, b, */
-    /*                             tmp, val_do, val_up); */
-
     mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                 param->coords[nv]->length - 1,
                                 rt->k,
@@ -3809,11 +3797,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     mpz_neg(val_do, val_do);
     mpz_neg(val_up, val_up);
     mpz_swap(val_up, val_do);
-
-    /* long delta = param->denom->length - param->coords[nv]->length; */
-
-    /* mpz_mul_2exp(val_do, val_do, corr * delta); */
-    /* mpz_mul_2exp(val_up, val_up, corr * delta); */
 
     long dec = prec ;
 
@@ -3891,6 +3874,7 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv){
 
   for(int64_t i = 0; i < nb; i++){
     for(int32_t j = 0; j < nv; j++){
+
       int64_t b = 0;
       while(mpz_cmp_ui(pts[i]->coords[j]->val_up, 0) !=0 && mpz_divisible_2exp_p(pts[i]->coords[j]->val_up, b + 1) != 0){
         b++;
@@ -3992,12 +3976,14 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
   free(pos_root);
 
   normalize_points(pts, nb, param->nvars);
+
 }
 
 
 static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
                                               interval **real_roots_ptr, 
-                                              int32_t precision, int32_t nr_threads, int32_t info_level){
+                                              int32_t precision,
+                                              int32_t nr_threads, int32_t info_level){
   mpz_t *pol = calloc(param->elim->length, sizeof(mpz_t));
   for(long i = 0; i < param->elim->length; i++){
     mpz_init_set(pol[i], param->elim->coeffs[i]);
@@ -4162,7 +4148,8 @@ int real_msolve_qq(mpz_param_t mp_param,
       /* This is to be done only when the parametrization is not requested */
       if (get_param == 0 &&
           gens->change_var_order != -1 &&
-          gens->change_var_order != mp_param->nvars-1) {
+          gens->change_var_order != mp_param->nvars-1 &&
+          gens->linear_form_base_coef == 0) {
         coord_t *tmp = malloc(sizeof(coord_t));
         const int32_t nvars = gens->nvars;
         int32_t lidx  = gens->change_var_order;

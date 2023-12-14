@@ -151,7 +151,7 @@ void mpz_poly_eval_2exp_naive2(mpz_t *upol,
 
 }
 
-/* EValuation over an interval using a Horner scheme */
+/* Evaluation over an interval using a Horner scheme */
 /* assumes a and b have the same sign */
 /* returns (mpz_sgn(val_do) != mpz_sgn(val_up)); */
 int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
@@ -173,6 +173,14 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
   mpz_t s;
   mpz_init(s);
 
+  if(mpz_sgn(a) != mpz_sgn(b) && mpz_sgn(a) != 0 && mpz_sgn(b) != 0){
+    fprintf(stderr, "Entries of mpz_poly_eval_interval are incorrect\n");
+    fprintf(stderr, "a and b should have same sign");
+    mpz_out_str(stderr, 10, a);
+    mpz_out_str(stderr, 10, b);
+    mpz_clear(s);
+    exit(1);
+  }
   /* a and b are non-negative */
   if(mpz_sgn(a) >= 0){
     for(long i = deg - 1; i >= 0; i--){

@@ -604,23 +604,13 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     bs_t *bs = NULL;
     /* if(gens->field_char){ */
-      int32_t err = 0;
-      bs = core_gba(bs_qq, st, &err, fc);
-      if (err) {
-        printf("Problem with F4, stopped computation.\n");
-        exit(1);
-      }
-      /*
-      free_shared_hash_data(bht);
+    int32_t err = 0;
+    bs = core_gba(bs_qq, st, &err, fc);
+    if (err) {
+      printf("Problem with F4, stopped computation.\n");
+      exit(1);
     }
-    else{
-      if(st->laopt > 40){
-        bs = modular_f4(bs_qq, bht, st, fc);
-      }
-      else{
-        bs = gba_trace_learning_phase(trace, tht, bs_qq, bht, st, fc);
-      }
-    } */
+
     rt = realtime()-ca0;
 
     if(info_level > 1){

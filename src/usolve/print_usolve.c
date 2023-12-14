@@ -60,7 +60,7 @@ static void display_left_in_file(FILE * stream, interval *root){
 }
 
 
-static void display_root(FILE *stream, interval* root){
+void display_root(FILE *stream, interval* root){
   mpz_t tmp;
 
   mpz_init(tmp);

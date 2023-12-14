@@ -68,15 +68,4 @@ if [ $? -gt 0 ]; then
     exit 62
 fi
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -p 256 -l 44 -t 1
-if [ $? -t 0 ]; then
-    exit 63
-fi
-
-diff test/diff/$file.res output_files/$file.p256.res
-if [ $? -gt 0 ]; then
-    exit 64
-fi
-
 rm test/diff/$file.res

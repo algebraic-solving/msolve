@@ -76,16 +76,16 @@ def FormatOutputMSolve(foutput):
     # dimension
     dim = R[0]
     if dim > 0:
-        return A(-1), A(1), [], []
+        return None, None, A(-1), None, None, None, None
 
     # parametrization
     nvars       = R[1][1]
     qdim        = R[1][2]
     varstr      = R[1][3]
     linearform  = R[1][4]
-    elim        = R[1][5][1]
-    den         = R[1][5][2]
-    polys       = R[1][5][3]
+    elim        = R[1][5][1][0]
+    den         = R[1][5][1][1]
+    polys       = R[1][5][1][2]
     # solutions
     intervals   = R[2][1]
 
@@ -96,7 +96,7 @@ def FormatOutputMSolve(foutput):
     if len(elim) > 0:
         pelim = A(elim[1])
     else:
-        return A(-2), A(1), [], [], []
+        return None, None, A(-2), None, None, None, None
 
     pden, p, c = A(1), [], []
     if qdim > 0:

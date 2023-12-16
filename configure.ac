@@ -167,10 +167,6 @@ input_files/one-16.ms:input_files/one-16.ms
  output_files/reals_dim0-swapvar.res:output_files/reals_dim0-swapvar.res
  output_files/reals_dim0-swapvar.p256.res:output_files/reals_dim0-swapvar.p256.res
  test/diff/diff_reals_dim0-swapvar.sh:test/diff/diff_reals_dim0-swapvar.sh
- input_files/bug-chgvar.ms:input_files/bug-chgvar.ms
- output_files/bug-chgvar.res:output_files/bug-chgvar.res
- output_files/bug-chgvar.p256.res:output_files/bug-chgvar.p256.res
- test/diff/diff_reals_dim0-chgvar.sh:test/diff/diff_reals_dim0-chgvar.sh
  input_files/bug-empty-tracer.ms:input_files/bug-empty-tracer.ms
  output_files/bug-empty-tracer.res:output_files/bug-empty-tracer.res
  test/diff/diff_bug_empty_tracer.sh:test/diff/diff_bug_empty_tracer.sh

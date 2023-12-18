@@ -137,7 +137,7 @@ static inline void free_sp_mat_fglm(sp_matfglm_t *mat){
   }
 }
 
-static inline fglm_data_t *allocate_fglm_data(long nrows, long ncols, long nvars){
+static inline fglm_data_t *allocate_fglm_data(szmat_t nrows, szmat_t ncols, szmat_t nvars){
   fglm_data_t * data = malloc(sizeof(fglm_data_t));
 
   szmat_t block_size = nvars; //taille de bloc dans data->res
@@ -147,7 +147,7 @@ static inline fglm_data_t *allocate_fglm_data(long nrows, long ncols, long nvars
     exit(1);
   }
 
-  if(posix_memalign((void **)&data->res, 32, block_size * ncols * sizeof(CF_t)*2)){
+  if(posix_memalign((void **)&data->res, 32, 2 * block_size * ncols * sizeof(CF_t))){
     fprintf(stderr, "posix_memalign failed\n");
     exit(1);
   }
@@ -161,12 +161,18 @@ static inline fglm_data_t *allocate_fglm_data(long nrows, long ncols, long nvars
     fprintf(stderr, "posix_memalign failed\n");
     exit(1);
   }
-  data->pts = malloc(sizeof(mp_limb_t) * ncols * 2);
+  data->pts = calloc(ncols * 2, sizeof(mp_limb_t));
 
-  memset(data->res, 0, (block_size)*(ncols)*sizeof(CF_t)*2);
-  memset(data->vecinit, 0, (ncols)*sizeof(CF_t));
-  memset(data->vecmult, 0, (nrows)*sizeof(CF_t));
-  memset(data->vvec, 0, (ncols)*sizeof(CF_t));
+  for(szmat_t i = 0; i < 2*block_size*ncols; i++){
+    data->res[i] = 0;
+  }
+  for(szmat_t i = 0; i < nrows; i++){
+    data->vecmult[i] = 0;
+  }
+  for(szmat_t i = 0; i < ncols; i++){
+    data->vvec[i] = 0;
+    data->vecinit[i] = 0;
+  }
 
   return data;
 }
@@ -187,21 +193,21 @@ static inline void display_fglm_matrix(FILE *file, sp_matfglm_t *matrix){
   fprintf(file, "%u\n", matrix->ncols);
   fprintf(file, "%u\n", matrix->nrows);
 
-  long len1 = (matrix->ncols)*(matrix->nrows);
-  for(long i = 0; i < len1; i++){
+  szmat_t len1 = (matrix->ncols)*(matrix->nrows);
+  for(szmat_t i = 0; i < len1; i++){
     fprintf(file, "%d ", matrix->dense_mat[i]);
   }
   fprintf(file, "\n");
-  long len2 = (matrix->ncols) - (matrix->nrows);
-  for(long i = 0; i < len2; i++){
+  szmat_t len2 = (matrix->ncols) - (matrix->nrows);
+  for(szmat_t i = 0; i < len2; i++){
     fprintf(file, "%d ", matrix->triv_idx[i]);
   }
   fprintf(file, "\n");
-  for(long i = 0; i < len2; i++){
+  for(szmat_t i = 0; i < len2; i++){
     fprintf(file, "%d ", matrix->triv_pos[i]);
   }
   fprintf(file, "\n");
-  for(long i = 0; i < matrix->nrows; i++){
+  for(szmat_t i = 0; i < matrix->nrows; i++){
     fprintf(file, "%d ", matrix->dense_idx[i]);
   }
   fprintf(file, "\n");
@@ -214,25 +220,25 @@ static inline void display_fglm_colon_matrix(FILE *file, sp_matfglmcol_t *matrix
   fprintf(file, "%u\n", matrix->nrows);
   fprintf(file, "%u\n", matrix->nzero);
 
-  long len1 = (matrix->ncols)*(matrix->nrows);
-  for(long i = 0; i < len1; i++){
+  szmat_t len1 = (matrix->ncols)*(matrix->nrows);
+  for(szmat_t i = 0; i < len1; i++){
     fprintf(file, "%d ", matrix->dense_mat[i]);
   }
   fprintf(file, "\n");
-  long len2 = (matrix->ncols) - (matrix->nrows);
-  for(long i = 0; i < len2; i++){
+  szmat_t len2 = (matrix->ncols) - (matrix->nrows);
+  for(szmat_t i = 0; i < len2; i++){
     fprintf(file, "%d ", matrix->triv_idx[i]);
   }
   fprintf(file, "\n");
-  for(long i = 0; i < len2; i++){
+  for(szmat_t i = 0; i < len2; i++){
     fprintf(file, "%d ", matrix->triv_pos[i]);
   }
   fprintf(file, "\n");
-  for(long i = 0; i < matrix->nrows; i++){
+  for(szmat_t i = 0; i < matrix->nrows; i++){
     fprintf(file, "%d ", matrix->dense_idx[i]);
   }
   fprintf(file, "\n");
-  for(long i = 0; i < matrix->nzero; i++){
+  for(szmat_t i = 0; i < matrix->nzero; i++){
     fprintf(file, "%d ", matrix->zero_idx[i]);
   }
   fprintf(file, "\n");
@@ -259,14 +265,14 @@ static inline param_t *allocate_fglm_param(mp_limb_t prime, long nvars){
 static inline void free_fglm_param(param_t *param){
   nmod_poly_clear(param->elim);
   nmod_poly_clear(param->denom);
-  for(long i = 0; i < param->nvars-1; i++){
+  for(szmat_t i = 0; i < param->nvars-1; i++){
     nmod_poly_clear(param->coords[i]);
   }
   free(param->coords);
   free(param);
 }
 
-static inline fglm_bms_data_t *allocate_fglm_bms_data(long dim, mp_limb_t prime){
+static inline fglm_bms_data_t *allocate_fglm_bms_data(szmat_t dim, mp_limb_t prime){
 
   fglm_bms_data_t * data_bms = (fglm_bms_data_t *)malloc(sizeof(fglm_bms_data_t));
   nmod_poly_init(data_bms->A, prime);
@@ -282,7 +288,7 @@ static inline fglm_bms_data_t *allocate_fglm_bms_data(long dim, mp_limb_t prime)
 
   nmod_poly_init2(data_bms->param, prime, dim+1);
 
-  for(long i = 0; i < dim + 1; i++){
+  for(szmat_t i = 0; i < dim + 1; i++){
     data_bms->rZ1->coeffs[i] = 0;
     data_bms->rZ2->coeffs[i] = 0;
     data_bms->V->coeffs[i] = 0;
@@ -331,8 +337,6 @@ static inline void fglm_bms_data_set_prime(fglm_bms_data_t *data_bms,
   nmod_poly_set_prime(data_bms->param, prime);
 
   nmod_berlekamp_massey_set_prime(data_bms->BMS, prime);
-
-  /* nmod_poly_factor_init(data_bms->sqf); */
 
 }
 

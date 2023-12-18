@@ -596,6 +596,8 @@ static int add_linear_form_to_input_system(
             for (i = 2*len_old; i < 2*len_new; i += 2) {
                 gens->mpz_cfs[i]    = (mpz_t *)malloc(sizeof(mpz_t));
                 mpz_init(*(gens->mpz_cfs[i]));
+                /* set denominators 1 for all coefficients */
+                mpz_set_ui(*(gens->mpz_cfs[i]), 1);
                 gens->mpz_cfs[i+1]  = (mpz_t *)malloc(sizeof(mpz_t));
                 mpz_init(*(gens->mpz_cfs[i+1]));
                 /* set denominators 1 for all coefficients */
@@ -620,8 +622,8 @@ static int add_linear_form_to_input_system(
         k++;
     } else {
         for (i = 2*len_old; i < 2*len_new; i += 2) {
-            mpz_set_ui(*(gens->mpz_cfs[i]), (int32_t)(pow(k, bcf - 1)));
-            k++;
+          mpz_set_ui(*(gens->mpz_cfs[i]), (int32_t)(pow(k, bcf - 1)));
+          k++;
         }
         mpz_set_si(*(gens->mpz_cfs[2*(len_new - 1)]), 1);
     }
@@ -1007,14 +1009,12 @@ static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
                                       mpz_t prod, mpz_t tmp,
                                       int nthrds){
   long i;
-
 /* #pragma omp parallel for num_threads(nthrds)    \ */
 /*   private(i) schedule(static) */
   for(i = 0; i < pol->length; i++){
     mpz_CRT_ui(pol->coeffs[i], pol->coeffs[i], modulus,
                nmod_pol->coeffs[i], prime, prod, tmp, 1);
   }
-
 
 }
 
@@ -1028,12 +1028,10 @@ static inline void crt_lift_mpz_param(mpz_param_t mpz_param, param_t *nmod_param
   crt_lift_mpz_upoly(mpz_param->elim, nmod_param->elim, modulus, prime,
                      prod_crt, tmp, nthrds);
   for(long i = 0; i < mpz_param->nvars - 1; i++){
-
     crt_lift_mpz_upoly(mpz_param->coords[i], nmod_param->coords[i],
                        modulus, prime, prod_crt, tmp, nthrds);
 
   }
-
 }
 
 
@@ -1362,7 +1360,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               sp_matfglm_t *mat,
                                               mpz_upoly_t numer,
                                               mpz_upoly_t denom,
-                                              mpz_t *modulus, mpz_t prod_crt,
+                                              mpz_t modulus, mpz_t prod_crt,
                                               int32_t prime,
                                               mpq_t *coef,
                                               mpz_t rnum, mpz_t rden,
@@ -1377,9 +1375,10 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               int nthrds,
                                               const int info_level){
 
-  mpz_mul_ui(prod_crt, *modulus, prime);
-  crt_lift_mpz_param(tmp_mpz_param, nmod_param, *modulus, prod_crt,
+  mpz_mul_ui(prod_crt, modulus, prime);
+  crt_lift_mpz_param(tmp_mpz_param, nmod_param, modulus, prod_crt,
                      prime, trace_det->tmp, nthrds);
+
 
   uint32_t trace_mod = nmod_param->elim->coeffs[trace_det->trace_idx];
   uint32_t det_mod = nmod_param->elim->coeffs[trace_det->det_idx];
@@ -1411,20 +1410,20 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
   crt_lift_trace_det(trace_det,
                      trace_mod,
                      det_mod,
-                     *modulus, prod_crt, prime);
+                     modulus, prod_crt, prime);
 
 #if LIFTMATRIX == 1
   if(*matrec < crt_mat->nrows*crt_mat->ncols){
-    crt_lift_mat(crt_mat, mat, *modulus, prod_crt, prime, trace_det->tmp, nthrds);
+    crt_lift_mat(crt_mat, mat, modulus, prod_crt, prime, trace_det->tmp, nthrds);
   }
 #endif
-  mpz_mul_ui(*modulus, *modulus, prime);
+  mpz_mul_ui(modulus, modulus, prime);
 
   if(doit==0){
     return 0;
   }
 
-  mpz_fdiv_q_2exp(*guessed_num, *modulus, 1);
+  mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
   mpz_sqrt(*guessed_num, *guessed_num);
   mpz_set(*guessed_den, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
@@ -1432,7 +1431,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #if LIFTMATRIX == 1
   long cnt = 0;
   if(*matrec < crt_mat->nrows*crt_mat->ncols && *mat_lifted == 0){
-    cnt = rat_recon_dense_rows(mpq_mat, crt_mat, mpz_mat, *modulus, recdata,
+    cnt = rat_recon_dense_rows(mpq_mat, crt_mat, mpz_mat, modulus, recdata,
                                rnum, rden, matrec);
   }
   if(cnt == crt_mat->nrows*crt_mat->ncols || *mat_lifted){
@@ -1441,7 +1440,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 #else
   *mat_lifted = 1;
 #endif
-  rat_recon_trace_det(trace_det, recdata,*modulus, rnum, rden);
+  rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden);
   if(b && trace_det->done_trace == 1 && trace_det->done_det == 1){
 
     mpz_t denominator;
@@ -1467,17 +1466,17 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
       mpz_fdiv_q(recdata->D, recdata->D, *guessed_den);
       mpz_mul(recdata->D, recdata->D, recdata->D);
-      mpz_fdiv_q(recdata->N, *modulus, recdata->D);
+      mpz_fdiv_q(recdata->N, modulus, recdata->D);
       mpz_fdiv_q_2exp(recdata->N, recdata->N, 1);
 
-      mpz_root(recdata->D, *modulus, 3);
-      mpz_fdiv_q(recdata->N, *modulus, recdata->D);
+      mpz_root(recdata->D, modulus, 3);
+      mpz_fdiv_q(recdata->N, modulus, recdata->D);
       mpz_fdiv_q_2exp(recdata->N, recdata->N, 1);
       b = rational_reconstruction_upoly_with_denom(mpz_param->elim,
                                         denominator,
                                         tmp_mpz_param->elim,
                                         nmod_param->elim->length,
-                                        *modulus,
+                                        modulus,
                                         maxrec,
                                         coef,
                                         rnum,
@@ -1490,15 +1489,15 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                         recdata,
                                         info_level);
       if(b == 0){
-        mpz_root(recdata->D, *modulus, 16);
-        mpz_fdiv_q(recdata->N, *modulus, recdata->D);
+        mpz_root(recdata->D, modulus, 16);
+        mpz_fdiv_q(recdata->N, modulus, recdata->D);
         mpz_fdiv_q_2exp(recdata->N, recdata->N, 1);
 
         b = rational_reconstruction_upoly_with_denom(mpz_param->elim,
                                                      denominator,
                                                      tmp_mpz_param->elim,
                                                      nmod_param->elim->length,
-                                                     *modulus,
+                                                     modulus,
                                                      maxrec,
                                                      coef,
                                                      rnum,
@@ -1536,7 +1535,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
     mpz_set(*guessed_den, lc);
 
-    mpz_fdiv_q_2exp(*guessed_num, *modulus, 1);
+    mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
     mpz_sqrt(recdata->D, *guessed_num);
     mpz_set(recdata->N, recdata->D);
 
@@ -1549,7 +1548,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                                      denominator,
                                                      tmp_mpz_param->coords[i],
                                                      nmod_param->coords[i]->length,
-                                                     *modulus,
+                                                     modulus,
                                                      maxrec,
                                                      coef,
                                                      rnum,
@@ -1564,14 +1563,14 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
         if(b == 0){
           mpz_set_ui(recdata->D, 1);
           mpz_mul_2exp(recdata->D, recdata->D, nc);
-          mpz_fdiv_q_2exp(recdata->N, *modulus, 1);
+          mpz_fdiv_q_2exp(recdata->N, modulus, 1);
           mpz_fdiv_q(recdata->N, recdata->N, recdata->D);
 
           b = rational_reconstruction_upoly_with_denom(mpz_param->coords[i],
                                         denominator,
                                         tmp_mpz_param->coords[i],
                                         nmod_param->coords[i]->length,
-                                        *modulus,
+                                        modulus,
                                         maxrec,
                                         coef,
                                         rnum,
@@ -1585,7 +1584,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                         info_level);
 
           if(b == 0){
-            mpz_fdiv_q_2exp(recdata->N, *modulus, 1);
+            mpz_fdiv_q_2exp(recdata->N, modulus, 1);
             mpz_root(recdata->D, recdata->N, 16);
             mpz_fdiv_q(recdata->N, recdata->N, recdata->D);
 
@@ -1593,7 +1592,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                                    denominator,
                                                    tmp_mpz_param->coords[i],
                                                    nmod_param->coords[i]->length,
-                                                   *modulus,
+                                                   modulus,
                                                    maxrec,
                                                    coef,
                                                    rnum,
@@ -2734,12 +2733,14 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   uint32_t lprime = 1303905299;
   srand(time(0));
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  prime = 1174086499;
   while(gens->field_char==0 && is_lucky_prime_ui(prime, bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
   primeinit = prime;
   lp->p[0] = primeinit;
+  fprintf(stderr, "Initial prime is %d\n", primeinit);
 
   if(gens->field_char){
     lp->p[0] = gens->field_char;
@@ -2939,6 +2940,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
 
   initialize_mpz_param(mpz_param, nmod_params[0]);
   initialize_mpz_param(tmp_mpz_param, nmod_params[0]);
+
   //attention les longueurs des mpz_param sont fixees par nmod_params[0]
   //dans des cas exceptionnels, ca peut augmenter avec un autre premier.
 
@@ -2976,7 +2978,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   mpz_init(rden);
   mpz_set_ui(rden, 0);
   set_mpz_param_nmod(tmp_mpz_param, nmod_params[0]);
-
 
   long nsols = tmp_mpz_param->nsols;
 
@@ -3018,6 +3019,10 @@ int msolve_trace_qq(mpz_param_t mpz_param,
   rrec_data_t recdata;
   initialize_rrec_data(recdata);
 
+  uint32_t* myprimes = malloc(sizeof(uint32_t)*64);
+  myprimes[0] = primeinit;
+  for(int i = 0; i < 64; i++) myprimes[i] = 0;
+
   /* measures time spent in rational reconstruction */
   double strat = 0;
 
@@ -3055,7 +3060,12 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       }
     }
     prime = lp->p[st->nthrds - 1];
-
+    for(int i = 0; i<64; i++){
+      if(prime == myprimes[i]){
+        fprintf(stderr, "Prime was already chosen\n");
+        exit(1);
+      }
+    }
     double ca0 = realtime();
 
     double stf4 = 0;
@@ -3099,6 +3109,8 @@ int msolve_trace_qq(mpz_param_t mpz_param,
       }
     }
 
+    myprimes[nprimes] = prime;
+
     for(int i = 0; i < st->nthrds; i++){
       if(bad_primes[i] == 0){
         normalize_nmod_param(nmod_params[i]);
@@ -3125,7 +3137,7 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            trace_det,
                                            bmatrix[i],
                                            numer, denom,
-                                           &modulus, prod_crt,
+                                           modulus, prod_crt,
                                            lp->p[i],
                                            &result,
                                            rnum, rden, recdata,
@@ -3137,26 +3149,6 @@ int msolve_trace_qq(mpz_param_t mpz_param,
                                            doit,
                                            st->nthrds, info_level);
 
-#if LIFTMATRIX == 1
-          if(mat_lifted && display){
-            /* display_fglm_mpq_matrix(stderr, mpq_mat); */
-            /* exit(1); */
-            int maxnum = 0;
-            int maxden = 0;
-            int maxbits = 0;
-            for(long i = 0; i < mpq_mat->nrows; i++){
-              long c = 2*i*mpq_mat->ncols;
-              for(long j = 0; j < mpq_mat->ncols; j++){
-                maxnum = MAX(maxnum, mpz_sizeinbase(mpq_mat->dense_mat[c+2*j], 2));
-                maxden = MAX(maxden, mpz_sizeinbase(mpq_mat->dense_mat[c+2*j+1], 2));
-                maxbits = MAX(maxbits, mpz_sizeinbase(mpq_mat->dense_mat[c+2*j], 2) + mpz_sizeinbase(mpq_mat->dense_mat[c+2*j+1], 2));
-              }
-            }
-            fprintf(stderr, "BIT SIZE IN MATRIX : %d, %d, %d => %f\n", maxnum, maxden, maxbits, (((double) maxbits))/16);
-            fprintf(stderr, "nprimes = %d\n", nprimes);
-            display = 0;
-          }
-#endif
           if(br == 1){
             rerun = 0;
           }

@@ -434,9 +434,9 @@ int main(int argc, char **argv){
     
     /* data structures for parametrization */
     param_t *param  = NULL;
-    mpz_param_t mpz_param;
-    mpz_param_init(mpz_param);
-    
+    mpz_param_t *mpz_paramp = malloc(sizeof(mpz_param_t));
+    mpz_param_init(*mpz_paramp);
+
     long nb_real_roots      = 0;
     interval *real_roots    = NULL;
     real_point_t *real_pts  = NULL;
@@ -448,12 +448,11 @@ int main(int argc, char **argv){
                           genericity_handling, saturate, colon, normal_form,
                           normal_form_matrix, is_gb, precision, 
                           files, gens,
-            &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
+            &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
     free(param);
-    mpz_param_clear(mpz_param);
-
+    mpz_param_clear(*mpz_paramp);
 
     if (nb_real_roots > 0) {
         for(long i = 0; i < nb_real_roots; i++){

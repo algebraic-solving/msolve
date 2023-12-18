@@ -1091,7 +1091,7 @@ static inline void get_single_param_from_file_bin(FILE *file, mpz_param_t param)
 
   get_poly_bin(file, param->denom);
 
-  if(!fscanf(file, "%ld\n", &param->nvars)){
+  if(!fscanf(file, "%d\n", &param->nvars)){
     fprintf(stderr, "Issue when reading binary file (nvars)\n");
     exit(1);
   }
@@ -1119,7 +1119,7 @@ static inline void get_single_param_from_file(FILE *file, mpz_param_t param){
   get_poly(file, param->elim);
 
   get_poly(file, param->denom);
-  if(!fscanf(file, "%ld\n", &param->nvars)){
+  if(!fscanf(file, "%d\n", &param->nvars)){
     fprintf(stderr, "Issue when reading binary file (nvars)\n");
     exit(1);
   }

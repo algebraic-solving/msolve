@@ -75,18 +75,18 @@ typedef rrec_data_struct_t rrec_data_t[1];
 
 
 typedef struct{
-  int32_t length;
-  int32_t alloc;
+  deg_t length;
+  deg_t alloc;
   mpz_t *coeffs;
 } mpz_upoly_struct;
 
 typedef mpz_upoly_struct mpz_upoly_t[1];
 
 typedef struct{
-  long nvars;
-  long nsols;
-  long dquot;
-  int dim;
+  len_t nvars;
+  len_t nsols;
+  len_t dquot;
+  len_t dim;
   mpz_upoly_t elim;
   mpz_upoly_t denom;
   mpz_upoly_t *coords;
@@ -95,7 +95,7 @@ typedef struct{
 typedef mpz_param_struct mpz_param_t[1];
 
 typedef struct{
-  int32_t nb;
+  len_t nb;
   mpz_param_t *params;
 } mpz_param_array_struct;
 typedef mpz_param_array_struct mpz_param_array_t[1];

@@ -437,14 +437,7 @@ int main(int argc, char **argv){
 -----------------------------------\n");
     }
     free_data_gens(gens);
-    /* for(long i = 0; i < gens->nvars; i++){
-        free(gens->vnames[i]);
-    }
-    free(gens->vnames);
-    free(gens->lens);
-    free(gens->cfs);
-    free(gens->exps);
-    free(gens->random_linear_form); */
+
     free(files);
     return ret;
 }

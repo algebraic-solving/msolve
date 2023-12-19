@@ -1,6 +1,6 @@
 
 static inline void duplicate_linear_data(int nthreads, int nvars, int nlins,
-                                         uint64_t **blinvars, uint32_t **blineqs,
+                                         nvars_t **blinvars, uint32_t **blineqs,
                                          uint64_t **bsquvars){
   for(int i = 1; i < nthreads; i++){
 
@@ -113,9 +113,9 @@ static inline void duplicate_data_mthread_trace(int nthreads,
                                                 int32_t **bdiv_xn,
                                                 sp_matfglm_t **bmatrix,
                                                 param_t **nmod_params,
-                                                int nlins,
-                                                long *bnlins,
-                                                uint64_t **blinvars,
+                                                nvars_t nlins,
+                                                nvars_t *bnlins,
+                                                nvars_t **blinvars,
                                                 uint32_t **blineqs,
                                                 uint64_t **bsquvars){
   const long len_xn = bmatrix[0]->nrows;
@@ -230,7 +230,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
 
 
 static inline void duplicate_data_mthread(int nthreads,
-                                        int nv,
+                                          nvars_t nv,
                                         int32_t *num_gb,
                                         int32_t **leadmons_ori,
                                         int32_t **leadmons_current,

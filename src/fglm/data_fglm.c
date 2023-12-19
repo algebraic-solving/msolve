@@ -31,6 +31,7 @@ typedef uint32_t szmat_t;
 typedef uint32_t CF_t;
 typedef uint64_t CF_l_t;
 typedef uint32_t mod_t;
+typedef int32_t nvars_t;
 /* typedef __uint128_t CF_L_t; */
 
 /**
@@ -119,7 +120,7 @@ typedef struct{
 
 typedef struct{
   mp_limb_t charac;
-  long nvars;
+  nvars_t nvars;
   nmod_poly_t elim;
   nmod_poly_t denom;
   nmod_poly_t *coords;
@@ -256,7 +257,7 @@ static inline param_t *allocate_fglm_param(mp_limb_t prime, long nvars){
   nmod_poly_init(param->elim, prime);
   nmod_poly_init(param->denom, prime);
   param->coords = malloc(sizeof(nmod_poly_t) * (nvars-1));
-  for(long i = 0; i < nvars-1; i++){
+  for(nvars_t i = 0; i < nvars-1; i++){
     nmod_poly_init(param->coords[i], prime);
   }
   return param;
@@ -288,7 +289,7 @@ static inline fglm_bms_data_t *allocate_fglm_bms_data(szmat_t dim, mp_limb_t pri
 
   nmod_poly_init2(data_bms->param, prime, dim+1);
 
-  for(szmat_t i = 0; i < dim + 1; i++){
+  for(len_t i = 0; i < dim + 1; i++){
     data_bms->rZ1->coeffs[i] = 0;
     data_bms->rZ2->coeffs[i] = 0;
     data_bms->V->coeffs[i] = 0;
@@ -318,7 +319,7 @@ static inline void fglm_param_set_prime(param_t *param, mp_limb_t prime){
 
   nmod_poly_set_prime(param->elim, prime);
   nmod_poly_set_prime(param->denom, prime);
-  for(long i = 0; i < param->nvars-1; i++){
+  for(nvars_t i = 0; i < param->nvars-1; i++){
     nmod_poly_set_prime(param->coords[i], prime);
   }
 

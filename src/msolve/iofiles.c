@@ -419,10 +419,12 @@ static int32_t get_ngenerators(char *fn){
   FILE *fh  = fopen(fn,"r");
   /* first line are the variables */
   if (getline(&line, &len, fh) == -1) {
+    fclose(fh);
     return -1;
   }
   /* second line is the characteristic */
   if (getline(&line, &len, fh) == -1) {
+    fclose(fh);
     return -1;
   }
   while(getdelim(&line, &len, ',', fh) != -1) {

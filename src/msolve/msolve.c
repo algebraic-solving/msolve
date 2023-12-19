@@ -34,7 +34,6 @@
 #define LOG2(X) ((unsigned) (8*sizeof (unsigned long long) - __builtin_clzll((X)) - 1))
 #define ilog2_mpz(a) mpz_sizeinbase(a,2)
 
-typedef int64_t bits_t;
 
 static void mpz_upoly_init(mpz_upoly_t poly, deg_t alloc){
   mpz_t *tmp = NULL;
@@ -58,7 +57,6 @@ static void mpz_upoly_init2(mpz_upoly_t poly, deg_t alloc, bits_t nbits){
   mpz_t *tmp = NULL;
   if(alloc){
     tmp = (mpz_t *)(malloc(alloc * sizeof(mpz_t)));
-    //    tmp = (mpz_t *)(calloc(alloc, sizeof(mpz_t)));
     if(tmp==NULL){
       fprintf(stderr, "Unable to allocate in mpz_upoly_init\n");
       exit(1);
@@ -760,7 +758,7 @@ static int add_random_linear_form_to_input_system(
 static inline void nmod_param_out_str(FILE *file, const long dquot, param_t *param){
   fprintf(file, "[");
   fprintf(file, "0, \n"); //charac
-  fprintf(file, "%ld, \n", param->nvars); //nvars
+  fprintf(file, "%d, \n", param->nvars); //nvars
   fprintf(file, "%ld, \n", dquot); //dim quotient
   display_nmod_poly(file, param->elim); //elim. poly
   fprintf(file, ",\n");
@@ -803,9 +801,6 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
 
   param->nvars = bparam->nvars;
   param->nsols = bparam->elim->length - 1;
-
-  fprintf(stderr, "DEGREES\n");
-  fprintf(stderr, "%ld\n", bparam->elim->length);
   mpz_upoly_init2(param->elim, bparam->elim->alloc, 2*32*(bparam->elim->length));
   mpz_upoly_init2(param->denom, bparam->elim->alloc - 1, 2*32*(bparam->elim->length));
   param->elim->length = bparam->elim->length;
@@ -813,7 +808,6 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam){
   param->coords = (mpz_upoly_t *)malloc(sizeof(mpz_upoly_t)*(param->nvars - 1));
   if(param->coords != NULL){
     for(len_t i = 0; i < param->nvars - 1; i++){
-      fprintf(stderr, "%ld\n", MAX(1,bparam->elim->alloc - 1));
       mpz_upoly_init(param->coords[i], MAX(1,bparam->elim->alloc - 1));
       param->coords[i]->length = bparam->elim->length - 1;
 
@@ -844,7 +838,7 @@ static inline void reduce_generators(mpz_t **tmp, long nterms,
 }
 
 static inline void check_and_set_linear_poly_non_hashed(long *nlins_ptr,
-                                                        uint64_t *linvars,
+                                                        nvars_t *linvars,
                                                         uint32_t** lineqs_ptr,
                                                         int32_t *bld,
                                                         int32_t *bexp_lm,
@@ -1016,9 +1010,6 @@ static inline void crt_lift_mpz_upoly(mpz_upoly_t pol, nmod_poly_t nmod_pol,
 /* #pragma omp parallel for num_threads(nthrds)    \ */
 /*   private(i) schedule(static) */
   for(i = 0; i < pol->length; i++){
-    fprintf(stderr, "+>>%d>>",i);
-    mpz_out_str(stderr, 10, pol->coeffs[i]);
-    fprintf(stderr, "*");
     mpz_CRT_ui(pol->coeffs[i], pol->coeffs[i], modulus,
                nmod_pol->coeffs[i], prime, prod, tmp, 1);
   }
@@ -1035,10 +1026,8 @@ static inline void crt_lift_mpz_param(mpz_param_t mpz_param, param_t *nmod_param
   crt_lift_mpz_upoly(mpz_param->elim, nmod_param->elim, modulus, prime,
                      prod_crt, tmp, nthrds);
   for(len_t i = 0; i < mpz_param->nvars - 1; i++){
-    fprintf(stderr,"<%d>\n",i);
     crt_lift_mpz_upoly(mpz_param->coords[i], nmod_param->coords[i],
                        modulus, prime, prod_crt, tmp, nthrds);
-    fprintf(stderr,"DONE");
   }
 }
 
@@ -1056,9 +1045,9 @@ static inline void crt_lift_mpz_param(mpz_param_t mpz_param, param_t *nmod_param
 static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
                                                   mpz_t denominator,
                                                   mpz_t *pol,
-                                                  long len,
+                                                  deg_t len,
                                                   mpz_t modulus,
-                                                  long *maxrec,
+                                                  deg_t *maxrec,
                                                   mpq_t *coef,
                                                   mpz_t rnum,
                                                   mpz_t rden,
@@ -1077,7 +1066,7 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
   mpz_set(tmp_num[*maxrec], rnum);
   mpz_set(tmp_den[*maxrec], rden);
 
-  for(long i = *maxrec + 1; i < len; i++){
+  for(deg_t i = *maxrec + 1; i < len; i++){
     int b = ratrecon(rnum, rden, pol[i], modulus, rdata);
     if(b == 0){
       *maxrec = i - 1;
@@ -1087,7 +1076,7 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
     mpz_set(tmp_num[i], rnum);
     mpz_set(tmp_den[i], rden);
   }
-  for(long i = 0; i < *maxrec; i++){
+  for(deg_t i = 0; i < *maxrec; i++){
     int b = ratrecon(rnum, rden, pol[i], modulus, rdata);
 
     if(b == 0){
@@ -1103,16 +1092,16 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
   }
 
   mpz_set(lcm, tmp_den[0]);
-  for(long i = 1; i < len; i++){
+  for(deg_t i = 1; i < len; i++){
     mpz_lcm(lcm, lcm, tmp_den[i]);
   }
-  for(long i = 0; i < len; i++){
+  for(deg_t i = 0; i < len; i++){
     mpz_divexact(tmp_den[i], lcm, tmp_den[i]);
   }
-  for(long i = 0; i < len; i++){
+  for(deg_t i = 0; i < len; i++){
     mpz_mul(tmp_num[i], tmp_num[i], tmp_den[i]);
   }
-  for(long i = 0; i < len; i++){
+  for(deg_t i = 0; i < len; i++){
     mpz_set(recons[i], tmp_num[i]);
   }
   mpz_set(denominator, lcm);
@@ -1124,9 +1113,9 @@ static inline int rational_reconstruction_mpz_ptr(mpz_t *recons,
 static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
                                                   mpz_t denominator,
                                                   mpz_t *pol,
-                                                  long len,
+                                                  deg_t len,
                                                   mpz_t modulus,
-                                                  long *maxrec,
+                                                  deg_t *maxrec,
                                                   mpq_t *coef,
                                                   mpz_t rnum,
                                                   mpz_t rden,
@@ -1148,7 +1137,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
   mpz_set(tmp_num[*maxrec], rnum);
   mpz_set(tmp_den[*maxrec], rden);
 
-  for(long i = *maxrec + 1; i < len; i++){
+  for(deg_t i = *maxrec + 1; i < len; i++){
     mpz_set(gnum, pol[i]);
     int b = ratreconwden(rnum, rden, gnum, modulus, guessed_den, rdata);
 
@@ -1161,7 +1150,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
   }
 
   mpz_set(lcm, tmp_den[*maxrec]);
-  for(long i = *maxrec + 1; i < len; i++){
+  for(deg_t i = *maxrec + 1; i < len; i++){
     mpz_lcm(lcm, lcm, tmp_den[i]);
   }
 
@@ -1172,7 +1161,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
   mpz_fdiv_q(rdata->D, rdata->D, lcm);
   mpz_mul(rdata->N, rdata->N, lcm);
 
-  for(long i = *maxrec-1; i >=0; i--){
+  for(deg_t i = *maxrec-1; i >=0; i--){
     mpz_set(gnum, pol[i]);
     int b = ratreconwden(tmp_num[i], tmp_den[i],
                          gnum, modulus, newlcm, rdata);
@@ -1191,17 +1180,17 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(mpz_t *recons,
   }
 
   mpz_set(lcm, tmp_den[0]);
-  for(long i = 1; i < len; i++){
+  for(deg_t i = 1; i < len; i++){
     mpz_lcm(lcm, lcm, tmp_den[i]);
   }
 
-  for(long i = 0; i < len; i++){
+  for(deg_t i = 0; i < len; i++){
     mpz_divexact(tmp_den[i], lcm, tmp_den[i]);
   }
-  for(long i = 0; i < len; i++){
+  for(deg_t i = 0; i < len; i++){
     mpz_mul(tmp_num[i], tmp_num[i], tmp_den[i]);
   }
-  for(long i = 0; i < len; i++){
+  for(deg_t i = 0; i < len; i++){
     mpz_set(recons[i], tmp_num[i]);
   }
   mpz_set(denominator, lcm);
@@ -1222,7 +1211,7 @@ static inline int rational_reconstruction_upoly(mpz_upoly_t recons,
                                                 mpz_upoly_t pol,
                                                 long len,
                                                 mpz_t modulus,
-                                                long *maxrec,
+                                                deg_t *maxrec,
                                                 mpq_t *coef,
                                                 mpz_t rnum,
                                                 mpz_t rden,
@@ -1250,7 +1239,7 @@ static inline int rational_reconstruction_upoly_with_denom(mpz_upoly_t recons,
                                                 mpz_upoly_t pol,
                                                 long len,
                                                 mpz_t modulus,
-                                                long *maxrec,
+                                                deg_t *maxrec,
                                                 mpq_t *coef,
                                                 mpz_t rnum,
                                                 mpz_t rden,
@@ -1298,8 +1287,8 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               rrec_data_t recdata,
                                               mpz_t *guessed_num,
                                               mpz_t *guessed_den,
-                                              long *maxrec,
-                                              long *matrec,
+                                              deg_t *maxrec,
+                                              uint64_t *matrec,
                                               int *is_lifted,
                                               int *mat_lifted,
                                               int doit,
@@ -1762,8 +1751,8 @@ static int32_t *initial_modular_step(
         int32_t **blen_gb_xn,
         int32_t **bstart_cf_gb_xn,
 
-        long *nlins_ptr,
-        uint64_t *linvars,
+        nvars_t *nlins_ptr,
+        nvars_t *linvars,
         uint32_t** lineqs_ptr,
         uint64_t *squvars,
 
@@ -1806,7 +1795,7 @@ static int32_t *initial_modular_step(
     }
 
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bs->ht,
-            leadmons[0], bs);
+                              leadmons[0], bs);
     if (has_dimension_zero(bs->lml, bs->ht->nv, leadmons[0])) {
         long dquot = 0;
         int32_t *lmb = monomial_basis(bs->lml, bs->ht->nv, leadmons[0], &dquot);
@@ -1874,7 +1863,7 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
                                         int32_t **bstart_cf_gb_xn,
 
                                         long *nlins_ptr,
-                                        uint64_t *linvars,
+                                        nvars_t *linvars,
                                         uint32_t** lineqs_ptr,
                                         uint64_t *squvars,
 
@@ -2017,221 +2006,14 @@ static int32_t * modular_trace_learning(sp_matfglm_t **bmatrix,
 }
 #endif
 
-#if 0
-static int32_t * modular_probabilistic_first(sp_matfglm_t **bmatrix,
-                                             int32_t **bdiv_xn,
-                                             int32_t **blen_gb_xn,
-                                             int32_t **bstart_cf_gb_xn,
-
-                                             long *nlins_ptr,
-                                             uint64_t *linvars,
-                                             uint32_t** lineqs_ptr,
-                                             uint64_t * squvars,
-
-                                             fglm_data_t **bdata_fglm,
-                                             fglm_bms_data_t **bdata_bms,
-
-                                             int32_t *num_gb,
-                                             int32_t **leadmons,
-                                             uint64_t *bsz,
-                                             param_t **bparam,
-                                             const bs_t *bs_qq,
-                                             ht_t *bht,
-                                             md_t *st,
-                                             const int32_t fc,
-                                             int info_level,
-                                             int32_t print_gb,
-                                             int *dim,
-                                             long *dquot_ori,
-                                             data_gens_ff_t *gens,
-                                             files_gb *files,
-                                             int *success)
-{
-    double ca0;
-    ca0 = realtime();
-    bs_t *bs = modular_f4(bs_qq, bht, st, fc);
-    int32_t *bexp_lm = get_lm_from_bs(bs, bht);
-    leadmons[0] = bexp_lm;
-    num_gb[0] = bs->lml;
-
-    if(bs->lml == 1){
-      if(info_level){
-        fprintf(stderr, "Grobner basis has a single element\n");
-      }
-      int is_empty = 1;
-      for(int i = 0; i < bht->nv; i++){
-        if(bexp_lm[i]!=0){
-          is_empty = 0;
-        }
-      }
-      if(is_empty){
-        *dquot_ori = 0;
-        *dim = 0;
-        return NULL;
-      }
-    }
-
-    print_ff_basis_data(
-            files->out_file, "a", bs, bht, st, gens, print_gb);
-
-    check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm, bs);
-
-    if(has_dimension_zero(bs->lml, bht->nv, bexp_lm)){
-        long dquot = 0;
-        int32_t *lmb = monomial_basis(bs->lml, bht->nv, bexp_lm, &dquot);
-        if(info_level){
-          fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
-        }
-
-        *bmatrix = build_matrixn_from_bs_trace(bdiv_xn,
-                                               blen_gb_xn,
-                                               bstart_cf_gb_xn,
-                                               lmb, dquot, bs, bht,
-                                               bexp_lm, bht->nv,
-                                               fc,
-                                               info_level);
-
-        if(*bmatrix == NULL){
-          *success = 0;
-          *dim = 0;
-          *dquot_ori = dquot;
-          return NULL;
-        }
-
-        *bsz = bht->nv - (*nlins_ptr); //nlins ;
-        check_and_set_vars_squared_in_monomial_basis(squvars, lmb,
-                dquot, gens->nvars);
-        *bparam = nmod_fglm_compute_trace_data(*bmatrix, fc, bht->nv, *bsz,
-                *nlins_ptr, linvars, lineqs_ptr[0],
-                squvars, info_level,
-		bdata_fglm, bdata_bms, success,st);
-        *dim = 0;
-        *dquot_ori = dquot;
-
-        if (info_level) {
-            fprintf(stderr, "First probabilistic F4 + FGLM time (elapsed): %.2f sec\n",
-                    realtime() - ca0);
-        }
-        return lmb;
-    }
-    else{
-        *dim  = 1;
-        return NULL;
-    }
-}
-#endif
-
-
-#if 0
-static void modular_probabilistic_apply(sp_matfglm_t **bmatrix,
-                               int32_t **div_xn,
-                               int32_t **len_gb_xn,
-                               int32_t **start_cf_gb_xn,
-
-                               long nlins,
-                               uint64_t *linvars,
-                               uint32_t *lineqs,
-                               uint64_t *squvars,
-
-                               fglm_data_t **bdata_fglm,
-                               fglm_bms_data_t **bdata_bms,
-
-                               int32_t *num_gb,
-                               int32_t **leadmons_ori,
-                               int32_t **leadmons_current,
-
-                                        uint64_t bsz,
-                               param_t **nmod_params,
-                               const bs_t *bs_qq,
-                               ht_t *bht,
-                               md_t *st,
-                               const int32_t fc,
-                               int info_level,
-                               bs_t **bs,
-                               int32_t *lmb_ori,
-                               int32_t dquot_ori,
-                               primes_t *lp,
-                               data_gens_ff_t *gens,
-                               double *stf4,
-                               const long nbsols,
-                               int *bad_primes){
-
-st->info_level = 0;
-/* tracing phase */
-len_t i;
-double ca0;
-
-
-memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
-/* #pragma omp parallel for num_threads(st->nthrds)  \ */
-/*   private(i) schedule(dynamic) */
-for (i = 0; i < st->nprimes; ++i){
-  ca0 = realtime();
-  bs[i] = modular_f4(bs_qq, bht, st, lp->p[i]);
-  *stf4 = realtime()-ca0;
-
-  if (bs[i] == NULL) {
-      return;
-  }
-  int32_t lml = bs[i]->lml;
-  if (st->nev > 0) {
-      int32_t j = 0;
-      for (len_t k = 0; k < bs[i]->lml; ++k) {
-          if ((*bht)->ev[bs[i]->hm[bs[i]->lmps[k]][OFFSET]][0] == 0) {
-              bs[i]->lm[j]   = bs[i]->lm[k];
-              bs[i]->lmps[j] = bs[i]->lmps[k];
-              ++j;
-          }
-      }
-      lml = j;
-  }
-  if(lml != num_gb[i]){
-    /* nmod_params[i] = NULL; */
-    bad_primes[i] = 1;
-    return;
-  }
-  get_lm_from_bs_trace(bs[i], bht, leadmons_current[i]);
-
-  if(equal_staircase(leadmons_current[i], leadmons_ori[i],
-                      num_gb[i], num_gb[i], bht->nv)){
-    set_linear_poly(nlins, lineqs, linvars, bht, leadmons_current[i], bs[i]);
-
-    build_matrixn_from_bs_trace_application(bmatrix[i],
-                                            div_xn[i],
-                                            len_gb_xn[i],
-                                            start_cf_gb_xn[i],
-                                            lmb_ori, dquot_ori, bs[i], bht,
-                                            leadmons_ori[i], bht->nv,
-                                            lp->p[i]);
-
-    if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
-                                          nmod_params[i],
-                                          bht->nv,
-                                          bsz,
-                                          nlins, linvars, lineqs, squvars,
-                                          bdata_fglm[i],
-                                          bdata_bms[i],
-                                          nbsols,
-                                          info_level,
-					  st)){
-      bad_primes[i] = 1;
-    }
-    free_basis(&(bs[i]));
-  }
-  else{
-      bad_primes[i] = 1;
-  }
- }
-}
-#endif
 
 static void secondary_modular_steps(sp_matfglm_t **bmatrix,
                                    int32_t **div_xn,
                                    int32_t **len_gb_xn,
                                    int32_t **start_cf_gb_xn,
 
-                                   long *bnlins,
-                                   uint64_t **blinvars,
+                                   nvars_t *bnlins,
+                                   nvars_t **blinvars,
                                    uint32_t **blineqs,
                                    uint64_t **bsquvars,
 
@@ -2347,134 +2129,6 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
     st->nthrds = nthrds;
 }
 
-#if 0
-static void modular_trace_application(sp_matfglm_t **bmatrix,
-                                   int32_t **div_xn,
-                                   int32_t **len_gb_xn,
-                                   int32_t **start_cf_gb_xn,
-
-                                   long *bnlins,
-                                   uint64_t **blinvars,
-                                   uint32_t **blineqs,
-                                   uint64_t **bsquvars,
-
-                                   fglm_data_t **bdata_fglm,
-                                   fglm_bms_data_t **bdata_bms,
-
-                                   int32_t *num_gb,
-                                   int32_t **leadmons_ori,
-                                   int32_t **leadmons_current,
-
-                                   uint64_t bsz,
-                                   param_t **nmod_params,
-                                   /* trace_t **btrace, */
-                                   ht_t **btht,
-                                   bs_t *bs_qq,
-                                   ht_t **bht,
-                                   md_t *st,
-                                   const int32_t fc,
-                                   int info_level,
-                                   bs_t **bs,
-                                   int32_t *lmb_ori,
-                                   int32_t dquot_ori,
-                                   primes_t *lp,
-                                   data_gens_ff_t *gens,
-                                   double *stf4,
-                                   const long nbsols,
-                                   int *bad_primes){
-
-  st->info_level = 0;
-
-  /* tracing phase */
-  len_t i;
-  double ca0;
-  int32_t error = 0;
-
-  /* F4 and FGLM are run using a single thread */
-  /* st->nthrds is reset to its original value afterwards */
-  const int nthrds = st->nthrds;
-  st->nthrds = 1 ;
-
-  memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
-  #pragma omp parallel for num_threads(nthrds)  \
-    private(i) schedule(static)
-  for (i = 0; i < st->nprimes; ++i){
-    ca0 = realtime();
-    bs[i] = core_gba(bs_qq, st, &error, lp->p[i]);
-    /* if(st->laopt > 40){
-      bs[i] = modular_f4(bs_qq, bht[i], st, lp->p[i]);
-    }
-    else{
-      bs[i] = gba_trace_application_phase(btrace[i], btht[i], bs_qq, bht[i], st, lp->p[i]);
-    } */
-    *stf4 = realtime()-ca0;
-    /* printf("F4 trace timing %13.2f\n", *stf4); */
-
-    if (bs[i] == NULL) {
-        /* nmod_params[i] = NULL; */
-        bad_primes[i] = 1;
-        continue;
-    }
-    int32_t lml = bs[i]->lml;
-    if (st->nev > 0) {
-        int32_t j = 0;
-        for (len_t k = 0; k < bs[i]->lml; ++k) {
-            if ((*bht)->ev[bs[i]->hm[bs[i]->lmps[k]][OFFSET]][0] == 0) {
-                bs[i]->lm[j]   = bs[i]->lm[k];
-                bs[i]->lmps[j] = bs[i]->lmps[k];
-                ++j;
-            }
-        }
-        lml = j;
-    }
-    if(lml != num_gb[i]){
-      if (bs[i] != NULL) {
-        free_basis(&(bs[i]));
-      }
-      /* nmod_params[i] = NULL; */
-      bad_primes[i] = 1;
-      continue;
-      /* return; */
-    }
-    get_lm_from_bs_trace(bs[i], bht[i], leadmons_current[i]);
-
-    if(equal_staircase(leadmons_current[i], leadmons_ori[i],
-                       num_gb[i], num_gb[i], bht[i]->nv)){
-
-      set_linear_poly(bnlins[i], blineqs[i], blinvars[i], bht[i],
-                      leadmons_current[i], bs[i]);
-
-      build_matrixn_from_bs_trace_application(bmatrix[i],
-                                              div_xn[i],
-                                              len_gb_xn[i],
-                                              start_cf_gb_xn[i],
-                                              lmb_ori, dquot_ori, bs[i], bht[i],
-                                              leadmons_ori[i], bht[i]->nv,
-                                              lp->p[i]);
-      if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
-                                            nmod_params[i],
-                                            bht[i]->nv,
-                                            bsz,
-                                            bnlins[i], blinvars[i], blineqs[i],
-                                            bsquvars[i],
-                                            bdata_fglm[i],
-                                            bdata_bms[i],
-                                            nbsols,
-                                            info_level,
-					    st)){
-        bad_primes[i] = 1;
-      }
-    }
-    else{
-      bad_primes[i] = 1;
-    }
-    if (bs[i] != NULL) {
-      free_basis(&(bs[i]));
-    }
-  }
-  st->nthrds = nthrds;
-}
-#endif
 
 /* sets function pointer */
 void set_linear_function_pointer(int32_t fc){
@@ -2513,8 +2167,7 @@ void set_linear_function_pointer(int32_t fc){
     set_linear_poly = set_linear_poly_32;
     check_and_set_linear_poly = check_and_set_linear_poly_32;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
-    break;
-  default:
+    break;  default:
     set_linear_poly = set_linear_poly_32;
     check_and_set_linear_poly = check_and_set_linear_poly_32;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
@@ -2547,7 +2200,7 @@ void set_linear_function_pointer(int32_t fc){
   - renvoie -4 si bad prime
 */
 
-int msolve_trace_qq(mpz_param_t *mpz_param,
+int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     param_t **nmod_param,
                     int *dim_ptr,
                     long *dquot_ptr,
@@ -2646,12 +2299,11 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
   }
 
   /* generate array to store modular bases */
-  bs_t **bs = (bs_t **)calloc((unsigned long)st->nthrds, sizeof(bs_t *));
+  bs_t **bs = (bs_t **)malloc((unsigned long)st->nthrds * sizeof(bs_t *));
 
-  param_t **nmod_params =  (param_t **)calloc((unsigned long)st->nthrds,
-                                              sizeof(param_t *));
+  param_t **nmod_params =  (param_t **)malloc((unsigned long)st->nthrds * sizeof(param_t *));
 
-  int *bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
+  uint32_t *bad_primes = calloc((unsigned long)st->nthrds, sizeof(uint32_t));
 
   /* initialize tracers */
   /* trace_t **btrace = (trace_t **)calloc(st->nthrds,
@@ -2664,29 +2316,24 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
   uint32_t lprime = 1303905299;
   srand(time(0));
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
-  prime = 1174086499;
   while(gens->field_char==0 && is_lucky_prime_ui(prime, bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
   primeinit = prime;
   lp->p[0] = primeinit;
-  fprintf(stderr, "Initial prime is %d\n", primeinit);
 
   if(gens->field_char){
     lp->p[0] = gens->field_char;
   }
-  sp_matfglm_t **bmatrix = (sp_matfglm_t **)calloc(st->nthrds,
-                                                  sizeof(sp_matfglm_t *));
+  sp_matfglm_t **bmatrix = (sp_matfglm_t **)malloc(st->nthrds * sizeof(sp_matfglm_t *));
 
-  int32_t **bdiv_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
-  int32_t **blen_gb_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
-  int32_t **bstart_cf_gb_xn = (int32_t **)calloc(st->nthrds, sizeof(int32_t *));
+  int32_t **bdiv_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **blen_gb_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **bstart_cf_gb_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
 
-  fglm_data_t **bdata_fglm = (fglm_data_t **)calloc(st->nthrds,
-                                                    sizeof(fglm_data_t *));
-  fglm_bms_data_t **bdata_bms = (fglm_bms_data_t **)calloc(st->nthrds,
-                                                          sizeof(fglm_bms_data_t *));
+  fglm_data_t **bdata_fglm = (fglm_data_t **)malloc(st->nthrds * sizeof(fglm_data_t *));
+  fglm_bms_data_t **bdata_bms = (fglm_bms_data_t **)malloc(st->nthrds * sizeof(fglm_bms_data_t *));
   int32_t *num_gb = (int32_t *)calloc(st->nthrds, sizeof(int32_t));
   int32_t **leadmons_ori = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   int32_t **leadmons_current = (int32_t**)malloc(st->nthrds * sizeof(int32_t *));
@@ -2694,13 +2341,13 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
   uint64_t bsz = 0;
 
   /* data for linear forms */
-  long nlins = 0;
-  long *bnlins = (long *)calloc(st->nthrds, sizeof(long));
-  uint64_t **blinvars = (uint64_t **)calloc(st->nthrds, sizeof(uint64_t *));
-  uint64_t *linvars = calloc(bs_qq->ht->nv, sizeof(uint64_t));
+  nvars_t nlins = 0;
+  nvars_t *bnlins = (nvars_t *)calloc(st->nthrds, sizeof(nvars_t));
+  nvars_t **blinvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
+  nvars_t *linvars = calloc(bs_qq->ht->nv, sizeof(nvars_t));
   blinvars[0] = linvars;
-  uint32_t **lineqs_ptr = calloc(st->nthrds, sizeof(uint32_t *));
-  uint64_t **bsquvars = (uint64_t **) calloc(st->nthrds, sizeof(uint64_t *));
+  uint32_t **lineqs_ptr = malloc(st->nthrds * sizeof(uint32_t *));
+  uint64_t **bsquvars = (uint64_t **) malloc(st->nthrds * sizeof(uint64_t *));
   uint64_t *squvars = calloc(nr_vars-1, sizeof(uint64_t));
   bsquvars[0] = squvars;
 
@@ -2739,20 +2386,10 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
     }
   }
 
-  mpz_param_t *mpz_paramp = (mpz_param_t *)malloc(sizeof(mpz_param_t));
-  mpz_param_init(*mpz_paramp);
-
   (*mpz_paramp)->dim    = *dim_ptr;
   (*mpz_paramp)->dquot  = *dquot_ptr;
 
   if(lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
-    if (gens->field_char == 0) {
-        for (i = 0; i < st->nthrds; ++i) {
-            if (bs[i] != NULL) {
-                free_basis_without_hash_table(&(bs[i]));
-            }
-        }
-    }
     free(bs);
     if(gens->field_char==0){
       free_basis(&bs_qq);
@@ -2818,7 +2455,7 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
 
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
-                               leadmons_ori, leadmons_current,
+                              leadmons_ori, leadmons_current,
                                /* btrace, */
                                bdata_bms, bdata_fglm,
                                bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix,
@@ -2876,7 +2513,7 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
   mpz_set_ui(rden, 0);
   set_mpz_param_nmod(tmp_mpz_param, nmod_params[0]);
 
-  long nsols = tmp_mpz_param->nsols;
+  deg_t nsols = tmp_mpz_param->nsols;
 
   mpz_upoly_t numer;
   mpz_upoly_init2(numer, (nsols + 1),
@@ -2894,8 +2531,8 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
   mpz_init2(guessed_num, 32*nsols);
   mpz_set_ui(guessed_num, 0);
 
-  long maxrec = 0;
-  long matrec = 0;
+  deg_t maxrec = 0;
+  uint64_t matrec = 0;
 
   int rerun = 1, nprimes = 1, mcheck =1;
 
@@ -2915,10 +2552,6 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
 
   rrec_data_t recdata;
   initialize_rrec_data(recdata);
-
-  uint32_t* myprimes = malloc(sizeof(uint32_t)*64);
-  myprimes[0] = primeinit;
-  for(int i = 0; i < 64; i++) myprimes[i] = 0;
 
   /* measures time spent in rational reconstruction */
   double strat = 0;
@@ -2957,12 +2590,7 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
       }
     }
     prime = lp->p[st->nthrds - 1];
-    for(int i = 0; i<64; i++){
-      if(prime == myprimes[i]){
-        fprintf(stderr, "Prime was already chosen\n");
-        exit(1);
-      }
-    }
+
     double ca0 = realtime();
 
     double stf4 = 0;
@@ -3005,8 +2633,6 @@ int msolve_trace_qq(mpz_param_t *mpz_param,
                 (ca1) );
       }
     }
-
-    myprimes[nprimes] = prime;
 
     for(int i = 0; i < st->nthrds; i++){
       if(bad_primes[i] == 0){
@@ -3220,7 +2846,7 @@ void display_real_point(FILE *fstream, real_point_t pt){
       fprintf(fstream, " / ");
       fprintf(fstream, "2");
       if(pt->coords[i]->k_do> 1){
-        fprintf(fstream, "^%ld", pt->coords[i]->k_do);
+        fprintf(fstream, "^%d", pt->coords[i]->k_do);
       }
     }
     fprintf(fstream, ", ");
@@ -3229,7 +2855,7 @@ void display_real_point(FILE *fstream, real_point_t pt){
       fprintf(fstream, " / ");
       fprintf(fstream, "2");
       if(pt->coords[i]->k_up> 1){
-        fprintf(fstream, "^%ld", pt->coords[i]->k_up);
+        fprintf(fstream, "^%d", pt->coords[i]->k_up);
       }
     }
     fprintf(fstream, "], ");
@@ -3240,7 +2866,7 @@ void display_real_point(FILE *fstream, real_point_t pt){
     fprintf(fstream, " / ");
     fprintf(fstream, "2");
     if(pt->coords[pt->nvars - 1]->k_do> 1){
-      fprintf(fstream, "^%ld", pt->coords[pt->nvars - 1]->k_do);
+      fprintf(fstream, "^%d", pt->coords[pt->nvars - 1]->k_do);
     }
   }
   fprintf(fstream, ", ");
@@ -3250,7 +2876,7 @@ void display_real_point(FILE *fstream, real_point_t pt){
     fprintf(fstream, " / ");
     fprintf(fstream, "2");
     if(pt->coords[pt->nvars - 1]->k_up> 1){
-      fprintf(fstream, "^%ld", pt->coords[pt->nvars - 1]->k_up);
+      fprintf(fstream, "^%d", pt->coords[pt->nvars - 1]->k_up);
     }
   }
 
@@ -3872,7 +3498,8 @@ static real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_r
                                               interval **real_roots_ptr, 
                                               int32_t precision,
                                               int32_t nr_threads, int32_t info_level){
-  mpz_t *pol = calloc(param->elim->length, sizeof(mpz_t));
+  mpz_t *pol = malloc(param->elim->length * sizeof(mpz_t));
+
   for(long i = 0; i < param->elim->length; i++){
     mpz_init_set(pol[i], param->elim->coeffs[i]);
   }
@@ -4015,7 +3642,6 @@ int real_msolve_qq(mpz_param_t *mpz_paramp,
   if(print_gb){
     return 0;
   }
-
   real_point_t *pts = NULL;
 
   if(b==0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0){
@@ -4612,7 +4238,7 @@ restart:
 	      fprintf(stderr, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
-	    uint64_t *linvars = calloc(gens->nvars, sizeof(uint64_t));
+	    nvars_t *linvars = calloc(gens->nvars, sizeof(nvars_t));
 	    uint32_t *lineqs = calloc(gens->nvars,sizeof(uint32_t));
 	    uint64_t *squvars = calloc(gens->nvars-1, sizeof(uint64_t));
 	    param_t * param = nmod_fglm_guess_colon(matrix, gens->field_char,

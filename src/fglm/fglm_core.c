@@ -85,7 +85,7 @@ void display_nmod_poly(FILE *file, nmod_poly_t pol){
 
 void display_fglm_param(FILE * file, param_t *param){
   fprintf(file, "%ld,\n", param->charac);
-  fprintf(file, "%ld,\n", param->nvars);
+  fprintf(file, "%d,\n", param->nvars);
 
   display_nmod_poly(file, param->elim);
   fprintf(file, ",\n");
@@ -101,7 +101,7 @@ void display_fglm_param(FILE * file, param_t *param){
 
 void display_fglm_param_maple(FILE * file, param_t *param){
   fprintf(file, "[%ld, \n", param->charac);
-  fprintf(file, "%ld, \n", param->nvars);
+  fprintf(file, "%d, \n", param->nvars);
 
   display_nmod_poly(file, param->elim);
   fprintf(file, ", \n");
@@ -663,7 +663,7 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
 static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
                                      szmat_t block_size, long dimquot,
                                      uint64_t* squvars,
-                                     uint64_t* linvars,
+                                     nvars_t* linvars,
                                      long nvars,
                                      mod_t prime,
                                      md_t *st){
@@ -726,8 +726,8 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
 static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
                                     szmat_t block_size, szmat_t dimquot,
                                     uint64_t* squvars,
-                                    uint64_t* linvars,
-                                    int nvars,
+                                    nvars_t* linvars,
+                                    nvars_t nvars,
                                     mod_t prime,
                                     md_t *st){
   uint32_t RED_32 = ((uint64_t)2<<31) % prime;
@@ -898,7 +898,7 @@ static inline void compute_minpoly(param_t *param,
                                    fglm_data_t *data,
                                    fglm_bms_data_t *data_bms,
                                    long dimquot,
-                                   uint64_t *linvars,
+                                   nvars_t *linvars,
                                    uint32_t *lineqs,
                                    long nvars,
                                    long *dim,
@@ -916,9 +916,9 @@ static inline void compute_minpoly(param_t *param,
 
 static void set_param_linear_vars(param_t *param,
                                   szmat_t nlins,
-                                  uint64_t *linvars,
+                                  nvars_t *linvars,
                                   uint32_t *lineqs,
-                                  szmat_t nvars){
+                                  nvars_t nvars){
 
   int cnt = 1;
   const uint32_t fc = param->charac;
@@ -933,7 +933,7 @@ static void set_param_linear_vars(param_t *param,
   else{
     nr = nlins;
   }
-  for(int nc = nvars - 2; nc >= 0; nc--){
+  for(nvars_t nc = nvars - 2; nc >= 0; nc--){
 
     int ind = nc;
 
@@ -945,7 +945,7 @@ static void set_param_linear_vars(param_t *param,
         param->coords[ind]->coeffs[i] = 0;
       }
 
-      for(szmat_t k = 1; k < nvars - 1 ; k++){
+      for(nvars_t k = 1; k < nvars - 1 ; k++){
         uint64_t c = lineqs[k+(nvars+1)*(nr-(cnt-1)-1)];
         if(c){
           /* one multiplies param->coords[k] by fc -c */
@@ -970,7 +970,7 @@ static void set_param_linear_vars(param_t *param,
       uint64_t c0 = lineqs[nvars +(nvars+1)*(nr-(cnt-1)-1)];
       param->coords[ind]->coeffs[0] = ((uint64_t)(param->coords[ind]->coeffs[0] + c0)) % fc;
 
-      for(szmat_t k = param->coords[ind]->length - 1; k >= 0; k--){
+      for(deg_t k = param->coords[ind]->length - 1; k >= 0; k--){
         if(param->coords[ind]->coeffs[k] == 0){
           param->coords[ind]->length--;
         }
@@ -982,7 +982,7 @@ static void set_param_linear_vars(param_t *param,
       nmod_poly_rem(param->coords[ind], param->coords[ind],
                     param->elim);
 
-      for(long k = param->coords[ind]->length - 1; k >= 0; k--){
+      for(deg_t k = param->coords[ind]->length - 1; k >= 0; k--){
         if(param->coords[ind]->coeffs[k] == 0){
           param->coords[ind]->length--;
         }
@@ -1007,7 +1007,7 @@ static int compute_parametrizations(param_t *param,
                                     szmat_t dimquot,
                                     szmat_t block_size,
                                     szmat_t nlins,
-                                    uint64_t *linvars,
+                                    nvars_t *linvars,
                                     uint32_t *lineqs,
                                     szmat_t nvars){
 
@@ -1026,7 +1026,7 @@ static int compute_parametrizations(param_t *param,
 
     szmat_t dec = 0;
 
-    for(szmat_t nc = 0; nc < nvars - 1 ; nc++){
+    for(nvars_t nc = 0; nc < nvars - 1 ; nc++){
 
       if(linvars[nvars - 2- nc] == 0){
         solve_hankel(data_bms, dimquot, dim, block_size, data->res,
@@ -1051,7 +1051,7 @@ static int compute_parametrizations(param_t *param,
 
         param->coords[nvars-2-nc]->length = param->elim->length-1 ;
 
-        for(szmat_t i = 0; i < param->elim->length-1 ; i++){
+        for(deg_t i = 0; i < param->elim->length-1 ; i++){
           param->coords[nvars-2-nc]->coeffs[i] = 0;
         }
         dec++;
@@ -1191,8 +1191,8 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
                                                      fglm_bms_data_t *data_bms,
                                                      ulong dimquot,
                                                      szmat_t block_size,
-                                                     long nlins,
-                                                     uint64_t *linvars,
+                                                     nvars_t nlins,
+                                                     nvars_t *linvars,
                                                      uint32_t *lineqs,
                                                      uint64_t *squvars,
                                                      long nvars,
@@ -1323,8 +1323,8 @@ static int compute_parametrizations_colon(param_t *param,
 					  fglm_bms_data_t *data_bms,
 					  ulong dimquot,
 					  szmat_t block_size,
-					  long nlins,
-					  uint64_t *linvars,
+					  nvars_t nlins,
+					  nvars_t *linvars,
 					  uint32_t *lineqs,
 					  uint64_t *squvars,
 					  long nvars,
@@ -1465,9 +1465,9 @@ static inline long initialize_fglm_colon_data(sp_matfglmcol_t *matrix,
 }
 
 
-param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const szmat_t nvars,
+param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const nvars_t nvars,
                            const szmat_t nlins,
-                           uint64_t *linvars,
+                           nvars_t *linvars,
                            uint32_t *lineqs,
                            uint64_t *squvars,
                            const int info_level,
@@ -1657,7 +1657,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                       szmat_t nvars,
                                       szmat_t block_size, //taille de bloc dans data->res
                                       szmat_t nlins,
-                                      uint64_t *linvars,
+                                      nvars_t *linvars,
                                       uint32_t *lineqs,
                                       uint64_t *squvars,
                                       int info_level,
@@ -1813,7 +1813,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
                                        const long nvars,
                                        const long bsz,
                                        const long nlins,
-                                       uint64_t *linvars,
+                                       nvars_t *linvars,
                                        uint32_t *lineqs,
                                        uint64_t *squvars,
                                        fglm_data_t *data_fglm,
@@ -1927,7 +1927,7 @@ static inline void guess_minpoly_colon(param_t *param,
 				       fglm_bms_data_t *data_bms,
 				       long dimquot,
 				       long tentative_degree,
-				       uint64_t *linvars,
+				       nvars_t *linvars,
 				       uint32_t *lineqs,
 				       long nvars,
 				       long *dim,
@@ -1950,7 +1950,7 @@ guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
 		     CF_t * leftvec, CF_t ** leftvecparam,
 		     szmat_t block_size, long dimquot, mod_t prime,
 		     param_t * param, fglm_bms_data_t * data_bms,
-		     uint64_t *linvars, uint32_t *lineqs, const long nvars,
+		     nvars_t *linvars, uint32_t *lineqs, const long nvars,
 		     long *dim_ptr, const int info_level, md_t *st){
   /* printf ("modulo %d\n",prime); */
   /* printf ("size   %d\n",matrix->ncols); */
@@ -2163,9 +2163,9 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 			       const mod_t prime,
 			       CF_t *leftvec,
 			       CF_t **leftvecparam,
-			       const long nvars,
-			       const long nlins,
-			       uint64_t *linvars,
+			       const nvars_t nvars,
+			       const nvars_t nlins,
+			       nvars_t *linvars,
 			       uint32_t *lineqs,
 			       uint64_t *squvars,
 			       const int info_level,

@@ -33,10 +33,11 @@
 	(a) % (b)
 typedef len_t nelts_t;
 typedef int32_t nvars_t;
+typedef int64_t bits_t;
 
 typedef struct{
-  int32_t nvars;
-  int32_t elim;
+  nvars_t nvars;
+  nvars_t elim;
   int32_t ngens;
   int32_t nterms;
   int32_t field_char;
@@ -83,10 +84,10 @@ typedef struct{
 typedef mpz_upoly_struct mpz_upoly_t[1];
 
 typedef struct{
-  len_t nvars;
-  len_t nsols;
+  nvars_t nvars;
+  deg_t nsols;
   len_t dquot;
-  len_t dim;
+  deg_t dim;
   mpz_upoly_t elim;
   mpz_upoly_t denom;
   mpz_upoly_t *coords;
@@ -144,24 +145,24 @@ typedef struct{
   mpz_t det_num;
   mpz_t det_den;
   mpz_t tmp;
-  int done_trace;
-  int done_det;
-  int check_trace;
-  int check_det;
+  int16_t done_trace;
+  int16_t done_det;
+  int16_t check_trace;
+  int16_t check_det;
 } trace_det_fglm_mat_struct;
 typedef trace_det_fglm_mat_struct trace_det_fglm_mat_t[1];
 
 typedef struct{
   mpz_t val_up;
   mpz_t val_do;
-  long k_up;
-  long k_do;
+  deg_t k_up;
+  deg_t k_do;
   unsigned int isexact;
 } coord_struct;
 typedef coord_struct coord_t[1];
 
 typedef struct{
-  long nvars;
+  nvars_t nvars;
   coord_t *coords;
 } real_point_struct;
 typedef real_point_struct real_point_t[1];

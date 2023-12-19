@@ -2038,7 +2038,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
                                    data_gens_ff_t *gens,
                                    double *stf4,
                                    const long nbsols,
-                                   int *bad_primes)
+                                   uint32_t *bad_primes)
 {
     st->info_level = 0;
 
@@ -2051,8 +2051,9 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
     /* st->nthrds is reset to its original value afterwards */
     const int nthrds = st->nthrds;
     st->nthrds = 1;
-
-    memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
+    for(nvars_t i = 0; i < st->nprimes; i++){
+      bad_primes[i] = 0;
+    }
 #pragma omp parallel for num_threads(nthrds)  \
     private(i) schedule(static)
     for (i = 0; i < st->nprimes; ++i){

@@ -563,7 +563,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
                                       int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
 
     char *line  = *linep;
-    long i = 0, j = 0, k = 0;
+    int32_t i = 0, j = 0, k = 0;
     size_t len = 0;
     while(getdelim(&line, &len, ',', fh) != -1) {
         for (k = 0, j = 0; j < len; ++j) {

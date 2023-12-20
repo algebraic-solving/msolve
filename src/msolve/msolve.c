@@ -916,7 +916,7 @@ static inline void check_and_set_linear_poly_non_hashed(long *nlins_ptr,
 }
 
 static inline void
-check_and_set_vars_squared_in_monomial_basis(uint64_t *squvars,
+check_and_set_vars_squared_in_monomial_basis(nvars_t *squvars,
 					     int32_t *lmb,
 					     long dquot,
 					     long nvars){
@@ -926,20 +926,17 @@ check_and_set_vars_squared_in_monomial_basis(uint64_t *squvars,
     Sinon, on met l'indice du monome. De toute facon, en 0, on aurait
     le monome 1.
   */
-  for (long i = 0; i < dquot; i++) {
-    long deg = 0;
-    for (long j = 0; j < nvars; j++){
+  for (deg_t i = 0; i < dquot; i++) {
+    deg_t deg = 0;
+    for (nvars_t j = 0; j < nvars; j++){
       deg+=lmb[i*nvars+j];
     }
     if (deg == 2) {
-      for (long j = 0; j < nvars-1; j++) {
-	if (lmb[i*nvars+j] == 2) {
-	  /* vars[j]^2 is the monomial */
-	  /* fprintf (stderr, */
-	  /* 	   "vars[%ld]^2 is the %ldth monomial of the monomial basis\n",j,i); */
-	  squvars[j]= i;
-	  break;
-	}
+      for (nvars_t j = 0; j < nvars-1; j++) {
+        if (lmb[i*nvars+j] == 2) {
+          squvars[j]= i;
+          break;
+        }
       }
     }
   }
@@ -1754,7 +1751,7 @@ static int32_t *initial_modular_step(
         nvars_t *nlins_ptr,
         nvars_t *linvars,
         uint32_t** lineqs_ptr,
-        uint64_t *squvars,
+        nvars_t *squvars,
 
         fglm_data_t **bdata_fglm,
         fglm_bms_data_t **bdata_bms,
@@ -1850,7 +1847,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
                                    nvars_t *bnlins,
                                    nvars_t **blinvars,
                                    uint32_t **blineqs,
-                                   uint64_t **bsquvars,
+                                   nvars_t **bsquvars,
 
                                    fglm_data_t **bdata_fglm,
                                    fglm_bms_data_t **bdata_bms,
@@ -2183,8 +2180,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   nvars_t *linvars = calloc(bs_qq->ht->nv, sizeof(nvars_t));
   blinvars[0] = linvars;
   uint32_t **lineqs_ptr = malloc(st->nthrds * sizeof(uint32_t *));
-  uint64_t **bsquvars = (uint64_t **) malloc(st->nthrds * sizeof(uint64_t *));
-  uint64_t *squvars = calloc(nr_vars-1, sizeof(uint64_t));
+  nvars_t **bsquvars = (nvars_t **) malloc(st->nthrds * sizeof(nvars_t *));
+  nvars_t *squvars = calloc(nr_vars-1, sizeof(nvars_t));
   bsquvars[0] = squvars;
 
   set_linear_function_pointer(gens->field_char);
@@ -4076,7 +4073,7 @@ restart:
 	    }
 	    nvars_t *linvars = calloc(gens->nvars, sizeof(nvars_t));
 	    uint32_t *lineqs = calloc(gens->nvars,sizeof(uint32_t));
-	    uint64_t *squvars = calloc(gens->nvars-1, sizeof(uint64_t));
+	    nvars_t *squvars = calloc(gens->nvars-1, sizeof(nvars_t));
 	    param_t * param = nmod_fglm_guess_colon(matrix, gens->field_char,
 						    leftvector, leftvectorsparam,
 						    gens->nvars,

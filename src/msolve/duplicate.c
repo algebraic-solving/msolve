@@ -1,7 +1,7 @@
 
 static inline void duplicate_linear_data(int nthreads, int nvars, int nlins,
                                          nvars_t **blinvars, uint32_t **blineqs,
-                                         uint64_t **bsquvars){
+                                         nvars_t **bsquvars){
   for(int i = 1; i < nthreads; i++){
 
     blineqs[i] = calloc(nlins*(nvars + 1), sizeof(uint64_t));
@@ -15,7 +15,7 @@ static inline void duplicate_linear_data(int nthreads, int nvars, int nlins,
     }
 
     bsquvars[i] = calloc(nvars - 1, sizeof(uint64_t));
-    for(long j = 0; j < nvars - 1; j++){
+    for(nvars_t j = 0; j < nvars - 1; j++){
       bsquvars[i][j] = bsquvars[0][j];
     }
 
@@ -117,7 +117,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
                                                 nvars_t *bnlins,
                                                 nvars_t **blinvars,
                                                 uint32_t **blineqs,
-                                                uint64_t **bsquvars){
+                                                nvars_t **bsquvars){
   const long len_xn = bmatrix[0]->nrows;
   const long dquot = bmatrix[0]->ncols;
   const long len = num_gb[0] * (st->nvars);

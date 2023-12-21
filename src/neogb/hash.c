@@ -128,8 +128,7 @@ ht_t *initialize_basis_hash_table(
 }
 
 ht_t *copy_hash_table(
-    const ht_t *bht,
-    const md_t *st
+    const ht_t *bht
     )
 {
     hl_t j;
@@ -1051,8 +1050,12 @@ static inline void switch_hcm_data_to_basis_hash_table(
     }
 
     for (len_t i = start; i < end; ++i) {
+#if PARALLEL_HASHING
         hcm[i] = check_insert_in_hash_table(
                 sht->ev[hcm[i]], sht->hd[hcm[i]].val, bht);
+#else
+        hcm[i] = insert_in_hash_table(sht->ev[hcm[i]], bht);
+#endif
     }
 }
 

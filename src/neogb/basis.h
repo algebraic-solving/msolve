@@ -27,6 +27,10 @@ void free_basis_without_hash_table(
         bs_t **bsp
         );
 
+void free_basis_and_only_local_hash_table_data(
+        bs_t **bsp
+        );
+
 void free_basis(
         bs_t **bsp
         );

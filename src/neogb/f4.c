@@ -649,7 +649,7 @@ bs_t *core_f4(
         print_round_timings(stdout, md, rrt, crt);
     }
     if (*errp > 0) {
-        free_basis_without_hash_table(&bs);
+        free_basis(&bs);
     } else {
         print_round_information_footer(stdout, md);
 

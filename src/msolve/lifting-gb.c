@@ -1304,7 +1304,7 @@ int msolve_gbtrace_qq(
     /* copy of hash tables for tracer application */
     msd->blht[0] = msd->bht;
     for(int i = 1; i < st->nthrds; i++){
-      ht_t *lht = copy_hash_table(msd->bht, st);
+      ht_t *lht = copy_hash_table(msd->bht);
       msd->blht[i] = lht;
     }
 

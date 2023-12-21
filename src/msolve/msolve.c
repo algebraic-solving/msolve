@@ -2411,7 +2411,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             bad_primes[i] = 1;
         }
         if (bs[i] != NULL) {
-            free_basis_without_hash_table(&(bs[i]));
+            free_basis_and_only_local_hash_table_data(&(bs[i]));
         }
     }
     st->nthrds = nthrds;
@@ -5204,7 +5204,7 @@ restart:
 
             int i;
 
-            ht_t *lht = copy_hash_table(bht, st);
+            ht_t *lht = copy_hash_table(bht);
 
             prime = next_prime(1<<30);
 
@@ -5421,7 +5421,7 @@ restart:
 
             int i;
 
-            ht_t *lht = copy_hash_table(bht, st);
+            ht_t *lht = copy_hash_table(bht);
 
             prime = next_prime(1<<30);
 

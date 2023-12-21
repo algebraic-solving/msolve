@@ -402,6 +402,7 @@ struct md_t
     int32_t size_basis;
     int32_t ff_bits;
     int32_t nf;
+    int32_t f4_qq_round;
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,
                                1=SCHREYER,

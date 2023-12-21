@@ -1856,7 +1856,8 @@ static int32_t *initial_modular_step(
 {
     double rt = realtime();
 
-    md->print_gb = print_gb;
+    md->print_gb    = print_gb;
+    md->f4_qq_round = 1;
 
     int32_t error              = 0;
     int32_t empty_solution_set = 1;
@@ -2328,7 +2329,8 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
                                    const long nbsols,
                                    int *bad_primes)
 {
-    st->info_level = 0;
+    st->info_level  = 0;
+    st->f4_qq_round = 2;
 
     double rt = realtime();
     /* tracing phase */

@@ -353,7 +353,7 @@ static inline void duplicate_data_mthread_gbtrace(int nthreads,
                                                   int32_t **leadmons_current,
                                                   trace_t **btrace){
 
-  const long len = num_gb[0] * (st->nvars);
+  const long len = num_gb[0] * (st->nvars-st->nev);
   for(int i = 0; i < nthreads; i++){
     leadmons_current[i] = (int32_t *)calloc(len, sizeof(int32_t));
   }

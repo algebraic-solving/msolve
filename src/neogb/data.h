@@ -40,7 +40,7 @@ inline omp_int_t omp_get_thread_num(void) { return 0;}
 inline omp_int_t omp_get_max_threads(void) { return 1;}
 #endif
 
-#define PARALLEL_HASHING 1
+#define PARALLEL_HASHING 0
 #define ORDER_COLUMNS 1
 /* loop unrolling in sparse linear algebra:
  * we store the offset of the first elements not unrolled
@@ -402,6 +402,7 @@ struct md_t
     int32_t size_basis;
     int32_t ff_bits;
     int32_t nf;
+    int32_t f4_qq_round;
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,
                                1=SCHREYER,

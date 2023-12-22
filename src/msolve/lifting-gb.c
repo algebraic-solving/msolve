@@ -586,7 +586,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            trace_t *trace,
                                            ht_t *tht,
                                            bs_t *bs_qq,
-                                           ht_t *bht,
+                                           ht_t *gbht,
                                            md_t *st,
                                            const int32_t fc,
                                            int info_level,
@@ -604,7 +604,8 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     bs_t *bs = NULL;
     /* if(gens->field_char){ */
-    int32_t err = 0;
+    int32_t err     = 0;
+    st->f4_qq_round = 1;
     bs = core_gba(bs_qq, st, &err, fc);
     if (err) {
       printf("Problem with F4, stopped computation.\n");
@@ -612,6 +613,8 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     }
 
     rt = realtime()-ca0;
+
+    const ht_t *bht = bs->ht;
 
     if(info_level > 1){
         fprintf(stderr, "Learning phase %.2f Gops/sec\n",
@@ -704,7 +707,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          trace_t **btrace,
                                          ht_t **btht,
                                          bs_t *bs_qq,
-                                         ht_t **bht,
+                                         ht_t **gbht,
                                          md_t *st,
                                          const int32_t fc,
                                          int info_level,
@@ -718,7 +721,8 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          int *bad_primes){
 
   double rt = realtime();
-  st->info_level = 0;
+  st->info_level  = 0;
+  st->f4_qq_round = 2;
   /* tracing phase */
 
   /* F4 and FGLM are run using a single thread */
@@ -737,6 +741,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
     bs = gba_trace_application_phase(btrace[0], btht[0], bs_qq, bht[0], st, lp->p[0]);
   }
   */
+  ht_t **bht = &(bs->ht);
   if (bs == NULL) {
       bad_primes[0] = 1;
       return;
@@ -755,7 +760,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   if (lml != num_gb[0]) {
       if (bs != NULL) {
-        free_basis_without_hash_table(&bs);
+        free_basis_and_only_local_hash_table_data(&bs);
       }
       return;
   }
@@ -778,7 +783,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
 
   if (bs != NULL) {
-    free_basis_without_hash_table(&bs);
+    free_basis_and_only_local_hash_table_data(&bs);
   }
 
 }
@@ -1304,7 +1309,7 @@ int msolve_gbtrace_qq(
     /* copy of hash tables for tracer application */
     msd->blht[0] = msd->bht;
     for(int i = 1; i < st->nthrds; i++){
-      ht_t *lht = copy_hash_table(msd->bht, st);
+      ht_t *lht = copy_hash_table(msd->bht);
       msd->blht[i] = lht;
     }
 

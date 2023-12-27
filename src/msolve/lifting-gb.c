@@ -21,7 +21,12 @@
 #include<flint/fmpz.h>
 
 #define NBCHECK 2
+#ifndef MIN
+#define MIN(x, y) ((x) > (y) ? (y) : (x))
+#endif
+#ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
+#endif
 
 typedef struct{
   uint32_t len; /* length of the encoded polynomial */

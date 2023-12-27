@@ -1575,13 +1575,13 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
    on verifie que mpz_pol / lc(mpz_pol) mod prime = nm_pol
    renvoie 1 si il faut faire le modular check.
 **/
-static inline int check_unit_mpz_nmod_poly(const long len,
+static inline int check_unit_mpz_nmod_poly(const deg_t len,
                                            const mpz_upoly_t mpz_pol,
                                            const nmod_poly_t nm_pol,
                                            const int32_t prime){
   uint32_t lc = mpz_fdiv_ui(mpz_pol->coeffs[len - 1], prime);
   lc = mod_p_inverse_32(lc, prime);
-  for(long i = 0; i < len; i++){
+  for(deg_t i = 0; i < len; i++){
     uint64_t c = mpz_fdiv_ui(mpz_pol->coeffs[i], prime);
     c *= (uint64_t)lc;
     c = c % prime;

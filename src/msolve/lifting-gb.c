@@ -20,6 +20,7 @@
 
 #include<flint/fmpz.h>
 
+#define NBCHECK 2
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 typedef struct{
@@ -78,8 +79,8 @@ typedef struct{
   mpz_t *den; /* lifted denominator */
   mpz_t gden; /* guessed denominator */
   mpz_t tmp;
-  int32_t start; /* indicates smallest index of poly whose coef has been lifted but not checked*/
-  int32_t end; /* indicates largest index of poly whose coef has been lifted but not checked*/
+  int32_t start; /* smallest index of poly whose witness coef has been lifted but not checked*/
+  int32_t end; /* largest index of poly whose witness coef has been lifted but not checked*/
   int *check1; /* tells whether lifted data are ok with one more prime */
   int *check2; /* tells whether lifted data are ok with two more primes */
   int32_t S;
@@ -98,19 +99,19 @@ static inline void data_lift_init(data_lift_t dl,
   dl->S = 0;
   int32_t i;
 
-  dl->steps = calloc(nsteps, sizeof(int32_t));
+  dl->steps = (int32_t *)calloc(nsteps, sizeof(int32_t));
   for(i = 0; i < nsteps; i++){
     dl->steps[i] = steps[i];
   }
   dl->cstep = 0;
   dl->lend = npol;
   dl->crt_mult = 0;
-  dl->crt = malloc(sizeof(mpz_t) * dl->npol);
+  dl->crt = (mpz_t *)malloc(sizeof(mpz_t) * dl->npol);
   for(int32_t i = 0; i < dl->npol; i++){
     mpz_init(dl->crt[i]);
   }
   dl->recon = 0;
-  dl->coef = calloc(npol, sizeof(mpz_t) );
+  dl->coef =(int32_t *) calloc(npol, sizeof(int32_t) );
 
   dl->num = malloc(sizeof(mpz_t) * npol);
   for(i = 0; i < npol; i++){
@@ -123,7 +124,7 @@ static inline void data_lift_init(data_lift_t dl,
   mpz_init_set_ui(dl->gden, 1);
   mpz_init(dl->tmp);
   dl->start = 0;
-  dl->end = 0;
+  dl->end = npol;
   dl->check1 = calloc(npol, sizeof(int));
   dl->check2 = calloc(npol, sizeof(int));
 
@@ -161,14 +162,14 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    int32_t *lm, int32_t *basis){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
-  modgbs->primes = calloc(alloc, sizeof(uint64_t));
-  modgbs->cf_64 = calloc(alloc, sizeof(uint64_t));
+  modgbs->primes = (uint64_t *)calloc(alloc, sizeof(uint64_t));
+  modgbs->cf_64 = (uint64_t *)calloc(alloc, sizeof(uint64_t));
   modgbs->ld = ld;
   modgbs->nv = nv;
-  modgbs->modpolys = malloc(sizeof(modpolys_struct) * ld);
+  modgbs->modpolys = (modpolys_t *)malloc(sizeof(modpolys_t) * ld);
 
   modgbs->mb = basis;
-  modgbs->ldm = calloc(nv*ld, sizeof(int32_t));
+  modgbs->ldm = (int32_t *)calloc(nv*ld, sizeof(int32_t));
   for(int32_t i = 0; i < ld; i++){
     for(int j = 0; j < nv; j++){
       modgbs->ldm[i*nv+j] = lm[i*nv+j];
@@ -176,11 +177,11 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   }
   for(uint32_t i = 0; i < ld; i++){
     modgbs->modpolys[i]->len = lens[i];
-    modgbs->modpolys[i]->cf_32 = malloc(sizeof(uint32_t **)*lens[i]);
-    modgbs->modpolys[i]->cf_zz = malloc(sizeof(mpz_t)*lens[i]);
-    modgbs->modpolys[i]->cf_qq = malloc(sizeof(mpz_t)*2*lens[i]);
+    modgbs->modpolys[i]->cf_32 = (uint32_t **)malloc(sizeof(uint32_t *)*lens[i]);
+    modgbs->modpolys[i]->cf_zz = (mpz_t *)malloc(sizeof(mpz_t)*lens[i]);
+    modgbs->modpolys[i]->cf_qq = (mpz_t *)malloc(sizeof(mpz_t)*2*lens[i]);
     for(uint32_t j = 0; j < lens[i]; j++){
-      modgbs->modpolys[i]->cf_32[j] = calloc(sizeof(uint32_t), alloc);
+      modgbs->modpolys[i]->cf_32[j] = calloc(alloc, sizeof(uint32_t));
       mpz_init(modgbs->modpolys[i]->cf_zz[j]);
     }
     for(uint32_t j = 0; j < 2 * lens[i]; j++){
@@ -538,7 +539,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       }
       modgbs->modpolys[i]->cf_32[bc][modgbs->nprimes] = c;
       bc--;
-    }
+   }
   }
 
   modgbs->nprimes++;
@@ -834,12 +835,11 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
 
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p, mod_p, (uint32_t)newprime);
-  for(int32_t k = dl->lstart; k < modgbs->ld; k++){
-    uint64_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
+  for(int32_t k = 0; k < dl->end; k++){
+      uint64_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
 
-    mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
-               c, newprime, prod_p, dl->tmp, 1);
-
+      mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
+                 c, newprime, prod_p, dl->tmp, 1);
   }
   mpz_set(mod_p, prod_p);
 }
@@ -859,7 +859,7 @@ static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
   modpolys_t *polys = modgbs->modpolys;
 
   for(int32_t k = start; k < end; k++){
-    if(dlift->check1[k]){
+    if(dlift->check1[k] >= 1){
       for(int32_t l = 0; l < polys[k]->len; l++){
         for(uint32_t i = 0; i < modgbs->nprimes-1; i++){
           modgbs->cf_64[i] = polys[k]->cf_32[l][i];
@@ -916,19 +916,19 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
 
   modpolys_t *polys = modgbs->modpolys;
   set_recdata(dl, rd1, rd2, mod_p);
+
   for(int32_t k = start; k < end; k++){
-    if(dl->check1[k]){
+    if(dl->check1[k] >= 1){
       mpz_set_ui(dl->tmp, 1);
       for(int32_t l = 0; l < polys[k]->len; l++){
-
         if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p, dl->den[k], rd1)){
           mpz_set(polys[k]->cf_qq[2*l], rnum);
           mpz_set(polys[k]->cf_qq[2*l + 1], rden);
           mpz_lcm(dl->tmp, dl->tmp, rden);
         }
         else{
-          /* fprintf(stderr, "[%d/%d]", k, modgbs->ld - 1); */
           mpz_set_ui(dl->gden, 1);
+          dl->check2[k] = 0;
           mpz_clear(rnum);
           mpz_clear(rden);
           return k;
@@ -941,7 +941,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         mpz_set_ui(polys[k]->cf_qq[2*l+1], 1);
       }
       mpz_mul(polys[k]->lm, polys[k]->lm, dl->tmp);
-      /* dl->S++; */
+      dl->check2[k]++;
     }
     else{
       mpz_clear(rnum);
@@ -967,10 +967,45 @@ static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef
   return (c==coef);
 }
 
+static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
+                                     int thrds){
+  /* verification of the basis is performed at the very end of the computation */
+  if(dl->check1[dl->end-1] == 0){
+      return 0;
+  }
+  mpz_t den;
+  mpz_init(den);
+  for(int32_t k = 0; k < modgbs->ld; k++){
+    if(dl->check1[k]>=1 && dl->check2[k] > 0 && dl->check2[k] < NBCHECK){
+      for(int i = 0; i < thrds; i++){
+        uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
+        for(int32_t c = 0; c < modgbs->modpolys[k]->len; c++){
+          mpz_mul(den, modgbs->modpolys[k]->lm, modgbs->modpolys[k]->cf_qq[2*c+1]);
+          uint32_t coef = modgbs->modpolys[k]->cf_32[c][modgbs->nprimes   - (thrds - i) ];
+          int b = verif_coef(modgbs->modpolys[k]->cf_qq[2*c], den, prime, coef);
+          if(!b){
+            dl->check2[k] = 0;
+            mpz_set_ui(dl->gden, 1);
+            /* mpz_clear(den); */
+            /* return 0; */
+          }
+        }
+        dl->check2[k]++;
+      }
+    }
+    else{
+      mpz_clear(den);
+      return 1;
+    }
+  }
+  mpz_clear(den);
+  return 1;
+}
+
 static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t dl,
                                               int thrds){
   for(int32_t k = dl->lstart; k < dl->lend; k++){
-    if(!dl->check1[k]){
+    if(dl->check1[k]==0){
       /* too early to perform the verification */
       return k;
     }
@@ -978,15 +1013,17 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
 
       uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
       uint32_t coef = modgbs->modpolys[k]->cf_32[dl->coef[k]][modgbs->nprimes  - (thrds - i) ];
-      int b = verif_coef(dl->num[k], dl->den[k], prime, coef);
+      int boo = verif_coef(dl->num[k], dl->den[k], prime, coef);
 
-      if(!b){
-        dl->check1[k] = 0;
+      if(!boo){
+        for(int32_t kk = k; kk < dl->end; kk++){
+          dl->check1[kk] = 0;
+        }
         return k;
       }
+      dl->start = MIN(dl->start + 1, dl->lend);
+      dl->check1[k]++;
     }
-    
-    dl->start++;
   }
   return -1;
 }
@@ -994,9 +1031,9 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
 /* returns 0 iff rational number could not be lifted */
 static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
                                    rrec_data_t recdata1, rrec_data_t recdata2){
+
   int b = ratreconwden(dl->num[i], dl->den[i],
                        dl->crt[i], mod_p, dl->gden, recdata1);
-
   if(b){
     mpz_mul(dl->den[i], dl->den[i], dl->gden);
     mpz_gcd(dl->tmp, dl->den[i], dl->num[i]);
@@ -1023,8 +1060,10 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         int thrds, double *st_crt, double *st_rrec){
 
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
+  verif_lifted_basis(modgbs, dl, thrds);
+
+  double st = realtime();
   if(dl->lstart != dl->start){
-    double st = realtime();
     crt_lift_modgbs(modgbs, dl, dl->lstart, dl->start);
     *st_crt += realtime() - st;
     st = realtime();
@@ -1033,8 +1072,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   }
   dl->lstart = dl->start;
 
-  double st = realtime();
-
+  st = realtime();
   incremental_dlift_crt_full(modgbs, dl,
                              dl->coef, mod_p, prod_p,
                              thrds);
@@ -1056,15 +1094,15 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
       int b = reconstructcoeff(dl, i, mod_p,
                                recdata1, recdata2);
       if(!b){
+        dl->check1[i] = 0;
         break;
       }
       else{
-        dl->check1[i] = 1;
+        dl->check1[i]++;
       }
     }
   }
   *st_rrec += realtime()-st;
-
 }
 
 long max_bit_size_gb(gb_modpoly_t modgbs){
@@ -1196,6 +1234,8 @@ int msolve_gbtrace_qq(
   while(gens->field_char==0 && is_lucky_prime_ui(prime, msd->bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
+
+  /* prime = 1246973177; */
 
   primeinit = prime;
   msd->lp->p[0] = primeinit;
@@ -1333,7 +1373,6 @@ int msolve_gbtrace_qq(
         }
         msd->lp->p[0] = prime;
       }
-
       int nthrds = 1; /* mono-threaded mult-mid comp */
       for(len_t i = 1; i < nthrds/* st->nthrds */; i++){
         prime = next_prime(prime);
@@ -1368,7 +1407,6 @@ int msolve_gbtrace_qq(
 
       /* nprimes += st->nthrds; */
       nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */
-
       if(nprimes == 1){
         if(info_level>2){
           fprintf(stderr, "------------------------------------------\n");
@@ -1408,12 +1446,13 @@ int msolve_gbtrace_qq(
 
       int lstart = dlift->lstart;
       double ost_rrec = st_rrec;
+      double ost_crt = st_crt;
 
       if(!bad){
         ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
                     nthrds/* st->nthrds */, &st_crt, &st_rrec);
       }
-      if(/* (st_crt -ost_crt) + */ (st_rrec - ost_rrec) > dlift->rr * stf4){
+      if((st_crt -ost_crt) + (st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
           fprintf(stderr, "(->%d)", dlift->rr);
@@ -1424,22 +1463,26 @@ int msolve_gbtrace_qq(
           fprintf(stderr, "{%d}", nprimes);
         }
       }
-      if(dlift->lstart != lstart && dlift->lstart < modgbs->ld - 1){
+      apply = 0;
+      for(len_t i = 0; i < modgbs->ld; i++){
+        if(dlift->check2[i] < NBCHECK){
+          apply = 1;
+          break;
+        }
+        dlift->lstart = i;
+      }
+      if(dlift->lstart != lstart){
         if(info_level){
           fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);
         }
         lstart = dlift->lstart;
       }
-      if(dlift->lstart >= modgbs->ld){
-        if(info_level){
-          fprintf(stderr, "<100%%>\n");
-          fprintf(stderr, "CRT time = %.2f, Rational reconstruction time = %.2f\n", st_crt, st_rrec);
-        }
-        apply = 0;
-      }
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
     }
+  }
+  if(info_level){
+    fprintf(stderr, "\nCRT time = %.2f, Rational reconstruction time = %.2f\n", st_crt, st_rrec);
   }
   if(info_level){
     long nbits = max_bit_size_gb(modgbs);

@@ -166,7 +166,7 @@ static void getoptions(
     switch(opt) {
     case 'h':
       display_help(argv[0]);
-      exit(0);
+      exit(1);
     case 'e':
       *elim_block_len = strtol(optarg, NULL, 10);
       if (*elim_block_len < 0) {
@@ -334,6 +334,7 @@ int main(int argc, char **argv){
     int32_t isolate               = 0; /* not used at the moment */
 
     files_gb *files = malloc(sizeof(files_gb));
+    if(files == NULL) exit(1);
     files->in_file = NULL;
     files->bin_file = NULL;
     files->out_file = NULL;
@@ -378,45 +379,6 @@ int main(int argc, char **argv){
     int32_t nr_gens     = 0;
     data_gens_ff_t *gens = allocate_data_gens();
 
-    /*** temporary code to be cleaned ***/
-    if(isolate){
-      fprintf(stderr, "Real root isolation\n");
-      mpz_param_array_t lparams;
-      if(files->in_file==NULL){
-        get_params_from_file_bin(files->bin_file, lparams);
-      }
-      else{
-        get_params_from_file(files->in_file, lparams);
-      }
-      double st = realtime();
-      long *lnbr = NULL;
-      interval **lreal_roots = NULL;
-      real_point_t **lreal_pts = NULL;
-      isolate_real_roots_lparam(lparams, &lnbr,
-                                &lreal_roots, &lreal_pts,
-                                precision, nr_threads, info_level);
-      if(info_level){
-        fprintf(stderr, "Total elapsed time = %.2f\n", realtime() - st);
-      }
-
-      display_arrays_of_real_roots(files, lparams->nb, lreal_pts, lnbr);
-      for(int i = 0; i < lparams->nb; i++){
-        if (lnbr[i] > 0) {
-          for(long j = 0; j < lnbr[i]; j++){
-            real_point_clear(lreal_pts[i][j]);
-            mpz_clear( (lreal_roots[i]+j)->numer );
-          }
-          free(lreal_pts[i]);
-          free(lreal_roots[i]);
-        }
-      }
-      free(lnbr);
-      free(lreal_roots);
-      free(lreal_pts);
-      free(files);
-      return 0;
-    }
-
     get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens);
 #ifdef IODEBUG
     display_gens(stdout, gens);
@@ -434,9 +396,9 @@ int main(int argc, char **argv){
     
     /* data structures for parametrization */
     param_t *param  = NULL;
-    mpz_param_t mpz_param;
-    mpz_param_init(mpz_param);
-    
+    mpz_param_t *mpz_paramp = malloc(sizeof(mpz_param_t));
+    mpz_param_init(*mpz_paramp);
+
     long nb_real_roots      = 0;
     interval *real_roots    = NULL;
     real_point_t *real_pts  = NULL;
@@ -448,12 +410,11 @@ int main(int argc, char **argv){
                           genericity_handling, saturate, colon, normal_form,
                           normal_form_matrix, is_gb, precision, 
                           files, gens,
-            &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
+            &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
     free(param);
-    mpz_param_clear(mpz_param);
-
+    mpz_param_clear(*mpz_paramp);
 
     if (nb_real_roots > 0) {
         for(long i = 0; i < nb_real_roots; i++){
@@ -476,14 +437,7 @@ int main(int argc, char **argv){
 -----------------------------------\n");
     }
     free_data_gens(gens);
-    /* for(long i = 0; i < gens->nvars; i++){
-        free(gens->vnames[i]);
-    }
-    free(gens->vnames);
-    free(gens->lens);
-    free(gens->cfs);
-    free(gens->exps);
-    free(gens->random_linear_form); */
+
     free(files);
     return ret;
 }

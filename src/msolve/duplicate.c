@@ -1,7 +1,7 @@
 
 static inline void duplicate_linear_data(int nthreads, int nvars, int nlins,
-                                         uint64_t **blinvars, uint32_t **blineqs,
-                                         uint64_t **bsquvars){
+                                         nvars_t **blinvars, uint32_t **blineqs,
+                                         nvars_t **bsquvars){
   for(int i = 1; i < nthreads; i++){
 
     blineqs[i] = calloc(nlins*(nvars + 1), sizeof(uint64_t));
@@ -15,7 +15,7 @@ static inline void duplicate_linear_data(int nthreads, int nvars, int nlins,
     }
 
     bsquvars[i] = calloc(nvars - 1, sizeof(uint64_t));
-    for(long j = 0; j < nvars - 1; j++){
+    for(nvars_t j = 0; j < nvars - 1; j++){
       bsquvars[i][j] = bsquvars[0][j];
     }
 
@@ -113,11 +113,11 @@ static inline void duplicate_data_mthread_trace(int nthreads,
                                                 int32_t **bdiv_xn,
                                                 sp_matfglm_t **bmatrix,
                                                 param_t **nmod_params,
-                                                int nlins,
-                                                long *bnlins,
-                                                uint64_t **blinvars,
+                                                nvars_t nlins,
+                                                nvars_t *bnlins,
+                                                nvars_t **blinvars,
                                                 uint32_t **blineqs,
-                                                uint64_t **bsquvars){
+                                                nvars_t **bsquvars){
   const long len_xn = bmatrix[0]->nrows;
   const long dquot = bmatrix[0]->ncols;
   const long len = num_gb[0] * (st->nvars);
@@ -127,7 +127,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
   }
 
   for(int i = 0; i < nthreads; i++){
-    leadmons_current[i] = (int32_t *)calloc(len, sizeof(int32_t));
+    leadmons_current[i] = (int32_t *)malloc(len*sizeof(int32_t));
   }
   /* leadmons_ori[0] has already been allocated*/
   for(int i = 1; i < nthreads; i++){
@@ -230,7 +230,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
 
 
 static inline void duplicate_data_mthread(int nthreads,
-                                        int nv,
+                                          nvars_t nv,
                                         int32_t *num_gb,
                                         int32_t **leadmons_ori,
                                         int32_t **leadmons_current,

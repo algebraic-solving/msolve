@@ -19,14 +19,14 @@
  * Mohab Safey El Din */
 
 
-void (*set_linear_poly)(long nlins, uint32_t *lineqs, uint64_t *linvars,
+void (*set_linear_poly)(nvars_t nlins, uint32_t *lineqs, nvars_t *linvars,
                         ht_t *bht, int32_t *bexp_lm, bs_t *bs);
 
-void (*check_and_set_linear_poly)(long *nlins_ptr, uint64_t *linvars,
+void (*check_and_set_linear_poly)(nvars_t *nlins_ptr, nvars_t *linvars,
                                   uint32_t** lineqs_ptr,
                                   ht_t *bht, int32_t *bexp_lm, bs_t *bs);
 
-static inline void set_linear_poly_8(long nlins, uint32_t *lineqs, uint64_t *linvars,
+static inline void set_linear_poly_8(nvars_t nlins, uint32_t *lineqs, nvars_t *linvars,
         ht_t *bht, int32_t *bexp_lm, bs_t *bs){
 
     const int nv    = bht->nv;
@@ -86,7 +86,7 @@ static inline void set_linear_poly_8(long nlins, uint32_t *lineqs, uint64_t *lin
     free(etmp);
 }
 
-static inline void set_linear_poly_16(long nlins, uint32_t *lineqs, uint64_t *linvars,
+static inline void set_linear_poly_16(nvars_t nlins, uint32_t *lineqs, nvars_t *linvars,
         ht_t *bht, int32_t *bexp_lm, bs_t *bs){
 
     const int nv    = bht->nv;
@@ -148,7 +148,7 @@ static inline void set_linear_poly_16(long nlins, uint32_t *lineqs, uint64_t *li
 
 
 
-static inline void set_linear_poly_32(long nlins, uint32_t *lineqs, uint64_t *linvars,
+static inline void set_linear_poly_32(nvars_t nlins, uint32_t *lineqs, nvars_t *linvars,
         ht_t *bht, int32_t *bexp_lm, bs_t *bs){
 
     const int nv    = bht->nv;
@@ -209,7 +209,7 @@ static inline void set_linear_poly_32(long nlins, uint32_t *lineqs, uint64_t *li
 }
 
 
-static inline void check_and_set_linear_poly_8(long *nlins_ptr, uint64_t *linvars,
+static inline void check_and_set_linear_poly_8(nvars_t *nlins_ptr, nvars_t *linvars,
                                              uint32_t** lineqs_ptr,
                                              ht_t *bht, int32_t *bexp_lm, bs_t *bs){
   long nlins = 0;
@@ -276,7 +276,7 @@ static inline void check_and_set_linear_poly_8(long *nlins_ptr, uint64_t *linvar
   lineqs_ptr[0] = lineqs;
 }
 
-static inline void check_and_set_linear_poly_16(long *nlins_ptr, uint64_t *linvars,
+static inline void check_and_set_linear_poly_16(nvars_t *nlins_ptr, nvars_t *linvars,
                                              uint32_t** lineqs_ptr,
                                              ht_t *bht, int32_t *bexp_lm, bs_t *bs){
   long nlins = 0;
@@ -343,7 +343,7 @@ static inline void check_and_set_linear_poly_16(long *nlins_ptr, uint64_t *linva
   lineqs_ptr[0] = lineqs;
 }
 
-static inline void check_and_set_linear_poly_32(long *nlins_ptr, uint64_t *linvars,
+static inline void check_and_set_linear_poly_32(nvars_t *nlins_ptr, nvars_t *linvars,
                                              uint32_t** lineqs_ptr,
                                              ht_t *bht, int32_t *bexp_lm, bs_t *bs){
   long nlins = 0;

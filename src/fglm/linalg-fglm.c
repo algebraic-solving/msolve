@@ -619,7 +619,6 @@ static inline void _4mul_new_matrix_vector_product(uint32_t* vec_res, const uint
 }
 
 
-
 /**
 AVX2-based matrix vector product
 **/
@@ -773,7 +772,7 @@ static inline void _8mul_matrix_vector_product(uint32_t* vec_res,
 	for(long k = 0; k < rem; k++){
 	  tmp += ((long)mat_cp[k] * (long)vec_cp[k]) % PRIME;
 	}
-	vec_res[j] += tmp % PRIME;
+	vec_res[j] = (vec_res[j] + tmp) % PRIME;
       }
     }
 }

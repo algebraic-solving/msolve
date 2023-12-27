@@ -419,10 +419,12 @@ static int32_t get_ngenerators(char *fn){
   FILE *fh  = fopen(fn,"r");
   /* first line are the variables */
   if (getline(&line, &len, fh) == -1) {
+    fclose(fh);
     return -1;
   }
   /* second line is the characteristic */
   if (getline(&line, &len, fh) == -1) {
+    fclose(fh);
     return -1;
   }
   while(getdelim(&line, &len, ',', fh) != -1) {
@@ -561,7 +563,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
                                       int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
 
     char *line  = *linep;
-    long i = 0, j = 0, k = 0;
+    int32_t i = 0, j = 0, k = 0;
     size_t len = 0;
     while(getdelim(&line, &len, ',', fh) != -1) {
         for (k = 0, j = 0; j < len; ++j) {
@@ -1091,7 +1093,7 @@ static inline void get_single_param_from_file_bin(FILE *file, mpz_param_t param)
 
   get_poly_bin(file, param->denom);
 
-  if(!fscanf(file, "%ld\n", &param->nvars)){
+  if(!fscanf(file, "%d\n", &param->nvars)){
     fprintf(stderr, "Issue when reading binary file (nvars)\n");
     exit(1);
   }
@@ -1119,7 +1121,7 @@ static inline void get_single_param_from_file(FILE *file, mpz_param_t param){
   get_poly(file, param->elim);
 
   get_poly(file, param->denom);
-  if(!fscanf(file, "%ld\n", &param->nvars)){
+  if(!fscanf(file, "%d\n", &param->nvars)){
     fprintf(stderr, "Issue when reading binary file (nvars)\n");
     exit(1);
   }

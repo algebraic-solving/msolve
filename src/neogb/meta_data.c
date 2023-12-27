@@ -150,7 +150,7 @@ void print_round_information_header(
         const md_t * const st
         )
 {
-    if (st->info_level > 1) {
+    if (st->info_level > 2) {
         if (st->trace_level != APPLY_TRACER) {
             fprintf(f, "\n");
             fprintf(f, "Legend for f4 information\n");

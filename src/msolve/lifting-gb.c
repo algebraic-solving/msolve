@@ -995,8 +995,6 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
             b = 0;
             mpz_clear(den);
             return b;
-            /* mpz_clear(den); */
-            /* return 0; */
           }
         }
         dl->check2[k]++;

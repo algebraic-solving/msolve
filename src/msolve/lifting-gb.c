@@ -946,7 +946,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         mpz_set_ui(polys[k]->cf_qq[2*l+1], 1);
       }
       mpz_mul(polys[k]->lm, polys[k]->lm, dl->tmp);
-      dl->check2[k]++;
+      dl->check2[k] = 1;
     }
     else{
       mpz_clear(rnum);
@@ -976,8 +976,9 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
                                      int thrds){
   /* verification of the basis is performed at the very end of the computation */
   if(dl->check1[dl->end-1] == 0){
-      return 0;
+      return 1;
   }
+  int b = 1;
   mpz_t den;
   mpz_init(den);
   for(int32_t k = 0; k < modgbs->ld; k++){
@@ -991,6 +992,9 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
           if(!b){
             dl->check2[k] = 0;
             mpz_set_ui(dl->gden, 1);
+            b = 0;
+            mpz_clear(den);
+            return b;
             /* mpz_clear(den); */
             /* return 0; */
           }
@@ -998,13 +1002,9 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
         dl->check2[k]++;
       }
     }
-    else{
-      mpz_clear(den);
-      return 1;
-    }
   }
   mpz_clear(den);
-  return 1;
+  return b;
 }
 
 static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t dl,
@@ -1024,6 +1024,7 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
         for(int32_t kk = k; kk < dl->end; kk++){
           dl->check1[kk] = 0;
         }
+        dl->start = k;
         return k;
       }
       dl->start = MIN(dl->start + 1, dl->lend);
@@ -1064,10 +1065,18 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         rrec_data_t recdata1, rrec_data_t recdata2,
                         int thrds, double *st_crt, double *st_rrec){
 
-  verif_lifted_rational_wcoef(modgbs, dl, thrds);
-  verif_lifted_basis(modgbs, dl, thrds);
-
   double st = realtime();
+  verif_lifted_rational_wcoef(modgbs, dl, thrds);
+  int  b = verif_lifted_basis(modgbs, dl, thrds);
+  if(b == 0){
+    for(int32_t i = 0; i < modgbs->ld; i++){
+      if(dl->check2[i] == 0){
+        dl->lstart = i;
+        break;
+      }
+    }
+  }
+  *st_rrec += realtime()-st;
   if(dl->lstart != dl->start){
     crt_lift_modgbs(modgbs, dl, dl->lstart, dl->start);
     *st_crt += realtime() - st;
@@ -1108,6 +1117,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
     }
   }
   *st_rrec += realtime()-st;
+
 }
 
 long max_bit_size_gb(gb_modpoly_t modgbs){
@@ -1474,11 +1484,10 @@ int msolve_gbtrace_qq(
           apply = 1;
           break;
         }
-        dlift->lstart = i;
       }
       if(dlift->lstart != lstart){
         if(info_level){
-          fprintf(stderr, "<%.2f%%>", 100* (float)(dlift->lstart + 1)/modgbs->ld);
+          fprintf(stderr, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), modgbs->ld)/modgbs->ld);
         }
         lstart = dlift->lstart;
       }

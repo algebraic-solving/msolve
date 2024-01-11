@@ -394,6 +394,7 @@ static int32_t initialize_f4(
     /* link tracer into basis */
     if (md->trace_level == LEARN_TRACER) {
         md->tr = initialize_trace(bs, md);
+        md->min_deg_in_first_deg_fall = INT32_MAX;
     }
 
 

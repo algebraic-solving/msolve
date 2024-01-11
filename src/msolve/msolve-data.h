@@ -32,9 +32,21 @@
 #include <flint/nmod_poly.h>
 #define MODP(a,b)                               \
 	(a) % (b)
+
+
+typedef struct
+{
+  mpz_t numer;
+  long k;
+  unsigned int isexact;
+  int sign_left;
+} interval;
+
 typedef len_t nelts_t;
 typedef int32_t nvars_t;
 typedef int64_t bits_t;
+
+
 
 typedef struct{
   nvars_t nvars;

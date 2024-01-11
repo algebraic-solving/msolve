@@ -18,13 +18,6 @@
  * Christian Eder
  * Mohab Safey El Din */
 
-typedef struct
-{
-  mpz_t numer;
-  long k;
-  unsigned int isexact;
-  int sign_left;
-} interval;
 
 typedef struct{
   int search;/*when >0 (resp. <0, =0) computes positive (resp. negative, all) roots */

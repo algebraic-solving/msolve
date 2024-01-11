@@ -604,6 +604,7 @@ static void finalize_f4(
         gmd->tr = (*lmdp)->tr;
         gmd->trace_level = APPLY_TRACER;
     }
+    gmd->min_deg_in_first_deg_fall = (*lmdp)->min_deg_in_first_deg_fall;
     free_local_data(matp, lmdp);
 }
 

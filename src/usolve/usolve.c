@@ -36,6 +36,7 @@
 #include "flint/fmpz.h"
 #include "flint/fmpz_poly.h"
 
+#include "../msolve/msolve-data.h"
 
 #define THRESHOLDSHIFT 256
 #define POWER_HACK 1

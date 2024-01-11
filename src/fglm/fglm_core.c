@@ -41,15 +41,17 @@ double omp_get_wtime(void) { return realtime();}
 #define DEBUGFGLM 0
 #define BLOCKWIED 0
 
+#include <flint/nmod_poly.h>
+
+#include "../msolve/msolve-data.h"
+#include "libfglm.h"
 #include "data_fglm.c"
 #include "linalg-fglm.c"
 #include "matrix-mult.c"
 #include "berlekamp_massey.c"
-#include "libfglm.h"
 
 #ifdef BLOCKWIED
 #include <flint/nmod_mat.h>
-#include <flint/nmod_poly.h>
 #include <flint/nmod_poly_mat.h>
 #include <flint/fmpz_mat.h>
 #include "../upolmat/nmod_mat_extra.h"

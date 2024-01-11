@@ -409,6 +409,7 @@ struct md_t
                                2=POT,
                                3=DPOT */
     int32_t reduce_gb;
+    int32_t min_deg_in_first_deg_fall;
 
     uint32_t prime_start;
     int32_t nprimes;

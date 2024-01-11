@@ -651,6 +651,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
     check_enlarge_basis(bs, mat->np, st);
 
     hm_t **rows = mat->tr;
+    deg_t pairs_deg = sht->hd[hcm[0]].deg;
     switch_hcm_data_to_basis_hash_table(hcm, bht, mat, sht);
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, k)
@@ -739,6 +740,18 @@ static void convert_sparse_matrix_rows_to_basis_elements(
             printf("\n");
         }
 #endif
+    }
+
+    /* last element has smallest leading monomial, i.e. also the smallest
+    possible degree, so check with this for a degree fall */
+    if (
+            st->trace_level != APPLY_TRACER
+            && st->in_final_reduction_step != 1
+            && st->homogeneous == 0
+            && st->min_deg_in_first_deg_fall == INT32_MAX
+            && deg < pairs_deg
+        ) {
+            st->min_deg_in_first_deg_fall = deg;
     }
 
     /* timings */

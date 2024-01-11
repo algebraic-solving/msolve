@@ -271,6 +271,8 @@ static void reduce_basis(
     exp_t etmp[bht->evl];
     memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
+    md->in_final_reduction_step = 1;
+
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
     mat->nr = 0;
     mat->sz = 2 * bs->lml;
@@ -332,6 +334,8 @@ start:
         bs->lm[k++] = bht->hd[bs->hm[bs->ld-1-i][OFFSET]].sdm;
     }
     bs->lml = k;
+
+    md->in_final_reduction_step = 0;
 
     print_round_timings(stdout, md, rt, ct);
     print_round_information_footer(stdout, md);

@@ -28,6 +28,7 @@ static md_t *copy_meta_data(
     md_t *md = (md_t *)malloc(sizeof(md_t));
     memcpy(md, gmd, sizeof(md_t));
     md->fc  = prime;
+    md->min_deg_in_first_deg_fall = gmd->min_deg_in_first_deg_fall;
     md->application_nr_mult = 0;
     md->application_nr_add  = 0;
     md->application_nr_red  = 0;
@@ -150,7 +151,7 @@ void print_round_information_header(
         const md_t * const st
         )
 {
-    if (st->info_level > 2) {
+    if (st->info_level > 1) {
         if (st->trace_level != APPLY_TRACER) {
             fprintf(f, "\n");
             fprintf(f, "Legend for f4 information\n");

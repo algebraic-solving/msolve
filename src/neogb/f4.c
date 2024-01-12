@@ -271,6 +271,8 @@ static void reduce_basis(
     exp_t etmp[bht->evl];
     memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
+    md->in_final_reduction_step = 1;
+
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
     mat->nr = 0;
     mat->sz = 2 * bs->lml;
@@ -333,6 +335,8 @@ start:
     }
     bs->lml = k;
 
+    md->in_final_reduction_step = 0;
+
     print_round_timings(stdout, md, rt, ct);
     print_round_information_footer(stdout, md);
 }
@@ -390,6 +394,7 @@ static int32_t initialize_f4(
     /* link tracer into basis */
     if (md->trace_level == LEARN_TRACER) {
         md->tr = initialize_trace(bs, md);
+        md->min_deg_in_first_deg_fall = INT32_MAX;
     }
 
 
@@ -599,6 +604,7 @@ static void finalize_f4(
         gmd->tr = (*lmdp)->tr;
         gmd->trace_level = APPLY_TRACER;
     }
+    gmd->min_deg_in_first_deg_fall = (*lmdp)->min_deg_in_first_deg_fall;
     free_local_data(matp, lmdp);
 }
 

@@ -99,7 +99,11 @@ slong nmod_mat_left_nullspace_compact(
                 nmod_mat_entry(X, i, j) = nmod_mat_entry(Xt, permutation[j], i);
     }
     else
+#if __FLINT_VERSION >= 3 && __FLINT_VERSION_MINOR >= 1
+        _perm_one(permutation, A->r);
+#else
         _perm_set_one(permutation, A->r);
+#endif
 
     // clean
     nmod_mat_clear(At);

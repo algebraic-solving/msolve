@@ -411,7 +411,7 @@ int main(int argc, char **argv){
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
                           initial_hts, max_pairs, elim_block_len, update_ht,
-                          generate_pbm, reduce_gb, print_gb, get_param,
+                          generate_pbm, reduce_gb, print_gb, truncate_lifting, get_param,
                           genericity_handling, saturate, colon, normal_form,
                           normal_form_matrix, is_gb, precision, 
                           files, gens,

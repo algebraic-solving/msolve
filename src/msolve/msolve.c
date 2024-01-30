@@ -3646,6 +3646,7 @@ int core_msolve(
   int32_t generate_pbm,
   int32_t reduce_gb,
   int32_t print_gb,
+  int32_t truncate_lifting,
   int32_t get_param,
   int32_t genericity_handling,
   int32_t saturate,
@@ -4835,6 +4836,7 @@ restart:
               flags->nr_threads = nr_threads;
               flags->max_nr_pairs = max_pairs;
               flags->elim_block_len = elim_block_len;
+              flags->truncate_lifting = truncate_lifting;
               flags->reset_ht = update_ht;
               flags->la_option = la_option;
               flags->use_signatures = use_signatures;
@@ -5170,7 +5172,8 @@ void msolve_julia(
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
             initial_hts, max_nr_pairs, elim_block_len, reset_ht,
-            0 /* generate pbm */, 1 /* reduce_gb */, print_gb, get_param,
+                          0 /* generate pbm */, 1 /* reduce_gb */,
+                          print_gb, 0 /*truncate_lifting*/, get_param,
             genericity_handling, 0 /* saturate */, 0 /* colon */,
 	    0 /* normal_form */, 0 /* normal_form_matrix */,
 	    0 /* is_gb */, precision, files,

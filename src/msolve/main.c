@@ -142,6 +142,7 @@ static void getoptions(
         int32_t *update_ht,
         int32_t *reduce_gb,
         int32_t *print_gb,
+        int32_t *truncate_lifting,
         int32_t *genericity_handling,
         int32_t *saturate,
         int32_t *colon,
@@ -161,9 +162,12 @@ static void getoptions(
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:";
+  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
+    case 'N':
+      *truncate_lifting = strtol(optarg, NULL, 10);
+      break;
     case 'h':
       display_help(argv[0]);
       exit(1);
@@ -322,6 +326,7 @@ int main(int argc, char **argv){
     int32_t generate_pbm          = 0;
     int32_t reduce_gb             = 1;
     int32_t print_gb              = 0;
+    int32_t truncate_lifting      = 0;
     int32_t genericity_handling   = 2;
     int32_t saturate              = 0;
     int32_t colon                 = 0;
@@ -341,7 +346,7 @@ int main(int argc, char **argv){
     files->bin_out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
                &elim_block_len, &la_option, &use_signatures, &update_ht,
-               &reduce_gb, &print_gb, &genericity_handling, &saturate, &colon,
+               &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &get_param,
                &precision, &refine, &isolate, &generate_pbm, &info_level, files);
 
@@ -406,7 +411,7 @@ int main(int argc, char **argv){
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
                           initial_hts, max_pairs, elim_block_len, update_ht,
-                          generate_pbm, reduce_gb, print_gb, get_param,
+                          generate_pbm, reduce_gb, print_gb, truncate_lifting, get_param,
                           genericity_handling, saturate, colon, normal_form,
                           normal_form_matrix, is_gb, precision, 
                           files, gens,

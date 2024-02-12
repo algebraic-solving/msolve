@@ -597,6 +597,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            const int32_t fc,
                                            int info_level,
                                            int print_gb,
+                                           int truncate_lifting,
                                            int *dim,
                                            long *dquot_ori,
                                            int32_t start,
@@ -640,7 +641,6 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     int32_t len = bs->lml;
     num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv, st->nev);
-
     int32_t *bexp_lm2 = NULL;
     if(st->nev){
       bexp_lm2 = calloc(num_gb[0]*(bht->nv - st->nev), sizeof(int32_t));
@@ -671,8 +671,12 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     /* int32_t *lens = array_of_lengths(bexp_lm, num_gb[0], lmb, dquot, bht->nv); */
     int32_t *lens = array_of_lengths(leadmons[0], num_gb[0], lmb, dquot, bht->nv - st->nev);
 
-    gb_modpoly_init(modgbs, 2, lens, bht->nv - st->nev, num_gb[0], leadmons[0], lmb);
-
+    if(truncate_lifting != 0 && truncate_lifting < num_gb[0]){
+      gb_modpoly_init(modgbs, 2, lens, bht->nv - st->nev, truncate_lifting, leadmons[0], lmb);
+    }
+    else{
+      gb_modpoly_init(modgbs, 2, lens, bht->nv - st->nev, num_gb[0], leadmons[0], lmb);
+    }
     modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, mgb, start, st->nev);
     if(bs->lml == 1){
         if(info_level){
@@ -837,12 +841,10 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
                                               int thrds){
 
   uint64_t newprime = modgbs->primes[modgbs->nprimes - 1 ];
-
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p, mod_p, (uint32_t)newprime);
   for(int32_t k = 0; k < dl->end; k++){
       uint64_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
-
       mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
                  c, newprime, prod_p, dl->tmp, 1);
   }
@@ -1162,6 +1164,7 @@ int msolve_gbtrace_qq(
   int32_t info_level = flags->info_level;
   int32_t pbm_file = flags->pbm_file;
   int32_t print_gb = flags->print_gb;
+  int32_t truncate_lifting = flags->truncate_lifting;
   files_gb *files = flags->files;
 
   uint32_t field_char = gens->field_char;
@@ -1248,8 +1251,6 @@ int msolve_gbtrace_qq(
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
-  /* prime = 1246973177; */
-
   primeinit = prime;
   msd->lp->p[0] = primeinit;
   if(gens->field_char){
@@ -1288,6 +1289,7 @@ int msolve_gbtrace_qq(
                                                  msd->lp->p[0],
                                                  info_level,
                                                  print_gb,
+                                                 truncate_lifting,
                                                  dim_ptr, dquot_ptr,
                                                  0,
                                                  gens, maxbitsize,
@@ -1534,7 +1536,12 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
     fprintf(ofile, "#Leading ideal data\n");
   } else {
     if (flags->print_gb > 1) {
-      fprintf(ofile, "#Reduced Groebner basis data\n");
+      if(flags->truncate_lifting>0){
+        fprintf(ofile, "#Truncated reduced Groebner basis data\n");
+      }
+      else{
+        fprintf(ofile, "#Reduced Groebner basis data\n");
+      }
     }
   }
   fprintf(ofile, "#---\n");

@@ -138,9 +138,12 @@ AC_CONFIG_LINKS([
  output_files/nonradical_radicalshape-no-square-qq.res:output_files/nonradical_radicalshape-no-square-qq.res
  output_files/nonradical_radicalshape-no-square-qq.p3.res:output_files/nonradical_radicalshape-no-square-qq.p3.res
  test/diff/diff_nonradical_radicalshape-no-square-qq.sh:test/diff/diff_nonradical_radicalshape-no-square-qq.sh
-input_files/one-16.ms:input_files/one-16.ms
+ input_files/one-16.ms:input_files/one-16.ms
  output_files/one-16.res:output_files/one-16.res
  test/diff/diff_one-16.sh:test/diff/diff_one-16.sh
+ input_files/kat8-qq-truncate.ms:input_files/kat8-qq-truncate.ms
+ output_files/kat8-qq-truncate.res:output_files/kat8-qq-truncate.res
+ test/diff/diff_truncate_gb.sh:test/diff/diff_truncate_gb.sh
  input_files/one-31.ms:input_files/one-31.ms
  output_files/one-31.res:output_files/one-31.res
  test/diff/diff_one-31.sh:test/diff/diff_one-31.sh

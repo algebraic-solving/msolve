@@ -1536,7 +1536,12 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
     fprintf(ofile, "#Leading ideal data\n");
   } else {
     if (flags->print_gb > 1) {
-      fprintf(ofile, "#Reduced Groebner basis data\n");
+      if(flags->truncate_lifting>0){
+        fprintf(ofile, "#Truncated reduced Groebner basis data\n");
+      }
+      else{
+        fprintf(ofile, "#Reduced Groebner basis data\n");
+      }
     }
   }
   fprintf(ofile, "#---\n");

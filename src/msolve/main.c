@@ -162,7 +162,7 @@ static void getoptions(
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:";
+  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'N':

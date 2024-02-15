@@ -131,7 +131,7 @@ void print_initial_statistics(
             fprintf(file, "basis hash table resetting  %6d\n", st->reset_ht);
         }
         fprintf(file, "linear algebra option  %11d\n", st->laopt);
-        fprintf(file, "initial hash table size %11lu (2^%d)\n",
+        fprintf(file, "initial hash table size %10lu (2^%d)\n",
                 (unsigned long)pow(2,st->init_hts), st->init_hts);
         if (st->mnsel == 2147483647) {
             fprintf(file, "max pair selection             ALL\n");

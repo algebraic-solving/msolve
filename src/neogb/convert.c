@@ -346,6 +346,7 @@ static void convert_hashes_to_columns(
 
     mat->ncl  = k;
     mat->ncr  = (len_t)esld - 1 - mat->ncl;
+    mat->nc   = mat->ncl + mat->ncr;
 
     st->num_rowsred +=  mat->nrl;
 

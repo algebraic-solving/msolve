@@ -572,7 +572,65 @@ static void reduce_final_basis(
         )
 {
     if (md->reduce_gb) {
-        reduce_basis(bs, mat, md);
+        md->in_final_reduction_step = 1;
+
+        /* timings */
+        double ct, rt;
+        ct = cputime();
+        rt = realtime();
+
+        len_t i;
+
+        ht_t *bht   = bs->ht;
+        ht_t *sht   = md->ht;
+
+        /* add all non-redundant basis elements as matrix rows */
+        mat->tr = (hm_t **)malloc((unsigned long)bs->lml * sizeof(hm_t *));
+        for (i = 0; i < bs->lml; ++i) {
+            mat->tr[i] = poly_to_matrix_row(
+                    sht, bht, bs->hm[bs->lmps[i]]);
+            sht->hd[mat->tr[i][OFFSET]].idx  = 1;
+        }
+        mat->nr = mat->nrl = mat->sz = bs->lml;
+        mat->nc = 0;
+
+        symbolic_preprocessing(mat, bs, md);
+        /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
+        for (i = 0; i < sht->eld; ++i) {
+            sht->hd[i].idx = 1;
+        }
+
+        /* generate hash <-> column mapping */
+        if (md->info_level > 1) {
+            printf("reduce final basis ");
+            fflush(stdout);
+        }
+        convert_hashes_to_columns(mat, md, sht);
+        mat->nc = mat->ncl + mat->ncr;
+
+        sort_matrix_rows_decreasing(mat->rr, mat->nru);
+        sort_matrix_rows_increasing(mat->tr, mat->nrl);
+
+        exact_linear_algebra(mat, bs, bs, md);
+
+        free_basis_elements(bs);
+
+        convert_sparse_matrix_rows_to_basis_elements(
+            0, mat, bs, bht, sht, md);
+
+        bs->ld = bs->lml = mat->np;
+        clear_matrix(mat);
+
+        for (i = 0; i < bs->ld; ++i) {
+            bs->lmps[i] = i;
+            bs->lm[i]   = bht->hd[bs->hm[i][OFFSET]].sdm;
+        }
+
+        md->in_final_reduction_step = 0;
+
+        /* timings */
+        print_round_timings(stdout, md, rt, ct);
+        print_round_information_footer(stdout, md);
     }
 }
 

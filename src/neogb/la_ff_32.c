@@ -2603,6 +2603,8 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     const len_t ncr   = mat->ncr;
     const len_t ncl   = mat->ncl;
 
+    const int32_t nthrds = st->in_final_reduction_step == 1 ? 1 : st->nthrds;
+
     len_t bad_prime = 0;
 
     /* we fill in all known lead terms in pivs */
@@ -2625,10 +2627,10 @@ static void exact_sparse_reduced_echelon_form_ff_32(
     hm_t **upivs  = mat->tr;
 
     int64_t *dr  = (int64_t *)malloc(
-            (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));
+            (unsigned long)(nthrds * ncols) * sizeof(int64_t));
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
-#pragma omp parallel for num_threads(st->nthrds) \
+#pragma omp parallel for num_threads(nthrds) \
     private(i, j, k, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {
@@ -3016,6 +3018,8 @@ static void exact_trace_sparse_reduced_echelon_form_ff_32(
     const len_t ncr   = mat->ncr;
     const len_t ncl   = mat->ncl;
 
+    const int32_t nthrds = st->in_final_reduction_step == 1 ? 1 : st->nthrds;
+
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
     memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
@@ -3024,10 +3028,10 @@ static void exact_trace_sparse_reduced_echelon_form_ff_32(
     hm_t **upivs  = mat->tr;
 
     int64_t *dr  = (int64_t *)malloc(
-            (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));
+            (unsigned long)(nthrds * ncols) * sizeof(int64_t));
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
-#pragma omp parallel for num_threads(st->nthrds) \
+#pragma omp parallel for num_threads(nthrds) \
     private(i, j, k, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {
@@ -3144,6 +3148,8 @@ static int exact_application_sparse_reduced_echelon_form_ff_32(
     const len_t ncr   = mat->ncr;
     const len_t ncl   = mat->ncl;
 
+    const int32_t nthrds = st->in_final_reduction_step == 1 ? 1 : st->nthrds;
+
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
     memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
@@ -3152,11 +3158,11 @@ static int exact_application_sparse_reduced_echelon_form_ff_32(
     hm_t **upivs  = mat->tr;
 
     int64_t *dr  = (int64_t *)malloc(
-            (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));
+            (unsigned long)(nthrds * ncols) * sizeof(int64_t));
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
     int flag  = 1;
-#pragma omp parallel for num_threads(st->nthrds) \
+#pragma omp parallel for num_threads(nthrds) \
     private(i, j, k, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {

@@ -921,8 +921,9 @@ void set_function_pointers(
         default:
           linear_algebra  = exact_sparse_linear_algebra_ff_8;
       }
-      interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-      normalize_initial_basis     = normalize_initial_basis_ff_8;
+      exact_linear_algebra    = exact_sparse_linear_algebra_ff_8;
+      interreduce_matrix_rows = interreduce_matrix_rows_ff_8;
+      normalize_initial_basis = normalize_initial_basis_ff_8;
       break;
 
     case 16:
@@ -945,8 +946,9 @@ void set_function_pointers(
         default:
           linear_algebra  = exact_sparse_linear_algebra_ff_16;
       }
-      interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-      normalize_initial_basis     = normalize_initial_basis_ff_16;
+      exact_linear_algebra    = exact_sparse_linear_algebra_ff_16;
+      interreduce_matrix_rows = interreduce_matrix_rows_ff_16;
+      normalize_initial_basis = normalize_initial_basis_ff_16;
       break;
 
     case 32:
@@ -969,9 +971,10 @@ void set_function_pointers(
         default:
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
-      interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      normalize_initial_basis     = normalize_initial_basis_ff_32;
-      sba_linear_algebra          = sba_linear_algebra_ff_32;
+      exact_linear_algebra    = exact_sparse_linear_algebra_ff_32;
+      interreduce_matrix_rows = interreduce_matrix_rows_ff_32;
+      normalize_initial_basis = normalize_initial_basis_ff_32;
+      sba_linear_algebra      = sba_linear_algebra_ff_32;
 
       sba_reduce_dense_row_by_known_pivots_sparse_ff_32 =
         sba_reduce_dense_row_by_known_pivots_sparse_31_bit;
@@ -1028,8 +1031,9 @@ void set_function_pointers(
         default:
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
-      interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      normalize_initial_basis     = normalize_initial_basis_ff_32;
+      exact_linear_algebra    = exact_sparse_linear_algebra_ff_32;
+      interreduce_matrix_rows = interreduce_matrix_rows_ff_32;
+      normalize_initial_basis = normalize_initial_basis_ff_32;
 
       /* if coeffs are smaller than 17 bit we can optimize reductions */
       if (st->fc < pow(2, 18)) {

@@ -1748,6 +1748,10 @@ static int32_t *initial_modular_step(
         int32_t **bdiv_xn,
         int32_t **blen_gb_xn,
         int32_t **bstart_cf_gb_xn,
+	int32_t **bextra_nf,
+	int32_t **blens_extra_nf,
+	int32_t **bexps_extra_nf,
+	int32_t **bcfs_extra_nf,
 
         nvars_t *nlins_ptr,
         nvars_t *linvars,
@@ -1803,13 +1807,28 @@ static int32_t *initial_modular_step(
             fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
         }
         if(print_gb==0){
-            *bmatrix = build_matrixn_from_bs_trace(bdiv_xn,
-                    blen_gb_xn,
-                    bstart_cf_gb_xn,
-                    lmb, dquot, bs, bs->ht,
-                    leadmons[0], bs->ht->nv,
-                    fc,
-                    md->info_level);
+            /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
+            /*         blen_gb_xn, */
+            /*         bstart_cf_gb_xn, */
+            /*         lmb, dquot, bs, bs->ht, */
+            /*         leadmons[0], bs->ht->nv, */
+            /*         fc, */
+            /*         md->info_level); */
+	    exp_t *mul  = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
+	    fprintf (stderr, "entering build_matrixn\n");
+	    md->ff_bits = 32;
+	    md->fc = fc;
+	    *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
+							    blen_gb_xn,
+							    bstart_cf_gb_xn,
+							    bextra_nf, blens_extra_nf,
+							    bexps_extra_nf,
+							    bcfs_extra_nf,
+							    lmb, dquot, bs, bs->ht,
+							    leadmons[0], md, mul,
+							    bs->ht->nv,
+							    fc,
+							    md->info_level);
             if(*bmatrix == NULL){
                 *success = 0;
                 *dim = 0;
@@ -1988,25 +2007,31 @@ void set_linear_function_pointer(int32_t fc){
     set_linear_poly = set_linear_poly_8;
     check_and_set_linear_poly = check_and_set_linear_poly_8;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_8;
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_8;
     break;
   case 16:
     set_linear_poly = set_linear_poly_16;
     check_and_set_linear_poly = check_and_set_linear_poly_16;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_16;
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_16;
     break;
   case 32:
     set_linear_poly = set_linear_poly_32;
     check_and_set_linear_poly = check_and_set_linear_poly_32;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_32;
     break;
   case 0:
     set_linear_poly = set_linear_poly_32;
     check_and_set_linear_poly = check_and_set_linear_poly_32;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
-    break;  default:
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_32;
+    break;
+  default:
     set_linear_poly = set_linear_poly_32;
     check_and_set_linear_poly = check_and_set_linear_poly_32;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_32;
   }
 }
 
@@ -2167,6 +2192,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int32_t **bdiv_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   int32_t **blen_gb_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   int32_t **bstart_cf_gb_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **bextra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **blens_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **bexps_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **bcfs_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
 
   fglm_data_t **bdata_fglm = (fglm_data_t **)malloc(st->nthrds * sizeof(fglm_data_t *));
   fglm_bms_data_t **bdata_bms = (fglm_bms_data_t **)malloc(st->nthrds * sizeof(fglm_bms_data_t *));
@@ -2193,23 +2222,27 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int squares = 1;
 
   int32_t *lmb_ori = initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn,
-                                            bstart_cf_gb_xn,
+					  bstart_cf_gb_xn,
+					  bextra_nf,
+					  blens_extra_nf,
+					  bexps_extra_nf,
+					  bcfs_extra_nf,
 
-                                            &nlins, blinvars[0], lineqs_ptr,
-                                            squvars,
-
-                                            bdata_fglm, bdata_bms,
-
-                                            num_gb, leadmons_ori,
-
-                                            &bsz, nmod_params,
-                                            bs_qq, st,
-                                            lp->p[0], //prime,
-                                            print_gb,
-                                            dim_ptr, dquot_ptr,
-                                            gens,
-                                            files,
-                                            &success);
+					  &nlins, blinvars[0], lineqs_ptr,
+					  squvars,
+					  
+					  bdata_fglm, bdata_bms,
+					  
+					  num_gb, leadmons_ori,
+					  
+					  &bsz, nmod_params,
+					  bs_qq, st,
+					  lp->p[0], //prime,
+					  print_gb,
+					  dim_ptr, dquot_ptr,
+					  gens,
+					  files,
+					  &success);
 
   if(*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0){
     if(nmod_params[0]->elim->length - 1 != *dquot_ptr){

@@ -1220,6 +1220,9 @@ static inline void copy_nf_in_matrix_from_bs_8(sp_matfglm_t* matrix,
     if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
       matrix->dense_mat[N + i] = tbr->cf_8[tbr->hm[idx][COEFFS]][len-1-k];
       k++;
+      if (k >= len) { /* JB why does this happen? */
+	break;
+      }
     }
   }
 }
@@ -1243,6 +1246,9 @@ static inline void copy_nf_in_matrix_from_bs_16(sp_matfglm_t* matrix,
     if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
       matrix->dense_mat[N + i] = tbr->cf_16[tbr->hm[idx][COEFFS]][len-1-k];
       k++;
+      if (k >= len) { /* JB why does this happen? */
+	break;
+      }
     }
   }
 }
@@ -1256,29 +1262,30 @@ static inline void copy_nf_in_matrix_from_bs_32(sp_matfglm_t* matrix,
 						int32_t * evi,
 						const md_t *st,
 						const int nv){
-  printf ("pos %ld\n",pos);
+  /* fprintf (stderr,"pos %ld\n",pos); */
   len_t idx = tbr->lmps[pos];
-  printf ("idx=%d\n",idx);
+  /* fprintf (stderr,"idx=%d\n",idx); */
   len_t * hm  = tbr->hm[idx]+OFFSET;
   len_t len = tbr->hm[idx][LENGTH];
-  printf ("len=%d\n",len);
+  /* fprintf (stderr,"len=%d\n",len); */
   long i;
   long N = nrows * matrix->ncols ;
   long k = 0;
-  printf ("starts at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]);
-  printf ("ends at  k=%ld with coeff %d\n",len-1-k,
-	  tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k]);
-  printf ("[");
+  /* fprintf (stderr,"starts at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]); */
+  /* fprintf (stderr,"ends at  k=%ld with coeff %d\n",len-1-k, */
+  /* 	   tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k]); */
+  /* fprintf (stderr,"["); */
   for(i = 0; i < matrix->ncols; i++){
     if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
       matrix->dense_mat[N + i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
-      fprintf (stderr,"%d ",matrix->dense_mat[N+i]);
-      printf ("%u, ",matrix->dense_mat[N+i]);
+      /* fprintf (stderr,"(%ld,%u) ",i,matrix->dense_mat[N+i]); */
       k++;
+      if (k >= len) { /* JB why does this happen? */
+	break;
+      }
     }
   }
-  fprintf(stderr,"\n");
-  printf("]\n");
+  /* fprintf(stderr,"]\n"); */
 }
 
 
@@ -3316,7 +3323,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
   }
 
-  if (count_not_lm > len_xn) {
+  fprintf(stderr, "      total dense columns: %ld\n",len_xn+count_not_lm);
+  fprintf(stderr, "    trivial dense columns: %ld\n",len_xn);
+  fprintf(stderr, "non trivial dense columns: %d\n",count_not_lm);
+  
+  if (count_not_lm > /* len_xn */ dquot) {
     fprintf(stderr, "Staircase is not generic\n");
     fprintf(stderr, "and too many normal forms need to be computed\n");
     free(len_gb_xn);
@@ -3339,20 +3350,20 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     lens_extra_nf[i]=1;
     cfs_extra_nf[i]=1;
     int32_t j= extra_nf[i];
-    fprintf (stderr,"exponent ");
+    /* fprintf (stderr,"exponent "); */
     for (int k = 0; k < nv-1; k++) {
       exps_extra_nf[i*nv+k]=lmb[j*nv+k];
-      fprintf (stderr, "%d ",exps_extra_nf[i*nv+k]);
+      /* fprintf (stderr, "%d ",exps_extra_nf[i*nv+k]); */
     }
     exps_extra_nf[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
-    fprintf (stderr, "%d\n",exps_extra_nf[i*nv+nv-1]);
+    /* fprintf (stderr, "%d\n",exps_extra_nf[i*nv+nv-1]); */
   }
   bs_t* tbr = initialize_basis(st);
   tbr->ht = ht;
   /* reduction */
   import_input_data(tbr, st, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
 		    (void *)cfs_extra_nf, NULL);
-  fprintf (stderr,"import\n");
+  /* fprintf (stderr,"import\n"); */
   tbr->ld = tbr->lml  =  count_not_lm;
   for (long k = 0; k < count_not_lm; ++k) {
     tbr->lmps[k]  = k; /* fix input element in bs */
@@ -3363,7 +3374,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
   }
-  fprintf (stderr,"reductions\n");
 
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
@@ -3456,7 +3466,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
                                     div_xn[count], len_gb_xn[count],
                                     start_cf_gb_xn[count], len_gb_xn[count], lmb,
                                     nv, fc);
-	fprintf (stderr,"copy poly ok\n");
+	/* fprintf (stderr,"copy poly ok\n"); */
         nrows++;
         count++;
         if(len_xn < count && i < dquot){
@@ -3482,7 +3492,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 #endif
 	copy_nf_in_matrix_from_bs(matrix, nrows, count_nf, lmb,
 				  tbr, ht, evi, st, nv);
-	fprintf (stderr,"copy nf ok\n");
+	/* fprintf (stderr,"copy nf ok\n"); */
 	nrows++;
 	count_nf++;
       }

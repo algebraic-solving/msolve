@@ -1100,6 +1100,28 @@ static inline void insert_in_basis_hash_table_pivots(
     free(evt);
 }
 
+static inline void insert_poly_in_hash_table(
+    hm_t *row,
+    const hm_t * const b,
+    const ht_t * const ht1,
+    ht_t *ht2
+    )
+{
+    len_t l;
+
+    const len_t len = b[LENGTH]+OFFSET;
+
+    l = OFFSET;
+
+    for (; l < len; ++l) {
+#if PARALLEL_HASHING
+        row[l] = check_insert_in_hash_table(ht1->ev[b[l]], ht1->hd[b[l]].val, ht2);
+#else
+        row[l] = insert_in_hash_table(ht1->ev[b[l]], ht2);
+#endif
+    }
+}
+
 static inline void insert_multiplied_poly_in_hash_table(
     hm_t *row,
     const val_t h1,
@@ -1334,6 +1356,26 @@ static inline hi_t get_lcm(
 #endif
 }
 
+static inline hm_t *poly_to_matrix_row(
+    ht_t *sht,
+    const ht_t *bht,
+    const hm_t *poly
+    )
+{
+  hm_t *row = (hm_t *)malloc((unsigned long)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
+  row[COEFFS]   = poly[COEFFS];
+  row[PRELOOP]  = poly[PRELOOP];
+  row[LENGTH]   = poly[LENGTH];
+  /* hash table product insertions appear only here:
+   * we check for hash table enlargements first and then do the insertions
+   * without further elargment checks there */
+  while (sht->eld+poly[LENGTH] >= sht->esz) {
+    enlarge_hash_table(sht);
+  }
+  insert_poly_in_hash_table(row, poly, bht, sht);
+
+  return row;
+}
 static inline hm_t *multiplied_poly_to_matrix_row(
     ht_t *sht,
     const ht_t *bht,

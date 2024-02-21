@@ -167,14 +167,12 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
         const uint32_t mul = (uint32_t)(fc - dr[i]);
         dts   = pivs[i];
         if (i < ncl) {
-            cfs   = bs->cf_16[dts[COEFFS]];
             /* set corresponding bit of reducer in reducer bit array */
             if (tr > 0) {
                 rba[i/32] |= 1U << (i % 32);
             }
-        } else {
-            cfs   = mcf[dts[COEFFS]];
         }
+        cfs   = mcf[dts[COEFFS]];
 #if defined HAVE_AVX512_F
         const uint16_t mul16 = (uint16_t)(fc - dr[i]);
         mulv  = _mm512_set1_epi16(mul16);
@@ -734,6 +732,12 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
     memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
+    j = nrl;
+    for (i = 0; i < mat->nru; ++i) {
+        mat->cf_16[j]      = bs->cf_16[mat->rr[i][COEFFS]];
+        mat->rr[i][COEFFS] = j;
+        ++j;
+    }
 
     /* unkown pivot rows we have to reduce with the known pivots first */
     hm_t **upivs  = mat->tr;
@@ -841,7 +845,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
     mul   = NULL;
 
     /* construct the trace */
-    if (st->trace_level == LEARN_TRACER) {
+    if (st->trace_level == LEARN_TRACER && st->in_final_reduction_step == 0) {
         construct_trace(st->tr, mat);
     }
 
@@ -914,18 +918,27 @@ static void exact_trace_sparse_reduced_echelon_form_ff_16(
     const len_t ncr   = mat->ncr;
     const len_t ncl   = mat->ncl;
 
+    const int32_t nthrds = st->in_final_reduction_step == 1 ? 1 : st->nthrds;
+
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
     memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
+    j = nrl;
+    for (i = 0; i < mat->nru; ++i) {
+        mat->cf_16[j]      = bs->cf_16[mat->rr[i][COEFFS]];
+        mat->rr[i][COEFFS] = j;
+        ++j;
+    }
+
 
     /* unkown pivot rows we have to reduce with the known pivots first */
     hm_t **upivs  = mat->tr;
 
     int64_t *dr  = (int64_t *)malloc(
-            (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));
+            (unsigned long)(nthrds * ncols) * sizeof(int64_t));
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
-#pragma omp parallel for num_threads(st->nthrds) \
+#pragma omp parallel for num_threads(nthrds) \
     private(i, j, k, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {
@@ -1044,20 +1057,35 @@ static void exact_sparse_reduced_echelon_form_ff_16(
     const len_t ncr   = mat->ncr;
     const len_t ncl   = mat->ncl;
 
+    const int32_t nthrds = st->in_final_reduction_step == 1 ? 1 : st->nthrds;
+
     len_t bad_prime = 0;
 
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
-    memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
+    if (st->in_final_reduction_step == 0) {
+        memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
+    } else {
+        for (i = 0;  i < mat->nru; ++i) {
+            pivs[mat->rr[i][OFFSET]] = mat->rr[i];
+        }
+    }
+    j = nrl;
+    for (i = 0; i < mat->nru; ++i) {
+        mat->cf_16[j]      = bs->cf_16[mat->rr[i][COEFFS]];
+        mat->rr[i][COEFFS] = j;
+        ++j;
+    }
+
 
     /* unkown pivot rows we have to reduce with the known pivots first */
     hm_t **upivs  = mat->tr;
 
     int64_t *dr  = (int64_t *)malloc(
-            (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));
+            (unsigned long)(nthrds * ncols) * sizeof(int64_t));
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
-#pragma omp parallel for num_threads(st->nthrds) \
+#pragma omp parallel for num_threads(nthrds) \
     private(i, j, k, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {
@@ -1132,7 +1160,7 @@ static void exact_sparse_reduced_echelon_form_ff_16(
     }
 
     /* construct the trace */
-    if (st->trace_level == LEARN_TRACER) {
+    if (st->trace_level == LEARN_TRACER && st->in_final_reduction_step == 0) {
         construct_trace(st->tr, mat);
     }
 
@@ -1144,7 +1172,7 @@ static void exact_sparse_reduced_echelon_form_ff_16(
 
     len_t npivs = 0; /* number of new pivots */
 
-    if (st->nf == 0) {
+    if (st->nf == 0 && st->in_final_reduction_step == 0) {
         dr      = realloc(dr, (unsigned long)ncols * sizeof(int64_t));
         mat->tr = realloc(mat->tr, (unsigned long)ncr * sizeof(hm_t *));
 
@@ -1205,19 +1233,28 @@ static int exact_application_sparse_reduced_echelon_form_ff_16(
     const len_t ncr   = mat->ncr;
     const len_t ncl   = mat->ncl;
 
+    const int32_t nthrds = st->in_final_reduction_step == 1 ? 1 : st->nthrds;
+
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
     memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
+    j = nrl;
+    for (i = 0; i < mat->nru; ++i) {
+        mat->cf_16[j]      = bs->cf_16[mat->rr[i][COEFFS]];
+        mat->rr[i][COEFFS] = j;
+        ++j;
+    }
+
 
     /* unkown pivot rows we have to reduce with the known pivots first */
     hm_t **upivs  = mat->tr;
 
     int64_t *dr  = (int64_t *)malloc(
-            (unsigned long)(st->nthrds * ncols) * sizeof(int64_t));
+            (unsigned long)(nthrds * ncols) * sizeof(int64_t));
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
     int flag  = 1;
-#pragma omp parallel for num_threads(st->nthrds) \
+#pragma omp parallel for num_threads(nthrds) \
     private(i, j, k, sc) \
     schedule(dynamic)
     for (i = 0; i < nrl; ++i) {
@@ -1950,9 +1987,9 @@ static void probabilistic_sparse_linear_algebra_ff_16(
     rt0 = realtime();
 
     /* allocate temporary storage space for sparse
-     * coefficients of new pivot rows */
+     * coefficients of all pivot rows */
     mat->cf_16 = realloc(mat->cf_16,
-            (unsigned long)mat->nrl * sizeof(cf16_t *));
+            (unsigned long)mat->nr * sizeof(cf16_t *));
     probabilistic_sparse_reduced_echelon_form_ff_16(mat, bs, st);
 
     /* timings */
@@ -1983,9 +2020,9 @@ static void exact_sparse_linear_algebra_ff_16(
     rt0 = realtime();
 
     /* allocate temporary storage space for sparse
-     * coefficients of new pivot rows */
+     * coefficients of all pivot rows */
     mat->cf_16  = realloc(mat->cf_16,
-            (unsigned long)mat->nrl * sizeof(cf16_t *));
+            (unsigned long)mat->nr * sizeof(cf16_t *));
     exact_sparse_reduced_echelon_form_ff_16(mat, tbr, bs, st);
 
     /* timings */
@@ -2015,9 +2052,9 @@ static int exact_application_sparse_linear_algebra_ff_16(
     int ret;
 
     /* allocate temporary storage space for sparse
-     * coefficients of new pivot rows */
+     * coefficients of all pivot rows */
     mat->cf_16  = realloc(mat->cf_16,
-            (unsigned long)mat->nrl * sizeof(cf16_t *));
+            (unsigned long)mat->nr * sizeof(cf16_t *));
     ret = exact_application_sparse_reduced_echelon_form_ff_16(mat, bs, st);
 
     /* timings */
@@ -2048,9 +2085,9 @@ static void exact_trace_sparse_linear_algebra_ff_16(
     rt0 = realtime();
 
     /* allocate temporary storage space for sparse
-     * coefficients of new pivot rows */
+     * coefficients of all pivot rows */
     mat->cf_16  = realloc(mat->cf_16,
-            (unsigned long)mat->nrl * sizeof(cf16_t *));
+            (unsigned long)mat->nr * sizeof(cf16_t *));
     exact_trace_sparse_reduced_echelon_form_ff_16(trace, mat, bs, st);
 
     /* timings */

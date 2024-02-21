@@ -921,8 +921,9 @@ void set_function_pointers(
         default:
           linear_algebra  = exact_sparse_linear_algebra_ff_8;
       }
-      interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-      normalize_initial_basis     = normalize_initial_basis_ff_8;
+      exact_linear_algebra    = exact_sparse_linear_algebra_ff_8;
+      interreduce_matrix_rows = interreduce_matrix_rows_ff_8;
+      normalize_initial_basis = normalize_initial_basis_ff_8;
       break;
 
     case 16:
@@ -945,8 +946,9 @@ void set_function_pointers(
         default:
           linear_algebra  = exact_sparse_linear_algebra_ff_16;
       }
-      interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-      normalize_initial_basis     = normalize_initial_basis_ff_16;
+      exact_linear_algebra    = exact_sparse_linear_algebra_ff_16;
+      interreduce_matrix_rows = interreduce_matrix_rows_ff_16;
+      normalize_initial_basis = normalize_initial_basis_ff_16;
       break;
 
     case 32:
@@ -969,9 +971,10 @@ void set_function_pointers(
         default:
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
-      interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      normalize_initial_basis     = normalize_initial_basis_ff_32;
-      sba_linear_algebra          = sba_linear_algebra_ff_32;
+      exact_linear_algebra    = exact_sparse_linear_algebra_ff_32;
+      interreduce_matrix_rows = interreduce_matrix_rows_ff_32;
+      normalize_initial_basis = normalize_initial_basis_ff_32;
+      sba_linear_algebra      = sba_linear_algebra_ff_32;
 
       sba_reduce_dense_row_by_known_pivots_sparse_ff_32 =
         sba_reduce_dense_row_by_known_pivots_sparse_31_bit;
@@ -1028,8 +1031,9 @@ void set_function_pointers(
         default:
           linear_algebra  = exact_sparse_linear_algebra_ff_32;
       }
-      interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-      normalize_initial_basis     = normalize_initial_basis_ff_32;
+      exact_linear_algebra    = exact_sparse_linear_algebra_ff_32;
+      interreduce_matrix_rows = interreduce_matrix_rows_ff_32;
+      normalize_initial_basis = normalize_initial_basis_ff_32;
 
       /* if coeffs are smaller than 17 bit we can optimize reductions */
       if (st->fc < pow(2, 18)) {
@@ -1110,8 +1114,9 @@ static inline void reset_function_pointers(
         )
 {
     if (prime < pow(2,8)) {
-        interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        normalize_initial_basis     = normalize_initial_basis_ff_8;
+        exact_linear_algebra    = exact_sparse_linear_algebra_ff_8;
+        interreduce_matrix_rows = interreduce_matrix_rows_ff_8;
+        normalize_initial_basis = normalize_initial_basis_ff_8;
         switch (laopt) {
           case 1:
             linear_algebra  = exact_sparse_dense_linear_algebra_ff_8;
@@ -1133,8 +1138,9 @@ static inline void reset_function_pointers(
         }
     } else {
         if (prime < pow(2,16)) {
-            interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            normalize_initial_basis     = normalize_initial_basis_ff_16;
+            exact_linear_algebra    = exact_sparse_linear_algebra_ff_16;
+            interreduce_matrix_rows = interreduce_matrix_rows_ff_16;
+            normalize_initial_basis = normalize_initial_basis_ff_16;
             switch (laopt) {
               case 1:
                 linear_algebra  = exact_sparse_dense_linear_algebra_ff_16;
@@ -1155,8 +1161,9 @@ static inline void reset_function_pointers(
                 linear_algebra  = exact_sparse_linear_algebra_ff_16;
             }
         } else {
-            interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            normalize_initial_basis     = normalize_initial_basis_ff_32;
+            exact_linear_algebra    = exact_sparse_linear_algebra_ff_32;
+            interreduce_matrix_rows = interreduce_matrix_rows_ff_32;
+            normalize_initial_basis = normalize_initial_basis_ff_32;
             switch (laopt) {
               case 1:
                 linear_algebra  = exact_sparse_dense_linear_algebra_ff_32;
@@ -1215,17 +1222,20 @@ static inline void reset_trace_function_pointers(
         )
 {
     if (prime < pow(2,8)) {
+        exact_linear_algebra        = exact_sparse_linear_algebra_ff_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
         normalize_initial_basis     = normalize_initial_basis_ff_8;
         application_linear_algebra  = exact_application_sparse_linear_algebra_ff_8;
         trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_8;
     } else {
         if (prime < pow(2,16)) {
+            exact_linear_algebra        = exact_sparse_linear_algebra_ff_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
             normalize_initial_basis     = normalize_initial_basis_ff_16;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_16;
             trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_16;
         } else {
+            exact_linear_algebra        = exact_sparse_linear_algebra_ff_32;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
             normalize_initial_basis     = normalize_initial_basis_ff_32;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_32;

@@ -67,6 +67,14 @@ void (*sba_linear_algebra)(
         md_t *st,
         const ht_t * const ht
         );
+
+void (*exact_linear_algebra)(
+        mat_t *mat,
+        const bs_t * const tbr,
+        const bs_t * const bs,
+        md_t *st
+        );
+
 void (*linear_algebra)(
         mat_t *mat,
         const bs_t * const tbr,

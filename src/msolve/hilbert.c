@@ -2527,12 +2527,12 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
       matrix->dense_mat[i] = 0;
     }
   }
-  if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*(dquot - len_xn))){
+  if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
     fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
-    for(long i = 0; i < (dquot-len_xn); i++){
+    for(long i = 0; i < len2; i++){
       matrix->triv_idx[i] = 0;
     }
   }
@@ -2723,12 +2723,12 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
       matrix->dense_mat[i] = 0;
     }
   }
-  if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*(dquot - len_xn))){
+  if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
     fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
-    for(long i = 0; i < (dquot-len_xn); i++){
+    for(long i = 0; i < len2; i++){
       matrix->triv_idx[i] = 0;
     }
   }
@@ -2853,7 +2853,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
 
 /**
 
-   lmb is the monommial basis (of the quotient ring) given by ascending order.
+   lmb is the monomial basis (of the quotient ring) given by ascending order.
 
    dquo is the dimension of the quotient.
 
@@ -2890,7 +2890,7 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
   for(long i = 0; i < len1; i++){
     matrix->dense_mat[i] = 0;
   }
-  for(long i = 0; i < (dquot-len_xn); i++){
+  for(long i = 0; i < len2; i++){
     matrix->triv_idx[i] = 0;
   }
   for(long i = 0; i <len2; i++){
@@ -3000,6 +3000,143 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
   }
 }
 
+static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t *matrix,
+								    int32_t *div_xn,
+								    int32_t *len_gb_xn,
+								    int32_t *start_cf_gb_xn,
+								    long *extra_nf,
+								    const long count_not_lm,
+								    int32_t *lens_extra_nf,
+								    int32_t *cfs_extra_nf,
+								    int32_t *exps_extra_nf,
+								    int32_t *lmb, long dquot,
+								    bs_t *bs,
+								    ht_t *ht,
+								    int32_t *bexp_lm,
+								    const int nv,
+								    const long fc){
+
+  long len0 = matrix->nrows;
+  long len_xn = len0-count_not_lm; //get_div_xn(bexp_lm, bs->lml, nv, div_xn);
+
+  matrix->charac = fc;
+  /* matrix->ncols = dquot; */
+  /* matrix->nrows = len_xn; */
+  long len1 = dquot * len0;
+  long len2 = dquot - len0;
+
+  for(long i = 0; i < len1; i++){
+    matrix->dense_mat[i] = 0;
+  }
+  for(long i = 0; i < len2; i++){
+    matrix->triv_idx[i] = 0;
+  }
+  for(long i = 0; i <len2; i++){
+    matrix->triv_pos[i] = 0;
+  }
+  for(long i = 0; i < len0; i++){
+    matrix->dense_idx[i] = 0;
+  }
+  for(long i = 0; i < len0; i++){
+    matrix->dst[i] = 0;
+  }
+
+  long pos = 0, k = 0;
+  for(long i = 0; i < bs->lml; i++){
+    long len = bs->hm[bs->lmps[i]][LENGTH];
+    if(i==div_xn[k]){
+      len_gb_xn[k]=len;
+      start_cf_gb_xn[k]=pos;
+      pos+=len;
+      k++;
+    }
+    else{
+      pos+=len;
+    }
+  }
+
+  long l_triv = 0;
+  long l_dens = 0;
+  long nrows = 0;
+  long count = 0;
+  for(long i = 0; i < dquot; i++){
+
+    long pos = -1;
+    int32_t *exp = lmb + (i * nv);
+#if DEBUGBUILDMATRIX > 0
+    display_monomial_full(stderr, nv, NULL, 0, exp);
+#endif
+    if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
+#if DEBUGBUILDMATRIX > 0
+      fprintf(stderr, " => remains in monomial basis\n");
+#endif
+
+      matrix->triv_idx[l_triv] = i;
+      matrix->triv_pos[l_triv] = pos + i;
+
+      l_triv++;
+    }
+    else{
+
+#if DEBUGBUILDMATRIX > 0
+      fprintf(stderr, " => does NOT remain in monomial basis\n");
+#endif
+      matrix->dense_idx[l_dens] = i;
+      l_dens++;
+      if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
+        copy_poly_in_matrix_from_bs(matrix, nrows, bs, ht, //bcf, bexp, blen,
+                                    div_xn[count], len_gb_xn[count],
+                                    start_cf_gb_xn[count], len_gb_xn[count], lmb,
+                                    nv, fc);
+        nrows++;
+        count++;
+        if(len_xn < count && i < dquot){
+          fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
+          free(matrix->dense_mat);
+          free(matrix->dense_idx);
+          free(matrix->triv_idx);
+          free(matrix->triv_pos);
+          free(matrix->dst);
+          free(matrix);
+
+          free(len_gb_xn);
+          free(start_cf_gb_xn);
+          free(div_xn);
+          exit(1);
+        }
+      }
+      else{
+        fprintf(stderr, "Staircase is not generic\n");
+        fprintf(stderr, "Multiplication by ");
+        display_monomial_full(stderr, nv, NULL, 0, exp);
+        fprintf(stderr, " gets outside the staircase\n");
+        free(matrix->dense_mat);
+        free(matrix->dense_idx);
+        free(matrix->triv_idx);
+        free(matrix->triv_pos);
+        free(matrix->dst);
+        free(matrix);
+
+        free(len_gb_xn);
+        free(start_cf_gb_xn);
+        free(div_xn);
+        return ;
+        //        exit(1);
+      }
+    }
+  }
+  //Ici on support que les entres de matrix->dst sont initialisees a 0
+  for(long i = 0; i < matrix->nrows; i++){
+    for(long j = matrix->ncols - 1; j >= 0; j--){
+      if(matrix->dense_mat[i*matrix->ncols + j] == 0){
+        matrix->dst[i]++;
+      }
+      else{
+        break;
+      }
+    }
+  }
+}
 
 
 static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
@@ -3072,12 +3209,12 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
       matrix->dense_mat[i] = 0;
     }
   }
-  if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*(dquot - len_xn))){
+  if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
     fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
-    for(long i = 0; i < (dquot-len_xn); i++){
+    for(long i = 0; i < len2; i++){
       matrix->triv_idx[i] = 0;
     }
   }
@@ -3209,9 +3346,10 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  int32_t **blen_gb_xn,
 								  int32_t **bstart_cf_gb_xn,
 								  long **bextra_nf,
+								  long *lextra_nf,
 								  int32_t **blens_extra_nf,
-								  int32_t **bexps_extra_nf,
 								  int32_t **bcfs_extra_nf,
+								  int32_t **bexps_extra_nf,
 								  int32_t *lmb, long dquot,
 								  bs_t *bs, ht_t *ht,
 								  int32_t *bexp_lm,
@@ -3221,7 +3359,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  const long fc,
 								  const int32_t unstable_staircase,
 								  const int info_level){
-  fprintf (stderr,"current prime %ld\n",fc);
+  /* fprintf (stderr,"current prime %ld\n",fc); */
   const len_t ebl = ht->ebl;
   const len_t evl = ht->evl;
   int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
@@ -3367,10 +3505,10 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 
   *blens_extra_nf=(int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
   int32_t* lens_extra_nf= *blens_extra_nf;
-  *bexps_extra_nf = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm * nv));
-  int32_t* exps_extra_nf= *bexps_extra_nf;
   *bcfs_extra_nf = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
   int32_t* cfs_extra_nf= *bcfs_extra_nf;
+  *bexps_extra_nf = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm * nv));
+  int32_t* exps_extra_nf= *bexps_extra_nf;
   /* pure monomials to be reduced */
   for (int32_t i = 0; i < count_not_lm;i++){
     lens_extra_nf[i]=1;
@@ -3557,6 +3695,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
   }
 
+  *lextra_nf= count_not_lm;
   return matrix;
 }
 

@@ -1749,9 +1749,10 @@ static int32_t *initial_modular_step(
         int32_t **blen_gb_xn,
         int32_t **bstart_cf_gb_xn,
 	long **bextra_nf,
+	long *lextra_nf_ptr,
 	int32_t **blens_extra_nf,
-	int32_t **bexps_extra_nf,
 	int32_t **bcfs_extra_nf,
+	int32_t **bexps_extra_nf,
 
         nvars_t *nlins_ptr,
         nvars_t *linvars,
@@ -1768,7 +1769,7 @@ static int32_t *initial_modular_step(
         bs_t *gbg,
         md_t *md,
         const int32_t fc,
-	int32_t unstable_staircase,
+	const int32_t unstable_staircase,
         int print_gb,
         int *dim,
         long *dquot_ori,
@@ -1822,9 +1823,10 @@ static int32_t *initial_modular_step(
 	    *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
 							    blen_gb_xn,
 							    bstart_cf_gb_xn,
-							    bextra_nf, blens_extra_nf,
-							    bexps_extra_nf,
+							    bextra_nf, lextra_nf_ptr,
+							    blens_extra_nf,
 							    bcfs_extra_nf,
+							    bexps_extra_nf,
 							    lmb, dquot, bs, bs->ht,
 							    leadmons[0], md, mul,
 							    bs->ht->nv,
@@ -1863,37 +1865,42 @@ static int32_t *initial_modular_step(
 
 
 static void secondary_modular_steps(sp_matfglm_t **bmatrix,
-                                   int32_t **div_xn,
-                                   int32_t **len_gb_xn,
-                                   int32_t **start_cf_gb_xn,
+				    int32_t **div_xn,
+				    int32_t **len_gb_xn,
+				    int32_t **start_cf_gb_xn,
+				    long **extra_nf, const long lextra_nf,
+				    int32_t **lens_extra_nf,
+				    int32_t **cfs_extra_nf,
+				    int32_t **exps_extra_nf,
 
-                                   nvars_t *bnlins,
-                                   nvars_t **blinvars,
-                                   uint32_t **blineqs,
-                                   nvars_t **bsquvars,
-
-                                   fglm_data_t **bdata_fglm,
-                                   fglm_bms_data_t **bdata_bms,
-
-                                   int32_t *num_gb,
-                                   int32_t **leadmons_ori,
-                                   int32_t **leadmons_current,
-
-                                   uint64_t bsz,
-                                   param_t **nmod_params,
-                                   /* trace_t **btrace, */
-                                   bs_t *bs_qq,
-                                   md_t *st,
-                                   const int32_t fc,
-                                   int info_level,
-                                   bs_t **bs,
-                                   int32_t *lmb_ori,
-                                   int32_t dquot_ori,
-                                   primes_t *lp,
-                                   data_gens_ff_t *gens,
-                                   double *stf4,
-                                   const long nbsols,
-                                   uint32_t *bad_primes)
+				    nvars_t *bnlins,
+				    nvars_t **blinvars,
+				    uint32_t **blineqs,
+				    nvars_t **bsquvars,
+				    
+				    fglm_data_t **bdata_fglm,
+				    fglm_bms_data_t **bdata_bms,
+				    
+				    int32_t *num_gb,
+				    int32_t **leadmons_ori,
+				    int32_t **leadmons_current,
+				    
+				    uint64_t bsz,
+				    param_t **nmod_params,
+				    /* trace_t **btrace, */
+				    bs_t *bs_qq,
+				    md_t *st,
+				    const int32_t fc,
+				    const int32_t unstable_staircase,
+				    int info_level,
+				    bs_t **bs,
+				    int32_t *lmb_ori,
+				    int32_t dquot_ori,
+				    primes_t *lp,
+				    data_gens_ff_t *gens,
+				    double *stf4,
+				    const long nbsols,
+				    uint32_t *bad_primes)
 {
     st->info_level  = 0;
     st->f4_qq_round = 2;
@@ -1954,14 +1961,27 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 
             set_linear_poly(bnlins[i], blineqs[i], blinvars[i], bs[i]->ht,
                     leadmons_current[i], bs[i]);
-
-            build_matrixn_from_bs_trace_application(bmatrix[i],
-                    div_xn[i],
-                    len_gb_xn[i],
-                    start_cf_gb_xn[i],
-                    lmb_ori, dquot_ori, bs[i], bs[i]->ht,
-                    leadmons_ori[i], bs[i]->ht->nv,
-                    lp->p[i]);
+	    if (!unstable_staircase) {
+	      build_matrixn_from_bs_trace_application(bmatrix[i],
+						      div_xn[i],
+						      len_gb_xn[i],
+						      start_cf_gb_xn[i],
+						      lmb_ori, dquot_ori, bs[i], bs[i]->ht,
+						      leadmons_ori[i], bs[i]->ht->nv,
+						      lp->p[i]);
+	    }
+	    else {
+	      build_matrixn_unstable_from_bs_trace_application(bmatrix[i],
+							       div_xn[i],
+							       len_gb_xn[i],
+							       start_cf_gb_xn[i],
+							       extra_nf[i], lextra_nf,
+							       lens_extra_nf[i],
+							       cfs_extra_nf[i],exps_extra_nf[i],
+							       lmb_ori, dquot_ori, bs[i], bs[i]->ht,
+							       leadmons_ori[i], bs[i]->ht->nv,
+							       lp->p[i]);
+	    }
             if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
                         nmod_params[i],
                         bs[i]->ht->nv,
@@ -2197,8 +2217,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int32_t **bstart_cf_gb_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   long **bextra_nf = (long **)malloc(st->nthrds * sizeof(long *));
   int32_t **blens_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
-  int32_t **bexps_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   int32_t **bcfs_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **bexps_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
 
   fglm_data_t **bdata_fglm = (fglm_data_t **)malloc(st->nthrds * sizeof(fglm_data_t *));
   fglm_bms_data_t **bdata_bms = (fglm_bms_data_t **)malloc(st->nthrds * sizeof(fglm_bms_data_t *));
@@ -2218,18 +2238,21 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   nvars_t **bsquvars = (nvars_t **) malloc(st->nthrds * sizeof(nvars_t *));
   nvars_t *squvars = calloc(nr_vars-1, sizeof(nvars_t));
   bsquvars[0] = squvars;
+  
 
   set_linear_function_pointer(gens->field_char);
 
   int success = 1;
   int squares = 1;
+  long lextra_nf = 0;
 
   int32_t *lmb_ori = initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn,
 					  bstart_cf_gb_xn,
 					  bextra_nf,
+					  &lextra_nf,
 					  blens_extra_nf,
-					  bexps_extra_nf,
 					  bcfs_extra_nf,
+					  bexps_extra_nf,
 
 					  &nlins, blinvars[0], lineqs_ptr,
 					  squvars,
@@ -2331,7 +2354,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                               leadmons_ori, leadmons_current,
                                /* btrace, */
                                bdata_bms, bdata_fglm,
-                               bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix,
+                               bstart_cf_gb_xn, blen_gb_xn, bdiv_xn,
+			       bextra_nf,blens_extra_nf,bexps_extra_nf,bcfs_extra_nf,lextra_nf,
+			       bmatrix,
                                nmod_params, nlins, bnlins,
                                blinvars, lineqs_ptr,
                                bsquvars);
@@ -2468,27 +2493,31 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     double stf4 = 0;
     secondary_modular_steps(bmatrix,
-                              bdiv_xn,
-                              blen_gb_xn,
-                              bstart_cf_gb_xn,
+			    bdiv_xn,
+			    blen_gb_xn,
+			    bstart_cf_gb_xn,
+			    bextra_nf, lextra_nf,
+			    blens_extra_nf,
+			    bcfs_extra_nf,
+			    bexps_extra_nf,
 
-                              bnlins,
-                              blinvars,
-                              lineqs_ptr,
-                              bsquvars,
+			    bnlins,
+			    blinvars,
+			    lineqs_ptr,
+			    bsquvars,
 
-                              bdata_fglm,
-                              bdata_bms,
-                              num_gb,
-                              leadmons_ori,
-                              leadmons_current,
+			    bdata_fglm,
+			    bdata_bms,
+			    num_gb,
+			    leadmons_ori,
+			    leadmons_current,
 
-                              bsz,
-                              nmod_params, /* btrace, */
-                              bs_qq, st,
-                              field_char, 0, /* info_level, */
-                              bs, lmb_ori, *dquot_ptr, lp,
-                              gens, &stf4, nsols, bad_primes);
+			    bsz,
+			    nmod_params, /* btrace, */
+			    bs_qq, st,
+			    field_char, unstable_staircase, 0, /* info_level, */
+			    bs, lmb_ori, *dquot_ptr, lp,
+			    gens, &stf4, nsols, bad_primes);
     double ca1 = realtime() - ca0;
 
     if(nprimes==1){
@@ -2642,10 +2671,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     free_fglm_bms_data(bdata_bms[i]);
     free_fglm_data(bdata_fglm[i]);
-    free(bextra_nf[i]);
-    free(blens_extra_nf[i]);
     free(bexps_extra_nf[i]);
     free(bcfs_extra_nf[i]);
+    free(blens_extra_nf[i]);
+    free(bextra_nf[i]);
     free(blen_gb_xn[i]);
     free(bstart_cf_gb_xn[i]);
     free(bdiv_xn[i]);
@@ -2684,10 +2713,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free(bsquvars);
   free(is_lifted);
   free(num_gb);
-  free(bextra_nf);
-  free(blens_extra_nf);
   free(bexps_extra_nf);
   free(bcfs_extra_nf);
+  free(blens_extra_nf);
+  free(bextra_nf);
   free(blen_gb_xn);
   free(bstart_cf_gb_xn);
   free(bdiv_xn);

@@ -20,6 +20,7 @@
 
 #include "../fglm/data_fglm.c"
 #include "../fglm/libfglm.h"
+#include "../neogb/meta_data.c"
 #define REDUCTION_ALLINONE 1
 
 static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
@@ -1927,6 +1928,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	    free(matrix->triv_idx);
 	    free(matrix->triv_pos);
 	    free(matrix->zero_idx);
+	    free(matrix->dst);
 	    free(matrix);
 	    free(evi);
 	    free(len_gb_xn);
@@ -2385,6 +2387,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 	    free(matrix->dense_idx);
 	    free(matrix->triv_idx);
 	    free(matrix->triv_pos);
+	    free(matrix->dst);
 	    /* free(matrix->zero_idx); */
 	    free(matrix);
 	    free(evi);
@@ -2602,6 +2605,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
           free(matrix->dense_idx);
           free(matrix->triv_idx);
           free(matrix->triv_pos);
+          free(matrix->dst);
           free(matrix);
 
           free(len_gb_xn);
@@ -2798,6 +2802,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
           free(matrix->dense_idx);
           free(matrix->triv_idx);
           free(matrix->triv_pos);
+          free(matrix->dst);
           free(matrix);
 
           free(len_gb_xn);
@@ -2953,6 +2958,7 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
           free(matrix->dense_idx);
           free(matrix->triv_idx);
           free(matrix->triv_pos);
+          free(matrix->dst);
           free(matrix);
 
           free(len_gb_xn);
@@ -3202,17 +3208,18 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
 static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv_xn,
 								  int32_t **blen_gb_xn,
 								  int32_t **bstart_cf_gb_xn,
-								  int32_t **bextra_nf,
+								  long **bextra_nf,
 								  int32_t **blens_extra_nf,
 								  int32_t **bexps_extra_nf,
 								  int32_t **bcfs_extra_nf,
 								  int32_t *lmb, long dquot,
 								  bs_t *bs, ht_t *ht,
 								  int32_t *bexp_lm,
-								  md_t *st,
+								  const md_t const *st,
 								  const exp_t * const mul,
 								  const int nv,
 								  const long fc,
+								  const int32_t unstable_staircase,
 								  const int info_level){
   fprintf (stderr,"current prime %ld\n",fc);
   const len_t ebl = ht->ebl;
@@ -3270,16 +3277,16 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   fprintf(stderr, "\n");
 #endif
 
-  int32_t count_lm = 0;
+  long count_lm = 0;
   /* number of monomials whose normal forms are needed */
-  int32_t count_not_lm = 0;
+  long count_not_lm = 0;
 
   /* list of monomials in the staircase that leave the staircase after
      multiplication by xn and land on a multiple of a leading monomial of
      the Gb */
   /* at most dquot-len_xn new columns to compute */
   *bextra_nf = calloc (dquot-len_xn, sizeof(long));
-  int32_t *extra_nf = *bextra_nf;
+  long *extra_nf = *bextra_nf;
   for (long i = 0; i < dquot; i++) {
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
@@ -3322,22 +3329,41 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       }
     }
   }
+  long len0 = len_xn + count_not_lm;
 
-  fprintf(stderr, "      total dense columns: %ld\n",len_xn+count_not_lm);
-  fprintf(stderr, "    trivial dense columns: %ld\n",len_xn);
-  fprintf(stderr, "non trivial dense columns: %d\n",count_not_lm);
+#if DEBUGBUILDMATRIX > 0
+  printf ("Number of dense columns:      %ld\n",len0);
+  printf ("Number of free dense columns: %ld\n",len_xn);
+  printf ("Number of normal forms:       %ld\n",count_not_lm);
+#endif
+
+  long threshold = dquot-len_xn;
   
-  if (count_not_lm > /* len_xn */ dquot) {
+  switch(unstable_staircase) {
+  case 0:
+    threshold = 0;
+    break;
+  case 1:
+    threshold = threshold/4;
+    break;
+  case 2:
+    threshold = threshold/2;
+    break;
+  case 3:
+    threshold = 3*threshold/4;
+    break;
+  }
+  
+  if (count_not_lm > threshold) {
     fprintf(stderr, "Staircase is not generic\n");
     fprintf(stderr, "and too many normal forms need to be computed\n");
+    free(extra_nf);
     free(len_gb_xn);
     free(start_cf_gb_xn);
     free(div_xn);
+    free(evi);
     return NULL;
   }
-#if DEBUGBUILDMATRIX > 0
-  printf ("Number of extra normal forms for the matrix to compute: %d\n",count_not_lm);
-#endif
 
   *blens_extra_nf=(int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
   int32_t* lens_extra_nf= *blens_extra_nf;
@@ -3350,35 +3376,32 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     lens_extra_nf[i]=1;
     cfs_extra_nf[i]=1;
     int32_t j= extra_nf[i];
-    /* fprintf (stderr,"exponent "); */
     for (int k = 0; k < nv-1; k++) {
       exps_extra_nf[i*nv+k]=lmb[j*nv+k];
-      /* fprintf (stderr, "%d ",exps_extra_nf[i*nv+k]); */
     }
     exps_extra_nf[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
-    /* fprintf (stderr, "%d\n",exps_extra_nf[i*nv+nv-1]); */
   }
-  bs_t* tbr = initialize_basis(st);
+  md_t* md = copy_meta_data(st,fc);
+  bs_t* tbr = initialize_basis(md);
   tbr->ht = ht;
   /* reduction */
-  import_input_data(tbr, st, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
+  import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
 		    (void *)cfs_extra_nf, NULL);
-  /* fprintf (stderr,"import\n"); */
   tbr->ld = tbr->lml  =  count_not_lm;
   for (long k = 0; k < count_not_lm; ++k) {
     tbr->lmps[k]  = k; /* fix input element in bs */
   }
   int32_t err = 0;
-  tbr = core_nf(tbr, st, mul, bs, &err);
+  tbr = core_nf(tbr, md, mul, bs, &err);
   if (err) {
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
   }
+  free (md);
 
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
   matrix->ncols = dquot;
-  long len0 = len_xn + count_not_lm;
   matrix->nrows = len0;
   long len1 = dquot * len0;
   long len2 = dquot - len0;
@@ -3466,7 +3489,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
                                     div_xn[count], len_gb_xn[count],
                                     start_cf_gb_xn[count], len_gb_xn[count], lmb,
                                     nv, fc);
-	/* fprintf (stderr,"copy poly ok\n"); */
         nrows++;
         count++;
         if(len_xn < count && i < dquot){
@@ -3478,11 +3500,17 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
           free(matrix->dense_idx);
           free(matrix->triv_idx);
           free(matrix->triv_pos);
+          free(matrix->dst);
           free(matrix);
 
+	  free(cfs_extra_nf);
+	  free(exps_extra_nf);
+	  free(lens_extra_nf);
+	  free(extra_nf);
           free(len_gb_xn);
           free(start_cf_gb_xn);
           free(div_xn);
+	  free(evi);
           return NULL;
         }
       }
@@ -3492,7 +3520,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 #endif
 	copy_nf_in_matrix_from_bs(matrix, nrows, count_nf, lmb,
 				  tbr, ht, evi, st, nv);
-	/* fprintf (stderr,"copy nf ok\n"); */
 	nrows++;
 	count_nf++;
       }
@@ -3508,6 +3535,10 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
         free(matrix->dst);
         free(matrix);
 	
+	free(cfs_extra_nf);
+	free(exps_extra_nf);
+	free(lens_extra_nf);
+	free(extra_nf);
         free(len_gb_xn);
         free(start_cf_gb_xn);
         free(div_xn);

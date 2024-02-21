@@ -1819,7 +1819,6 @@ static int32_t *initial_modular_step(
                     md->info_level);
 	  }
 	  else {
-	    exp_t *mul  = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
 	    *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
 							    blen_gb_xn,
 							    bstart_cf_gb_xn,
@@ -1828,7 +1827,7 @@ static int32_t *initial_modular_step(
 							    bcfs_extra_nf,
 							    bexps_extra_nf,
 							    lmb, dquot, bs, bs->ht,
-							    leadmons[0], md, mul,
+							    leadmons[0], md,
 							    bs->ht->nv,
 							    fc, unstable_staircase,
 							    md->info_level);
@@ -1979,7 +1978,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 							       lens_extra_nf[i],
 							       cfs_extra_nf[i],exps_extra_nf[i],
 							       lmb_ori, dquot_ori, bs[i], bs[i]->ht,
-							       leadmons_ori[i], bs[i]->ht->nv,
+							       leadmons_ori[i], st, bs[i]->ht->nv,
 							       lp->p[i]);
 	    }
             if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],

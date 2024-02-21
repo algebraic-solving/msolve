@@ -2875,9 +2875,8 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
                                                            bs_t *bs,
                                                            ht_t *ht,
                                                            int32_t *bexp_lm,
-                                                           const int nv,
+							   const int nv,
                                                            const long fc){
-
 
   long len_xn = matrix->nrows; //get_div_xn(bexp_lm, bs->lml, nv, div_xn);
 
@@ -2893,7 +2892,7 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
   for(long i = 0; i < len2; i++){
     matrix->triv_idx[i] = 0;
   }
-  for(long i = 0; i <len2; i++){
+  for(long i = 0; i < len2; i++){
     matrix->triv_pos[i] = 0;
   }
   for(long i = 0; i < len_xn; i++){
@@ -3013,8 +3012,44 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
 								    bs_t *bs,
 								    ht_t *ht,
 								    int32_t *bexp_lm,
+								    const md_t const *st,
 								    const int nv,
 								    const long fc){
+
+  const len_t ebl = ht->ebl;
+  const len_t evl = ht->evl;
+  int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
+  if (ebl == 0) {
+    for (long i = 1; i < evl; ++i) {
+      evi[i-1]    =   i;
+    }
+  } else {
+    for (long i = 1; i < ebl; ++i) {
+      evi[i-1]    =   i;
+    }
+    for (long i = ebl+1; i < evl; ++i) {
+      evi[i-2]    =   i;
+    }
+  }
+  md_t* md = copy_meta_data(st,fc);
+  bs_t* tbr = initialize_basis(md);
+  exp_t *mul  = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
+  tbr->ht = ht;
+  /* reduction */
+  import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
+		    (void *)cfs_extra_nf, NULL);
+  tbr->ld = tbr->lml  =  count_not_lm;
+  for (long k = 0; k < count_not_lm; ++k) {
+    tbr->lmps[k]  = k; /* fix input element in bs */
+  }
+  int32_t err = 0;
+  tbr = core_nf(tbr, md, mul, bs, &err);
+  if (err) {
+    printf("Problem with normalform, stopped computation.\n");
+    exit(1);
+  }
+  free(mul);
+  free(md);
 
   long len0 = matrix->nrows;
   long len_xn = len0-count_not_lm; //get_div_xn(bexp_lm, bs->lml, nv, div_xn);
@@ -3031,7 +3066,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   for(long i = 0; i < len2; i++){
     matrix->triv_idx[i] = 0;
   }
-  for(long i = 0; i <len2; i++){
+  for(long i = 0; i < len2; i++){
     matrix->triv_pos[i] = 0;
   }
   for(long i = 0; i < len0; i++){
@@ -3059,8 +3094,9 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   long l_dens = 0;
   long nrows = 0;
   long count = 0;
+  long count_nf = 0;
+  
   for(long i = 0; i < dquot; i++){
-
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
@@ -3099,13 +3135,28 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
           free(matrix->dst);
           free(matrix);
 
+	  free(tbr);
+	  free(cfs_extra_nf);
+	  free(exps_extra_nf);
+	  free(lens_extra_nf);
+	  free(extra_nf);
           free(len_gb_xn);
           free(start_cf_gb_xn);
           free(div_xn);
+	  free(evi);
           exit(1);
         }
       }
-      else{
+      else if (i == extra_nf[count_nf]){
+#if DEBUGBUILDMATRIX > 0
+	fprintf(stderr, " => lands on a MULTIPLE of a leading monomial\n");
+#endif
+	copy_nf_in_matrix_from_bs(matrix, nrows, count_nf, lmb,
+				  tbr, ht, evi, st, nv);
+	nrows++;
+	count_nf++;
+      }
+      else{ /* should not arrive here */
         fprintf(stderr, "Staircase is not generic\n");
         fprintf(stderr, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
@@ -3117,15 +3168,21 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         free(matrix->dst);
         free(matrix);
 
-        free(len_gb_xn);
+       	free(tbr);
+	free(cfs_extra_nf);
+	free(exps_extra_nf);
+	free(lens_extra_nf);
+	free(extra_nf);
+	free(len_gb_xn);
         free(start_cf_gb_xn);
         free(div_xn);
+	free(evi);
         return ;
         //        exit(1);
       }
     }
   }
-  //Ici on support que les entres de matrix->dst sont initialisees a 0
+  //Ici on suppose que les entres de matrix->dst sont initialisees a 0
   for(long i = 0; i < matrix->nrows; i++){
     for(long j = matrix->ncols - 1; j >= 0; j--){
       if(matrix->dense_mat[i*matrix->ncols + j] == 0){
@@ -3354,7 +3411,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  bs_t *bs, ht_t *ht,
 								  int32_t *bexp_lm,
 								  const md_t const *st,
-								  const exp_t * const mul,
 								  const int nv,
 								  const long fc,
 								  const int32_t unstable_staircase,
@@ -3379,7 +3435,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   int32_t *div_xn = *bdiv_xn;
   long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
 
-#if DEBUGBUILDMATRIX==2
+#if DEBUGBUILDMATRIX>0
   fprintf(stderr, "\n");
   fprintf(stderr, "Number of monomials (in the Gröbner basis) which are divisible by x_n = %ld\n", len_xn);
   for(long i=0; i < len_xn; i++){
@@ -3521,6 +3577,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   }
   md_t* md = copy_meta_data(st,fc);
   bs_t* tbr = initialize_basis(md);
+  exp_t *mul  = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
   tbr->ht = ht;
   /* reduction */
   import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
@@ -3535,8 +3592,8 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     printf("Problem with normalform, stopped computation.\n");
     exit(1);
   }
-  free (md);
-
+  free(md);
+  free(mul);
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
   matrix->ncols = dquot;
@@ -3641,6 +3698,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
           free(matrix->dst);
           free(matrix);
 
+	  free(tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3672,7 +3730,8 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
         free(matrix->triv_pos);
         free(matrix->dst);
         free(matrix);
-	
+
+	free(tbr);
 	free(cfs_extra_nf);
 	free(exps_extra_nf);
 	free(lens_extra_nf);

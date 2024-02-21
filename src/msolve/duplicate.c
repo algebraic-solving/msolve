@@ -153,6 +153,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
     for(long j = 0; j < num_gb[0]; j++){
       bdiv_xn[i][j] = bdiv_xn[0][j];
     }
+    /* pure monomials to be reduced */
     bextra_nf[i] = (long* )(malloc (sizeof(long) * lextra_nf));
     blens_extra_nf[i] = (int32_t *) (malloc(sizeof(int32_t) * lextra_nf));
     bcfs_extra_nf[i] = (int32_t *) (malloc(sizeof(int32_t) * lextra_nf));
@@ -193,7 +194,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
       exit(1);
     }
     else{
-      for(long j = 0; j < (dquot-len_xn); j++){
+      for(long j = 0; j < len2; j++){
         matrix->triv_idx[j] = 0;
       }
     }

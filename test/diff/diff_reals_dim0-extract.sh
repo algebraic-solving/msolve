@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=reals_extract
+file=reals_dim0-extract
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
       -d 0 -l 2 -t 1

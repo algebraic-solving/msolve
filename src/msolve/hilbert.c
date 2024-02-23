@@ -3530,8 +3530,10 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   }
   
   if (count_not_lm > threshold) {
-    fprintf(stderr, "Staircase is not generic\n");
-    fprintf(stderr, "and too many normal forms need to be computed\n");
+    if(info_level){
+      fprintf(stderr, "Staircase is not generic\n");
+      fprintf(stderr, "and too many normal forms need to be computed\n");
+    }
     free(extra_nf);
     free(len_gb_xn);
     free(start_cf_gb_xn);

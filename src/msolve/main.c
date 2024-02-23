@@ -18,10 +18,10 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#define DEBUGBUILDMATRIX 0
 #include "libmsolve.c"
 
 #define DEBUGGB 0
-#define DEBUGBUILDMATRIX 0
 #define IO_DEBUG 0
 
 static inline void display_help(char *str){

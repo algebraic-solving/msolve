@@ -116,6 +116,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
 						int32_t **bexps_extra_nf,
 						int32_t **bcfs_extra_nf,
 						const long lextra_nf,
+
                                                 sp_matfglm_t **bmatrix,
                                                 param_t **nmod_params,
                                                 nvars_t nlins,

@@ -3543,7 +3543,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 
   const len_t ebl = ht->ebl;
   const len_t evl = ht->evl;
-  int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
+  int32_t *evi    =  (int32_t *)malloc((unsigned long)nv * sizeof(int32_t));
   if (ebl == 0) {
     for (long i = 1; i < evl; ++i) {
       evi[i-1]    =   i;

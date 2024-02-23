@@ -85,9 +85,9 @@ static inline void display_help(char *str){
   fprintf(stdout, "         before fixing the situation via option -c\n");
   fprintf(stdout, "         0 - No normal forms are computed.\n");
   fprintf(stdout, "         1 - Few normal forms are computed.\n");
-  fprintf(stdout, "         2 - Some normal forms are computed. (default)\n");
+  fprintf(stdout, "         2 - Some normal forms are computed.\n");
   fprintf(stdout, "         3 - Lots of normal forms are computed.\n");
-  fprintf(stdout, "         4 - All the normal forms are computed.\n");
+  fprintf(stdout, "         4 - All the normal forms are computed. (default)\n");
   fprintf(stdout, "-C       Use sparse-FGLM-col algorithm:\n");
   fprintf(stdout, "         Given an input file with k polynomials\n");
   fprintf(stdout, "         compute the quotient of the ideal\n");

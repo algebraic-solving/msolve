@@ -3396,9 +3396,6 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   return matrix;
 }
 
-
-#undef REDUCTION_ALLINONE
-
 static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv_xn,
 								  int32_t **blen_gb_xn,
 								  int32_t **bstart_cf_gb_xn,
@@ -3415,22 +3412,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  const long fc,
 								  const int32_t unstable_staircase,
 								  const int info_level){
-  /* fprintf (stderr,"current prime %ld\n",fc); */
-  const len_t ebl = ht->ebl;
-  const len_t evl = ht->evl;
-  int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
-  if (ebl == 0) {
-    for (long i = 1; i < evl; ++i) {
-      evi[i-1]    =   i;
-    }
-  } else {
-    for (long i = 1; i < ebl; ++i) {
-      evi[i-1]    =   i;
-    }
-    for (long i = ebl+1; i < evl; ++i) {
-      evi[i-2]    =   i;
-    }
-  }
   *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
   long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
@@ -3555,8 +3536,23 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     free(len_gb_xn);
     free(start_cf_gb_xn);
     free(div_xn);
-    free(evi);
     return NULL;
+  }
+
+  const len_t ebl = ht->ebl;
+  const len_t evl = ht->evl;
+  int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
+  if (ebl == 0) {
+    for (long i = 1; i < evl; ++i) {
+      evi[i-1]    =   i;
+    }
+  } else {
+    for (long i = 1; i < ebl; ++i) {
+      evi[i-1]    =   i;
+    }
+    for (long i = ebl+1; i < evl; ++i) {
+      evi[i-2]    =   i;
+    }
   }
 
   *blens_extra_nf=(int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
@@ -3853,4 +3849,6 @@ static inline int equal_staircase(int32_t *lmb, int32_t *lmb_ori,
   return 1;
 }
 
+
+#undef REDUCTION_ALLINONE
 

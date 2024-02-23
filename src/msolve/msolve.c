@@ -1809,16 +1809,13 @@ static int32_t *initial_modular_step(
             fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
         }
         if(print_gb==0){
-	  if (!unstable_staircase) {
-            *bmatrix = build_matrixn_from_bs_trace(bdiv_xn,
-                    blen_gb_xn,
-                    bstart_cf_gb_xn,
-                    lmb, dquot, bs, bs->ht,
-                    leadmons[0], bs->ht->nv,
-                    fc,
-                    md->info_level);
-	  }
-	  else {
+	    /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
+	    /* 					 blen_gb_xn, */
+	    /* 					 bstart_cf_gb_xn, */
+	    /* 					 lmb, dquot, bs, bs->ht, */
+	    /* 					 leadmons[0], bs->ht->nv, */
+	    /* 					 fc, */
+	    /* 					 md->info_level); */
 	    *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
 							    blen_gb_xn,
 							    bstart_cf_gb_xn,
@@ -1831,12 +1828,11 @@ static int32_t *initial_modular_step(
 							    bs->ht->nv,
 							    fc, unstable_staircase,
 							    md->info_level);
-	    }
-            if(*bmatrix == NULL){
-                *success = 0;
-                *dim = 0;
-                *dquot_ori = dquot;
-                return NULL;
+	    if(*bmatrix == NULL){
+	      *success = 0;
+	      *dim = 0;
+	      *dquot_ori = dquot;
+	      return NULL;
             }
 
             *bsz = bs->ht->nv - (*nlins_ptr); //nlins ;

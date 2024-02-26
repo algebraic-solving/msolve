@@ -309,6 +309,7 @@ static inline data_gens_ff_t *allocate_data_gens(){
   gens->exps  = NULL;
   gens->cfs   = NULL;
   gens->mpz_cfs = NULL;
+  gens->random_linear_form = NULL;
 
   gens->elim = 0;
   return gens;

@@ -212,6 +212,7 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
   trace_det->nlifted = 0;
   trace_det->matmul_indices = (uint64_t *)malloc(nrows * sizeof(uint64_t));
   for(uint32_t i = 0; i < nrows; i++){
+      trace_det->matmul_indices[i] = 0;
       uint64_t tmp = i*((*mod_mat)->ncols);
       for(uint32_t j = 0; j < (*mod_mat)->ncols; j++){
           if((*mod_mat)->dense_mat[tmp+j] != 0){
@@ -380,6 +381,7 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
         return 1;
     }
 */
+    int trace_rec = 0;
     if(trace_det->done_trace < 2){
     int b =
         ratreconwden(rnum, rden, trace_det->trace_crt, modulus, gden, recdata);
@@ -393,6 +395,7 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
       mpz_divexact(trace_det->trace_num, trace_det->trace_num, gcd);
       mpz_divexact(trace_det->trace_den, trace_det->trace_den, gcd);
       mpz_clear(gcd);
+      trace_rec = 1;
     } else {
         trace_det->done_trace = 0;
         return 0;
@@ -400,6 +403,12 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
     }
 
     if(trace_det->done_det < 2){
+        mpz_t oldgden;
+        if(trace_rec){
+            mpz_init(oldgden);
+            mpz_set(oldgden, gden);
+            mpz_set(gden, trace_det->trace_den);
+        }
     int b = ratreconwden(rnum, rden, trace_det->det_crt, modulus, gden, recdata);
 
     if (b == 1) {
@@ -412,7 +421,14 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
     mpz_divexact(trace_det->det_num, trace_det->det_num, gcd);
     mpz_divexact(trace_det->det_den, trace_det->det_den, gcd);
     mpz_clear(gcd);
+    if(trace_rec){
+        mpz_clear(oldgden);
+    }
   } else {
+      mpz_set_ui(gden, 1);
+      if(trace_rec){
+          mpz_clear(oldgden);
+      }
       trace_det->done_det = 0;
         return 0;
      }

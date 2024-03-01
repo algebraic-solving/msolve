@@ -1331,6 +1331,12 @@ static inline int new_rational_reconstruction(
   mpz_sqrt(*guessed_num, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
   mpz_set(recdata->D, *guessed_num);
+  /*
+  if(trace_det->done_trace > 1 || trace_det->done_det > 1){
+      mpz_fdiv_q(recdata->D, recdata->D, *guessed_den);
+      mpz_mul(recdata->N, recdata->N, *guessed_den);
+  }
+  */
   if(trace_det->done_trace < 2 || trace_det->done_det < 2){
       rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden, *guessed_den);
   }
@@ -1576,7 +1582,7 @@ static inline void get_leading_ideal_information(int32_t *num_gb,
 }
 
 static inline void print_groebner_basis(files_gb *files,
-                                        const data_gens_ff_t *const gens,
+                                        const data_gens_ff_t *gens,
                                         const bs_t *const bs, md_t *md,
                                         const int32_t fc) {
   if (md->print_gb) {
@@ -1587,6 +1593,7 @@ static inline void print_groebner_basis(files_gb *files,
     md->gfc = gfc;
   }
 }
+
 
 static int32_t check_for_single_element_groebner_basis(
     int *dim, long *dquot_ori, const bs_t *const bs, int32_t **leadmons,
@@ -1863,6 +1870,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             }
      }
         if (*mat_lifted == 1 && *lin_lifted >= 1){
+            fprintf(stderr, "*");
            check_matrix_and_linear_forms(mpq_mat, bmatrix[i], 
                 mpz_linear_forms, blineqs[i], bnlins[i], bs_qq->ht->nv,
                 mat_lifted, lin_lifted, oldmatrec_checked, matrec_checked, lp->p[i]);
@@ -1883,20 +1891,6 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
         if (bs[i] != NULL) {
             free_basis_and_only_local_hash_table_data(&(bs[i]));
         }
-    }
-    if (*mat_lifted == 1 && *lin_lifted >= 1){
-        check_matrix_and_linear_forms(mpq_mat, bmatrix[i], 
-                mpz_linear_forms, blineqs[i], bnlins[i], bs_qq->ht->nv,
-                mat_lifted, lin_lifted, oldmatrec_checked, matrec_checked, lp->p[i]);
-    }
-    if (nmod_fglm_compute_apply_trace_data(
-            bmatrix[i], lp->p[i], nmod_params[i], bs_qq->ht->nv, bsz, bnlins[i],
-            blinvars[i], blineqs[i], bsquvars[i], bdata_fglm[i], bdata_bms[i],
-            nbsols, info_level, st)) {
-      bad_primes[i] = 1;
-    }
-    if (bs[i] != NULL) {
-      free_basis_and_only_local_hash_table_data(&(bs[i]));
     }
   st->nthrds = nthrds;
 }

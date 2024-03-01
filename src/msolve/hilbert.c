@@ -2749,7 +2749,48 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
 }
 
 
+static inline void compute_modular_matrix(sp_matfglm_t *matrix,
+                                          mpz_matfglm_t mpz_mat,
+                                          uint32_t prime){
+  uint32_t len_xn = matrix->nrows; 
+  uint32_t dquot = matrix->ncols;
+  matrix->charac = prime;
+  uint64_t len1 = dquot * matrix->nrows;
+  int32_t len2 = dquot - matrix->nrows;
 
+
+  for(uint32_t i = 0; i < mpz_mat->nrows; i++){
+    uint64_t lc = mpz_fdiv_ui(mpz_mat->denoms[i], prime);
+    lc = mod_p_inverse_32(lc, prime);
+    uint32_t nc = i*mpz_mat->ncols;
+    for(uint32_t j = 0 ; j < mpz_mat->ncols; j++){
+      uint32_t mod = mpz_fdiv_ui(mpz_mat->dense_mat[nc+j], prime);
+      matrix->dense_mat[nc+j] =( ((uint64_t)mod) * lc )% prime;
+    }
+  }
+  for(int32_t i = 0; i < (dquot-len_xn); i++){
+    matrix->triv_idx[i] = mpz_mat->triv_idx[i];
+  }
+  for(int32_t i = 0; i < len2; i++){
+    matrix->triv_pos[i] = mpz_mat->triv_pos[i];
+  }
+  for(uint32_t i = 0; i < len_xn; i++){
+    matrix->dense_idx[i] = mpz_mat->dense_idx[i];
+  }
+  for(uint32_t i = 0; i < len_xn; i++){
+    matrix->dst[i] = mpz_mat->dst[i];
+  }
+#ifdef DEBUGLIFTMAT
+  fprintf(stderr, "\nModular matrix (prime = %u)\n", prime);
+  for(int i = 0; i < matrix->nrows; i++){
+    int nc = i*matrix->ncols;
+    for(int j = 0; j < matrix->ncols; j++){
+      fprintf(stderr, "%u, ", matrix->dense_mat[nc+j]);
+    }
+    fprintf(stderr, "\n");
+  }
+#endif
+}
 
 
 /**
@@ -2779,33 +2820,29 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
                                                            const int nv,
                                                            const long fc){
 
-
-  long len_xn = matrix->nrows; //get_div_xn(bexp_lm, bs->lml, nv, div_xn);
-
+  uint32_t len_xn = matrix->nrows; 
   matrix->charac = fc;
-  /* matrix->ncols = dquot; */
-  /* matrix->nrows = len_xn; */
-  long len1 = dquot * matrix->nrows;
-  long len2 = dquot - matrix->nrows;
+  uint64_t len1 = dquot * matrix->nrows;
+  int32_t len2 = dquot - matrix->nrows;
 
-  for(long i = 0; i < len1; i++){
+  for(uint64_t i = 0; i < len1; i++){
     matrix->dense_mat[i] = 0;
   }
-  for(long i = 0; i < (dquot-len_xn); i++){
+  for(int32_t i = 0; i < (dquot-len_xn); i++){
     matrix->triv_idx[i] = 0;
   }
-  for(long i = 0; i <len2; i++){
+  for(int32_t i = 0; i < len2; i++){
     matrix->triv_pos[i] = 0;
   }
-  for(long i = 0; i < len_xn; i++){
+  for(uint32_t i = 0; i < len_xn; i++){
     matrix->dense_idx[i] = 0;
   }
-  for(long i = 0; i < len_xn; i++){
+  for(uint32_t i = 0; i < len_xn; i++){
     matrix->dst[i] = 0;
   }
 
   long pos = 0, k = 0;
-  for(long i = 0; i < bs->lml; i++){
+  for(uint32_t i = 0; i < bs->lml; i++){
     long len = bs->hm[bs->lmps[i]][LENGTH];
     if(i==div_xn[k]){
       len_gb_xn[k]=len; 
@@ -2822,7 +2859,7 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
   long l_dens = 0;
   long nrows = 0;
   long count = 0;
-  for(long i = 0; i < dquot; i++){
+  for(uint32_t i = 0; i < dquot; i++){
 
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
@@ -2888,8 +2925,8 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
     }
   }
   //Ici on support que les entres de matrix->dst sont initialisees a 0
-  for(long i = 0; i < matrix->nrows; i++){
-    for(long j = matrix->ncols - 1; j >= 0; j--){
+  for(uint32_t i = 0; i < matrix->nrows; i++){
+    for(int32_t j = matrix->ncols - 1; j >= 0; j--){
       if(matrix->dense_mat[i*matrix->ncols + j] == 0){
         matrix->dst[i]++;
       }

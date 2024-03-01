@@ -24,7 +24,7 @@
 #include "lifting.c"
 #include "lifting-gb.c"
 
-#define LIFTMATRIX 0
+#define LIFTMATRIX 1
 #ifndef MAX
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #endif
@@ -1274,6 +1274,12 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               mpq_matfglm_t mpq_mat,
                                               crt_mpz_matfglm_t crt_mat,
                                               mpz_matfglm_t mpz_mat,
+                                              nvars_t nlins,
+                                              nvars_t *linvars,
+                                              uint32_t *lineqs,
+                                              mpz_t *crt_linear_forms,
+                                              mpz_t *mpq_linear_forms,
+                                              mpz_t *mpz_linear_forms,
                                               trace_det_fglm_mat_t trace_det,
                                               sp_matfglm_t *mat,
                                               mpz_upoly_t numer,
@@ -1289,6 +1295,7 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                                               uint64_t *matrec,
                                               int *is_lifted,
                                               int *mat_lifted,
+                                              int *lin_lifted,
                                               int doit,
                                               int nthrds,
                                               const int info_level){
@@ -1331,8 +1338,16 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
                      modulus, prod_crt, prime);
 
 #if LIFTMATRIX == 1
-  if(*matrec < crt_mat->nrows*crt_mat->ncols){
-    crt_lift_mat(crt_mat, mat, modulus, prod_crt, prime, trace_det->tmp, nthrds);
+  if(nlins && (*lin_lifted) == 0){
+    for(int i = 0; i < nlins; i++){
+      crt_lift_dense_rows(crt_linear_forms + i*(nmod_param->nvars+1),
+                          lineqs + i*(nmod_param->nvars+1),
+                          0, nmod_param->nvars + 1,
+                          modulus, prod_crt, prime, trace_det->tmp, nthrds);
+    }
+  }
+  if(*matrec < crt_mat->nrows){
+    crt_lift_mat(crt_mat, mat, modulus, prod_crt, prime, trace_det->tmp, (*matrec), nthrds);
   }
 #endif
   mpz_mul_ui(modulus, modulus, prime);
@@ -1343,23 +1358,58 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
   mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
   mpz_sqrt(*guessed_num, *guessed_num);
-  mpz_set(*guessed_den, *guessed_num);
+  mpz_set(recdata->D, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
-  mpz_set(recdata->D, *guessed_den);
+
 #if LIFTMATRIX == 1
-  long cnt = 0;
-  if(*matrec < crt_mat->nrows*crt_mat->ncols && *mat_lifted == 0){
-    cnt = rat_recon_dense_rows(mpq_mat, crt_mat, mpz_mat, modulus, recdata,
-                               rnum, rden, matrec);
+  if(nlins && (*lin_lifted) == 0){
+    int boo = 0;
+    for(int i = 0; i < nlins; i++){
+      boo = rat_recon_array(mpq_linear_forms + (2*i*(nmod_param->nvars + 1)),
+                            crt_linear_forms + (i*(nmod_param->nvars + 1)),
+                            nmod_param->nvars + 1, modulus, recdata);
+      if(boo == 0) break;
+    }
+    if(boo){
+      build_linear_forms(mpz_linear_forms, mpq_linear_forms, nmod_param->nvars + 1, nlins);
+      *lin_lifted = 1;
+    }
   }
-  if(cnt == crt_mat->nrows*crt_mat->ncols || *mat_lifted){
+  if(*matrec < crt_mat->nrows){
+    long old = *matrec;
+    rat_recon_matfglm(mpq_mat, crt_mat, mpz_mat, modulus, recdata,
+                      rnum, rden, matrec, mat_lifted);
+    if(info_level){
+      if(*matrec > old){
+        fprintf(stderr, "<%.2f%%>",100.0*(*matrec)/crt_mat->nrows);
+      }
+    }
+  }
+
+  if((*matrec) == mpq_mat->nrows && (*lin_lifted) == 1){
+    (*matrec) = (*matrec) + 1;
     *mat_lifted = 1;
+    /* mpz_set(*guessed_den, mpz_mat->denoms[mpz_mat->nrows-1]); */
+    mpz_set_ui(*guessed_den, 1);
+    for(uint32_t i = 0; i < mpz_mat->nrows; i++){
+      mpz_lcm(*guessed_den, *guessed_den, mpz_mat->denoms[i]);
+    }
+    *mat_lifted=1;
   }
-#else
-  *mat_lifted = 1;
 #endif
-  rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden);
+  if(mpz_cmp(recdata->D, *guessed_den) > 0){
+    mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
+    mpz_sqrt(*guessed_num, *guessed_num);
+    mpz_set(recdata->N, *guessed_num);
+    mpz_set(recdata->D, *guessed_num);
+
+  }
+  rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden, *guessed_den);
   if(b && trace_det->done_trace == 1 && trace_det->done_det == 1){
+    mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
+    mpz_sqrt(*guessed_num, *guessed_num);
+    mpz_set(recdata->N, *guessed_num);
+    mpz_set(recdata->D, *guessed_num);
 
     mpz_t denominator;
     mpz_init(denominator);
@@ -1382,10 +1432,10 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
         }
       }
 
-      mpz_fdiv_q(recdata->D, recdata->D, *guessed_den);
-      mpz_mul(recdata->D, recdata->D, recdata->D);
-      mpz_fdiv_q(recdata->N, modulus, recdata->D);
-      mpz_fdiv_q_2exp(recdata->N, recdata->N, 1);
+      /* mpz_fdiv_q(recdata->D, recdata->D, *guessed_den); */
+      /* mpz_mul(recdata->D, recdata->D, recdata->D); */
+      /* mpz_fdiv_q(recdata->N, modulus, recdata->D); */
+      /* mpz_fdiv_q_2exp(recdata->N, recdata->N, 1); */
 
       mpz_root(recdata->D, modulus, 3);
       mpz_fdiv_q(recdata->N, modulus, recdata->D);
@@ -1842,37 +1892,39 @@ static int32_t *initial_modular_step(
 
 
 static void secondary_modular_steps(sp_matfglm_t **bmatrix,
-                                   int32_t **div_xn,
-                                   int32_t **len_gb_xn,
-                                   int32_t **start_cf_gb_xn,
+                                    int32_t **div_xn,
+                                    int32_t **len_gb_xn,
+                                    int32_t **start_cf_gb_xn,
 
-                                   nvars_t *bnlins,
-                                   nvars_t **blinvars,
-                                   uint32_t **blineqs,
-                                   nvars_t **bsquvars,
+                                    nvars_t *bnlins,
+                                    nvars_t **blinvars,
+                                    uint32_t **blineqs,
+                                    nvars_t **bsquvars,
 
-                                   fglm_data_t **bdata_fglm,
-                                   fglm_bms_data_t **bdata_bms,
+                                    fglm_data_t **bdata_fglm,
+                                    fglm_bms_data_t **bdata_bms,
 
-                                   int32_t *num_gb,
-                                   int32_t **leadmons_ori,
-                                   int32_t **leadmons_current,
+                                    int32_t *num_gb,
+                                    int32_t **leadmons_ori,
+                                    int32_t **leadmons_current,
 
-                                   uint64_t bsz,
-                                   param_t **nmod_params,
-                                   /* trace_t **btrace, */
-                                   bs_t *bs_qq,
-                                   md_t *st,
-                                   const int32_t fc,
-                                   int info_level,
-                                   bs_t **bs,
-                                   int32_t *lmb_ori,
-                                   int32_t dquot_ori,
-                                   primes_t *lp,
-                                   data_gens_ff_t *gens,
-                                   double *stf4,
-                                   const long nbsols,
-                                   uint32_t *bad_primes)
+                                    uint64_t bsz,
+                                    param_t **nmod_params,
+                                    /* trace_t **btrace, */
+                                    bs_t *bs_qq,
+                                    md_t *st,
+                                    const int32_t fc,
+                                    int info_level,
+                                    bs_t **bs,
+                                    int32_t *lmb_ori,
+                                    int32_t dquot_ori,
+                                    primes_t *lp,
+                                    data_gens_ff_t *gens,
+                                    double *stf4,
+                                    const long nbsols,
+                                    uint32_t *bad_primes,
+                                    mpz_matfglm_t mpz_mat, int mat_lifted,
+                                    mpz_t *mpz_linear_forms, int lin_lifted)
 {
     st->info_level  = 0;
     st->f4_qq_round = 2;
@@ -1892,10 +1944,10 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 #pragma omp parallel for num_threads(nthrds)  \
     private(i) schedule(static)
     for (i = 0; i < st->nprimes; ++i){
+      if(!mat_lifted || !lin_lifted){
         bs[i] = core_gba(bs_qq, st, &error, lp->p[i]);
         *stf4 = realtime()-rt;
         /* printf("F4 trace timing %13.2f\n", *stf4); */
-
         if (error > 0) {
             if (bs[i] != NULL) {
                 free(bs[i]);
@@ -1927,40 +1979,48 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             /* return; */
         }
         get_lm_from_bs_trace(bs[i], bs[i]->ht, leadmons_current[i]);
-
+      }
+      if(mat_lifted && lin_lifted){
+        compute_modular_linear_forms(bnlins[i], bs_qq->ht->nv + 1,
+                                     blineqs[i], mpz_linear_forms, lp->p[i]);
+        compute_modular_matrix(bmatrix[i], mpz_mat, lp->p[i]);
+      }
+      else
+        {
         if(equal_staircase(leadmons_current[i], leadmons_ori[i],
-                    num_gb[i], num_gb[i], bs[i]->ht->nv)){
+                           num_gb[i], num_gb[i], bs[i]->ht->nv)){
 
-            set_linear_poly(bnlins[i], blineqs[i], blinvars[i], bs[i]->ht,
-                    leadmons_current[i], bs[i]);
+          set_linear_poly(bnlins[i], blineqs[i], blinvars[i], bs[i]->ht,
+                          leadmons_current[i], bs[i]);
 
-            build_matrixn_from_bs_trace_application(bmatrix[i],
-                    div_xn[i],
-                    len_gb_xn[i],
-                    start_cf_gb_xn[i],
-                    lmb_ori, dquot_ori, bs[i], bs[i]->ht,
-                    leadmons_ori[i], bs[i]->ht->nv,
-                    lp->p[i]);
-            if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
-                        nmod_params[i],
-                        bs[i]->ht->nv,
-                        bsz,
-                        bnlins[i], blinvars[i], blineqs[i],
-                        bsquvars[i],
-                        bdata_fglm[i],
-                        bdata_bms[i],
-                        nbsols,
-                        info_level,
-                        st)){
-                bad_primes[i] = 1;
-            }
+          build_matrixn_from_bs_trace_application(bmatrix[i],
+                                                  div_xn[i],
+                                                  len_gb_xn[i],
+                                                  start_cf_gb_xn[i],
+                                                  lmb_ori, dquot_ori, bs[i], bs[i]->ht,
+                                                  leadmons_ori[i], bs[i]->ht->nv,
+                                                  lp->p[i]);
         }
         else{
-            bad_primes[i] = 1;
+          bad_primes[i] = 1;
         }
-        if (bs[i] != NULL) {
-            free_basis_and_only_local_hash_table_data(&(bs[i]));
-        }
+      }
+      if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
+                                            nmod_params[i],
+                                            bs_qq->ht->nv,
+                                            bsz,
+                                            bnlins[i], blinvars[i], blineqs[i],
+                                            bsquvars[i],
+                                            bdata_fglm[i],
+                                            bdata_bms[i],
+                                            nbsols,
+                                            info_level,
+                                            st)){
+        bad_primes[i] = 1;
+      }
+      if (bs[i] != NULL) {
+        free_basis_and_only_local_hash_table_data(&(bs[i]));
+      }
     }
     st->nthrds = nthrds;
 }
@@ -2013,7 +2073,17 @@ void set_linear_function_pointer(int32_t fc){
 
 
 
-
+static inline int is_lucky_matmul_prime_ui(uint32_t prime, mpz_matfglm_t mpz_mat, int mat_lifted){
+  if(mat_lifted == 0){
+    return 0;
+  }
+  for(uint32_t i = 0; i < mpz_mat->nrows; i++){
+    if(mpz_fdiv_ui(mpz_mat->denoms[i], prime) == 0){
+      return 1;
+    }
+  }
+  return 0;
+}
 
 
 /*
@@ -2141,12 +2211,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   uint32_t *bad_primes = calloc((unsigned long)st->nthrds, sizeof(uint32_t));
 
-  /* initialize tracers */
-  /* trace_t **btrace = (trace_t **)calloc(st->nthrds,
-                                       sizeof(trace_t *));
-  btrace[0]  = initialize_trace(bs_qq, st); */
-  /* initialization of other tracers is done through duplication */
-
   uint32_t prime = 0; 
   uint32_t primeinit = 0;
   uint32_t lprime = 1303905299;
@@ -2155,7 +2219,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   while(gens->field_char==0 && is_lucky_prime_ui(prime, bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
-
   primeinit = prime;
   lp->p[0] = primeinit;
 
@@ -2177,12 +2240,16 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   uint64_t bsz = 0;
 
   /* data for linear forms */
-  nvars_t nlins = 0;
+  nvars_t nlins = 0;/*number of linear forms*/
   nvars_t *bnlins = (nvars_t *)calloc(st->nthrds, sizeof(nvars_t));
-  nvars_t **blinvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
+  nvars_t **blinvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));/*indicates which variables are linear*/
   nvars_t *linvars = calloc(bs_qq->ht->nv, sizeof(nvars_t));
   blinvars[0] = linvars;
-  uint32_t **lineqs_ptr = malloc(st->nthrds * sizeof(uint32_t *));
+  uint32_t **lineqs_ptr = malloc(st->nthrds * sizeof(uint32_t *));/*coeffs of linear forms*/
+
+  mpz_t *crt_linear_forms, *mpq_linear_forms, *mpz_linear_forms;
+
+  /*data for squared variables*/
   nvars_t **bsquvars = (nvars_t **) malloc(st->nthrds * sizeof(nvars_t *));
   nvars_t *squvars = calloc(nr_vars-1, sizeof(nvars_t));
   bsquvars[0] = squvars;
@@ -2193,23 +2260,23 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int squares = 1;
 
   int32_t *lmb_ori = initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn,
-                                            bstart_cf_gb_xn,
+                                          bstart_cf_gb_xn,
 
-                                            &nlins, blinvars[0], lineqs_ptr,
-                                            squvars,
+                                          &nlins, blinvars[0], lineqs_ptr,
+                                          squvars,
 
-                                            bdata_fglm, bdata_bms,
+                                          bdata_fglm, bdata_bms,
 
-                                            num_gb, leadmons_ori,
+                                          num_gb, leadmons_ori,
 
-                                            &bsz, nmod_params,
-                                            bs_qq, st,
-                                            lp->p[0], //prime,
-                                            print_gb,
-                                            dim_ptr, dquot_ptr,
-                                            gens,
-                                            files,
-                                            &success);
+                                          &bsz, nmod_params,
+                                          bs_qq, st,
+                                          lp->p[0], //prime,
+                                          print_gb,
+                                          dim_ptr, dquot_ptr,
+                                          gens,
+                                          files,
+                                          &success);
 
   if(*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0){
     if(nmod_params[0]->elim->length - 1 != *dquot_ptr){
@@ -2221,7 +2288,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       }
     }
   }
-
+  int nv = bs_qq->ht->nv;
+  if(nlins){
+   crt_linear_forms = allocate_crt_linear_forms(nlins, nv,
+                                                 lineqs_ptr);
+   mpq_linear_forms = allocate_mpq_linear_forms(nlins, nv);
+   mpz_linear_forms = mpz_linear_forms_allocate(nlins, nv);
+ }
   (*mpz_paramp)->dim    = *dim_ptr;
   (*mpz_paramp)->dquot  = *dquot_ptr;
 
@@ -2241,6 +2314,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(bnlins);
     free(lineqs_ptr);
     free(squvars);
+    mpz_linear_forms_clear(mpz_linear_forms, nlins, nv); 
+    crt_linear_forms_clear(crt_linear_forms, nlins, nv);
+    mpq_linear_forms_clear(mpq_linear_forms, nlins, nv);
     if(print_gb){
       return 0;
     }
@@ -2287,12 +2363,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   mpz_matfglm_initset(mpz_mat, *bmatrix);
 #endif
 
-  /* btrace[0] = st->tr; */
-
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
                               leadmons_ori, leadmons_current,
-                               /* btrace, */
                                bdata_bms, bdata_fglm,
                                bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix,
                                nmod_params, nlins, bnlins,
@@ -2379,6 +2452,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     is_lifted[i] = 0;
   }
   int mat_lifted = 0;
+  int lin_lifted = 0;
   int nbdoit = 1;
   int doit = 1;
   int prdone = 0;
@@ -2417,7 +2491,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         prime = next_prime(1<<30);
       }
       lp->p[i] = prime;
-      while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit){
+      while(is_lucky_prime_ui(prime, bs_qq) || prime==primeinit || is_lucky_matmul_prime_ui(prime, mpz_mat, mat_lifted)){
         prime = next_prime(prime);
         if(prime >= lprime){
           prime = next_prime(1<<30);
@@ -2431,27 +2505,29 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     double stf4 = 0;
     secondary_modular_steps(bmatrix,
-                              bdiv_xn,
-                              blen_gb_xn,
-                              bstart_cf_gb_xn,
+                            bdiv_xn,
+                            blen_gb_xn,
+                            bstart_cf_gb_xn,
 
-                              bnlins,
-                              blinvars,
-                              lineqs_ptr,
-                              bsquvars,
+                            bnlins,
+                            blinvars,
+                            lineqs_ptr,
+                            bsquvars,
 
-                              bdata_fglm,
-                              bdata_bms,
-                              num_gb,
-                              leadmons_ori,
-                              leadmons_current,
+                            bdata_fglm,
+                            bdata_bms,
+                            num_gb,
+                            leadmons_ori,
+                            leadmons_current,
 
-                              bsz,
-                              nmod_params, /* btrace, */
-                              bs_qq, st,
-                              field_char, 0, /* info_level, */
-                              bs, lmb_ori, *dquot_ptr, lp,
-                              gens, &stf4, nsols, bad_primes);
+                            bsz,
+                            nmod_params, /* btrace, */
+                            bs_qq, st,
+                            field_char, 0, /* info_level, */
+                            bs, lmb_ori, *dquot_ptr, lp,
+                            gens, &stf4, nsols, bad_primes,
+                            mpz_mat, mat_lifted,
+                            mpz_linear_forms, lin_lifted);
     double ca1 = realtime() - ca0;
 
     if(nprimes==1){
@@ -2469,7 +2545,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                 (ca1) );
       }
     }
-
     for(int i = 0; i < st->nthrds; i++){
       if(bad_primes[i] == 0){
         normalize_nmod_param(nmod_params[i]);
@@ -2492,6 +2567,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                                            mpq_mat,
                                            crt_mat,
                                            mpz_mat,
+                                           bnlins[i],
+                                           blinvars[i],
+                                           lineqs_ptr[i],
+                                           crt_linear_forms,
+                                           mpq_linear_forms,
+                                           mpz_linear_forms,
                                            trace_det,
                                            bmatrix[i],
                                            numer, denom,
@@ -2504,6 +2585,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                                            &matrec,
                                            is_lifted,
                                            &mat_lifted,
+                                           &lin_lifted,
                                            doit,
                                            st->nthrds, info_level);
 
@@ -2523,6 +2605,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         }
         nbadprimes++;
         if(nbadprimes > nprimes){
+          mpz_linear_forms_clear(mpz_linear_forms, nlins, nv); 
+          crt_linear_forms_clear(crt_linear_forms, nlins, nv);
+          mpq_linear_forms_clear(mpq_linear_forms, nlins, nv);
           free(linvars);
           free(bnlins);
           free(lineqs_ptr[0]);
@@ -2532,6 +2617,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           mpz_clear(prod_crt);
           trace_det_clear(trace_det);
           free_rrec_data(recdata);
+#if LIFTMATRIX == 1
+          mpq_matfglm_clear(mpq_mat);
+#endif
           fprintf(stderr, "Many other data should be cleaned\n");
           return -4;
         }
@@ -2575,8 +2663,14 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(stderr, "Time for CRT + rational reconstruction = %.2f\n", strat);
   }
 
+#if LIFTMATRIX == 1
+  mpq_matfglm_clear(mpq_mat);
+#endif
   mpz_param_clear(tmp_mpz_param);
-
+  mpz_linear_forms_clear(mpz_linear_forms, nlins, nv); 
+  crt_linear_forms_clear(crt_linear_forms, nlins, nv);
+  mpq_linear_forms_clear(mpq_linear_forms, nlins, nv);
+ 
   mpz_upoly_clear(numer);
   mpz_upoly_clear(denom);
   mpz_clear(guessed_num);

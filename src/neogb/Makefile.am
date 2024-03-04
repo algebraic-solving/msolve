@@ -4,7 +4,7 @@ libneogb_ladir			=	$(includedir)/msolve/neogb
 libneogb_la_HEADERS	=libneogb.h basis.h data.h engine.h f4.h sba.h hash.h \
 					 io.h modular.h nf.h f4sat.h sort_r.h meta_data.h \
 					 tools.h update.h
-libneogb_la_LDFLAGS	= -release $(PACKAGE_VERSION)
+libneogb_la_LDFLAGS	= -version-info $(LT_VERSION)
 libneogb_la_CFLAGS	= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS)
 
 EXTRA_DIST	=		basis.h \

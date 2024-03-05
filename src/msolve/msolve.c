@@ -1388,8 +1388,6 @@ static inline int new_rational_reconstruction(mpz_param_t mpz_param,
 
   if((*matrec) == mpq_mat->nrows && (*lin_lifted) == 1){
     (*matrec) = (*matrec) + 1;
-    *mat_lifted = 1;
-    /* mpz_set(*guessed_den, mpz_mat->denoms[mpz_mat->nrows-1]); */
     mpz_set_ui(*guessed_den, 1);
     for(uint32_t i = 0; i < mpz_mat->nrows; i++){
       mpz_lcm(*guessed_den, *guessed_den, mpz_mat->denoms[i]);
@@ -2683,7 +2681,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           trace_det_clear(trace_det);
           free_rrec_data(recdata);
 #if LIFTMATRIX == 1
-          mpq_matfglm_clear(mpq_mat);
+          mpz_matfglm_clear(mpz_mat);
 #endif
           fprintf(stderr, "Many other data should be cleaned\n");
           return -4;
@@ -2729,7 +2727,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
 
 #if LIFTMATRIX == 1
-  mpq_matfglm_clear(mpq_mat);
+  mpz_matfglm_clear(mpz_mat);
 #endif
   mpz_param_clear(tmp_mpz_param);
   mpz_linear_forms_clear(mpz_linear_forms, nlins, nv); 

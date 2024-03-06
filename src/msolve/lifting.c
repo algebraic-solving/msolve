@@ -145,6 +145,29 @@ static inline void mpq_matfglm_initset(mpq_matfglm_t mpq_mat,
   }
 }
 
+static inline void mpq_matfglm_clear(mpq_matfglm_t mpq_mat) {
+  /* entries of mpq_mat->denoms are cleared previously when building mpz_mat */
+  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
+    mpz_clear(mpq_mat->denoms[i]);
+  }
+  free(mpq_mat->denoms);
+
+  uint64_t nc = 2 * mpq_mat->ncols;
+  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
+    uint64_t c = 2 * i * mpq_mat->ncols;
+    for (uint32_t j = 0; j < nc; j++) {
+      mpz_clear(mpq_mat->dense_mat[c + j]);
+      mpz_clear(mpq_mat->dense_mat[c + j + 1]);
+    }
+  }
+  free(mpq_mat->dense_mat);
+
+  free(mpq_mat->triv_idx);
+  free(mpq_mat->triv_pos);
+  free(mpq_mat->dense_idx);
+  free(mpq_mat->dst);
+}
+
 static inline void mpq_matfglm_partial_clear(mpq_matfglm_t mpq_mat) {
   /* entries of mpq_mat->denoms are cleared previously when building mpz_mat */
   free(mpq_mat->denoms);
@@ -426,13 +449,13 @@ rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
     (*matrec)++;
   }
   crt_mpz_matfglm_clear(crt_mat);
+  mpz_clear(coef);
+  mpz_clear(lcm);
+
   *mat_lifted = 1;
   build_mpz_matrix(mpq_mat, mpz_mat, *mat_lifted);
 
   mpq_matfglm_partial_clear(mpq_mat);
-  mpz_clear(coef);
-  mpz_clear(lcm);
-
   return cnt;
 }
 

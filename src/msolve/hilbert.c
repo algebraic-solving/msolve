@@ -1272,21 +1272,15 @@ static inline void copy_nf_in_matrix_from_bs_32(sp_matfglm_t* matrix,
   long i;
   long N = nrows * matrix->ncols ;
   long k = 0;
-  /* fprintf (stderr,"starts at k=%ld with coeff %d\n",k,tbr->cf_32[tbr->hm[idx][COEFFS]][k]); */
-  /* fprintf (stderr,"ends at  k=%ld with coeff %d\n",len-1-k, */
-  /* 	   tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k]); */
-  /* fprintf (stderr,"["); */
   for(i = 0; i < matrix->ncols; i++){
     if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
       matrix->dense_mat[N + i] = tbr->cf_32[tbr->hm[idx][COEFFS]][len-1-k];
-      /* fprintf (stderr,"(%ld,%u) ",i,matrix->dense_mat[N+i]); */
       k++;
       if (k >= len) { /* JB why does this happen? */
 	break;
       }
     }
   }
-  /* fprintf(stderr,"]\n"); */
 }
 
 
@@ -3016,7 +3010,6 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
 								    const int nv,
 								    const long fc,
 								    const int thread_number){
-  printf ("building on thread %d with %d thread(s) in charac %ld\n",thread_number,st->nthrds,fc);
   const len_t ebl = ht->ebl;
   const len_t evl = ht->evl;
   int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
@@ -3801,11 +3794,9 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   }
 
   *lextra_nf= count_not_lm;
-  printf ("freeing tbr\n");
   if (count_not_lm) {
     free(tbr);
   }
-  printf ("freed tbr\n");
   return matrix;
 }
 

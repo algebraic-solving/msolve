@@ -1913,8 +1913,6 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
     for(nvars_t i = 0; i < st->nprimes; i++){
       bad_primes[i] = 0;
     }
-    printf ("st->nprimes %d\n",st->nprimes);
-    /* commenting this #pragma makes the crash disappear */
 #pragma omp parallel for num_threads(nthrds)  \
     private(i) schedule(static)
     for (i = 0; i < st->nprimes; ++i){
@@ -1999,7 +1997,6 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             free_basis_and_only_local_hash_table_data(&(bs[i]));
         }
     }
-    printf ("parallelization over\n");
     st->nthrds = nthrds;
 }
 
@@ -2451,6 +2448,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   double strat = 0;
 
   while(rerun == 1 || mcheck == 1){
+    
     /* controls call to rational reconstruction */
     doit = ((prdone%nbdoit) == 0);
 

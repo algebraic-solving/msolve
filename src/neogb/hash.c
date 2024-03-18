@@ -1079,23 +1079,11 @@ static inline void insert_in_basis_hash_table_pivots(
     const hd_t * const hds    = sht->hd;
     exp_t * const * const evs = sht->ev;
     
-    exp_t *evt  = (exp_t *)malloc(
-        (unsigned long)(st->nthrds * evl) * sizeof(exp_t));
-/* #if PARALLEL_HASHING
-#pragma omp parallel for num_threads(st->nthrds) \
-    private(l)
-#endif */
+    exp_t *evt  = (exp_t *)malloc((unsigned long)evl * sizeof(exp_t));
     for (l = OFFSET; l < len; ++l) {
-        exp_t *evtl = evt + (omp_get_thread_num() * evl);
-        memcpy(evtl, evs[hcm[row[l]]],
+        memcpy(evt, evs[hcm[row[l]]],
                 (unsigned long)evl * sizeof(exp_t));
-
-#if PARALLEL_HASHING
-        const val_t h = hds[hcm[row[l]]].val;
-        row[l] = check_insert_in_hash_table(evtl, h, bht);
-#else
-        row[l] = insert_in_hash_table(evtl, bht);
-#endif
+        row[l] = insert_in_hash_table(evt, bht);
     }
     free(evt);
 }

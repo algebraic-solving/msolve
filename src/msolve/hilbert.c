@@ -3536,13 +3536,13 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     threshold = 0;
     break;
   case 1:
-    threshold = threshold/4;
+    threshold = (threshold+1)/4; /* round to nearest integer */
     break;
   case 2:
     threshold = threshold/2;
     break;
   case 3:
-    threshold = 3*threshold/4;
+    threshold = (3*threshold+1)/4; /* round to nearest integer */
     break;
   }
   

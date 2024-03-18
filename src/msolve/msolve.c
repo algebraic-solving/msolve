@@ -1751,8 +1751,8 @@ static int32_t *initial_modular_step(
 	long **bextra_nf,
 	long *lextra_nf_ptr,
 	int32_t **blens_extra_nf,
-	int32_t **bcfs_extra_nf,
 	int32_t **bexps_extra_nf,
+	int32_t **bcfs_extra_nf,
 
         nvars_t *nlins_ptr,
         nvars_t *linvars,
@@ -1819,14 +1819,15 @@ static int32_t *initial_modular_step(
 	    *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
 							    blen_gb_xn,
 							    bstart_cf_gb_xn,
-							    bextra_nf, lextra_nf_ptr,
+							    bextra_nf,
 							    blens_extra_nf,
-							    bcfs_extra_nf,
 							    bexps_extra_nf,
+							    bcfs_extra_nf,
 							    lmb, dquot, bs, bs->ht,
 							    leadmons[0], md,
 							    bs->ht->nv,
 							    fc, unstable_staircase,
+							    lextra_nf_ptr,
 							    md->info_level);
 	    if(*bmatrix == NULL){
 	      *success = 0;
@@ -1865,8 +1866,8 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 				    int32_t **bstart_cf_gb_xn,
 				    long **bextra_nf, const long lextra_nf,
 				    int32_t **blens_extra_nf,
-				    int32_t **bcfs_extra_nf,
 				    int32_t **bexps_extra_nf,
+				    int32_t **bcfs_extra_nf,
 
 				    nvars_t *bnlins,
 				    nvars_t **blinvars,
@@ -1912,6 +1913,8 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
     for(nvars_t i = 0; i < st->nprimes; i++){
       bad_primes[i] = 0;
     }
+    printf ("st->nprimes %d\n",st->nprimes);
+    /* commenting this #pragma makes the crash disappear */
 #pragma omp parallel for num_threads(nthrds)  \
     private(i) schedule(static)
     for (i = 0; i < st->nprimes; ++i){
@@ -1967,12 +1970,14 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 							     bdiv_xn[i],
 							     blen_gb_xn[i],
 							     bstart_cf_gb_xn[i],
-							     bextra_nf[i], lextra_nf,
+							     bextra_nf[i],
 							     blens_extra_nf[i],
-							     bcfs_extra_nf[i], bexps_extra_nf[i],
+							     bexps_extra_nf[i],
+							     bcfs_extra_nf[i],
+							     lextra_nf,
 							     lmb_ori, dquot_ori, bs[i], bs[i]->ht,
 							     leadmons_ori[i], st, bs[i]->ht->nv,
-							     lp->p[i]);
+							     lp->p[i],i);
             if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
                         nmod_params[i],
                         bs[i]->ht->nv,
@@ -1994,6 +1999,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             free_basis_and_only_local_hash_table_data(&(bs[i]));
         }
     }
+    printf ("parallelization over\n");
     st->nthrds = nthrds;
 }
 
@@ -2208,8 +2214,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int32_t **bstart_cf_gb_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   long **bextra_nf = (long **)malloc(st->nthrds * sizeof(long *));
   int32_t **blens_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
-  int32_t **bcfs_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   int32_t **bexps_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **bcfs_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
 
   fglm_data_t **bdata_fglm = (fglm_data_t **)malloc(st->nthrds * sizeof(fglm_data_t *));
   fglm_bms_data_t **bdata_bms = (fglm_bms_data_t **)malloc(st->nthrds * sizeof(fglm_bms_data_t *));
@@ -2242,8 +2248,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  bextra_nf,
 					  &lextra_nf,
 					  blens_extra_nf,
-					  bcfs_extra_nf,
 					  bexps_extra_nf,
+					  bcfs_extra_nf,
 
 					  &nlins, blinvars[0], lineqs_ptr,
 					  squvars,
@@ -2487,8 +2493,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 			    bstart_cf_gb_xn,
 			    bextra_nf, lextra_nf,
 			    blens_extra_nf,
-			    bcfs_extra_nf,
 			    bexps_extra_nf,
+			    bcfs_extra_nf,
 
 			    bnlins,
 			    blinvars,
@@ -2660,8 +2666,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     free_fglm_bms_data(bdata_bms[i]);
     free_fglm_data(bdata_fglm[i]);
-    free(bexps_extra_nf[i]);
     free(bcfs_extra_nf[i]);
+    free(bexps_extra_nf[i]);
     free(blens_extra_nf[i]);
     free(bextra_nf[i]);
     free(blen_gb_xn[i]);
@@ -2702,8 +2708,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free(bsquvars);
   free(is_lifted);
   free(num_gb);
-  free(bexps_extra_nf);
   free(bcfs_extra_nf);
+  free(bexps_extra_nf);
   free(blens_extra_nf);
   free(bextra_nf);
   free(blen_gb_xn);
@@ -3500,7 +3506,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp,
                    int32_t get_param){
 
   /*
-    0 is comp. is ok
+    0 if comp. is ok
     1 if comp. failed
     2 if more genericity is required
     -2 if charac is > 0

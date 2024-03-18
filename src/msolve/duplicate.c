@@ -155,17 +155,17 @@ static inline void duplicate_data_mthread_trace(int nthreads,
       bdiv_xn[i][j] = bdiv_xn[0][j];
     }
     /* pure monomials to be reduced */
-    bextra_nf[i] = (long* )(malloc (sizeof(long) * lextra_nf));
-    blens_extra_nf[i] = (int32_t *) (malloc(sizeof(int32_t) * lextra_nf));
-    bcfs_extra_nf[i] = (int32_t *) (malloc(sizeof(int32_t) * lextra_nf));
-    bexps_extra_nf[i] = (int32_t *) (malloc(sizeof(int32_t) * lextra_nf * (st->nvars)));
+    bextra_nf[i] = (long *)(malloc(sizeof(long) * lextra_nf));
+    blens_extra_nf[i] = (int32_t *)(malloc(sizeof(int32_t) * lextra_nf));
+    bexps_extra_nf[i] = (int32_t *)(malloc(sizeof(int32_t) * lextra_nf * (st->nvars)));
+    bcfs_extra_nf[i] = (int32_t *)(malloc(sizeof(int32_t) * lextra_nf));
     for (long j = 0; j < lextra_nf; j++){
       bextra_nf[i][j] = bextra_nf[0][j];
       blens_extra_nf[i][j] = blens_extra_nf[0][j];
+      for (long k = 0; k < st->nvars; k++){
+	bexps_extra_nf[i][j*(st->nvars)+k] = bexps_extra_nf[0][j*(st->nvars)+k];
+      }
       bcfs_extra_nf[i][j] = bcfs_extra_nf[0][j];
-    }
-    for (long j = 0; j < lextra_nf * (st->nvars); j++){
-      bexps_extra_nf[i][j] = bexps_extra_nf[0][j];
     }
   }
   for(int i=1; i < nthreads; i++){
@@ -229,7 +229,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
   }
 
   for(int i = 1; i < nthreads; i++){
-    bdata_fglm[i] = allocate_fglm_data(len_xn, dquot, (st->nvars));
+    bdata_fglm[i] = allocate_fglm_data(len0, dquot, (st->nvars));
     bdata_bms[i] = allocate_fglm_bms_data(dquot, 65521);
     nmod_params[i] = allocate_fglm_param(nmod_params[0]->charac, (st->nvars));
     nmod_poly_set(nmod_params[i]->elim, nmod_params[0]->elim);

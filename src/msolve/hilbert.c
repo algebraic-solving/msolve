@@ -20,7 +20,7 @@
 
 #include "../fglm/data_fglm.c"
 #include "../fglm/libfglm.h"
-#include "../neogb/meta_data.c"
+#include "../neogb/meta_data.h"
 #define REDUCTION_ALLINONE 1
 
 static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
@@ -3004,18 +3004,19 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
 								    int32_t *len_gb_xn,
 								    int32_t *start_cf_gb_xn,
 								    long *extra_nf,
-								    const long count_not_lm,
 								    int32_t *lens_extra_nf,
-								    int32_t *cfs_extra_nf,
 								    int32_t *exps_extra_nf,
+								    int32_t *cfs_extra_nf,
+								    const long count_not_lm,
 								    int32_t *lmb, long dquot,
 								    bs_t *bs,
 								    ht_t *ht,
 								    int32_t *bexp_lm,
 								    const md_t const *st,
 								    const int nv,
-								    const long fc){
-
+								    const long fc,
+								    const int thread_number){
+  printf ("building on thread %d with %d thread(s) in charac %ld\n",thread_number,st->nthrds,fc);
   const len_t ebl = ht->ebl;
   const len_t evl = ht->evl;
   int32_t *evi    =  (int *)malloc((unsigned long)nv * sizeof(int));
@@ -3031,32 +3032,32 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
       evi[i-2]    =   i;
     }
   }
-  md_t* md = copy_meta_data(st,fc);
-  bs_t* tbr = initialize_basis(md);
-  exp_t *mul  = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
-  tbr->ht = ht;
-  /* reduction */
-  import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
-		    (void *)cfs_extra_nf, NULL);
-  tbr->ld = tbr->lml  =  count_not_lm;
-  for (long k = 0; k < count_not_lm; ++k) {
-    tbr->lmps[k]  = k; /* fix input element in bs */
+  bs_t *tbr;
+  if (count_not_lm) {
+    md_t *md = copy_meta_data(st,fc);
+    tbr = initialize_basis(md);
+    exp_t *mul = (exp_t *)calloc(ht->evl, sizeof(exp_t));
+    tbr->ht = ht;
+    /* reduction */
+    import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
+		      (void *)cfs_extra_nf, NULL);
+    tbr->ld = tbr->lml  =  count_not_lm;
+    for (long k = 0; k < count_not_lm; ++k) {
+      tbr->lmps[k]  = k; /* fix input element in bs */
+    }
+    int32_t err = 0;
+    tbr = core_nf(tbr, md, mul, bs, &err);
+    if (err) {
+      printf("Problem with normalform, stopped computation.\n");
+      exit(1);
+    }
+    free(mul);
+    free(md);
   }
-  int32_t err = 0;
-  tbr = core_nf(tbr, md, mul, bs, &err);
-  if (err) {
-    printf("Problem with normalform, stopped computation.\n");
-    exit(1);
-  }
-  free(mul);
-  free(md);
-
   long len0 = matrix->nrows;
   long len_xn = len0-count_not_lm; //get_div_xn(bexp_lm, bs->lml, nv, div_xn);
 
   matrix->charac = fc;
-  /* matrix->ncols = dquot; */
-  /* matrix->nrows = len_xn; */
   long len1 = dquot * len0;
   long len2 = dquot - len0;
 
@@ -3155,6 +3156,26 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
 				  tbr, ht, evi, st, nv);
 	nrows++;
 	count_nf++;
+	if (count_not_lm < count_nf && i < dquot) {
+          fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
+          free(matrix->dense_mat);
+          free(matrix->dense_idx);
+          free(matrix->triv_idx);
+          free(matrix->triv_pos);
+          free(matrix->dst);
+          free(matrix);
+
+	  free(tbr);
+	  free(cfs_extra_nf);
+	  free(exps_extra_nf);
+	  free(lens_extra_nf);
+	  free(extra_nf);
+          free(len_gb_xn);
+          free(start_cf_gb_xn);
+          free(div_xn);
+	  free(evi);
+          exit(1);
+        }
       }
       else{ /* should not arrive here */
         fprintf(stderr, "Staircase is not generic\n");
@@ -3193,6 +3214,9 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
       }
     }
   }
+  if (count_not_lm) {
+    free(tbr);
+  }    
 }
 
 
@@ -3400,10 +3424,9 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  int32_t **blen_gb_xn,
 								  int32_t **bstart_cf_gb_xn,
 								  long **bextra_nf,
-								  long *lextra_nf,
 								  int32_t **blens_extra_nf,
-								  int32_t **bcfs_extra_nf,
 								  int32_t **bexps_extra_nf,
+								  int32_t **bcfs_extra_nf,
 								  int32_t *lmb, long dquot,
 								  bs_t *bs, ht_t *ht,
 								  int32_t *bexp_lm,
@@ -3411,6 +3434,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  const int nv,
 								  const long fc,
 								  const int32_t unstable_staircase,
+								  long *lextra_nf,
 								  const int info_level){
   *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
@@ -3559,39 +3583,42 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 
   *blens_extra_nf=(int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
   int32_t* lens_extra_nf= *blens_extra_nf;
-  *bcfs_extra_nf = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
-  int32_t* cfs_extra_nf= *bcfs_extra_nf;
   *bexps_extra_nf = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm * nv));
   int32_t* exps_extra_nf= *bexps_extra_nf;
+  *bcfs_extra_nf = (int32_t *) (malloc(sizeof(int32_t) * count_not_lm));
+  int32_t* cfs_extra_nf= *bcfs_extra_nf;
   /* pure monomials to be reduced */
   for (int32_t i = 0; i < count_not_lm;i++){
     lens_extra_nf[i]=1;
-    cfs_extra_nf[i]=1;
     int32_t j= extra_nf[i];
     for (int k = 0; k < nv-1; k++) {
       exps_extra_nf[i*nv+k]=lmb[j*nv+k];
     }
     exps_extra_nf[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
+    cfs_extra_nf[i]=1;
   }
-  md_t* md = copy_meta_data(st,fc);
-  bs_t* tbr = initialize_basis(md);
-  exp_t *mul  = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
-  tbr->ht = ht;
-  /* reduction */
-  import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
-		    (void *)cfs_extra_nf, NULL);
-  tbr->ld = tbr->lml  =  count_not_lm;
-  for (long k = 0; k < count_not_lm; ++k) {
-    tbr->lmps[k]  = k; /* fix input element in bs */
+  bs_t* tbr;
+  if (count_not_lm) {
+    md_t* md = copy_meta_data(st,fc);
+    tbr = initialize_basis(md);
+    exp_t *mul = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
+    tbr->ht = ht;
+    /* reduction */
+    import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
+		      (void *)cfs_extra_nf, NULL);
+    tbr->ld = tbr->lml  =  count_not_lm;
+    for (long k = 0; k < count_not_lm; ++k) {
+      tbr->lmps[k]  = k; /* fix input element in bs */
+    }
+    int32_t err = 0;
+    tbr = core_nf(tbr, md, mul, bs, &err);
+    if (err) {
+      printf("Problem with normalform, stopped computation.\n");
+      exit(1);
+    }
+    free(mul);
+    free(md);
   }
-  int32_t err = 0;
-  tbr = core_nf(tbr, md, mul, bs, &err);
-  if (err) {
-    printf("Problem with normalform, stopped computation.\n");
-    exit(1);
-  }
-  free(md);
-  free(mul);
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
   matrix->ncols = dquot;
@@ -3687,7 +3714,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
         if(len_xn < count && i < dquot){
 	  if (info_level){
 	    fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
-
 	  }
           free(matrix->dense_mat);
           free(matrix->dense_idx);
@@ -3716,6 +3742,28 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 				  tbr, ht, evi, st, nv);
 	nrows++;
 	count_nf++;
+        if(count_not_lm < count_nf && i < dquot){
+	  if (info_level){
+	    fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
+	  }
+          free(matrix->dense_mat);
+          free(matrix->dense_idx);
+          free(matrix->triv_idx);
+          free(matrix->triv_pos);
+          free(matrix->dst);
+          free(matrix);
+
+	  free(tbr);
+	  free(cfs_extra_nf);
+	  free(exps_extra_nf);
+	  free(lens_extra_nf);
+	  free(extra_nf);
+          free(len_gb_xn);
+          free(start_cf_gb_xn);
+          free(div_xn);
+	  free(evi);
+          return NULL;
+        }
       }
       else{ /* should not arrive here */
 	fprintf(stderr, "Staircase is not generic\n");
@@ -3753,6 +3801,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   }
 
   *lextra_nf= count_not_lm;
+  printf ("freeing tbr\n");
+  if (count_not_lm) {
+    free(tbr);
+  }
+  printf ("freed tbr\n");
   return matrix;
 }
 

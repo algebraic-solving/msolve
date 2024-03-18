@@ -324,6 +324,7 @@ static void convert_hashes_to_columns(
 
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
+    /* printf ("mnr=%d and esld=%ld\n",mnr,esld); */
     hcm = realloc(hcm, (esld-1) * sizeof(hi_t));
     for (k = 0, j = 0, i = 1; i < esld; ++i) {
         hi  = hds[i].idx;

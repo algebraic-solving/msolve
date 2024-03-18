@@ -88,6 +88,15 @@ AC_CONFIG_LINKS([
  input_files/cp_d_3_n_4_p_2.ms:input_files/cp_d_3_n_4_p_2.ms
  output_files/cp_d_3_n_4_p_2.res:output_files/cp_d_3_n_4_p_2.res
  test/diff/diff_cp_d_3_n_4_p_2.sh:test/diff/diff_cp_d_3_n_4_p_2.sh
+ input_files/eco6-16.ms:input_files/eco6-16.ms
+ output_files/eco6-16.res:output_files/eco6-16.res
+ test/diff/diff_eco6-16.sh:test/diff/diff_eco6-16.sh
+ input_files/eco6-31.ms:input_files/eco6-31.ms
+ output_files/eco6-31.res:output_files/eco6-31.res
+ test/diff/diff_eco6-31.sh:test/diff/diff_eco6-31.sh
+ input_files/eco6-qq.ms:input_files/eco6-qq.ms
+ output_files/eco6-qq.res:output_files/eco6-qq.res
+ test/diff/diff_eco6-qq.sh:test/diff/diff_eco6-qq.sh
  input_files/eco10-31.ms:input_files/eco10-31.ms
  output_files/eco10-31.res:output_files/eco10-31.res
  test/diff/diff_eco10-31.sh:test/diff/diff_eco10-31.sh

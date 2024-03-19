@@ -1212,19 +1212,17 @@ static inline void copy_nf_in_matrix_from_bs_8(sp_matfglm_t* matrix,
 					       const md_t *st,
                                                const int nv){
   len_t idx = tbr->lmps[pos];
-  len_t * hm  = tbr->hm[idx]+OFFSET;
+  len_t * hm = tbr->hm[idx]+OFFSET;
   len_t len = tbr->hm[idx][LENGTH];
-  long i;
   long N = nrows * matrix->ncols ;
+  long i = 0;
   long k = 0;
-  for(i = 0; i < matrix->ncols; i++){
+  while(k < len) {
     if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
       matrix->dense_mat[N + i] = tbr->cf_8[tbr->hm[idx][COEFFS]][len-1-k];
       k++;
-      if (k >= len) { /* JB why does this happen? */
-	break;
-      }
     }
+    i++;
   }
 }
 
@@ -1238,19 +1236,17 @@ static inline void copy_nf_in_matrix_from_bs_16(sp_matfglm_t* matrix,
 						const md_t *st,
 						const int nv){
   len_t idx = tbr->lmps[pos];
-  len_t * hm  = tbr->hm[idx]+OFFSET;
+  len_t * hm = tbr->hm[idx]+OFFSET;
   len_t len = tbr->hm[idx][LENGTH];
-  long i;
   long N = nrows * matrix->ncols ;
+  long i = 0;
   long k = 0;
-  for(i = 0; i < matrix->ncols; i++){
+  while(k < len) {
     if(is_equal_exponent_bs(bht,hm[len-1-k],evi,lmb + i * nv,nv)){
       matrix->dense_mat[N + i] = tbr->cf_16[tbr->hm[idx][COEFFS]][len-1-k];
       k++;
-      if (k >= len) { /* JB why does this happen? */
-	break;
-      }
     }
+    i++;
   }
 }
 
@@ -1263,12 +1259,9 @@ static inline void copy_nf_in_matrix_from_bs_32(sp_matfglm_t* matrix,
 						int32_t * evi,
 						const md_t *st,
 						const int nv){
-  /* fprintf (stderr,"pos %ld\n",pos); */
   len_t idx = tbr->lmps[pos];
-  /* fprintf (stderr,"idx=%d\n",idx); */
-  len_t * hm  = tbr->hm[idx]+OFFSET;
+  len_t * hm = tbr->hm[idx]+OFFSET;
   len_t len = tbr->hm[idx][LENGTH];
-  /* fprintf (stderr,"len=%d\n",len); */
   long N = nrows * matrix->ncols ;
   long i = 0;
   long k = 0;

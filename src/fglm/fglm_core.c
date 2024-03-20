@@ -1500,7 +1500,7 @@ param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const nvars_
   long nb = initialize_fglm_data(matrix, data, prime, sz, block_size);
 
   if(info_level){
-    fprintf(stderr, "[%u, %u], Non trivial / Trivial = %.2f%%\n",
+    fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n",
             matrix->ncols, matrix->nrows,
             100*((double)matrix->nrows / (double)matrix->ncols));
     fprintf(stderr, "Density of non-trivial part %.2f%%\n",
@@ -1693,7 +1693,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   szmat_t nb = initialize_fglm_data(matrix, *bdata, prime, sz, block_size);
 
   if(info_level){
-    fprintf(stderr, "[%u, %u], Non trivial / Trivial = %.2f%%\n",
+    fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n",
             matrix->ncols, matrix->nrows,
             100*((double)matrix->nrows / (double)matrix->ncols));
     fprintf(stderr, "Density of non-trivial part %.2f%%\n",
@@ -1850,7 +1850,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   const long nb = initialize_fglm_data(matrix, data_fglm, prime, sz, block_size);
 
   if(info_level){
-    fprintf(stderr, "[%u, %u], Non trivial / Trivial = %.2f%%\n",
+    fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n",
             matrix->ncols, matrix->nrows,
             100*((double)matrix->nrows / (double)matrix->ncols));
     fprintf(stderr, "Density of non-trivial part %.2f%%\n",
@@ -2202,7 +2202,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   long nb = initialize_fglm_colon_data(matrix, data, prime, sz, block_size);
 
   if(info_level){
-    fprintf(stderr, "[%u, %u], Non trivial / Trivial = %.2f%%\n",
+    fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n",
             matrix->ncols, matrix->nrows,
             100*((double)matrix->nrows / (double)matrix->ncols));
     fprintf(stderr, "Density of non-trivial part %.2f%%\n",

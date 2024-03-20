@@ -111,6 +111,11 @@ static inline void duplicate_data_mthread_trace(int nthreads,
                                                 int32_t **bstart_cf_gb_xn,
                                                 int32_t **blen_gb_xn,
                                                 int32_t **bdiv_xn,
+						long **bextra_nf,
+						int32_t **blens_extra_nf,
+						int32_t **bexps_extra_nf,
+						int32_t **bcfs_extra_nf,
+
                                                 sp_matfglm_t **bmatrix,
                                                 param_t **nmod_params,
                                                 nvars_t nlins,
@@ -118,7 +123,9 @@ static inline void duplicate_data_mthread_trace(int nthreads,
                                                 nvars_t **blinvars,
                                                 uint32_t **blineqs,
                                                 nvars_t **bsquvars){
-  const long len_xn = bmatrix[0]->nrows;
+  const long len0 = bmatrix[0]->nrows;  
+  const long lextra_nf = bmatrix[0]->nnfs;
+  const long len_xn = len0 - lextra_nf;
   const long dquot = bmatrix[0]->ncols;
   const long len = num_gb[0] * (st->nvars);
 
@@ -137,15 +144,28 @@ static inline void duplicate_data_mthread_trace(int nthreads,
     }
   }
   for(long i = 1; i < nthreads; i++){
-    bstart_cf_gb_xn[i] = malloc(sizeof(int32_t) * len_xn);
-    blen_gb_xn[i] = malloc(sizeof(int32_t) * len_xn);
-    bdiv_xn[i] = malloc(sizeof(int32_t) * num_gb[0]/* bs->lml */);
+    bstart_cf_gb_xn[i] = (int32_t *) (malloc(sizeof(int32_t) * len_xn));
+    blen_gb_xn[i] = (int32_t *) (malloc(sizeof(int32_t) * len_xn));
+    bdiv_xn[i] = (int32_t *) (malloc(sizeof(int32_t) * num_gb[0]/* bs->lml */));
     for(long j = 0; j < len_xn; j++){
       bstart_cf_gb_xn[i][j] = bstart_cf_gb_xn[0][j];
       blen_gb_xn[i][j] = blen_gb_xn[0][j];
     }
     for(long j = 0; j < num_gb[0]; j++){
       bdiv_xn[i][j] = bdiv_xn[0][j];
+    }
+    /* pure monomials to be reduced */
+    bextra_nf[i] = (long *)(malloc(sizeof(long) * lextra_nf));
+    blens_extra_nf[i] = (int32_t *)(malloc(sizeof(int32_t) * lextra_nf));
+    bexps_extra_nf[i] = (int32_t *)(malloc(sizeof(int32_t) * lextra_nf * (st->nvars)));
+    bcfs_extra_nf[i] = (int32_t *)(malloc(sizeof(int32_t) * lextra_nf));
+    for (long j = 0; j < lextra_nf; j++){
+      bextra_nf[i][j] = bextra_nf[0][j];
+      blens_extra_nf[i][j] = blens_extra_nf[0][j];
+      for (long k = 0; k < st->nvars; k++){
+	bexps_extra_nf[i][j*(st->nvars)+k] = bexps_extra_nf[0][j*(st->nvars)+k];
+      }
+      bcfs_extra_nf[i][j] = bcfs_extra_nf[0][j];
     }
   }
   for(int i=1; i < nthreads; i++){
@@ -156,9 +176,10 @@ static inline void duplicate_data_mthread_trace(int nthreads,
 
     bmatrix[i] = calloc(1, sizeof(sp_matfglm_t));
     bmatrix[i]->ncols = dquot;
-    bmatrix[i]->nrows = len_xn;
-    long len1 = dquot * len_xn;
-    long len2 = dquot - len_xn;
+    bmatrix[i]->nrows = len0;
+    bmatrix[i]->nnfs  = lextra_nf;
+    long len1 = dquot * len0;
+    long len2 = dquot - len0;
 
     sp_matfglm_t *matrix = bmatrix[i];
     if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
@@ -170,12 +191,12 @@ static inline void duplicate_data_mthread_trace(int nthreads,
         matrix->dense_mat[j] = 0;
       }
     }
-    if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*(dquot - len_xn))){
+    if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
       fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
       exit(1);
     }
     else{
-      for(long j = 0; j < (dquot-len_xn); j++){
+      for(long j = 0; j < len2; j++){
         matrix->triv_idx[j] = 0;
       }
     }
@@ -188,28 +209,28 @@ static inline void duplicate_data_mthread_trace(int nthreads,
         matrix->triv_pos[j] = 0;
       }
     }
-    if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len_xn)){
+    if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len0)){
       fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
       exit(1);
     }
     else{
-      for(long j = 0; j < len_xn; j++){
+      for(long j = 0; j < len0; j++){
         matrix->dense_idx[j] = 0;
       }
     }
-    if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len_xn)){
+    if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len0)){
       fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
       exit(1);
     }
     else{
-      for(long j = 0; j < len_xn; j++){
+      for(long j = 0; j < len0; j++){
         matrix->dst[j] = 0;
       }
     }
   }
 
   for(int i = 1; i < nthreads; i++){
-    bdata_fglm[i] = allocate_fglm_data(len_xn, dquot, (st->nvars));
+    bdata_fglm[i] = allocate_fglm_data(len0, dquot, (st->nvars));
     bdata_bms[i] = allocate_fglm_bms_data(dquot, 65521);
     nmod_params[i] = allocate_fglm_param(nmod_params[0]->charac, (st->nvars));
     nmod_poly_set(nmod_params[i]->elim, nmod_params[0]->elim);

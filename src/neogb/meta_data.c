@@ -20,10 +20,10 @@
 
 
 #include "meta_data.h"
-static md_t *copy_meta_data(
-        const md_t * const gmd,
-        const int32_t prime
-        )
+md_t *copy_meta_data(
+		     const md_t * const gmd,
+		     const int32_t prime
+		     )
 {
     md_t *md = (md_t *)malloc(sizeof(md_t));
     memcpy(md, gmd, sizeof(md_t));

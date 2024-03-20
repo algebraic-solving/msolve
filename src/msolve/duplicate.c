@@ -115,7 +115,6 @@ static inline void duplicate_data_mthread_trace(int nthreads,
 						int32_t **blens_extra_nf,
 						int32_t **bexps_extra_nf,
 						int32_t **bcfs_extra_nf,
-						const long lextra_nf,
 
                                                 sp_matfglm_t **bmatrix,
                                                 param_t **nmod_params,
@@ -125,6 +124,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
                                                 uint32_t **blineqs,
                                                 nvars_t **bsquvars){
   const long len0 = bmatrix[0]->nrows;  
+  const long lextra_nf = bmatrix[0]->nnfs;
   const long len_xn = len0 - lextra_nf;
   const long dquot = bmatrix[0]->ncols;
   const long len = num_gb[0] * (st->nvars);
@@ -177,6 +177,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
     bmatrix[i] = calloc(1, sizeof(sp_matfglm_t));
     bmatrix[i]->ncols = dquot;
     bmatrix[i]->nrows = len0;
+    bmatrix[i]->nnfs  = lextra_nf;
     long len1 = dquot * len0;
     long len2 = dquot - len0;
 

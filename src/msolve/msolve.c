@@ -1749,7 +1749,6 @@ static int32_t *initial_modular_step(
         int32_t **blen_gb_xn,
         int32_t **bstart_cf_gb_xn,
 	long **bextra_nf,
-	long *lextra_nf_ptr,
 	int32_t **blens_extra_nf,
 	int32_t **bexps_extra_nf,
 	int32_t **bcfs_extra_nf,
@@ -1827,7 +1826,6 @@ static int32_t *initial_modular_step(
 							    leadmons[0], md,
 							    bs->ht->nv,
 							    fc, unstable_staircase,
-							    lextra_nf_ptr,
 							    md->info_level);
 	    if(*bmatrix == NULL){
 	      *success = 0;
@@ -1864,7 +1862,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 				    int32_t **bdiv_xn,
 				    int32_t **blen_gb_xn,
 				    int32_t **bstart_cf_gb_xn,
-				    long **bextra_nf, const long lextra_nf,
+				    long **bextra_nf,
 				    int32_t **blens_extra_nf,
 				    int32_t **bexps_extra_nf,
 				    int32_t **bcfs_extra_nf,
@@ -1972,7 +1970,6 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 							     blens_extra_nf[i],
 							     bexps_extra_nf[i],
 							     bcfs_extra_nf[i],
-							     lextra_nf,
 							     lmb_ori, dquot_ori, bs[i], bs[i]->ht,
 							     leadmons_ori[i], st, bs[i]->ht->nv,
 							     lp->p[i],i);
@@ -2238,12 +2235,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   int success = 1;
   int squares = 1;
-  long lextra_nf = 0;
 
   int32_t *lmb_ori = initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn,
 					  bstart_cf_gb_xn,
 					  bextra_nf,
-					  &lextra_nf,
 					  blens_extra_nf,
 					  bexps_extra_nf,
 					  bcfs_extra_nf,
@@ -2349,7 +2344,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                                /* btrace, */
                                bdata_bms, bdata_fglm,
                                bstart_cf_gb_xn, blen_gb_xn, bdiv_xn,
-			       bextra_nf,blens_extra_nf,bexps_extra_nf,bcfs_extra_nf,lextra_nf,
+			       bextra_nf,blens_extra_nf,bexps_extra_nf,bcfs_extra_nf,
 			       bmatrix,
                                nmod_params, nlins, bnlins,
                                blinvars, lineqs_ptr,
@@ -2489,7 +2484,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 			    bdiv_xn,
 			    blen_gb_xn,
 			    bstart_cf_gb_xn,
-			    bextra_nf, lextra_nf,
+			    bextra_nf,
 			    blens_extra_nf,
 			    bexps_extra_nf,
 			    bcfs_extra_nf,

@@ -107,6 +107,7 @@ typedef struct{
   CF_t charac;
   szmat_t ncols; //dimension du quotient
   szmat_t nrows; //nbre de lignes non triviales
+  szmat_t nnfs; //number of required normal forms
   CF_t *dense_mat; // matrice nrows lignes et ncols colonnes (elements donnes par lignes)
   szmat_t *triv_idx; //tableau d'indices des lignes ne contenant que des 0 et un 1
   szmat_t *triv_pos; //position des 1

@@ -2992,7 +2992,6 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
 								    int32_t *lens_extra_nf,
 								    int32_t *exps_extra_nf,
 								    int32_t *cfs_extra_nf,
-								    const long count_not_lm,
 								    int32_t *lmb, long dquot,
 								    bs_t *bs,
 								    ht_t *ht,
@@ -3017,6 +3016,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
     }
   }
   bs_t *tbr;
+  long count_not_lm = matrix->nnfs;
   if (count_not_lm) {
     md_t *md = copy_meta_data(st,fc);
     tbr = initialize_basis(md);
@@ -3120,7 +3120,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
           free(matrix->dst);
           free(matrix);
 
-	  free(tbr);
+	  free_basis_without_hash_table(&tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3149,7 +3149,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
           free(matrix->dst);
           free(matrix);
 
-	  free(tbr);
+	  free_basis_without_hash_table(&tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3173,7 +3173,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         free(matrix->dst);
         free(matrix);
 
-       	free(tbr);
+	free_basis_without_hash_table(&tbr);
 	free(cfs_extra_nf);
 	free(exps_extra_nf);
 	free(lens_extra_nf);
@@ -3199,8 +3199,13 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
     }
   }
   if (count_not_lm) {
-    free(tbr);
-  }    
+    free_basis_without_hash_table(&tbr);
+  }
+  if(st->info_level){
+    fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n",
+            len0, len_xn,
+            100*((double)len_xn / (double)len0));
+  }
 }
 
 
@@ -3418,7 +3423,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  const int nv,
 								  const long fc,
 								  const int32_t unstable_staircase,
-								  long *lextra_nf,
 								  const int info_level){
   *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
@@ -3607,6 +3611,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   matrix->charac = fc;
   matrix->ncols = dquot;
   matrix->nrows = len0;
+  matrix->nnfs  = count_not_lm;
   long len1 = dquot * len0;
   long len2 = dquot - len0;
 
@@ -3706,7 +3711,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
           free(matrix->dst);
           free(matrix);
 
-	  free(tbr);
+	  free_basis_without_hash_table(&tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3737,7 +3742,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
           free(matrix->dst);
           free(matrix);
 
-	  free(tbr);
+	  free_basis_without_hash_table(&tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3761,7 +3766,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
         free(matrix->dst);
         free(matrix);
 
-	free(tbr);
+	free_basis_without_hash_table(&tbr);
 	free(cfs_extra_nf);
 	free(exps_extra_nf);
 	free(lens_extra_nf);
@@ -3784,9 +3789,13 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
   }
 
-  *lextra_nf= count_not_lm;
   if (count_not_lm) {
-    free(tbr);
+    free_basis_without_hash_table(&tbr);
+  }
+  if(st->info_level){
+    fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n",
+            len0, len_xn,
+            100*((double)len_xn / (double)len0));
   }
   return matrix;
 }

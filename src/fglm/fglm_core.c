@@ -70,6 +70,37 @@ double omp_get_wtime(void) { return realtime();}
 #include "../upolmat/nmod_poly_mat_pmbasis.c"
 #endif
 
+void print_fglm_data(
+        FILE *file,
+        const md_t * const st,
+	sp_matfglm_t *matrix,
+	param_t *param
+		     )
+{
+  if (st->info_level > 0) {
+    fprintf(file, "\n---------------- TIMINGS ----------------\n");
+    fprintf(file, "overall(elapsed) %11.2f sec\n", st->fglm_rtime);
+    fprintf(file, "overall(cpu) %15.2f sec\n", st->fglm_ctime);
+    fprintf(file, "-----------------------------------------\n");
+    fprintf(file, "\n---------- COMPUTATIONAL DATA -----------\n");
+    fprintf(file, "degree of ideal    %16lu\n", (unsigned long)matrix->ncols);
+    fprintf(file, "#dense rows        %16lu\n", (unsigned long)matrix->nrows);
+    if(matrix->nnfs){
+      fprintf(file, "#normal forms      %16lu\n", (unsigned long)matrix->nnfs);
+    }
+    fprintf(file, "total density                    %3.2f%%\n", 100*matrix->totaldensity);
+    fprintf(file, "density of the free part         %3.2f%%\n", 100*matrix->freepartdensity);
+    if(matrix->nnfs){
+      fprintf(file, "density of the nonfree part      %3.2f%%\n", 100*matrix->nonfreepartdensity);
+    }
+    fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol);
+    fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)(param->elim->length-1));
+    fprintf(file, "-----------------------------------------\n\n");
+  }
+}
+
+
+
 void display_nmod_poly(FILE *file, nmod_poly_t pol){
   fprintf(file, "[%ld,\n", pol->length-1);
   if(pol->length != 0){
@@ -833,6 +864,7 @@ static inline long make_square_free_elim_poly(param_t *param,
                                               long dimquot,
                                               int info_level){
   long dim = data_bms->BMS->V1->length - 1;
+  param->degelimpol = dim;
   
   int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
 
@@ -843,9 +875,10 @@ static inline long make_square_free_elim_poly(param_t *param,
   else{
 
     if(boo==0){
-      if(info_level){
-        fprintf(stderr, "Mininimal polynomial is not square-free\n");
-      }
+      /* JB to change */
+      /* if(info_level){ */
+      /*   fprintf(stderr, "Minimal polynomial is not square-free\n"); */
+      /* } */
     }
 
     nmod_poly_factor_squarefree(data_bms->sqf, data_bms->BMS->V1);
@@ -854,11 +887,12 @@ static inline long make_square_free_elim_poly(param_t *param,
     for(ulong i = 0; i < data_bms->sqf->num; i++){
       nmod_poly_mul(param->elim, param->elim, data_bms->sqf->p+i);
     }
-    if(info_level){
-      fprintf(stderr, "Degree of the square-free part: %ld\n",
-              param->elim->length-1);
-      fprintf(stderr, "[%ld, %ld, %ld]\n", dimquot, dim, param->elim->length - 1);
-    }
+    /* JB to change */
+    /* if(info_level){ */
+    /*   fprintf(stderr, "Degree of the square-free part: %ld\n", */
+    /*           param->elim->length-1); */
+    /*   fprintf(stderr, "[%ld, %ld, %ld]\n", dimquot, dim, param->elim->length - 1); */
+    /* } */
   }
 
   data_bms->sqf->num=0;
@@ -877,19 +911,21 @@ static inline long make_square_free_elim_poly_colon(param_t *param,
     nmod_poly_set(param->elim, data_bms->BMS->V1);
   }
   else{
-    if(info_level){
-      fprintf(stderr, "Mininimal polynomial is not square-free\n");
-    }
+    /* JB to change */
+    /* if(info_level){ */
+    /*   fprintf(stderr, "Minimal polynomial is not square-free\n"); */
+    /* } */
     nmod_poly_factor_squarefree(data_bms->sqf, data_bms->BMS->V1);
     nmod_poly_one(param->elim);
     for(ulong i = 0; i < data_bms->sqf->num; i++){
       nmod_poly_mul(param->elim, param->elim, data_bms->sqf->p+i);
     }
-    if(info_level){
-      fprintf(stderr, "Degree of the square-free part: %ld\n",
-              param->elim->length-1);
-      fprintf(stderr, "[%ld, %ld, %ld]\n", dimquot, dim, param->elim->length - 1);
-    }
+    /* JB to change */
+    /* if(info_level){ */
+    /*   fprintf(stderr, "Degree of the square-free part: %ld\n", */
+    /*           param->elim->length-1); */
+    /*   fprintf(stderr, "[%ld, %ld, %ld]\n", dimquot, dim, param->elim->length - 1); */
+    /* } */
   }
 
   data_bms->sqf->num=0;
@@ -1693,17 +1729,19 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   szmat_t sz = matrix->ncols * matrix->nrows;
   szmat_t nb = initialize_fglm_data(matrix, *bdata, prime, sz, block_size);
 
-  if(info_level){
-    fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n",
-            matrix->ncols, matrix->nrows,
-            100*((double)matrix->nrows / (double)matrix->ncols));
-    fprintf(stderr, "Density of non-trivial part %.2f%%\n",
-            100-100*(float)nb/(float)sz);
-  }
+  /* JB to change */
+  /* if(info_level){ */
+  /*   fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n", */
+  /*           matrix->ncols, matrix->nrows, */
+  /*           100*((double)matrix->nrows / (double)matrix->ncols)); */
+  /*   fprintf(stderr, "Density of non-trivial part %.2f%%\n", */
+  /*           100-100*(float)nb/(float)sz); */
+  /* } */
 
   szmat_t dimquot = (matrix->ncols);
 
   double st_fglm = realtime();
+  double cst_fglm = cputime();
 
 #if BLOCKWIED > 0
   fprintf(stderr, "Starts computation of matrix sequence\n");
@@ -1716,17 +1754,28 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   fprintf(stderr, "Implementation to be completed\n");
   exit(1);
 #else
+  if (info_level > 1) {
+    fprintf (stdout,
+	     "Krylov sequence                                     ");
+  }
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
                           squvars, linvars, nvars, prime, st);
 #endif
 
-  if(info_level){
+  if(info_level > 1){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
     double rt_fglm = realtime()-st_fglm;
-    fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm);
+    double crt_fglm = cputime()-cst_fglm;
+    /* fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm); */
+    fprintf (stdout, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
 
   st_fglm = realtime();
+  cst_fglm = cputime();
+  if (info_level > 1) {
+    fprintf (stdout,
+	     "elimination polynomial                              ");
+  }
 
   /* Berlekamp-Massey data */
   *bdata_bms = allocate_fglm_bms_data(dimquot, prime);
@@ -1735,18 +1784,29 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   compute_minpoly(param, *bdata, *bdata_bms, dimquot, linvars, lineqs,
                   nvars, &dim, info_level);
 
-  if(info_level){
-    fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
-            realtime()-st_fglm);
+  if(info_level > 1){
+    /* fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n", */
+    /*         realtime()-st_fglm); */
+    double rt_fglm = realtime()-st_fglm;
+    double crt_fglm = cputime()-cst_fglm;
+    fprintf (stdout, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
 
 
   if (dimquot == dim) {
 
-    if(info_level){
-      fprintf(stderr, "Elimination polynomial has degree %d.\n", dimquot);
+    /* JB to change */
+    /* if(info_level){ */
+    /*   fprintf(stderr, "Elimination polynomial has degree %d.\n", dimquot); */
+    /* } */
+    
+    st_fglm = realtime();
+    cst_fglm = cputime();
+    if (info_level > 1){
+      fprintf (stdout,
+	       "parametrizations                                    ");
     }
-
+      
     if(compute_parametrizations(param, *bdata, *bdata_bms,
                                 dim, dimquot, block_size,
                                 nlins, linvars, lineqs,
@@ -1756,14 +1816,26 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
       return NULL;
 
     }
-
+    if (info_level > 1){
+      double rt_fglm = realtime()-st_fglm;
+      double crt_fglm = cputime()-cst_fglm;
+      fprintf(stdout, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+      fprintf(stdout,
+	      "-------------------------------------------------\
+-----------------------------------------------------\n");
+    }
   }
   else {
     /* computes the param of the radical */
-    if(info_level){
-      fprintf(stderr, "Elimination polynomial is not squarefree.\n");
-    }
+    /* if(info_level){ */
+    /*   fprintf(stderr, "Elimination polynomial is not squarefree.\n"); */
+    /* } */
 
+    st_fglm = realtime();
+    if (info_level > 1){
+      fprintf (stdout,
+	       "parametrizations                                               ");
+    }
     int right_param= compute_parametrizations_non_shape_position_case(param,
                                                                       *bdata,
                                                                       *bdata_bms,
@@ -1775,6 +1847,13 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                                                       nvars, prime,
                                                                       1); /* verif */
 
+    if (info_level > 1){
+      double rt_fglm = realtime()-st_fglm;
+      fprintf(stdout, "%.2f\n",rt_fglm);
+      fprintf(stdout,
+	      "-------------------------------------------------\
+-----------------------------------------------------\n");
+    }
     if (right_param == 0) {
       if(info_level){
         fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
@@ -1799,6 +1878,9 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
             *success = 0;
           }
   }
+  st->fglm_rtime = realtime() - st->fglm_rtime;
+  st->fglm_ctime = cputime() - st->fglm_ctime;
+  print_fglm_data (stdout, st, matrix, param);
   return param;
 }
 

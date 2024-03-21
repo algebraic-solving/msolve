@@ -1599,9 +1599,9 @@ static int32_t *initial_modular_step(
         long dquot = 0;
         int32_t *lmb = monomial_basis(bs->lml, bs->ht->nv, leadmons[0], &dquot);
 
-        if(md->info_level){
-            fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
-        }
+        /* if(md->info_level){ */
+        /*     fprintf(stderr, "Dimension of quotient: %ld\n", dquot); */
+        /* } */
         if(print_gb==0){
 	    /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
 	    /* 					 blen_gb_xn, */
@@ -1610,6 +1610,9 @@ static int32_t *initial_modular_step(
 	    /* 					 leadmons[0], bs->ht->nv, */
 	    /* 					 fc, */
 	    /* 					 md->info_level); */
+	    md->fglm_rtime = realtime();
+	    md->fglm_ctime = cputime();
+	    print_fglm_header (stdout,md);
 	    *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
 							    blen_gb_xn,
 							    bstart_cf_gb_xn,

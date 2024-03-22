@@ -85,16 +85,15 @@ void print_fglm_data(
     fprintf(file, "\n---------- COMPUTATIONAL DATA -----------\n");
     fprintf(file, "degree of ideal    %16lu\n", (unsigned long)matrix->ncols);
     fprintf(file, "#dense rows        %16lu\n", (unsigned long)matrix->nrows);
+    fprintf(file, "#normal forms      %16lu\n", (unsigned long)matrix->nnfs);
+    fprintf(file, "total density                   %5.1f%%\n", 100*matrix->totaldensity);
+    fprintf(file, "density of the free part        %5.1f%%\n", 100*matrix->freepartdensity);
     if(matrix->nnfs){
-      fprintf(file, "#normal forms      %16lu\n", (unsigned long)matrix->nnfs);
-    }
-    fprintf(file, "total density                    %3.2f%%\n", 100*matrix->totaldensity);
-    fprintf(file, "density of the free part         %3.2f%%\n", 100*matrix->freepartdensity);
-    if(matrix->nnfs){
-      fprintf(file, "density of the nonfree part      %3.2f%%\n", 100*matrix->nonfreepartdensity);
+      fprintf(file, "density of the nonfree part     %5.1f%%\n", 100*matrix->nonfreepartdensity);
     }
     fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol);
-    fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)(param->elim->length-1));
+    
+    fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol);
     fprintf(file, "-----------------------------------------\n\n");
   }
 }
@@ -887,6 +886,7 @@ static inline long make_square_free_elim_poly(param_t *param,
     for(ulong i = 0; i < data_bms->sqf->num; i++){
       nmod_poly_mul(param->elim, param->elim, data_bms->sqf->p+i);
     }
+    param->degsqfrelimpol = param->elim->length-1;
     /* JB to change */
     /* if(info_level){ */
     /*   fprintf(stderr, "Degree of the square-free part: %ld\n", */
@@ -1755,8 +1755,9 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   exit(1);
 #else
   if (info_level > 1) {
-    fprintf (stdout,
-	     "Krylov sequence                                     ");
+    fprintf(stdout,
+	    "Krylov sequence                                     ");
+    fflush(stdout);
   }
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
                           squvars, linvars, nvars, prime, st);
@@ -1773,8 +1774,9 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   st_fglm = realtime();
   cst_fglm = cputime();
   if (info_level > 1) {
-    fprintf (stdout,
-	     "elimination polynomial                              ");
+    fprintf(stdout,
+	    "elimination polynomial                              ");
+    fflush(stdout);
   }
 
   /* Berlekamp-Massey data */
@@ -1803,8 +1805,9 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     st_fglm = realtime();
     cst_fglm = cputime();
     if (info_level > 1){
-      fprintf (stdout,
-	       "parametrizations                                    ");
+      fprintf(stdout,
+	      "parametrizations                                    ");
+      fflush(stdout);
     }
       
     if(compute_parametrizations(param, *bdata, *bdata_bms,

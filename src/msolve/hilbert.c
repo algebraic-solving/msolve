@@ -3661,7 +3661,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       tbr->lmps[k]  = k; /* fix input element in bs */
     }
     int32_t err = 0;
-    if (md->info_level > 1) {
+    if (st->info_level > 1) {
       fprintf (stdout, "normal forms\n");
     }
     tbr = core_nf(tbr, md, mul, bs, &err);
@@ -3873,20 +3873,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   matrix->freepartdensity = ((double)nzcfs_freepart) / ((double)dquot * len_xn);
   matrix->totaldensity = ((double)nzcfs_nonfreepart + nzcfs_freepart)/((double) len1);
 
-  /* JB to change */
-  /* if(st->info_level){ */
-  /*   fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n", */
-  /*           len0, len_xn, */
-  /*           100*((double)len_xn / (double)len0)); */
-  /*   fprintf (stderr, "total density: %.2f%%\n", */
-  /* 	     100 * matrix->totaldensity); */
-  /*   fprintf (stderr, "density of the free part: %.2f%%\n", */
-  /* 	     100 * matrix->freepartdensity); */
-  /*   if (count_not_lm) { */
-  /*     fprintf (stderr, "density of the nonfree part: %.2f%%\n", */
-  /* 	       100 * matrix->nonfreepartdensity); */
-  /*   } */
-  /* } */
   if (st->info_level > 1){
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;

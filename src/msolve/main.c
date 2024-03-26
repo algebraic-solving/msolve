@@ -170,7 +170,7 @@ static void getoptions(
       break;
     case 'h':
       display_help(argv[0]);
-      exit(1);
+      exit(0);
     case 'e':
       *elim_block_len = strtol(optarg, NULL, 10);
       if (*elim_block_len < 0) {

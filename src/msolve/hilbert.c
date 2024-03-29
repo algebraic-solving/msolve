@@ -29,7 +29,7 @@ void print_fglm_header(
         )
 {
     if (st->info_level > 1) {
-            fprintf(f, "\nstep                                           \
+            fprintf(f, "\nfglm steps                                     \
           time(rd) in sec (real|cpu)\n");
             fprintf(f, "-------------------------------------------------\
 -----------------------------------------------------\n");
@@ -3139,7 +3139,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   long nrows = 0;
   long count = 0;
   long count_nf = 0;
-  
+
   for(long i = 0; i < dquot; i++){
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
@@ -3260,7 +3260,6 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   if (count_not_lm) {
     free_basis_without_hash_table(&tbr);
   }
-  /* JB to change */
   /* if(st->info_level){ */
   /*   fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n", */
   /*           len0, len_xn, */
@@ -3587,7 +3586,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 #endif
 
   long threshold = dquot-len_xn;
-  
+
   switch(unstable_staircase) {
   case 0:
     threshold = 0;
@@ -3602,7 +3601,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     threshold = (3*threshold+1)/4; /* round to nearest integer */
     break;
   }
-  
+
   if (count_not_lm > threshold) {
     if(info_level){
       fprintf(stderr, "Staircase is not generic\n");

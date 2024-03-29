@@ -1673,14 +1673,14 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 				    nvars_t **blinvars,
 				    uint32_t **blineqs,
 				    nvars_t **bsquvars,
-				    
+
 				    fglm_data_t **bdata_fglm,
 				    fglm_bms_data_t **bdata_bms,
-				    
+
 				    int32_t *num_gb,
 				    int32_t **leadmons_ori,
 				    int32_t **leadmons_current,
-				    
+
 				    uint64_t bsz,
 				    param_t **nmod_params,
 				    /* trace_t **btrace, */
@@ -2052,7 +2052,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   nvars_t **bsquvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
   nvars_t *squvars = calloc(nr_vars - 1, sizeof(nvars_t));
   bsquvars[0] = squvars;
-  
+
 
   set_linear_function_pointer(gens->field_char);
 
@@ -2068,11 +2068,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
 					  &nlins, blinvars[0], lineqs_ptr,
 					  squvars,
-					  
+
 					  bdata_fglm, bdata_bms,
-					  
+
 					  num_gb, leadmons_ori,
-					  
+
 					  &bsz, nmod_params,
 					  bs_qq, st,
 					  lp->p[0], //prime,
@@ -2342,20 +2342,33 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                 (unsigned long)st->application_nr_red);
         fprintf(stderr, "------------------------------------------\n");
       }
-      if (info_level > 1) {
-        fprintf(stderr, "Application phase %.2f Gops/sec\n",
-                (st->application_nr_add + st->application_nr_mult) / 1000.0 /
-                    1000.0 / (stf4));
-	/* JB to change */
-        /* fprintf(stderr, "Multi-mod time: GB + fglm (elapsed): %.2f sec\n", */
-        /*         (ca1) ); */
-      }
+      /* JB to change */
+      /* if (info_level > 1) { */
+      /*   fprintf(stderr, "Application phase %.2f Gops/sec\n", */
+      /*           (st->application_nr_add + st->application_nr_mult) / 1000.0 / */
+      /*               1000.0 / (stf4)); */
+      /*   fprintf(stderr, "Multi-mod time: GB + fglm (elapsed): %.2f sec\n", */
+      /*           (ca1) ); */
+      /* } */
       if(info_level){
-	    fprintf(stdout, "\n---------------- TIMINGS ----------------\n");
-	    fprintf(stdout, "multi-mod overall(elapsed) %9.2f sec\n", ca1);
-	    fprintf(stdout, "multi-mod F4               %9.2f sec\n", stf4);
-	    fprintf(stdout, "multi-mod FGLM             %9.2f sec\n", ca1-stf4);
-	    fprintf(stdout, "-----------------------------------------\n\n");
+	    fprintf(stdout,
+		    "\n---------------- TIMINGS ----------------\n");
+	    fprintf(stdout,
+		    "multi-mod overall(elapsed) %9.2f sec\n",
+		    ca1);
+	    fprintf(stdout,
+		    "multi-mod F4               %9.2f sec\n",
+		    stf4);
+	    fprintf(stdout,
+		    "multi-mod FGLM             %9.2f sec\n",
+		    ca1-stf4);
+	    if (info_level > 1){
+	      fprintf(stdout,
+		      "application phase     %9.2f Gops/sec\n",
+		      (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
+	    }
+	    fprintf(stdout,
+		    "-----------------------------------------\n");
       }
     }
     for (int i = 0; i < st->nthrds; i++) {
@@ -2446,10 +2459,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
 
   if(info_level){
-    /* JB to change */
     /* fprintf(stderr, "\n%d primes used\n", nprimes); */
     /* fprintf(stderr, "Time for CRT + rational reconstruction = %.2f\n", strat); */
-    fprintf(stdout, "\n\n---------------- TIMINGS ----------------\n");
+    fprintf(stdout,"\n\n---------- COMPUTATIONAL DATA -----------\n");
+    fprintf(stdout, "#primes            %16lu\n", (unsigned long) nprimes);
+    fprintf(stdout, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
+    fprintf(stdout, "-----------------------------------------\n");
+    fprintf(stdout, "\n---------------- TIMINGS ----------------\n");
     fprintf(stdout, "CRT and ratrecon(elapsed) %10.2f sec\n", st->fglm_rtime);
     fprintf(stdout, "-----------------------------------------\n");
   }
@@ -3306,9 +3322,14 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
     /*     rt1 - rt0, ct1 - ct0); */
     fprintf (stdout,
 	     "\n---------------- TIMINGS ----------------\n");
-    fprintf(stdout, "rational param(elapsed) %12.2f sec\n", rt1-rt0);
-    fprintf(stdout, "rational param(cpu) %16.2f sec\n", ct1-ct0);
-    fprintf(stdout, "-----------------------------------------\n");
+    fprintf(stdout,
+	    "rational param(elapsed) %12.2f sec\n",
+	    rt1-rt0);
+    fprintf(stdout,
+	    "rational param(cpu) %16.2f sec\n",
+	    ct1-ct0);
+    fprintf(stdout,
+	    "-----------------------------------------\n");
   }
 
   if (get_param > 1) {
@@ -3812,18 +3833,18 @@ restart:
 	    long suppsize= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
 	    printf("Length of the support of phi: %lu\n",
 		   suppsize);
-	    
+
 	    /* sht and hcm will store the support of the normal form in tbr. */
 	    ht_t *sht   = initialize_secondary_hash_table(bht, st);
 	    hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
 	    mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
-	    
+
 	    /* printf("Starts computation of normal form matrix\n"); */
 	    get_normal_form_matrix(tbr, bht, 1,
 				   st, &sht, &hcm, &mat);
 	    printf("Length of union of support of all normal forms: %u\n",
 		   mat->nc);
-	    
+
 	    /* printf("\nUnion of support, sorted by decreasing monomial order:\n"); */
 	    /* for (len_t k = 0; k < mat->nc; ++k) { */
 	    /*   for (len_t l = 1; l <= sht->nv; ++l) { */
@@ -3834,7 +3855,7 @@ restart:
 
 	    int32_t *bcf_ff = (int32_t *)(*bcf);
 	    int32_t *bexp_lm = get_lead_monomials(bld, blen, bexp, gens);
-	    
+
 	    long maxdeg = sht->ev[hcm[0]][0]; /* degree of the normal
 						 form */
 	    for (long i = 0; i < bld[0]; i++) {
@@ -3959,7 +3980,7 @@ restart:
 	    if (sht != NULL) {
 	      free_hash_table(&sht);
 	    }
-	    
+
             /* free and clean up */
             if (bs != NULL) {
 	      free_basis(&bs);
@@ -4089,7 +4110,7 @@ restart:
             fprintf(stderr, "This will\n");
             fprintf(stderr, "be done automatically if you run msolve with option\n");
             fprintf(stderr, "\"-c2\" which is the default.\n");
-	  } 
+	  }
         }
 	else {
           /* normal_form is 1 */
@@ -4273,7 +4294,7 @@ restart:
                     &gens->nvars, &gens->ngens, &saturate, &initial_hts,
                     &nr_threads, &max_pairs, &update_ht, &la_option,
                     &use_signatures, &reduce_gb, &info_level);
-	    
+
             /* all data is corrupt */
             if (res == -1) {
                 fprintf(stderr, "Invalid input generators, msolve now terminates.\n");

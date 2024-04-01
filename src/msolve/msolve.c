@@ -1748,6 +1748,10 @@ static int32_t *initial_modular_step(
         int32_t **bdiv_xn,
         int32_t **blen_gb_xn,
         int32_t **bstart_cf_gb_xn,
+	long **bextra_nf,
+	int32_t **blens_extra_nf,
+	int32_t **bexps_extra_nf,
+	int32_t **bcfs_extra_nf,
 
         nvars_t *nlins_ptr,
         nvars_t *linvars,
@@ -1764,6 +1768,7 @@ static int32_t *initial_modular_step(
         bs_t *gbg,
         md_t *md,
         const int32_t fc,
+	const int32_t unstable_staircase,
         int print_gb,
         int *dim,
         long *dquot_ori,
@@ -1803,18 +1808,30 @@ static int32_t *initial_modular_step(
             fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
         }
         if(print_gb==0){
-            *bmatrix = build_matrixn_from_bs_trace(bdiv_xn,
-                    blen_gb_xn,
-                    bstart_cf_gb_xn,
-                    lmb, dquot, bs, bs->ht,
-                    leadmons[0], bs->ht->nv,
-                    fc,
-                    md->info_level);
-            if(*bmatrix == NULL){
-                *success = 0;
-                *dim = 0;
-                *dquot_ori = dquot;
-                return NULL;
+	    /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
+	    /* 					 blen_gb_xn, */
+	    /* 					 bstart_cf_gb_xn, */
+	    /* 					 lmb, dquot, bs, bs->ht, */
+	    /* 					 leadmons[0], bs->ht->nv, */
+	    /* 					 fc, */
+	    /* 					 md->info_level); */
+	    *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
+							    blen_gb_xn,
+							    bstart_cf_gb_xn,
+							    bextra_nf,
+							    blens_extra_nf,
+							    bexps_extra_nf,
+							    bcfs_extra_nf,
+							    lmb, dquot, bs, bs->ht,
+							    leadmons[0], md,
+							    bs->ht->nv,
+							    fc, unstable_staircase,
+							    md->info_level);
+	    if(*bmatrix == NULL){
+	      *success = 0;
+	      *dim = 0;
+	      *dquot_ori = dquot;
+	      return NULL;
             }
 
             *bsz = bs->ht->nv - (*nlins_ptr); //nlins ;
@@ -1842,37 +1859,42 @@ static int32_t *initial_modular_step(
 
 
 static void secondary_modular_steps(sp_matfglm_t **bmatrix,
-                                   int32_t **div_xn,
-                                   int32_t **len_gb_xn,
-                                   int32_t **start_cf_gb_xn,
+				    int32_t **bdiv_xn,
+				    int32_t **blen_gb_xn,
+				    int32_t **bstart_cf_gb_xn,
+				    long **bextra_nf,
+				    int32_t **blens_extra_nf,
+				    int32_t **bexps_extra_nf,
+				    int32_t **bcfs_extra_nf,
 
-                                   nvars_t *bnlins,
-                                   nvars_t **blinvars,
-                                   uint32_t **blineqs,
-                                   nvars_t **bsquvars,
-
-                                   fglm_data_t **bdata_fglm,
-                                   fglm_bms_data_t **bdata_bms,
-
-                                   int32_t *num_gb,
-                                   int32_t **leadmons_ori,
-                                   int32_t **leadmons_current,
-
-                                   uint64_t bsz,
-                                   param_t **nmod_params,
-                                   /* trace_t **btrace, */
-                                   bs_t *bs_qq,
-                                   md_t *st,
-                                   const int32_t fc,
-                                   int info_level,
-                                   bs_t **bs,
-                                   int32_t *lmb_ori,
-                                   int32_t dquot_ori,
-                                   primes_t *lp,
-                                   data_gens_ff_t *gens,
-                                   double *stf4,
-                                   const long nbsols,
-                                   uint32_t *bad_primes)
+				    nvars_t *bnlins,
+				    nvars_t **blinvars,
+				    uint32_t **blineqs,
+				    nvars_t **bsquvars,
+				    
+				    fglm_data_t **bdata_fglm,
+				    fglm_bms_data_t **bdata_bms,
+				    
+				    int32_t *num_gb,
+				    int32_t **leadmons_ori,
+				    int32_t **leadmons_current,
+				    
+				    uint64_t bsz,
+				    param_t **nmod_params,
+				    /* trace_t **btrace, */
+				    bs_t *bs_qq,
+				    md_t *st,
+				    const int32_t fc,
+				    const int32_t unstable_staircase,
+				    int info_level,
+				    bs_t **bs,
+				    int32_t *lmb_ori,
+				    int32_t dquot_ori,
+				    primes_t *lp,
+				    data_gens_ff_t *gens,
+				    double *stf4,
+				    const long nbsols,
+				    uint32_t *bad_primes)
 {
     st->info_level  = 0;
     st->f4_qq_round = 2;
@@ -1933,14 +1955,24 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 
             set_linear_poly(bnlins[i], blineqs[i], blinvars[i], bs[i]->ht,
                     leadmons_current[i], bs[i]);
-
-            build_matrixn_from_bs_trace_application(bmatrix[i],
-                    div_xn[i],
-                    len_gb_xn[i],
-                    start_cf_gb_xn[i],
-                    lmb_ori, dquot_ori, bs[i], bs[i]->ht,
-                    leadmons_ori[i], bs[i]->ht->nv,
-                    lp->p[i]);
+	    /* build_matrixn_from_bs_trace_application(bmatrix[i], */
+	    /* 					    div_xn[i], */
+	    /* 					    len_gb_xn[i], */
+	    /* 					    start_cf_gb_xn[i], */
+	    /* 					    lmb_ori, dquot_ori, bs[i], bs[i]->ht, */
+	    /* 					    leadmons_ori[i], bs[i]->ht->nv, */
+	    /* 					    lp->p[i]); */
+	    build_matrixn_unstable_from_bs_trace_application(bmatrix[i],
+							     bdiv_xn[i],
+							     blen_gb_xn[i],
+							     bstart_cf_gb_xn[i],
+							     bextra_nf[i],
+							     blens_extra_nf[i],
+							     bexps_extra_nf[i],
+							     bcfs_extra_nf[i],
+							     lmb_ori, dquot_ori, bs[i], bs[i]->ht,
+							     leadmons_ori[i], st, bs[i]->ht->nv,
+							     lp->p[i],i);
             if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
                         nmod_params[i],
                         bs[i]->ht->nv,
@@ -1988,25 +2020,31 @@ void set_linear_function_pointer(int32_t fc){
     set_linear_poly = set_linear_poly_8;
     check_and_set_linear_poly = check_and_set_linear_poly_8;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_8;
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_8;
     break;
   case 16:
     set_linear_poly = set_linear_poly_16;
     check_and_set_linear_poly = check_and_set_linear_poly_16;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_16;
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_16;
     break;
   case 32:
     set_linear_poly = set_linear_poly_32;
     check_and_set_linear_poly = check_and_set_linear_poly_32;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_32;
     break;
   case 0:
     set_linear_poly = set_linear_poly_32;
     check_and_set_linear_poly = check_and_set_linear_poly_32;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
-    break;  default:
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_32;
+    break;
+  default:
     set_linear_poly = set_linear_poly_32;
     check_and_set_linear_poly = check_and_set_linear_poly_32;
     copy_poly_in_matrix_from_bs = copy_poly_in_matrix_from_bs_32;
+    copy_nf_in_matrix_from_bs = copy_nf_in_matrix_from_bs_32;
   }
 }
 
@@ -2042,6 +2080,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     long *dquot_ptr,
                     data_gens_ff_t *gens,
                     int32_t ht_size, //initial_hts,
+                    int32_t unstable_staircase,
                     int32_t nr_threads,
                     int32_t max_nr_pairs,
                     int32_t elim_block_len,
@@ -2167,6 +2206,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int32_t **bdiv_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   int32_t **blen_gb_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
   int32_t **bstart_cf_gb_xn = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  long **bextra_nf = (long **)malloc(st->nthrds * sizeof(long *));
+  int32_t **blens_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **bexps_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
+  int32_t **bcfs_extra_nf = (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
 
   fglm_data_t **bdata_fglm = (fglm_data_t **)malloc(st->nthrds * sizeof(fglm_data_t *));
   fglm_bms_data_t **bdata_bms = (fglm_bms_data_t **)malloc(st->nthrds * sizeof(fglm_bms_data_t *));
@@ -2186,6 +2229,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   nvars_t **bsquvars = (nvars_t **) malloc(st->nthrds * sizeof(nvars_t *));
   nvars_t *squvars = calloc(nr_vars-1, sizeof(nvars_t));
   bsquvars[0] = squvars;
+  
 
   set_linear_function_pointer(gens->field_char);
 
@@ -2193,23 +2237,28 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int squares = 1;
 
   int32_t *lmb_ori = initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn,
-                                            bstart_cf_gb_xn,
+					  bstart_cf_gb_xn,
+					  bextra_nf,
+					  blens_extra_nf,
+					  bexps_extra_nf,
+					  bcfs_extra_nf,
 
-                                            &nlins, blinvars[0], lineqs_ptr,
-                                            squvars,
-
-                                            bdata_fglm, bdata_bms,
-
-                                            num_gb, leadmons_ori,
-
-                                            &bsz, nmod_params,
-                                            bs_qq, st,
-                                            lp->p[0], //prime,
-                                            print_gb,
-                                            dim_ptr, dquot_ptr,
-                                            gens,
-                                            files,
-                                            &success);
+					  &nlins, blinvars[0], lineqs_ptr,
+					  squvars,
+					  
+					  bdata_fglm, bdata_bms,
+					  
+					  num_gb, leadmons_ori,
+					  
+					  &bsz, nmod_params,
+					  bs_qq, st,
+					  lp->p[0], //prime,
+					  unstable_staircase,
+					  print_gb,
+					  dim_ptr, dquot_ptr,
+					  gens,
+					  files,
+					  &success);
 
   if(*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0){
     if(nmod_params[0]->elim->length - 1 != *dquot_ptr){
@@ -2294,11 +2343,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                               leadmons_ori, leadmons_current,
                                /* btrace, */
                                bdata_bms, bdata_fglm,
-                               bstart_cf_gb_xn, blen_gb_xn, bdiv_xn, bmatrix,
+                               bstart_cf_gb_xn, blen_gb_xn, bdiv_xn,
+			       bextra_nf,blens_extra_nf,bexps_extra_nf,bcfs_extra_nf,
+			       bmatrix,
                                nmod_params, nlins, bnlins,
                                blinvars, lineqs_ptr,
                                bsquvars);
-
   normalize_nmod_param(nmod_params[0]);
 
   if(info_level){
@@ -2393,7 +2443,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   double strat = 0;
 
   while(rerun == 1 || mcheck == 1){
-
+    
     /* controls call to rational reconstruction */
     doit = ((prdone%nbdoit) == 0);
 
@@ -2431,27 +2481,31 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     double stf4 = 0;
     secondary_modular_steps(bmatrix,
-                              bdiv_xn,
-                              blen_gb_xn,
-                              bstart_cf_gb_xn,
+			    bdiv_xn,
+			    blen_gb_xn,
+			    bstart_cf_gb_xn,
+			    bextra_nf,
+			    blens_extra_nf,
+			    bexps_extra_nf,
+			    bcfs_extra_nf,
 
-                              bnlins,
-                              blinvars,
-                              lineqs_ptr,
-                              bsquvars,
+			    bnlins,
+			    blinvars,
+			    lineqs_ptr,
+			    bsquvars,
 
-                              bdata_fglm,
-                              bdata_bms,
-                              num_gb,
-                              leadmons_ori,
-                              leadmons_current,
+			    bdata_fglm,
+			    bdata_bms,
+			    num_gb,
+			    leadmons_ori,
+			    leadmons_current,
 
-                              bsz,
-                              nmod_params, /* btrace, */
-                              bs_qq, st,
-                              field_char, 0, /* info_level, */
-                              bs, lmb_ori, *dquot_ptr, lp,
-                              gens, &stf4, nsols, bad_primes);
+			    bsz,
+			    nmod_params, /* btrace, */
+			    bs_qq, st,
+			    field_char, unstable_staircase, 0, /* info_level, */
+			    bs, lmb_ori, *dquot_ptr, lp,
+			    gens, &stf4, nsols, bad_primes);
     double ca1 = realtime() - ca0;
 
     if(nprimes==1){
@@ -2605,6 +2659,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     free_fglm_bms_data(bdata_bms[i]);
     free_fglm_data(bdata_fglm[i]);
+    free(bcfs_extra_nf[i]);
+    free(bexps_extra_nf[i]);
+    free(blens_extra_nf[i]);
+    free(bextra_nf[i]);
     free(blen_gb_xn[i]);
     free(bstart_cf_gb_xn[i]);
     free(bdiv_xn[i]);
@@ -2643,6 +2701,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free(bsquvars);
   free(is_lifted);
   free(num_gb);
+  free(bcfs_extra_nf);
+  free(bexps_extra_nf);
+  free(blens_extra_nf);
+  free(bextra_nf);
   free(blen_gb_xn);
   free(bstart_cf_gb_xn);
   free(bdiv_xn);
@@ -3421,6 +3483,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp,
                    real_point_t **real_pts_ptr,
                    data_gens_ff_t *gens,
                    int32_t ht_size, //initial_hts,
+		   int32_t unstable_staircase,
                    int32_t nr_threads,
                    int32_t max_nr_pairs,
                    int32_t elim_block_len,
@@ -3436,7 +3499,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp,
                    int32_t get_param){
 
   /*
-    0 is comp. is ok
+    0 if comp. is ok
     1 if comp. failed
     2 if more genericity is required
     -2 if charac is > 0
@@ -3452,6 +3515,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp,
                           dquot_ptr,
                           gens,
                           ht_size, //initial_hts,
+			  unstable_staircase,
                           nr_threads,
                           max_nr_pairs,
                           elim_block_len,
@@ -3650,6 +3714,7 @@ int core_msolve(
   int32_t truncate_lifting,
   int32_t get_param,
   int32_t genericity_handling,
+  int32_t unstable_staircase,
   int32_t saturate,
   int32_t colon,
   int32_t normal_form,
@@ -4170,7 +4235,7 @@ restart:
                        real_roots_ptr,
                        real_pts_ptr,
                        gens,
-                       initial_hts, nr_threads, max_pairs,
+		       initial_hts, unstable_staircase, nr_threads, max_pairs,
                        elim_block_len, update_ht,
                        la_option, use_signatures, info_level, print_gb,
                        generate_pbm, precision, files, round, get_param);
@@ -4858,7 +4923,7 @@ restart:
                     real_roots_ptr,
                     real_pts_ptr,
                     gens,
-                    initial_hts, nr_threads, max_pairs,
+		    initial_hts, unstable_staircase, nr_threads, max_pairs,
                     elim_block_len, update_ht,
                     la_option, use_signatures, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
@@ -5172,13 +5237,14 @@ void msolve_julia(
 
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
-            initial_hts, max_nr_pairs, elim_block_len, reset_ht,
+			  initial_hts, max_nr_pairs, elim_block_len, reset_ht,
                           0 /* generate pbm */, 1 /* reduce_gb */,
                           print_gb, 0 /*truncate_lifting*/, get_param,
-            genericity_handling, 0 /* saturate */, 0 /* colon */,
-	    0 /* normal_form */, 0 /* normal_form_matrix */,
-	    0 /* is_gb */, precision, files,
-            gens, &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
+			  genericity_handling, 0 /* unstable_staircase -> change to 2?*/,
+			  0 /* saturate */, 0 /* colon */,
+			  0 /* normal_form */, 0 /* normal_form_matrix */,
+			  0 /* is_gb */, precision, files,
+			  gens, &param, &mpz_param, &nb_real_roots, &real_roots, &real_pts);
 
     if (ret == -1) {
         exit(1);

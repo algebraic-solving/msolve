@@ -79,6 +79,15 @@ static inline void display_help(char *str){
   fprintf(stdout, "         1 - Change order of variables.\n");
   fprintf(stdout, "         2 - Change order of variables, then try adding a\n");
   fprintf(stdout, "             random linear form. (default)\n");
+  fprintf(stdout, "-d GEN   Handling genericity further: If the staircase is not generic\n");
+  fprintf(stdout, "         enough, msolve can still try to perform the full computation\n");
+  fprintf(stdout, "         by computing some normal forms and build the multiplication matrix,\n");
+  fprintf(stdout, "         before fixing the situation via option -c\n");
+  fprintf(stdout, "         0 - No normal forms are computed.\n");
+  fprintf(stdout, "         1 - Few normal forms are computed.\n");
+  fprintf(stdout, "         2 - Some normal forms are computed. (default)\n");
+  fprintf(stdout, "         3 - Lots of normal forms are computed.\n");
+  fprintf(stdout, "         4 - All the normal forms are computed.\n");
   fprintf(stdout, "-C       Use sparse-FGLM-col algorithm:\n");
   fprintf(stdout, "         Given an input file with k polynomials\n");
   fprintf(stdout, "         compute the quotient of the ideal\n");
@@ -144,6 +153,7 @@ static void getoptions(
         int32_t *print_gb,
         int32_t *truncate_lifting,
         int32_t *genericity_handling,
+        int32_t *unstable_staircase,
         int32_t *saturate,
         int32_t *colon,
         int32_t *normal_form,
@@ -162,7 +172,7 @@ static void getoptions(
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:";
+  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:d:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'N':
@@ -272,6 +282,15 @@ static void getoptions(
           *genericity_handling = 2;
       }
       break;
+    case 'd':
+      *unstable_staircase = strtol(optarg, NULL, 10);
+      if (*unstable_staircase < 0) {
+          *unstable_staircase = 0;
+      }
+      if (*unstable_staircase > 4) {
+          *unstable_staircase = 4;
+      }
+      break;
     case 'n':
       *normal_form = strtol(optarg, NULL, 10);
       if (*normal_form < 0) {
@@ -328,6 +347,7 @@ int main(int argc, char **argv){
     int32_t print_gb              = 0;
     int32_t truncate_lifting      = 0;
     int32_t genericity_handling   = 2;
+    int32_t unstable_staircase    = 2;
     int32_t saturate              = 0;
     int32_t colon                 = 0;
     int32_t normal_form           = 0;
@@ -346,7 +366,7 @@ int main(int argc, char **argv){
     files->bin_out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
                &elim_block_len, &la_option, &use_signatures, &update_ht,
-               &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling, &saturate, &colon,
+               &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling, &unstable_staircase, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &get_param,
                &precision, &refine, &isolate, &generate_pbm, &info_level, files);
 
@@ -412,7 +432,7 @@ int main(int argc, char **argv){
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
                           initial_hts, max_pairs, elim_block_len, update_ht,
                           generate_pbm, reduce_gb, print_gb, truncate_lifting, get_param,
-                          genericity_handling, saturate, colon, normal_form,
+                          genericity_handling, unstable_staircase, saturate, colon, normal_form,
                           normal_form_matrix, is_gb, precision, 
                           files, gens,
             &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);

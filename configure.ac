@@ -88,9 +88,18 @@ AC_CONFIG_LINKS([
  input_files/cp_d_3_n_4_p_2.ms:input_files/cp_d_3_n_4_p_2.ms
  output_files/cp_d_3_n_4_p_2.res:output_files/cp_d_3_n_4_p_2.res
  test/diff/diff_cp_d_3_n_4_p_2.sh:test/diff/diff_cp_d_3_n_4_p_2.sh
- input_files/eco11-31.ms:input_files/eco11-31.ms
- output_files/eco11-31.res:output_files/eco11-31.res
- test/diff/diff_eco11-31.sh:test/diff/diff_eco11-31.sh
+ input_files/eco6-16.ms:input_files/eco6-16.ms
+ output_files/eco6-16.res:output_files/eco6-16.res
+ test/diff/diff_eco6-16.sh:test/diff/diff_eco6-16.sh
+ input_files/eco6-31.ms:input_files/eco6-31.ms
+ output_files/eco6-31.res:output_files/eco6-31.res
+ test/diff/diff_eco6-31.sh:test/diff/diff_eco6-31.sh
+ input_files/eco6-qq.ms:input_files/eco6-qq.ms
+ output_files/eco6-qq.res:output_files/eco6-qq.res
+ test/diff/diff_eco6-qq.sh:test/diff/diff_eco6-qq.sh
+ input_files/eco10-31.ms:input_files/eco10-31.ms
+ output_files/eco10-31.res:output_files/eco10-31.res
+ test/diff/diff_eco10-31.sh:test/diff/diff_eco10-31.sh
  input_files/elim-31.ms:input_files/elim-31.ms
  output_files/elim-31.res:output_files/elim-31.res
  output_files/elim-31.e2.res:output_files/elim-31.e2.res
@@ -162,13 +171,13 @@ AC_CONFIG_LINKS([
  output_files/reals_dim0.res:output_files/reals_dim0.res
  output_files/reals_dim0.p256.res:output_files/reals_dim0.p256.res
  test/diff/diff_reals_dim0.sh:test/diff/diff_reals_dim0.sh
- input_files/realroot-extract.ms:input_files/realroot-extract.ms
- output_files/realroot-extract.res:output_files/realroot-extract.res
- output_files/realroot-extract.p256.res:output_files/realroot-extract.p256.res
- test/diff/diff_reals_extract.sh:test/diff/diff_reals_extract.sh
- input_files/bug-chgvar.ms:input_files/bug-chgvar.ms
- output_files/bug-chgvar.res:output_files/bug-chgvar.res
- output_files/bug-chgvar.p256.res:output_files/bug-chgvar.p256.res
+ input_files/reals_dim0-extract.ms:input_files/reals_dim0-extract.ms
+ output_files/reals_dim0-extract.res:output_files/reals_dim0-extract.res
+ output_files/reals_dim0-extract.p256.res:output_files/reals_dim0-extract.p256.res
+ test/diff/diff_reals_dim0-extract.sh:test/diff/diff_reals_dim0-extract.sh
+ input_files/reals_dim0-chgvar.ms:input_files/reals_dim0-chgvar.ms
+ output_files/reals_dim0-chgvar.res:output_files/reals_dim0-chgvar.res
+ output_files/reals_dim0-chgvar.p256.res:output_files/reals_dim0-chgvar.p256.res
  test/diff/diff_reals_dim0-chgvar.sh:test/diff/diff_reals_dim0-chgvar.sh
  input_files/reals_dim0-swapvar.ms:input_files/reals_dim0-swapvar.ms
  output_files/reals_dim0-swapvar.res:output_files/reals_dim0-swapvar.res

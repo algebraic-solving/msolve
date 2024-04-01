@@ -24,6 +24,11 @@
 
 #include "data.h"
 
+md_t *copy_meta_data(
+		     const md_t * const gmd,
+		     const int32_t prime
+		     );
+
 md_t *allocate_meta_data(
                               void
     );

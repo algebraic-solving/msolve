@@ -23,16 +23,21 @@
 #ifdef _OPENMP
 #include<omp.h>
 #endif
+
 #define USEFLINT 1
 
 #ifdef USEFLINT
-#include "flint/flint.h"
-#include "flint/fmpz.h"
-#include "flint/fft.h"
-#include "flint/fft_tuning.h"
-#include "flint/fmpz_poly.h"
+  #include "flint/flint.h"
+  #include "flint/fmpz.h"
+//  #include "flint/fft.h"
+//  #if __FLINT_VERSION < 3
+//      || (__FLINT_VERSION == 3 && __FLINT_VERSION_MINOR == 0)
+//      || (__FLINT_VERSION == 3 && __FLINT_VERSION_MINOR == 1 && __FLINT_VERSION_PATCHLEVEL < 2)
+//    #include "flint/fft_tuning.h"
+//  #endif
+  #include "flint/fmpz_poly.h"
 #else
-#include"mpz_upoly_multiply.h"
+  #include"mpz_upoly_multiply.h"
 #endif
 
 #ifdef USEFLINT

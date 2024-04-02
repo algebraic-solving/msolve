@@ -36,13 +36,13 @@
 double omp_get_wtime(void) { return realtime();}
 #endif
 
-#define MIN(x, y) ((x) > (y) ? (y) : (x))
-
 #define DEBUGFGLM 0
-#define BLOCKWIED 0
+#define BLOCKWIED 0  // FIXME temporary
 
 #include <flint/nmod_poly.h>
 
+// TODO clean includes
+//    (including .c ??)
 #include "../msolve/msolve-data.h"
 #include "libfglm.h"
 #include "data_fglm.c"
@@ -69,6 +69,18 @@ double omp_get_wtime(void) { return realtime();}
 #include "../upolmat/nmod_poly_mat_pmbasis.c"
 #endif
 
+#if DEBUGFGLM
+// FIXME  nmod_vec_print?
+static inline void print_vec(FILE *file, CF_t *vec, szmat_t len){
+  fprintf(file, "[");
+  for(szmat_t i = 0; i < len-1; ++i){
+    fprintf(file, "%u, ", vec[i]);
+  }
+  fprintf(file, "%u]\n",vec[len-1]);
+}
+#endif
+
+// FIXME already in flint, nmod_poly_fprint
 void display_nmod_poly(FILE *file, nmod_poly_t pol){
   fprintf(file, "[%ld,\n", pol->length-1);
   if(pol->length != 0){
@@ -83,7 +95,6 @@ void display_nmod_poly(FILE *file, nmod_poly_t pol){
   }
   fprintf(file, "]");
 }
-
 
 void display_fglm_param(FILE * file, param_t *param){
   fprintf(file, "%ld,\n", param->charac);
@@ -131,21 +142,11 @@ static inline void mirror_points(nmod_berlekamp_massey_t B, szmat_t length){
   }
 }
 
-#if 0
-static inline void mirror_poly(nmod_poly_t out, nmod_poly_t in){
-  szmat_t mid = in->length / 2;
-  for(long i = 0; i <= mid; i++){
-    out->coeffs[i] = in->coeffs[in->length - i - 1];
-    out->coeffs[in->length - i - 1] = in->coeffs[i];
-  }
-  out->length=in->length;
-}
-#endif
-
+// FIXME any diff with flint's  nmod_poly_reverse ?
 static inline void mirror_poly_solve(nmod_poly_t out, nmod_poly_t in, szmat_t length){
 
   long i;
-  long m = MIN(in->length, length);
+  long m = FLINT_MIN(in->length, length);
   if(out->alloc < length){
     nmod_poly_fit_length(out, length);
   }
@@ -158,8 +159,8 @@ static inline void mirror_poly_solve(nmod_poly_t out, nmod_poly_t in, szmat_t le
   }
 }
 
-
-
+// FIXME any diff with flint's  nmod_poly_reverse ?
+// (which accepts aliasing)
 static inline void mirror_poly_inplace(nmod_poly_t in){
   CF_t tmp;
   szmat_t mid = in->length / 2;
@@ -332,62 +333,6 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t deg){
 
 
 /*
-
-  Z1 and Z2 must be arrays of length d + 1
-  Mirroring them will give an array of length d + 1
-
-*/
-
-
-#if 0
-static inline void solveHankel(nmod_poly_t param,
-                               nmod_poly_t Z1, nmod_poly_t Z2,
-                               nmod_poly_t rZ1, nmod_poly_t rZ2,
-                               nmod_poly_t A, nmod_poly_t B,
-                               szmat_t dimquot,
-                               szmat_t dim,
-                               CF_t *res,
-                               int ncoord,
-                               nmod_poly_t V,
-                               long disp){
-
-  V->length = dim;
-
-  for(long i = 0; i < dim; i++){
-    V->coeffs[i] = res[ncoord-1+i*(dimquot)];
-  }
-
-  #if DEBUGFGLM > 0
-  fprintf(stdout, "\n ncoord = %d\n", ncoord);
-  fprintf(stdout, "V = "); nmod_poly_fprint_pretty(stdout, V, "x");fprintf(stdout, "\n\n");
-  #endif
-  mirror_poly_inplace(V);
-  mirror_poly_solve(rZ1, Z1, dim + 1);
-
-  mirror_poly_solve(rZ2, Z2, dim + 1);
-
-  nmod_poly_mullow(A, rZ1, V, dim); // mod t^dim
-
-  nmod_poly_mullow(B, Z2, V, dim); // mod t^dim
-
-  mirror_poly_inplace(B);
-  mirror_poly_inplace(A);
-  nmod_poly_mullow(rZ1, Z1, B, dim);
-
-  nmod_poly_mullow(rZ2, rZ2, A, dim);
-  nmod_poly_neg(rZ2, rZ2);
-
-  nmod_poly_add(param, rZ1, rZ2);
-
-
-  mp_limb_t inv = n_invmod(Z1->coeffs[0], (Z1->mod).n);
-
-  nmod_poly_scalar_mul_nmod(param, param, inv);
-
-}
-#endif
-
-/*
  Z1 and Z2 must be arrays of length d + 1
  Mirroring them will give an array of length d + 1
  */
@@ -456,7 +401,6 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
                                             CF_t *vec,
                                             CF_t *vres,
                                             const mod_t prime,
-                                            //cf_l_t *vec_cache, //obsolete
                                             const uint32_t RED_32,
                                             const uint64_t RED_64,
                                             const uint32_t preinv,
@@ -478,8 +422,6 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
   non_avx_matrix_vector_product(vres, mat->dense_mat, vec,
 				ncols, nrows, prime, RED_32, RED_64,st);
 #endif
-  /* non_avx_matrix_vector_product(vres, mat->dense_mat, vec, */
-  /*                               ncols, nrows, prime, RED_32, RED_64,st); */
     for(szmat_t i = 0; i < nrows; i++){
       res[mat->dense_idx[i]] = vres[i];
     }
@@ -496,7 +438,6 @@ static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *ma
 						  CF_t *vec,
 						  CF_t *vres,
 						  const mod_t prime,
-						  //cf_l_t *vec_cache, //obsolete
 						  const uint32_t RED_32,
 						  const uint64_t RED_64,
 						  const uint32_t preinv,
@@ -546,121 +487,6 @@ static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *ma
    Useful only for first call.
 
  **/
-
-
-#if DEBUGFGLM
-static inline void print_vec(FILE *file, CF_t *vec, szmat_t len){
-  fprintf(file, "[");
-  for(szmat_t i = 0; i < len-1; ++i){
-    fprintf(file, "%u, ", vec[i]);
-  }
-  fprintf(file, "%u]\n",vec[len-1]);
-}
-
-static inline void mynmod_berlekamp_massey_print(const nmod_berlekamp_massey_t B)
-{
-  slong i;
-  nmod_poly_fprint_pretty(stderr, B->V1, "x");
-  fprintf(stderr, ", ");
-  for (i = 0; i < B->points->length; i++)
-    {
-      fprintf(stderr, " %lu", B->points->coeffs[i]);
-    }
-}
-
-static inline void mynmod_berlekamp_massey_print_poly(FILE *file,
-                                               const nmod_berlekamp_massey_t B)
-{
-  slong i;
-  fprintf(file, "%lu\n", B->V1->mod.n);
-  for(i = 0; i < B->V1->length; ++i ){
-    fprintf(file, "%lu ", (B->V1->coeffs)[i]);
-  }
-}
-#endif
-
-#if 0
-static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
-                                     szmat_t block_size, long dimquot,
-                                     mod_t prime){
-  uint32_t RED_32 = ((uint64_t)2<<31) % prime;
-
-#if DEBUGFGLM > 2
-  fprintf(stderr, "RED_32 = %u\n", RED_32);
-#endif
-
-  uint32_t RED_64 = ((uint64_t)1<<63) % prime;
-  RED_64 = (RED_64*2) % prime;
-
-#if DEBUGFGLM > 2
-  fprintf(stderr, "RED_64 = %u\n", RED_64);
-#endif
-
-  uint32_t preinv = 2^(62) / prime;
-  uint32_t pi1 = ((uint64_t)pow(2, 32)) / RED_64;
-  uint32_t pi2 = (uint64_t)pow(2, 32) / RED_32;
-
-  for(szmat_t i = 1; i < matrix->ncols; i++){
-    sparse_mat_fglm_mult_vec(data->vvec, matrix,
-                             data->vecinit, data->vecmult,
-                             prime, RED_32, RED_64, preinv, pi1, pi2,
-			     st);
-#if DEBUGFGLM > 1
-    print_vec(stderr, data->vvec, matrix->ncols);
-#endif
-
-
-    CF_t *tmp = data->vecinit;
-    data->vecinit = data->vvec;
-    data->vvec = tmp;
-    data->res[i*block_size] = data->vecinit[0];
-
-    for(szmat_t j = 1; j < block_size; j++){
-      data->res[j+i*block_size] = data->vecinit[j+1];
-    }
-
-#if DEBUGFGLM > 1
-    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
-#endif
-
-#if DEBUGFGLM > 2
-    fprintf(stderr, "res = ");
-    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
-#endif
-  }
-  for(szmat_t i = matrix->ncols; i < 2*matrix->ncols; i++){
-    sparse_mat_fglm_mult_vec(data->vvec, matrix,
-                             data->vecinit, data->vecmult,
-                             prime, RED_32, RED_64, preinv, pi1, pi2,
-			     st);
-#if DEBUGFGLM > 1
-    print_vec(stderr, data->vvec, matrix->ncols);
-#endif
-
-
-    CF_t *tmp = data->vecinit;
-    data->vecinit = data->vvec;
-    data->vvec = tmp;
-    data->res[i*block_size] = data->vecinit[0];
-
-#if DEBUGFGLM > 1
-    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
-#endif
-
-#if DEBUGFGLM > 2
-    fprintf(stderr, "res = ");
-    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
-#endif
-  }
-
-  /* now res contains our generating sequence */
-
-  for(ulong i = 0; i < 2 * dimquot; i++){
-    data->pts[i] = data->res[i*block_size];
-  }
-
-}
-#endif
 
 static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
                                      szmat_t block_size, long dimquot,
@@ -1996,7 +1822,7 @@ guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
   data_backup[0] = acc;
 
   szmat_t i = 1;
-  szmat_t tentative_degree =  MIN (4,matrix->ncols);
+  szmat_t tentative_degree =  FLINT_MIN(4, matrix->ncols);
   /* printf ("tentative degree = %d\n",tentative_degree); */
   while (i <= 2*tentative_degree-1) {
     sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
@@ -2048,7 +1874,7 @@ guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
       } else {
 	nmod_berlekamp_massey_set_prime (data_bms->BMS,prime);
 	memcpy (data->pts,data_backup,i * sizeof(CF_t));
-	tentative_degree = MIN (3 * (*dim_ptr),matrix->ncols);
+	tentative_degree = FLINT_MIN(3 * (*dim_ptr), matrix->ncols);
 	/* printf ("tentative degree = %d\n",tentative_degree); */
       }
     }
@@ -2056,110 +1882,6 @@ guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
   }
 }
 
-#if 0
-static inline void generate_sequence_colon(sp_matfglmcol_t *matrix,
-					   fglm_data_t * data,
-					   CF_t * leftvec,
-					   szmat_t block_size, long dimquot,
-					   mod_t prime, md_t *st){
-
-  uint32_t RED_32 = ((uint64_t)2<<31) % prime;
-
-#if DEBUGFGLM > 2
-  fprintf(stderr, "RED_32 = %u\n", RED_32);
-#endif
-
-  uint32_t RED_64 = ((uint64_t)1<<63) % prime;
-  RED_64 = (RED_64*2) % prime;
-
-#if DEBUGFGLM > 2
-  fprintf(stderr, "RED_64 = %u\n", RED_64);
-#endif
-
-  uint32_t preinv = 2^(62) % prime;
-  uint32_t pi1 = ((uint64_t)pow(2, 32)) / RED_64;
-  uint32_t pi2 = (uint64_t)pow(2, 32) / RED_32;
-
-  uint64_t acc = 0;
-  for(szmat_t j = 0; j < matrix->ncols; j++){
-    acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
-  }
-  data->res[0]= acc;
-  
-  for(szmat_t i = 1; i < matrix->ncols; i++){
-    sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
-				   data->vecinit, data->vecmult,
-				   prime, RED_32, RED_64, preinv, pi1,
-				   pi2,st);
-#if DEBUGFGLM > 1
-    print_vec(stderr, data->vvec, matrix->ncols);
-#endif
-
-
-    CF_t *tmp = data->vecinit;
-    data->vecinit = data->vvec;
-    data->vvec = tmp;
-    /* data->res[i*block_size] = data->vecinit[0]; */
-    acc = 0;
-    for(szmat_t j = 0; j < matrix->ncols; j++){
-      acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
-    }
-    data->res[i*block_size]= acc;
-
-    for(szmat_t j = 1; j < block_size; j++){
-      data->res[j+i*block_size] = data->vecinit[j+1];
-    }
-
-#if DEBUGFGLM > 1
-    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
-#endif
-
-#if DEBUGFGLM > 2
-    fprintf(stderr, "res = ");
-    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
-#endif
-  }
-  for(szmat_t i = matrix->ncols; i < 2*matrix->ncols; i++){
-    sparse_mat_fglm_colon_mult_vec(data->vvec, matrix,
-				   data->vecinit, data->vecmult,
-				   prime, RED_32, RED_64, preinv, pi1,
-				   pi2,st);
-#if DEBUGFGLM > 1
-    print_vec(stderr, data->vvec, matrix->ncols);
-#endif
-
-
-    CF_t *tmp = data->vecinit;
-    data->vecinit = data->vvec;
-    data->vvec = tmp;
-    /* data->res[i*block_size] = data->vecinit[0]; */
-    acc = 0;
-    for(szmat_t j = 0; j < matrix->ncols; j++){
-      acc = (acc + (((uint64_t)leftvec[j]) * data->vecinit[j])) % prime;
-    }
-    data->res[i*block_size]= acc;
-
-#if DEBUGFGLM > 1
-    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
-#endif
-
-#if DEBUGFGLM > 2
-    fprintf(stderr, "res = ");
-    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
-#endif
-  }
-#if DEBUGFGLM > 0
-  //  print_vec(stdout, data->res, 2*block_size * matrix->ncols);
-#endif
-
-  //now res contains our generating sequence
-
-  for(ulong i = 0; i < 2 * dimquot; i++){
-    data->pts[i] = data->res[i*block_size];
-  }
-
-}
-#endif
 
 param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 			       const mod_t prime,

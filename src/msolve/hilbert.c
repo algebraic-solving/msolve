@@ -2750,7 +2750,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
 
 
 static inline void compute_modular_matrix(sp_matfglm_t *matrix,
-                                          mpz_matfglm_t mpz_mat,
+                                          mpq_matfglm_t mpz_mat,
                                           uint32_t prime){
   uint32_t len_xn = matrix->nrows; 
   uint32_t dquot = matrix->ncols;
@@ -2764,7 +2764,7 @@ static inline void compute_modular_matrix(sp_matfglm_t *matrix,
     lc = mod_p_inverse_32(lc, prime);
     uint32_t nc = i*mpz_mat->ncols;
     for(uint32_t j = 0 ; j < mpz_mat->ncols; j++){
-      uint32_t mod = mpz_fdiv_ui(mpz_mat->dense_mat[nc+j], prime);
+      uint32_t mod = mpz_fdiv_ui(mpz_mat->dense_mat[2*(nc+j)], prime);
       matrix->dense_mat[nc+j] =( ((uint64_t)mod) * lc )% prime;
     }
   }

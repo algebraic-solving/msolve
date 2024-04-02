@@ -285,61 +285,6 @@ static inline void build_linear_forms(mpz_t *mpz_linear_forms,
   mpz_clear(lcm);
 }
 
-static inline void build_mpz_matrix(mpq_matfglm_t mpq_mat,
-                                    mpz_matfglm_t mpz_mat, int mat_lifted) {
-
-  if (mat_lifted == 0) {
-    return;
-  }
-  uint32_t ncols = mpq_mat->ncols;
-  uint32_t nrows = mpq_mat->nrows;
-#ifdef DEBUGLIFTMAT
-  fprintf(stderr, "mat_lifted = %d\n", mat_lifted);
-  fprintf(stderr, "ncols(mpq) = %u\n", mpq_mat->ncols);
-  fprintf(stderr, "nows(mpq) = %u\n", mpq_mat->nrows);
-  fprintf(stderr, "ncols(mpz) = %u\n", mpz_mat->ncols);
-  fprintf(stderr, "nows(mpz) = %u\n", mpz_mat->nrows);
-  for (uint32_t i = 0; i < nrows; i++) {
-    uint64_t c = i * ncols;
-    for (uint32_t j = 0; j < ncols; j++) {
-      mpz_out_str(stderr, 10, mpq_mat->dense_mat[2 * c + 2 * j]);
-      fprintf(stderr, " / ");
-      mpz_out_str(stderr, 10, mpq_mat->dense_mat[2 * c + 2 * j + 1]);
-      fprintf(stderr, ", ");
-    }
-    mpz_out_str(stderr, 10, mpq_mat->denoms[i]);
-    fprintf(stderr, "\n");
-  }
-#endif
-
-//  for (uint32_t i = 0; i < nrows; i++) {
-//    mpz_set(mpz_mat->denoms[i], mpq_mat->denoms[i]);
-//    uint64_t c = i * ncols;
-//    for (uint32_t j = 0; j < ncols; j++) {
-//      mpz_set(mpz_mat->dense_mat[c + j], mpq_mat->dense_mat[2 * c + 2 * j]);
-//      mpz_mul(mpz_mat->dense_mat[c + j], mpz_mat->dense_mat[c + j],
-//              mpq_mat->denoms[i]);
-//      mpz_divexact(mpz_mat->dense_mat[c + j], mpz_mat->dense_mat[c + j],
-//                   mpq_mat->dense_mat[2 * c + 2 * j + 1]);
-//      mpz_clear(mpq_mat->dense_mat[2 * c + 2 * j]);
-//      mpz_clear(mpq_mat->dense_mat[2 * c + 2 * j + 1]);
-//    }
-//    mpz_clear(mpq_mat->denoms[i]);
-//  }
-#ifdef DEBUGLIFTMAT
-  fprintf(stderr, "\nMPZMAT = \n");
-  for (uint32_t i = 0; i < nrows; i++) {
-    uint64_t c = i * ncols;
-    for (uint32_t j = 0; j < ncols; j++) {
-      mpz_out_str(stderr, 10, mpz_mat->dense_mat[c + j]);
-      fprintf(stderr, ", ");
-    }
-    mpz_out_str(stderr, 10, mpz_mat->denoms[i]);
-    fprintf(stderr, "\n\n");
-  }
-#endif
-}
-
 static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
                                       rrec_data_t recdata, mpz_t modulus,
                                       mpz_t rnum, mpz_t rden, mpz_t gden) {
@@ -466,10 +411,6 @@ rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
   mpz_clear(lcm);
 
   *mat_lifted = 1;
-//  build_mpz_matrix(mpq_mat, mpz_mat, *mat_lifted);
-//
-//  fprintf(stderr, "mpq_mat cleared\n");
-//  mpq_matfglm_partial_clear(mpq_mat);
 }
 
 void initialize_rrec_data(rrec_data_t recdata) {

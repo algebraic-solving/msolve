@@ -254,6 +254,16 @@ typedef struct{
   int16_t done_det;
   int16_t check_trace;
   int16_t check_det;
+
+  uint32_t nrows; /* number of non trivial rows in matrix multiplication */
+  uint32_t nlifted; /* number of rows whose witness coefficients could be lifted */
+  uint64_t *matmul_indices; /* indices per row of matrix multiplication used 
+                              for lifting (witness coefficient); given index is the one of 
+                              the dense matrix format */
+  mpz_t *matmul_crt; /* crt coefficient */
+  mpz_t *matmul_cfs_qq; /* stores reconstruction */
+  int16_t *done_coeffs; /* indicates coefficients which have been lifted */
+  int16_t *check_coeffs; /* indicates coefficients which have been checked */
 } trace_det_fglm_mat_struct;
 typedef trace_det_fglm_mat_struct trace_det_fglm_mat_t[1];
 

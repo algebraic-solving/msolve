@@ -191,7 +191,8 @@ static inline void mpq_matfglm_partial_clear(mpq_matfglm_t mpq_mat) {
 
 static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
                                      uint32_t trace_mod, uint32_t det_mod,
-                                     uint32_t tridx, uint32_t detidx) {
+                                     uint32_t tridx, uint32_t detidx, 
+                                     sp_matfglm_t **mod_mat) {
   mpz_init_set_ui(trace_det->trace_crt, trace_mod);
   mpz_init_set_ui(trace_det->det_crt, det_mod);
   mpz_init_set_ui(trace_det->trace_num, 0);
@@ -205,6 +206,30 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
   trace_det->done_det = 0;
   trace_det->trace_idx = tridx;
   trace_det->det_idx = detidx;
+
+  uint32_t nrows = (*mod_mat)->nrows;
+  trace_det->nrows = nrows;
+  trace_det->nlifted = 0;
+  trace_det->matmul_indices = (uint64_t *)malloc(nrows * sizeof(uint64_t));
+  for(uint32_t i = 0; i < nrows; i++){
+      uint64_t tmp = i*((*mod_mat)->ncols);
+      for(uint32_t j = 0; j < (*mod_mat)->ncols; j++){
+          if((*mod_mat)->dense_mat[tmp+j] != 0){
+              trace_det->matmul_indices[i] = tmp + j;
+              break;
+          }
+      }
+  }
+  trace_det->matmul_crt = (mpz_t *)malloc(nrows * sizeof(mpz_t));
+  for(uint32_t i = 0; i < nrows; i++){
+      mpz_init_set_ui(trace_det->matmul_crt[i], (*mod_mat)->dense_mat[trace_det->matmul_indices[i]]);
+  }
+  trace_det->matmul_cfs_qq = (mpz_t *)malloc(2 * nrows * sizeof(mpz_t));
+  for(uint32_t i = 0; i < 2 * nrows; i++){
+      mpz_init(trace_det->matmul_cfs_qq[i]);
+  }
+  trace_det->done_coeffs = (int16_t *)calloc(nrows, sizeof(int16_t));
+  trace_det->check_coeffs = (int16_t *)calloc(nrows, sizeof(int16_t));
 }
 
 static inline void trace_det_clear(trace_det_fglm_mat_t trace_det) {
@@ -215,6 +240,18 @@ static inline void trace_det_clear(trace_det_fglm_mat_t trace_det) {
   mpz_clear(trace_det->det_num);
   mpz_clear(trace_det->det_den);
   mpz_clear(trace_det->tmp);
+
+  uint32_t nrows = trace_det->nrows;
+  for(uint32_t i = 0; i < nrows; i++){
+      mpz_clear(trace_det->matmul_crt[i]);
+      mpz_clear(trace_det->matmul_cfs_qq[2 * i]);
+      mpz_clear(trace_det->matmul_cfs_qq[2 * i + 1]);
+  }
+  free(trace_det->matmul_crt);
+  free(trace_det->matmul_cfs_qq);
+  free(trace_det->matmul_indices);
+  free(trace_det->done_coeffs);
+  free(trace_det->check_coeffs);
 }
 
 static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,

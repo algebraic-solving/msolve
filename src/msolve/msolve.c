@@ -2274,7 +2274,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
 
   trace_det_initset(trace_det, nmod_params[0]->elim->coeffs[tridx],
-                    nmod_params[0]->elim->coeffs[detidx], tridx, detidx);
+                    nmod_params[0]->elim->coeffs[detidx], tridx, detidx, 
+                    bmatrix);
   /********************************************************************/
 
   mpz_t modulus;

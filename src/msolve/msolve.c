@@ -1212,7 +1212,7 @@ static inline int new_rational_reconstruction(
       }
     }
   }
-  crt_lift_trace_det(trace_det, trace_mod, det_mod, modulus, prod_crt, prime);
+  crt_lift_trace_det(trace_det, trace_mod, det_mod, mat, modulus, prod_crt, prime);
 
 #if LIFTMATRIX == 1
   if (nlins && (*lin_lifted) == 0) {

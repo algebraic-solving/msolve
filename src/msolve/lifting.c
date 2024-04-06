@@ -256,12 +256,18 @@ static inline void trace_det_clear(trace_det_fglm_mat_t trace_det) {
 
 static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,
                                       uint32_t trace_mod, uint32_t det_mod,
+                                      sp_matfglm_t *mod_mat,
                                       mpz_t modulus, mpz_t prod,
                                       uint32_t prime) {
   mpz_CRT_ui(trace_det->trace_crt, trace_det->trace_crt, modulus, trace_mod,
              prime, prod, trace_det->tmp, 1);
   mpz_CRT_ui(trace_det->det_crt, trace_det->det_crt, modulus, det_mod, prime,
              prod, trace_det->tmp, 1);
+  for(uint32_t i = 0; i < mod_mat->nrows; i++){
+      mpz_CRT_ui(trace_det->matmul_crt[i], trace_det->matmul_crt[i], modulus, 
+                 mod_mat->dense_mat[trace_det->matmul_indices[i]], prime, prod, 
+                 trace_det->tmp, 1);
+  }
 }
 
 static inline void crt_lift_dense_rows(mpz_t *rows, uint32_t *mod_rows,
@@ -325,6 +331,17 @@ static inline void build_linear_forms(mpz_t *mpz_linear_forms,
 static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
                                       rrec_data_t recdata, mpz_t modulus,
                                       mpz_t rnum, mpz_t rden, mpz_t gden) {
+    int nlifted = trace_det->nlifted;
+    for(int32_t i = trace_det->nlifted; i < trace_det->nrows; i++){
+        int b = ratreconwden(rnum, rden, trace_det->matmul_crt[i], modulus, gden, recdata);
+        if(b == 1){
+            fprintf(stderr, "+[%d]+", i);
+            mpz_set(trace_det->matmul_cfs_qq[2*i], rnum);
+            mpz_set(trace_det->matmul_cfs_qq[2*i + 1], rden);
+            nlifted++;
+        }
+    }
+    trace_det->nlifted = nlifted;
   int b =
       ratreconwden(rnum, rden, trace_det->trace_crt, modulus, gden, recdata);
   /* int b = ratrecon(rnum, rden, trace_det->trace_crt, modulus, recdata); */

@@ -80,33 +80,17 @@ static inline void print_vec(FILE *file, CF_t *vec, szmat_t len){
 }
 #endif
 
-// FIXME already in flint, nmod_poly_fprint
-void display_nmod_poly(FILE *file, nmod_poly_t pol){
-  fprintf(file, "[%ld,\n", pol->length-1);
-  if(pol->length != 0){
-    fprintf(file, "[");
-    for(long i = 0; i < pol->length - 1 ; i++){
-      fprintf(file, "%lu, ", pol->coeffs[i]);
-    }
-    fprintf(file, "%lu]", pol->coeffs[pol->length - 1]);
-  }
-  else{
-    fprintf(file, "[0]");
-  }
-  fprintf(file, "]");
-}
-
 void display_fglm_param(FILE * file, param_t *param){
   fprintf(file, "%ld,\n", param->charac);
   fprintf(file, "%d,\n", param->nvars);
 
-  display_nmod_poly(file, param->elim);
+  nmod_poly_fprint(file, param->elim);
   fprintf(file, ",\n");
-  display_nmod_poly(file, param->denom);
+  nmod_poly_fprint(file, param->denom);
   fprintf(file, ",\n");
   fprintf(file, "[");
   for(int c = param->nvars-2; c >= 0; c--){
-    display_nmod_poly(file, param->coords[c]);
+    nmod_poly_fprint(file, param->coords[c]);
     fprintf(file, "\n");
   }
   fprintf(file, "]");
@@ -116,16 +100,16 @@ void display_fglm_param_maple(FILE * file, param_t *param){
   fprintf(file, "[%ld, \n", param->charac);
   fprintf(file, "%d, \n", param->nvars);
 
-  display_nmod_poly(file, param->elim);
+  nmod_poly_fprint(file, param->elim);
   fprintf(file, ", \n");
-  display_nmod_poly(file, param->denom);
+  nmod_poly_fprint(file, param->denom);
   fprintf(file, ", \n");
 
   for(int c = param->nvars-2; c > 0; c--){
-    display_nmod_poly(file, param->coords[c]);
+    nmod_poly_fprint(file, param->coords[c]);
     fprintf(file, ", \n");
   }
-  display_nmod_poly(file, param->coords[0]);
+  nmod_poly_fprint(file, param->coords[0]);
   fprintf(file, "]:\n");
 }
 

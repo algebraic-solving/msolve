@@ -176,14 +176,14 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
   fprintf(file, "],\n");
   fprintf(file, "[1,\n["); /*at the moment, a single param is returned */
   if(gens->field_char){
-    display_nmod_poly(file, mod_param->elim);
+    nmod_poly_fprint(file, mod_param->elim);
   }
   else{
     mpz_upoly_out_str(file, param->elim); //elim. poly
   }
   fprintf(file, ",\n");
   if(gens->field_char){
-    display_nmod_poly(file, mod_param->denom);
+    nmod_poly_fprint(file, mod_param->denom);
   }
   else{
   mpz_upoly_out_str(file, param->denom); //denom. poly
@@ -195,7 +195,7 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
       for(int i = 0; i < mod_param->nvars - 1; i++){
         fprintf(file, "[");
         if(gens->field_char){
-          display_nmod_poly(file, mod_param->coords[i]);
+          nmod_poly_fprint(file, mod_param->coords[i]);
         }
         if(i == mod_param->nvars - 2){
           fprintf(file, "]\n");
@@ -761,14 +761,14 @@ static inline void nmod_param_out_str(FILE *file, const long dquot, param_t *par
   fprintf(file, "0, \n"); //charac
   fprintf(file, "%d, \n", param->nvars); //nvars
   fprintf(file, "%ld, \n", dquot); //dim quotient
-  display_nmod_poly(file, param->elim); //elim. poly
+  nmod_poly_fprint(file, param->elim); //elim. poly
   fprintf(file, ",\n");
-  display_nmod_poly(file, param->denom); //elim. poly
+  nmod_poly_fprint(file, param->denom); //elim. poly
   fprintf(file, ",\n");
   fprintf(file, "[\n");
   for(int i = 0; i < param->nvars - 1; i++){
     fprintf(file, "[");
-    display_nmod_poly(file, param->coords[i]); //elim. poly
+    nmod_poly_fprint(file, param->coords[i]); //elim. poly
     fprintf(file, ",\n");
     fprintf(file, "[1]");
     if(i==param->nvars-2){

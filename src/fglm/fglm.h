@@ -54,4 +54,3 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *,
 
 void display_fglm_param(FILE *, param_t *);
 void display_fglm_param_maple(FILE *, param_t *);
-void display_nmod_poly(FILE *, nmod_poly_t);

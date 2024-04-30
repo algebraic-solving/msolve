@@ -22,16 +22,16 @@
 #include "config.h"
 #endif
 
-#include<stdio.h>
-#include<stdlib.h>
-#include<string.h>
-#include<unistd.h>
-#include<time.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
 /* for timing functions */
 #include "../neogb/tools.h"
 
 #ifdef _OPENMP
-#include<omp.h>
+#include <omp.h>
 #else
 double omp_get_wtime(void) { return realtime();}
 #endif
@@ -54,7 +54,7 @@ double omp_get_wtime(void) { return realtime();}
 #include <flint/nmod_mat.h>
 #include <flint/nmod_poly_mat.h>
 #include <flint/fmpz_mat.h>
-#include "../upolmat/nmod_mat_extra.h"
+//#include "../upolmat/nmod_mat_extra.h"
 #include "../upolmat/nmod_mat_left_nullspace.c"
 #include "../upolmat/nmod_mat_permute_rows.c"
 #include "../upolmat/nmod_mat_poly.h"
@@ -349,12 +349,12 @@ static inline void solve_hankel(fglm_bms_data_t *data_bms,
     data_bms->V->coeffs[i] = res[ncoord-1+i*(block_size)];
   }
 
-  #if DEBUGFGLM > 0
+#if DEBUGFGLM > 0
   fprintf(stdout, "\n ncoord = %d\n", ncoord);
   fprintf(stdout, "V = ");
   nmod_poly_fprint_pretty(stdout, data_bms->V, "x");
   fprintf(stdout, "\n");
-  #endif
+#endif
 
   mirror_poly_inplace(data_bms->V);
   mirror_poly_solve(data_bms->rZ1, data_bms->Z1, dim + 1);
@@ -581,6 +581,7 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
 			     st);
 #if DEBUGFGLM > 1
     print_vec(stderr, data->vvec, matrix->ncols);
+    _nmod_vec_prin
 #endif
 
 

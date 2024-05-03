@@ -29,6 +29,7 @@
 #include <time.h>
 /* for timing functions */
 #include "../neogb/tools.h"
+#include "io-general.h" // for print_vec and display_fglm_param
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -40,9 +41,10 @@ double omp_get_wtime(void) { return realtime();}
 #define BLOCKWIED 0  // FIXME temporary
 
 #include <flint/nmod_poly.h>
+#include <flint/nmod_vec.h>
 
 // TODO clean includes
-//    (including .c ??)
+//    (btw, why including .c ? performance?)
 #include "../msolve/msolve-data.h"
 #include "libfglm.h"
 #include "data_fglm.c"
@@ -68,50 +70,6 @@ double omp_get_wtime(void) { return realtime();}
 #include "../upolmat/nmod_poly_mat_pmbasis.h"
 #include "../upolmat/nmod_poly_mat_pmbasis.c"
 #endif
-
-#if DEBUGFGLM
-// FIXME  nmod_vec_print?
-static inline void print_vec(FILE *file, CF_t *vec, szmat_t len){
-  fprintf(file, "[");
-  for(szmat_t i = 0; i < len-1; ++i){
-    fprintf(file, "%u, ", vec[i]);
-  }
-  fprintf(file, "%u]\n",vec[len-1]);
-}
-#endif
-
-void display_fglm_param(FILE * file, param_t *param){
-  fprintf(file, "%ld,\n", param->charac);
-  fprintf(file, "%d,\n", param->nvars);
-
-  nmod_poly_fprint(file, param->elim);
-  fprintf(file, ",\n");
-  nmod_poly_fprint(file, param->denom);
-  fprintf(file, ",\n");
-  fprintf(file, "[");
-  for(int c = param->nvars-2; c >= 0; c--){
-    nmod_poly_fprint(file, param->coords[c]);
-    fprintf(file, "\n");
-  }
-  fprintf(file, "]");
-}
-
-void display_fglm_param_maple(FILE * file, param_t *param){
-  fprintf(file, "[%ld, \n", param->charac);
-  fprintf(file, "%d, \n", param->nvars);
-
-  nmod_poly_fprint(file, param->elim);
-  fprintf(file, ", \n");
-  nmod_poly_fprint(file, param->denom);
-  fprintf(file, ", \n");
-
-  for(int c = param->nvars-2; c > 0; c--){
-    nmod_poly_fprint(file, param->coords[c]);
-    fprintf(file, ", \n");
-  }
-  nmod_poly_fprint(file, param->coords[0]);
-  fprintf(file, "]:\n");
-}
 
 /* Points of B are u_0, .., u_l */
 /* They become u_l, ..., u_0 */
@@ -565,7 +523,6 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
 			     st);
 #if DEBUGFGLM > 1
     print_vec(stderr, data->vvec, matrix->ncols);
-    _nmod_vec_prin
 #endif
 
 

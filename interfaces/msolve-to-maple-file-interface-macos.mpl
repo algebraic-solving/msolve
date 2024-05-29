@@ -221,12 +221,10 @@ field_char, lsols, nl, i, gb, output, nthreads, str, elim;
          error "Field characteristic is too large to be supported";
       end if;
 
-      if fc > 0 then
-         field_char := fc;
-      end if;
+      field_char := fc;
 
    else
-      printf("Second argument should be a prime integer < 2^31\n");
+      printf("Second argument should be 0 or a prime integer < 2^31\n");
    end if;
    if not(indets(F) subset indets(vars)) then
      printf("Given variables do not match the variables in the input polynomials\n");

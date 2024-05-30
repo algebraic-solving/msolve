@@ -97,7 +97,7 @@ local i, fd, F2, str;
 end proc:
 
 GetOptions:=proc(opts)
-local str, msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb;
+local str, msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb, elim;
   str:=subs(opts,"verb");
   if type(str, integer) then
      verb:=str;
@@ -286,7 +286,7 @@ end proc:
 # [ vars[1] = (a1+b1)/2, ..., vars[n] = (an+bn)/2 ]
 MSolveRealRoots:=proc(F, vars, opts:={})
 local results, dim, fname1, fname2, verb, param, msolve_path, file_dir,
-lsols, nl, i, j, gb, output, nthreads, str, sols, prec;
+lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim;
    if type(F, list(polynom(rational))) = false then
      printf("First argument is not a list of polynomials with rational coefficients\n");
    end if;
@@ -307,7 +307,7 @@ lsols, nl, i, j, gb, output, nthreads, str, sols, prec;
    output:=0;
    gb:=0;
    if nops(opts) > 0 then
-     msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb := GetOptions(opts);
+     msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb, elim := GetOptions(opts);
    fi;
    ToMSolve(F, 0, vars, fname1);
    if Digits <= 10 then

@@ -607,7 +607,7 @@ void set_ff_bits(md_t *st, int32_t fc){
                 st->ff_bits = 16;
             } else {
                 if (fc < (int32_t)(1) << 23) {
-                    st->ff_bits = 23;
+                    st->ff_bits = 32;
                 } else {
                     st->ff_bits = 32;
                 }

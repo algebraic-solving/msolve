@@ -33,13 +33,13 @@ md_t *copy_meta_data(
     md->application_nr_add  = 0;
     md->application_nr_red  = 0;
 
-    if (md->fc < pow(2,7)) {
+    if (md->fc < (int32_t)(1) << 8) {
         md->ff_bits = 8;
     } else {
-        if (md->fc < pow(2,15)) {
+        if (md->fc < (int32_t)(1) << 16) {
             md->ff_bits = 16;
         } else {
-            if (md->fc < pow(2,31)) {
+            if (md->fc < (int32_t)(1) << 31) {
                 md->ff_bits = 32;
             }
         }

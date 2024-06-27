@@ -695,11 +695,15 @@ int validate_input_data(
     long len            =   0;
     if (*field_charp == 0) {
         mpz_t **cf  =   (mpz_t **)cfs;
-        for (long i = 0; i < 2*len; ++i) {
-            if (mpz_cmp_si(*(cf[0]), 0) == 0) {
-                invalid_gens[i]   =   1;
-                ctr++;
+        for (int i = 0; i < ngens; ++i) {
+            for (int j = 0; j < 2*lens[i]; ++j) {
+                if (mpz_cmp_si(*(cf[j+len]), 0) == 0) {
+                    invalid_gens[i]   =   1;
+                    ctr++;
+                    break;
+                }
             }
+            len += 2*lens[i];
         }
     } else {
         int32_t *cf =   (int32_t *)cfs;

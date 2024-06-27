@@ -996,7 +996,7 @@ void set_function_pointers(
       sba_reduce_dense_row_by_known_pivots_sparse_ff_32 =
         sba_reduce_dense_row_by_known_pivots_sparse_31_bit;
       /* if coeffs are smaller than 17 bit we can optimize reductions */
-      if (st->fc < pow(2, 18)) {
+      if (st->fc < (int32_t)(1) << 18) {
         reduce_dense_row_by_all_pivots_ff_32 =
           reduce_dense_row_by_all_pivots_17_bit;
         reduce_dense_row_by_old_pivots_ff_32 =
@@ -1006,7 +1006,6 @@ void set_function_pointers(
         reduce_dense_row_by_dense_new_pivots_ff_32  =
           reduce_dense_row_by_dense_new_pivots_17_bit;
       } else {
-        if (st->fc < pow(2, 31)) {
           reduce_dense_row_by_all_pivots_ff_32 =
             reduce_dense_row_by_all_pivots_31_bit;
           reduce_dense_row_by_old_pivots_ff_32 =
@@ -1015,16 +1014,6 @@ void set_function_pointers(
             reduce_dense_row_by_known_pivots_sparse_31_bit;
           reduce_dense_row_by_dense_new_pivots_ff_32  =
             reduce_dense_row_by_dense_new_pivots_31_bit;
-        } else {
-          reduce_dense_row_by_all_pivots_ff_32 =
-            reduce_dense_row_by_all_pivots_31_bit;
-          reduce_dense_row_by_old_pivots_ff_32 =
-            reduce_dense_row_by_old_pivots_31_bit;
-          reduce_dense_row_by_known_pivots_sparse_ff_32 =
-            reduce_dense_row_by_known_pivots_sparse_32_bit;
-          reduce_dense_row_by_dense_new_pivots_ff_32  =
-            reduce_dense_row_by_dense_new_pivots_31_bit;
-        }
       }
       break;
 
@@ -1053,7 +1042,7 @@ void set_function_pointers(
       normalize_initial_basis = normalize_initial_basis_ff_32;
 
       /* if coeffs are smaller than 17 bit we can optimize reductions */
-      if (st->fc < pow(2, 18)) {
+      if (st->fc < (int32_t)(1) << 18) {
         reduce_dense_row_by_all_pivots_ff_32 =
           reduce_dense_row_by_all_pivots_17_bit;
         reduce_dense_row_by_old_pivots_ff_32 =
@@ -1063,7 +1052,6 @@ void set_function_pointers(
         reduce_dense_row_by_dense_new_pivots_ff_32  =
           reduce_dense_row_by_dense_new_pivots_17_bit;
       } else {
-        if (st->fc < pow(2, 31)) {
           reduce_dense_row_by_all_pivots_ff_32 =
             reduce_dense_row_by_all_pivots_31_bit;
           reduce_dense_row_by_old_pivots_ff_32 =
@@ -1072,16 +1060,6 @@ void set_function_pointers(
             reduce_dense_row_by_known_pivots_sparse_31_bit;
           reduce_dense_row_by_dense_new_pivots_ff_32  =
             reduce_dense_row_by_dense_new_pivots_31_bit;
-        } else {
-          reduce_dense_row_by_all_pivots_ff_32 =
-            reduce_dense_row_by_all_pivots_31_bit;
-          reduce_dense_row_by_old_pivots_ff_32 =
-            reduce_dense_row_by_old_pivots_31_bit;
-          reduce_dense_row_by_known_pivots_sparse_ff_32 =
-            reduce_dense_row_by_known_pivots_sparse_32_bit;
-          reduce_dense_row_by_dense_new_pivots_ff_32  =
-            reduce_dense_row_by_dense_new_pivots_31_bit;
-        }
       }
   }
 }
@@ -1130,7 +1108,7 @@ static inline void reset_function_pointers(
         const uint32_t laopt
         )
 {
-    if (prime < pow(2,8)) {
+    if (prime < (int32_t)(1) << 8) {
         exact_linear_algebra    = exact_sparse_linear_algebra_ff_8;
         interreduce_matrix_rows = interreduce_matrix_rows_ff_8;
         normalize_initial_basis = normalize_initial_basis_ff_8;
@@ -1154,7 +1132,7 @@ static inline void reset_function_pointers(
             linear_algebra  = exact_sparse_linear_algebra_ff_8;
         }
     } else {
-        if (prime < pow(2,16)) {
+        if (prime < (int32_t)(1) << 16) {
             exact_linear_algebra    = exact_sparse_linear_algebra_ff_16;
             interreduce_matrix_rows = interreduce_matrix_rows_ff_16;
             normalize_initial_basis = normalize_initial_basis_ff_16;
@@ -1200,7 +1178,7 @@ static inline void reset_function_pointers(
               default:
                 linear_algebra  = exact_sparse_linear_algebra_ff_32;
             }
-            if (prime < pow(2,18)) {
+            if (prime < (int32_t)(1) << 18) {
                 reduce_dense_row_by_all_pivots_ff_32 =
                     reduce_dense_row_by_all_pivots_17_bit;
                 reduce_dense_row_by_old_pivots_ff_32 =
@@ -1210,7 +1188,6 @@ static inline void reset_function_pointers(
                 reduce_dense_row_by_dense_new_pivots_ff_32  =
                     reduce_dense_row_by_dense_new_pivots_17_bit;
             } else {
-              if (prime < pow(2,31)) {
                 reduce_dense_row_by_all_pivots_ff_32 =
                   reduce_dense_row_by_all_pivots_31_bit;
                 reduce_dense_row_by_old_pivots_ff_32 =
@@ -1219,16 +1196,6 @@ static inline void reset_function_pointers(
                   reduce_dense_row_by_known_pivots_sparse_31_bit;
                 reduce_dense_row_by_dense_new_pivots_ff_32  =
                   reduce_dense_row_by_dense_new_pivots_31_bit;
-              } else {
-                reduce_dense_row_by_all_pivots_ff_32 =
-                  reduce_dense_row_by_all_pivots_31_bit;
-                reduce_dense_row_by_old_pivots_ff_32 =
-                  reduce_dense_row_by_old_pivots_31_bit;
-                reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                  reduce_dense_row_by_known_pivots_sparse_32_bit;
-                reduce_dense_row_by_dense_new_pivots_ff_32  =
-                  reduce_dense_row_by_dense_new_pivots_31_bit;
-              }
             }
         }
     }
@@ -1238,14 +1205,14 @@ static inline void reset_trace_function_pointers(
         const uint32_t prime
         )
 {
-    if (prime < pow(2,8)) {
+    if (prime < (int32_t)(1) << 8) {
         exact_linear_algebra        = exact_sparse_linear_algebra_ff_8;
         interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
         normalize_initial_basis     = normalize_initial_basis_ff_8;
         application_linear_algebra  = exact_application_sparse_linear_algebra_ff_8;
         trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_8;
     } else {
-        if (prime < pow(2,16)) {
+        if (prime < (int32_t)(1) << 16) {
             exact_linear_algebra        = exact_sparse_linear_algebra_ff_16;
             interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
             normalize_initial_basis     = normalize_initial_basis_ff_16;
@@ -1257,7 +1224,7 @@ static inline void reset_trace_function_pointers(
             normalize_initial_basis     = normalize_initial_basis_ff_32;
             application_linear_algebra  = exact_application_sparse_linear_algebra_ff_32;
             trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_32;
-            if (prime < pow(2,18)) {
+            if (prime < (int32_t)(1) << 18) {
                 reduce_dense_row_by_all_pivots_ff_32 =
                     reduce_dense_row_by_all_pivots_17_bit;
                 reduce_dense_row_by_old_pivots_ff_32 =
@@ -1269,7 +1236,6 @@ static inline void reset_trace_function_pointers(
                 reduce_dense_row_by_dense_new_pivots_ff_32  =
                     reduce_dense_row_by_dense_new_pivots_17_bit;
             } else {
-              if (prime < pow(2,31)) {
                 reduce_dense_row_by_all_pivots_ff_32 =
                   reduce_dense_row_by_all_pivots_31_bit;
                 reduce_dense_row_by_old_pivots_ff_32 =
@@ -1280,18 +1246,6 @@ static inline void reset_trace_function_pointers(
                   reduce_dense_row_by_known_pivots_sparse_31_bit;
                 reduce_dense_row_by_dense_new_pivots_ff_32  =
                   reduce_dense_row_by_dense_new_pivots_31_bit;
-              } else {
-                reduce_dense_row_by_all_pivots_ff_32 =
-                  reduce_dense_row_by_all_pivots_31_bit;
-                reduce_dense_row_by_old_pivots_ff_32 =
-                  reduce_dense_row_by_old_pivots_31_bit;
-                trace_reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                  trace_reduce_dense_row_by_known_pivots_sparse_32_bit;
-                reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                  reduce_dense_row_by_known_pivots_sparse_32_bit;
-                reduce_dense_row_by_dense_new_pivots_ff_32  =
-                  reduce_dense_row_by_dense_new_pivots_31_bit;
-              }
             }
         }
     }

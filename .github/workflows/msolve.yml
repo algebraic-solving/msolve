@@ -36,7 +36,7 @@ jobs:
                if [ "$RUNNER_OS" == "Linux" ]; then
                     ./configure
                elif [ "$RUNNER_OS" == "macOS" ]; then
-                    ./configure LDFLAGS="-L$(brew --prefix)/lib/" CFLAGS="-I$(brew --prefix)/include/"
+                    ./configure LDFLAGS="-L$(brew --prefix)/lib/" CFLAGS="-g -O2 -I$(brew --prefix)/include/"
                else
                     echo "$RUNNER_OS not supported"
                     exit 1

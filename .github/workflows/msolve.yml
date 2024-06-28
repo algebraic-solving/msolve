@@ -46,4 +46,12 @@ jobs:
       - name: make check
         run: make check
       - name: make distcheck
-        run: make distcheck
+        run: |
+               if [ "$RUNNER_OS" == "Linux" ]; then
+                    make distcheck
+               elif [ "$RUNNER_OS" == "macOS" ]; then
+                    make distcheck LDFLAGS="-L$(brew --prefix)/lib/" CFLAGS="-g -O2 -I$(brew --prefix)/include/"
+               else
+                    echo "$RUNNER_OS not supported"
+                    exit 1
+               fi

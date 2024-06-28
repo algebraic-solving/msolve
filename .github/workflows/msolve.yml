@@ -25,6 +25,9 @@ jobs:
                     sudo apt install libgmp-dev libflint-dev libmpfr-dev libntl-dev
                elif [ "$RUNNER_OS" == "macOS" ]; then
                     brew install autoconf automake libtool gmp flint mpfr ntl
+                    export LDFLAGS="-L$(brew --prefix)/lib"
+                    export CFLAGS="-I$(brew --prefix)/include"
+
                else
                     echo "$RUNNER_OS not supported"
                     exit 1
@@ -32,15 +35,7 @@ jobs:
       - name: autogen
         run: ./autogen.sh
       - name: configure
-        run: |
-               if [ "$RUNNER_OS" == "Linux" ]; then
-                    ./configure
-               elif [ "$RUNNER_OS" == "macOS" ]; then
-                    ./configure LDFLAGS="-L$(brew --prefix)/lib/" CFLAGS="-g -O2 -I$(brew --prefix)/include/"
-               else
-                    echo "$RUNNER_OS not supported"
-                    exit 1
-               fi
+        run: ./configure
       - name: make
         run: make
       - name: make check

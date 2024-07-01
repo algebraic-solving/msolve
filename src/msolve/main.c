@@ -25,7 +25,7 @@
 #define IO_DEBUG 0
 
 static inline void display_help(char *str){
-  fprintf(stdout, "\nmsolve library for polynomial system solving\n");
+  fprintf(stdout, "\nmsolve library for polynomial system solving, version %s\n", VERSION);
   fprintf(stdout, "implemented by J. Berthomieu, C. Eder, M. Safey El Din\n");
   fprintf(stdout, "\n");
   /* fprintf(stdout, "commit hash: %s\n\n", GIT_COMMIT_HASH); */
@@ -137,6 +137,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "-u UHT   Number of steps after which the\n");
   fprintf(stdout, "         hash table is newly generated.\n");
   fprintf(stdout, "         Default: 0, i.e. no update.\n");
+  fprintf(stdout, "-V       Prints msolve's version\n");
 }
 
 static void getoptions(
@@ -172,7 +173,7 @@ static void getoptions(
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:d:";
+  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:d:Vf:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'N':
@@ -180,6 +181,9 @@ static void getoptions(
       break;
     case 'h':
       display_help(argv[0]);
+      exit(0);
+    case 'V':
+      fprintf(stdout, "%s\n", VERSION);
       exit(0);
     case 'e':
       *elim_block_len = strtol(optarg, NULL, 10);

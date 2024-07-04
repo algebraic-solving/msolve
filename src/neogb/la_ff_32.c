@@ -361,7 +361,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
         /* found reducer row, get multiplier */
         const int64_t mul = mod - dr[i];
         dts   = pivs[i];
-        printf("found reducer %d\n", i);
         if (i < ncl) {
             cfs   = bs->cf_32[dts[COEFFS]];
             /* set corresponding bit of reducer in reducer bit array */

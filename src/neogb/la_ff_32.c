@@ -362,14 +362,12 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
         const int64_t mul = mod - dr[i];
         dts   = pivs[i];
         if (i < ncl) {
-            cfs   = bs->cf_32[dts[COEFFS]];
             /* set corresponding bit of reducer in reducer bit array */
             if (tr > 0) {
                 rba[i/32] |= 1U << (i % 32);
             }
-        } else {
-            cfs   = mcf[dts[COEFFS]];
         }
+        cfs   = mcf[dts[COEFFS]];
 #if defined HAVE_AVX512_F
         const len_t len = dts[LENGTH];
         const len_t os  = len % 16;

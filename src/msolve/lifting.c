@@ -328,37 +328,80 @@ static inline void build_linear_forms(mpz_t *mpz_linear_forms,
   mpz_clear(lcm);
 }
 
+
+static inline int old_rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
+                                      rrec_data_t recdata, mpz_t modulus,
+                                      mpz_t rnum, mpz_t rden, mpz_t gden){
+  if(trace_det->done_trace < 2){
+  int b = ratrecon(rnum, rden, trace_det->trace_crt, modulus, recdata);
+  if(b == 1){
+    mpz_set(trace_det->trace_num, rnum);
+    mpz_set(trace_det->trace_den, rden);
+  }
+  else
+  {
+      trace_det->done_trace = 0;
+    return 0;
+  }
+  }
+  if(trace_det->done_det < 2){
+  int b = ratrecon(rnum, rden, trace_det->det_crt, modulus, recdata);
+  if(b == 1){
+    mpz_set(trace_det->det_num, rnum);
+    mpz_set(trace_det->det_den, rden);
+  }
+  else{
+      trace_det->done_det = 0;
+    return 0;
+  }
+  }
+  return 1;
+}
+
 static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
                                       rrec_data_t recdata, mpz_t modulus,
                                       mpz_t rnum, mpz_t rden, mpz_t gden) {
+    /*
     int nlifted = trace_det->nlifted;
     for(int32_t i = trace_det->nlifted; i < trace_det->nrows; i++){
         int b = ratreconwden(rnum, rden, trace_det->matmul_crt[i], modulus, gden, recdata);
         if(b == 1){
-            fprintf(stderr, "+[%d]+", i);
             mpz_set(trace_det->matmul_cfs_qq[2*i], rnum);
             mpz_set(trace_det->matmul_cfs_qq[2*i + 1], rden);
             nlifted++;
         }
     }
     trace_det->nlifted = nlifted;
-  int b =
-      ratreconwden(rnum, rden, trace_det->trace_crt, modulus, gden, recdata);
-  /* int b = ratrecon(rnum, rden, trace_det->trace_crt, modulus, recdata); */
-  if (b == 1) {
-    mpz_t gcd;
-    mpz_init(gcd);
-    mpz_set(trace_det->trace_num, rnum);
-    mpz_set(trace_det->trace_den, rden);
-    mpz_mul(trace_det->trace_den, trace_det->trace_den, gden);
-    mpz_gcd(gcd, trace_det->trace_num, trace_det->trace_den);
-    mpz_divexact(trace_det->trace_num, trace_det->trace_num, gcd);
-    mpz_divexact(trace_det->trace_den, trace_det->trace_den, gcd);
-    mpz_clear(gcd);
-  } else {
-    return 0;
-  }
-  b = ratreconwden(rnum, rden, trace_det->det_crt, modulus, gden, recdata);
+    */
+    
+    if(trace_det->done_det > 1 && trace_det->done_trace > 1){
+        return 1;
+    }
+    
+    if(old_rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden, gden)){
+        return 1;
+    }
+#if LIFTMATRIX == 1
+    else{
+        return 0;
+    }
+    int b =
+        ratreconwden(rnum, rden, trace_det->trace_crt, modulus, gden, recdata);
+    if (b == 1) {
+      mpz_t gcd;
+      mpz_init(gcd);
+      mpz_set(trace_det->trace_num, rnum);
+      mpz_set(trace_det->trace_den, rden);
+      mpz_mul(trace_det->trace_den, trace_det->trace_den, gden);
+      mpz_gcd(gcd, trace_det->trace_num, trace_det->trace_den);
+      mpz_divexact(trace_det->trace_num, trace_det->trace_num, gcd);
+      mpz_divexact(trace_det->trace_den, trace_det->trace_den, gcd);
+      mpz_clear(gcd);
+    } else {
+        trace_det->done_trace = 0;
+        return 0;
+    }
+    b = ratreconwden(rnum, rden, trace_det->det_crt, modulus, gden, recdata);
 
   if (b == 1) {
     mpz_t gcd;
@@ -371,10 +414,12 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
     mpz_divexact(trace_det->det_den, trace_det->det_den, gcd);
     mpz_clear(gcd);
   } else {
-    return 0;
-  }
+      trace_det->done_det = 0;
+        return 0;
+     }
 
   return 1;
+#endif
 }
 
 static inline int check_trace(trace_det_fglm_mat_t trace_det,
@@ -416,30 +461,41 @@ static inline int rat_recon_array(mpz_t *res, mpz_t *crt, int32_t sz,
 static inline void
 rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
                   mpz_t modulus, rrec_data_t rdata,
-                  mpz_t rnum, mpz_t rden, long *matrec, int *mat_lifted) {
+                  mpz_t rnum, mpz_t rden, mpz_t *guessed_den, deg_t *matrec, int *mat_lifted) {
   const uint32_t nrows = crt_mat->nrows;
   const uint32_t ncols = crt_mat->ncols;
 
   mpz_t lcm, coef;
   mpz_init(lcm);
   mpz_init(coef);
-
+  mpz_t gden;
+  mpz_init(gden);
+  if((*matrec)>1){
+      mpz_set(gden, *guessed_den);
+  }
+  else{
+      mpz_set_ui(gden, 1);
+  }
   for (uint32_t i = *matrec; i < nrows; i++) {
     uint64_t c = i * ncols;
     mpz_set_ui(lcm, 1);
 
     for (uint32_t j = 0; j < ncols; j++) {
-      int b = 1;
+      int b = 0;
       mpz_mul(coef, crt_mat->dense_mat[c + j], lcm);
       mpz_mod(coef, coef, modulus);
-      b = ratrecon(rnum, rden, coef, modulus, rdata);
+//      b = ratrecon(rnum, rden, coef, modulus, rdata);
+      b = ratreconwden(rnum, rden, coef, modulus, gden, rdata);
       if (b == 1) {
         mpz_set(mpq_mat->dense_mat[2 * c + 2 * j], rnum);
         mpz_set(mpq_mat->dense_mat[2 * c + 2 * j + 1], rden);
         mpz_mul(mpq_mat->dense_mat[2 * c + 2 * j + 1],
                 mpq_mat->dense_mat[2 * c + 2 * j + 1], lcm);
+        mpz_mul(mpq_mat->dense_mat[2 * c + 2 * j + 1],
+                mpq_mat->dense_mat[2 * c + 2 * j + 1], gden);
         mpz_lcm(lcm, lcm, rden);
       } else {
+          mpz_clear(gden);
         mpz_clear(lcm);
         mpz_clear(coef);
         return ;
@@ -456,15 +512,64 @@ rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
                 mpq_mat->denoms[i]);
         mpz_divexact(mpq_mat->dense_mat[2 * c + 2 * j], mpq_mat->dense_mat[2 * c + 2 * j], 
                 mpq_mat->dense_mat[2 * c + 2 * j + 1]);
-        mpz_clear(mpq_mat->dense_mat[2 * c + 2 * j + 1]);
     }
     (*matrec)++;
   }
-  crt_mpz_matfglm_clear(crt_mat);
   mpz_clear(coef);
   mpz_clear(lcm);
+  mpz_clear(gden);
 
   *mat_lifted = 1;
+}
+
+static inline void check_matrix_and_linear_forms(mpq_matfglm_t mpq_mat, sp_matfglm_t *mod_mat, 
+        mpz_t *mpz_lin, uint32_t *mod_lin, const int nlins, const nvars_t nv,
+        int *mat_lifted, int* lin_lifted, deg_t *oldmatrec_checked, deg_t *matrec_checked, const uint32_t prime){
+    *oldmatrec_checked = *matrec_checked;
+    /* checks lifted linear forms */
+    nvars_t sz = nv + 1;
+    uint32_t cand;
+    if(*lin_lifted < 2){
+    for(int i = 0; i < nlins; i++){
+        nvars_t n = i * sz;
+        nvars_t n2 = i * (sz + 1);
+        uint64_t inv = mpz_fdiv_ui(mpz_lin[n2 + sz], prime);
+        inv = mod_p_inverse_32(inv, prime);
+        for(nvars_t j = 0; j < sz; j++){
+            cand = (((uint64_t)mpz_fdiv_ui(mpz_lin[n2+j], prime)) * inv) % prime;
+            if(cand != mod_lin[n + j]){
+                fprintf(stderr, "Lin ici =>%d\n", i);
+                *lin_lifted = 0;
+                *matrec_checked = 0;
+                return;
+            }
+        }
+    }
+    *lin_lifted = 2;
+    }
+
+    /*checks multiplication matrix */
+    uint32_t len_xn = mod_mat->nrows; 
+    uint32_t dquot = mod_mat->ncols;
+    mod_mat->charac = prime;
+    uint64_t len1 = dquot * mod_mat->nrows;
+    int32_t len2 = dquot - mod_mat->nrows;
+
+    for(int32_t i = (*oldmatrec_checked); i < mpq_mat->nrows; i++){
+      uint64_t lc = mpz_fdiv_ui(mpq_mat->denoms[i], prime);
+      lc = mod_p_inverse_32(lc, prime);
+      uint32_t nc = i*mpq_mat->ncols;
+      for(uint32_t j = 0 ; j < mpq_mat->ncols; j++){
+        uint32_t mod = mpz_fdiv_ui(mpq_mat->dense_mat[2*(nc+j)], prime);
+        if(mod_mat->dense_mat[nc+j] != ( ((uint64_t)mod) * lc )% prime){
+            *mat_lifted = 0;
+            *matrec_checked = MAX(0, i);
+            return;
+        }
+      }
+      *matrec_checked = i + 1;
+    }
+    *mat_lifted = 2;
 }
 
 void initialize_rrec_data(rrec_data_t recdata) {

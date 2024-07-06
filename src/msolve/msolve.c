@@ -1185,12 +1185,12 @@ static inline int new_rational_reconstruction(
     const int info_level) {
 
 #if LIFTMATRIX == 1    
-  *oldmatrec_checked = *matrec_checked;
   if (info_level) {
-    if (*matrec_checked > (*oldmatrec_checked) && (*matrec_checked) <= crt_mat->nrows) {
+    if ((*matrec_checked) > (*oldmatrec_checked) && (*matrec_checked) <= crt_mat->nrows) {
       fprintf(stderr, "<%.2f%%>", 100.0 * (*matrec_checked) / crt_mat->nrows);
     }
   }
+  *oldmatrec_checked = *matrec_checked;
 #endif
 
 
@@ -1209,6 +1209,9 @@ static inline int new_rational_reconstruction(
         trace_det->done_trace++;
         *maxrec = trace_det->det_idx;
     }
+    else{
+        trace_det->done_det = 0;
+    }
   }
   //checks if det is lifted
   if (trace_det->done_det < 2) {
@@ -1216,6 +1219,9 @@ static inline int new_rational_reconstruction(
     if (check_det(trace_det, det_mod, prime)) {
         trace_det->done_det++;
         *maxrec = trace_det->det_idx;
+    }
+    else{
+        trace_det->done_det = 0;
     }
   }
   crt_lift_trace_det(trace_det, trace_mod, det_mod, mat, modulus, prod_crt, prime);
@@ -1249,7 +1255,16 @@ static inline int new_rational_reconstruction(
   mpz_sqrt(*guessed_num, *guessed_num);
   mpz_set(recdata->D, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
-
+/*
+  if(mpz_cmp(recdata->D, *guessed_den) > 0 && mpz_cmp_ui(*guessed_den, 1) != 0){
+    mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
+    mpz_sqrt(*guessed_num, *guessed_num);
+    mpz_set(recdata->N, *guessed_num);
+    mpz_set(recdata->D, *guessed_num);
+    mpz_fdiv_q(recdata->D, recdata->D, *guessed_den);
+    mpz_mul(recdata->N, recdata->N, *guessed_den);
+  }
+  */
 #if LIFTMATRIX == 1
   if (nlins && (*lin_lifted) < 2) {
     int boo = 0;
@@ -1289,17 +1304,13 @@ static inline int new_rational_reconstruction(
     if((*matrec_checked) == mpq_mat->nrows){
       (*matrec_checked) = (*matrec_checked) + 1;
       fprintf(stderr, "crt_mat should be cleared somewhere\n");
+      mpz_out_str(stderr, 10, *guessed_den);
+      fprintf(stderr, "\n");
 //    crt_mpz_matfglm_clear(crt_mat);
     }
   }
 #endif
 
-  if (mpz_cmp(recdata->D, *guessed_den) < 0) {
-    mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
-    mpz_sqrt(*guessed_num, *guessed_num);
-    mpz_set(recdata->N, *guessed_num);
-    mpz_set(recdata->D, *guessed_num);
-  }
   mpz_set_ui(rnum, 0);
   mpz_set_ui(rden, 1);
   if(trace_det->done_trace > 1){
@@ -1308,6 +1319,18 @@ static inline int new_rational_reconstruction(
           mpz_lcm(*guessed_den, *guessed_den, trace_det->det_den);
       }
   }
+  else{
+      if(trace_det->done_det> 1){
+          mpz_set(*guessed_den, trace_det->det_den);
+          if(trace_det->done_trace > 1){
+            mpz_lcm(*guessed_den, *guessed_den, trace_det->trace_den);
+          }
+       }
+  }
+  mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
+  mpz_sqrt(*guessed_num, *guessed_num);
+  mpz_set(recdata->N, *guessed_num);
+  mpz_set(recdata->D, *guessed_num);
   if(trace_det->done_trace < 2 || trace_det->done_det < 2){
       rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden, *guessed_den);
   }
@@ -1325,13 +1348,6 @@ static inline int new_rational_reconstruction(
     int b = 0;
 
     if (is_lifted[0] == 0) {
-
-      if (trace_det->done_trace > 1 && trace_det->done_det > 1) {
-        mpz_set(*guessed_den, trace_det->trace_den);
-        if (trace_det->done_det > 1) {
-          mpz_lcm(*guessed_den, *guessed_den, trace_det->det_den);
-        }
-      } 
 
       mpz_root(recdata->D, modulus, 3);
       mpz_fdiv_q(recdata->N, modulus, recdata->D);
@@ -1965,9 +1981,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
   while (gens->field_char == 0 && is_lucky_prime_ui(prime, bs_qq)) {
     prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   }
-  fprintf(stderr, "PRIME INIT IS CHANGED\n");
-  prime = 1099791887;
-  prime = 1147273199;
   primeinit = prime;
   lp->p[0] = primeinit;
 
@@ -2003,9 +2016,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
   uint32_t **lineqs_ptr =
       malloc(st->nthrds * sizeof(uint32_t *)); /*coeffs of linear forms*/
 
-//#if LIFTMATRIX == 1  
   mpz_t *crt_linear_forms, *mpq_linear_forms, *mpz_linear_forms;
-//#endif
 
   /*data for squared variables*/
   nvars_t **bsquvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
@@ -2016,9 +2027,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 
   int success = 1;
   int squares = 1;
-  fprintf(stderr, "Initial prime = %d\n", lp->p[0]);
-  /* 1147273199 raises the bug */
-  /* 1099791887 does not */
   int32_t *lmb_ori =
       initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn,
 
@@ -2044,7 +2052,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
   }
   int nv = bs_qq->ht->nv;
 
-#if LIFTMATRIX == 1
+#if LIFTMATRIX == 1 
   if (nlins) {
     crt_linear_forms = allocate_crt_linear_forms(nlins, nv, lineqs_ptr);
     mpq_linear_forms = allocate_mpq_linear_forms(nlins, nv);
@@ -2114,7 +2122,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
   mpq_matfglm_t mpq_mat;
   crt_mpz_matfglm_t crt_mat;
 #if LIFTMATRIX == 1
-
   crt_mpz_matfglm_initset(crt_mat, *bmatrix);
   mpq_matfglm_initset(mpq_mat, *bmatrix);
 #endif
@@ -2248,6 +2255,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 #if LIFTMATRIX == 1
       while (is_lucky_prime_ui(prime, bs_qq) || prime == primeinit ||
              is_lucky_matmul_prime_ui(prime, mpq_mat, mat_lifted)) {
+        prime = next_prime(prime);
+        if (prime >= lprime) {
+          prime = next_prime(1 << 30);
+        }
+        lp->p[i] = prime;
+      }
 #endif
       while (is_lucky_prime_ui(prime, bs_qq) || prime == primeinit) {
         prime = next_prime(prime);
@@ -2257,6 +2270,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
         lp->p[i] = prime;
       }
     }
+    
     prime = lp->p[st->nthrds - 1];
 
     double ca0 = realtime();
@@ -3108,8 +3122,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
   normalize_points(pts, nb, param->nvars);
 }
 
-static real_point_t *
-isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
+real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
                          interval **real_roots_ptr, int32_t precision,
                          int32_t nr_threads, int32_t info_level) {
   mpz_t *pol = malloc(param->elim->length * sizeof(mpz_t));
@@ -4621,7 +4634,7 @@ restart:
   }
 }
 
-static void export_julia_rational_parametrization_qq(
+void export_julia_rational_parametrization_qq(
     void *(*mallocp)(size_t), int32_t *load, int32_t *nvars, int32_t *dim,
     int32_t *dim_quot, int32_t **lens, char ***var_namesp,
     void **cfs_linear_form, void **cfs, void **real_sols_num,

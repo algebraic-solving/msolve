@@ -1863,6 +1863,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             }
      }
         if (*mat_lifted == 1 && *lin_lifted >= 1){
+            fprintf(stderr, "*");
            check_matrix_and_linear_forms(mpq_mat, bmatrix[i], 
                 mpz_linear_forms, blineqs[i], bnlins[i], bs_qq->ht->nv,
                 mat_lifted, lin_lifted, oldmatrec_checked, matrec_checked, lp->p[i]);
@@ -1883,20 +1884,6 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
         if (bs[i] != NULL) {
             free_basis_and_only_local_hash_table_data(&(bs[i]));
         }
-    }
-    if (*mat_lifted == 1 && *lin_lifted >= 1){
-        check_matrix_and_linear_forms(mpq_mat, bmatrix[i], 
-                mpz_linear_forms, blineqs[i], bnlins[i], bs_qq->ht->nv,
-                mat_lifted, lin_lifted, oldmatrec_checked, matrec_checked, lp->p[i]);
-    }
-    if (nmod_fglm_compute_apply_trace_data(
-            bmatrix[i], lp->p[i], nmod_params[i], bs_qq->ht->nv, bsz, bnlins[i],
-            blinvars[i], blineqs[i], bsquvars[i], bdata_fglm[i], bdata_bms[i],
-            nbsols, info_level, st)) {
-      bad_primes[i] = 1;
-    }
-    if (bs[i] != NULL) {
-      free_basis_and_only_local_hash_table_data(&(bs[i]));
     }
   st->nthrds = nthrds;
 }

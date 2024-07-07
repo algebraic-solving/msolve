@@ -212,6 +212,7 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
   trace_det->nlifted = 0;
   trace_det->matmul_indices = (uint64_t *)malloc(nrows * sizeof(uint64_t));
   for(uint32_t i = 0; i < nrows; i++){
+      trace_det->matmul_indices[i] = 0;
       uint64_t tmp = i*((*mod_mat)->ncols);
       for(uint32_t j = 0; j < (*mod_mat)->ncols; j++){
           if((*mod_mat)->dense_mat[tmp+j] != 0){
@@ -222,6 +223,7 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
   }
   trace_det->matmul_crt = (mpz_t *)malloc(nrows * sizeof(mpz_t));
   for(uint32_t i = 0; i < nrows; i++){
+      fprintf(stderr, "[%d]", (*mod_mat)->dense_mat[trace_det->matmul_indices[i]]);
       mpz_init_set_ui(trace_det->matmul_crt[i], (*mod_mat)->dense_mat[trace_det->matmul_indices[i]]);
   }
   trace_det->matmul_cfs_qq = (mpz_t *)malloc(2 * nrows * sizeof(mpz_t));

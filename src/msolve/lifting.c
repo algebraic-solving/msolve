@@ -21,13 +21,12 @@
 /* Initialization of sparse fglm matrix for crt */
 #include "msolve-data.h"
 static inline void crt_mpz_matfglm_initset(crt_mpz_matfglm_t crt_mat,
-                                           sp_matfglm_t *mod_mat) {
+                                           sp_matfglm_t *mod_mat){
   crt_mat->ncols = mod_mat->ncols;
   crt_mat->nrows = mod_mat->nrows;
   uint64_t sz = crt_mat->nrows * crt_mat->ncols;
-
   crt_mat->dense_mat = (mpz_t *)malloc(sz * sizeof(mpz_t));
-  for (uint64_t i = 0; i < sz; i++) {
+  for (uint64_t i = 0; i < sz; i++){
     mpz_init_set_ui(crt_mat->dense_mat[i], mod_mat->dense_mat[i]);
   }
   long diff = crt_mat->ncols - crt_mat->nrows;
@@ -36,20 +35,20 @@ static inline void crt_mpz_matfglm_initset(crt_mpz_matfglm_t crt_mat,
   crt_mat->dense_idx = malloc(crt_mat->nrows * sizeof(uint32_t));
   crt_mat->dst = malloc(crt_mat->nrows * sizeof(uint32_t));
 
-  for (long i = 0; i < diff; i++) {
+  for (long i = 0; i < diff; i++){
     crt_mat->triv_idx[i] = mod_mat->triv_idx[i];
     crt_mat->triv_pos[i] = mod_mat->triv_pos[i];
   }
-  for (long i = 0; i < crt_mat->nrows; i++) {
+  for (long i = 0; i < crt_mat->nrows; i++){
     crt_mat->dense_idx[i] = mod_mat->dense_idx[i];
     crt_mat->dst[i] = mod_mat->dst[i];
   }
 }
 
-static inline void crt_mpz_matfglm_clear(crt_mpz_matfglm_t crt_mat) {
+static inline void crt_mpz_matfglm_clear(crt_mpz_matfglm_t crt_mat){
   uint64_t sz = crt_mat->nrows * crt_mat->ncols;
 
-  for (uint64_t i = 0; i < sz; i++) {
+  for (uint64_t i = 0; i < sz; i++){
     mpz_clear(crt_mat->dense_mat[i]);
   }
   free(crt_mat->dense_mat);
@@ -68,11 +67,11 @@ static inline void mpz_matfglm_initset(mpz_matfglm_t mpz_mat,
   mpz_mat->dense_mat = malloc(mpz_mat->ncols * mpz_mat->nrows * sizeof(mpz_t));
   uint64_t sz = mpz_mat->nrows * mpz_mat->ncols;
   for (uint64_t i = 0; i < sz; i++) {
-    mpz_init_set_ui(mpz_mat->dense_mat[i], 0);
+    mpz_init(mpz_mat->dense_mat[i]);
   }
-  mpz_mat->denoms = calloc(mpz_mat->nrows, sizeof(mpz_t));
+  mpz_mat->denoms = malloc(mpz_mat->nrows * sizeof(mpz_t));
   for (uint64_t i = 0; i < mpz_mat->nrows; i++) {
-    mpz_init_set_ui(mpz_mat->denoms[i], 1);
+    mpz_init(mpz_mat->denoms[i]);
   }
   long diff = mpz_mat->ncols - mpz_mat->nrows;
   mpz_mat->triv_idx = calloc(diff, sizeof(uint32_t));
@@ -114,7 +113,7 @@ static inline void mpq_matfglm_initset(mpq_matfglm_t mpq_mat,
   mpq_mat->ncols = mod_mat->ncols;
   mpq_mat->nrows = mod_mat->nrows;
   mpq_mat->dense_mat =
-      calloc(2 * mpq_mat->ncols * mpq_mat->nrows, sizeof(mpz_t));
+      malloc(2 * mpq_mat->ncols * mpq_mat->nrows * sizeof(mpz_t));
   mpq_mat->denoms = malloc(mpq_mat->nrows * sizeof(mpz_t));
   for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
     mpz_init(mpq_mat->denoms[i]);
@@ -124,9 +123,9 @@ static inline void mpq_matfglm_initset(mpq_matfglm_t mpq_mat,
   for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
     uint64_t c = 2 * i * mpq_mat->ncols;
     for (uint32_t j = 0; j < nc; j++) {
-      mpz_init_set_ui(mpq_mat->dense_mat[c + j], 0);
+      mpz_init(mpq_mat->dense_mat[c + j]);
       j++;
-      mpz_init_set_ui(mpq_mat->dense_mat[c + j], 1);
+      mpz_init(mpq_mat->dense_mat[c + j]);
     }
   }
   long diff = mpq_mat->ncols - mpq_mat->nrows;
@@ -157,7 +156,6 @@ static inline void mpq_matfglm_clear(mpq_matfglm_t mpq_mat) {
     uint64_t c = 2 * i * mpq_mat->ncols;
     for (uint32_t j = 0; j < nc; j++) {
       mpz_clear(mpq_mat->dense_mat[c + j]);
-      mpz_clear(mpq_mat->dense_mat[c + j + 1]);
     }
   }
   free(mpq_mat->dense_mat);
@@ -170,9 +168,18 @@ static inline void mpq_matfglm_clear(mpq_matfglm_t mpq_mat) {
 
 static inline void mpq_matfglm_partial_clear(mpq_matfglm_t mpq_mat) {
   /* entries of mpq_mat->denoms are cleared previously when building mpz_mat */
+  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
+    mpz_clear(mpq_mat->denoms[i]);
+  }
   free(mpq_mat->denoms);
 
-  /* entries of mpq_mat->denoms are cleared previously when building mpz_mat */
+  uint64_t nc = mpq_mat->ncols;
+  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
+    uint64_t c = 2 * i * mpq_mat->ncols;
+    for (uint32_t j = 0; j < nc; j++) {
+      mpz_clear(mpq_mat->dense_mat[c + 2 * j]);
+    }
+  }
   free(mpq_mat->dense_mat);
 
   free(mpq_mat->triv_idx);
@@ -180,6 +187,7 @@ static inline void mpq_matfglm_partial_clear(mpq_matfglm_t mpq_mat) {
   free(mpq_mat->dense_idx);
   free(mpq_mat->dst);
 }
+
 
 static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
                                      uint32_t trace_mod, uint32_t det_mod,
@@ -224,9 +232,7 @@ static inline void crt_lift_dense_rows(mpz_t *rows, uint32_t *mod_rows,
                                        mpz_t modulus, mpz_t prod, int32_t prime,
                                        mpz_t tmp, const int nthrds) {
   len_t i;
-
   for (i = start; i < end; i++) {
-
     mpz_CRT_ui(rows[i], rows[i], modulus, mod_rows[i], prime, prod, tmp, 1);
   }
 }
@@ -305,20 +311,21 @@ static inline void build_mpz_matrix(mpq_matfglm_t mpq_mat,
     fprintf(stderr, "\n");
   }
 #endif
-  for (uint32_t i = 0; i < nrows; i++) {
-    mpz_set(mpz_mat->denoms[i], mpq_mat->denoms[i]);
-    uint64_t c = i * ncols;
-    for (uint32_t j = 0; j < ncols; j++) {
-      mpz_set(mpz_mat->dense_mat[c + j], mpq_mat->dense_mat[2 * c + 2 * j]);
-      mpz_mul(mpz_mat->dense_mat[c + j], mpz_mat->dense_mat[c + j],
-              mpq_mat->denoms[i]);
-      mpz_divexact(mpz_mat->dense_mat[c + j], mpz_mat->dense_mat[c + j],
-                   mpq_mat->dense_mat[2 * c + 2 * j + 1]);
-      mpz_clear(mpq_mat->dense_mat[2 * c + 2 * j]);
-      mpz_clear(mpq_mat->dense_mat[2 * c + 2 * j + 1]);
-    }
-    mpz_clear(mpq_mat->denoms[i]);
-  }
+
+//  for (uint32_t i = 0; i < nrows; i++) {
+//    mpz_set(mpz_mat->denoms[i], mpq_mat->denoms[i]);
+//    uint64_t c = i * ncols;
+//    for (uint32_t j = 0; j < ncols; j++) {
+//      mpz_set(mpz_mat->dense_mat[c + j], mpq_mat->dense_mat[2 * c + 2 * j]);
+//      mpz_mul(mpz_mat->dense_mat[c + j], mpz_mat->dense_mat[c + j],
+//              mpq_mat->denoms[i]);
+//      mpz_divexact(mpz_mat->dense_mat[c + j], mpz_mat->dense_mat[c + j],
+//                   mpq_mat->dense_mat[2 * c + 2 * j + 1]);
+//      mpz_clear(mpq_mat->dense_mat[2 * c + 2 * j]);
+//      mpz_clear(mpq_mat->dense_mat[2 * c + 2 * j + 1]);
+//    }
+//    mpz_clear(mpq_mat->denoms[i]);
+//  }
 #ifdef DEBUGLIFTMAT
   fprintf(stderr, "\nMPZMAT = \n");
   for (uint32_t i = 0; i < nrows; i++) {
@@ -407,13 +414,12 @@ static inline int rat_recon_array(mpz_t *res, mpz_t *crt, int32_t sz,
   return 1;
 }
 
-static inline int64_t
+static inline void
 rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
-                  mpz_matfglm_t mpz_mat, mpz_t modulus, rrec_data_t rdata,
+                  mpz_t modulus, rrec_data_t rdata,
                   mpz_t rnum, mpz_t rden, long *matrec, int *mat_lifted) {
   const uint32_t nrows = crt_mat->nrows;
   const uint32_t ncols = crt_mat->ncols;
-  int64_t cnt = 0;
 
   mpz_t lcm, coef;
   mpz_init(lcm);
@@ -434,17 +440,24 @@ rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
         mpz_mul(mpq_mat->dense_mat[2 * c + 2 * j + 1],
                 mpq_mat->dense_mat[2 * c + 2 * j + 1], lcm);
         mpz_lcm(lcm, lcm, rden);
-        cnt++;
       } else {
         mpz_clear(lcm);
         mpz_clear(coef);
-        return c;
+        return ;
       }
     }
     mpz_set_ui(mpq_mat->denoms[i], 1);
     for (uint32_t j = 0; j < ncols; j++) {
       mpz_lcm(mpq_mat->denoms[i], mpq_mat->denoms[i],
               mpq_mat->dense_mat[2 * c + 2 * j + 1]);
+    }
+
+    for(uint32_t j = 0; j < ncols; j++){
+        mpz_mul(mpq_mat->dense_mat[2 * c+ 2 * j], mpq_mat->dense_mat[2 * c+ 2 * j], 
+                mpq_mat->denoms[i]);
+        mpz_divexact(mpq_mat->dense_mat[2 * c + 2 * j], mpq_mat->dense_mat[2 * c + 2 * j], 
+                mpq_mat->dense_mat[2 * c + 2 * j + 1]);
+        mpz_clear(mpq_mat->dense_mat[2 * c + 2 * j + 1]);
     }
     (*matrec)++;
   }
@@ -453,10 +466,10 @@ rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
   mpz_clear(lcm);
 
   *mat_lifted = 1;
-  build_mpz_matrix(mpq_mat, mpz_mat, *mat_lifted);
-
-  mpq_matfglm_partial_clear(mpq_mat);
-  return cnt;
+//  build_mpz_matrix(mpq_mat, mpz_mat, *mat_lifted);
+//
+//  fprintf(stderr, "mpq_mat cleared\n");
+//  mpq_matfglm_partial_clear(mpq_mat);
 }
 
 void initialize_rrec_data(rrec_data_t recdata) {

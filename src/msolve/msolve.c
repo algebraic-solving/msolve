@@ -1173,7 +1173,7 @@ returns 0 if rational reconstruction failed
 
 static inline int new_rational_reconstruction(
     mpz_param_t mpz_param, mpz_param_t tmp_mpz_param, param_t *nmod_param,
-    mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat, mpz_matfglm_t mpz_mat,
+    mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat, 
     nvars_t nlins, nvars_t *linvars, uint32_t *lineqs, mpz_t *crt_linear_forms,
     mpz_t *mpq_linear_forms, mpz_t *mpz_linear_forms,
     trace_det_fglm_mat_t trace_det, sp_matfglm_t *mat, mpz_upoly_t numer,
@@ -1258,7 +1258,7 @@ static inline int new_rational_reconstruction(
   }
   if (*matrec < crt_mat->nrows) {
     long old = *matrec;
-    rat_recon_matfglm(mpq_mat, crt_mat, mpz_mat, modulus, recdata, rnum, rden,
+    rat_recon_matfglm(mpq_mat, crt_mat, modulus, recdata, rnum, rden,
                       matrec, mat_lifted);
     if (info_level) {
       if (*matrec > old) {
@@ -1270,8 +1270,8 @@ static inline int new_rational_reconstruction(
   if ((*matrec) == mpq_mat->nrows && (*lin_lifted) == 1) {
     (*matrec) = (*matrec) + 1;
     mpz_set_ui(*guessed_den, 1);
-    for (uint32_t i = 0; i < mpz_mat->nrows; i++) {
-      mpz_lcm(*guessed_den, *guessed_den, mpz_mat->denoms[i]);
+    for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
+      mpz_lcm(*guessed_den, *guessed_den, mpq_mat->denoms[i]);
     }
     *mat_lifted = 1;
   }
@@ -1818,10 +1818,10 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
       if (*mat_lifted == 2 && *lin_lifted == 2) {
         compute_modular_linear_forms(bnlins[i], bs_qq->ht->nv + 1, blineqs[i],
                                    mpz_linear_forms, lp->p[i]);
-        compute_modular_matrix(bmatrix[i], mpq_mat, lp->p[i]);
-     } else {
-        if(equal_staircase(leadmons_current[i], leadmons_ori[i],
-                    num_gb[i], num_gb[i], bs[i]->ht->nv)){
+      compute_modular_matrix(bmatrix[i], mpq_mat, lp->p[i]);
+    } else {
+      if (equal_staircase(leadmons_current[i], leadmons_ori[i], num_gb[i],
+                          num_gb[i], bs[i]->ht->nv)) {
 
             set_linear_poly(bnlins[i], blineqs[i], blinvars[i], bs[i]->ht,
                     leadmons_current[i], bs[i]);
@@ -1928,13 +1928,13 @@ void set_linear_function_pointer(int32_t fc) {
 }
 
 static inline int is_lucky_matmul_prime_ui(uint32_t prime,
-                                           mpz_matfglm_t mpz_mat,
+                                           mpq_matfglm_t mpq_mat,
                                            int mat_lifted) {
   if (mat_lifted == 0) {
     return 0;
   }
-  for (uint32_t i = 0; i < mpz_mat->nrows; i++) {
-    if (mpz_fdiv_ui(mpz_mat->denoms[i], prime) == 0) {
+  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
+    if (mpz_fdiv_ui(mpq_mat->denoms[i], prime) == 0) {
       return 1;
     }
   }
@@ -2113,7 +2113,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   uint32_t **lineqs_ptr =
       malloc(st->nthrds * sizeof(uint32_t *)); /*coeffs of linear forms*/
 
+#if LIFTMATRIX == 1  
   mpz_t *crt_linear_forms, *mpq_linear_forms, *mpz_linear_forms;
+#endif
 
   /*data for squared variables*/
   nvars_t **bsquvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
@@ -2223,14 +2225,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       return 1;
     }
   }
+#if LIFTMATRIX == 1
   crt_mpz_matfglm_t crt_mat;
   mpq_matfglm_t mpq_mat;
-  mpz_matfglm_t mpz_mat;
 
-#if LIFTMATRIX == 1
   crt_mpz_matfglm_initset(crt_mat, *bmatrix);
   mpq_matfglm_initset(mpq_mat, *bmatrix);
-  mpz_matfglm_initset(mpz_mat, *bmatrix);
 #endif
 
   /* duplicate data for multi-threaded multi-mod computation */
@@ -2316,10 +2316,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   long nbadprimes = 0;
 
-  int *is_lifted = malloc(sizeof(int) * nr_vars);
-  for (int i = 0; i < nr_vars; ++i) {
-    is_lifted[i] = 0;
-  }
+  int *is_lifted = calloc(nr_vars, sizeof(int));
   int mat_lifted = 0;
   int lin_lifted = 0;
   int nbdoit = 1;
@@ -2360,7 +2357,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       }
       lp->p[i] = prime;
       while (is_lucky_prime_ui(prime, bs_qq) || prime == primeinit ||
-             is_lucky_matmul_prime_ui(prime, mpz_mat, mat_lifted)) {
+             is_lucky_matmul_prime_ui(prime, mpq_mat, mat_lifted)) {
         prime = next_prime(prime);
         if (prime >= lprime) {
           prime = next_prime(1 << 30);
@@ -2440,7 +2437,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         if (mcheck == 1) {
           br = new_rational_reconstruction(
               *mpz_paramp, tmp_mpz_param, nmod_params[i], mpq_mat, crt_mat,
-              mpz_mat, bnlins[i], blinvars[i], lineqs_ptr[i], crt_linear_forms,
+              bnlins[i], blinvars[i], lineqs_ptr[i], crt_linear_forms,
               mpq_linear_forms, mpz_linear_forms, trace_det, bmatrix[i], numer,
               denom, modulus, prod_crt, lp->p[i], &result, rnum, rden, recdata,
               &guessed_num, &guessed_den, &maxrec, &matrec, is_lifted,
@@ -2475,7 +2472,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 #if LIFTMATRIX == 1
           crt_mpz_matfglm_clear(crt_mat);
           mpq_matfglm_clear(mpq_mat);
-          mpz_matfglm_clear(mpz_mat);
 #endif
           fprintf(stderr, "Many other data should be cleaned\n");
           return -4;
@@ -2507,6 +2503,14 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
+#if LIFTMATRIX == 1
+  mpq_matfglm_partial_clear(mpq_mat);
+#endif
+  mpz_linear_forms_clear(mpz_linear_forms, nlins, nv);
+  crt_linear_forms_clear(crt_linear_forms, nlins, nv);
+  mpq_linear_forms_clear(mpq_linear_forms, nlins, nv);
+
+
   (*mpz_paramp)->denom->length = (*mpz_paramp)->nsols;
   for (long i = 1; i <= (*mpz_paramp)->nsols; i++) {
     mpz_set((*mpz_paramp)->denom->coeffs[i - 1],
@@ -2519,15 +2523,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(stderr, "\n%d primes used\n", nprimes);
     fprintf(stderr, "Time for CRT + rational reconstruction = %.2f\n", strat);
   }
-
-#if LIFTMATRIX == 1
-  mpz_matfglm_clear(mpz_mat);
-#endif
   mpz_param_clear(tmp_mpz_param);
-  mpz_linear_forms_clear(mpz_linear_forms, nlins, nv);
-  crt_linear_forms_clear(crt_linear_forms, nlins, nv);
-  mpq_linear_forms_clear(mpq_linear_forms, nlins, nv);
-
   mpz_upoly_clear(numer);
   mpz_upoly_clear(denom);
   mpz_clear(guessed_num);

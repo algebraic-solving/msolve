@@ -1185,12 +1185,12 @@ static inline int new_rational_reconstruction(
     const int info_level) {
 
 #if LIFTMATRIX == 1    
-  *oldmatrec_checked = *matrec_checked;
   if (info_level) {
-    if (*matrec_checked > (*oldmatrec_checked) && (*matrec_checked) <= crt_mat->nrows) {
+    if ((*matrec_checked) > (*oldmatrec_checked) && (*matrec_checked) <= crt_mat->nrows) {
       fprintf(stderr, "<%.2f%%>", 100.0 * (*matrec_checked) / crt_mat->nrows);
     }
   }
+  *oldmatrec_checked = *matrec_checked;
 #endif
 
 
@@ -1209,6 +1209,9 @@ static inline int new_rational_reconstruction(
         trace_det->done_trace++;
         *maxrec = trace_det->det_idx;
     }
+    else{
+        trace_det->done_det = 0;
+    }
   }
   //checks if det is lifted
   if (trace_det->done_det < 2) {
@@ -1216,6 +1219,9 @@ static inline int new_rational_reconstruction(
     if (check_det(trace_det, det_mod, prime)) {
         trace_det->done_det++;
         *maxrec = trace_det->det_idx;
+    }
+    else{
+        trace_det->done_det = 0;
     }
   }
   crt_lift_trace_det(trace_det, trace_mod, det_mod, mat, modulus, prod_crt, prime);
@@ -1249,7 +1255,16 @@ static inline int new_rational_reconstruction(
   mpz_sqrt(*guessed_num, *guessed_num);
   mpz_set(recdata->D, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
-
+/*
+  if(mpz_cmp(recdata->D, *guessed_den) > 0 && mpz_cmp_ui(*guessed_den, 1) != 0){
+    mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
+    mpz_sqrt(*guessed_num, *guessed_num);
+    mpz_set(recdata->N, *guessed_num);
+    mpz_set(recdata->D, *guessed_num);
+    mpz_fdiv_q(recdata->D, recdata->D, *guessed_den);
+    mpz_mul(recdata->N, recdata->N, *guessed_den);
+  }
+  */
 #if LIFTMATRIX == 1
   if (nlins && (*lin_lifted) < 2) {
     int boo = 0;
@@ -1289,17 +1304,13 @@ static inline int new_rational_reconstruction(
     if((*matrec_checked) == mpq_mat->nrows){
       (*matrec_checked) = (*matrec_checked) + 1;
       fprintf(stderr, "crt_mat should be cleared somewhere\n");
+      mpz_out_str(stderr, 10, *guessed_den);
+      fprintf(stderr, "\n");
 //    crt_mpz_matfglm_clear(crt_mat);
     }
   }
 #endif
 
-  if (mpz_cmp(recdata->D, *guessed_den) < 0) {
-    mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
-    mpz_sqrt(*guessed_num, *guessed_num);
-    mpz_set(recdata->N, *guessed_num);
-    mpz_set(recdata->D, *guessed_num);
-  }
   mpz_set_ui(rnum, 0);
   mpz_set_ui(rden, 1);
   if(trace_det->done_trace > 1){
@@ -1308,6 +1319,18 @@ static inline int new_rational_reconstruction(
           mpz_lcm(*guessed_den, *guessed_den, trace_det->det_den);
       }
   }
+  else{
+      if(trace_det->done_det> 1){
+          mpz_set(*guessed_den, trace_det->det_den);
+          if(trace_det->done_trace > 1){
+            mpz_lcm(*guessed_den, *guessed_den, trace_det->trace_den);
+          }
+       }
+  }
+  mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
+  mpz_sqrt(*guessed_num, *guessed_num);
+  mpz_set(recdata->N, *guessed_num);
+  mpz_set(recdata->D, *guessed_num);
   if(trace_det->done_trace < 2 || trace_det->done_det < 2){
       rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden, *guessed_den);
   }
@@ -1325,13 +1348,6 @@ static inline int new_rational_reconstruction(
     int b = 0;
 
     if (is_lifted[0] == 0) {
-
-      if (trace_det->done_trace > 1 && trace_det->done_det > 1) {
-        mpz_set(*guessed_den, trace_det->trace_den);
-        if (trace_det->done_det > 1) {
-          mpz_lcm(*guessed_den, *guessed_den, trace_det->det_den);
-        }
-      } 
 
       mpz_root(recdata->D, modulus, 3);
       mpz_fdiv_q(recdata->N, modulus, recdata->D);
@@ -1653,15 +1669,6 @@ static int32_t *initial_modular_step(
     return NULL;
   }
 
-  check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bs->ht, leadmons[0],
-                            bs);
-  if (has_dimension_zero(bs->lml, bs->ht->nv, leadmons[0])) {
-    long dquot = 0;
-    int32_t *lmb = monomial_basis(bs->lml, bs->ht->nv, leadmons[0], &dquot);
-
-    if (md->info_level) {
-      fprintf(stderr, "Dimension of quotient: %ld\n", dquot);
-    }
 
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bs->ht,
                               leadmons[0], bs);
@@ -1692,6 +1699,7 @@ static int32_t *initial_modular_step(
 							    bs->ht->nv,
 							    fc, unstable_staircase,
 							    md->info_level);
+
 	    if(*bmatrix == NULL){
 	      *success = 0;
 	      *dim = 0;
@@ -1710,28 +1718,16 @@ static int32_t *initial_modular_step(
         free_basis_without_hash_table(&(bs));
         *dim = 0;
         *dquot_ori = dquot;
-        return NULL;
-      }
-
-      *bsz = bs->ht->nv - (*nlins_ptr); // nlins ;
-
-      check_and_set_vars_squared_in_monomial_basis(squvars, lmb, dquot,
-                                                   gens->nvars);
-      *bparam = nmod_fglm_compute_trace_data(
-          *bmatrix, fc, bs->ht->nv, *bsz, *nlins_ptr, linvars, lineqs_ptr[0],
-          squvars, md->info_level, bdata_fglm, bdata_bms, success, md);
+        return lmb;
     }
-    free_basis_without_hash_table(&(bs));
-    *dim = 0;
-    *dquot_ori = dquot;
-    return lmb;
-  } else {
-    *dim = 1;
-    *dquot_ori = -1;
-    free_basis_without_hash_table(&(bs));
-    return NULL;
-  }
+    else{
+        *dim  = 1;
+        *dquot_ori = -1;
+        free_basis_without_hash_table(&(bs));
+        return NULL;
+    }
 }
+
 
 
 
@@ -1778,7 +1774,6 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
                     int *lin_lifted, 
                     deg_t *oldmatrec_checked, 
                     deg_t *matrec_checked) {
-{
     st->info_level  = 0;
     st->f4_qq_round = 2;
 
@@ -1903,7 +1898,6 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
     if (bs[i] != NULL) {
       free_basis_and_only_local_hash_table_data(&(bs[i]));
     }
-  }
   st->nthrds = nthrds;
 }
 
@@ -2109,9 +2103,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   while (gens->field_char == 0 && is_lucky_prime_ui(prime, bs_qq)) {
     prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   }
-  fprintf(stderr, "PRIME INIT IS CHANGED\n");
-  prime = 1099791887;
-  prime = 1147273199;
   primeinit = prime;
   lp->p[0] = primeinit;
 
@@ -2150,9 +2141,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   uint32_t **lineqs_ptr =
       malloc(st->nthrds * sizeof(uint32_t *)); /*coeffs of linear forms*/
 
-//#if LIFTMATRIX == 1  
   mpz_t *crt_linear_forms, *mpq_linear_forms, *mpz_linear_forms;
-//#endif
 
   /*data for squared variables*/
   nvars_t **bsquvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
@@ -2201,7 +2190,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
   int nv = bs_qq->ht->nv;
 
-#if LIFTMATRIX == 1
+#if LIFTMATRIX == 1 
   if (nlins) {
     crt_linear_forms = allocate_crt_linear_forms(nlins, nv, lineqs_ptr);
     mpq_linear_forms = allocate_mpq_linear_forms(nlins, nv);
@@ -2271,7 +2260,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   mpq_matfglm_t mpq_mat;
   crt_mpz_matfglm_t crt_mat;
 #if LIFTMATRIX == 1
-
   crt_mpz_matfglm_initset(crt_mat, *bmatrix);
   mpq_matfglm_initset(mpq_mat, *bmatrix);
 #endif
@@ -2408,6 +2396,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 #if LIFTMATRIX == 1
       while (is_lucky_prime_ui(prime, bs_qq) || prime == primeinit ||
              is_lucky_matmul_prime_ui(prime, mpq_mat, mat_lifted)) {
+        prime = next_prime(prime);
+        if (prime >= lprime) {
+          prime = next_prime(1 << 30);
+        }
+        lp->p[i] = prime;
+      }
 #endif
       while (is_lucky_prime_ui(prime, bs_qq) || prime == primeinit) {
         prime = next_prime(prime);
@@ -2417,6 +2411,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         lp->p[i] = prime;
       }
     }
+    
     prime = lp->p[st->nthrds - 1];
 
     double ca0 = realtime();
@@ -2448,8 +2443,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 			    field_char, unstable_staircase, 0, /* info_level, */
 			    bs, lmb_ori, *dquot_ptr, lp,
 			    gens, &stf4, nsols, bad_primes,
-                mpz_mat, mat_lifted,
-                mpz_linear_forms, lin_lifted);
+                mpq_mat, &mat_lifted,
+                mpz_linear_forms, &lin_lifted, &oldmatrec_checked, &matrec_checked);
     double ca1 = realtime() - ca0;
 
     if (nprimes == 1) {
@@ -3293,8 +3288,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
   normalize_points(pts, nb, param->nvars);
 }
 
-static real_point_t *
-isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
+real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
                          interval **real_roots_ptr, int32_t precision,
                          int32_t nr_threads, int32_t info_level) {
   mpz_t *pol = malloc(param->elim->length * sizeof(mpz_t));
@@ -4898,7 +4892,7 @@ restart:
     }
 }
 
-static void export_julia_rational_parametrization_qq(
+void export_julia_rational_parametrization_qq(
     void *(*mallocp)(size_t), int32_t *load, int32_t *nvars, int32_t *dim,
     int32_t *dim_quot, int32_t **lens, char ***var_namesp,
     void **cfs_linear_form, void **cfs, void **real_sols_num,
@@ -5013,125 +5007,78 @@ static void export_julia_rational_parametrization_qq(
   }
 }
 
-void msolve_julia(void *(*mallocp)(size_t), int32_t *rp_ld, int32_t *rp_nr_vars,
-                  int32_t *rp_dim, int32_t *rp_dquot, int32_t **rp_lens,
-                  char ***rp_var_namesp, void **rp_cfs_linear_form,
-                  void **rp_cfs, int32_t *n_real_sols, void **real_sols_num,
-                  int32_t **real_sols_den, int32_t *lens, int32_t *exps,
-                  void *cfs, char **var_names, char *output_file,
-                  const uint32_t field_char, const int32_t mon_order,
-                  const int32_t elim_block_len, const int32_t nr_vars,
-                  const int32_t nr_gens, const int32_t initial_hts,
-                  const int32_t nr_threads, const int32_t max_nr_pairs,
-                  const int32_t reset_ht, const int32_t la_option,
-                  const int32_t use_signatures, const int32_t print_gb,
-                  const int32_t get_param, const int32_t genericity_handling,
-                  const int32_t precision, const int32_t info_level) {
-  /* timinigs */
-  double st0 = cputime();
-  double rt0 = realtime();
 
-  len_t i;
-  files_gb *files = calloc(1, sizeof(files_gb));
+void msolve_julia(
+        void *(*mallocp) (size_t),
+        int32_t *rp_ld,
+        int32_t *rp_nr_vars,
+        int32_t *rp_dim,
+        int32_t *rp_dquot,
+        int32_t **rp_lens,
+        char ***rp_var_namesp,
+        void **rp_cfs_linear_form,
+        void **rp_cfs,
+        int32_t *n_real_sols,
+        void **real_sols_num,
+        int32_t **real_sols_den,
+        int32_t *lens,
+        int32_t *exps,
+        void *cfs,
+        char **var_names,
+        char *output_file,
+        const uint32_t field_char,
+        const int32_t mon_order,
+        const int32_t elim_block_len,
+        const int32_t nr_vars,
+        const int32_t nr_gens,
+        const int32_t initial_hts,
+        const int32_t nr_threads,
+        const int32_t max_nr_pairs,
+        const int32_t reset_ht,
+        const int32_t la_option,
+        const int32_t use_signatures,
+        const int32_t print_gb,
+        const int32_t get_param,
+        const int32_t genericity_handling,
+        const int32_t precision,
+        const int32_t info_level
+        )
+{
+    /* timinigs */
+    double st0 = cputime();
+    double rt0 = realtime();
 
-  if (output_file != NULL) {
-    files->out_file = output_file;
-  }
+    len_t i;
+    files_gb *files = calloc(1, sizeof(files_gb));
 
-  data_gens_ff_t *gens = allocate_data_gens();
-
-  unsigned long nterms = 0;
-  for (i = 0; i < nr_gens; ++i) {
-    nterms += lens[i];
-  }
-  gens->nvars = nr_vars;
-  gens->ngens = nr_gens;
-  gens->field_char = field_char;
-  gens->change_var_order = -1;
-  gens->linear_form_base_coef = 0;
-  /* gens->vnames                = var_names; */
-  gens->vnames = (char **)malloc((unsigned long)nr_vars * sizeof(char *));
-  for (i = 0; i < nr_vars; ++i) {
-    gens->vnames[i] = calloc((unsigned long)strlen(var_names[i]), sizeof(char));
-    memcpy(gens->vnames[i], var_names[i],
-           (unsigned long)strlen(var_names[i]) * sizeof(char));
-  }
-  /* gens->lens                  = lens; */
-  gens->lens = (int32_t *)malloc((unsigned long)nr_gens * sizeof(int32_t));
-  memcpy(gens->lens, lens, (unsigned long)nr_gens * sizeof(int32_t));
-  /* gens->exps                  = exps; */
-  gens->exps = (int32_t *)malloc(nterms * nr_vars * sizeof(int32_t));
-  memcpy(gens->exps, exps, nterms * nr_vars * sizeof(int32_t));
-  gens->rand_linear = 0;
-
-  if (field_char > 0) {
-    gens->cfs = (int32_t *)malloc(nterms * sizeof(int32_t));
-    memcpy(gens->cfs, (int32_t *)cfs, nterms * sizeof(int32_t));
-    /* gens->cfs = (int32_t *)cfs; */
-  } else {
-    if (field_char == 0) {
-      gens->mpz_cfs = (mpz_t **)malloc(nterms * 2 * sizeof(mpz_t *));
-      for (i = 0; i < 2 * nterms; ++i) {
-        gens->mpz_cfs[i] = (mpz_t *)malloc(sizeof(mpz_t));
-        mpz_init_set(*(gens->mpz_cfs[i]), *(((mpz_t **)cfs)[i]));
-      }
+    if (output_file != NULL) {
+        files->out_file = output_file;
     }
-  }
 
-  /* data structures for parametrization */
-  param_t *param = NULL;
-  mpz_param_t mpz_param;
-  mpz_param_init(mpz_param);
+    data_gens_ff_t *gens = allocate_data_gens();
 
-  long nb_real_roots = 0;
-  interval *real_roots = NULL;
-  real_point_t *real_pts = NULL;
-
-  /* main msolve functionality */
-  int ret = core_msolve(
-      la_option, use_signatures, nr_threads, info_level, initial_hts,
-      max_nr_pairs, elim_block_len, reset_ht, 0 /* generate pbm */,
-      1 /* reduce_gb */, print_gb, 0 /*truncate_lifting*/, get_param,
-      genericity_handling, 0 /* saturate */, 0 /* colon */, 0 /* normal_form */,
-      0 /* normal_form_matrix */, 0 /* is_gb */, precision, files, gens, &param,
-      &mpz_param, &nb_real_roots, &real_roots, &real_pts);
-
-  if (ret == -1) {
-    exit(1);
-  }
-  *rp_dim = mpz_param->dim;
-
-  char **rp_var_names = NULL;
-  if (mpz_param->dim != -1) {
-    export_julia_rational_parametrization_qq(
-        mallocp, rp_ld, rp_nr_vars, rp_dim, rp_dquot, rp_lens, &rp_var_names,
-        rp_cfs_linear_form, rp_cfs, real_sols_num, real_sols_den, gens,
-        mpz_param, nb_real_roots, real_pts);
-  } else {
-    *rp_ld = -1;
-  }
-
-  /* clean up data storage, but do not free data handled by julia */
-
-  free(gens);
-  gens = NULL;
-
-  *rp_var_namesp = rp_var_names;
-
-  /* free parametrization */
-  free(param);
-  mpz_param_clear(mpz_param);
-
-  *n_real_sols = nb_real_roots;
-
-  free(real_roots);
-
-  if (nb_real_roots > 0) {
-    for (long i = 0; i < nb_real_roots; i++) {
-      real_point_clear(real_pts[i]);
+    unsigned long nterms  = 0;
+    for (i = 0; i < nr_gens; ++i) {
+        nterms  +=  lens[i];
     }
-    free(real_pts);
-  }
+    gens->nvars                 = nr_vars;
+    gens->ngens                 = nr_gens;
+    gens->field_char            = field_char;
+    gens->change_var_order      = -1;
+    gens->linear_form_base_coef = 0;
+    /* gens->vnames                = var_names; */
+    gens->vnames  = (char **)malloc((unsigned long)nr_vars * sizeof(char *));
+    for (i = 0; i < nr_vars; ++i) {
+        gens->vnames[i] = calloc((unsigned long)strlen(var_names[i]), sizeof(char));
+        memcpy(gens->vnames[i], var_names[i], (unsigned long)strlen(var_names[i]) * sizeof(char));
+    }
+    /* gens->lens                  = lens; */
+    gens->lens  = (int32_t *)malloc((unsigned long)nr_gens * sizeof(int32_t));
+    memcpy(gens->lens, lens, (unsigned long)nr_gens * sizeof(int32_t));
+    /* gens->exps                  = exps; */
+    gens->exps  = (int32_t *)malloc(nterms * nr_vars * sizeof(int32_t));
+    memcpy(gens->exps, exps, nterms * nr_vars * sizeof(int32_t));
+    gens->rand_linear           = 0;
 
     if (field_char > 0) {
         gens->cfs = (int32_t *)malloc(nterms * sizeof(int32_t));
@@ -5210,13 +5157,14 @@ void msolve_julia(void *(*mallocp)(size_t), int32_t *rp_ld, int32_t *rp_nr_vars,
         double rt1 = realtime();
         fprintf(stderr, "-------------------------------------------------\
 -----------------------------------\n");
-    fprintf(stderr,
-            "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
-            rt1 - rt0, st1 - st0);
-    fprintf(stderr, "-------------------------------------------------\
+        fprintf(stderr, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
+                rt1-rt0, st1-st0);
+        fprintf(stderr, "-------------------------------------------------\
 -----------------------------------\n");
-  }
+    }
 }
+
+
 
 /* The parameters themselves are handled by julia, thus we only
  * free what they are pointing to, julia's garbage collector then

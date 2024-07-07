@@ -340,7 +340,6 @@ static inline int old_rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
   }
   else
   {
-      trace_det->done_trace = 0;
     return 0;
   }
   }
@@ -351,7 +350,6 @@ static inline int old_rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
     mpz_set(trace_det->det_den, rden);
   }
   else{
-      trace_det->done_det = 0;
     return 0;
   }
   }
@@ -377,14 +375,12 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
     if(trace_det->done_det > 1 && trace_det->done_trace > 1){
         return 1;
     }
-    
+    /*
     if(old_rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden, gden)){
         return 1;
     }
-#if LIFTMATRIX == 1
-    else{
-        return 0;
-    }
+*/
+    if(trace_det->done_trace < 2){
     int b =
         ratreconwden(rnum, rden, trace_det->trace_crt, modulus, gden, recdata);
     if (b == 1) {
@@ -401,9 +397,12 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
         trace_det->done_trace = 0;
         return 0;
     }
-    b = ratreconwden(rnum, rden, trace_det->det_crt, modulus, gden, recdata);
+    }
 
-  if (b == 1) {
+    if(trace_det->done_det < 2){
+    int b = ratreconwden(rnum, rden, trace_det->det_crt, modulus, gden, recdata);
+
+    if (b == 1) {
     mpz_t gcd;
     mpz_init(gcd);
     mpz_set(trace_det->det_num, rnum);
@@ -417,9 +416,8 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
       trace_det->done_det = 0;
         return 0;
      }
-
+    }
   return 1;
-#endif
 }
 
 static inline int check_trace(trace_det_fglm_mat_t trace_det,
@@ -470,7 +468,7 @@ rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
   mpz_init(coef);
   mpz_t gden;
   mpz_init(gden);
-  if((*matrec)>1){
+  if((0==1) && (*matrec)>1){
       mpz_set(gden, *guessed_den);
   }
   else{

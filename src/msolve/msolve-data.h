@@ -209,6 +209,7 @@ typedef struct{
   uint32_t ncols; /* dimension of quotient */
   uint32_t nrows; /* number of non trivial lines */
   mpz_t *dense_mat; /*array of nrows*ncols*2 mpz_t coefficients (num, den)*/
+  mpz_t *denoms;
   uint32_t *triv_idx; /*array of indices of rows which are unit vectors*/
   uint32_t *triv_pos; /*position of '1' in unit vectors */
   uint32_t *dense_idx; /* array of rows which are NOT unit vectors */

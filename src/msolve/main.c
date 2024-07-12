@@ -22,7 +22,7 @@
 
 #define DEBUGGB 0
 #define DEBUGBUILDMATRIX 0
-#define IO_DEBUG 0
+#define IO_DEBUG 1
 
 static inline void display_help(char *str){
   fprintf(stdout, "\nmsolve library for polynomial system solving, version %s\n", VERSION);

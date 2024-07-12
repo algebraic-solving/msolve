@@ -22,7 +22,7 @@
 
 #define DEBUGGB 0
 #define DEBUGBUILDMATRIX 0
-#define IO_DEBUG 0
+#define IO_DEBUG 1
 
 static inline void display_help(char *str){
   fprintf(stdout, "\nmsolve library for polynomial system solving, version %s\n", VERSION);
@@ -417,9 +417,11 @@ int main(int argc, char **argv){
     gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));
     gens->elim = elim_block_len;
 
-    if(0 < field_char && field_char < pow(2, 15) && la_option > 2 && info_level){
-      fprintf(stderr, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
-      fprintf(stderr, "\t linear algebra option set to 2\n");
+    if(0 < field_char && field_char < pow(2, 15) && la_option > 2 ){
+        if(info_level){
+           fprintf(stderr, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
+           fprintf(stderr, "\t linear algebra option set to 2\n");
+        }
       la_option = 2;
     }
     

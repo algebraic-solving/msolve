@@ -18,6 +18,9 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
 /* Initialization of sparse fglm matrix for crt */
 #include "msolve-data.h"
 static inline void crt_mpz_matfglm_initset(crt_mpz_matfglm_t crt_mat,
@@ -563,11 +566,7 @@ static inline void check_matrix_and_linear_forms(mpq_matfglm_t mpq_mat, sp_matfg
     }
 
     /*checks multiplication matrix */
-    uint32_t len_xn = mod_mat->nrows; 
-    uint32_t dquot = mod_mat->ncols;
     mod_mat->charac = prime;
-    uint64_t len1 = dquot * mod_mat->nrows;
-    int32_t len2 = dquot - mod_mat->nrows;
 
     for(int32_t i = (*oldmatrec_checked); i < mpq_mat->nrows; i++){
       uint64_t lc = mpz_fdiv_ui(mpq_mat->denoms[i], prime);

@@ -2135,7 +2135,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   uint32_t **lineqs_ptr =
       malloc(st->nthrds * sizeof(uint32_t *)); /*coeffs of linear forms*/
 
-  mpz_t *crt_linear_forms, *mpq_linear_forms, *mpz_linear_forms;
+  mpz_t *crt_linear_forms = NULL; 
+  mpz_t *mpq_linear_forms = NULL;
+  mpz_t *mpz_linear_forms = NULL;
 
   /*data for squared variables*/
   nvars_t **bsquvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
@@ -2182,7 +2184,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       }
     }
   }
-  int nv = bs_qq->ht->nv;
 
 #if LIFTMATRIX == 1 
   if (nlins) {

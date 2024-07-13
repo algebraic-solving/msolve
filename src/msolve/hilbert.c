@@ -1325,7 +1325,6 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
 #endif
 
   while(new_length>0 && deg <= maxdeg){
-    uint64_t len_bs = ((*dquot) + new_length) * (nvars);
     int32_t *basis2 = realloc(basis,
                               ((*dquot) + new_length) * (nvars) * sizeof(int32_t));
     if(basis2==NULL){
@@ -2843,7 +2842,6 @@ static inline void compute_modular_matrix(sp_matfglm_t *matrix,
   uint32_t len_xn = matrix->nrows; 
   uint32_t dquot = matrix->ncols;
   matrix->charac = prime;
-  uint64_t len1 = dquot * matrix->nrows;
   int32_t len2 = dquot - matrix->nrows;
 
 
@@ -3038,7 +3036,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
 								    bs_t *bs,
 								    ht_t *ht,
 								    int32_t *bexp_lm,
-								    const md_t const *st,
+								    const md_t *st,
 								    const int nv,
 								    const long fc,
 								    const int thread_number){
@@ -3461,7 +3459,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  int32_t *lmb, long dquot,
 								  bs_t *bs, ht_t *ht,
 								  int32_t *bexp_lm,
-								  const md_t const *st,
+								  const md_t *st,
 								  const int nv,
 								  const long fc,
 								  const int32_t unstable_staircase,
@@ -3532,7 +3530,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       fprintf(stderr, " => does NOT remain in monomial basis");
 #endif
       if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count_lm])*nv, nv)){
-!	count_lm++;
+	count_lm++;
 #if DEBUGBUILDMATRIX > 0
 	fprintf(stderr, " => lands on a leading monomial\n");
 #endif

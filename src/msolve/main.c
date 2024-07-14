@@ -422,7 +422,7 @@ int main(int argc, char **argv){
            fprintf(stderr, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
            fprintf(stderr, "\t linear algebra option set to 2\n");
         }
-      la_option = 2;
+        la_option = 2;
     }
     
     /* data structures for parametrization */

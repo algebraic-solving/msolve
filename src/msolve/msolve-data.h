@@ -260,7 +260,7 @@ typedef struct{
   uint64_t *matmul_indices; /* indices per row of matrix multiplication used 
                               for lifting (witness coefficient); given index is the one of 
                               the dense matrix format */
-  mpz_t *matmul_crt; /* crt coefficient */
+  mpz_t *matmul_wcrt; /* crt for witness coefficients */
   mpz_t *matmul_cfs_qq; /* stores reconstruction */
   int16_t *done_coeffs; /* indicates coefficients which have been lifted */
   int16_t *check_coeffs; /* indicates coefficients which have been checked */

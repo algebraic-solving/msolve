@@ -160,6 +160,7 @@ static void getoptions(
         int32_t *normal_form,
         int32_t *normal_form_matrix,
         int32_t *is_gb,
+        int32_t *lift_matrix,
         int32_t *get_param,
         int32_t *precision,
         int32_t *refine,
@@ -173,7 +174,7 @@ static void getoptions(
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:q:g:c:s:SCr:R:m:M:n:d:Vf:";
+  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:L:q:g:c:s:SCr:R:m:M:n:d:Vf:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'N':
@@ -238,6 +239,9 @@ static void getoptions(
       break;
     case 'v':
       *info_level = strtol(optarg, NULL, 10);
+      break;
+    case 'L':
+      *lift_matrix= strtol(optarg, NULL, 10);
       break;
     case 't':
       *nthreads = strtol(optarg, NULL, 10);
@@ -357,6 +361,7 @@ int main(int argc, char **argv){
     int32_t normal_form           = 0;
     int32_t normal_form_matrix    = 0;
     int32_t is_gb                 = 0;
+    int32_t lift_matrix           = 0;
     int32_t get_param             = 0;
     int32_t precision             = 128;
     int32_t refine                = 0; /* not used at the moment */
@@ -371,7 +376,7 @@ int main(int argc, char **argv){
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
                &elim_block_len, &la_option, &use_signatures, &update_ht,
                &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling, &unstable_staircase, &saturate, &colon,
-               &normal_form, &normal_form_matrix, &is_gb, &get_param,
+               &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
                &precision, &refine, &isolate, &generate_pbm, &info_level, files);
 
     FILE *fh  = fopen(files->in_file, "r");
@@ -439,7 +444,7 @@ int main(int argc, char **argv){
                           initial_hts, max_pairs, elim_block_len, update_ht,
                           generate_pbm, reduce_gb, print_gb, truncate_lifting, get_param,
                           genericity_handling, unstable_staircase, saturate, colon, normal_form,
-                          normal_form_matrix, is_gb, precision, 
+                          normal_form_matrix, is_gb, lift_matrix, precision, 
                           files, gens,
             &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);
 

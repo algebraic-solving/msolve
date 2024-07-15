@@ -224,9 +224,9 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
           }
       }
   }
-  trace_det->matmul_crt = (mpz_t *)malloc(nrows * sizeof(mpz_t));
+  trace_det->matmul_wcrt = (mpz_t *)malloc(nrows * sizeof(mpz_t));
   for(uint32_t i = 0; i < nrows; i++){
-      mpz_init_set_ui(trace_det->matmul_crt[i], (*mod_mat)->dense_mat[trace_det->matmul_indices[i]]);
+      mpz_init_set_ui(trace_det->matmul_wcrt[i], (*mod_mat)->dense_mat[trace_det->matmul_indices[i]]);
   }
   trace_det->matmul_cfs_qq = (mpz_t *)malloc(2 * nrows * sizeof(mpz_t));
   for(uint32_t i = 0; i < 2 * nrows; i++){
@@ -247,11 +247,11 @@ static inline void trace_det_clear(trace_det_fglm_mat_t trace_det) {
 
   uint32_t nrows = trace_det->nrows;
   for(uint32_t i = 0; i < nrows; i++){
-      mpz_clear(trace_det->matmul_crt[i]);
+      mpz_clear(trace_det->matmul_wcrt[i]);
       mpz_clear(trace_det->matmul_cfs_qq[2 * i]);
       mpz_clear(trace_det->matmul_cfs_qq[2 * i + 1]);
   }
-  free(trace_det->matmul_crt);
+  free(trace_det->matmul_wcrt);
   free(trace_det->matmul_cfs_qq);
   free(trace_det->matmul_indices);
   free(trace_det->done_coeffs);
@@ -268,7 +268,7 @@ static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,
   mpz_CRT_ui(trace_det->det_crt, trace_det->det_crt, modulus, det_mod, prime,
              prod, trace_det->tmp, 1);
   for(uint32_t i = 0; i < mod_mat->nrows; i++){
-      mpz_CRT_ui(trace_det->matmul_crt[i], trace_det->matmul_crt[i], modulus, 
+      mpz_CRT_ui(trace_det->matmul_wcrt[i], trace_det->matmul_wcrt[i], modulus, 
                  mod_mat->dense_mat[trace_det->matmul_indices[i]], prime, prod, 
                  trace_det->tmp, 1);
   }

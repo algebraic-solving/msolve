@@ -1193,7 +1193,9 @@ static inline int new_rational_reconstruction(
           lineqs, mat, prime, trace_det->lift_matrix);
   if(nr > trace_det->w_checked){
       trace_det->w_checked = nr;
-      fprintf(stderr, "[%.2f%%]", 100*(float)trace_det->w_checked/trace_det->nrows);
+      if(info_level){
+         fprintf(stderr, "[%.2f%%]", 100*(float)trace_det->w_checked/trace_det->nrows);
+      }
   }
   if(trace_det->mat_lifted == 1){
       check_matrix(trace_det, mat, prime);
@@ -2051,7 +2053,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int success = 1;
   int squares = 1;
 
-  fprintf(stderr, "PRIME = %d\n", lp->p[0]);
   int32_t *lmb_ori = initial_modular_step(bmatrix, bdiv_xn, blen_gb_xn,
 					  bstart_cf_gb_xn,
 					  bextra_nf,

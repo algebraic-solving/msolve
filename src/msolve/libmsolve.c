@@ -22,9 +22,6 @@
 #include "config.h"
 #endif
 
-#include<gmp.h>
-#include<flint/fmpz.h>
-#include<flint/fmpq.h>
 #include "msolve-data.h"
 #include "msolve-data.c"
 #include "iofiles.c"

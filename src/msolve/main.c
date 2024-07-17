@@ -121,6 +121,10 @@ static inline void display_help(char *str){
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
   fprintf(stdout, "         format please see the general output data format section\n");
   fprintf(stdout, "         above.\n");
+  fprintf(stdout, "-L LIF   Controls lifting of multplication matrices over the rationals.\n");
+  fprintf(stdout, "         Default is 0 (no lifting). \n");
+  fprintf(stdout, "         Matrices are lifted when LIF is 1.\n");
+  fprintf(stdout, "         Warning: when activated, this option may cause higher memory consumption.\n");
   fprintf(stdout, "-q Q     Uses signature-based algorithms.\n");
   fprintf(stdout, "         Default: 0 (no).\n");
   fprintf(stdout, "-r RED   Reduce Groebner basis.\n");

@@ -2837,34 +2837,33 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
 
 
 static inline void compute_modular_matrix(sp_matfglm_t *matrix,
-                                          mpq_matfglm_t mpz_mat,
-                                          uint32_t prime){
+        trace_det_fglm_mat_t trace_det,
+        uint32_t prime){
   uint32_t len_xn = matrix->nrows; 
   uint32_t dquot = matrix->ncols;
   matrix->charac = prime;
   int32_t len2 = dquot - matrix->nrows;
 
-
-  for(uint32_t i = 0; i < mpz_mat->nrows; i++){
-    uint64_t lc = mpz_fdiv_ui(mpz_mat->denoms[i], prime);
+  for(uint32_t i = 0; i < trace_det->nrows; i++){
+    uint64_t lc = mpz_fdiv_ui(trace_det->mat_denoms[i], prime);
     lc = mod_p_inverse_32(lc, prime);
-    uint32_t nc = i*mpz_mat->ncols;
-    for(uint32_t j = 0 ; j < mpz_mat->ncols; j++){
-      uint32_t mod = mpz_fdiv_ui(mpz_mat->dense_mat[2*(nc+j)], prime);
+    uint32_t nc = i*trace_det->ncols;
+    for(uint32_t j = 0 ; j < trace_det->ncols; j++){
+      uint32_t mod = mpz_fdiv_ui(trace_det->dense_mat[nc+j], prime);
       matrix->dense_mat[nc+j] =( ((uint64_t)mod) * lc )% prime;
     }
   }
   for(int32_t i = 0; i < (dquot-len_xn); i++){
-    matrix->triv_idx[i] = mpz_mat->triv_idx[i];
+    matrix->triv_idx[i] = trace_det->triv_idx[i];
   }
   for(int32_t i = 0; i < len2; i++){
-    matrix->triv_pos[i] = mpz_mat->triv_pos[i];
+    matrix->triv_pos[i] = trace_det->triv_pos[i];
   }
   for(uint32_t i = 0; i < len_xn; i++){
-    matrix->dense_idx[i] = mpz_mat->dense_idx[i];
+    matrix->dense_idx[i] = trace_det->dense_idx[i];
   }
   for(uint32_t i = 0; i < len_xn; i++){
-    matrix->dst[i] = mpz_mat->dst[i];
+    matrix->dst[i] = trace_det->dst[i];
   }
 #ifdef DEBUGLIFTMAT
   fprintf(stderr, "\nModular matrix (prime = %u)\n", prime);

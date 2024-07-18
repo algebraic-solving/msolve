@@ -195,18 +195,19 @@ static inline void copy_modular_matrix(trace_det_fglm_mat_t trace_det,
         sp_matfglm_t **mod_mat, uint32_t newalloc, mp_limb_t prime){
     deg_t nrows = (*mod_mat)->nrows;
     deg_t ncols = (*mod_mat)->ncols;
-    int32_t sz = nrows * ncols;
+    size_t sz = nrows * ncols;
     if(trace_det->num_mat == trace_det->mat_alloc ){
         int32_t old_alloc = trace_det->mat_alloc;
         trace_det->mat_alloc += newalloc;
+        size_t sz2 = sz * trace_det->mat_alloc; 
 
         int32_t *tmp = (int32_t *)realloc(trace_det->modular_matrices, 
-                trace_det->mat_alloc * sz * sizeof(int32_t));
+                sz2 * sizeof(int32_t));
         if(tmp == NULL){
-            fprintf(stderr, "Problem when allocating modular matrices\n");
+            fprintf(stderr, "Problem when allocating modular matrices (amount = %ld)\n", trace_det->mat_alloc * sz);
             exit(1);
         }
-        for(int32_t i = sz*old_alloc; i < sz * trace_det->mat_alloc; i++){
+        for(int64_t i = sz*old_alloc; i < sz2; i++){
             tmp[i] = 0;
         }
         trace_det->modular_matrices = tmp;

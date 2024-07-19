@@ -23,6 +23,8 @@
 
 #define _GNU_SOURCE
 #include "../neogb/data.h"
+#include<flint/fmpz.h>
+#include<flint/fmpq.h>
 #include <unistd.h>
 #include <string.h>
 #include <getopt.h>
@@ -209,6 +211,7 @@ typedef struct{
   uint32_t ncols; /* dimension of quotient */
   uint32_t nrows; /* number of non trivial lines */
   mpz_t *dense_mat; /*array of nrows*ncols*2 mpz_t coefficients (num, den)*/
+  mpz_t *denoms;
   uint32_t *triv_idx; /*array of indices of rows which are unit vectors*/
   uint32_t *triv_pos; /*position of '1' in unit vectors */
   uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
@@ -253,6 +256,45 @@ typedef struct{
   int16_t done_det;
   int16_t check_trace;
   int16_t check_det;
+
+  int lift_matrix;
+  uint32_t nlins; /*number of linear forms to lift */
+  int32_t nv; /* number of variables for linear forms */
+  uint32_t lin_lifted; /* tells if linear forms are lifted */
+  mpz_t *mpq_linear_forms;
+  mpz_t *crt_linear_forms;
+  mpz_t *mpz_linear_forms;
+
+  uint32_t nrows; /* number of non trivial rows in matrix multiplication */
+  uint32_t ncols; /* number of non trivial columns in matrix multiplication */
+  szmat_t *triv_idx; 
+  szmat_t *triv_pos; 
+  szmat_t *dense_idx; 
+  szmat_t *dst; 
+
+  uint32_t nlifted; /* number of rows whose witness coefficients could be lifted */
+  uint32_t w_checked; /* number of rows whose witness coefficients is checked */
+  uint64_t *matmul_indices; /* indices per row of matrix multiplication used 
+                              for lifting (witness coefficient); given index is the one of 
+                              the dense matrix format */
+  mpz_t *matmul_wcrt; /* crt for witness coefficients */
+  mpz_t *matmul_wqq; /* stores reconstruction */
+  int32_t mat_alloc; /* number of matrices that can be stored */
+  int32_t *modular_matrices; /*array to modular matrices */
+  int16_t *done_coeffs; /* indicates coefficients which have been lifted */
+  int16_t *check_coeffs; /* indicates coefficients which have been checked */
+  int32_t num_mat; /*number of modular matrices stored */
+
+  mp_limb_t *primes;
+  int32_t num_primes;
+  mp_limb_t *residues;
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t comb_temp;
+  int32_t mat_lifted;
+
+  mpz_t *mat_denoms;
+  mpz_t *dense_mat;
+
 } trace_det_fglm_mat_struct;
 typedef trace_det_fglm_mat_struct trace_det_fglm_mat_t[1];
 

@@ -1325,7 +1325,6 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
 #endif
 
   while(new_length>0 && deg <= maxdeg){
-    uint64_t len_bs = ((*dquot) + new_length) * (nvars);
     int32_t *basis2 = realloc(basis,
                               ((*dquot) + new_length) * (nvars) * sizeof(int32_t));
     if(basis2==NULL){
@@ -2836,6 +2835,49 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
   return matrix;
 }
 
+
+static inline void compute_modular_matrix(sp_matfglm_t *matrix,
+        trace_det_fglm_mat_t trace_det,
+        uint32_t prime){
+  uint32_t len_xn = matrix->nrows; 
+  uint32_t dquot = matrix->ncols;
+  matrix->charac = prime;
+  int32_t len2 = dquot - matrix->nrows;
+
+  for(uint32_t i = 0; i < trace_det->nrows; i++){
+    uint64_t lc = mpz_fdiv_ui(trace_det->mat_denoms[i], prime);
+    lc = mod_p_inverse_32(lc, prime);
+    uint32_t nc = i*trace_det->ncols;
+    for(uint32_t j = 0 ; j < trace_det->ncols; j++){
+      uint32_t mod = mpz_fdiv_ui(trace_det->dense_mat[nc+j], prime);
+      matrix->dense_mat[nc+j] =( ((uint64_t)mod) * lc )% prime;
+    }
+  }
+  for(int32_t i = 0; i < (dquot-len_xn); i++){
+    matrix->triv_idx[i] = trace_det->triv_idx[i];
+  }
+  for(int32_t i = 0; i < len2; i++){
+    matrix->triv_pos[i] = trace_det->triv_pos[i];
+  }
+  for(uint32_t i = 0; i < len_xn; i++){
+    matrix->dense_idx[i] = trace_det->dense_idx[i];
+  }
+  for(uint32_t i = 0; i < len_xn; i++){
+    matrix->dst[i] = trace_det->dst[i];
+  }
+#ifdef DEBUGLIFTMAT
+  fprintf(stderr, "\nModular matrix (prime = %u)\n", prime);
+  for(int i = 0; i < matrix->nrows; i++){
+    int nc = i*matrix->ncols;
+    for(int j = 0; j < matrix->ncols; j++){
+      fprintf(stderr, "%u, ", matrix->dense_mat[nc+j]);
+    }
+    fprintf(stderr, "\n");
+  }
+#endif
+}
+
+
 /**
 
    lmb is the monomial basis (of the quotient ring) given by ascending order.
@@ -2863,32 +2905,29 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
 							   const int nv,
                                                            const long fc){
 
-  long len_xn = matrix->nrows; //get_div_xn(bexp_lm, bs->lml, nv, div_xn);
-
+  uint32_t len_xn = matrix->nrows; 
   matrix->charac = fc;
-  /* matrix->ncols = dquot; */
-  /* matrix->nrows = len_xn; */
-  long len1 = dquot * matrix->nrows;
-  long len2 = dquot - matrix->nrows;
+  uint64_t len1 = dquot * matrix->nrows;
+  int32_t len2 = dquot - matrix->nrows;
 
-  for(long i = 0; i < len1; i++){
+  for(uint64_t i = 0; i < len1; i++){
     matrix->dense_mat[i] = 0;
   }
-  for(long i = 0; i < len2; i++){
+  for(int32_t i = 0; i < (dquot-len_xn); i++){
     matrix->triv_idx[i] = 0;
   }
-  for(long i = 0; i < len2; i++){
+  for(int32_t i = 0; i < len2; i++){
     matrix->triv_pos[i] = 0;
   }
-  for(long i = 0; i < len_xn; i++){
+  for(uint32_t i = 0; i < len_xn; i++){
     matrix->dense_idx[i] = 0;
   }
-  for(long i = 0; i < len_xn; i++){
+  for(uint32_t i = 0; i < len_xn; i++){
     matrix->dst[i] = 0;
   }
 
   long pos = 0, k = 0;
-  for(long i = 0; i < bs->lml; i++){
+  for(uint32_t i = 0; i < bs->lml; i++){
     long len = bs->hm[bs->lmps[i]][LENGTH];
     if(i==div_xn[k]){
       len_gb_xn[k]=len;
@@ -2905,7 +2944,7 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
   long l_dens = 0;
   long nrows = 0;
   long count = 0;
-  for(long i = 0; i < dquot; i++){
+  for(uint32_t i = 0; i < dquot; i++){
 
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
@@ -2972,8 +3011,8 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
     }
   }
   //Ici on support que les entres de matrix->dst sont initialisees a 0
-  for(long i = 0; i < matrix->nrows; i++){
-    for(long j = matrix->ncols - 1; j >= 0; j--){
+  for(uint32_t i = 0; i < matrix->nrows; i++){
+    for(int32_t j = matrix->ncols - 1; j >= 0; j--){
       if(matrix->dense_mat[i*matrix->ncols + j] == 0){
         matrix->dst[i]++;
       }
@@ -2996,7 +3035,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
 								    bs_t *bs,
 								    ht_t *ht,
 								    int32_t *bexp_lm,
-								    const md_t const *st,
+								    const md_t *st,
 								    const int nv,
 								    const long fc,
 								    const int thread_number){
@@ -3419,7 +3458,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  int32_t *lmb, long dquot,
 								  bs_t *bs, ht_t *ht,
 								  int32_t *bexp_lm,
-								  const md_t const *st,
+								  const md_t *st,
 								  const int nv,
 								  const long fc,
 								  const int32_t unstable_staircase,
@@ -3490,7 +3529,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       fprintf(stderr, " => does NOT remain in monomial basis");
 #endif
       if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count_lm])*nv, nv)){
-!	count_lm++;
+	count_lm++;
 #if DEBUGBUILDMATRIX > 0
 	fprintf(stderr, " => lands on a leading monomial\n");
 #endif

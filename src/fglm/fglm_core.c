@@ -41,6 +41,7 @@ double omp_get_wtime(void) { return realtime();}
 #define DEBUGFGLM 0
 #define BLOCKWIED 0
 
+#include <flint/fmpz.h>
 #include <flint/nmod_poly.h>
 
 #include "../msolve/msolve-data.h"

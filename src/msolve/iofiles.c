@@ -670,7 +670,7 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
   char *prev_pos = NULL;
   size_t term_size = 50000;
   char *term  = (char *)malloc(term_size * sizeof(char));
-  long int cf_tmp  = 0; /** temp for coefficient value, possibly coeff is negative. */
+  int64_t cf_tmp  = 0; /** temp for coefficient value, possibly coeff is negative. */
 
   prev_pos = line;
   get_term(line, &prev_pos, &term, &term_size);
@@ -690,14 +690,14 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
       }
     }
     while (iv_tmp < 0) {
-      iv_tmp  +=  (int32_t)field_char; //MS change int -> long int
+      iv_tmp  +=  field_char; //MS change int -> long int
     }
     gens->cfs[pos]  = (int32_t)iv_tmp;
     store_exponent(term, gens, pos*gens->nvars);
     for(int j = 1; j < nterms; j++){
       get_term(line, &prev_pos, &term, &term_size);
       if (term != NULL) {
-        cf_tmp  = (int)strtol(term, NULL, 10);
+        cf_tmp  = (int64_t)strtol(term, NULL, 10);
 
         if (cf_tmp == 0) {
           if (term[0] == '-') {
@@ -707,9 +707,9 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
           }
         }
         while (cf_tmp < 0) {
-          cf_tmp  += (int)field_char;
+          cf_tmp  += field_char;
         }
-        gens->cfs[pos+j] = cf_tmp;
+        gens->cfs[pos+j] = (int32_t)(cf_tmp % field_char);
         store_exponent(term, gens, (pos+j)*gens->nvars);
       }
       //      store_exponent(term, basis, ht);
@@ -718,7 +718,6 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
     return 0;
   }
   free(term);
-
   return 1;
 }
 
@@ -930,7 +929,7 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   *nr_gens = get_ngenerators(fn);
 
   const int max_line_size  = 1073741824;
-  char *line  = (char *)calloc((nelts_t)max_line_size, sizeof(char));
+  char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));
 
   FILE *fh  = fopen(fn,"r");
 
@@ -967,8 +966,8 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
 }
 
 static inline void display_gens_ff(FILE *fh, data_gens_ff_t *gens){
-  long pos = 0;
-  int c;
+  int64_t pos = 0;
+  int32_t c;
   for(long i = 0; i < gens->ngens; i++){
     for(long j = 0; j < gens->lens[i]-1; j++){
       c = gens->cfs[pos+j];
@@ -983,7 +982,7 @@ static inline void display_gens_ff(FILE *fh, data_gens_ff_t *gens){
     }
     c = gens->cfs[pos+gens->lens[i]-1];
     if(c!= 1){
-      fprintf(fh, "%d", c);
+      fprintf(fh, "%d*", c);
       display_monomial(fh, gens, pos+gens->lens[i]-1, &gens->exps);
     }
     else{

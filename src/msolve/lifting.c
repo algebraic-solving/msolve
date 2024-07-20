@@ -234,7 +234,6 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
                                      uint32_t **lineqs_ptr,
                                      uint32_t newalloc, 
                                      mp_limb_t prime) {
-    fprintf(stderr, "trace_mod = %d, det_mod = %d\n", trace_mod, det_mod);
   mpz_init_set_ui(trace_det->trace_crt, trace_mod);
   mpz_init_set_ui(trace_det->det_crt, det_mod);
   mpz_init_set_ui(trace_det->trace_num, 0);

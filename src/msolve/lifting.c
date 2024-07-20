@@ -613,11 +613,7 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
     }
 
     if(trace_det->done_det < 2 && trace_det->done_trace){
-        mpz_t oldgden;
         if(trace_rec){
-            mpz_init(oldgden);
-            mpz_set(oldgden, gden);
-            mpz_set(gden, trace_det->trace_den);
         }
         int b = ratreconwden(rnum, rden, trace_det->det_crt, modulus, gden, recdata);
 
@@ -629,14 +625,8 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
           mpz_divexact(trace_det->det_num, trace_det->det_num, gcd);
           mpz_divexact(trace_det->det_den, trace_det->det_den, gcd);
           trace_det->done_det = 1;
-          if(trace_rec){
-              mpz_clear(oldgden);
-          }
         } else {
           mpz_set_ui(gden, 1);
-          if(trace_rec){
-              mpz_clear(oldgden);
-          }
           trace_det->done_det = 0;
           mpz_clear(gcd);
           return 0;

@@ -2182,7 +2182,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
          detidx < nmod_params[0]->elim->length - 2) {
     detidx++;
   }
-
   trace_det_initset(trace_det, nmod_params[0]->elim->coeffs[tridx],
                     nmod_params[0]->elim->coeffs[detidx], tridx, detidx, 
                     bmatrix, lift_matrix, nlins, nv, lineqs_ptr, 4*st->nthrds, 

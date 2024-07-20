@@ -192,6 +192,9 @@ AC_CONFIG_LINKS([
  input_files/xy-qq.ms:input_files/xy-qq.ms
  output_files/xy-qq.res:output_files/xy-qq.res
  test/diff/diff_xy-qq.sh:test/diff/diff_xy-qq.sh
+ input_files/linear-qq.ms:input_files/linear-qq.ms
+ output_files/linear-qq.res:output_files/linear-qq.res
+ test/diff/diff_linear-qq.sh:test/diff/diff_linear-qq.sh
  input_files/bug_68.ms:input_files/bug_68.ms
  output_files/bug_68.res:output_files/bug_68.res
  test/diff/diff_bug_68.sh:test/diff/diff_bug_68.sh

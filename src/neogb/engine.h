@@ -46,6 +46,7 @@ int initialize_gba_input_data(
         int32_t use_signatures,
         int32_t reduce_gb,
         int32_t pbm_file,
+        int32_t truncate_lifting,
         int32_t info_level
         );
 

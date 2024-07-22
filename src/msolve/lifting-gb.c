@@ -571,6 +571,21 @@ static inline int32_t maxbitsize_gens(data_gens_ff_t *gens, len_t ngens){
   return mbs;
 }
 
+static inline int32_t maxbitsize_generators(bs_t *bs){
+    int32_t max = 0;
+    int32_t ngens = bs->ld;
+    for(int32_t i = 0; i < ngens; i++){
+        int32_t len = bs->hm[i][LENGTH];
+        mpz_t *cfs = bs->cf_qq[i];
+        for(int32_t i = 0; i < len; i++){
+        }
+        max = MAX(max, 
+                mpz_sizeinbase(cfs[i], 2)
+                );
+
+    }
+    return max;
+}
 static inline int32_t compute_num_gb(int32_t *bexp_lm, int32_t len, int nv, int nev){
   if(nev){
     for(int32_t i = 0; i < len; i++){
@@ -598,19 +613,15 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            int info_level,
                                            int print_gb,
                                            int truncate_lifting,
-                                           int *dim,
-                                           long *dquot_ori,
+                                           int64_t *dquot_ori,
                                            int32_t start,
-                                           data_gens_ff_t *gens,
                                            int32_t maxbitsize,
-                                           files_gb *files,
                                            int *success)
 {
     double ca0/*, rt*/;
     ca0 = realtime();
 
     bs_t *bs = NULL;
-    /* if(gens->field_char){ */
     int32_t err     = 0;
     st->f4_qq_round = 1;
     bs = core_gba(bs_qq, st, &err, fc);
@@ -691,12 +702,6 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
         }
         if(is_empty){
             *dquot_ori = 0;
-            *dim = 0;
-            /* if(info_level){ */
-            /*   fprintf(stderr, "No solution\n"); */
-            /* } */
-            /* print_ff_basis_data( */
-            /*                     files->out_file, "a", bs, bht, st, gens, print_gb); */
             free_basis_without_hash_table(&(bs));
             return NULL;
         }
@@ -720,16 +725,15 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          bs_t *bs_qq,
                                          ht_t **gbht,
                                          md_t *st,
-                                         const int32_t fc,
                                          int info_level,
                                          bs_t **obs,
                                          int32_t *lmb_ori,
                                          int32_t dquot_ori,
                                          primes_t *lp,
                                          int32_t start,
-                                         data_gens_ff_t *gens,
                                          double *stf4,
-                                         int *bad_primes){
+                                         int *bad_primes)
+{
 
   double rt = realtime();
   st->info_level  = 0;
@@ -745,13 +749,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   int32_t error = 0;
   bs = core_gba(bs_qq, st, &error, lp->p[0]);
   *stf4 = realtime()-rt;
-  /* if(st->laopt > 40){
-    bs = modular_f4(bs_qq, bht[0], st, lp->p[0]);
-  }
-  else{
-    bs = gba_trace_application_phase(btrace[0], btht[0], bs_qq, bht[0], st, lp->p[0]);
-  }
-  */
   ht_t **bht = &(bs->ht);
   if (bs == NULL) {
       bad_primes[0] = 1;
@@ -1134,7 +1131,6 @@ long max_bit_size_gb(gb_modpoly_t modgbs){
 }
 
 
-
 /*
 
   - returns 0 if the computation went ok 
@@ -1146,93 +1142,30 @@ long max_bit_size_gb(gb_modpoly_t modgbs){
   - returns -4 if there are too many bad primes
 */
 
-int msolve_gbtrace_qq(
-                      gb_modpoly_t modgbs,
-                      data_gens_ff_t *gens,
-                      msflags_t flags){
-
+gb_modpoly_t *core_groebner_qq(
+        gb_modpoly_t *modgbsp,
+        bs_t *bs,
+        mstrace_t msd,
+        md_t *st,
+        int32_t *errp, 
+        const len_t fc
+        )
+{
   double st0 = realtime();
 
-  int *dim_ptr = &flags->dim;
-  long *dquot_ptr = &flags->dquot;
-  int32_t ht_size = flags->ht_size;
-  int32_t nr_threads = flags->nr_threads;
-  int32_t max_nr_pairs = flags->max_nr_pairs;
-  int32_t elim_block_len = flags->elim_block_len;
-  int32_t reset_ht = flags->reset_ht;
-  int32_t la_option = flags->la_option;
-  int32_t use_signatures = flags->use_signatures;
-  int32_t info_level = flags->info_level;
-  int32_t pbm_file = flags->pbm_file;
-  int32_t print_gb = flags->print_gb;
-  int32_t truncate_lifting = flags->truncate_lifting;
-  files_gb *files = flags->files;
+  *errp = 0;
 
-  uint32_t field_char = gens->field_char;
-  const void *cfs = gens->mpz_cfs;
-  if(gens->field_char){
-    cfs = gens->cfs;
-  }
-  else{
-    cfs = gens->mpz_cfs;
-  }
-  int mon_order = 0;
-  int32_t nr_vars = gens->nvars;
-  int32_t nr_gens = gens->ngens;
-  int reduce_gb = 1;
-  int32_t nr_nf = 0;
-  const uint32_t prime_start = pow(2, 30);
+  msd->bs_qq =  bs;
+  msd->bht   = msd->bs_qq->ht;
 
-  /* initialize stuff */
-  md_t *st  = allocate_meta_data();
+  int32_t info_level = st->info_level;
+  int32_t print_gb = st->print_gb;
+  int64_t dquot = 0;
+  int64_t *dquot_ptr = &dquot;
+  int32_t truncate_lifting = st->truncate_lifting;
 
-  int *invalid_gens   =   NULL;
-  int res = validate_input_data(&invalid_gens, cfs, gens->lens, &field_char, &mon_order,
-                                &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
-                                &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
-                                &info_level);
-
-  /* all data is corrupt */
-  if (res == -1) {
-    fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
-    free(invalid_gens);
-    return -3;
-  }
-  /* checks and set all meta data. if a nonzero value is returned then
-   * some of the input data is corrupted. */
-
-  if (check_and_set_meta_data_trace(st, gens->lens, gens->exps, cfs, invalid_gens,
-                                    field_char, mon_order, elim_block_len, nr_vars, nr_gens,
-                                    nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
-                                    use_signatures, reduce_gb, prime_start,
-                                    nr_threads /* nr_primes */,
-                                    pbm_file, info_level)) {
-    fprintf(stderr, "Something went wrong when checking and setting meta data, msolve now terminates.\n");
-    free(st);
-    return -3;
-  }
-
-  mstrace_t msd;
-  initialize_mstrace(msd, st);
-
-  /* read in ideal, move coefficients to integers */
-  import_input_data(msd->bs_qq, st, 0, st->ngens_input, gens->lens, gens->exps, cfs, invalid_gens);
-  free(invalid_gens);
-  invalid_gens  =   NULL;
-
-  print_initial_statistics(stderr, st);
-
-  /* for faster divisibility checks, needs to be done after we have
-    * read some input data for applying heuristics */
-  calculate_divmask(msd->bht);
-
-  /* sort initial elements, smallest lead term first */
-  sort_r(msd->bs_qq->hm, (unsigned long)msd->bs_qq->ld, sizeof(hm_t *),
-          initial_input_cmp, msd->bht);
-
-  if(gens->field_char == 0){
-    remove_content_of_initial_basis(msd->bs_qq);
-    /* generate lucky prime numbers */
+  if(fc == 0){
+    /*generate lucky prime numbers */
     generate_lucky_primes(msd->lp, msd->bs_qq, st->prime_start, st->nthrds);
   }
   else{
@@ -1248,20 +1181,20 @@ int msolve_gbtrace_qq(
   srand(time(0));
 
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
-  while(gens->field_char==0 && is_lucky_prime_ui(prime, msd->bs_qq)){
+  while(fc == 0 && is_lucky_prime_ui(prime, msd->bs_qq)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
   primeinit = prime;
   msd->lp->p[0] = primeinit;
-  if(gens->field_char){
-    msd->lp->p[0] = gens->field_char;
-    primeinit = gens->field_char;
+  if(fc){
+    msd->lp->p[0] = fc;
+    primeinit = fc;
   }
 
   int success = 1;
 
-  int32_t maxbitsize = maxbitsize_gens(gens, st->ngens);
+  int32_t maxbitsize = maxbitsize_generators(msd->bs_qq); 
 
   int learn = 1, apply = 1, nprimes = 0;
   double stf4 = 0;
@@ -1282,7 +1215,7 @@ int msolve_gbtrace_qq(
 
   while(learn){
 
-    int32_t *lmb_ori = gb_modular_trace_learning(modgbs,
+    int32_t *lmb_ori = gb_modular_trace_learning(*modgbsp,
                                                  msd->mgb,
                                                  msd->num_gb, msd->leadmons_ori,
                                                  msd->btrace[0],
@@ -1291,38 +1224,35 @@ int msolve_gbtrace_qq(
                                                  info_level,
                                                  print_gb,
                                                  truncate_lifting,
-                                                 dim_ptr, dquot_ptr,
+                                                 dquot_ptr,
                                                  0,
-                                                 gens, maxbitsize,
-                                                 files,
+                                                 maxbitsize,
                                                  &success);
     /*lmb_ori can be NULL when gb = [1]*/
     if(lmb_ori == NULL || print_gb == 1){
       if(dlinit){
         data_lift_clear(dlift);
       }
-      free_mstrace(msd, st);
       free_rrec_data(recdata1);
       free_rrec_data(recdata2);
 
-      free(st);
-      return 0;
+      return modgbsp;
     }
 
     apply = 1;
 
-    gb_modpoly_realloc(modgbs, 1, dlift->S);
+    gb_modpoly_realloc((*modgbsp), 1, dlift->S);
 
 #ifdef DEBUGGBLIFT
-    display_gbmodpoly_cf_32(stderr, modgbs);
+    display_gbmodpoly_cf_32(stderr, (*modgbsp));
 #endif
 
     if(!dlinit){
       int nb = 0;
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                       msd->bht->nv - st->nev, &nb);
-      data_lift_init(dlift, modgbs->ld, ldeg, nb);
-      choose_coef_to_lift(modgbs, dlift);
+      data_lift_init(dlift, (*modgbsp)->ld, ldeg, nb);
+      choose_coef_to_lift((*modgbsp), dlift);
       free(ldeg);
       dlinit = 1;
     }
@@ -1353,23 +1283,20 @@ int msolve_gbtrace_qq(
       fprintf(stdout, "-----------------------------------------\n");
     }
 
-    if(lmb_ori == NULL || success == 0 || gens->field_char) {
+    if(lmb_ori == NULL || success == 0 || fc) {
 
       apply = 0;
       if(dlinit){
         data_lift_clear(dlift);
       }
 
-      gb_modpoly_clear(modgbs);
+      gb_modpoly_clear((*modgbsp));
 
-      free_mstrace(msd, st);
       free_rrec_data(recdata1);
       free_rrec_data(recdata2);
 
-      free(st);
       fprintf(stderr, "Something went wrong in the learning phase, msolve restarts.");
-      return msolve_gbtrace_qq(modgbs, gens, flags);
-
+      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc); 
     }
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, msd->bs_qq, st, msd->num_gb,
@@ -1421,19 +1348,19 @@ int msolve_gbtrace_qq(
       }
       prime = msd->lp->p[nthrds /* st->nthrds */ - 1];
 
-      if(modgbs->alloc <= nprimes + 2){
-        gb_modpoly_realloc(modgbs, 16*st->nthrds, dlift->S);
+      if((*modgbsp)->alloc <= nprimes + 2){
+        gb_modpoly_realloc((*modgbsp), 16*st->nthrds, dlift->S);
       }
 
-      gb_modular_trace_application(modgbs, msd->mgb,
+      gb_modular_trace_application((*modgbsp), msd->mgb,
                                    msd->num_gb,
                                    msd->leadmons_ori,
                                    msd->leadmons_current,
                                    msd->btrace,
                                    msd->btht, msd->bs_qq, msd->blht, st,
-                                   field_char, 0, /* info_level, */
+                                   0, /* info_level, */
                                    msd->bs, lmb_ori, *dquot_ptr, msd->lp,
-                                   dlift->S, gens, &stf4, msd->bad_primes);
+                                   dlift->S, &stf4, msd->bad_primes);
 
 
       /* nprimes += st->nthrds; */
@@ -1485,8 +1412,9 @@ int msolve_gbtrace_qq(
       }
 
       if(nbadprimes == nprimes){
-        fprintf(stderr, "Too many bad primes, computation will restart\n");
-        free_mstrace(msd, st);
+        if(info_level){
+          fprintf(stderr, "Too many bad primes, computation will restart\n");
+        }
         if(dlinit){
           data_lift_clear(dlift);
         }
@@ -1494,8 +1422,7 @@ int msolve_gbtrace_qq(
         free_rrec_data(recdata1);
         free_rrec_data(recdata2);
 
-        free(st);
-        return msolve_gbtrace_qq(modgbs, gens, flags);
+        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc); 
 
       }
 
@@ -1504,7 +1431,7 @@ int msolve_gbtrace_qq(
       double ost_crt = st_crt;
 
       if(!bad){
-        ratrecon_gb(modgbs, dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
+        ratrecon_gb((*modgbsp), dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
                     nthrds/* st->nthrds */, &st_crt, &st_rrec);
       }
       if((st_crt -ost_crt) + (st_rrec - ost_rrec) > dlift->rr * stf4){
@@ -1521,7 +1448,7 @@ int msolve_gbtrace_qq(
         }
       }
       apply = 0;
-      for(len_t i = 0; i < modgbs->ld; i++){
+      for(len_t i = 0; i < (*modgbsp)->ld; i++){
         if(dlift->check2[i] < NBCHECK){
           apply = 1;
           break;
@@ -1560,7 +1487,7 @@ int msolve_gbtrace_qq(
     /* fprintf(stdout, "CRT and ratrecon(elapsed) %10.2f sec\n", realtime()-st0); */
     fprintf(stdout, "-----------------------------------------\n");
   }
-  free_mstrace(msd, st);
+
   if(dlinit){
     data_lift_clear(dlift);
   }
@@ -1568,9 +1495,179 @@ int msolve_gbtrace_qq(
   free_rrec_data(recdata1);
   free_rrec_data(recdata2);
 
-  free(st);
+  return modgbsp;
+}
 
-  return 0;
+uint64_t export_results_from_groebner_qq(
+        /* return values */
+        int32_t *bld,   /* basis load */
+        int32_t **blen, /* length of each poly in basis */
+        int32_t **bexp, /* basis exponent vectors */
+        void **bcf,     /* coefficients of basis elements */
+        void *(*mallocp) (size_t),
+        gb_modpoly_t gb
+        )
+{
+    int64_t nelts = gb->ld;
+    int32_t nv    = gb->nv;
+
+    *bld  = nelts;
+
+    int32_t *lens = (int32_t *)(*mallocp)(((uint64_t)nelts) * sizeof(int32_t));
+
+    int64_t nterms = 0;
+
+    for(int32_t i = 0; i < nelts; i++){
+        int32_t nlen = 0;
+        int32_t len = gb->modpolys[i]->len;
+        for(int32_t j = 0; j < len; j++){
+            if(mpz_cmp_ui(gb->modpolys[i]->cf_qq[2*j], 0) != 0){
+                nlen++;
+                nterms++;
+            }
+        }
+        lens[i] = nlen;
+        nterms++; /* to take into account the lm */
+    }
+
+    int32_t *exp = (int32_t *)(*mallocp)( 
+            ((uint64_t)nterms) * ((uint64_t) nv) * sizeof(int32_t));
+
+    mpz_t *cf_qq = (mpz_t *)malloc(
+            nterms *sizeof(mpz_t));
+    for(int64_t i = 0; i < nterms; i++){
+        mpz_init(cf_qq[i]);
+    }
+
+    int64_t term = 0;
+    for(int64_t p = 0; p < nelts; p++){
+
+        int32_t l = gb->modpolys[p]->len;
+        for(int32_t n = 0 ; n < nv; n++){
+            exp[term * nv + n] = gb->ldm[p + n];
+        }
+        mpz_set(cf_qq[term], gb->modpolys[p]->lm);
+
+        term++;
+        for(int32_t i = l - 1; i > 0; i--){
+            
+            if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0){
+                for(int32_t n = 0 ; n < nv; n++){
+                    exp[term * nv + n] = gb->mb[i * nv + n];
+                }
+                mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[2*i]);
+
+                term++;
+            }
+        }
+    }
+
+    *blen = lens;
+    *bexp = exp;
+    *bcf  = cf_qq;
+
+    return nterms;
+}
+
+gb_modpoly_t *groebner_qq(
+        data_gens_ff_t *gens, 
+        msflags_t flags)
+{
+  int32_t *dim_ptr = &flags->dim;
+  int64_t *dquot_ptr = &flags->dquot;
+  int32_t ht_size = flags->ht_size;
+  int32_t nr_threads = flags->nr_threads;
+  int32_t max_nr_pairs = flags->max_nr_pairs;
+  int32_t elim_block_len = flags->elim_block_len;
+  int32_t reset_ht = flags->reset_ht;
+  int32_t la_option = flags->la_option;
+  const int32_t use_signatures = flags->use_signatures;
+  int32_t info_level = flags->info_level;
+  int32_t pbm_file = flags->pbm_file;
+  int32_t print_gb = flags->print_gb;
+  int32_t truncate_lifting = flags->truncate_lifting;
+  int mon_order = 0;
+
+  /* input data */
+  uint32_t field_char = gens->field_char;
+  const void *cfs = gens->mpz_cfs;
+  if(gens->field_char){
+    cfs = gens->cfs;
+  }
+  else{
+    cfs = gens->mpz_cfs;
+  }
+  int32_t *exps = gens->exps;
+  int32_t *lens = gens->lens;
+
+  int32_t nr_vars = gens->nvars;
+  int32_t nr_gens = gens->ngens;
+  int reduce_gb = 1;
+  int32_t nr_nf = 0;
+  const uint32_t prime_start = pow(2, 30);
+
+  /* timings */
+  double ct0, ct1, rt0, rt1;
+  ct0 = cputime();
+  rt0 = realtime();
+
+  /* data structures for basis, hash table and statistics */
+  bs_t *bs  = NULL;
+  ht_t *bht = NULL;
+  md_t *md  = NULL; /* meta data */
+
+  int success = 0;
+
+  /*msolve trace data */
+  mstrace_t msd;
+  success = initialize_gba_input_data(&bs, &bht, &md,
+          lens, exps, cfs, field_char, mon_order, elim_block_len,
+          nr_vars, nr_gens, 0 /* # normal forms */, ht_size,
+          nr_threads, max_nr_pairs, reset_ht, la_option, use_signatures,
+          reduce_gb, pbm_file, truncate_lifting, info_level);
+ 
+  /* all input generators are invalid */
+  if (success == -1) {
+      return NULL;
+  }
+  if (success == 0) {
+      printf("Bad input data, stopped computation.\n");
+      exit(1);
+  }
+
+  initialize_mstrace(msd, md);
+  int err = 0;
+
+  gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
+  modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char);
+  if (err) {
+      printf("Problem with groebner_qq, stopped computation (%d).\n", err);
+      exit(1);
+  }
+
+  /* timings */
+  ct1 = cputime();
+  rt1 = realtime();
+  md->f4_ctime = ct1 - ct0;
+  md->f4_rtime = rt1 - rt0;
+
+  get_and_print_final_statistics(stderr, md, bs);
+
+  /* free and clean up */
+  free_mstrace(msd, md);
+  /* msd->bs_qq was bs so no need to clean bs anymore
+  free_shared_hash_data(bht);
+  if (bs != NULL) {
+      free_basis(&bs);
+  }
+  */
+  
+
+  free(md);
+  md    = NULL;
+
+  return modgbsp;
+
 }
 
 /*
@@ -1578,10 +1675,13 @@ int msolve_gbtrace_qq(
  */
 
 void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
-                            msflags_t flags){
-  gb_modpoly_t modgbs;
+                            msflags_t flags)
+{
+  gb_modpoly_t *modgbsp;
 
-  msolve_gbtrace_qq(modgbs, gens, flags);
+ // msolve_gbtrace_qq(modgbs, gens, flags);
+
+  modgbsp = groebner_qq(gens, flags);
 
   FILE *ofile;
   if (flags->files->out_file != NULL) {
@@ -1609,10 +1709,10 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   }
   fprintf(ofile, "%s\n", gens->vnames[gens->nvars-1]);
   fprintf(ofile, "#monomial order:       graded reverse lexicographical\n");
-  if (modgbs->ld == 1) {
+  if ((*modgbsp)->ld == 1) {
     fprintf(ofile, "#length of basis:      1 element\n");
   } else {
-    fprintf(ofile, "#length of basis:      %u elements sorted by increasing leading monomials\n", modgbs->ld);
+    fprintf(ofile, "#length of basis:      %u elements sorted by increasing leading monomials\n", (*modgbsp)->ld);
   }
   fprintf(ofile, "#---\n");
   if (flags->files->out_file != NULL) {
@@ -1623,23 +1723,127 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
 
     if(flags->files->out_file != NULL){
       FILE *ofile = fopen(flags->files->out_file, "a+");
-      display_gbmodpoly_cf_qq(ofile, modgbs, gens);
+      display_gbmodpoly_cf_qq(ofile, (*modgbsp), gens);
       fclose(ofile);
     }
     else{
-      display_gbmodpoly_cf_qq(stdout, modgbs, gens);
+      display_gbmodpoly_cf_qq(stdout, (*modgbsp), gens);
     }
   }
   if(flags->print_gb == 1){
     if(flags->files->out_file != NULL){
       FILE *ofile = fopen(flags->files->out_file, "a+");
-      display_lm_gbmodpoly_cf_qq(ofile, modgbs, gens);
+      display_lm_gbmodpoly_cf_qq(ofile, (*modgbsp), gens);
       fclose(ofile);
     }
     else{
-      display_lm_gbmodpoly_cf_qq(stdout, modgbs, gens);
+      display_lm_gbmodpoly_cf_qq(stdout, (*modgbsp), gens);
     }
   }
-  gb_modpoly_clear(modgbs);
+  gb_modpoly_clear((*modgbsp));
+  free(modgbsp);
+}
+
+/* we get from julia the generators as three arrays:
+ * 0.  a pointer to an int32_t array for returning the basis to julia
+ * 1.  an array of the lengths of each generator
+ * 2.  an array of all coefficients of all generators in the order:
+ *     first all coefficients of generator 1, then all of generator 2, ...
+ * 3.  an array of all exponents of all generators in the order:
+ *     first all exponents of generator 1, then all of generator 2, ...
+ *
+ *  RETURNs the length of the jl_basis array */
+int64_t export_groebner_qq(
+                void *(*mallocp) (size_t),
+        /* return values */
+        int32_t *bld,   /* basis load */
+        int32_t **blen, /* length of each poly in basis */
+        int32_t **bexp, /* basis exponent vectors */
+        void **bcf,     /* coefficients of basis elements */
+        /* input values */
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *cfs,
+        const uint32_t field_char,
+        const int32_t mon_order,
+        const int32_t elim_block_len,
+        const int32_t nr_vars,
+        const int32_t nr_gens,
+        const int32_t ht_size,
+        const int32_t nr_threads,
+        const int32_t max_nr_pairs,
+        const int32_t reset_ht,
+        const int32_t la_option,
+        const int32_t reduce_gb,
+        const int32_t pbm_file,
+        const int32_t truncate_lifting,
+        const int32_t info_level
+        )
+{
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    /* data structures for basis, hash table and statistics */
+    bs_t *bs  = NULL;
+    ht_t *bht = NULL;
+    md_t *md  = NULL; /* meta data */
+
+    int success = 0;
+
+    /*msolve trace data*/
+    mstrace_t msd;
+    success = initialize_gba_input_data(&bs, &bht, &md,
+            lens, exps, cfs, field_char, mon_order, elim_block_len,
+            nr_vars, nr_gens, 0 /* # normal forms */, ht_size,
+            nr_threads, max_nr_pairs, reset_ht, la_option, 0 /*use_signatures*/,
+            reduce_gb, pbm_file, truncate_lifting, info_level);
+
+    /* all input generators are invalid */
+    if (success == -1) {
+        return_zero(bld, blen, bexp, bcf, nr_vars, field_char, mallocp);
+        return 1;
+    }
+    if (success == 0) {
+        printf("Bad input data, stopped computation.\n");
+        exit(1);
+    }
+
+    initialize_mstrace(msd, md);
+    int err = 0;
+
+    gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
+    modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char);
+    if (err) {
+        printf("Problem with groebner_qq, stopped computation.\n");
+        exit(1);
+    }
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    md->f4_ctime = ct1 - ct0;
+    md->f4_rtime = rt1 - rt0;
+
+    get_and_print_final_statistics(stderr, md, bs);
+
+    /* free and clean up */
+    free_mstrace(msd, md);
+    /*msd->bs_qq was bs so no need to clean bs anymore
+    free_shared_hash_data(bht);
+    if (bs != NULL) {
+        free_basis(&bs);
+    }
+    */
+    free(md);
+    md    = NULL;
+
+    int64_t nterms  = export_results_from_groebner_qq(bld, blen, bexp,
+            bcf, mallocp, (*modgbsp));
+
+    gb_modpoly_clear((*modgbsp));
+    
+    return nterms;
 
 }

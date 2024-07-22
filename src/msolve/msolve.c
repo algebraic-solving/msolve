@@ -1936,11 +1936,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* initialize stuff */
   md_t *st = allocate_meta_data();
 
+  int truncate_lifting = 0;
   int *invalid_gens = NULL;
   int res = validate_input_data(
       &invalid_gens, cfs, lens, &field_char, &mon_order, &elim_block_len,
       &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads, &max_nr_pairs,
-      &reset_ht, &la_option, &use_signatures, &reduce_gb, &info_level);
+      &reset_ht, &la_option, &use_signatures, &reduce_gb, 
+      &truncate_lifting, &info_level);
 
   /* all data is corrupt */
   if (res == -1) {
@@ -1955,7 +1957,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           st, lens, exps, cfs, invalid_gens, field_char, mon_order,
           elim_block_len, nr_vars, nr_gens, nr_nf, ht_size, nr_threads,
           max_nr_pairs, reset_ht, la_option, use_signatures, reduce_gb,
-          prime_start, nr_primes, pbm_file, info_level)) {
+          prime_start, nr_primes, pbm_file, 0 /*truncate_lifting */, 
+          info_level)) {
     free(st);
     return -3;
   }
@@ -3574,7 +3577,7 @@ restart:
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens, saturate, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
-                    info_level);
+                    0 /*truncate_lifting */, info_level);
 
             if (st->homogeneous != 1) {
                 fprintf(stderr,
@@ -3656,7 +3659,7 @@ restart:
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens, saturate, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
-                    info_level);
+                    0 /*truncate_lifting */, info_level);
 
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
@@ -3749,7 +3752,7 @@ restart:
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens, 1, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
-                    info_level);
+                    0 /*truncate_lifting */, info_level);
 
 	    st->gfc  = gens->field_char;
             if(info_level){
@@ -4157,7 +4160,7 @@ restart:
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens, normal_form, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
-                    info_level);
+                    0 /*truncate_lifting */, info_level);
 
             st->gfc  = gens->field_char;
             if (!success) {
@@ -4481,11 +4484,12 @@ restart:
             int *invalid_gens       =   NULL;
             int32_t monomial_order  =   0;
             int32_t reduce_gb       =   1;
+            int32_t truncate_lifting =  0;
             int res = validate_input_data(&invalid_gens, gens->mpz_cfs,
                     gens->lens, &field_char, &monomial_order, &elim_block_len,
                     &gens->nvars, &gens->ngens, &saturate, &initial_hts,
                     &nr_threads, &max_pairs, &update_ht, &la_option,
-                    &use_signatures, &reduce_gb, &info_level);
+                    &use_signatures, &reduce_gb, &truncate_lifting, &info_level);
 
             /* all data is corrupt */
             if (res == -1) {
@@ -4501,7 +4505,8 @@ restart:
                         field_char, 0, elim_block_len, gens->nvars,
                         gens->ngens, saturate, initial_hts, nr_threads,
                         max_pairs, update_ht, la_option, use_signatures,
-                        1, prime_start, nr_primes, 0, info_level)) {
+                        1, prime_start, nr_primes, 0, truncate_lifting, 
+                        info_level)) {
                 free(st);
                 return -3;
             }

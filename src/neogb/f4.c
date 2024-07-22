@@ -809,7 +809,7 @@ int64_t export_f4(
             lens, exps, cfs, field_char, mon_order, elim_block_len,
             nr_vars, nr_gens, 0 /* # normal forms */, ht_size,
             nr_threads, max_nr_pairs, reset_ht, la_option, use_signatures,
-            reduce_gb, pbm_file, info_level);
+            reduce_gb, pbm_file, 0 /*truncate_lifting*/, info_level);
 
     /* all input generators are invalid */
     if (success == -1) {

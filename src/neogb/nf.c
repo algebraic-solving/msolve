@@ -154,7 +154,7 @@ int64_t export_nf(
             bs_lens, bs_exps, bs_cfs, field_char, mon_order, elim_block_len,
             nr_vars, nr_bs_gens, 0, 17,
             nr_threads, 0, 0, 44, 0,
-            1, 0, info_level);
+            1, 0, 0, info_level);
 
     /* all input generators are invalid */
     if (success == -1) {

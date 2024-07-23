@@ -1326,16 +1326,29 @@ int msolve_gbtrace_qq(
       dlinit = 1;
     }
 
+    /* if(info_level){ */
+    /*   int s= 0; */
+    /*   for(int i = 0; i < dlift->nsteps; i++){ */
+    /*     fprintf(stderr, "[%d]", dlift->steps[i]); */
+    /*     s+=dlift->steps[i]; */
+    /*   } */
+    /*   fprintf(stderr, "\n"); */
+    /*   if(s > 1){ */
+    /*     fprintf(stderr, "%d polynomials to lift\n", s); */
+    /*   } */
+    /* } */
     if(info_level){
+      fprintf(stdout,"\n\n---------- COMPUTATIONAL DATA -----------\n");
       int s= 0;
       for(int i = 0; i < dlift->nsteps; i++){
-        fprintf(stderr, "[%d]", dlift->steps[i]);
+        fprintf(stdout, "[%d]", dlift->steps[i]);
         s+=dlift->steps[i];
       }
-      fprintf(stderr, "\n");
-      if(s > 1){
-        fprintf(stderr, "%d polynomials to lift\n", s);
-      }
+      fprintf(stdout, "\n");
+      fprintf(stdout,
+	      "#polynomials to lift %14lu\n",
+	      (unsigned long) s);
+      fprintf(stdout, "-----------------------------------------\n");
     }
 
     if(lmb_ori == NULL || success == 0 || gens->field_char) {
@@ -1368,9 +1381,10 @@ int msolve_gbtrace_qq(
       msd->blht[i] = lht;
     }
 
-    if(info_level){
-      fprintf(stderr, "\nStarts multi-modular computations\n");
-    }
+    /* if(info_level){ */
+    /*   fprintf(stderr, "\nStarts multi-modular computations\n"); */
+    /* } */
+    /* print postponed */
 
     learn = 0;
     while(apply){
@@ -1430,11 +1444,32 @@ int msolve_gbtrace_qq(
           fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
           fprintf(stderr, "------------------------------------------\n");
         }
-        if(info_level>1){
-          fprintf(stderr, "Application phase %.2f Gops/sec\n",
-                  (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
-          fprintf(stderr, "Elapsed time: %.2f\n", stf4);
-        }
+        /* if(info_level>1){ */
+        /*   fprintf(stderr, "Application phase %.2f Gops/sec\n", */
+        /*           (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4)); */
+        /*   fprintf(stderr, "Elapsed time: %.2f\n", stf4); */
+        /* } */
+	if(info_level){
+	  fprintf(stdout,
+		  "\n---------------- TIMINGS ----------------\n");
+	  fprintf(stdout,
+		  "multi-mod overall(elapsed) %9.2f sec\n",
+		  stf4);
+	  if (info_level > 1){
+	    fprintf(stdout,
+		    "application phase     %9.2f Gops/sec\n",
+		    (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
+	  }
+	  fprintf(stdout,
+		  "-----------------------------------------\n");
+      }
+      if (info_level) {
+	  fprintf(stdout,
+		  "\nmulti-modular steps\n");
+	  fprintf(stdout, "-------------------------------------------------\
+-----------------------------------------------------\n");
+      }
+
       }
       int bad = 0;
       for(int i = 0; i < nthrds/* st->nthrds */; i++){
@@ -1470,12 +1505,12 @@ int msolve_gbtrace_qq(
       if((st_crt -ost_crt) + (st_rrec - ost_rrec) > dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
-          fprintf(stderr, "(->%d)", dlift->rr);
+          fprintf(stdout, "(->%d)", dlift->rr);
         }
       }
       if(info_level){
         if(!(nprimes & (nprimes - 1))){
-          fprintf(stderr, "{%d}", nprimes);
+          fprintf(stdout, "{%d}", nprimes);
         }
       }
       apply = 0;
@@ -1487,21 +1522,35 @@ int msolve_gbtrace_qq(
       }
       if(dlift->lstart != lstart){
         if(info_level){
-          fprintf(stderr, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), modgbs->ld)/modgbs->ld);
+          fprintf(stdout, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), modgbs->ld)/modgbs->ld);
         }
         lstart = dlift->lstart;
       }
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
     }
+    if (info_level){
+      fprintf(stdout, " \n-------------------------------------------------\
+-----------------------------------------------------\n");
+    }
   }
-  if(info_level){
-    fprintf(stderr, "\nCRT time = %.2f, Rational reconstruction time = %.2f\n", st_crt, st_rrec);
-  }
+  /* if(info_level){ */
+  /*   fprintf(stderr, "\nCRT time = %.2f, Rational reconstruction time = %.2f\n", st_crt, st_rrec); */
+  /* } */
   if(info_level){
     long nbits = max_bit_size_gb(modgbs);
-    fprintf(stderr, "Maximum bit size of the coefficients: %ld\n", nbits);
-    fprintf(stderr, "%d primes used. \nElapsed time: %.2f\n", nprimes, realtime()-st0);
+    /* fprintf(stderr, "Maximum bit size of the coefficients: %ld\n", nbits); */
+    /* fprintf(stderr, "%d primes used. \nElapsed time: %.2f\n", nprimes, realtime()-st0); */
+    fprintf(stdout,"\n\n---------- COMPUTATIONAL DATA -----------\n");
+    fprintf(stdout, "Max coeff. bitsize %16lu\n", (unsigned long) nbits);
+    fprintf(stdout, "#primes            %16lu\n", (unsigned long) nprimes);
+    fprintf(stdout, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
+    fprintf(stdout, "-----------------------------------------\n");
+    fprintf(stdout, "\n---------------- TIMINGS ----------------\n");
+    fprintf(stdout, "CRT     (elapsed)         %10.2f sec\n", st_crt);
+    fprintf(stdout, "ratrecon(elapsed)         %10.2f sec\n", st_rrec);
+    /* fprintf(stdout, "CRT and ratrecon(elapsed) %10.2f sec\n", realtime()-st0); */
+    fprintf(stdout, "-----------------------------------------\n");
   }
   free_mstrace(msd, st);
   if(dlinit){

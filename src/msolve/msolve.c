@@ -2161,9 +2161,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                                bsquvars);
   normalize_nmod_param(nmod_params[0]);
 
-  if (info_level) {
-    fprintf(stderr, "\nStarts multi-modular computations\n");
-  }
+  /* if (info_level) { */
+  /*   fprintf(stderr, "\nStarts multi-modular computations\n"); */
+  /* } */
+  /* print postponed */
 
   mpz_param_t tmp_mpz_param;
   mpz_param_init(tmp_mpz_param);
@@ -2370,6 +2371,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 	    fprintf(stdout,
 		    "-----------------------------------------\n");
       }
+      if (info_level) {
+	  fprintf(stdout,
+		  "\nmulti-modular steps\n");
+	  fprintf(stdout, "-------------------------------------------------\
+-----------------------------------------------------\n");
+      }
+
     }
     for (int i = 0; i < st->nthrds; i++) {
       if (bad_primes[i] == 0) {
@@ -2406,7 +2414,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         nprimes++;
       } else {
         if (info_level) {
-          fprintf(stderr, "<bp: %d>\n", lp->p[i]);
+          fprintf(stdout, "<bp: %d>\n", lp->p[i]);
         }
         nbadprimes++;
         if (nbadprimes > nprimes) {
@@ -2432,7 +2440,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       lpow2 = 2 * nprimes;
       doit = 0;
       if (info_level) {
-        fprintf(stderr, "\n<Step:%d/%.2f/%.2f>", nbdoit, scrr, t);
+        fprintf(stdout, "\n<Step:%d/%.2f/%.2f>", nbdoit, scrr, t);
       }
       prdone = 0;
     } else {
@@ -2442,7 +2450,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     if ((LOG2(nprimes) > clog) ||
         (nbdoit != 1 && (nprimes % (lpow2 + 1) == 0))) {
       if (info_level) {
-        fprintf(stderr, "{%d}", nprimes);
+        fprintf(stdout, "{%d}", nprimes);
       }
       clog++;
       lpow2 = 2 * lpow2;
@@ -2456,12 +2464,17 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     mpz_mul_ui((*mpz_paramp)->denom->coeffs[i - 1],
                (*mpz_paramp)->denom->coeffs[i - 1], i);
   }
+  if(info_level){
+    fprintf(stdout,
+	    "\n-------------------------------------------------\
+-----------------------------------------------------\n");
+  }
 
 
   if(info_level){
     /* fprintf(stderr, "\n%d primes used\n", nprimes); */
     /* fprintf(stderr, "Time for CRT + rational reconstruction = %.2f\n", strat); */
-    fprintf(stdout,"\n\n---------- COMPUTATIONAL DATA -----------\n");
+    fprintf(stdout,"\n---------- COMPUTATIONAL DATA -----------\n");
     fprintf(stdout, "#primes            %16lu\n", (unsigned long) nprimes);
     fprintf(stdout, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
     fprintf(stdout, "-----------------------------------------\n");

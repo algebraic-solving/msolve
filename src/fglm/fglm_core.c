@@ -92,7 +92,6 @@ void print_fglm_data(
       fprintf(file, "density of the nonfree part     %5.1f%%\n", 100*matrix->nonfreepartdensity);
     }
     fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol);
-
     fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol);
     fprintf(file, "-----------------------------------------\n\n");
   }
@@ -870,6 +869,7 @@ static inline long make_square_free_elim_poly(param_t *param,
   if(boo && dim == dimquot){
     nmod_poly_set(param->elim, data_bms->BMS->V1);
     nmod_poly_one(param->denom);
+    param->degsqfrelimpol = dim;
   }
   else{
 

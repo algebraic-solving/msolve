@@ -110,7 +110,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "         Default: 0 (unlimited).\n");
   fprintf(stdout, "-n NF    Given n input generators compute normal form of the last NF\n");
   fprintf(stdout, "         elements of the input w.r.t. a degree reverse lexicographical\n");
-  fprintf(stdout, "         Gröbner basis of the irst (n - NF) input elements.\n");
+  fprintf(stdout, "         Gröbner basis of the first (n - NF) input elements.\n");
   fprintf(stdout, "         At the moment this only works for prime field computations.\n");
   fprintf(stdout, "         Combining this option with the \"-i\" option assumes that the\n");
   fprintf(stdout, "         first (n - NF) elements generate already a degree reverse\n");

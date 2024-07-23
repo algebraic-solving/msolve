@@ -76,11 +76,11 @@ void free_f4_julia_result_data(
     /* lengths resp. nterms */
     int32_t *lens  = *blen;
 
-    /* int64_t i;
-     * int64_t len = 0;
-     * for (i = 0; i < ngens; ++i) {
-     *     len += (int64_t)lens[i];
-     * } */
+    int64_t i;
+    int64_t len = 0;
+    for (i = 0; i < ngens; ++i) {
+         len += (int64_t)lens[i];
+    } 
 
     (*freep)(lens);
     lens  = NULL;

@@ -106,6 +106,18 @@ AC_CONFIG_LINKS([
  input_files/eco6-qq.ms:input_files/eco6-qq.ms
  output_files/eco6-qq.res:output_files/eco6-qq.res
  test/diff/diff_eco6-qq.sh:test/diff/diff_eco6-qq.sh
+ input_files/cyclic5-qq.ms:input_files/cyclic5-qq.ms
+ output_files/cyclic5-qq.res:output_files/cyclic5-qq.res
+ output_files/cyclic5-qq.g2.res:output_files/cyclic5-qq.g2.res
+ output_files/cyclic5-qq.g2.e1.res:output_files/cyclic5-qq.g2.e1.res
+ output_files/cyclic5-qq.g2.e2.res:output_files/cyclic5-qq.g2.e2.res
+ test/diff/diff_cyclic5-qq.sh:test/diff/diff_cyclic5-qq.sh
+ input_files/henrion5-qq.ms:input_files/henrion5-qq.ms
+ output_files/henrion5-qq.res:output_files/henrion5-qq.res
+ output_files/henrion5-qq.g2.res:output_files/henrion5-qq.g2.res
+ output_files/henrion5-qq.g2.e1.res:output_files/henrion5-qq.g2.e1.res
+ output_files/henrion5-qq.g2.e2.res:output_files/henrion5-qq.g2.e2.res
+ test/diff/diff_henrion5-qq.sh:test/diff/diff_henrion5-qq.sh
  input_files/eco10-31.ms:input_files/eco10-31.ms
  output_files/eco10-31.res:output_files/eco10-31.res
  test/diff/diff_eco10-31.sh:test/diff/diff_eco10-31.sh

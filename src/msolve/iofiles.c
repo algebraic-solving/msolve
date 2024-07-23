@@ -256,7 +256,7 @@ static void print_msolve_polynomials_ff(
         for (i = from; i < to; ++i) {
             idx = bs->lmps[i];
             if (bs->hm[idx] == NULL) {
-                fprintf(file, "0,\n");
+                fprintf(file, "0");
             } else {
                 hm  = bs->hm[idx]+OFFSET;
                 len = bs->hm[idx][LENGTH];
@@ -300,12 +300,12 @@ static void print_msolve_polynomials_ff(
 		    }
 		  }
                 }
-                if (i < to-1) {
-                    fprintf(file, ",\n");
-                } else {
-                    fprintf(file, "]:\n");
-                }
-            }
+	    }
+	    if (i < to-1) {
+	      fprintf(file, ",\n");
+	    } else {
+	      fprintf(file, "]:\n");
+	    }
         }
     }
     free(evi);

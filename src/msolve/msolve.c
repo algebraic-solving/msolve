@@ -2343,7 +2343,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                 (unsigned long)st->application_nr_red);
         fprintf(stderr, "------------------------------------------\n");
       }
-      /* JB to change */
       /* if (info_level > 1) { */
       /*   fprintf(stderr, "Application phase %.2f Gops/sec\n", */
       /*           (st->application_nr_add + st->application_nr_mult) / 1000.0 / */
@@ -3328,7 +3327,6 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
   double rt1 = realtime();
 
   if(info_level && print_gb == 0){
-    /* JB to change */
     /* fprintf( */
     /*     stderr, */
     /*     "Time for rational param: %13.2f (elapsed) sec / %5.2f sec (cpu)\n\n", */

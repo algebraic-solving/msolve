@@ -1457,7 +1457,7 @@ int msolve_gbtrace_qq(
 		  stf4);
 	  if (info_level > 1){
 	    fprintf(stdout,
-		    "application phase     %9.2f Gops/sec\n",
+		    "application phase          %9.2f Gops/sec\n",
 		    (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
 	  }
 	  fprintf(stdout,

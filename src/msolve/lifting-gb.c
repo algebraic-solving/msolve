@@ -1456,7 +1456,7 @@ gb_modpoly_t *core_groebner_qq(
       }
       if(dlift->lstart != lstart){
         if(info_level){
-          fprintf(stdout, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), modgbs->ld)/modgbs->ld);
+          fprintf(stdout, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), (*modgbsp)->ld)/(*modgbsp)->ld);
 	  fflush(stdout);
         }
         lstart = dlift->lstart;
@@ -1473,7 +1473,7 @@ gb_modpoly_t *core_groebner_qq(
   /*   fprintf(stderr, "\nCRT time = %.2f, Rational reconstruction time = %.2f\n", st_crt, st_rrec); */
   /* } */
   if(info_level){
-    long nbits = max_bit_size_gb(modgbs);
+    long nbits = max_bit_size_gb((*modgbsp));
     /* fprintf(stderr, "Maximum bit size of the coefficients: %ld\n", nbits); */
     /* fprintf(stderr, "%d primes used. \nElapsed time: %.2f\n", nprimes, realtime()-st0); */
     fprintf(stdout,"\n\n---------- COMPUTATIONAL DATA -----------\n");

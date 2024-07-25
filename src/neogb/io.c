@@ -596,6 +596,26 @@ static int64_t export_data(
     return nterms;
 }
 
+int32_t check_ff_bits(int32_t fc){
+    if (fc == 0) {
+        return 0;
+    } else {
+        if (fc < (int32_t)(1) << 8) {
+            return 8;
+        } else {
+            if (fc < (int32_t)(1) << 16) {
+                return 16;
+            } else {
+                if (fc < (int32_t)(1) << 23) {
+                    return 32;
+                } else {
+                    return 32;
+                }
+            }
+        }
+    }
+}
+
 void set_ff_bits(md_t *st, int32_t fc){
     if (fc == 0) {
         st->ff_bits = 0;

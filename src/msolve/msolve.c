@@ -3658,6 +3658,7 @@ restart:
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
+            st->gfc = gens->field_char;
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
                 exit(1);

@@ -606,7 +606,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            files_gb *files,
                                            int *success)
 {
-    double ca0, rt;
+    double ca0/*, rt*/;
     ca0 = realtime();
 
     bs_t *bs = NULL;
@@ -619,14 +619,15 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
       exit(1);
     }
 
-    rt = realtime()-ca0;
+    /* rt = realtime()-ca0; */
+    st->learning_rtime = realtime()-ca0;
 
     const ht_t *bht = bs->ht;
 
-    if(info_level > 1){
-        fprintf(stderr, "Learning phase %.2f Gops/sec\n",
-                (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/rt);
-    }
+    /* if(info_level > 1){ */
+    /*     fprintf(stderr, "Learning phase %.2f Gops/sec\n", */
+    /*             (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(st->learning_rtime)); */
+    /* } */
     if(info_level > 2){
         fprintf(stderr, "------------------------------------------\n");
         fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
@@ -1338,10 +1339,11 @@ int msolve_gbtrace_qq(
     /*   } */
     /* } */
     if(info_level){
-      fprintf(stdout,"\n\n---------- COMPUTATIONAL DATA -----------\n");
+      fprintf(stdout,"\n---------- COMPUTATIONAL DATA -----------\n");
       int s= 0;
       for(int i = 0; i < dlift->nsteps; i++){
         fprintf(stdout, "[%d]", dlift->steps[i]);
+	fflush(stdout);
         s+=dlift->steps[i];
       }
       fprintf(stdout, "\n");
@@ -1457,6 +1459,9 @@ int msolve_gbtrace_qq(
 		  stf4);
 	  if (info_level > 1){
 	    fprintf(stdout,
+		    "learning phase             %9.2f Gops/sec\n",
+		    (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(st->learning_rtime));
+	    fprintf(stdout,
 		    "application phase          %9.2f Gops/sec\n",
 		    (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
 	  }
@@ -1506,11 +1511,13 @@ int msolve_gbtrace_qq(
         dlift->rr = 2*dlift->rr;
         if(info_level){
           fprintf(stdout, "(->%d)", dlift->rr);
+	  fflush(stdout);
         }
       }
       if(info_level){
         if(!(nprimes & (nprimes - 1))){
           fprintf(stdout, "{%d}", nprimes);
+	  fflush(stdout);
         }
       }
       apply = 0;
@@ -1523,6 +1530,7 @@ int msolve_gbtrace_qq(
       if(dlift->lstart != lstart){
         if(info_level){
           fprintf(stdout, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), modgbs->ld)/modgbs->ld);
+	  fflush(stdout);
         }
         lstart = dlift->lstart;
       }

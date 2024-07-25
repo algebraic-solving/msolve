@@ -365,6 +365,7 @@ struct md_t
     double rht_rtime;
     double nf_rtime;
     double fglm_rtime;
+    double learning_rtime;
 
     int64_t num_pairsred;
     int64_t num_gb_crit;

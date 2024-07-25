@@ -29,6 +29,8 @@ void set_function_pointers(
 
 void set_ff_bits(md_t *st, int32_t fc);
 
+int32_t check_ff_bits(int32_t fc);
+
 void sort_terms_ff_8(
     cf8_t **cfp,
     hm_t **hmp,

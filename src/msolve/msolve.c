@@ -3636,6 +3636,10 @@ restart:
             int32_t error = 0;
             int success   = 0;
 
+            if(check_ff_bits(gens->field_char) < 32){
+              fprintf(stderr, "Error: not implemented yet (prime field of too low characteristic)\n");
+              return 1;
+            }
             /*             initialize generators of ideal, note the "gens->ngens-normal_form" which
              *             means that we only take the first nr_gens-normal_form generators from
              *             the input file, the last normal_form polynomial in the file will
@@ -3648,23 +3652,13 @@ restart:
              *             to the correct field characteristic. */
             success = initialize_gba_input_data(&bs, &bht, &st,
                     gens->lens, gens->exps, (void *)gens->cfs,
-                    1073741827, 0 /* DRL order */, elim_block_len, gens->nvars,
+                    gens->field_char, 0 /* DRL order */, elim_block_len, gens->nvars,
                     /* gens->field_char, 0 [> DRL order <], gens->nvars, */
                     gens->ngens, saturate, initial_hts, nr_threads, max_pairs,
                     update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,
                     info_level);
 
-            st->gfc  = gens->field_char;
-            set_ff_bits(st, st->gfc);
-            if(info_level){
-                fprintf(stderr,
-                        "NOTE: Field characteristic is now corrected to %u\n",
-                        st->gfc);
-            }
-            if(st->ff_bits < 32){
-              fprintf(stderr, "Error: not implemented yet (prime field of too low characteristic)\n");
-              return 1;
-            }
+            st->gfc = gens->field_char;
             if (!success) {
                 printf("Bad input data, stopped computation.\n");
                 exit(1);

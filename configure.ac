@@ -225,5 +225,8 @@ AC_CONFIG_LINKS([
  input_files/nf-lm-bug.ms:input_files/nf-lm-bug.ms
  output_files/nf-lm-bug.res:output_files/nf-lm-bug.res
  test/diff/diff_nf_lm_bug.sh:test/diff/diff_nf_lm_bug.sh
+ input_files/f4sat-field-char.ms:input_files/f4sat-field-char.ms
+ output_files/f4sat-field-char.res:output_files/f4sat-field-char.res
+ test/diff/diff_f4sat-field-char.sh:test/diff/diff_f4sat-field-char.sh
 ])
 AC_OUTPUT

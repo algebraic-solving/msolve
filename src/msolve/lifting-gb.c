@@ -1520,14 +1520,15 @@ uint64_t export_results_from_groebner_qq(
     for(int32_t i = 0; i < nelts; i++){
         int32_t nlen = 0;
         int32_t len = gb->modpolys[i]->len;
-        for(int32_t j = 0; j < len; j++){
+
+        for(int32_t j = len-1; j >= 0; j--){
             if(mpz_cmp_ui(gb->modpolys[i]->cf_qq[2*j], 0) != 0){
                 nlen++;
-                nterms++;
             }
         }
+        nlen++; /* to take into account the lm */
         lens[i] = nlen;
-        nterms++; /* to take into account the lm */
+        nterms += nlen;
     }
 
     int32_t *exp = (int32_t *)(*mallocp)( 
@@ -1544,12 +1545,12 @@ uint64_t export_results_from_groebner_qq(
 
         int32_t l = gb->modpolys[p]->len;
         for(int32_t n = 0 ; n < nv; n++){
-            exp[term * nv + n] = gb->ldm[p + n];
+            exp[term * nv + n] = gb->ldm[p*nv + n];
         }
         mpz_set(cf_qq[term], gb->modpolys[p]->lm);
 
         term++;
-        for(int32_t i = l - 1; i > 0; i--){
+        for(int32_t i = l-1; i >= 0; i--){
             
             if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0){
                 for(int32_t n = 0 ; n < nv; n++){

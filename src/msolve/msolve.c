@@ -1579,6 +1579,7 @@ static int32_t *initial_modular_step(
   int32_t empty_solution_set = 1;
   bs_t *bs = core_gba(gbg, md, &error, fc);
 
+  md->learning_rtime = realtime()-rt;
   print_tracer_statistics(stdout, rt, md);
 
   get_leading_ideal_information(num_gb, leadmons, 0, bs);
@@ -2364,6 +2365,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 		    ca1-stf4);
 	    if (info_level > 1){
 	      fprintf(stdout,
+		      "learning phase             %9.2f Gops/sec\n",
+		      (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(st->learning_rtime));
+	      fprintf(stdout,
 		      "application phase          %9.2f Gops/sec\n",
 		      (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
 	    }
@@ -2414,6 +2418,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       } else {
         if (info_level) {
           fprintf(stdout, "<bp: %d>\n", lp->p[i]);
+	  fflush(stdout);
         }
         nbadprimes++;
         if (nbadprimes > nprimes) {
@@ -2440,6 +2445,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       doit = 0;
       if (info_level) {
         fprintf(stdout, "\n<Step:%d/%.2f/%.2f>", nbdoit, scrr, t);
+	fflush(stdout);
       }
       prdone = 0;
     } else {
@@ -2450,6 +2456,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         (nbdoit != 1 && (nprimes % (lpow2 + 1) == 0))) {
       if (info_level) {
         fprintf(stdout, "{%d}", nprimes);
+	fflush(stdout);
       }
       clog++;
       lpow2 = 2 * lpow2;

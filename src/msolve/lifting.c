@@ -204,7 +204,7 @@ static inline void copy_modular_matrix(trace_det_fglm_mat_t trace_det,
         int32_t *tmp = (int32_t *)realloc(trace_det->modular_matrices, 
                 sz2 * sizeof(int32_t));
         if(tmp == NULL){
-            fprintf(stderr, "Problem when allocating modular matrices (amount = %ld)\n", trace_det->mat_alloc * sz);
+            fprintf(stderr, "Problem when allocating modular matrices (amount = %zu)\n", trace_det->mat_alloc * sz);
             exit(1);
         }
         for(int64_t i = sz*old_alloc; i < sz2; i++){

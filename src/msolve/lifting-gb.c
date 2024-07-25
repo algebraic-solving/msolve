@@ -47,9 +47,9 @@ typedef modpolys_struct modpolys_t[1];
 typedef struct {
   uint32_t alloc; /* alloc -> max number of primes */
   uint32_t nprimes; /* number of primes */
-  uint64_t *primes; /* array of prime numbers encoded with uint64_t to ensure
+  mp_limb_t *primes; /* array of prime numbers encoded with uint64_t to ensure
                        compatibility with flint */
-  uint64_t *cf_64; /* array of length equal to number of primes which will be used
+  mp_limb_t *cf_64; /* array of length equal to number of primes which will be used
                     to copy coefficients (hence ensuring compatibility with
                     flint) */
   uint32_t ld; /* number of polynomials */
@@ -167,8 +167,8 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    int32_t *lm, int32_t *basis){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
-  modgbs->primes = (uint64_t *)calloc(alloc, sizeof(uint64_t));
-  modgbs->cf_64 = (uint64_t *)calloc(alloc, sizeof(uint64_t));
+  modgbs->primes = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
+  modgbs->cf_64 = (mp_limb_t *)calloc(alloc, sizeof(uint64_t));
   modgbs->ld = ld;
   modgbs->nv = nv;
   modgbs->modpolys = (modpolys_t *)malloc(sizeof(modpolys_t) * ld);
@@ -205,8 +205,8 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
 
-  uint64_t *newprimes = (uint64_t *)realloc(modgbs->primes,
-                                            modgbs->alloc * sizeof(uint64_t));
+  mp_limb_t *newprimes = (mp_limb_t *)realloc(modgbs->primes,
+                                            modgbs->alloc * sizeof(mp_limb_t));
 
   if(newprimes == NULL){
     fprintf(stderr, "Problem when reallocating modgbs (primes)\n");
@@ -217,8 +217,8 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
     modgbs->primes[i] = 0;
   }
 
-  uint64_t *ncf_64 = (uint64_t *)realloc(modgbs->cf_64,
-                                         modgbs->alloc * sizeof(uint64_t));
+  mp_limb_t *ncf_64 = (mp_limb_t *)realloc(modgbs->cf_64,
+                                         modgbs->alloc * sizeof(mp_limb_t));
   if(ncf_64 == NULL){
     fprintf(stderr, "Problem when reallocating modgbs (cfs)\n");
     exit(1);
@@ -841,7 +841,7 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
                                               int32_t *coef, mpz_t mod_p, mpz_t prod_p,
                                               int thrds){
 
-  uint64_t newprime = modgbs->primes[modgbs->nprimes - 1 ];
+  mp_limb_t newprime = modgbs->primes[modgbs->nprimes - 1 ];
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p, mod_p, (uint32_t)newprime);
   for(int32_t k = 0; k < dl->end; k++){
@@ -987,7 +987,7 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
   for(int32_t k = 0; k < modgbs->ld; k++){
     if(dl->check1[k]>=1 && dl->check2[k] > 0 && dl->check2[k] < NBCHECK){
       for(int i = 0; i < thrds; i++){
-        uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
+        mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
         for(int32_t c = 0; c < modgbs->modpolys[k]->len; c++){
           mpz_mul(den, modgbs->modpolys[k]->lm, modgbs->modpolys[k]->cf_qq[2*c+1]);
           uint32_t coef = modgbs->modpolys[k]->cf_32[c][modgbs->nprimes   - (thrds - i) ];
@@ -1017,7 +1017,7 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
     }
     for(int i = 0; i < thrds; i++){
 
-      uint32_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
+      mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
       uint32_t coef = modgbs->modpolys[k]->cf_32[dl->coef[k]][modgbs->nprimes  - (thrds - i) ];
       int boo = verif_coef(dl->num[k], dl->den[k], prime, coef);
 

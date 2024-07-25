@@ -351,6 +351,7 @@ struct md_t
     double tracer_ctime;
     double rht_ctime;
     double nf_ctime;
+    double fglm_ctime;
 
     double round_rtime;
     double select_rtime;
@@ -363,6 +364,7 @@ struct md_t
     double tracer_rtime;
     double rht_rtime;
     double nf_rtime;
+    double fglm_rtime;
 
     int64_t num_pairsred;
     int64_t num_gb_crit;

@@ -23,6 +23,20 @@
 #include "../neogb/meta_data.h"
 #define REDUCTION_ALLINONE 1
 
+void print_fglm_header(
+        FILE *f,
+        const md_t * const st
+        )
+{
+    if (st->info_level > 1) {
+            fprintf(f, "\nfglm steps                                     \
+          time(rd) in sec (real|cpu)\n");
+            fprintf(f, "-------------------------------------------------\
+-----------------------------------------------------\n");
+    }
+}
+
+
 static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
                                            long nrows,
                                            bs_t *bs,
@@ -3125,7 +3139,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   long nrows = 0;
   long count = 0;
   long count_nf = 0;
-  
+
   for(long i = 0; i < dquot; i++){
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
@@ -3246,11 +3260,11 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   if (count_not_lm) {
     free_basis_without_hash_table(&tbr);
   }
-  if(st->info_level){
-    fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n",
-            len0, len_xn,
-            100*((double)len_xn / (double)len0));
-  }
+  /* if(st->info_level){ */
+  /*   fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n", */
+  /*           len0, len_xn, */
+  /*           100*((double)len_xn / (double)len0)); */
+  /* } */
 }
 
 
@@ -3469,6 +3483,8 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  const long fc,
 								  const int32_t unstable_staircase,
 								  const int info_level){
+  double st_fglm = realtime();
+  double cst_fglm = cputime();
   *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
   long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
@@ -3570,7 +3586,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 #endif
 
   long threshold = dquot-len_xn;
-  
+
   switch(unstable_staircase) {
   case 0:
     threshold = 0;
@@ -3585,7 +3601,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     threshold = (3*threshold+1)/4; /* round to nearest integer */
     break;
   }
-  
+
   if (count_not_lm > threshold) {
     if(info_level){
       fprintf(stderr, "Staircase is not generic\n");
@@ -3644,6 +3660,9 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       tbr->lmps[k]  = k; /* fix input element in bs */
     }
     int32_t err = 0;
+    if (st->info_level > 1) {
+      fprintf (stdout, "normal forms\n");
+    }
     tbr = core_nf(tbr, md, mul, bs, &err);
     if (err) {
       printf("Problem with normalform, stopped computation.\n");
@@ -3712,6 +3731,9 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   long count = 0;
   long count_nf = 0;
 
+  long nzcfs_freepart = 0;
+  long nzcfs_nonfreepart = 0;
+
   for(long i = 0; i < dquot; i++){
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
@@ -3743,6 +3765,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
                                     div_xn[count], len_gb_xn[count],
                                     start_cf_gb_xn[count], len_gb_xn[count], lmb,
                                     nv, fc);
+	for (long j = 0; j < dquot; j++) {
+	  if (matrix->dense_mat[nrows*matrix->ncols + j] != 0) {
+	    nzcfs_freepart++;
+	  }
+	}
         nrows++;
         count++;
         if(len_xn < count && i < dquot){
@@ -3774,6 +3801,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 #endif
 	copy_nf_in_matrix_from_bs(matrix, nrows, count_nf, lmb,
 				  tbr, ht, evi, st, nv);
+	for (long j = 0; j < dquot; j++) {
+	  if (matrix->dense_mat[nrows*matrix->ncols + j] != 0) {
+	    nzcfs_nonfreepart++;
+	  }
+	}
 	nrows++;
 	count_nf++;
         if(count_not_lm < count_nf && i < dquot){
@@ -3833,14 +3865,19 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       }
     }
   }
-
   if (count_not_lm) {
+    matrix->nonfreepartdensity = ((double)nzcfs_nonfreepart) / ((double)dquot * count_not_lm);
     free_basis_without_hash_table(&tbr);
   }
-  if(st->info_level){
-    fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n",
-            len0, len_xn,
-            100*((double)len_xn / (double)len0));
+  matrix->freepartdensity = ((double)nzcfs_freepart) / ((double)dquot * len_xn);
+  matrix->totaldensity = ((double)nzcfs_nonfreepart + nzcfs_freepart)/((double) len1);
+
+  if (st->info_level > 1){
+    double rt_fglm = realtime()-st_fglm;
+    double crt_fglm = cputime()-cst_fglm;
+    fprintf (stdout,
+	     "multiplication matrix                               ");
+    fprintf (stdout,"%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
   return matrix;
 }

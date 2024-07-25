@@ -409,7 +409,7 @@ int main(int argc, char **argv){
       fclose(ofile);
     }
     /**
-       We get from files the requested data. 
+       We get from files the requested data.
     **/
     //  int32_t mon_order   = 0;
     int32_t nr_vars     = 0;
@@ -433,7 +433,7 @@ int main(int argc, char **argv){
         }
         la_option = 2;
     }
-    
+
     /* data structures for parametrization */
     param_t *param  = NULL;
     mpz_param_t *mpz_paramp = malloc(sizeof(mpz_param_t));
@@ -469,7 +469,7 @@ int main(int argc, char **argv){
     if (info_level > 0) {
         double st1 = cputime();
         double rt1 = realtime();
-        fprintf(stderr, "-------------------------------------------------\
+        fprintf(stderr, "\n\n-------------------------------------------------\
 -----------------------------------\n");
         fprintf(stderr, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
                 rt1-rt0, st1-st0);

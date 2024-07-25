@@ -116,6 +116,9 @@ typedef struct{
   szmat_t *dense_idx; //position des lignes non triviales (qui constituent donc
                       //dense_mat)
   szmat_t *dst; //pour la gestion des lignes "denses" mais avec un bloc de zero a la fin
+  double totaldensity;
+  double freepartdensity;
+  double nonfreepartdensity;
 } sp_matfglm_t;
 
 #ifndef ALIGNED32
@@ -164,6 +167,8 @@ typedef struct{
   nmod_poly_t elim;
   nmod_poly_t denom;
   nmod_poly_t *coords;
+  szmat_t degelimpol;
+  szmat_t degsqfrelimpol;
 } param_t;
 
 

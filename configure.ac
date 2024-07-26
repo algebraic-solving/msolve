@@ -85,6 +85,7 @@ AC_CONFIG_FILES([
 ])
 AC_CONFIG_LINKS([
  test/diff/diff_source.sh:test/diff/diff_source.sh
+ test/diff/diff_source-groebner.sh:test/diff/diff_source-groebner.sh
  input_files/cp_d_3_n_4_p_2.ms:input_files/cp_d_3_n_4_p_2.ms
  output_files/cp_d_3_n_4_p_2.res:output_files/cp_d_3_n_4_p_2.res
  test/diff/diff_cp_d_3_n_4_p_2.sh:test/diff/diff_cp_d_3_n_4_p_2.sh

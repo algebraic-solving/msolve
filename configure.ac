@@ -228,5 +228,8 @@ AC_CONFIG_LINKS([
  input_files/f4sat-field-char.ms:input_files/f4sat-field-char.ms
  output_files/f4sat-field-char.res:output_files/f4sat-field-char.res
  test/diff/diff_f4sat-field-char.sh:test/diff/diff_f4sat-field-char.sh
+ input_files/f4sat-zero-input.ms:input_files/f4sat-zero-input.ms
+ output_files/f4sat-zero-input.res:output_files/f4sat-zero-input.res
+ test/diff/diff_f4sat-zero-input.sh:test/diff/diff_f4sat-zero-input.sh
 ])
 AC_OUTPUT

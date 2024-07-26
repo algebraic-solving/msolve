@@ -76,11 +76,11 @@ void free_f4_julia_result_data(
     /* lengths resp. nterms */
     int32_t *lens  = *blen;
 
-    /* int64_t i;
-     * int64_t len = 0;
-     * for (i = 0; i < ngens; ++i) {
-     *     len += (int64_t)lens[i];
-     * } */
+    int64_t i;
+    int64_t len = 0;
+    for (i = 0; i < ngens; ++i) {
+         len += (int64_t)lens[i];
+    } 
 
     (*freep)(lens);
     lens  = NULL;
@@ -94,12 +94,12 @@ void free_f4_julia_result_data(
 
     /* coefficients */
     if (field_char == 0) {
-        /* mpz_t **cfs = (mpz_t **)bcf;
-         * for (i = 0; i < len; ++i) {
-         *     mpz_clear((*cfs)[i]);
-         * }
-         * (*freep)(*cfs);
-         * *cfs  = NULL; */
+         mpz_t **cfs = (mpz_t **)bcf;
+         for (i = 0; i < len; ++i) {
+             mpz_clear((*cfs)[i]);
+         }
+         (*freep)(*cfs);
+         *cfs  = NULL; 
     } else {
         if (field_char > 0) {
             int32_t *cfs  = *((int32_t **)bcf);
@@ -809,7 +809,7 @@ int64_t export_f4(
             lens, exps, cfs, field_char, mon_order, elim_block_len,
             nr_vars, nr_gens, 0 /* # normal forms */, ht_size,
             nr_threads, max_nr_pairs, reset_ht, la_option, use_signatures,
-            reduce_gb, pbm_file, info_level);
+            reduce_gb, pbm_file, 0 /*truncate_lifting*/, info_level);
 
     /* all input generators are invalid */
     if (success == -1) {

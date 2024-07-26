@@ -17,6 +17,7 @@ int main(void)
     int32_t la_option       =   45; /* incorrect: should be fixed to 2 */
     int32_t use_signatures  =   0;
     int32_t reduce_gb       =   -1; /* incorrect: should be fixed to 0 */
+    int32_t truncate_lifting =  -1; /* incorrect: should be fixed to 0 */
     int32_t info_level      =   2;
     int *invalid_gens       =   NULL;
 
@@ -24,7 +25,7 @@ int main(void)
             &field_char, &mon_order, &elim_block_len, &nr_vars,
             &nr_gens, &nr_nf, &ht_size, &nr_threads, &max_nr_pairs,
             &reset_ht, &la_option, &use_signatures, &reduce_gb,
-            &info_level);
+            &truncate_lifting, &info_level);
 
     if (res == -1) return 1;
     if (res == 0) return 1;
@@ -43,6 +44,7 @@ int main(void)
     if (la_option != 2) return 1; /* fixed */
     if (use_signatures != 0) return 1;
     if (reduce_gb != 0) return 1; /* fixed */
+    if (truncate_lifting != 0) return 1;
     if (info_level != 2) return 1;
 
     return 0;

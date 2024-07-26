@@ -19,6 +19,7 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_eco6-16.sh \
 			  test/diff/diff_eco6-31.sh \
 			  test/diff/diff_eco6-qq.sh \
+			  test/diff/diff_henrion5-qq.sh \
 			  test/diff/diff_eco10-31.sh \
 			  test/diff/diff_truncate_gb.sh \
 			  test/diff/diff_elim-31.sh \

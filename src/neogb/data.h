@@ -429,6 +429,7 @@ struct md_t
     uint64_t application_nr_red;
 
     int32_t print_gb;
+    int32_t truncate_lifting;
 
     /* for f4sat */
     uint32_t new_multipliers;

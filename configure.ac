@@ -94,9 +94,6 @@ AC_CONFIG_LINKS([
  input_files/cyclic5-31.ms:input_files/cyclic5-31.ms
  output_files/cyclic5-31.res:output_files/cyclic5-31.res
  test/diff/diff_cyclic5-31.sh:test/diff/diff_cyclic5-31.sh
- input_files/cyclic5-qq.ms:input_files/cyclic5-qq.ms
- output_files/cyclic5-qq.res:output_files/cyclic5-qq.res
- test/diff/diff_cyclic5-qq.sh:test/diff/diff_cyclic5-qq.sh
  input_files/eco6-16.ms:input_files/eco6-16.ms
  output_files/eco6-16.res:output_files/eco6-16.res
  test/diff/diff_eco6-16.sh:test/diff/diff_eco6-16.sh

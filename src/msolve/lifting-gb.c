@@ -168,7 +168,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
   modgbs->primes = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
-  modgbs->cf_64 = (mp_limb_t *)calloc(alloc, sizeof(uint64_t));
+  modgbs->cf_64 = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
   modgbs->ld = ld;
   modgbs->nv = nv;
   modgbs->modpolys = (modpolys_t *)malloc(sizeof(modpolys_t) * ld);

@@ -1505,11 +1505,16 @@ uint64_t export_results_from_groebner_qq(
         int32_t **bexp, /* basis exponent vectors */
         void **bcf,     /* coefficients of basis elements */
         void *(*mallocp) (size_t),
+        const int32_t elim_block_len,
         gb_modpoly_t gb
         )
 {
     int64_t nelts = gb->ld;
+    /* Over QQ, if eliminating, these variables are no longer included in */
+    /* gb->nv, thus we need to help us with adding elim_block_len */
+    /* correspondingly when exporting the basis. */
     int32_t nv    = gb->nv;
+    int32_t nve   = gb->nv + elim_block_len;
 
     *bld  = nelts;
 
@@ -1532,7 +1537,9 @@ uint64_t export_results_from_groebner_qq(
     }
 
     int32_t *exp = (int32_t *)(*mallocp)( 
-            ((uint64_t)nterms) * ((uint64_t) nv) * sizeof(int32_t));
+            ((uint64_t)nterms) * ((uint64_t) nve) * sizeof(int32_t));
+
+    memset(exp, 0, (unsigned long)nterms * nve * sizeof(int32_t));
 
     mpz_t *cf_qq = (mpz_t *)malloc(
             nterms *sizeof(mpz_t));
@@ -1544,8 +1551,8 @@ uint64_t export_results_from_groebner_qq(
     for(int64_t p = 0; p < nelts; p++){
 
         int32_t l = gb->modpolys[p]->len;
-        for(int32_t n = 0 ; n < nv; n++){
-            exp[term * nv + n] = gb->ldm[p*nv + n];
+        for(int32_t n = 0; n < nv; n++){
+            exp[term * nve + n + elim_block_len] = gb->ldm[p * nv + n];
         }
         mpz_set(cf_qq[term], gb->modpolys[p]->lm);
 
@@ -1554,7 +1561,7 @@ uint64_t export_results_from_groebner_qq(
             
             if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0){
                 for(int32_t n = 0 ; n < nv; n++){
-                    exp[term * nv + n] = gb->mb[i * nv + n];
+                    exp[term * nve + n + elim_block_len] = gb->mb[i * nv + n];
                 }
                 mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[2*i]);
 
@@ -1841,7 +1848,7 @@ int64_t export_groebner_qq(
     md    = NULL;
 
     int64_t nterms  = export_results_from_groebner_qq(bld, blen, bexp,
-            bcf, mallocp, (*modgbsp));
+            bcf, mallocp, elim_block_len, (*modgbsp));
 
     gb_modpoly_clear((*modgbsp));
     

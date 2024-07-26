@@ -58,6 +58,10 @@ int initialize_gba_input_data(
             &max_nr_pairs, &reset_ht, &la_option, &use_signatures,
             &reduce_gb, &info_level);
 
+    /* not enough elements available for normal form computations resp. saturation */
+    if (nr_gens <= nr_nf) {
+        return 0;
+    }
     /* all data is corrupt */
     if (res == -1) {
         free(invalid_gens);

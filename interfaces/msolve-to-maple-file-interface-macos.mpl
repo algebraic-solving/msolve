@@ -30,21 +30,21 @@ local dim, deg, degquot, params, nvars, elim, den, cfs, i, varstr, linearform:
   varstr:=ll[4]:
   linearform:=ll[5]:
   deg:=ll[6][1]:
-  if nops(ll[6]) > 0 then
-    elim:=PolynomialTools[FromCoefficientList](ll[6][2],_Z);
+  if nops(ll[6][2][1]) > 0 then
+    elim:=PolynomialTools[FromCoefficientList](ll[6][2][1][2],_Z);
   else #computation failed
     return -2, [], [];
   fi:
   if nops(ll[5]) > 0 then
-    den:=PolynomialTools[FromCoefficientList](ll[7][2],_Z);
+    den:=PolynomialTools[FromCoefficientList](ll[6][2][2][2],_Z);
   fi:
   params:=[]:
   cfs:=[1]:
   if degquot > 0 then
   for i from 1 to nvars-1 do
       params:=[op(params),
-              PolynomialTools[FromCoefficientList](ll[8][i][1][2],_Z)]:
-    cfs:=[op(cfs), ll[8][i][2]]:
+              PolynomialTools[FromCoefficientList](ll[6][2][3][i][1][2],_Z)]:
+    cfs:=[op(cfs), ll[6][2][3][i][2]]:
   od:
   fi:
   return varstr, linearform, elim, den, [diff(elim, _Z), op(params)], cfs;

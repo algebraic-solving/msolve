@@ -352,7 +352,7 @@ typedef msolvetrace_data_struct mstrace_t[1];
 
 typedef struct{
   int dim;
-  long dquot;
+  int64_t dquot;
   int32_t ht_size; /* initial_hts */
   int32_t nr_threads;
   int32_t max_nr_pairs;

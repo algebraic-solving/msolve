@@ -244,5 +244,8 @@ AC_CONFIG_LINKS([
  input_files/f4sat-zero-input.ms:input_files/f4sat-zero-input.ms
  output_files/f4sat-zero-input.res:output_files/f4sat-zero-input.res
  test/diff/diff_f4sat-zero-input.sh:test/diff/diff_f4sat-zero-input.sh
+ input_files/f4sat-is-saturated-check.ms:input_files/f4sat-is-saturated-check.ms
+ output_files/f4sat-is-saturated-check.res:output_files/f4sat-is-saturated-check.res
+ test/diff/diff_f4sat-is-saturated-check.sh:test/diff/diff_f4sat-is-saturated-check.sh
 ])
 AC_OUTPUT

@@ -686,7 +686,6 @@ bs_t *f4sat_trace_application_phase(
     int32_t round, ctr, i, j;
     ctr = 0;
 
-
     len_t ts_ctr  = 0;
     int32_t ret   = 0;
 
@@ -699,6 +698,7 @@ bs_t *f4sat_trace_application_phase(
 
     /* copy global data as input */
     md_t *st  = copy_meta_data(gst, fc);
+    st->f4_qq_round = 1; /* fixes hash table handling for application phase */
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = bs->ht;
@@ -1504,6 +1504,7 @@ bs_t *f4sat_trace_learning_phase_2(
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
     md_t *st    = copy_meta_data(gst, fc);
+    st->f4_qq_round = 1; /* fixes hash table handling for application phase */
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = bs->ht;

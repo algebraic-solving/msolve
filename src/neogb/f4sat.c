@@ -121,7 +121,7 @@ static int is_already_saturated(
     int8_t *red     = (int8_t *)malloc((unsigned long)bs->sz * sizeof(int8_t));
     memcpy(red, bs->red, (unsigned long)bs->sz * sizeof(int8_t));
     
-    ps_t *ps = initialize_pairset();
+    ps_t *ps = st->ps;
 
     cf32_t *cf  = (cf32_t *)malloc(
             (unsigned long)sat->hm[0][LENGTH] * sizeof(cf32_t));
@@ -180,9 +180,6 @@ static int is_already_saturated(
         bs->cf_32[bs->hm[i][COEFFS]]  = NULL;
         free(bs->hm[i]);
         bs->hm[i] = NULL;
-    }
-    if (ps != NULL) {
-        free_pairset(&ps);
     }
     bs->ld  = bld;
     bs->lo  = blo;

@@ -9,6 +9,7 @@ libmsolve_la_LIBADD		=	../usolve/libusolve.la ../fglm/libfglm.la ../neogb/libneo
 EXTRA_DIST	=	  msolve-data.h \
 								msolve.h \
 								io-general.h \
+								io-general.c \
 								msolve-data.c \
 								duplicate.c \
 								hilbert.c \

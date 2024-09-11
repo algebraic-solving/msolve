@@ -22,6 +22,7 @@
 #define MSOLVE_MSOLVE_H
 
 #include "msolve-data.h"
+#include "io-general.h"
 
 int msolve_trace_qq(
         mpz_param_t *mpz_paramp,

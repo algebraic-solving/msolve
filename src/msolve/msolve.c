@@ -23,6 +23,7 @@
 #include "linear.c"
 #include "lifting.c"
 #include "lifting-gb.c"
+#include "io-general.c"
 
 #define LIFTMATRIX 0
 #ifndef MAX

@@ -18,7 +18,6 @@
  * Christian Eder
  * Mohab Safey El Din */
 
-
 // prints an array of len uint32 integers
 void print_vec(FILE * file, uint32_t * vec, uint32_t len);
 

@@ -29,7 +29,6 @@
 #include <time.h>
 /* for timing functions */
 #include "../neogb/tools.h"
-#include "io-general.h" // for print_vec and display_fglm_param
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -46,6 +45,7 @@ double omp_get_wtime(void) { return realtime();}
 // TODO clean includes
 //    (btw, why including .c ? performance?)
 #include "../msolve/msolve-data.h"
+#include "../msolve/io-general.h" // for print_vec and display_fglm_param
 #include "libfglm.h"
 #include "data_fglm.c"
 #include "linalg-fglm.c"

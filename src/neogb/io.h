@@ -29,6 +29,8 @@ void set_function_pointers(
 
 void set_ff_bits(md_t *st, int32_t fc);
 
+int32_t check_ff_bits(int32_t fc);
+
 void sort_terms_ff_8(
     cf8_t **cfp,
     hm_t **hmp,
@@ -64,6 +66,16 @@ void import_input_data(
         const int *invalid_gens
         );
 
+void return_zero(
+        int32_t *bload,
+        int32_t **blen,
+        int32_t **bexp,
+        void **bcf,
+        const int32_t nr_vars,
+        const uint32_t field_char,
+        void *(*mallocp) (size_t)
+        );
+
 int32_t check_and_set_meta_data(
         md_t *st,
         const int32_t *lens,
@@ -84,6 +96,7 @@ int32_t check_and_set_meta_data(
         const int32_t use_signatures,
         const int32_t reduce_gb,
         const int32_t pbm_file,
+        const int32_t truncate_lifting,
         const int32_t info_level
         );
 
@@ -109,6 +122,7 @@ int32_t check_and_set_meta_data_trace(
         const uint32_t prime_start,
         const int32_t nr_primes,
         const int32_t pbm_file,
+        const int32_t truncate_lifting,
         const int32_t info_level
         );
 
@@ -163,6 +177,7 @@ int validate_input_data(
         int32_t *la_optionp,
         int32_t *use_signaturesp,
         int32_t *reduce_gbp,
+        int32_t *truncate_liftingp,
         int32_t *info_levelp
         );
 #endif

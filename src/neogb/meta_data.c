@@ -86,10 +86,10 @@ void print_tracer_statistics(
     )
 {
     if (st->trace_level == APPLY_TRACER) {
-        if(st->info_level > 1){
-            fprintf(stderr, "Learning phase %.2f Gops/sec\n",
-                    (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(realtime()-rt));
-        }
+        /* if(st->info_level > 1){ */
+        /*     fprintf(stderr, "Learning phase %.2f Gops/sec\n", */
+        /*             (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(realtime()-rt)); */
+        /* } */
         if(st->info_level > 2){
             fprintf(stderr, "------------------------------------------\n");
             fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
@@ -281,7 +281,7 @@ void get_and_print_final_statistics(
     get_final_statistics(st, bs);
 
     if (st->info_level > 0) {
-        fprintf(file, "\n---------------- TIMINGS ---------------\n");
+        fprintf(file, "\n---------------- TIMINGS ----------------\n");
         fprintf(file, "overall(elapsed) %11.2f sec\n", st->f4_rtime);
         fprintf(file, "overall(cpu) %15.2f sec\n", st->f4_ctime);
         if(st->trace_level == APPLY_TRACER) {

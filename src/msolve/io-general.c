@@ -76,3 +76,29 @@ void display_fglm_param_maple(FILE * file, param_t * param)
     fprintf(file, "]:\n");
 }
 
+void print_fglm_data(
+        FILE *file,
+        const md_t * const st,
+	sp_matfglm_t *matrix,
+	param_t *param
+		     )
+{
+  if (st->info_level > 0) {
+    fprintf(file, "\n---------------- TIMINGS ----------------\n");
+    fprintf(file, "overall(elapsed) %11.2f sec\n", st->fglm_rtime);
+    fprintf(file, "overall(cpu) %15.2f sec\n", st->fglm_ctime);
+    fprintf(file, "-----------------------------------------\n");
+    fprintf(file, "\n---------- COMPUTATIONAL DATA -----------\n");
+    fprintf(file, "degree of ideal    %16lu\n", (unsigned long)matrix->ncols);
+    fprintf(file, "#dense rows        %16lu\n", (unsigned long)matrix->nrows);
+    fprintf(file, "#normal forms      %16lu\n", (unsigned long)matrix->nnfs);
+    fprintf(file, "total density                   %5.1f%%\n", 100*matrix->totaldensity);
+    fprintf(file, "density of the free part        %5.1f%%\n", 100*matrix->freepartdensity);
+    if(matrix->nnfs){
+      fprintf(file, "density of the nonfree part     %5.1f%%\n", 100*matrix->nonfreepartdensity);
+    }
+    fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol);
+    fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol);
+    fprintf(file, "-----------------------------------------\n\n");
+  }
+}

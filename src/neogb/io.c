@@ -451,7 +451,7 @@ done:
 }
 
 /* return zero generator if all input generators are invalid */
-static void return_zero(
+void return_zero(
         int32_t *bload,
         int32_t **blen,
         int32_t **bexp,
@@ -596,6 +596,26 @@ static int64_t export_data(
     return nterms;
 }
 
+int32_t check_ff_bits(int32_t fc){
+    if (fc == 0) {
+        return 0;
+    } else {
+        if (fc < (int32_t)(1) << 8) {
+            return 8;
+        } else {
+            if (fc < (int32_t)(1) << 16) {
+                return 16;
+            } else {
+                if (fc < (int32_t)(1) << 23) {
+                    return 32;
+                } else {
+                    return 32;
+                }
+            }
+        }
+    }
+}
+
 void set_ff_bits(md_t *st, int32_t fc){
     if (fc == 0) {
         st->ff_bits = 0;
@@ -634,6 +654,7 @@ int validate_input_data(
         int32_t *la_optionp,
         int32_t *use_signaturesp,
         int32_t *reduce_gbp,
+        int32_t *truncate_liftingp,
         int32_t *info_levelp
         )
 {
@@ -686,6 +707,10 @@ int validate_input_data(
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
         fprintf(stderr, "Fixes reduction of GB to 0 (false).\n");
         *reduce_gbp =   0;
+    }
+    if(*truncate_liftingp < 0){
+        fprintf(stderr, "Removes truncation of lifted Groebner bases\n");
+        *truncate_liftingp = 0;
     }
     if (*info_levelp < 0 || *info_levelp > 2) {
         fprintf(stderr, "Fixes info level to no output.\n");
@@ -758,6 +783,7 @@ int32_t check_and_set_meta_data(
         const int32_t use_signatures,
         const int32_t reduce_gb,
         const int32_t pbm_file,
+        const int32_t truncate_lifting,
         const int32_t info_level
         )
 {
@@ -817,6 +843,8 @@ int32_t check_and_set_meta_data(
     if (st->info_level > 2) {
         st->info_level = 2;
     }
+
+    st->truncate_lifting = truncate_lifting >= 0 ? truncate_lifting : 0;
 
     /* generation of pbm files on the fly? */
     st->gen_pbm_file  = pbm_file > 0 ? 1 : 0;
@@ -1075,6 +1103,7 @@ int32_t check_and_set_meta_data_trace(
         const uint32_t prime_start,
         const int32_t nr_primes,
         const int32_t pbm_file,
+        const int32_t truncate_lifting,
         const int32_t info_level
         )
 {
@@ -1089,7 +1118,8 @@ int32_t check_and_set_meta_data_trace(
     return check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
             field_char, mon_order, elim_block_len, nr_vars, nr_gens,
             nr_nf, ht_size, nr_threads, max_nr_pairs, reset_hash_table,
-            la_option, use_signatures, reduce_gb, pbm_file, info_level);
+            la_option, use_signatures, reduce_gb, pbm_file, truncate_lifting, 
+            info_level);
 }
 
 static inline void reset_function_pointers(

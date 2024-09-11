@@ -30,21 +30,21 @@ local dim, deg, degquot, params, nvars, elim, den, cfs, i, varstr, linearform:
   varstr:=ll[4]:
   linearform:=ll[5]:
   deg:=ll[6][1]:
-  if nops(ll[6]) > 0 then
-    elim:=PolynomialTools[FromCoefficientList](ll[6][2],_Z);
+  if nops(ll[6][2][1]) > 0 then
+    elim:=PolynomialTools[FromCoefficientList](ll[6][2][1][2],_Z);
   else #computation failed
     return -2, [], [];
   fi:
   if nops(ll[5]) > 0 then
-    den:=PolynomialTools[FromCoefficientList](ll[7][2],_Z);
+    den:=PolynomialTools[FromCoefficientList](ll[6][2][2][2],_Z);
   fi:
   params:=[]:
   cfs:=[1]:
   if degquot > 0 then
   for i from 1 to nvars-1 do
       params:=[op(params),
-              PolynomialTools[FromCoefficientList](ll[8][i][1][2],_Z)]:
-    cfs:=[op(cfs), ll[8][i][2]]:
+              PolynomialTools[FromCoefficientList](ll[6][2][3][i][1][2],_Z)]:
+    cfs:=[op(cfs), ll[6][2][3][i][2]]:
   od:
   fi:
   return varstr, linearform, elim, den, [diff(elim, _Z), op(params)], cfs;
@@ -97,7 +97,7 @@ local i, fd, F2, str;
 end proc:
 
 GetOptions:=proc(opts)
-local str, msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb;
+local str, msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb, elim;
   str:=subs(opts,"verb");
   if type(str, integer) then
      verb:=str;
@@ -221,12 +221,10 @@ field_char, lsols, nl, i, gb, output, nthreads, str, elim;
          error "Field characteristic is too large to be supported";
       end if;
 
-      if fc > 0 then
-         field_char := fc;
-      end if;
+      field_char := fc;
 
    else
-      printf("Second argument should be a prime integer < 2^31\n");
+      printf("Second argument should be 0 or a prime integer < 2^31\n");
    end if;
    if not(indets(F) subset indets(vars)) then
      printf("Given variables do not match the variables in the input polynomials\n");
@@ -286,7 +284,7 @@ end proc:
 # [ vars[1] = (a1+b1)/2, ..., vars[n] = (an+bn)/2 ]
 MSolveRealRoots:=proc(F, vars, opts:={})
 local results, dim, fname1, fname2, verb, param, msolve_path, file_dir,
-lsols, nl, i, j, gb, output, nthreads, str, sols, prec;
+lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim;
    if type(F, list(polynom(rational))) = false then
      printf("First argument is not a list of polynomials with rational coefficients\n");
    end if;
@@ -307,7 +305,7 @@ lsols, nl, i, j, gb, output, nthreads, str, sols, prec;
    output:=0;
    gb:=0;
    if nops(opts) > 0 then
-     msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb := GetOptions(opts);
+     msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb, elim := GetOptions(opts);
    fi;
    ToMSolve(F, 0, vars, fname1);
    if Digits <= 10 then

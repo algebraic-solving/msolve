@@ -38,6 +38,7 @@ int msolve_trace_qq(
         int32_t reset_ht,
         int32_t la_option,
         int32_t use_signatures,
+        int32_t lift_matrix,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -103,6 +104,7 @@ int real_msolve_qq(
         int32_t reset_ht,
         int32_t la_option,
         int32_t use_signatures,
+        int32_t lift_matrix,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -133,6 +135,7 @@ int core_msolve(
         int32_t normal_form,
         int32_t normal_form_matrix,
         int32_t is_gb,
+        int32_t lift_matrix,
         int32_t precision,
         files_gb *files,
         data_gens_ff_t *gens,
@@ -188,5 +191,32 @@ void free_msolve_julia_result_data(
         const int64_t res_ld,
         const int64_t nr_sols,
         const int64_t field_char
+        );
+
+int64_t export_groebner_qq(
+                void *(*mallocp) (size_t),
+        /* return values */
+        int32_t *bld,   /* basis load */
+        int32_t **blen, /* length of each poly in basis */
+        int32_t **bexp, /* basis exponent vectors */
+        void **bcf,     /* coefficients of basis elements */
+        /* input values */
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *cfs,
+        const uint32_t field_char,
+        const int32_t mon_order,
+        const int32_t elim_block_len,
+        const int32_t nr_vars,
+        const int32_t nr_gens,
+        const int32_t ht_size,
+        const int32_t nr_threads,
+        const int32_t max_nr_pairs,
+        const int32_t reset_ht,
+        const int32_t la_option,
+        const int32_t reduce_gb,
+        const int32_t pbm_file,
+        const int32_t truncate_lifting,
+        const int32_t info_level
         );
 #endif

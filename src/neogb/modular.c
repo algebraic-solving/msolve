@@ -686,7 +686,6 @@ bs_t *f4sat_trace_application_phase(
     int32_t round, ctr, i, j;
     ctr = 0;
 
-
     len_t ts_ctr  = 0;
     int32_t ret   = 0;
 
@@ -699,6 +698,7 @@ bs_t *f4sat_trace_application_phase(
 
     /* copy global data as input */
     md_t *st  = copy_meta_data(gst, fc);
+    st->f4_qq_round = 1; /* fixes hash table handling for application phase */
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = bs->ht;
@@ -1504,6 +1504,7 @@ bs_t *f4sat_trace_learning_phase_2(
     ps_t * ps   = initialize_pairset();
     /* copy global data as input */
     md_t *st    = copy_meta_data(gst, fc);
+    st->f4_qq_round = 1; /* fixes hash table handling for application phase */
     bs_t *bs    = copy_basis_mod_p(ggb, st);
     bs_t *sat   = copy_basis_mod_p(gsat, st);
     ht_t *bht   = bs->ht;
@@ -1837,10 +1838,11 @@ int64_t f4_trace_julia(
     int *invalid_gens       =   NULL;
     int32_t use_signatures  =   0;
     int32_t nr_nf           =   0;
+    int32_t truncate_lifting =  0;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &use_signatures, &reduce_gb,
-            &info_level);
+            &truncate_lifting, &info_level);
 
     /* all data is corrupt */
     if (res == -1) {
@@ -1854,7 +1856,7 @@ int64_t f4_trace_julia(
                 field_char, mon_order, elim_block_len, nr_vars, nr_gens,
                 nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
                 use_signatures, reduce_gb, prime_start, nr_primes, pbm_file,
-                info_level)) {
+                truncate_lifting, info_level)) {
         return 0;
     }
 

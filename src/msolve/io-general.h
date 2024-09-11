@@ -24,3 +24,4 @@ void print_vec(FILE * file, uint32_t * vec, uint32_t len);
 // prints FGLM parameters
 void display_fglm_param(FILE * file, param_t * param);
 void display_fglm_param_maple(FILE * file, param_t * param);
+void print_fglm_data(FILE *file, const md_t * const st, sp_matfglm_t *matrix, param_t *param);

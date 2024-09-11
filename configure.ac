@@ -2,8 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([msolve], [0.6.6], [ederc@mathematik.uni-kl.de,mohab.safey@lip6.fr])
-AC_SUBST([LT_VERSION],[0:1:0])
+AC_INIT([msolve], [0.7.1], [ederc@mathematik.uni-kl.de,mohab.safey@lip6.fr])
+AC_SUBST([LT_VERSION],[1:1:1])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign silent-rules subdir-objects color-tests parallel-tests])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_MACRO_DIR([m4])
@@ -85,9 +85,16 @@ AC_CONFIG_FILES([
 ])
 AC_CONFIG_LINKS([
  test/diff/diff_source.sh:test/diff/diff_source.sh
+ test/diff/diff_source-groebner.sh:test/diff/diff_source-groebner.sh
  input_files/cp_d_3_n_4_p_2.ms:input_files/cp_d_3_n_4_p_2.ms
  output_files/cp_d_3_n_4_p_2.res:output_files/cp_d_3_n_4_p_2.res
  test/diff/diff_cp_d_3_n_4_p_2.sh:test/diff/diff_cp_d_3_n_4_p_2.sh
+ input_files/cyclic5-16.ms:input_files/cyclic5-16.ms
+ output_files/cyclic5-16.res:output_files/cyclic5-16.res
+ test/diff/diff_cyclic5-16.sh:test/diff/diff_cyclic5-16.sh
+ input_files/cyclic5-31.ms:input_files/cyclic5-31.ms
+ output_files/cyclic5-31.res:output_files/cyclic5-31.res
+ test/diff/diff_cyclic5-31.sh:test/diff/diff_cyclic5-31.sh
  input_files/eco6-16.ms:input_files/eco6-16.ms
  output_files/eco6-16.res:output_files/eco6-16.res
  test/diff/diff_eco6-16.sh:test/diff/diff_eco6-16.sh
@@ -97,6 +104,18 @@ AC_CONFIG_LINKS([
  input_files/eco6-qq.ms:input_files/eco6-qq.ms
  output_files/eco6-qq.res:output_files/eco6-qq.res
  test/diff/diff_eco6-qq.sh:test/diff/diff_eco6-qq.sh
+ input_files/cyclic5-qq.ms:input_files/cyclic5-qq.ms
+ output_files/cyclic5-qq.res:output_files/cyclic5-qq.res
+ output_files/cyclic5-qq.g2.res:output_files/cyclic5-qq.g2.res
+ output_files/cyclic5-qq.g2.e1.res:output_files/cyclic5-qq.g2.e1.res
+ output_files/cyclic5-qq.g2.e2.res:output_files/cyclic5-qq.g2.e2.res
+ test/diff/diff_cyclic5-qq.sh:test/diff/diff_cyclic5-qq.sh
+ input_files/henrion5-qq.ms:input_files/henrion5-qq.ms
+ output_files/henrion5-qq.res:output_files/henrion5-qq.res
+ output_files/henrion5-qq.g2.res:output_files/henrion5-qq.g2.res
+ output_files/henrion5-qq.g2.e1.res:output_files/henrion5-qq.g2.e1.res
+ output_files/henrion5-qq.g2.e2.res:output_files/henrion5-qq.g2.e2.res
+ test/diff/diff_henrion5-qq.sh:test/diff/diff_henrion5-qq.sh
  input_files/eco10-31.ms:input_files/eco10-31.ms
  output_files/eco10-31.res:output_files/eco10-31.res
  test/diff/diff_eco10-31.sh:test/diff/diff_eco10-31.sh
@@ -192,6 +211,12 @@ AC_CONFIG_LINKS([
  input_files/xy-qq.ms:input_files/xy-qq.ms
  output_files/xy-qq.res:output_files/xy-qq.res
  test/diff/diff_xy-qq.sh:test/diff/diff_xy-qq.sh
+ input_files/test-lifting2.ms:input_files/test-lifting2.ms
+ output_files/test-lifting2.res:output_files/test-lifting2.res
+ test/diff/diff_test-lifting2.sh:test/diff/diff_test-lifting2.sh
+ input_files/linear-qq.ms:input_files/linear-qq.ms
+ output_files/linear-qq.res:output_files/linear-qq.res
+ test/diff/diff_linear-qq.sh:test/diff/diff_linear-qq.sh
  input_files/bug_68.ms:input_files/bug_68.ms
  output_files/bug_68.res:output_files/bug_68.res
  test/diff/diff_bug_68.sh:test/diff/diff_bug_68.sh
@@ -213,5 +238,14 @@ AC_CONFIG_LINKS([
  input_files/nf-lm-bug.ms:input_files/nf-lm-bug.ms
  output_files/nf-lm-bug.res:output_files/nf-lm-bug.res
  test/diff/diff_nf_lm_bug.sh:test/diff/diff_nf_lm_bug.sh
+ input_files/f4sat-field-char.ms:input_files/f4sat-field-char.ms
+ output_files/f4sat-field-char.res:output_files/f4sat-field-char.res
+ test/diff/diff_f4sat-field-char.sh:test/diff/diff_f4sat-field-char.sh
+ input_files/f4sat-zero-input.ms:input_files/f4sat-zero-input.ms
+ output_files/f4sat-zero-input.res:output_files/f4sat-zero-input.res
+ test/diff/diff_f4sat-zero-input.sh:test/diff/diff_f4sat-zero-input.sh
+ input_files/f4sat-is-saturated-check.ms:input_files/f4sat-is-saturated-check.ms
+ output_files/f4sat-is-saturated-check.res:output_files/f4sat-is-saturated-check.res
+ test/diff/diff_f4sat-is-saturated-check.sh:test/diff/diff_f4sat-is-saturated-check.sh
 ])
 AC_OUTPUT

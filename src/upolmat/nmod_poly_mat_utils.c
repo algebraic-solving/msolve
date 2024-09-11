@@ -23,13 +23,6 @@
 #include "nmod_mat_poly.h"
 #include "nmod_poly_mat_utils.h"
 
-void nmod_poly_mat_shift_right(nmod_poly_mat_t smat, const nmod_poly_mat_t pmat, slong k)
-{
-    for (slong i = 0; i < smat->r; i++)
-        for (slong j = 0; j < smat->c; j++)
-            nmod_poly_shift_right(smat->rows[i] + j, pmat->rows[i] + j, k);
-}
-
 // computes x**(-d) (A*B mod x**h)
 void nmod_poly_mat_middle_product(nmod_poly_mat_t res,
                                   const nmod_poly_mat_t A,
@@ -77,17 +70,31 @@ void nmod_poly_mat_degree_matrix(fmpz_mat_t dmat,
             *fmpz_mat_entry(dmat, i, j) = nmod_poly_degree(nmod_poly_mat_entry(mat, i, j));
 }
 
+void nmod_poly_mat_degree_matrix_print_pretty(const nmod_poly_mat_t mat)
+{
+    fmpz_mat_t dmat;
+    fmpz_mat_init(dmat, mat->r, mat->c);
+    nmod_poly_mat_degree_matrix(dmat, mat);
+    fmpz_mat_print_pretty(dmat);
+    printf("\n");
+    fmpz_mat_clear(dmat);
+}
+
 #if __FLINT_VERSION < 3
+void nmod_poly_mat_shift_right(nmod_poly_mat_t smat, const nmod_poly_mat_t pmat, slong k)
+{
+    for (slong i = 0; i < smat->r; i++)
+        for (slong j = 0; j < smat->c; j++)
+            nmod_poly_shift_right(smat->rows[i] + j, pmat->rows[i] + j, k);
+}
+
 void nmod_poly_mat_truncate(nmod_poly_mat_t pmat, long len)
 {
     for (slong i = 0; i < pmat->r; i++)
         for (slong j = 0; j < pmat->c; j++)
             nmod_poly_truncate(pmat->rows[i] + j, len);
 }
-#endif
 
-
-#if __FLINT_VERSION < 3
 void nmod_poly_mat_print(const nmod_poly_mat_t mat, const char * var)
 {
     slong rdim = mat->r, cdim = mat->c;
@@ -111,18 +118,6 @@ void nmod_poly_mat_print(const nmod_poly_mat_t mat, const char * var)
     flint_printf("]\n");
 }
 #endif
-
-
-void nmod_poly_mat_degree_matrix_print_pretty(const nmod_poly_mat_t mat)
-{
-    fmpz_mat_t dmat;
-    fmpz_mat_init(dmat, mat->r, mat->c);
-    nmod_poly_mat_degree_matrix(dmat, mat);
-    fmpz_mat_print_pretty(dmat);
-    printf("\n");
-    fmpz_mat_clear(dmat);
-}
-
 
 /* -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
 // vim:sts=4:sw=4:ts=4:et:sr:cino=>s,f0,{0,g0,(0,\:0,t0,+0,=s

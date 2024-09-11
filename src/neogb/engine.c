@@ -43,6 +43,7 @@ int initialize_gba_input_data(
         int32_t use_signatures,
         int32_t reduce_gb,
         int32_t pbm_file,
+        int32_t truncate_lifting,
         int32_t info_level
         )
 {
@@ -56,8 +57,12 @@ int initialize_gba_input_data(
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &use_signatures,
-            &reduce_gb, &info_level);
+            &reduce_gb, &truncate_lifting, &info_level);
 
+    /* not enough elements available for normal form computations resp. saturation */
+    if (nr_gens <= nr_nf) {
+        return 0;
+    }
     /* all data is corrupt */
     if (res == -1) {
         free(invalid_gens);
@@ -69,7 +74,7 @@ int initialize_gba_input_data(
     if (check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
                 field_char, mon_order, elim_block_len, nr_vars, nr_gens,
                 nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
-                use_signatures, reduce_gb, pbm_file, info_level)) {
+                use_signatures, reduce_gb, pbm_file, truncate_lifting, info_level)) {
         return 0;
     }
 

@@ -351,6 +351,7 @@ struct md_t
     double tracer_ctime;
     double rht_ctime;
     double nf_ctime;
+    double fglm_ctime;
 
     double round_rtime;
     double select_rtime;
@@ -363,6 +364,8 @@ struct md_t
     double tracer_rtime;
     double rht_rtime;
     double nf_rtime;
+    double fglm_rtime;
+    double learning_rtime;
 
     int64_t num_pairsred;
     int64_t num_gb_crit;
@@ -426,6 +429,7 @@ struct md_t
     uint64_t application_nr_red;
 
     int32_t print_gb;
+    int32_t truncate_lifting;
 
     /* for f4sat */
     uint32_t new_multipliers;

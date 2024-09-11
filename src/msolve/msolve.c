@@ -2005,11 +2005,11 @@ void set_linear_function_pointer(int32_t fc){
     nbits = 32;
   }
   else{
-    if(fc < pow(2, 8)) {
+    if(fc < (int32_t)(1) << 8) {
       nbits = 8;
     }
     else{
-      if(fc < pow (2, 16)){
+      if(fc < (int32_t)(1) << 16){
         nbits = 16;
       }
       else nbits = 32;
@@ -2108,7 +2108,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int32_t nr_gens = gens->ngens;
   int reduce_gb = 1;
   int32_t nr_nf = 0;
-  const uint32_t prime_start = pow(2, 30);
+  const uint32_t prime_start = (uint32_t)(1) << 30;
   const int32_t nr_primes = nr_threads;
 
   len_t i;
@@ -4673,7 +4673,7 @@ restart:
             ct0 = cputime();
             rt0 = realtime();
             uint32_t field_char         = gens->field_char;
-            const uint32_t prime_start  = pow(2, 30);
+            const uint32_t prime_start  = (uint32_t)(1) << 30;
             const int32_t nr_primes     = nr_threads;
 
             /* data structures for basis, hash table and statistics */

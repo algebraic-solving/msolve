@@ -5,7 +5,7 @@ using Pkg
 
 Pkg.add("AlgebraicSolving") # for stable version
 or
-Pkg.dev("AlgebraicSolving") # for developer version
+Pkg.develop("AlgebraicSolving") # for developer version
 
 Moreover, msolve functionality is available via the Computer
 Algebra System OSCAR in Julia. Running your Julia REPL apply
@@ -15,4 +15,4 @@ using Pkg
 
 Pkg.add("Oscar") # for stable version
 or
-Pkg.dev("Oscar") # for developer version
+Pkg.develop("Oscar") # for developer version

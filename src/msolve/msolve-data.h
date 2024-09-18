@@ -125,11 +125,12 @@ typedef struct{
 #define ALIGNED32 __attribute__((aligned(32)))
 #endif
 typedef struct{
-  CF_t *vecinit ALIGNED32; //vecteur initial
-  CF_t *res ALIGNED32; //va contenir les termes de suites qui nous interessent
-  CF_t *vecmult ALIGNED32; //utilise pour la multiplication
-  CF_t *vvec ALIGNED32;
-  CF_l_t *vec_cache ALIGNED32; //useless
+  CF_t *vecinit ALIGNED32; /* init vector used in Wiedemann's implementation */
+  CF_t *vecmult ALIGNED32; /* vector used to store the multiplication of the 
+                            * dense part of the multiplication matrix with a 
+                            * vector in Wiedemann */
+  CF_t *vvec ALIGNED32; /* stores the result of matrix vector product in Wiedeman */
+  CF_t *res ALIGNED32; /* array storing the term sequences needed after Wiedeman */
   mp_limb_t *pts;
 } fglm_data_t;
 

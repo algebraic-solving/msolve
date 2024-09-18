@@ -692,7 +692,7 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
 }
 #endif
 
-static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
+static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
                                      szmat_t block_size, long dimquot,
                                      nvars_t* squvars,
                                      nvars_t* linvars,
@@ -708,7 +708,14 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
   const szmat_t ncols = matxn->ncols;
   const szmat_t nrows = matxn->nrows;
 
-  const int BL = 16;
+  int BL = 0;
+  if(nvars < 16){
+      BL = 16;
+  }
+  else{
+      BL = 32;
+  }
+
   /* allocates random matrix */
   CF_t *Rmat ALIGNED32;
   if(posix_memalign((void **)&Rmat, 32, BL*ncols*sizeof(CF_t))){
@@ -1499,193 +1506,6 @@ static inline long initialize_fglm_colon_data(sp_matfglmcol_t *matrix,
   return nb;
 }
 
-
-param_t *nmod_fglm_compute(sp_matfglm_t *matrix, const mod_t prime, const nvars_t nvars,
-                           const szmat_t nlins,
-                           nvars_t *linvars,
-                           uint32_t *lineqs,
-                           nvars_t *squvars,
-                           const int info_level,
-			   md_t *st){
-#if DEBUGFGLM > 0
-  fprintf(stderr, "prime = %u\n", prime);
-#endif
-
-#if DEBUGFGLM >= 1
-  FILE *fmat = fopen("/tmp/matrix.fglm", "w");
-  display_fglm_matrix(fmat, matrix);
-  fclose(fmat);
-#endif
-  /* 1147878294 */
-    if(prime>=1518500213){
-    fprintf(stderr, "Prime %u is too large.\n", prime);
-    fprintf(stderr, "One needs to use update linear algebra fglm functions\n");
-    return NULL;
-  }
-
-  szmat_t block_size = nvars-nlins;
-
-  fglm_data_t *data = allocate_fglm_data(matrix->nrows, matrix->ncols, nvars);
-
-  param_t *param = allocate_fglm_param(prime, nvars);
-
-  long sz = matrix->ncols * matrix->nrows;
-  long nb = initialize_fglm_data(matrix, data, prime, sz, block_size);
-
-  if(info_level){
-    fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n",
-            matrix->ncols, matrix->nrows,
-            100*((double)matrix->nrows / (double)matrix->ncols));
-    fprintf(stderr, "Density of non-trivial part %.2f%%\n",
-            100-100*(float)nb/(float)sz);
-  }
-
-  szmat_t dimquot = (matrix->ncols);
-
-#if DEBUGFGLM > 1
-  print_vec(stderr, data->vecinit, matrix->ncols);
-  print_vec(stderr, data->res, 2 * block_size * matrix->ncols);
-  fprintf(stderr, "\n");
-#endif
-
-  double st1 = realtime();
-
-#ifdef BLOCKWIED
-  fprintf(stderr, "Starts computation of matrix sequence\n");
-  double st0 = omp_get_wtime();
-  generate_matrix_sequence(matrix, data, block_size, dimquot,
-                           squvars, linvars, nvars, prime, st);
-  double et0 = omp_get_wtime() - st0;
-  fprintf(stderr, "Matrix sequence computed\n");
-  fprintf(stderr, "Elapsed time : %.2f\n", et0);
-  fprintf(stderr, "Implementation to be completed\n");
-
-  // pick some nbrows, nbcols, length
-  // (matrix sequence has "2*glen" matrices of size "gdim x gdim"
-  slong gdim = 16;
-  slong glen = 4096;
-  nmod_mat_poly_t matp;
-  nmod_mat_poly_init2(matp, 2*gdim, gdim, prime, 2*glen);
-  // top gdim x gdim submatrix matrices is formed from the matrix sequence
-  // for the moment, let's take random coefficients
-  flint_rand_t state;
-  flint_randinit(state);
-  srand(time(0));
-  flint_randseed(state, rand(), rand());
-  for (slong k = 0; k < 2*glen; k++)
-  {
-    mp_ptr vec = (matp->coeffs + k)->entries;
-    for (slong i = 0; i < gdim*gdim; i++)
-      vec[i] = n_randint(state, matp->mod.n);
-  }
-  // bottom gdim x gdim submatrix is -identity
-  for (slong i = 0; i < gdim; i++)
-    nmod_mat_entry(matp->coeffs + 0, gdim+i, i) = prime-1;
-
-  // convert to poly_mat pmat, and forget matp
-  double st_recon = omp_get_wtime();
-  nmod_poly_mat_t pmat;
-  nmod_poly_mat_set_from_mat_poly(pmat, matp);
-	nmod_mat_poly_clear(matp);
-
-  // fraction reconstruction
-  nmod_poly_mat_t appbas;
-  nmod_poly_mat_init(appbas, 2*gdim, 2*gdim, prime);
-  nmod_poly_mat_pmbasis(appbas, NULL, pmat, 2*glen);
-	// extract generator and forget appbas
-  nmod_poly_mat_t gen;
-  nmod_poly_mat_init(gen, gdim, gdim, prime);
-  for (slong i = 0; i < gdim; i++)
-    for (slong j = 0; j < gdim; j++)
-      nmod_poly_swap(gen->rows[i] + j, appbas->rows[i] + j);
-  nmod_poly_mat_clear(appbas);
-
-  double tt_recon = omp_get_wtime() - st_recon;
-  fprintf(stderr, "Matrix generator computed\n");
-  fprintf(stderr, "Elapsed time : %.2f\n", tt_recon);
-  fprintf(stderr, "Implementation to be completed\n");
-
-  exit(1);
-#else
-  generate_sequence_verif(matrix, data, block_size, dimquot,
-			  squvars, linvars, nvars, prime, st);
-#endif
-  if(info_level > 1){
-    double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
-    double rt1 = realtime()-st1;
-    fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt1, nops / rt1);
-  }
-
-  st1 = realtime();
-
-  /* Berlekamp-Massey data */
-  fglm_bms_data_t *data_bms = allocate_fglm_bms_data(dimquot, prime);
-
-  long dim = 0;
-  compute_minpoly(param, data, data_bms, dimquot, linvars, lineqs, nvars, &dim,
-                  info_level);
-
-  if(info_level){
-    fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed: %.2f sec\n",
-            realtime()-st1);
-  }
-
-
-  if (dimquot == dim) {
-
-    if(info_level){
-      fprintf(stderr, "Elimination polynomial is squarefree.\n");
-    }
-
-    st1 = realtime();
-    if(compute_parametrizations(param, data, data_bms,
-                                dim, dimquot, block_size,
-                                nlins, linvars, lineqs,
-                                nvars) == 0){
-
-      fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
-      free_fglm_bms_data(data_bms);
-      free_fglm_data(data);
-      return NULL;
-
-    }
-
-  } else {
-
-    fprintf(stderr, "Elimination polynomial is not squarefree.\n");
-
-    int right_param= compute_parametrizations_non_shape_position_case(param,
-								      data,
-								      data_bms,
-								      dimquot,
-								      block_size,
-								      nlins, linvars,
-								      lineqs, squvars,
-								      nvars, prime,
-								      1); /* verif */
-    if (right_param == 0) {
-      fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
-      free_fglm_bms_data(data_bms);
-      free_fglm_data(data);
-      return NULL;
-    } else if (right_param == 1) {
-      fprintf(stderr, "Radical ideal might have no correct parametrization\n");
-    } else if (right_param < nvars) {
-      fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-    } else {
-      fprintf(stderr, "All the parametrizations of ");
-      fprintf(stderr, "the radical ideal are correct\n");
-    }
-  }
-  if(info_level){
-    fprintf(stderr, "Time spent to compute parametrizations (elapsed): %.2f sec\n",
-            realtime()-st1);
-    fprintf(stderr, "Parametrizations done.\n");
-  }
-  free_fglm_bms_data(data_bms);
-  free_fglm_data(data);
-  return param;
-}
 
 
 param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,

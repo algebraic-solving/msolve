@@ -692,7 +692,7 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
 }
 #endif
 
-static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
+static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
                                      szmat_t block_size, long dimquot,
                                      nvars_t* squvars,
                                      nvars_t* linvars,
@@ -708,7 +708,14 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t * data,
   const szmat_t ncols = matxn->ncols;
   const szmat_t nrows = matxn->nrows;
 
-  const int BL = 16;
+  int BL = 0;
+  if(nvars < 16){
+      BL = 16;
+  }
+  else{
+      BL = 32;
+  }
+
   /* allocates random matrix */
   CF_t *Rmat ALIGNED32;
   if(posix_memalign((void **)&Rmat, 32, BL*ncols*sizeof(CF_t))){

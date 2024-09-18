@@ -41,7 +41,7 @@ static inline void free_sp_mat_fglm(sp_matfglm_t *mat){
 static inline fglm_data_t *allocate_fglm_data(szmat_t nrows, szmat_t ncols, szmat_t nvars){
   fglm_data_t * data = malloc(sizeof(fglm_data_t));
 
-  szmat_t block_size = nvars; //taille de bloc dans data->res
+  szmat_t block_size = nvars; //block size in data->res
 
   if(posix_memalign((void **)&data->vecinit, 32, ncols*sizeof(CF_t))){
     fprintf(stderr, "posix_memalign failed\n");

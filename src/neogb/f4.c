@@ -79,7 +79,7 @@ void free_f4_julia_result_data(
     int64_t i;
     int64_t len = 0;
     for (i = 0; i < ngens; ++i) {
-         len += (int64_t)lens[i];
+        len += (int64_t)lens[i];
     } 
 
     (*freep)(lens);
@@ -94,10 +94,10 @@ void free_f4_julia_result_data(
 
     /* coefficients */
     if (field_char == 0) {
-         mpz_t **cfs = (mpz_t **)bcf;
-         for (i = 0; i < len; ++i) {
-             mpz_clear((*cfs)[i]);
-         }
+        mpz_t **cfs = (mpz_t **)bcf;
+        for (i = 0; i < len; ++i) {
+            mpz_clear((*cfs)[i]);
+        }
     } else {
         if (field_char > 0) {
             int32_t *cfs  = *((int32_t **)bcf);

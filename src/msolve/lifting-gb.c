@@ -576,13 +576,12 @@ static inline int32_t maxbitsize_generators(bs_t *bs){
     int32_t ngens = bs->ld;
     for(int32_t i = 0; i < ngens; i++){
         int32_t len = bs->hm[i][LENGTH];
-        mpz_t *cfs = bs->cf_qq[i];
-        for(int32_t i = 0; i < len; i++){
+        mpz_t *cfs = bs->cf_qq[bs->hm[i][COEFFS]];
+        for(int32_t j = 0; j < len; j++){
+            max = MAX(max,
+                    mpz_sizeinbase(cfs[j], 2)
+                    );
         }
-        max = MAX(max, 
-                mpz_sizeinbase(cfs[i], 2)
-                );
-
     }
     return max;
 }

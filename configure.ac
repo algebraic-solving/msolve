@@ -247,5 +247,8 @@ AC_CONFIG_LINKS([
  input_files/f4sat-is-saturated-check.ms:input_files/f4sat-is-saturated-check.ms
  output_files/f4sat-is-saturated-check.res:output_files/f4sat-is-saturated-check.res
  test/diff/diff_f4sat-is-saturated-check.sh:test/diff/diff_f4sat-is-saturated-check.sh
+ input_files/maxbitsize-bug.ms:input_files/maxbitsize-bug.ms
+ output_files/maxbitsize-bug.res:output_files/maxbitsize-bug.res
+ test/diff/diff_maxbitsize-bug.sh:test/diff/diff_maxbitsize-bug.sh
 ])
 AC_OUTPUT

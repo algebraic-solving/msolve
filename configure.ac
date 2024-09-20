@@ -189,6 +189,7 @@ AC_CONFIG_LINKS([
  input_files/reals_dim0.ms:input_files/reals_dim0.ms
  output_files/reals_dim0.res:output_files/reals_dim0.res
  output_files/reals_dim0.p256.res:output_files/reals_dim0.p256.res
+ test/diff/diff_realroot-extraction-exact-root.sh:test/diff/diff_realroot-extraction-exact-root.sh
  input_files/realroot-extraction-exact-root.ms:input_files/realroot-extraction-exact-root.ms
  output_files/realroot-extraction-exact-root.res:output_files/realroot-extraction-exact-root.res
  output_files/realroot-extraction-exact-root.p256.res:output_files/realroot-extraction-exact-root.p256.res

@@ -261,12 +261,12 @@ static int left_interval(mpz_t *upoly, unsigned long int *deg_ptr,
 
 static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
                                         interval *rt,
-                                        mpz_t *tab, long long int Nlog,
+                                        mpz_t *tab, int64_t Nlog,
                                         int *success, int verbose){
-  long k = (rt-> k);
-  long newk = k+Nlog;
+  int64_t k = (rt-> k);
+  int64_t newk = k+Nlog;
   int sgna, sgnb, sgnx;
-  long long int index;
+  int64_t index;
 
   mpz_t *vala = (tab);
   mpz_t *valb = (tab+1);
@@ -287,7 +287,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
 
   mpz_set(*vala, *tmpvala);
   mpz_set(*valb, *tmpvalb);
-  unsigned long long maxindex = (1<<(Nlog));
+  int64_t maxindex = (1L<<(Nlog));
 
   if(index == -2 || index == 0 || (LOG2(index) > Nlog && index > 0) ){
     if(Nlog == 2) index = 2;
@@ -408,7 +408,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
 //tab[0] et tab[1] contiennent f(a) et f(b) respectivement
 //tab[2] contient b
 static void refine_root_by_N_negative_k(mpz_t *upol, unsigned long int *deg_ptr,
-                                        interval *rt, mpz_t *tab, long long int Nlog,
+                                        interval *rt, mpz_t *tab, int64_t Nlog,
                                         int *success, int verbose){
   long newk;
   /* one takes the opposite */
@@ -595,7 +595,7 @@ static void refine_root_by_N_negative_k(mpz_t *upol, unsigned long int *deg_ptr,
  */
 static void refine_positive_root_by_N(mpz_t *upol, unsigned long int *deg_ptr,
                                       interval *rt, mpz_t *tab,
-                                      unsigned long long int Nlog, int *success,
+                                      int64_t Nlog, int *success,
                                       int verbose){
   *success = 1;
 
@@ -622,7 +622,7 @@ static void refine_positive_root_by_N(mpz_t *upol, unsigned long int *deg_ptr,
 void refine_QIR_positive_root(mpz_t *upol, unsigned long int *deg_ptr,
                               interval *rt, mpz_t *tab, int prec, int verbose){
   if(rt->isexact==1) return;
-  long long int Nlog = 2;
+  int64_t Nlog = 2;
   int success = 1;
   while(rt->isexact != 1 && rt->k < prec){
 
@@ -882,6 +882,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
 void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *roots,
                                  int nbneg, int nbpos,
                                  int prec, int verbose, double step, int nthreads){
+
   unsigned long int i;
   /* table for intermediate values */
   mpz_t *tab = (mpz_t *)(malloc(sizeof(mpz_t) * 8));

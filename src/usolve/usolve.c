@@ -1307,8 +1307,6 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
     }
   }
 
-  /* display_roots_system(stderr, roots, nbroots); */
-  /* fprintf(stderr, "First root \n"); */
   /* display_root(stderr, roots); */
 
   e_time = realtime ( ) - e_time;

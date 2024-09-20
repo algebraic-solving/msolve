@@ -2924,7 +2924,7 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
   mpz_fdiv_q_2exp(den_do, den_do, k * deg);
   mpz_cdiv_q_2exp(den_up, den_up, k * deg);
 
-  return boo;
+  return (boo || (mpz_sgn(den_do)==0) || (mpz_sgn(den_up)==0));
 }
 
 void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
@@ -2938,18 +2938,19 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   /* root is exact */
   if (rt->isexact == 1) {
     single_exact_real_root_param(param, rt, nb, xdo, xup, den_up, den_do, c,
-                                 tmp, val_do, val_up, tab, pt, prec,
+                                 tmp, val_do, val_up, tab, pt, MAX(rt->k, prec),
                                  info_level);
     return;
   }
 
-  long b = 16;
-  long corr = 2 * (ns + rt->k);
+  int64_t b = 16;
+  int64_t corr = 2 * (ns + rt->k);
 
   /* checks whether the abs. value of the root is greater than 1 */
 
   generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
-  while (newvalue_denom(param->denom->coeffs, param->denom->length - 1,
+  while (rt->isexact == 0 && 
+          newvalue_denom(param->denom->coeffs, param->denom->length - 1,
                         rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
                         s)) {
 
@@ -2958,7 +2959,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
       refine_QIR_positive_root(polelim, &ns, rt, tab, 2 * (rt->k), info_level);
     } else {
-      /* root is positive */
+      /* root is negative */
       mpz_add_ui(pos_root->numer, rt->numer, 1);
       mpz_neg(pos_root->numer, pos_root->numer);
       pos_root->k = rt->k;
@@ -3002,11 +3003,26 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     corr *= 2;
     b *= 2;
 
+    if(rt->isexact){
+        mpz_poly_eval_2exp_naive(param->denom->coeffs, param->denom->length - 1,
+                        &rt->numer, rt->k, xdo, xup); 
+        mpz_set(den_up, xdo[0]);
+        mpz_set(den_do, xdo[0]);
+        corr = (param->denom->length - 1) * rt->k;
+    }
     generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
 
     if (info_level) {
       fprintf(stderr, "<%ld>", rt->k);
     }
+  }
+
+  
+  if (rt->isexact == 1) {
+    single_exact_real_root_param(param, rt, nb, xdo, xup, den_up, den_do, c,
+                                 tmp, val_do, val_up, tab, pt, MAX(prec, rt->k),
+                                 info_level);
+    return;
   }
 
   mpz_t v1, v2;
@@ -3027,7 +3043,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     mpz_mul_2exp(val_up, val_up, dec);
     mpz_mul_2exp(val_do, val_do, dec);
 
-    if (mpz_cmp(val_do, val_up) > 0) {
+    if (rt->isexact==0 && mpz_cmp(val_do, val_up) > 0) {
       fprintf(stderr, "BUG in real root extractor(2)\n");
       exit(1);
     }

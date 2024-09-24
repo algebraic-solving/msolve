@@ -19,8 +19,17 @@
 #  * Huu Phuoc Le
 #  * Mohab Safey El Din */
 
-#WARNING: this file uses a sed command which does not work for mac users
-#Mac users should use the msolve-to-maple-file-interface-macos.mpl file
+GetSystem:=proc()
+local sys;
+  sys:=kernelopts(system);
+  if StringTools[Has](sys, "APPLE") then
+    return "macOS";
+  elif StringTools[Has](sys, "LINUX") then
+    return "Linux";
+  else
+    return "Windows";
+  fi;
+end proc:
 
 FormatOutputMSolve:=proc(ll, _Z)
 local dim, deg, degquot, params, nvars, elim, den, cfs, i, varstr, linearform:
@@ -93,8 +102,11 @@ local i, fd, F2, str;
      fprintf(fd, "%a\n", F2[nops(F2)]):
    fi:
    fclose(fd):
-   str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
-#   str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
+   if evalb(GetSystem() = "macOS") then
+     str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
+   elif evalb(GetSystem() = "Linux") then
+     str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\n//g' ", fname):
+   fi:
    system(str):
 end proc:
 
@@ -314,7 +326,7 @@ lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim;
    else
      prec:= iquo(Digits/10)*128:
    fi:
-   str := cat(msolve_path, " -v ", verb, " -P ", param, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
+   str := cat(msolve_path, " -v ", verb, " -P ", param, " -p ", prec, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
    gb:=0; #Needed to avoid the user stops GB comp once a prime computation is done
    param:=0;
    try

@@ -557,7 +557,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
     size_t len = 0;
     while(getdelim(&line, &len, ',', fh) != -1) {
         for (k = 0, j = 0; j < len; ++j) {
-            if (line[j] != '\n' && line[j] != ' ') {
+            if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
                 line[k++] = line[j];
             }
         }
@@ -819,7 +819,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep, nelts_t all_nt
     for(i = 0; i < *nr_gens; i++){
         if (getdelim(&line, &len, ',', fh) != -1) {
             for (k = 0, j = 0; j < len; ++j) {
-                if (line[j] != '\n' && line[j] != ' ') {
+                if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
                     line[k++] = line[j];
                 }
             }
@@ -864,7 +864,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
     for(i = 0; i < *nr_gens; i++){
         if (getdelim(&line, &len, ',', fh) != -1) {
             for (k = 0, j = 0; j < len; ++j) {
-                if (line[j] != '\n' && line[j] != ' ') {
+                if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
                     line[k++] = line[j];
                 }
             }
@@ -917,11 +917,11 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                                       int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
   if (*nr_vars == -1)
-    printf("Bad file format.\n");  // FIXME fail here??
+    printf("Bad file format (first line).\n");  // FIXME fail here??
 
   *nr_gens = get_ngenerators(fn);
   if (*nr_gens == -1)
-    printf("Bad file format.\n");  // FIXME fail here??
+    printf("Bad file format (generators).\n");  // FIXME fail here??
 
   const int max_line_size  = 1073741824;
   char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));

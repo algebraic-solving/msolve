@@ -49,10 +49,11 @@ static inline void display_help(char *str){
 
   fprintf(stdout, "Input file format:\n");
   fprintf(stdout, "\t - first line: variables separated by a comma\n");
+  fprintf(stdout, "\t                (no comma at end of line)\n");
   fprintf(stdout, "\t - second line: characteristic of the field\n");
   fprintf(stdout, "\t - next lines provide the polynomials (one per line),\n");
   fprintf(stdout, "\t   separated by a comma\n");
-  fprintf(stdout, "\t   (no comma after the final polynomial)\n\n");
+  fprintf(stdout, "\t   (no comma after the last polynomial)\n\n");
   fprintf(stdout, "Output file format: \n");
   fprintf(stdout, "When there is no solution in an algebraic closure of the base field\n[-1]:\n");
   fprintf(stdout, "Where there are infinitely many solutions in \nan algebraic closure of the base field: \n[1, nvars, -1,[]]:\n");

@@ -361,37 +361,29 @@ static void print_ff_basis_data(
 
 static int32_t get_nvars(const char *fn)
 {
-  FILE *fh  = fopen(fn,"r");
-  /** load lines and store data */
-  const int max_line_size  = 1073741824;
-  char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));
+    FILE * fh = fopen(fn, "r");
+    char * line = NULL;
+    size_t len;
+    nvars_t nvars = 0; 
 
-  /** get first line (variables) */
-  const char comma_splicer  = ',';
-
-  /** get number of variables */
-  nvars_t nvars = 1; /** number of variables is number of commata + 1 in first line */
-  if (fgets(line, max_line_size, fh) != NULL) {
-    char *tmp = strchr(line, comma_splicer);
-    while (tmp != NULL) {
-      /** if there is a comma at the end of the line, i.e. strlen(line)-2 (since
-       * we have "\0" at the end of the string line, then we do not get another
-       * variable */
-      if ((uint32_t)(tmp-line) < strlen(line)-2) {
-        nvars++;
-        tmp = strchr(tmp+1, comma_splicer);
-      } else {
-        break;
-      }
+    /* number of variables is read from first line, it is 1 + (number of commata) */
+    if (getline(&line, &len, fh) != -1)
+    {
+        nvars = 1;
+        line = strchr(line, ',');
+        while (line != NULL)
+        {
+            nvars++;
+            // line points to a comma, which must be followed by one or more characters
+            // --> line+1 is valid
+            line = strchr(line+1, ',');
+        }
     }
-  } else {
-    printf("Bad file format.\n");
-    nvars = 0;
-  }
-  free(line);
-  fclose(fh);
 
-  return nvars;
+    free(line);
+    fclose(fh);
+
+    return nvars;
 }
 
 /**
@@ -926,6 +918,9 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                                       int32_t *field_char,
                                       int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
+  if (*nr_vars == 0)
+    printf("Bad file format.\n");  // FIXME fail here??
+
   *nr_gens = get_ngenerators(fn);
 
   const int max_line_size  = 1073741824;

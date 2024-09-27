@@ -364,7 +364,7 @@ static int32_t get_nvars(const char *fn)
     FILE * fh = fopen(fn, "r");
     char * line = NULL;
     size_t len;
-    nvars_t nvars = 0; 
+    nvars_t nvars = -1; 
 
     /* number of variables is read from first line, it is 1 + (number of commata) */
     if (getline(&line, &len, fh) != -1)
@@ -387,46 +387,44 @@ static int32_t get_nvars(const char *fn)
 }
 
 /**
- * Checks is a line of the input file is just empty resp. consists only
- * of whitespaces
- *
- * \param line line
+ * Checks if a null-terminated string is just empty
+ * ("only whitespaces" counts as empty)
  *
  * \return 1 if the line is empty, else 0
  */
 static inline int is_line_empty(const char *line)
 {
-  while (*line != '\0') {
-    if (!isspace(*line))
-      return 0;
-    line++;
-  }
-  return 1;
+    while (*line != '\0')
+    {
+        if (!isspace(*line))
+            return 0;
+        line++;
+    }
+    return 1;
 }
 
-static int32_t get_ngenerators(char *fn){
-  int32_t nlines = 0;
-  char *line  = NULL;
-  size_t len = 0;
-  FILE *fh  = fopen(fn,"r");
-  /* first line are the variables */
-  if (getline(&line, &len, fh) == -1) {
+static int32_t get_ngenerators(char *fn)
+{
+    int32_t ngens = 0;
+    char *line  = NULL;
+    size_t len;
+    FILE *fh  = fopen(fn,"r");
+
+    /* 1st and 2nd lines are ignored; still check all went fine */
+    if (   getline(&line, &len, fh) == -1
+        || getline(&line, &len, fh) == -1)
+        ngens = -1;
+
+    /* go through subsequent lines, not counting empty ones */
+    else
+        while(getline(&line, &len, fh) != -1)
+            if (! is_line_empty(line))
+                ngens++;
+
+    free(line);
     fclose(fh);
-    return -1;
-  }
-  /* second line is the characteristic */
-  if (getline(&line, &len, fh) == -1) {
-    fclose(fh);
-    return -1;
-  }
-  while(getdelim(&line, &len, ',', fh) != -1) {
-    /* check if there are empty lines in the input file */
-    if (is_line_empty(line) == 0)
-      nlines++;
-  }
-  free(line);
-  fclose(fh);
-  return nlines;
+
+    return ngens;
 }
 
 
@@ -918,10 +916,12 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                                       int32_t *field_char,
                                       int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
-  if (*nr_vars == 0)
+  if (*nr_vars == -1)
     printf("Bad file format.\n");  // FIXME fail here??
 
   *nr_gens = get_ngenerators(fn);
+  if (*nr_gens == -1)
+    printf("Bad file format.\n");  // FIXME fail here??
 
   const int max_line_size  = 1073741824;
   char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));

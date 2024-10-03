@@ -21,33 +21,10 @@
 
 #include "../../src/msolve/libmsolve.c"
 
-typedef struct{
-  nvars_t nvars;
-  nvars_t elim;
-  int32_t ngens;
-  int32_t nterms;
-  int32_t field_char;
-  /* counts change of variable orders:
-   * x1 <-> xn
-   * x1 <-> xn-1
-   * ...
-   * for situation when staircase is not generic enough */
-  int32_t change_var_order;
-  /* base coefficient for linear form
-   * sum(i^k*x[k]) k = 1, ..., nvars
-   * It is zero if no linear form is active, otherwise != zero. */
-  int32_t linear_form_base_coef;
-  /* set to 1 if a linear form is chosen randomly */
-  int32_t rand_linear;
-  int32_t *random_linear_form;
-  char **vnames;
-  int32_t *lens;
-  int32_t *exps;
-  int32_t *cfs;    /* int32_t coeffs */
-  mpz_t **mpz_cfs; /* mpz_t coeffs */
-} data_gens_ff_t;
-
-int data_gens_cmp(data_gens_ff_t * gens1, data_gens_ff_t * gens2)
+/** compare two data_gens_ff_t which have been filled with int32_t coefficients
+ * returns 0 if equal, returns nonzero otherwise
+ **/
+int data_gens_cmp_int32(data_gens_ff_t * gens1, data_gens_ff_t * gens2)
 {
     if (gens1->nvars != gens2->nvars) return 1;
     if (gens1->elim != gens2->elim) return 1;
@@ -65,7 +42,30 @@ int data_gens_cmp(data_gens_ff_t * gens1, data_gens_ff_t * gens2)
         if (strcmp(gens1->vnames[k], gens2->vnames[k]))
             return 1;
 
-    // TODO
+    long pos = 0;
+    int32_t c1, c2;
+    const long nv_m_el = gens1->nvars - gens1->elim;
+    for(long i = 0; i < gens1->ngens; i++)
+    {
+        if (gens1->lens[i] != gens2->lens[i])
+            return 1;
+
+        for(long j = 0; j < gens1->lens[i]; j++)
+        {
+            c1 = gens1->cfs[pos+j];
+            c2 = gens2->cfs[pos+j];
+            if (c1 != c2)
+                return 1;
+
+            for(long k = 0; k < nv_m_el; k++)
+                if (gens1->exps[pos * nv_m_el + k] != gens2->exps[pos * nv_m_el + k])
+                    return 1;
+        }
+
+        pos += gens1->lens[i]; // TODO move to loop
+    }
+
+    return 0;
 }
 
 
@@ -79,21 +79,22 @@ int main(void)
 {
 
     char * fn_dos[TEST_IOFILES_NUMBER_FILES] = {
-        "in1_dos.ms",
-        "in2_dos.ms",
-        "in3_dos.ms",
-        "in4_dos.ms",
+        "files/in1_dos.ms",
+        "files/in2_dos.ms",
+        "files/in3_dos.ms",
+        "files/in4_dos.ms",
     };
 
     char * fn_unix[TEST_IOFILES_NUMBER_FILES] = {
-        "in1_unix.ms",
-        "in2_unix.ms",
-        "in3_unix.ms",
-        "in4_unix.ms",
+        "files/in1_unix.ms",
+        "files/in2_unix.ms",
+        "files/in3_unix.ms",
+        "files/in4_unix.ms",
     };
 
-    for (int k = 0; k < TEST_IOFILES_NUMBER_FILES; k++)
+    for (long k = 0; k < TEST_IOFILES_NUMBER_FILES; k++)
     {
+        printf("testing file %ld\n", k);
         char * fn1 = fn_dos[k];
         char * fn2 = fn_unix[k];
         int32_t nr_vars1, nr_vars2, field_char1, field_char2, nr_gens1, nr_gens2;
@@ -103,10 +104,12 @@ int main(void)
         get_data_from_file(fn1, &nr_vars1, &field_char1, &nr_gens1, gens1);
         get_data_from_file(fn2, &nr_vars2, &field_char2, &nr_gens2, gens2);
 
-        if ( (nr_vars1 != nr_vars2) || (field_char1 != field_char2) || (nr_gens1 != nr_gens2) )
+        printf("get data ok\n");
+
+        if ((nr_vars1 != nr_vars2) || (field_char1 != field_char2) || (nr_gens1 != nr_gens2))
             return 1;
 
-        if (data_gens_cmp(gens1, gens2))
+        if (data_gens_cmp_int32(gens1, gens2))
             return 1;
     }
 

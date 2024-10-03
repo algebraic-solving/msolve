@@ -79,7 +79,6 @@ int data_gens_cmp_int32(data_gens_ff_t * gens1, data_gens_ff_t * gens2)
                 }
             printf("    exps ok\n");
         }
-
         pos += gens1->lens[i]; // TODO move to loop
     }
 
@@ -124,6 +123,13 @@ int main(void)
 
         display_gens_ff(stdout, gens1);
         display_gens_ff(stdout, gens2);
+
+        for (int k = 0; k < 200; ++k)
+            printf("%d, ", gens1->cfs[k]);
+        printf("\n");
+        for (int k = 0; k < 200; ++k)
+            printf("%d, ", gens1->exps[k]);
+        printf("\n");
 
         printf("get data ok\n");
 

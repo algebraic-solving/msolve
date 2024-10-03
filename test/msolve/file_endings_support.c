@@ -23,12 +23,12 @@
 
 #define TEST_IOFILES_NUMBER_FILES 4
 
-#define TEST_IOFILES_PREFIX "./test/msolve/files/"
+#define TEST_IOFILES_PREFIX "./input_files/line_endings/"
 
-/** compare two data_gens_ff_t which have been filled with int32_t coefficients
+/** compare two data_gens_ff_t which have been filled with int32_t or mpz_t coefficients
  * returns 0 if equal, returns nonzero otherwise
  **/
-int data_gens_cmp_int32(data_gens_ff_t * gens1, data_gens_ff_t * gens2)
+int data_gens_cmp(data_gens_ff_t * gens1, data_gens_ff_t * gens2)
 {
     if (gens1->nvars != gens2->nvars) return 1;
     if (gens1->elim != gens2->elim) return 1;
@@ -46,40 +46,27 @@ int data_gens_cmp_int32(data_gens_ff_t * gens1, data_gens_ff_t * gens2)
         if (strcmp(gens1->vnames[k], gens2->vnames[k]))
             return 1;
 
-    printf("before ugliness\n");
-
-    long pos = 0;
-    int32_t c1, c2;
     const long nv_m_el = gens1->nvars - gens1->elim;
-    for (long i = 0; i < gens1->ngens; i++)
+    long pos = 0;
+    for (long i = 0; i < gens1->ngens; pos += gens1->lens[i], i++)
     {
-        printf("iter %ld / %d\n", i, gens1->ngens);
-
         if (gens1->lens[i] != gens2->lens[i])
             return 1;
-        printf("    lens ok\n");
 
         for (long j = 0; j < gens1->lens[i]; j++)
         {
-            printf("     %ld - %ld\n", i, j);
-            c1 = gens1->cfs[pos+j];
-            c2 = gens2->cfs[pos+j];
-            if (c1 != c2)
-            {
-                printf("%d, %d\n", c1, c2);
+            if (gens1->field_char != 0 &&
+                    (gens1->cfs[pos+j] != gens2->cfs[pos+j]))
                 return 1;
-            }
-            printf("    coeff ok\n");
+
+            if (gens1->field_char == 0 &&
+                    mpz_cmp(*(gens1->mpz_cfs[2*(pos+j)]), *(gens2->mpz_cfs[2*(pos+j)])))
+                return 1;
 
             for (long k = 0; k < nv_m_el; k++)
                 if (gens1->exps[(pos+j) * nv_m_el + k] != gens2->exps[(pos+j) * nv_m_el + k])
-                {
-                    printf("%d vs %d\n",gens1->exps[(pos+j) * nv_m_el + k], gens2->exps[(pos+j) * nv_m_el + k]);
                     return 1;
-                }
-            printf("    exps ok\n");
         }
-        pos += gens1->lens[i]; // TODO move to loop
     }
 
     return 0;
@@ -88,7 +75,6 @@ int data_gens_cmp_int32(data_gens_ff_t * gens1, data_gens_ff_t * gens2)
 /** this tests that input files are interpreted the same way
  * with dos line endings or unix line endings
  **/
-
 int main(void)
 {
 
@@ -108,7 +94,6 @@ int main(void)
 
     for (long k = 0; k < TEST_IOFILES_NUMBER_FILES; k++)
     {
-        printf("testing file %ld\n", k);
         char fn1[200] = TEST_IOFILES_PREFIX;
         strcat(fn1, fn_dos[k]);
         char fn2[200] = TEST_IOFILES_PREFIX;
@@ -121,26 +106,11 @@ int main(void)
         get_data_from_file(fn1, &nr_vars1, &field_char1, &nr_gens1, gens1);
         get_data_from_file(fn2, &nr_vars2, &field_char2, &nr_gens2, gens2);
 
-        display_gens_ff(stdout, gens1);
-        display_gens_ff(stdout, gens2);
-
-        for (int k = 0; k < 200; ++k)
-            printf("%d, ", gens1->cfs[k]);
-        printf("\n");
-        for (int k = 0; k < 200; ++k)
-            printf("%d, ", gens1->exps[k]);
-        printf("\n");
-
-        printf("get data ok\n");
-
         if ((nr_vars1 != nr_vars2) || (field_char1 != field_char2) || (nr_gens1 != nr_gens2))
             return 1;
 
-        printf("basic vars ok\n");
-
-        if (data_gens_cmp_int32(gens1, gens2))
+        if (data_gens_cmp(gens1, gens2))
             return 1;
-        printf("data gens ok\n");
     }
 
     return 0;

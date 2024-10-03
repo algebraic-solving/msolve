@@ -81,7 +81,7 @@ int main(void)
     char * fn_dos[TEST_IOFILES_NUMBER_FILES] = {
         "in1_dos.ms",
         "in2_dos.ms",
-        "in3_dos.ms",
+        "in3_dos_noeol.ms",
         "in4_dos.ms",
     };
 

@@ -84,6 +84,14 @@ AC_CONFIG_FILES([
  src/msolve/Makefile
 ])
 AC_CONFIG_LINKS([
+ input_files/line_endings/in1_dos.ms
+ input_files/line_endings/in2_dos_noeol.ms
+ input_files/line_endings/in3_dos.ms
+ input_files/line_endings/in4_dos.ms
+ input_files/line_endings/in1_unix.ms
+ input_files/line_endings/in2_unix.ms
+ input_files/line_endings/in3_unix.ms
+ input_files/line_endings/in4_unix.ms
  test/diff/diff_source.sh:test/diff/diff_source.sh
  test/diff/diff_source-groebner.sh:test/diff/diff_source-groebner.sh
  input_files/cp_d_3_n_4_p_2.ms:input_files/cp_d_3_n_4_p_2.ms

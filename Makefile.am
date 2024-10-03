@@ -11,7 +11,7 @@ check_PROGRAMS		= neogb_io \
 			  fglm_build_matrixn_radical_shape-31 \
 			  fglm_build_matrixn_nonradical_shape-31 \
 			  fglm_build_matrixn_nonradical_radicalshape-31 \
-			  file_endings_support
+			  line_endings_support
 
 checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_cyclic5-16.sh \
@@ -68,7 +68,7 @@ neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c
 fglm_build_matrixn_radical_shape_31_SOURCES = test/fglm/build_matrixn_radical_shape-31.c
 fglm_build_matrixn_nonradical_shape_31_SOURCES = test/fglm/build_matrixn_nonradical_shape-31.c
 fglm_build_matrixn_nonradical_radicalshape_31_SOURCES = test/fglm/build_matrixn_nonradical_radicalshape-31.c
-file_endings_support_SOURCES = test/msolve/file_endings_support.c
+line_endings_support_SOURCES = test/msolve/line_endings_support.c
 
 TESTS = $(check_PROGRAMS) $(checkdiff)
 

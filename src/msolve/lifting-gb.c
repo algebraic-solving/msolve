@@ -1824,7 +1824,8 @@ int64_t export_groebner_qq(
     int err = 0;
 
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
-    modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, 2);
+    modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, 
+            2/* if set to 1, only the LM of the Gbs are correct */);
     if (err) {
         printf("Problem with groebner_qq, stopped computation.\n");
         exit(1);

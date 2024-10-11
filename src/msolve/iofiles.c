@@ -361,80 +361,70 @@ static void print_ff_basis_data(
 
 static int32_t get_nvars(const char *fn)
 {
-  FILE *fh  = fopen(fn,"r");
-  /** load lines and store data */
-  const int max_line_size  = 1073741824;
-  char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));
+    FILE * fh = fopen(fn, "r");
+    char * line = NULL;
+    size_t len;
+    nvars_t nvars = -1; 
 
-  /** get first line (variables) */
-  const char comma_splicer  = ',';
-
-  /** get number of variables */
-  nvars_t nvars = 1; /** number of variables is number of commata + 1 in first line */
-  if (fgets(line, max_line_size, fh) != NULL) {
-    char *tmp = strchr(line, comma_splicer);
-    while (tmp != NULL) {
-      /** if there is a comma at the end of the line, i.e. strlen(line)-2 (since
-       * we have "\0" at the end of the string line, then we do not get another
-       * variable */
-      if ((uint32_t)(tmp-line) < strlen(line)-2) {
-        nvars++;
-        tmp = strchr(tmp+1, comma_splicer);
-      } else {
-        break;
-      }
+    /* number of variables is read from first line, it is 1 + (number of commata) */
+    if (getline(&line, &len, fh) != -1)
+    {
+        nvars = 1;
+        line = strchr(line, ',');
+        while (line != NULL)
+        {
+            nvars++;
+            // line points to a comma, which must be followed by one or more characters
+            // --> line+1 is valid
+            line = strchr(line+1, ',');
+        }
     }
-  } else {
-    printf("Bad file format.\n");
-    nvars = 0;
-  }
-  free(line);
-  fclose(fh);
 
-  return nvars;
+    free(line);
+    fclose(fh);
+
+    return nvars;
 }
 
 /**
- * Checks is a line of the input file is just empty resp. consists only
- * of whitespaces
- *
- * \param line line
+ * Checks if a null-terminated string is just empty
+ * ("only whitespaces" counts as empty)
  *
  * \return 1 if the line is empty, else 0
  */
 static inline int is_line_empty(const char *line)
 {
-  while (*line != '\0') {
-    if (!isspace(*line))
-      return 0;
-    line++;
-  }
-  return 1;
+    while (*line != '\0')
+    {
+        if (!isspace(*line))
+            return 0;
+        line++;
+    }
+    return 1;
 }
 
-static int32_t get_ngenerators(char *fn){
-  int32_t nlines = 0;
-  char *line  = NULL;
-  size_t len = 0;
-  FILE *fh  = fopen(fn,"r");
-  /* first line are the variables */
-  if (getline(&line, &len, fh) == -1) {
+static int32_t get_ngenerators(char *fn)
+{
+    int32_t ngens = 0;
+    char *line  = NULL;
+    size_t len;
+    FILE *fh  = fopen(fn,"r");
+
+    /* 1st and 2nd lines are ignored; still check all went fine */
+    if (   getline(&line, &len, fh) == -1
+        || getline(&line, &len, fh) == -1)
+        ngens = -1;
+
+    /* go through subsequent lines, not counting empty ones */
+    else
+        while(getline(&line, &len, fh) != -1)
+            if (! is_line_empty(line))
+                ngens++;
+
+    free(line);
     fclose(fh);
-    return -1;
-  }
-  /* second line is the characteristic */
-  if (getline(&line, &len, fh) == -1) {
-    fclose(fh);
-    return -1;
-  }
-  while(getdelim(&line, &len, ',', fh) != -1) {
-    /* check if there are empty lines in the input file */
-    if (is_line_empty(line) == 0)
-      nlines++;
-  }
-  free(line);
-  fclose(fh);
-  return nlines;
+
+    return ngens;
 }
 
 
@@ -567,7 +557,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
     size_t len = 0;
     while(getdelim(&line, &len, ',', fh) != -1) {
         for (k = 0, j = 0; j < len; ++j) {
-            if (line[j] != '\n' && line[j] != ' ') {
+            if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
                 line[k++] = line[j];
             }
         }
@@ -829,7 +819,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep, nelts_t all_nt
     for(i = 0; i < *nr_gens; i++){
         if (getdelim(&line, &len, ',', fh) != -1) {
             for (k = 0, j = 0; j < len; ++j) {
-                if (line[j] != '\n' && line[j] != ' ') {
+                if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
                     line[k++] = line[j];
                 }
             }
@@ -874,7 +864,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
     for(i = 0; i < *nr_gens; i++){
         if (getdelim(&line, &len, ',', fh) != -1) {
             for (k = 0, j = 0; j < len; ++j) {
-                if (line[j] != '\n' && line[j] != ' ') {
+                if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
                     line[k++] = line[j];
                 }
             }
@@ -926,7 +916,12 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                                       int32_t *field_char,
                                       int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
+  if (*nr_vars == -1)
+    printf("Bad file format (first line).\n");
+
   *nr_gens = get_ngenerators(fn);
+  if (*nr_gens == -1)
+    printf("Bad file format (generators).\n");
 
   const int max_line_size  = 1073741824;
   char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));

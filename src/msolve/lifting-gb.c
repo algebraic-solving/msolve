@@ -1147,7 +1147,8 @@ gb_modpoly_t *core_groebner_qq(
         mstrace_t msd,
         md_t *st,
         int32_t *errp, 
-        const len_t fc
+        const len_t fc, 
+        const int print_gb
         )
 {
   double st0 = realtime();
@@ -1158,7 +1159,6 @@ gb_modpoly_t *core_groebner_qq(
   msd->bht   = msd->bs_qq->ht;
 
   int32_t info_level = st->info_level;
-  int32_t print_gb = st->print_gb;
   int64_t dquot = 0;
   int64_t *dquot_ptr = &dquot;
   int32_t truncate_lifting = st->truncate_lifting;
@@ -1295,7 +1295,7 @@ gb_modpoly_t *core_groebner_qq(
       free_rrec_data(recdata2);
 
       fprintf(stderr, "Something went wrong in the learning phase, msolve restarts.");
-      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc); 
+      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
     }
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, msd->bs_qq, st, msd->num_gb,
@@ -1421,7 +1421,7 @@ gb_modpoly_t *core_groebner_qq(
         free_rrec_data(recdata1);
         free_rrec_data(recdata2);
 
-        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc); 
+        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
 
       }
 
@@ -1452,6 +1452,9 @@ gb_modpoly_t *core_groebner_qq(
           apply = 1;
           break;
         }
+      }
+      if(!bad && print_gb == 1){
+          apply = 0;
       }
       if(dlift->lstart != lstart){
         if(info_level){
@@ -1646,7 +1649,7 @@ gb_modpoly_t *groebner_qq(
   int err = 0;
 
   gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
-  modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char);
+  modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, print_gb);
   if (err) {
       printf("Problem with groebner_qq, stopped computation (%d).\n", err);
       exit(1);
@@ -1821,7 +1824,8 @@ int64_t export_groebner_qq(
     int err = 0;
 
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
-    modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char);
+    modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, 
+            2/* if set to 1, only the LM of the Gbs are correct */);
     if (err) {
         printf("Problem with groebner_qq, stopped computation.\n");
         exit(1);

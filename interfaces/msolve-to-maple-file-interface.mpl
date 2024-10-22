@@ -191,7 +191,12 @@ local str, msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output,
      fname2 := cat(file_dir, RandomTools[Generate](string(8,alpha)), ".ms");;
   end if;
 
-  param:=0;
+  str:=subs(opts,"param");
+  if type(str, integer) and str in [0, 1, 2] then
+     param:=str;
+  else
+     param:=0:
+  end if;
   msolve_path, fname1, fname2, file_dir, verb, param, nthreads, output, gb, elim;
 end proc;
 
@@ -297,7 +302,7 @@ end proc:
 # [ vars[1] = (a1+b1)/2, ..., vars[n] = (an+bn)/2 ]
 MSolveRealRoots:=proc(F, vars, opts:={})
 local results, dim, fname1, fname2, verb, param, msolve_path, file_dir,
-lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim;
+lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim, b, ratpar;
    if type(F, list(polynom(rational))) = false then
      printf("First argument is not a list of polynomials with rational coefficients\n");
    end if;
@@ -328,7 +333,6 @@ lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim;
    fi:
    str := cat(msolve_path, " -v ", verb, " -P ", param, " -p ", prec, " -t ", nthreads, " -f ", fname1, " -o ", fname2):
    gb:=0; #Needed to avoid the user stops GB comp once a prime computation is done
-   param:=0;
    try
    system(str):
    read(fname2):
@@ -345,6 +349,22 @@ lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim;
       return [];
    end if;
 
+   if param in [1, 2] then
+      b, ratpar := GetRootsFromMSolve(results[2]);
+      if b = -1 then
+         printf("System has infinitely many complex solutions\n");
+         return [];
+      elif b = -2 then
+         printf("System not in generic position. You may add to your system\n");
+         printf("a random linear form of your variables and a new variable\n");
+         return [];
+      end if;
+   end if;
+
+   if param = 2 then
+      return ratpar;
+   end if;
+
    dim := results[1];
    if dim = -1 then
       if verb >= 1 then
@@ -359,7 +379,11 @@ lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim;
       return [1];
    end if;
    if dim = 0 then
-      lsols := results[2];
+      if param = 1 then
+         lsols := [op(results[3][1]), map(s -> subs(zip((k,v) -> k = v, results[2][4], s), vars), results[3][2])];
+      else
+         lsols := results[2];
+      end if;
       nl := lsols[1]:
       sols:=[]:
       for i from 1 to nl do
@@ -367,6 +391,9 @@ lsols, nl, i, j, gb, output, nthreads, str, sols, prec, elim;
       od:
       if output=1 then
          sols := map(_p->map(_c->lhs(_c)=(rhs(_c)[1]+rhs(_c)[2])/2, _p), sols);
+      end if;
+      if param = 1 then
+         return ratpar, [0, sols];
       end if;
       return [0, sols];
    end if;
@@ -388,6 +415,6 @@ end proc:
 # #Usage
 
 # #with rational parametrization
-# param, sols:=MSolveRealRoots(F,vars,"../binary/msolve","/tmp/in.ms","/tmp/out.ms",1);
+# param, sols:=MSolveRealRoots(F,vars,{"mspath"="../binary/msolve","file_in"="in.ms","file_out"="out.ms","param"=1});
 # #or with solutions only
-# sols:=MSolveRealRoots(F,vars);
+# sols:=MSolveRealRoots(F,vars,{"mspath"="../binary/msolve"});

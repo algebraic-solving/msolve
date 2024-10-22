@@ -105,7 +105,7 @@ local i, fd, F2, str;
    if evalb(GetSystem() = "macOS") then
      str := cat("sed -i '' -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
    elif evalb(GetSystem() = "Linux") then
-     str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\n//g' ", fname):
+     str := cat("sed -i -e ':a' -e 'N' -e '$!ba' -e 's/\\\\\\n//g' ", fname):
    fi:
    system(str):
 end proc:

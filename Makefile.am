@@ -43,6 +43,7 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_radical_shape-qq.sh \
 			  test/diff/diff_realroot-extraction-exact-root.sh \
 			  test/diff/diff_reals_dim0.sh \
+			  test/diff/diff_realroot1.sh \
 			  test/diff/diff_reals_dim0-chgvar.sh \
 			  test/diff/diff_reals_dim0-extract.sh \
 			  test/diff/diff_reals_dim0-swapvar.sh \

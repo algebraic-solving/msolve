@@ -585,6 +585,9 @@ static inline int32_t maxbitsize_generators(bs_t *bs){
     }
     return max;
 }
+
+/* returns the index of the largest polynomial in the basis of the elimination
+ * ideal */
 static inline int32_t compute_num_gb(int32_t *bexp_lm, int32_t len, int nv, int nev){
   if(nev){
     for(int32_t i = 0; i < len; i++){

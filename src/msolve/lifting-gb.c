@@ -487,10 +487,7 @@ static inline int32_t *array_of_lengths(int32_t *bexp_lm, int len,
   for(int i = 0; i < len; i++){
     len_t idx = bs->lmps[i];
     lens[i] = bs->hm[idx][LENGTH]-1; 
-    fprintf(stderr, "[%d]", lens[i]);
-    fprintf(stderr, "{%d}", compute_length(bexp_lm + (i * nv), nv, basis, dquot));
   }
-  fprintf(stderr, "Done\n");
   return lens;
 }
 

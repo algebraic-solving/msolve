@@ -56,6 +56,8 @@ typedef struct {
   int nv; /* number of variables */
   int32_t *mb; /* monomial basis enlarged */
   int32_t *ldm; /* lead monomials */
+  ht_t *bht; /* hash table */
+  bl_t *lmps; /* position of non-redundant lead monomials in basis */
   modpolys_t *modpolys; /* array of polynomials modulo primes */
 } gb_modpoly_array_struct;
 
@@ -163,6 +165,7 @@ static inline void data_lift_clear(data_lift_t dl){
 
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, int32_t *lens,
+                                   bs_t *bs,
                                    int nv, uint32_t ld,
                                    int32_t *lm, int32_t *basis){
   modgbs->alloc = alloc;
@@ -175,6 +178,11 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
 
   modgbs->mb = basis;
   modgbs->ldm = (int32_t *)calloc(nv*ld, sizeof(int32_t));
+  modgbs->bht = bs->ht;
+  modgbs->lmps = (bl_t *)calloc(modgbs->ld, sizeof(bl_t));
+  for(bl_t i = 0; i < modgbs->ld; i++){
+      modgbs->lmps[i] = bs->lmps[i];
+  }
   for(int32_t i = 0; i < ld; i++){
     for(int j = 0; j < nv; j++){
       modgbs->ldm[i*nv+j] = lm[i*nv+j];
@@ -505,6 +513,11 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
 
   len_t i, j, k, idx;
 
+  /*****************************************************
+   * It should be checked if modbgs->ht needs to be updated as well as
+   * modgbs->lmps
+   * *****************************************************/
+
   len_t len   = 0;
   hm_t *hm    = NULL;
 
@@ -631,7 +644,7 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     /* rt = realtime()-ca0; */
     st->learning_rtime = realtime()-ca0;
 
-    const ht_t *bht = bs->ht;
+    ht_t *bht = bs->ht;
 
     /* if(info_level > 1){ */
     /*     fprintf(stderr, "Learning phase %.2f Gops/sec\n", */
@@ -678,14 +691,13 @@ static int32_t * gb_modular_trace_learning(gb_modpoly_t modgbs,
     /************************************************/
     /************************************************/
 
-    /* int32_t *lens = array_of_lengths(bexp_lm, num_gb[0], lmb, dquot, bht->nv); */
     int32_t *lens = array_of_lengths(leadmons[0], num_gb[0], bs, lmb, dquot, bht->nv - st->nev);
 
     if(truncate_lifting != 0 && truncate_lifting < num_gb[0]){
-      gb_modpoly_init(modgbs, 2, lens, bht->nv - st->nev, truncate_lifting, leadmons[0], lmb);
+      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, truncate_lifting, leadmons[0], lmb);
     }
     else{
-      gb_modpoly_init(modgbs, 2, lens, bht->nv - st->nev, num_gb[0], leadmons[0], lmb);
+      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, num_gb[0], leadmons[0], lmb);
     }
     modpgbs_set(modgbs, bs, bht, fc, lmb, dquot, start, st->nev);
     if(bs->lml == 1){

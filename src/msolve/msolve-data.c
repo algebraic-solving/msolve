@@ -71,8 +71,10 @@ static void free_mstrace(mstrace_t msd, md_t *st){
   /* to be checked if that is to be done when st->ff_bits != 0
      This was previously done only when characteristic is zero
    */
-  free_basis(&(msd->bs_qq));
-  free(msd->bs_qq);
+
+  fprintf(stderr, "removed free_basis in free_mstrace\n");
+  //  free_basis(&(msd->bs_qq));
+//  free(msd->bs_qq);
 
   /***********************************************************
     to be checked if that is to be done when st->ff_bits != 0

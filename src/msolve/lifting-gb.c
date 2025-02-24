@@ -1203,10 +1203,9 @@ gb_modpoly_t *core_groebner_qq(
         md_t *st,
         int32_t *errp, 
         const len_t fc, 
-        const int print_gb, data_gens_ff_t *gens 
+        const int print_gb
         )
 {
-    fprintf(stderr, "REMOVE gens as input\n");
   double st0 = realtime();
 
   *errp = 0;
@@ -1350,7 +1349,7 @@ gb_modpoly_t *core_groebner_qq(
       free_rrec_data(recdata2);
 
       fprintf(stderr, "Something went wrong in the learning phase, msolve restarts.");
-      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb, gens); 
+      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
     }
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, msd->bs_qq, st, msd->num_gb,
@@ -1476,7 +1475,7 @@ gb_modpoly_t *core_groebner_qq(
         free_rrec_data(recdata1);
         free_rrec_data(recdata2);
 
-        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb, gens); 
+        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
 
       }
 
@@ -1704,7 +1703,7 @@ gb_modpoly_t *groebner_qq(
   int err = 0;
 
   gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
-  modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, print_gb, gens);
+  modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, print_gb);
   if (err) {
       printf("Problem with groebner_qq, stopped computation (%d).\n", err);
       exit(1);
@@ -1744,8 +1743,6 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
                             msflags_t flags)
 {
   gb_modpoly_t *modgbsp;
-
- // msolve_gbtrace_qq(modgbs, gens, flags);
 
   modgbsp = groebner_qq(gens, flags);
 
@@ -1883,7 +1880,7 @@ int64_t export_groebner_qq(
 
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
     modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, 
-            2/* if set to 1, only the LM of the Gbs are correct */, gens);
+            2/* if set to 1, only the LM of the Gbs are correct */);
     if (err) {
         printf("Problem with groebner_qq, stopped computation.\n");
         exit(1);

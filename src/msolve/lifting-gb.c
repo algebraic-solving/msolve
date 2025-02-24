@@ -830,9 +830,9 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
   uint32_t ld = modgbs->ld;
   for(int32_t i = 0; i < ld; i++){
-    uint32_t d = 0;
-    uint32_t len = modgbs->modpolys[i]->len;
-    while(d < len - 1){
+    len_t d = 0;
+    len_t len = modgbs->modpolys[i]->len;
+    while(d < len - 1 && len > 0){
       if(modgbs->modpolys[i]->cf_32[d][0]){
         dlift->coef[i] = d;
         break;
@@ -854,10 +854,12 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
-    uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
-    mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
-               c, modgbs->primes[modgbs->nprimes - 1 ],
-               prod_p[0], dlift->tmp, 1);
+      if(modgbs->modpolys[k]->len){
+        uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
+        mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
+                   c, modgbs->primes[modgbs->nprimes - 1 ],
+                   prod_p[0], dlift->tmp, 1);
+      }
   }
   mpz_set(mod_p[0], prod_p[0]);
 }
@@ -873,9 +875,11 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
   /* all primes are assumed to be good primes */
   mpz_mul_ui(prod_p, mod_p, (uint32_t)newprime);
   for(int32_t k = 0; k < dl->end; k++){
-      uint64_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
-      mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
-                 c, newprime, prod_p, dl->tmp, 1);
+      if(modgbs->modpolys[k]->len){
+        uint64_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
+        mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
+                   c, newprime, prod_p, dl->tmp, 1);
+      }
   }
   mpz_set(mod_p, prod_p);
 }
@@ -954,7 +958,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   set_recdata(dl, rd1, rd2, mod_p);
 
   for(int32_t k = start; k < end; k++){
-    if(dl->check1[k] >= 1){
+    if(dl->check1[k] >= 1 && polys[k]->len){
       mpz_set_ui(dl->tmp, 1);
       for(int32_t l = 0; l < polys[k]->len; l++){
         if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p, dl->den[k], rd1)){
@@ -977,7 +981,10 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         mpz_set_ui(polys[k]->cf_qq[2*l+1], 1);
       }
       mpz_mul(polys[k]->lm, polys[k]->lm, dl->tmp);
-      dl->check2[k] = 1;
+      dl->check2[k]++;
+    }
+    if(dl->check1[k]>=1 && polys[k]->len == 0){
+        dl->check2[k]++;
     }
     else{
       mpz_clear(rnum);
@@ -1013,7 +1020,11 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
   mpz_t den;
   mpz_init(den);
   for(int32_t k = 0; k < modgbs->ld; k++){
-    if(dl->check1[k]>=1 && dl->check2[k] > 0 && dl->check2[k] < NBCHECK){
+    if(dl->check1[k]>=1 && dl->check2[k] < NBCHECK ){
+      if(modgbs->modpolys[k]->len == 0){
+        dl->check2[k]++;
+      }
+      else{
       for(int i = 0; i < thrds; i++){
         mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
         for(int32_t c = 0; c < modgbs->modpolys[k]->len; c++){
@@ -1029,6 +1040,7 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
           }
         }
         dl->check2[k]++;
+        }
       }
     }
   }
@@ -1043,21 +1055,27 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
       /* too early to perform the verification */
       return k;
     }
-    for(int i = 0; i < thrds; i++){
+    if(modgbs->modpolys[k]->len == 0){
+        dl->start = MIN(dl->start + 1, dl->lend);
+        dl->check1[k]++;
+    }
+    else{
+      for(int i = 0; i < thrds; i++){
 
-      mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
-      uint32_t coef = modgbs->modpolys[k]->cf_32[dl->coef[k]][modgbs->nprimes  - (thrds - i) ];
-      int boo = verif_coef(dl->num[k], dl->den[k], prime, coef);
+        mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
+        uint32_t coef = modgbs->modpolys[k]->cf_32[dl->coef[k]][modgbs->nprimes  - (thrds - i) ];
+        int boo = verif_coef(dl->num[k], dl->den[k], prime, coef);
 
-      if(!boo){
-        for(int32_t kk = k; kk < dl->end; kk++){
-          dl->check1[kk] = 0;
+        if(!boo){
+          for(int32_t kk = k; kk < dl->end; kk++){
+            dl->check1[kk] = 0;
+          }
+          dl->start = k;
+          return k;
         }
-        dl->start = k;
-        return k;
+        dl->start = MIN(dl->start + 1, dl->lend);
+        dl->check1[k]++;
       }
-      dl->start = MIN(dl->start + 1, dl->lend);
-      dl->check1[k]++;
     }
   }
   return -1;
@@ -1134,14 +1152,19 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   st = realtime();
   if(modgbs->nprimes % dl->rr == 0){
     for(int32_t i = dl->lstart; i < dl->lend; i++){
-      int b = reconstructcoeff(dl, i, mod_p,
-                               recdata1, recdata2);
-      if(!b){
-        dl->check1[i] = 0;
-        break;
+      if(modgbs->modpolys[i]->len==0){
+          dl->check1[i]++;
       }
       else{
-        dl->check1[i]++;
+        int b = reconstructcoeff(dl, i, mod_p,
+                               recdata1, recdata2);
+        if(!b){
+          dl->check1[i] = 0;
+          break;
+        }
+        else{
+          dl->check1[i]++;
+        }
       }
     }
   }

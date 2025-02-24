@@ -411,20 +411,10 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
 
   fprintf(file, "[");
   for(int i = 0; i < p-1; i++){
-    if(modgbs->modpolys[i]->len == 0){
-      display_monomial(file, gens, i, &modgbs->ldm);
-    }
-    else{
-      display_monomial_single(file, gens, i, &modgbs->ldm);
-    }
+    display_monomial_single(file, gens, i, &modgbs->ldm);
     fprintf(file, ", \n");
   }
-  if(modgbs->modpolys[p-1]->len == 0){
-    display_monomial(file, gens, p-1, &modgbs->ldm);
-  }
-  else{
-    display_monomial_single(file, gens, p-1, &modgbs->ldm);
-  }
+  display_monomial_single(file, gens, p-1, &modgbs->ldm);
   fprintf(file, "\n");
   fprintf(file, "]:\n");
 }

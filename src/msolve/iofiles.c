@@ -93,7 +93,18 @@ static inline void display_monomial(FILE *file, data_gens_ff_t *gens, int64_t po
 
 static inline int32_t display_monomial_single(FILE *file, data_gens_ff_t *gens,
                                               int64_t pos, int32_t **bexp){
-  int32_t exp, b = 0;
+  int32_t exp = 0;
+  int32_t b = 0;
+  for(int k = 0; k < gens->nvars - gens->elim; k++){
+    exp = (*bexp)[(pos)*(gens->nvars - gens->elim) + k];
+    if(exp > 0){
+      break;
+    }
+  }
+  if(exp == 0){
+    fprintf(file, "1");
+    return 0;
+  }
   for(int k = 0; k < gens->nvars - gens->elim; k++){
     exp = (*bexp)[(pos)*(gens->nvars - gens->elim) + k];
     if(exp > 0){

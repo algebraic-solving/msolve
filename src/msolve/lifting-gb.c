@@ -310,7 +310,7 @@ static inline void display_modpoly(FILE *file,
                                    data_gens_ff_t *gens){
 
   if(modgbs->modpolys[pos]->len == 0){
-    display_monomial(file, gens, pos, &modgbs->ldm);
+    display_monomial_single(file, gens, pos, &modgbs->ldm);
     return;
   }
   if(mpz_cmp_ui(modgbs->modpolys[pos]->lm, 1) != 0){

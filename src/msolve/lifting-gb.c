@@ -170,7 +170,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    bs_t *bs,
                                    int nv, uint32_t ld,
                                    int32_t *lm, 
-                                   data_gens_ff_t *gens, md_t *st){
+                                   md_t *st){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
   modgbs->primes = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
@@ -650,8 +650,7 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            int64_t *dquot_ori,
                                            int32_t start,
                                            int32_t maxbitsize,
-                                           int *success, 
-                                           data_gens_ff_t *gens)
+                                           int *success)
 {
     fprintf(stderr, "REMOVE gens as input\n");
     double ca0/*, rt*/;
@@ -717,10 +716,10 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     int32_t *lens = array_of_lengths(leadmons[0], num_gb[0], bs, bht->nv - st->nev);
 
     if(truncate_lifting != 0 && truncate_lifting < num_gb[0]){
-      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, truncate_lifting, leadmons[0], gens, st);
+      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, truncate_lifting, leadmons[0], st);
     }
     else{
-      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, num_gb[0], leadmons[0], gens, st);
+      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, num_gb[0], leadmons[0], st);
     }
     modpgbs_set(modgbs, bs, bht, fc, start, st->nev);
     int is_empty = 0;
@@ -1260,7 +1259,7 @@ gb_modpoly_t *core_groebner_qq(
                                                  dquot_ptr,
                                                  0,
                                                  maxbitsize,
-                                                 &success, gens);
+                                                 &success);
     if(is_empty == 1 || print_gb == 1){
       if(dlinit){
         data_lift_clear(dlift);

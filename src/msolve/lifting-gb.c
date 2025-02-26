@@ -652,7 +652,6 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            int32_t maxbitsize,
                                            int *success)
 {
-    fprintf(stderr, "REMOVE gens as input\n");
     double ca0/*, rt*/;
     ca0 = realtime();
 
@@ -1020,7 +1019,7 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
   mpz_t den;
   mpz_init(den);
   for(int32_t k = 0; k < modgbs->ld; k++){
-    if(dl->check1[k]>=1 && dl->check2[k] < NBCHECK ){
+    if(dl->check1[k]>=1 && dl->check2[k]>0 && dl->check2[k] < NBCHECK ){
       if(modgbs->modpolys[k]->len == 0){
         dl->check2[k]++;
       }
@@ -1039,8 +1038,8 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
             return b;
           }
         }
-        dl->check2[k]++;
         }
+        dl->check2[k]++;
       }
     }
   }
@@ -1115,7 +1114,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   double st = realtime();
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
   int  b = verif_lifted_basis(modgbs, dl, thrds);
-  if(b == 0){
+  if(b == 1){
     for(int32_t i = 0; i < modgbs->ld; i++){
       if(dl->check2[i] == 0){
         dl->lstart = i;

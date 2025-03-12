@@ -957,7 +957,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   set_recdata(dl, rd1, rd2, mod_p);
 
   for(int32_t k = start; k < end; k++){
-    if(dl->check1[k] >= 1 && polys[k]->len){
+    if(dl->check1[k] > 1 && polys[k]->len > 0){
       mpz_set_ui(dl->tmp, 1);
       for(int32_t l = 0; l < polys[k]->len; l++){
         if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p, dl->den[k], rd1)){
@@ -980,15 +980,15 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         mpz_set_ui(polys[k]->cf_qq[2*l+1], 1);
       }
       mpz_mul(polys[k]->lm, polys[k]->lm, dl->tmp);
-      dl->check2[k]++;
+      dl->check2[k] = 1;
     }
-    if(dl->check1[k]>=1 && polys[k]->len == 0){
-        dl->check2[k]++;
-    }
-    else{
+    if(dl->check1[k] < 1 && polys[k]->len > 0){
       mpz_clear(rnum);
       mpz_clear(rden);
       return k;
+    }
+    if(polys[k]->len == 0){
+        dl->check2[k] = 1;
     }
   }
   mpz_clear(rnum);
@@ -1009,6 +1009,7 @@ static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef
   return (c==coef);
 }
 
+
 static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
                                      int thrds){
   /* verification of the basis is performed at the very end of the computation */
@@ -1024,22 +1025,22 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
         dl->check2[k]++;
       }
       else{
-      for(int i = 0; i < thrds; i++){
-        mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
-        for(int32_t c = 0; c < modgbs->modpolys[k]->len; c++){
-          mpz_mul(den, modgbs->modpolys[k]->lm, modgbs->modpolys[k]->cf_qq[2*c+1]);
-          uint32_t coef = modgbs->modpolys[k]->cf_32[c][modgbs->nprimes   - (thrds - i) ];
-          int b = verif_coef(modgbs->modpolys[k]->cf_qq[2*c], den, prime, coef);
-          if(!b){
-            dl->check2[k] = 0;
-            mpz_set_ui(dl->gden, 1);
-            b = 0;
-            mpz_clear(den);
-            return b;
+        for(int i = 0; i < thrds; i++){
+          mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
+          for(int32_t c = 0; c < modgbs->modpolys[k]->len; c++){
+            mpz_mul(den, modgbs->modpolys[k]->lm, modgbs->modpolys[k]->cf_qq[2*c+1]);
+            uint32_t coef = modgbs->modpolys[k]->cf_32[c][modgbs->nprimes   - (thrds - i) ];
+            int b = verif_coef(modgbs->modpolys[k]->cf_qq[2*c], den, prime, coef);
+            if(!b){
+              dl->check2[k] = 0;
+              mpz_set_ui(dl->gden, 1);
+              b = 0;
+              mpz_clear(den);
+              return b;
+            }
           }
-        }
-        }
         dl->check2[k]++;
+        }
       }
     }
   }
@@ -1114,7 +1115,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   double st = realtime();
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
   int  b = verif_lifted_basis(modgbs, dl, thrds);
-  if(b == 1){
+  if(b == 0){
     for(int32_t i = 0; i < modgbs->ld; i++){
       if(dl->check2[i] == 0){
         dl->lstart = i;
@@ -1358,8 +1359,8 @@ gb_modpoly_t *core_groebner_qq(
     /* copy of hash tables for tracer application */
     msd->blht[0] = msd->bht;
     for(int i = 1; i < st->nthrds; i++){
-      ht_t *lht = copy_hash_table(msd->bht);
-      msd->blht[i] = lht;
+      //ht_t *lht = copy_hash_table(msd->bht);
+      //msd->blht[i] = lht;
     }
 
     /* if(info_level){ */

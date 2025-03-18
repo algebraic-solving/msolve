@@ -53,6 +53,7 @@
 #define NMOD_MAT_POLY_H
 
 #include <flint/perm.h>
+#include <flint/nmod_vec.h>
 #include <flint/nmod_mat.h>
 #include <flint/nmod_poly_mat.h>
 

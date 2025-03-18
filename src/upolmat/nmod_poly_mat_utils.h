@@ -24,7 +24,7 @@
 
 /** \brief Basic routines for univariate polynomial matrices over `nmod`
  * \file nmod_poly_mat_utils.h
- * \date 2023-09-08
+ * \date 2025-03-18
  *
  * This provides additional functions for FLINT's for matrices over the
  * univariate polynomials, with type `nmod_poly_mat` (coefficients in a finite
@@ -32,10 +32,10 @@
  *
  */
 
-// FLINT includes
-#include <flint/nmod_poly_mat.h>
-#include <flint/nmod_mat.h>
-#include <flint/fmpz_mat.h>
+#include <flint/flint.h>
+#include <flint/nmod_types.h>
+#include <flint/fmpz_types.h> // for fmpz_mat degree matrix
+#include <flint/nmod_poly.h> // for nmod_poly_swap
 
 // for nmod_mat_poly_t
 #include "nmod_mat_poly.h"
@@ -124,10 +124,9 @@ void nmod_poly_mat_shift_right(nmod_poly_mat_t smat,
 /** Set from polynomial with matrix coefficients `matp`, truncated at the
  * specified `order` (a nonnegative integer). */
 // TODO benchmark and try variants if needed
-FLINT_DLL void
-nmod_poly_mat_set_trunc_from_mat_poly(nmod_poly_mat_t pmat,
-                                      const nmod_mat_poly_t matp,
-                                      slong order);
+void nmod_poly_mat_set_trunc_from_mat_poly(nmod_poly_mat_t pmat,
+                                           const nmod_mat_poly_t matp,
+                                           slong order);
 
 /** Set from polynomial with matrix coefficients `matp`. */
 // TODO benchmark and try variants if needed

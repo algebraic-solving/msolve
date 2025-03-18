@@ -228,7 +228,7 @@ printf("\n\nDEBUG -- Start iteration %ld\n", ord);
 
             // rows not corresponding to pivots are multiplied by X
             // note: these rows currently have length strictly less than len(appbas)
-            mp_limb_t ** save_zero_rows = (mp_limb_t **) flint_malloc((m-nullity) * sizeof(mp_limb_t *));
+            ulong ** save_zero_rows = (ulong **) flint_malloc((m-nullity) * sizeof(ulong *));
             for (slong i = 0; i < m-nullity; ++i)
             {
                 save_zero_rows[i] = appbas->coeffs[appbas->length-1].rows[i];

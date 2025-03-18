@@ -422,7 +422,11 @@ nmod_mat_poly_permute_rows(nmod_mat_poly_t matp,
                            slong * perm_store)
 {
     slong i;
+#if __FLINT_VERSION < 3 || (__FLINT_VERSION == 3 && __FLINT_VERSION_MINOR < 3)
     ulong ** mat_tmp = flint_malloc(matp->r * sizeof(ulong *));
+#else
+    ulong * mat_tmp = (ulong *) flint_malloc(matp->r * matp->c * sizeof(ulong));
+#endif
 
     /* perm_store[i] <- perm_store[perm_act[i]] */
     if (perm_store)
@@ -431,10 +435,17 @@ nmod_mat_poly_permute_rows(nmod_mat_poly_t matp,
     /* rows[i] <- rows[perm_act[i]]  */
     for (slong k = 0; k < matp->length; k++)
     {
+#if __FLINT_VERSION < 3 || (__FLINT_VERSION == 3 && __FLINT_VERSION_MINOR < 3)
         for (i = 0; i < matp->r; i++)
             mat_tmp[i] = matp->coeffs[k].rows[perm_act[i]];
         for (i = 0; i < matp->r; i++)
             matp->coeffs[k].rows[i] = mat_tmp[i];
+#else
+        for (i = 0; i < matp->r; i++)
+            _nmod_vec_set(mat_tmp + i * matp->c, nmod_mat_entry_ptr(matp->coeffs+k, perm_act[i], 0), matp->c);
+        for (i = 0; i < matp->r; i++)
+            _nmod_vec_set(nmod_mat_entry_ptr(matp->coeffs+k, i, 0), mat_tmp + i * matp->c, matp->c);
+#endif
     }
 
     flint_free(mat_tmp);

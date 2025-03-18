@@ -213,13 +213,13 @@ printf("\n\nDEBUG -- Start iteration %ld\n", ord);
                 nmod_mat_add(app_win_add, app_win_add, ns_app);
             }
             nmod_mat_clear(ns_app);
-            nmod_mat_clear(app_win_mul);
-            nmod_mat_clear(app_win_add);
+            nmod_mat_window_clear(app_win_mul);
+            nmod_mat_window_clear(app_win_add);
 
             // Update the approximant basis: 3/ left-shift relevant rows by 1
             // increase length of appbas if necessary
             for (slong i = 0; i < m-nullity; ++i)
-                if (!_nmod_vec_is_zero(appbas->coeffs[appbas->length-1].rows[i], m))
+                if (!_nmod_vec_is_zero(nmod_mat_poly_entry_ptr(appbas, appbas->length-1, i, 0), m))
                 {
                     nmod_mat_poly_fit_length(appbas, appbas->length+1);
                     _nmod_mat_poly_set_length(appbas, appbas->length+1);
@@ -228,6 +228,7 @@ printf("\n\nDEBUG -- Start iteration %ld\n", ord);
 
             // rows not corresponding to pivots are multiplied by X
             // note: these rows currently have length strictly less than len(appbas)
+#if __FLINT_VERSION < 3 || (__FLINT_VERSION == 3 && __FLINT_VERSION_MINOR < 3)
             ulong ** save_zero_rows = (ulong **) flint_malloc((m-nullity) * sizeof(ulong *));
             for (slong i = 0; i < m-nullity; ++i)
             {
@@ -241,6 +242,17 @@ printf("\n\nDEBUG -- Start iteration %ld\n", ord);
             for (slong i = 0; i < m-nullity; ++i)
                 //_nmod_vec_zero(appbas->coeffs[0].rows[i], m);
                 appbas->coeffs[0].rows[i] = save_zero_rows[i];
+            flint_free(save_zero_rows);
+#else
+            // note: arrived at this stage, appbas->length must be >= 2
+            for (slong d = appbas->length-1; d > 0; d--)
+                for (slong i = 0; i < m-nullity; ++i)
+                    _nmod_vec_set(nmod_mat_poly_entry_ptr(appbas, d, i, 0),
+                                  nmod_mat_poly_entry_ptr(appbas, d-1, i, 0),
+                                  m);
+            for (slong i = 0; i < m-nullity; ++i)
+                _nmod_vec_zero(nmod_mat_poly_entry_ptr(appbas, 0, i, 0), m);
+#endif
 
             // Update the approximant basis: 4/ come back from permuted world
             _perm_inv(pivots, pivots, m);

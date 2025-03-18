@@ -32,8 +32,8 @@
 void nmod_mat_poly_init_preinv(nmod_mat_poly_t matp,
                                slong r,
                                slong c,
-                               mp_limb_t n,
-                               mp_limb_t ninv)
+                               ulong n,
+                               ulong ninv)
 {
     matp->coeffs = NULL;
 
@@ -55,7 +55,7 @@ void nmod_mat_poly_init_preinv(nmod_mat_poly_t matp,
 void nmod_mat_poly_init(nmod_mat_poly_t matp,
                         slong r,
                         slong c,
-                        mp_limb_t n)
+                        ulong n)
 {
     nmod_mat_poly_init_preinv(matp, r, c, n, n_preinvert_limb(n));
 }
@@ -64,8 +64,8 @@ void nmod_mat_poly_init(nmod_mat_poly_t matp,
 void nmod_mat_poly_init2_preinv(nmod_mat_poly_t matp,
                                 slong r,
                                 slong c,
-                                mp_limb_t n,
-                                mp_limb_t ninv,
+                                ulong n,
+                                ulong ninv,
                                 slong alloc)
 {
     if (alloc)
@@ -92,7 +92,7 @@ void nmod_mat_poly_init2_preinv(nmod_mat_poly_t matp,
 void nmod_mat_poly_init2(nmod_mat_poly_t matp,
                      slong r,
                      slong c,
-                     mp_limb_t n,
+                     ulong n,
                      slong alloc)
 {
     nmod_mat_poly_init2_preinv(matp, r, c, n, n_preinvert_limb(n), alloc);

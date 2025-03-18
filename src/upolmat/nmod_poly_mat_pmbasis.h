@@ -76,7 +76,7 @@
 
 #define PMBASIS_THRES 32
 
-#include <flint/nmod_poly_mat.h>
+#include <flint/nmod_types.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -94,11 +94,10 @@ extern "C" {
 // TODO DOC
 // appbas must be initialized with right dimensions
 // shift=NULL for uniform shift
-FLINT_DLL void
-nmod_poly_mat_mbasis(nmod_poly_mat_t appbas,
-                     slong * shift,
-                     const nmod_poly_mat_t pmat,
-                     ulong order);
+void nmod_poly_mat_mbasis(nmod_poly_mat_t appbas,
+                          slong * shift,
+                          const nmod_poly_mat_t pmat,
+                          ulong order);
 
 //@} // doxygen group: M-Basis algorithm (uniform approximant order)
 
@@ -130,11 +129,10 @@ nmod_poly_mat_mbasis(nmod_poly_mat_t appbas,
 // TODO DOC
 // appbas must be initialized with right dimensions
 // shift=NULL for uniform shift
-FLINT_DLL void
-nmod_poly_mat_pmbasis(nmod_poly_mat_t appbas,
-                      slong * shift,
-                      const nmod_poly_mat_t pmat,
-                      slong order);
+void nmod_poly_mat_pmbasis(nmod_poly_mat_t appbas,
+                           slong * shift,
+                           const nmod_poly_mat_t pmat,
+                           slong order);
 
 //@} // doxygen group: PM-Basis algorithm (uniform approximant order)
 

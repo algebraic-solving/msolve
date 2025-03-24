@@ -760,6 +760,7 @@ static inline int check_linear_forms(trace_det_fglm_mat_t trace_det,
             if(!b) return 0;
         }
     }
+    return 1;
 }
 
 static inline void check_matrix(trace_det_fglm_mat_t trace_det, 

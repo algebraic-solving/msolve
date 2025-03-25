@@ -5012,8 +5012,8 @@ void msolve_julia(
     /* gens->vnames                = var_names; */
     gens->vnames  = (char **)malloc((unsigned long)nr_vars * sizeof(char *));
     for (i = 0; i < nr_vars; ++i) {
-        gens->vnames[i] = calloc((unsigned long)strlen(var_names[i]), sizeof(char));
-        memcpy(gens->vnames[i], var_names[i], (unsigned long)strlen(var_names[i]) * sizeof(char));
+        gens->vnames[i] = calloc(strlen(var_names[i]) + 1, sizeof(char));
+        memcpy(gens->vnames[i], var_names[i], (strlen(var_names[i]) + 1) * sizeof(char));
     }
     /* gens->lens                  = lens; */
     gens->lens  = (int32_t *)malloc((unsigned long)nr_gens * sizeof(int32_t));

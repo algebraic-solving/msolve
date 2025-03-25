@@ -21,7 +21,6 @@
 #ifndef MSOLVE_DATA_H
 #define MSOLVE_DATA_H
 
-#define _GNU_SOURCE
 #include "../neogb/data.h"
 #include<flint/fmpz.h>
 #include<flint/fmpq.h>

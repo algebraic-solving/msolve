@@ -222,6 +222,14 @@ int64_t export_groebner_qq(
         const int32_t truncate_lifting,
         const int32_t info_level
         );
+
+// Utility functions to init and deinit data structures
+void real_point_clear(real_point_t pt);
+void mpz_param_init(mpz_param_t param);
+void mpz_param_clear(mpz_param_t param);
+data_gens_ff_t* allocate_data_gens();
+void free_data_gens(data_gens_ff_t* gens);
+
 #ifdef __cplusplus
 }
 #endif

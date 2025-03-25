@@ -95,7 +95,7 @@ static inline void mpz_upoly_out_str(FILE *file, mpz_upoly_t pol) {
   fprintf(file, "]");
 }
 
-static inline void mpz_param_init(mpz_param_t param) {
+void mpz_param_init(mpz_param_t param) {
   param->nvars = 0;
   param->nsols = 0;
   mpz_upoly_init(param->elim, 0);
@@ -104,7 +104,7 @@ static inline void mpz_param_init(mpz_param_t param) {
   param->cfs = NULL;
 }
 
-static inline void mpz_param_clear(mpz_param_t param) {
+void mpz_param_clear(mpz_param_t param) {
   mpz_upoly_clear(param->elim);
   mpz_upoly_clear(param->denom);
   if (param->coords != NULL) {
@@ -292,7 +292,7 @@ static inline void display_fglm_mpq_matrix(FILE *file, mpq_matfglm_t mat) {
   fprintf(file, "\n");
 }
 
-static inline data_gens_ff_t *allocate_data_gens() {
+data_gens_ff_t *allocate_data_gens() {
   data_gens_ff_t *gens = (data_gens_ff_t *)(malloc(sizeof(data_gens_ff_t)));
   gens->lens = NULL;
   gens->exps = NULL;
@@ -304,7 +304,7 @@ static inline data_gens_ff_t *allocate_data_gens() {
   return gens;
 }
 
-static inline void free_data_gens(data_gens_ff_t *gens) {
+void free_data_gens(data_gens_ff_t *gens) {
   for (long i = 0; i < gens->nvars; i++) {
     free(gens->vnames[i]);
   }

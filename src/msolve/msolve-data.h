@@ -35,6 +35,10 @@
 	(a) % (b)
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct
 {
   mpz_t numer;
@@ -367,4 +371,8 @@ typedef struct{
   files_gb *files;
 } msolveflags_struct;
 typedef msolveflags_struct msflags_t[1];
+#ifdef __cplusplus
+}
+#endif
+
 #endif

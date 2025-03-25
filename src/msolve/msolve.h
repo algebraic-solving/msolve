@@ -23,6 +23,10 @@
 
 #include "msolve-data.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int msolve_trace_qq(
         mpz_param_t *mpz_paramp,
         param_t **nmod_param,
@@ -218,4 +222,8 @@ int64_t export_groebner_qq(
         const int32_t truncate_lifting,
         const int32_t info_level
         );
+#ifdef __cplusplus
+}
+#endif
+
 #endif

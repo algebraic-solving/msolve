@@ -941,14 +941,12 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   initialize_data_gens(*nr_vars, *nr_gens, *field_char, gens);
 
   nelts_t nterms, all_nterms = 0;
-  free(line);
   get_nterms_and_all_nterms(fh, &line, max_line_size, gens, nr_gens,
                             &nterms, &all_nterms);
 
   fclose(fh);
   fh = fopen(fn, "r");
 
-  free(line);
   if(gens->field_char){
     get_coeffs_and_exponents_ff32(fh, &line, all_nterms, nr_gens, gens);
   }

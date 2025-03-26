@@ -10,6 +10,10 @@ AC_CONFIG_MACRO_DIR([m4])
 
 AM_MAINTAINER_MODE
 
+# Enable non standard exensions by defining macros such as _GNU_SOURCE
+AC_USE_SYSTEM_EXTENSIONS
+
+
 AM_PROG_AR
 LT_INIT
 

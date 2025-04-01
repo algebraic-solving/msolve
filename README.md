@@ -49,6 +49,10 @@ Polynomials may be multiline, thus `,` as a separator.
 
 Coefficients can be rational, using `/`, e.g. `-2/3*x2*y1^2+...`.
 
+In each polynomial, a single occurrence of each monomial is expected; the
+behaviour of msolve's parser is undefined if some monomial is repeated, as in
+`x1+x2+x3+x4-x1`.
+
 # Basic usage
 
 Some basic commands are as follows:

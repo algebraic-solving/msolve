@@ -411,7 +411,9 @@ Hence the structure of input files to \msolve is as follows:
    and with a line break (no comma or line break for the last one).
 \end{enumerate}
 
-
+In each given polynomial, \msolve expects a single occurrence of each monomial;
+if some monomial appears several times (e.g.\ as in \verb#x+2*y+2*z-x#),
+the behaviour of \msolve's parser is undefined.
 
 When one wants to solve this system over $\frac{\Z}{65521\Z}$ one just replaces
 $0$ by $65521$ in the second line. Note that in the positive characteristic case

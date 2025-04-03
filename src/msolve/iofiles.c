@@ -548,24 +548,69 @@ static void get_characteristic(FILE *fh, char * line, int max_line_size,
 
 }
 
+static void trim_polynomial(char *poly) {
+    /*
+     * WW: The function trims the input, supposedly a polynomial,
+     * in a possibly too trivial way, but is left as is for
+     * backward compatibility.
+     *
+     * For example, trim_polynomial converts "x 1, pi/2" to "x1",
+     * even when the former is not a valid polynomial.
+     * This actually mimics the behavior of msolve v0.7.5,
+     * for which the following is a valid input:
+     *   x1
+     *   0
+     *   x 1, pi/2
+     *
+     * Ideally, in a future version, we should throw an error if the
+     * input is not a valid polynomial.
+     */
+    size_t k = 0;
+    for (size_t j = 0; poly[j] != '\0'; j++) {
+        if (poly[j] == ',') {
+            break;
+        }
+        if (!isspace(poly[j])) {
+            poly[k++] = poly[j];
+        }
+    }
+    poly[k] = '\0';
+}
+
+static void remove_trailing_spaces(char *line, size_t *len) {
+    while (*len && line[*len - 1] == '\0') {
+        (*len)--;
+    }
+    while (*len && isspace(line[*len - 1])) {
+        line[--(*len)] = '\0';
+    }
+}
+
+static void remove_trailing_comma(char *line, size_t *len) {
+    if (*len > 0 && line[*len - 1] == ',') {
+        line[--(*len)] = '\0';
+    }
+}
+
 static void get_nterms_and_all_nterms(FILE *fh, char **linep,
                                       int max_line_size, data_gens_ff_t *gens,
                                       int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
 
     char *line  = *linep;
-    int32_t i = 0, j = 0, k = 0;
     size_t len = 0;
-    while(getdelim(&line, &len, ',', fh) != -1) {
-        for (k = 0, j = 0; j < len; ++j) {
-            if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
-                line[k++] = line[j];
-            }
+    ssize_t nread;
+    for (int32_t i = 0; i < *nr_gens; i++) {
+        do {
+            nread = getline(&line, &len, fh);
+        } while (nread != -1 && is_line_empty(line));
+        remove_trailing_spaces(line, &len);
+        if (i < *nr_gens - 1) {
+            remove_trailing_comma(line, &len);
         }
+        trim_polynomial(line);
         *nterms  = get_number_of_terms(line);
         gens->lens[i] = *nterms;
         *all_nterms += *nterms;
-        len = 0;
-        i++;
     }
     *linep  = line;
     gens->nterms = *all_nterms;
@@ -806,6 +851,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep, nelts_t all_nt
         int32_t *nr_gens, data_gens_ff_t *gens){
     int32_t pos = 0;
     size_t len = 0;
+    ssize_t nread;
 
     char *line  = *linep;
     if(getline(&line, &len, fh) !=-1){
@@ -815,18 +861,15 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep, nelts_t all_nt
 
     gens->cfs = (int32_t *)(malloc(sizeof(int32_t) * all_nterms));
     gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
-    long i, j, k;
-    for(i = 0; i < *nr_gens; i++){
-        if (getdelim(&line, &len, ',', fh) != -1) {
-            for (k = 0, j = 0; j < len; ++j) {
-                if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
-                    line[k++] = line[j];
-                }
-            }
-            if (line[k-1] == ',') {
-                line[k-1] = '\0';
-            }
+    for (int32_t i = 0; i < *nr_gens; i++) {
+        do {
+            nread = getline(&line, &len, fh);
+        } while (nread != -1 && is_line_empty(line));
+        remove_trailing_spaces(line, &len);
+        if (i < *nr_gens - 1) {
+            remove_trailing_comma(line, &len);
         }
+        trim_polynomial(line);
         if(get_coefficient_ff_and_term_from_line(line, gens->lens[i], gens->field_char,
                     gens, pos)){
             fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
@@ -844,6 +887,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
         int32_t *nr_gens, data_gens_ff_t *gens){
     int32_t pos = 0;
     size_t len = 0;
+    ssize_t nread;
 
     char *line  = *linep;
     if(getline(&line, &len, fh) !=-1){
@@ -860,18 +904,15 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
     }
 
     gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
-    long i, j, k;
-    for(i = 0; i < *nr_gens; i++){
-        if (getdelim(&line, &len, ',', fh) != -1) {
-            for (k = 0, j = 0; j < len; ++j) {
-                if (line[j] != '\r' && line[j] != '\n' && line[j] != ' ') {
-                    line[k++] = line[j];
-                }
-            }
-            if (line[k-1] == ',') {
-                line[k-1] = '\0';
-            }
+    for (int32_t i = 0; i < *nr_gens; i++) {
+        do {
+            nread = getline(&line, &len, fh);
+        } while (nread != -1 && is_line_empty(line));
+        remove_trailing_spaces(line, &len);
+        if (i < *nr_gens - 1) {
+            remove_trailing_comma(line, &len);
         }
+        trim_polynomial(line);
         if(get_coefficient_mpz_and_term_from_line(line, gens->lens[i], gens->field_char,
                     gens, pos)){
             fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");

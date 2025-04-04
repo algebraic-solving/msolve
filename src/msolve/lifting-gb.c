@@ -437,6 +437,8 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
     free(modgbs->modpolys[i]->cf_zz);
     free(modgbs->modpolys[i]->cf_qq);
   }
+  //free_hash_table(&(modgbs->bht));
+  free_shared_hash_data(modgbs->bht);
   free(modgbs->modpolys);
 }
 
@@ -641,7 +643,6 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            trace_t *trace,
                                            ht_t *tht,
                                            bs_t *bs_qq,
-                                           ht_t *gbht,
                                            md_t *st,
                                            const int32_t fc,
                                            int info_level,
@@ -754,7 +755,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          trace_t **btrace,
                                          ht_t **btht,
                                          bs_t *bs_qq,
-                                         ht_t **gbht,
                                          md_t *st,
                                          int info_level,
                                          bs_t **obs,
@@ -1211,7 +1211,6 @@ gb_modpoly_t *core_groebner_qq(
   *errp = 0;
 
   msd->bs_qq =  bs;
-  msd->bht   = msd->bs_qq->ht;
 
   int32_t info_level = st->info_level;
   int64_t dquot = 0;
@@ -1273,7 +1272,7 @@ gb_modpoly_t *core_groebner_qq(
                                                  msd->mgb,
                                                  msd->num_gb, msd->leadmons_ori,
                                                  msd->btrace[0],
-                                                 msd->tht, msd->bs_qq, msd->bht, st,
+                                                 msd->tht, msd->bs_qq, st,
                                                  msd->lp->p[0],
                                                  info_level,
                                                  print_gb,
@@ -1303,7 +1302,7 @@ gb_modpoly_t *core_groebner_qq(
     if(!dlinit){
       int nb = 0;
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
-                                      msd->bht->nv - st->nev, &nb);
+                                      bs->ht->nv - st->nev, &nb);
       data_lift_init(dlift, (*modgbsp)->ld, ldeg, nb);
       choose_coef_to_lift((*modgbsp), dlift);
       free(ldeg);
@@ -1356,13 +1355,6 @@ gb_modpoly_t *core_groebner_qq(
                                    msd->leadmons_ori, msd->leadmons_current,
                                    msd->btrace);
 
-    /* copy of hash tables for tracer application */
-    msd->blht[0] = msd->bht;
-    for(int i = 1; i < st->nthrds; i++){
-      //ht_t *lht = copy_hash_table(msd->bht);
-      //msd->blht[i] = lht;
-    }
-
     /* if(info_level){ */
     /*   fprintf(stderr, "\nStarts multi-modular computations\n"); */
     /* } */
@@ -1410,7 +1402,7 @@ gb_modpoly_t *core_groebner_qq(
                                    msd->leadmons_ori,
                                    msd->leadmons_current,
                                    msd->btrace,
-                                   msd->btht, msd->bs_qq, msd->blht, st,
+                                   msd->btht, msd->bs_qq, st,
                                    0, /* info_level, */
                                    msd->bs, *dquot_ptr, msd->lp,
                                    dlift->S, &stf4, msd->bad_primes);
@@ -1730,7 +1722,6 @@ gb_modpoly_t *groebner_qq(
   free(md);
   md    = NULL;
 
-  fprintf(stderr, "#######################################%d\n", (*modgbsp)->bht->ev[4][1]);
   return modgbsp;
 
 }

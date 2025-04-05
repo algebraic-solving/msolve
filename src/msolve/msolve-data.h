@@ -342,7 +342,6 @@ typedef struct{
 
   int32_t *mgb; /* array which stores one monomial */
 
-  ht_t **blht;
   ht_t **btht;
 
   mpz_t mod_p;

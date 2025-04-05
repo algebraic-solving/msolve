@@ -753,7 +753,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          int32_t **leadmons_ori,
                                          int32_t **leadmons_current,
                                          trace_t **btrace,
-                                         ht_t **btht,
                                          bs_t *bs_qq,
                                          md_t *st,
                                          int info_level,
@@ -1402,7 +1401,7 @@ gb_modpoly_t *core_groebner_qq(
                                    msd->leadmons_ori,
                                    msd->leadmons_current,
                                    msd->btrace,
-                                   msd->btht, msd->bs_qq, st,
+                                   msd->bs_qq, st,
                                    0, /* info_level, */
                                    msd->bs, *dquot_ptr, msd->lp,
                                    dlift->S, &stf4, msd->bad_primes);

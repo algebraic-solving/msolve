@@ -108,12 +108,6 @@ static void free_mstrace(mstrace_t msd, md_t *st){
   free(msd->leadmons_current);
 
   free(msd->mgb);
-  for(int i = 1; i < st->nthrds; i++){
-    if(msd->btht[i] != NULL){
-      free_hash_table((msd->btht)+i);
-    }
-  }
-  free(msd->btht);
 
   mpz_clear(msd->mod_p);
   mpz_clear(msd->prod_p);

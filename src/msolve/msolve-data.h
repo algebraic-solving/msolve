@@ -342,8 +342,6 @@ typedef struct{
 
   int32_t *mgb; /* array which stores one monomial */
 
-  ht_t **btht;
-
   mpz_t mod_p;
   mpz_t prod_p;
 } msolvetrace_data_struct;

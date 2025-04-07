@@ -329,10 +329,8 @@ typedef struct{
 /* data structure for tracing algorithms */
 typedef struct{
   primes_t *lp; /* array of lucky primes, usually of size st->nthrds */
-  bs_t *bs_qq; /* basis_qq */
   ht_t *tht; /* hash table to store the hashes of the multiples of the basis
                 elements stored in the trace */
-  bs_t **bs;
   int *bad_primes;
   trace_t **btrace;
 

@@ -756,7 +756,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          bs_t *bs_qq,
                                          md_t *st,
                                          int info_level,
-                                         bs_t **obs,
                                          int32_t dquot_ori,
                                          primes_t *lp,
                                          int32_t start,
@@ -1209,8 +1208,6 @@ gb_modpoly_t *core_groebner_qq(
 
   *errp = 0;
 
-  msd->bs_qq =  bs;
-
   int32_t info_level = st->info_level;
   int64_t dquot = 0;
   int64_t *dquot_ptr = &dquot;
@@ -1218,13 +1215,13 @@ gb_modpoly_t *core_groebner_qq(
 
   if(fc == 0){
     /*generate lucky prime numbers */
-    generate_lucky_primes(msd->lp, msd->bs_qq, st->prime_start, st->nthrds);
+    generate_lucky_primes(msd->lp, bs, st->prime_start, st->nthrds);
   }
   else{
     msd->lp->old = 0;
     msd->lp->ld = 1;
     msd->lp->p = calloc(1, sizeof(uint32_t));
-    normalize_initial_basis(msd->bs_qq, st->gfc);
+    normalize_initial_basis(bs, st->gfc);
   }
 
   uint32_t prime = 0;
@@ -1233,7 +1230,7 @@ gb_modpoly_t *core_groebner_qq(
   srand(time(0));
 
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
-  while(fc == 0 && is_lucky_prime_ui(prime, msd->bs_qq)){
+  while(fc == 0 && is_lucky_prime_ui(prime, bs)){
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
@@ -1246,7 +1243,7 @@ gb_modpoly_t *core_groebner_qq(
 
   int success = 1;
 
-  int32_t maxbitsize = maxbitsize_generators(msd->bs_qq); 
+  int32_t maxbitsize = maxbitsize_generators(bs); 
 
   int learn = 1, apply = 1, nprimes = 0;
   double stf4 = 0;
@@ -1271,7 +1268,7 @@ gb_modpoly_t *core_groebner_qq(
                                                  msd->mgb,
                                                  msd->num_gb, msd->leadmons_ori,
                                                  msd->btrace[0],
-                                                 msd->tht, msd->bs_qq, st,
+                                                 msd->tht, bs, st,
                                                  msd->lp->p[0],
                                                  info_level,
                                                  print_gb,
@@ -1350,7 +1347,7 @@ gb_modpoly_t *core_groebner_qq(
       return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
     }
     /* duplicate data for multi-threaded multi-mod computation */
-    duplicate_data_mthread_gbtrace(st->nthrds, msd->bs_qq, st, msd->num_gb,
+    duplicate_data_mthread_gbtrace(st->nthrds, bs, st, msd->num_gb,
                                    msd->leadmons_ori, msd->leadmons_current,
                                    msd->btrace);
 
@@ -1368,7 +1365,7 @@ gb_modpoly_t *core_groebner_qq(
       }
       /* generate lucky prime numbers */
       msd->lp->p[0] = prime;
-      while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
+      while(is_lucky_prime_ui(prime, bs) || prime==primeinit){
         prime = next_prime(prime);
         if(prime >= lprime){
           prime = next_prime(1<<30);
@@ -1382,7 +1379,7 @@ gb_modpoly_t *core_groebner_qq(
           prime = next_prime(1<<30);
         }
         msd->lp->p[i] = prime;
-        while(is_lucky_prime_ui(prime, msd->bs_qq) || prime==primeinit){
+        while(is_lucky_prime_ui(prime, bs) || prime==primeinit){
           prime = next_prime(prime);
           if(prime >= lprime){
             prime = next_prime(1<<30);
@@ -1401,9 +1398,9 @@ gb_modpoly_t *core_groebner_qq(
                                    msd->leadmons_ori,
                                    msd->leadmons_current,
                                    msd->btrace,
-                                   msd->bs_qq, st,
+                                   bs,  st,
                                    0, /* info_level, */
-                                   msd->bs, *dquot_ptr, msd->lp,
+                                   *dquot_ptr, msd->lp,
                                    dlift->S, &stf4, msd->bad_primes);
 
 
@@ -1690,7 +1687,7 @@ gb_modpoly_t *groebner_qq(
       exit(1);
   }
 
-  initialize_mstrace(msd, md);
+  initialize_mstrace(msd, md, bs);
   int err = 0;
 
   gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
@@ -1865,7 +1862,7 @@ int64_t export_groebner_qq(
         exit(1);
     }
 
-    initialize_mstrace(msd, md);
+    initialize_mstrace(msd, md, bs);
     int err = 0;
 
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));

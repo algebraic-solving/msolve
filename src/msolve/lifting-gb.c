@@ -418,7 +418,6 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
 }
 
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
-    fprintf(stderr, "Warning: needs to clear hash table and lmps\n");
   free(modgbs->primes);
   free(modgbs->ldm);
   for(uint32_t i = 0; i < modgbs->ld; i++){
@@ -435,6 +434,7 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
     free(modgbs->modpolys[i]->cf_qq);
   }
   free(modgbs->lmps);
+  free(modgbs->hm);
   //free_hash_table(&(modgbs->bht));
   free_shared_hash_data(modgbs->bht);
   free(modgbs->modpolys);

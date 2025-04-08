@@ -1707,13 +1707,6 @@ gb_modpoly_t *groebner_qq(
 
   /* free and clean up */
   free_mstrace(msd, md);
-  /* msd->bs_qq was bs so no need to clean bs anymore
-  free_shared_hash_data(bht);
-  if (bs != NULL) {
-      free_basis(&bs);
-  }
-  */
-  
 
   free(md);
   md    = NULL;
@@ -1827,11 +1820,9 @@ int64_t export_groebner_qq(
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t truncate_lifting,
-        const int32_t info_level, 
-        data_gens_ff_t *gens
+        const int32_t info_level 
         )
 {
-    fprintf(stderr, "REMOVE gens as input\n");
     /* timings */
     double ct0, ct1, rt0, rt1;
     ct0 = cputime();
@@ -1883,12 +1874,6 @@ int64_t export_groebner_qq(
 
     /* free and clean up */
     free_mstrace(msd, md);
-    /*msd->bs_qq was bs so no need to clean bs anymore
-    free_shared_hash_data(bht);
-    if (bs != NULL) {
-        free_basis(&bs);
-    }
-    */
     free(md);
     md    = NULL;
 

@@ -1588,9 +1588,29 @@ uint64_t export_results_from_groebner_qq(
         mpz_init(cf_qq[i]);
     }
 
+    hm_t *hm    = NULL;
+    ht_t *ht = gb->bht;
+    const len_t ebl = ht->ebl;
+    const len_t evl = ht->evl;
+    int *evi    =   (int *)malloc((unsigned long)ht->nv * sizeof(int));
+    if (ebl == 0) {
+      for (len_t i = 1; i < evl; ++i) {
+        evi[i-1]    =   i;
+      }
+    } else {
+      for (len_t i = 1; i < ebl; ++i) {
+        evi[i-1]    =   i;
+      }
+      for (len_t i = ebl+1; i < evl; ++i) {
+        evi[i-2]    =   i;
+      }
+    }
+
     int64_t term = 0;
     for(int64_t p = 0; p < nelts; p++){
 
+        len_t idx = gb->lmps[p];
+        hm  = gb->hm[idx]+OFFSET;
         int32_t l = gb->modpolys[p]->len;
         for(int32_t n = 0; n < nv; n++){
             exp[term * nve + n + elim_block_len] = gb->ldm[p * nv + n];
@@ -1602,7 +1622,7 @@ uint64_t export_results_from_groebner_qq(
             
             if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0){
                 for(int32_t n = 0 ; n < nv; n++){
-                    exp[term * nve + n + elim_block_len] = gb->mb[i * nv + n];
+                    exp[term * nve + n + elim_block_len] = ht->ev[hm[l-i]][evi[n]];
                 }
                 mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[2*i]);
 
@@ -1615,6 +1635,7 @@ uint64_t export_results_from_groebner_qq(
     *bexp = exp;
     *bcf  = cf_qq;
 
+    free(evi);
     return nterms;
 }
 

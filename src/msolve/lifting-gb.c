@@ -54,7 +54,6 @@ typedef struct {
                     flint) */
   uint32_t ld; /* number of polynomials */
   int nv; /* number of variables */
-  int32_t *mb; /* monomial basis enlarged */
   int32_t *ldm; /* lead monomials */
   ht_t *bht; /* hash table */
   hm_t **hm; /* hashed monomials representing exponents */
@@ -179,7 +178,6 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->nv = nv;
   modgbs->modpolys = (modpolys_t *)malloc(sizeof(modpolys_t) * ld);
 
-  modgbs->mb = NULL; 
   modgbs->ldm = (int32_t *)calloc(nv*ld, sizeof(int32_t));
   modgbs->bht = bs->ht;
   modgbs->hm = (hm_t **)malloc(modgbs->ld * sizeof(hm_t *));
@@ -422,7 +420,6 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
     fprintf(stderr, "Warning: needs to clear hash table and lmps\n");
   free(modgbs->primes);
-  free(modgbs->mb);
   free(modgbs->ldm);
   for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
@@ -437,6 +434,7 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
     free(modgbs->modpolys[i]->cf_zz);
     free(modgbs->modpolys[i]->cf_qq);
   }
+  free(modgbs->lmps);
   //free_hash_table(&(modgbs->bht));
   free_shared_hash_data(modgbs->bht);
   free(modgbs->modpolys);

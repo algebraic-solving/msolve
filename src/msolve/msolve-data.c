@@ -25,8 +25,6 @@ static void initialize_mstrace(mstrace_t msd, md_t *st, bs_t *bs){
    * initialize basis
    *******************/
 
-  msd->tht = NULL;
-
   msd->bad_primes = calloc((unsigned long)st->nthrds, sizeof(int));
 
   /* initialize tracers */
@@ -62,11 +60,6 @@ static void free_mstrace(mstrace_t msd, md_t *st){
     to be checked if that is to be done when st->ff_bits != 0
      This was previously done only when characteristic is zero
   ************************************************************/
-
-  if(msd->tht!=NULL){
-    free_hash_table(&(msd->tht));
-  }
-  free(msd->tht);
 
   free(msd->bad_primes);
 

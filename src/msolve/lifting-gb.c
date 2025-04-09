@@ -426,17 +426,6 @@ static inline void display_modpoly(FILE *file,
          }
      }
     }
-
-
-
-//    for (k = 0; k < nv; ++k) {
-//      if (ht->ev[hm[len-1]][evi[k]] == 1) {
-//        fprintf(file, "*%s",gens->vnames[k]);
-//      }
-//      if (ht->ev[hm[len-1]][evi[k]] > 1) {
-//        fprintf(file, "*%s^%u",gens->vnames[k], ht->ev[hm[len-1]][evi[k]]);
-//      }
-//    }
   }
 
   free(evi);

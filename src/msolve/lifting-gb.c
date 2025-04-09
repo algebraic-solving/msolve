@@ -1302,17 +1302,6 @@ gb_modpoly_t *core_groebner_qq(
       dlinit = 1;
     }
 
-    /* if(info_level){ */
-    /*   int s= 0; */
-    /*   for(int i = 0; i < dlift->nsteps; i++){ */
-    /*     fprintf(stderr, "[%d]", dlift->steps[i]); */
-    /*     s+=dlift->steps[i]; */
-    /*   } */
-    /*   fprintf(stderr, "\n"); */
-    /*   if(s > 1){ */
-    /*     fprintf(stderr, "%d polynomials to lift\n", s); */
-    /*   } */
-    /* } */
     if(info_level){
       fprintf(stdout,"\n---------- COMPUTATIONAL DATA -----------\n");
       int s= 0;
@@ -1348,10 +1337,6 @@ gb_modpoly_t *core_groebner_qq(
                                    msd->leadmons_ori, msd->leadmons_current,
                                    msd->btrace);
 
-    /* if(info_level){ */
-    /*   fprintf(stderr, "\nStarts multi-modular computations\n"); */
-    /* } */
-    /* print postponed */
 
     learn = 0;
     while(apply){

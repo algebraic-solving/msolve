@@ -51,15 +51,6 @@ static void initialize_mstrace(mstrace_t msd, md_t *st, bs_t *bs){
 static void free_mstrace(mstrace_t msd, md_t *st){
   free_lucky_primes(&msd->lp);
   free(msd->lp);
-  /* to be checked if that is to be done when st->ff_bits != 0
-     This was previously done only when characteristic is zero
-   */
-
-  fprintf(stderr, "Check that when st->ff_bits != 0 hash table should be cleared in modgbs\n (%d)", st->ff_bits);
-  /***********************************************************
-    to be checked if that is to be done when st->ff_bits != 0
-     This was previously done only when characteristic is zero
-  ************************************************************/
 
   free(msd->bad_primes);
 

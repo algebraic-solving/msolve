@@ -345,15 +345,35 @@ static inline void display_modpoly(FILE *file,
     if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0)>0){
       fprintf(file, "+");
     }
-    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i]);
-    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0){
-      fprintf(file, "/");
-      mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i + 1]);
+    //coef is -1
+    if(mpz_cmp_si(modgbs->modpolys[pos]->cf_qq[2*i], -1) == 0 && mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) == 0){
+        fprintf(file, "-");
+    }
+    int star = 0;
+    //coef is neither 1 nor -1
+    if((mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0) && (mpz_cmp_si(modgbs->modpolys[pos]->cf_qq[2*i], -1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0)){
+        mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i]);
+        if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0){
+            fprintf(file, "/");
+            mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i + 1]);
+        }
+        fprintf(file, "*");
     }
     if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0) != 0){
       for (k = 0; k < nv; ++k) {
-         if (ht->ev[hm[len-i-1]][evi[k]] > 0) {
-            fprintf(file, "*%s^%u",gens->vnames[k], ht->ev[hm[len-i-1]][evi[k]]);
+         if (ht->ev[hm[len-i-1]][evi[k]] == 1) {
+            if(star == 1){
+                fprintf(file, "*");
+            }
+            fprintf(file, "%s",gens->vnames[k]);
+            star = 1;
+         }
+         if (ht->ev[hm[len-i-1]][evi[k]] > 1) {
+            if(star == 1){
+                fprintf(file, "*");
+            }
+            fprintf(file, "%s^%u",gens->vnames[k], ht->ev[hm[len-i-1]][evi[k]]);
+            star = 1;
          }
      }
     }
@@ -361,21 +381,64 @@ static inline void display_modpoly(FILE *file,
   }
   if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 0) > 0){
     fprintf(file, "+");
-    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[0]);
   }
-  if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 0) < 0){
-    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[0]);
+  int deg = 0;
+  for (k = 0; k < nv; ++k) {
+     deg += ht->ev[hm[len-1]][evi[k]];
   }
-  if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0){
-    fprintf(file, "/");
-    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[1]);
+  if(deg == 0){
+    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[0]);
+    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0){
+      fprintf(file, "/");
+      mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[1]);
+    }
+  }
+  else{
+    if(mpz_cmp_si(modgbs->modpolys[pos]->cf_qq[0], -1) == 0 && mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) == 0){
+        fprintf(file, "-");
+    }
+    int star = 0;
+    //coef is neither 1 nor -1
+    if((mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0) && (mpz_cmp_si(modgbs->modpolys[pos]->cf_qq[0], -1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0)){
+        mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[0]);
+        if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0){
+            fprintf(file, "/");
+            mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[1]);
+        }
+        fprintf(file, "*");
+    }
+    fflush(file);
+    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 0) != 0){
+      for (k = 0; k < nv; ++k) {
+         if (ht->ev[hm[len-1]][evi[k]] == 1) {
+            if(star == 1){
+                fprintf(file, "*");
+            }
+            fprintf(file, "%s",gens->vnames[k]);
+            star = 1;
+         }
+         if (ht->ev[hm[len-1]][evi[k]] > 1) {
+            if(star == 1){
+                fprintf(file, "*");
+            }
+            fprintf(file, "%s^%u",gens->vnames[k], ht->ev[hm[len-1]][evi[k]]);
+            star = 1;
+         }
+     }
+    }
+
+
+
+//    for (k = 0; k < nv; ++k) {
+//      if (ht->ev[hm[len-1]][evi[k]] == 1) {
+//        fprintf(file, "*%s",gens->vnames[k]);
+//      }
+//      if (ht->ev[hm[len-1]][evi[k]] > 1) {
+//        fprintf(file, "*%s^%u",gens->vnames[k], ht->ev[hm[len-1]][evi[k]]);
+//      }
+//    }
   }
 
-  for (k = 0; k < nv; ++k) {
-     if (ht->ev[hm[len-1]][evi[k]] > 0) {
-        fprintf(file, "*%s^%u",gens->vnames[k], ht->ev[hm[len-1]][evi[k]]);
-     }
-  }
   free(evi);
 }
 

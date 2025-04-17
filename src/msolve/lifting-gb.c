@@ -697,7 +697,6 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            int info_level,
                                            int print_gb,
                                            int truncate_lifting,
-                                           int64_t *dquot_ori,
                                            int32_t start,
                                            int32_t maxbitsize,
                                            int *success)
@@ -750,7 +749,6 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     /************************************************/
     /************************************************/
 
-    long dquot = 0;
     int32_t *lmb;
     if(st->nev){
       lmb = NULL; //monomial_basis_enlarged(num_gb[0], bht->nv - st->nev,  bexp_lm2, &dquot);
@@ -783,7 +781,6 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
             }
         }
         if(is_empty){
-            *dquot_ori = 0;
             free_basis_without_hash_table(&(bs));
             return is_empty;
         }
@@ -1257,8 +1254,6 @@ gb_modpoly_t *core_groebner_qq(
   *errp = 0;
 
   int32_t info_level = st->info_level;
-  int64_t dquot = 0;
-  int64_t *dquot_ptr = &dquot;
   int32_t truncate_lifting = st->truncate_lifting;
 
   if(fc == 0){
@@ -1321,7 +1316,6 @@ gb_modpoly_t *core_groebner_qq(
                                                  info_level,
                                                  print_gb,
                                                  truncate_lifting,
-                                                 dquot_ptr,
                                                  0,
                                                  maxbitsize,
                                                  &success);

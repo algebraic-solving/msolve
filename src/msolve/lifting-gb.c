@@ -225,6 +225,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   }
 }
 
+
 static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                       uint32_t newalloc,
                                       int32_t start){
@@ -469,6 +470,27 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
   fprintf(file, "]:\n");
 }
 
+static inline void gb_modpoly_without_hash_table_clear(gb_modpoly_t modgbs){
+  free(modgbs->primes);
+  free(modgbs->ldm);
+  for(uint32_t i = 0; i < modgbs->ld; i++){
+    for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
+      free(modgbs->modpolys[i]->cf_32[j]);
+      mpz_clear(modgbs->modpolys[i]->cf_zz[j]);
+    }
+    for(uint32_t j = 0; j < 2 * modgbs->modpolys[i]->len; j++){
+      mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
+    }
+    mpz_clear(modgbs->modpolys[i]->lm);
+    free(modgbs->modpolys[i]->cf_32);
+    free(modgbs->modpolys[i]->cf_zz);
+    free(modgbs->modpolys[i]->cf_qq);
+  }
+  free(modgbs->lmps);
+  free(modgbs->hm);
+  free(modgbs->modpolys);
+}
+
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   free(modgbs->ldm);
@@ -624,7 +646,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       hm  = bs->hm[idx]+OFFSET;
       len = bs->hm[idx][LENGTH];
     }
-    int bc = modgbs->modpolys[i]->len - 1;
+    int32_t bc = modgbs->modpolys[i]->len - 1;
     for (j = 1; j < len; ++j) {
       uint32_t c = bs->cf_32[bs->hm[idx][COEFFS]][j];
       modgbs->modpolys[i]->cf_32[bc][modgbs->nprimes] = c;
@@ -818,11 +840,35 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   /*at the moment multi-threading is not supprted here*/
   memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
 
+  /* current load of the hash table */
+  hl_t eld = bs_qq->ht->eld;
   bs_t *bs = NULL;
   int32_t error = 0;
   bs = core_gba(bs_qq, st, &error, lp->p[0]);
   *stf4 = realtime()-rt;
   ht_t **bht = &(bs->ht);
+  if(bs->ht->eld != eld){
+      if(info_level){
+          fprintf(stderr, "New terms in the hash table\n");
+      }
+      bad_primes[0] = 2;
+      free_basis_and_only_local_hash_table_data(&bs);
+      return;
+  }
+  else{
+      for(len_t i = 0; i < modgbs->ld; i++){
+          if(modgbs->modpolys[i]->len < bs->hm[bs->lmps[i]][LENGTH]-1){
+              bad_primes[0] = 2;
+              free_basis_and_only_local_hash_table_data(&bs);
+              return;
+          }
+          if(modgbs->modpolys[i]->len > bs->hm[bs->lmps[i]][LENGTH]-1){
+              bad_primes[0]=1;
+              free_basis_and_only_local_hash_table_data(&bs);
+              return;
+          }
+      }
+  }
   if (bs == NULL) {
       bad_primes[0] = 1;
       return;
@@ -1369,7 +1415,7 @@ gb_modpoly_t *core_groebner_qq(
         data_lift_clear(dlift);
       }
 
-      gb_modpoly_clear((*modgbsp));
+      gb_modpoly_without_hash_table_clear((*modgbsp));
 
       free_rrec_data(recdata1);
       free_rrec_data(recdata2);
@@ -1386,7 +1432,7 @@ gb_modpoly_t *core_groebner_qq(
     learn = 0;
     while(apply){
 
-      prime = next_prime(prime);
+      prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
       if(prime >= lprime){
         prime = next_prime(1<<30);
       }
@@ -1429,7 +1475,6 @@ gb_modpoly_t *core_groebner_qq(
                                    0, /* info_level, */
                                    msd->lp,
                                    dlift->S, &stf4, msd->bad_primes);
-
 
       /* nprimes += st->nthrds; */
       nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */
@@ -1475,11 +1520,23 @@ gb_modpoly_t *core_groebner_qq(
       for(int i = 0; i < nthrds/* st->nthrds */; i++){
         if(msd->bad_primes[i] == 1){
           bad = 1;
+          if(info_level > 1){
+              fprintf(stderr, "[!]");
+          }
           nbadprimes++;
+          msd->bad_primes[i] = 0;
+        }
+        if(msd->bad_primes[i] == 2){
+            bad = 1;
+            if(info_level > 1){
+                fprintf(stderr, "[!!]");
+            }
+            nbadprimes = nprimes;
+            msd->bad_primes[i] = 0;
         }
       }
 
-      if(nbadprimes == nprimes){
+      if(nbadprimes >= nprimes){
         if(info_level){
           fprintf(stderr, "Too many bad primes, computation will restart\n");
         }
@@ -1487,9 +1544,9 @@ gb_modpoly_t *core_groebner_qq(
           data_lift_clear(dlift);
         }
 
+        gb_modpoly_without_hash_table_clear((*modgbsp));
         free_rrec_data(recdata1);
         free_rrec_data(recdata2);
-
         return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
 
       }

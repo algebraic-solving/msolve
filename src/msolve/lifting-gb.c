@@ -1199,7 +1199,7 @@ static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         mpz_t mod_p, mpz_t prod_p,
                         rrec_data_t recdata1, rrec_data_t recdata2,
-                        int thrds, double *st_crt, double *st_rrec){
+                        int thrds, double *st_crt, double *st_rrec, double *st_wit){
 
   double st = realtime();
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
@@ -1258,6 +1258,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
     }
   }
   *st_rrec += realtime()-st;
+  *st_wit += realtime()-st;
 
 }
 
@@ -1329,6 +1330,9 @@ gb_modpoly_t *core_groebner_qq(
     msd->lp->p[0] = fc;
     primeinit = fc;
   }
+  if(info_level){
+      fprintf(stderr, "Initial prime = %d\n", msd->lp->p[0]);
+  }
 
   int success = 1;
 
@@ -1348,6 +1352,7 @@ gb_modpoly_t *core_groebner_qq(
 
   double st_crt = 0;
   double st_rrec = 0;
+  double st_wit = 0;
 
   uint32_t nbadprimes = 0;
 
@@ -1430,9 +1435,13 @@ gb_modpoly_t *core_groebner_qq(
 
 
     learn = 0;
+    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+    if(info_level){
+        fprintf(stderr, "New prime = %d\n", prime);
+    }
     while(apply){
 
-      prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+      prime = next_prime(prime);
       if(prime >= lprime){
         prime = next_prime(1<<30);
       }
@@ -1554,12 +1563,13 @@ gb_modpoly_t *core_groebner_qq(
       int lstart = dlift->lstart;
       double ost_rrec = st_rrec;
       double ost_crt = st_crt;
+      st_wit = 0;
 
       if(!bad){
         ratrecon_gb((*modgbsp), dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
-                    nthrds/* st->nthrds */, &st_crt, &st_rrec);
+                    nthrds/* st->nthrds */, &st_crt, &st_rrec, &st_wit);
       }
-      if((st_crt -ost_crt) + (st_rrec - ost_rrec) > dlift->rr * stf4){
+      if(/*(st_crt -ost_crt) + (st_rrec - ost_rrec)*/ st_wit > 2*dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
           fprintf(stdout, "(->%d)", dlift->rr);

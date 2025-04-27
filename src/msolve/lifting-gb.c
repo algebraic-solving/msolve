@@ -276,7 +276,7 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
                                      gb_modpoly_t modgbs){
   fprintf(file, "alloc = %d\n", modgbs->alloc);
   fprintf(file, "nprimes = %d\n", modgbs->nprimes);
-  fprintf(stderr, "primes = [");
+  fprintf(file, "primes = [");
   for(uint32_t i = 0; i < modgbs->alloc-1; i++){
     fprintf(file, "%lu, ", (unsigned long)modgbs->primes[i]);
   }
@@ -287,7 +287,7 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
     uint32_t len = modgbs->modpolys[i]->len;
     fprintf(file, "[%d, ", len);
     for(uint32_t j = 0; j < len; j++){
-      fprintf(stderr, "[");
+      fprintf(file, "[");
       for(uint32_t k = 0; k < modgbs->alloc-1; k++){
         fprintf(file, "%d, ", modgbs->modpolys[i]->cf_32[j][k]);
       }
@@ -740,16 +740,12 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     ht_t *bht = bs->ht;
 
-    /* if(info_level > 1){ */
-    /*     fprintf(stderr, "Learning phase %.2f Gops/sec\n", */
-    /*             (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(st->learning_rtime)); */
-    /* } */
     if(info_level > 2){
-        fprintf(stderr, "------------------------------------------\n");
-        fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
-        fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
-        fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
-        fprintf(stderr, "------------------------------------------\n");
+        fprintf(stdout, "------------------------------------------\n");
+        fprintf(stdout, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
+        fprintf(stdout, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
+        fprintf(stdout, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
+        fprintf(stdout, "------------------------------------------\n");
     }
 
     /* Leading monomials from Grobner basis */
@@ -794,7 +790,7 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     int is_empty = 0;
     if(bs->lml == 1){
         if(info_level){
-            fprintf(stderr, "Grobner basis has a single element\n");
+            fprintf(stdout, "Grobner basis has a single element\n");
         }
         is_empty = 1;
         for(int i = 0; i < bht->nv; i++){
@@ -849,7 +845,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   ht_t **bht = &(bs->ht);
   if(bs->ht->eld != eld){
       if(info_level){
-          fprintf(stderr, "New terms in the hash table\n");
+          fprintf(stdout, "New terms in the hash table\n");
       }
       bad_primes[0] = 2;
       free_basis_and_only_local_hash_table_data(&bs);
@@ -1331,7 +1327,7 @@ gb_modpoly_t *core_groebner_qq(
     primeinit = fc;
   }
   if(info_level){
-      fprintf(stderr, "Initial prime = %d\n", msd->lp->p[0]);
+      fprintf(stdout, "Initial prime = %d\n", msd->lp->p[0]);
   }
 
   int success = 1;
@@ -1425,7 +1421,7 @@ gb_modpoly_t *core_groebner_qq(
       free_rrec_data(recdata1);
       free_rrec_data(recdata2);
 
-      fprintf(stderr, "Something went wrong in the learning phase, msolve restarts.");
+      fprintf(stdout, "Something went wrong in the learning phase, msolve restarts.");
       return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
     }
     /* duplicate data for multi-threaded multi-mod computation */
@@ -1437,7 +1433,7 @@ gb_modpoly_t *core_groebner_qq(
     learn = 0;
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
     if(info_level){
-        fprintf(stderr, "New prime = %d\n", prime);
+        fprintf(stdout, "New prime = %d\n", prime);
     }
     while(apply){
 
@@ -1489,11 +1485,11 @@ gb_modpoly_t *core_groebner_qq(
       nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */
       if(nprimes == 1){
         if(info_level>2){
-          fprintf(stderr, "------------------------------------------\n");
-          fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
-          fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
-          fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
-          fprintf(stderr, "------------------------------------------\n");
+          fprintf(stdout, "------------------------------------------\n");
+          fprintf(stdout, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
+          fprintf(stdout, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
+          fprintf(stdout, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
+          fprintf(stdout, "------------------------------------------\n");
         }
         /* if(info_level>1){ */
         /*   fprintf(stderr, "Application phase %.2f Gops/sec\n", */
@@ -1530,7 +1526,7 @@ gb_modpoly_t *core_groebner_qq(
         if(msd->bad_primes[i] == 1){
           bad = 1;
           if(info_level > 1){
-              fprintf(stderr, "[!]");
+              fprintf(stdout, "[!]");
           }
           nbadprimes++;
           msd->bad_primes[i] = 0;
@@ -1538,7 +1534,7 @@ gb_modpoly_t *core_groebner_qq(
         if(msd->bad_primes[i] == 2){
             bad = 1;
             if(info_level > 1){
-                fprintf(stderr, "[!!]");
+                fprintf(stdout, "[!!]");
             }
             nbadprimes = nprimes;
             msd->bad_primes[i] = 0;
@@ -1547,7 +1543,7 @@ gb_modpoly_t *core_groebner_qq(
 
       if(nbadprimes >= nprimes){
         if(info_level){
-          fprintf(stderr, "Too many bad primes, computation will restart\n");
+          fprintf(stdout, "Too many bad primes, computation will restart\n");
         }
         if(dlinit){
           data_lift_clear(dlift);
@@ -1569,17 +1565,17 @@ gb_modpoly_t *core_groebner_qq(
         ratrecon_gb((*modgbsp), dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
                     nthrds/* st->nthrds */, &st_crt, &st_rrec, &st_wit);
       }
-      if(/*(st_crt -ost_crt) + (st_rrec - ost_rrec)*/ st_wit > 2*dlift->rr * stf4){
+      if(st_wit > 2*dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
-          fprintf(stderr, "(->%d)", dlift->rr);
-	      fflush(stderr);
+          fprintf(stdout, "(->%d)", dlift->rr);
+	      fflush(stdout);
         }
       }
       if(info_level){
         if(!(nprimes & (nprimes - 1))){
           fprintf(stdout, "{%d}", nprimes);
-	  fflush(stdout);
+	      fflush(stdout);
         }
       }
       apply = 0;

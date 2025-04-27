@@ -1572,8 +1572,8 @@ gb_modpoly_t *core_groebner_qq(
       if(/*(st_crt -ost_crt) + (st_rrec - ost_rrec)*/ st_wit > 2*dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
-          fprintf(stdout, "(->%d)", dlift->rr);
-	  fflush(stdout);
+          fprintf(stderr, "(->%d)", dlift->rr);
+	      fflush(stderr);
         }
       }
       if(info_level){

@@ -1461,7 +1461,6 @@ gb_modpoly_t *core_groebner_qq(
         gb_modpoly_realloc((*modgbsp), 16*st->nthrds, dlift->S);
       }
 
-      fprintf(stderr, "Ici\n");
       gb_modular_trace_application((*modgbsp), msd->mgb,
                                    msd->num_gb,
                                    msd->leadmons_ori,

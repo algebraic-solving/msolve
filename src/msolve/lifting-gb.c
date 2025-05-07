@@ -843,27 +843,17 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   bs = core_gba(bs_qq, st, &error, lp->p[0]);
   *stf4 = realtime()-rt;
   ht_t **bht = &(bs->ht);
-  if(bs->ht->eld != eld){
-      if(info_level){
-          fprintf(stdout, "New terms in the hash table\n");
-      }
-      bad_primes[0] = 2;
-      free_basis_and_only_local_hash_table_data(&bs);
-      return;
-  }
-  else{
-      for(len_t i = 0; i < modgbs->ld; i++){
-          if(modgbs->modpolys[i]->len < bs->hm[bs->lmps[i]][LENGTH]-1){
-              bad_primes[0] = 2;
-              free_basis_and_only_local_hash_table_data(&bs);
-              return;
-          }
-          if(modgbs->modpolys[i]->len > bs->hm[bs->lmps[i]][LENGTH]-1){
-              bad_primes[0]=1;
-              free_basis_and_only_local_hash_table_data(&bs);
-              return;
-          }
-      }
+  for(len_t i = 0; i < modgbs->ld; i++){
+        if(modgbs->modpolys[i]->len < bs->hm[bs->lmps[i]][LENGTH]-1){
+            bad_primes[0] = 2;
+            free_basis_and_only_local_hash_table_data(&bs);
+            return;
+        }
+        if(modgbs->modpolys[i]->len > bs->hm[bs->lmps[i]][LENGTH]-1){
+            bad_primes[0]=1;
+            free_basis_and_only_local_hash_table_data(&bs);
+            return;
+        }
   }
   if (bs == NULL) {
       bad_primes[0] = 1;
@@ -1471,6 +1461,7 @@ gb_modpoly_t *core_groebner_qq(
         gb_modpoly_realloc((*modgbsp), 16*st->nthrds, dlift->S);
       }
 
+      fprintf(stderr, "Ici\n");
       gb_modular_trace_application((*modgbsp), msd->mgb,
                                    msd->num_gb,
                                    msd->leadmons_ori,

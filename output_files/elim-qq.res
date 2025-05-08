@@ -5,7 +5,7 @@
 #monomial order:       graded reverse lexicographical
 #length of basis:      6 elements sorted by increasing leading monomials
 #---
-[w*y^3-1*x*z^3, 
+[w*y^3-x*z^3, 
 x^4, 
 w*x^3, 
 w^2*x^2, 

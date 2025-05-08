@@ -329,11 +329,6 @@ typedef struct{
 /* data structure for tracing algorithms */
 typedef struct{
   primes_t *lp; /* array of lucky primes, usually of size st->nthrds */
-  bs_t *bs_qq; /* basis_qq */
-  ht_t *bht; /* hash table */
-  ht_t *tht; /* hash table to store the hashes of the multiples of the basis
-                elements stored in the trace */
-  bs_t **bs;
   int *bad_primes;
   trace_t **btrace;
 
@@ -342,9 +337,6 @@ typedef struct{
   int32_t **leadmons_current; /* leading monomials (from tracing) */
 
   int32_t *mgb; /* array which stores one monomial */
-
-  ht_t **blht;
-  ht_t **btht;
 
   mpz_t mod_p;
   mpz_t prod_p;

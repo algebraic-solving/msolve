@@ -21,7 +21,6 @@
 #ifndef MSOLVE_DATA_H
 #define MSOLVE_DATA_H
 
-#define _GNU_SOURCE
 #include "../neogb/data.h"
 #include<flint/fmpz.h>
 #include<flint/fmpq.h>
@@ -35,6 +34,10 @@
 #define MODP(a,b)                               \
 	(a) % (b)
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct
 {
@@ -360,4 +363,8 @@ typedef struct{
   files_gb *files;
 } msolveflags_struct;
 typedef msolveflags_struct msflags_t[1];
+#ifdef __cplusplus
+}
+#endif
+
 #endif

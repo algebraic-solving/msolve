@@ -220,7 +220,7 @@ int64_t export_groebner_qq(
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t truncate_lifting,
-        const int32_t info_level
+        const int32_t info_level 
         );
 
 // Utility functions to init and deinit data structures

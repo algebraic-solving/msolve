@@ -374,6 +374,7 @@ static int32_t get_nvars(const char *fn)
 {
     FILE * fh = fopen(fn, "r");
     char * line = NULL;
+    char * line2 = NULL;
     size_t len;
     nvars_t nvars = -1; 
 
@@ -381,17 +382,18 @@ static int32_t get_nvars(const char *fn)
     if (getline(&line, &len, fh) != -1)
     {
         nvars = 1;
-        line = strchr(line, ',');
-        while (line != NULL)
+        line2 = strchr(line, ',');
+        while (line2 != NULL)
         {
             nvars++;
             // line points to a comma, which must be followed by one or more characters
             // --> line+1 is valid
-            line = strchr(line+1, ',');
+            line2 = strchr(line2+1, ',');
         }
     }
 
     free(line);
+    free(line2);
     fclose(fh);
 
     return nvars;
@@ -628,6 +630,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
     }
     *linep  = line;
     gens->nterms = *all_nterms;
+    free(line);
 }
 
 
@@ -937,6 +940,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
         pos += 2 * gens->lens[i];
     }
     *linep  = line;
+    free(line);
 }
 
 
@@ -987,6 +991,9 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   char **vnames = (char **)malloc((*nr_vars) * sizeof(char *));
   get_variables(fh, line, max_line_size, nr_vars, gens, vnames);
   if (duplicate_vnames(vnames, *nr_vars) == 1) {
+      for(int32_t i = 0; i < *nr_vars; i++){
+          free(vnames[i]);
+      }
       free(vnames);
       free(line);
       exit(1);
@@ -996,6 +1003,7 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   initialize_data_gens(*nr_vars, *nr_gens, *field_char, gens);
 
   nelts_t nterms, all_nterms = 0;
+  free(line);
   get_nterms_and_all_nterms(fh, &line, max_line_size, gens, nr_gens,
                             &nterms, &all_nterms);
 
@@ -1009,7 +1017,6 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
     get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens);
   }
 
-  free(line);
   fclose(fh);
 
   return;

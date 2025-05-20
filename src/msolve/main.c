@@ -456,6 +456,7 @@ int main(int argc, char **argv){
             &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
+    free(param);
     mpz_param_clear(*mpz_paramp);
 
     if (nb_real_roots > 0) {

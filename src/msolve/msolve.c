@@ -2107,6 +2107,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       free_basis(&bs_qq);
     }
     // here we should clean nmod_params
+    free_fglm_param(nmod_params[0]);
     free_lucky_primes(&lp);
     free(bad_primes);
     free(lp);
@@ -2514,6 +2515,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     free_fglm_bms_data(bdata_bms[i]);
     free_fglm_data(bdata_fglm[i]);
+    
+    free_fglm_param(nmod_params[i]);
     free(bcfs_extra_nf[i]);
     free(bexps_extra_nf[i]);
     free(blens_extra_nf[i]);

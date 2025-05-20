@@ -2087,6 +2087,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
+  fprintf(stderr, "ICI APRES INITIALIZE\n");
+
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
     if (nmod_params[0]->elim->length - 1 != *dquot_ptr) {
       for (int i = 0; i < nr_vars - 1; i++) {
@@ -2103,6 +2105,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   if (lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
     free(bs);
+    fprintf(stderr, "ICI APRES FREE bs\n\n");
     if (gens->field_char == 0) {
       free_basis(&bs_qq);
       /*nmod_params[0] should not be cleaned here (change of primitive
@@ -2118,10 +2121,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(bnlins);
     free(lineqs_ptr);
     free(squvars);
+    free(lmb_ori);
     if (print_gb) {
       return 0;
     }
+    fprintf(stderr, "ICI2\n");
     if (*dim_ptr == 0 && gens->field_char && success) {
+        fprintf(stderr, "ICI DIM = 0\n");
       /* copy of parametrization */
       if (*dquot_ptr != 0) {
         param_t *par = allocate_fglm_param(gens->field_char, st->nvars);
@@ -2130,13 +2136,16 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         for (long j = 0; j <= st->nvars - 2; j++) {
           nmod_poly_set(par->coords[j], nmod_params[0]->coords[j]);
         }
+        free_fglm_param(nmod_params[0]);
         (*nmod_param) = par;
+        fprintf(stderr, "ICI %d\n\n", par->nvars);
       }
       free(st);
+      fprintf(stderr, "ICI RETURN 0\n");
       return 0;
     }
     free(st);
-    free(nmod_params);
+    fprintf(stderr, "ICI apres free st\n");
     if (*dim_ptr == 1) {
       if (info_level) {
         fprintf(stderr, "Positive dimensional Grobner basis\n");
@@ -2144,6 +2153,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       return 0;
     }
     if (*dquot_ptr == 0) {
+        fprintf(stderr, "ICI DIM QUOT == 0\n");
       return 0;
     }
     if (*dquot_ptr > 0) {
@@ -2513,6 +2523,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free_fglm_bms_data(bdata_bms[i]);
     free_fglm_data(bdata_fglm[i]);
     
+    fprintf(stderr, "ICI LA LA\n\n");
     free_fglm_param(nmod_params[i]);
     free(bcfs_extra_nf[i]);
     free(bexps_extra_nf[i]);
@@ -4047,7 +4058,7 @@ restart:
           print_gb=2;
       }
 	  b = real_msolve_qq(mpz_paramp,
-                       &param,
+                       paramp,
                        &dim,
                        &dquot,
                        nb_real_roots_ptr,
@@ -4062,12 +4073,11 @@ restart:
             return 0;
           }
 
-          manage_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
+          manage_output(b, dim, dquot, files, gens, (*paramp), mpz_paramp, get_param,
                         nb_real_roots_ptr,
                         real_roots_ptr,
                         real_pts_ptr,
                         info_level);
-
 
           /* if (b == 0 && gens->field_char > 0) { */
           /*   if(dim == 0){ */
@@ -4307,6 +4317,7 @@ restart:
             st  = NULL;
 
         }
+    fprintf(stderr, "ICI On renvoie zero\n\n");
         return 0;
     }
     else{/* characteristic is 0 */

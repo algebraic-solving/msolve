@@ -438,7 +438,7 @@ int main(int argc, char **argv){
     }
 
     /* data structures for parametrization */
-    param_t *param  = NULL;
+    param_t *param  = NULL; //malloc(sizeof(param_t));
     mpz_param_t *mpz_paramp = malloc(sizeof(mpz_param_t));
     mpz_param_init(*mpz_paramp);
 
@@ -456,7 +456,9 @@ int main(int argc, char **argv){
             &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
-    free(param);
+    if(param != NULL && gens->field_char && print_gb == 0  && normal_form == 0){
+        free_fglm_param(param);
+    }
     mpz_param_clear(*mpz_paramp);
 
     if (nb_real_roots > 0) {

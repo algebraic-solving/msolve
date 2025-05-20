@@ -2105,9 +2105,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(bs);
     if (gens->field_char == 0) {
       free_basis(&bs_qq);
+      /*nmod_params[0] should not be cleaned here (change of primitive
+       * element_*/
     }
-    // here we should clean nmod_params
-    free_fglm_param(nmod_params[0]);
     free_lucky_primes(&lp);
     free(bad_primes);
     free(lp);
@@ -2506,9 +2506,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free_rrec_data(recdata);
   trace_det_clear(trace_det);
 
-
-  // here we should clean nmod_params
-
   for (i = 0; i < st->nthrds; ++i) {
     if (bs[i] != NULL) {
       free_basis(&(bs[i]));
@@ -2533,7 +2530,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(leadmons_ori[i]);
     free(leadmons_current[i]);
     /* free_trace(&btrace[i]); */
-    free(nmod_params[i]);
 
     free(blinvars[i]);
     free(lineqs_ptr[i]);

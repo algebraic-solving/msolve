@@ -2545,6 +2545,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free(leadmons_ori);
   free(leadmons_current);
   free(nmod_params);
+  free(lmb_ori);
 
   free_lucky_primes(&lp);
   free_trace(&(st->tr));

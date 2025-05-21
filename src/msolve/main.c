@@ -456,7 +456,7 @@ int main(int argc, char **argv){
             &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);
 
     /* free parametrization */
-    if(param != NULL && gens->field_char && print_gb == 0  && normal_form == 0){
+    if(param != NULL && gens->field_char){
         free_fglm_param(param);
     }
     mpz_param_clear(*mpz_paramp);

@@ -5060,7 +5060,9 @@ void msolve_julia(
     *rp_var_namesp = rp_var_names;
 
     /* free parametrization */
-    free(param);
+    if(param != NULL && gens->field_char){
+        free_fglm_param(param);
+    }
     mpz_param_clear(mpz_param);
 
     *n_real_sols = nb_real_roots;

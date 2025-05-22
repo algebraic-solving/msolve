@@ -612,7 +612,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
                                       int max_line_size, data_gens_ff_t *gens,
                                       int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
 
-    char *line  = *linep;
+    char *line  = NULL; 
     size_t len = 0;
     ssize_t nread;
     for (int32_t i = 0; i < *nr_gens; i++) {
@@ -628,7 +628,7 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
         gens->lens[i] = *nterms;
         *all_nterms += *nterms;
     }
-    *linep  = line;
+    free(line);
     gens->nterms = *all_nterms;
 }
 
@@ -869,7 +869,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep, nelts_t all_nt
     size_t len = 0;
     ssize_t nread;
 
-    char *line  = *linep;
+    char *line  = NULL; 
     if(getline(&line, &len, fh) !=-1){
     }
     if(getline(&line, &len, fh) !=-1){
@@ -895,7 +895,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, char **linep, nelts_t all_nt
         }
         pos += gens->lens[i];
     }
-    *linep  = line;
+    free(line);
 }
 
 
@@ -905,7 +905,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
     size_t len = 0;
     ssize_t nread;
 
-    char *line  = *linep;
+    char *line  = NULL; 
     if(getline(&line, &len, fh) !=-1){
     }
     if(getline(&line, &len, fh) !=-1){
@@ -938,7 +938,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
         }
         pos += 2 * gens->lens[i];
     }
-    *linep  = line;
+    free(line);
 }
 
 
@@ -1001,7 +1001,6 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
   initialize_data_gens(*nr_vars, *nr_gens, *field_char, gens);
 
   nelts_t nterms, all_nterms = 0;
-  free(line);
   get_nterms_and_all_nterms(fh, &line, max_line_size, gens, nr_gens,
                             &nterms, &all_nterms);
 
@@ -1015,6 +1014,7 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
     get_coeffs_and_exponents_mpz(fh, &line, all_nterms, nr_gens, gens);
   }
 
+  free(line);
   fclose(fh);
 
   return;

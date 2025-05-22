@@ -2087,6 +2087,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
+
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
     if (nmod_params[0]->elim->length - 1 != *dquot_ptr) {
       for (int i = 0; i < nr_vars - 1; i++) {
@@ -2105,8 +2106,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(bs);
     if (gens->field_char == 0) {
       free_basis(&bs_qq);
+      /*nmod_params[0] should not be cleaned here (change of primitive
+       * element_*/
     }
-    // here we should clean nmod_params
     free_lucky_primes(&lp);
     free(bad_primes);
     free(lp);
@@ -2117,6 +2119,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(bnlins);
     free(lineqs_ptr);
     free(squvars);
+    free(lmb_ori);
     if (print_gb) {
       return 0;
     }
@@ -2129,13 +2132,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         for (long j = 0; j <= st->nvars - 2; j++) {
           nmod_poly_set(par->coords[j], nmod_params[0]->coords[j]);
         }
+        free_fglm_param(nmod_params[0]);
         (*nmod_param) = par;
       }
       free(st);
       return 0;
     }
     free(st);
-    free(nmod_params);
     if (*dim_ptr == 1) {
       if (info_level) {
         fprintf(stderr, "Positive dimensional Grobner basis\n");
@@ -2505,15 +2508,14 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free_rrec_data(recdata);
   trace_det_clear(trace_det);
 
-
-  // here we should clean nmod_params
-
   for (i = 0; i < st->nthrds; ++i) {
     if (bs[i] != NULL) {
       free_basis(&(bs[i]));
     }
     free_fglm_bms_data(bdata_bms[i]);
     free_fglm_data(bdata_fglm[i]);
+    
+    free_fglm_param(nmod_params[i]);
     free(bcfs_extra_nf[i]);
     free(bexps_extra_nf[i]);
     free(blens_extra_nf[i]);
@@ -2530,7 +2532,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(leadmons_ori[i]);
     free(leadmons_current[i]);
     /* free_trace(&btrace[i]); */
-    free(nmod_params[i]);
 
     free(blinvars[i]);
     free(lineqs_ptr[i]);
@@ -2545,6 +2546,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free(leadmons_ori);
   free(leadmons_current);
   free(nmod_params);
+  free(lmb_ori);
 
   free_lucky_primes(&lp);
   free_trace(&(st->tr));
@@ -4047,7 +4049,7 @@ restart:
           print_gb=2;
       }
 	  b = real_msolve_qq(mpz_paramp,
-                       &param,
+                       paramp,
                        &dim,
                        &dquot,
                        nb_real_roots_ptr,
@@ -4062,34 +4064,12 @@ restart:
             return 0;
           }
 
-          manage_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
+          manage_output(b, dim, dquot, files, gens, (*paramp), mpz_paramp, get_param,
                         nb_real_roots_ptr,
                         real_roots_ptr,
                         real_pts_ptr,
                         info_level);
 
-
-          /* if (b == 0 && gens->field_char > 0) { */
-          /*   if(dim == 0){ */
-          /*     if(files->out_file != NULL){ */
-          /*       FILE *ofile = fopen(files->out_file, "a"); */
-          /*       if(dquot == 0){ */
-          /*         fprintf(ofile, "[-1]:\n"); */
-          /*         return 0; */
-          /*       } */
-          /*       display_fglm_param_maple(ofile, param); */
-          /*       fclose(ofile); */
-          /*     } */
-          /*     else{ */
-          /*       if(dquot == 0){ */
-          /*         fprintf(stdout, "[-1]:\n"); */
-          /*         return 0; */
-          /*       } */
-          /*       display_fglm_param_maple(stdout, param); */
-          /*     } */
-          /*     return 0; */
-          /*   } */
-          /* } */
           if (b == 1) {
             free(bld);
             bld = NULL;
@@ -5080,7 +5060,9 @@ void msolve_julia(
     *rp_var_namesp = rp_var_names;
 
     /* free parametrization */
-    free(param);
+    if(param != NULL && gens->field_char){
+        free_fglm_param(param);
+    }
     mpz_param_clear(mpz_param);
 
     *n_real_sols = nb_real_roots;

@@ -630,7 +630,6 @@ static void get_nterms_and_all_nterms(FILE *fh, char **linep,
     }
     *linep  = line;
     gens->nterms = *all_nterms;
-    free(line);
 }
 
 
@@ -940,7 +939,6 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, char **linep, nelts_t all_nte
         pos += 2 * gens->lens[i];
     }
     *linep  = line;
-    free(line);
 }
 
 

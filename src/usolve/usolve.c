@@ -1046,6 +1046,8 @@ static inline void free_heap_flags(usolve_flags *flags,
       mpz_clear(flags->tmpol_desc[i]);
       mpz_clear(flags->tmpol[i]);
     }
+    free(flags->tmpol);
+    free(flags->tmpol_desc);
     mpz_clear(flags->Values[0]);
     mpz_clear(flags->Values[1]);
     free(flags->Values);

@@ -1096,8 +1096,6 @@ static inline int rational_reconstruction_mpz_ptr_with_denom(
   mpz_init(newlcm);
   mpz_set(newlcm, lcm);
   mpz_mul(newlcm, newlcm, guessed_den);
-  mpz_fdiv_q(rdata->D, rdata->D, lcm);
-  mpz_mul(rdata->N, rdata->N, lcm);
 
   for (deg_t i = *maxrec - 1; i >= 0; i--) {
     mpz_set(gnum, pol[i]);
@@ -1224,8 +1222,7 @@ static inline int new_rational_reconstruction(
   /**     CRT DONE                             **/
 
   /** RATIONAL RECONSTRUCTIONS                 **/
-  mpz_sub_ui(*guessed_num, modulus, 1);
-  mpz_fdiv_q_2exp(*guessed_num, *guessed_num, 1);
+  mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
   mpz_sqrt(*guessed_num, *guessed_num);
   mpz_set(recdata->D, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
@@ -1246,8 +1243,7 @@ static inline int new_rational_reconstruction(
           }
        }
   }
-  mpz_sub_ui(*guessed_num, modulus, 1);
-  mpz_fdiv_q_2exp(*guessed_num, *guessed_num, 1);
+  mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
   mpz_sqrt(*guessed_num, *guessed_num);
   mpz_set(recdata->N, *guessed_num);
   mpz_set(recdata->D, *guessed_num);
@@ -1255,10 +1251,9 @@ static inline int new_rational_reconstruction(
   if(trace_det->done_trace < 2 || trace_det->done_det < 2){
       rat_recon_trace_det(trace_det, recdata, modulus, rnum, rden, *guessed_den);
   }
-  if (trace_det->done_trace > 1 && trace_det->done_det > 1) {
+  if (trace_det->done_trace > 1 || trace_det->done_det > 1) {
 
-    mpz_sub_ui(*guessed_num, modulus, 1);
-    mpz_fdiv_q_2exp(*guessed_num, *guessed_num, 1);
+    mpz_fdiv_q_2exp(*guessed_num, modulus, 1);
     mpz_sqrt(*guessed_num, *guessed_num);
     mpz_set(recdata->N, *guessed_num);
     mpz_set(recdata->D, *guessed_num);
@@ -2189,7 +2184,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   trace_det_fglm_mat_t trace_det;
   uint32_t detidx = 0;
   /* int32_t tridx = nmod_params[0]->elim->length-2; */
-  int32_t tridx = 3 * (nmod_params[0]->elim->length - 1) / 4;
+  int32_t tridx = 9 * (nmod_params[0]->elim->length - 1) / 10;
   /* tridx = nmod_params[0]->elim->length - 2; */
   while (nmod_params[0]->elim->coeffs[tridx] == 0 && tridx > 0) {
     tridx--;

@@ -686,7 +686,7 @@ static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det,
   if (trace_det->done_trace && trace_det->done_trace < 2) {
     if (check_trace(trace_det, trace_mod, prime)) {
         trace_det->done_trace++;
-        *maxrec = trace_det->det_idx;
+        *maxrec = trace_det->trace_idx;
     }
     else{
         trace_det->done_trace = 0;

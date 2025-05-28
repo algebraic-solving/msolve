@@ -1504,7 +1504,7 @@ static inline void print_groebner_basis(files_gb *files,
   if (md->print_gb) {
     int32_t gfc = md->gfc;
     md->gfc = fc;
-    print_ff_basis_data(files->out_file, "a", bs, bs->ht, md, gens,
+    print_ff_basis_data(files->out_file, "ab", bs, bs->ht, md, gens,
                         md->print_gb);
     md->gfc = gfc;
   }
@@ -2523,11 +2523,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(blen_gb_xn[i]);
     free(bstart_cf_gb_xn[i]);
     free(bdiv_xn[i]);
-    free(bmatrix[i]->dense_mat);
-    free(bmatrix[i]->dense_idx);
-    free(bmatrix[i]->triv_idx);
-    free(bmatrix[i]->triv_pos);
-    free(bmatrix[i]->dst);
+    posix_memalign_free(bmatrix[i]->dense_mat);
+    posix_memalign_free(bmatrix[i]->dense_idx);
+    posix_memalign_free(bmatrix[i]->triv_idx);
+    posix_memalign_free(bmatrix[i]->triv_pos);
+    posix_memalign_free(bmatrix[i]->dst);
     free(bmatrix[i]);
     free(leadmons_ori[i]);
     free(leadmons_current[i]);
@@ -3426,7 +3426,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 void display_arrays_of_real_roots(files_gb *files, int32_t len,
                                   real_point_t **lreal_pts, long *lnbr) {
   if (files->out_file != NULL) {
-    FILE *ofile = fopen(files->out_file, "a+");
+    FILE *ofile = fopen(files->out_file, "ab+");
     fprintf(ofile, "[");
     for (int i = 0; i < len - 1; i++) {
       display_real_points(ofile, lreal_pts[i], lnbr[i]);
@@ -3453,7 +3453,7 @@ void display_output(int b, int dim, int dquot, files_gb *files,
                     real_point_t **real_pts_ptr, int info_level) {
   if (dquot == 0) {
     if (files->out_file != NULL) {
-      FILE *ofile = fopen(files->out_file, "a+");
+      FILE *ofile = fopen(files->out_file, "ab+");
       fprintf(ofile, "[-1]:\n");
       fclose(ofile);
     } else {
@@ -3465,7 +3465,7 @@ void display_output(int b, int dim, int dquot, files_gb *files,
   if (dim == 0 && dquot >= 0) {
     (*mpz_paramp)->nvars = gens->nvars;
     if (files->out_file != NULL) {
-      FILE *ofile = fopen(files->out_file, "a+");
+      FILE *ofile = fopen(files->out_file, "ab+");
       fprintf(ofile, "[0, ");
       if (get_param >= 1 || gens->field_char) {
         mpz_param_out_str_maple(ofile, gens, dquot, *mpz_paramp, param);
@@ -3497,7 +3497,7 @@ void display_output(int b, int dim, int dquot, files_gb *files,
       fprintf(stderr, "The ideal has positive dimension\n");
     }
     if (files->out_file != NULL) {
-      FILE *ofile2 = fopen(files->out_file, "a+");
+      FILE *ofile2 = fopen(files->out_file, "ab+");
       // 1 because dim is >0
       fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
       fclose(ofile2);
@@ -3732,7 +3732,7 @@ restart:
                     return -1;
                 }
                 if (print_gb) {
-		  print_ff_basis_data(files->out_file, "a", bs, bht,
+		  print_ff_basis_data(files->out_file, "ab", bs, bht,
                     st, gens, print_gb);
 		}
             }
@@ -4209,7 +4209,7 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
-            print_ff_nf_data(files->out_file, "a", 0, normal_form, tbr, bht, st, gens, 2);
+            print_ff_nf_data(files->out_file, "ab", 0, normal_form, tbr, bht, st, gens, 2);
             if (normal_form_matrix > 0) {
                 /* sht and hcm will store the union of the support
                  * of all normal forms in tbr. */

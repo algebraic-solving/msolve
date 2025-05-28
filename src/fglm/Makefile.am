@@ -11,4 +11,5 @@ EXTRA_DIST	=		fglm.h \
 								fglm_core.c \
 								inner-product.c \
 								matrix-mult.c \
-								linalg-fglm.c
+								linalg-fglm.c \
+								aligned_alloc.h

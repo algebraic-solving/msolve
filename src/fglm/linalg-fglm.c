@@ -35,8 +35,8 @@
 #define DOT2_ACC8_MAX_LEN UWORD(380368697)
 
 // parameters for splitting
-#define DOT_SPLIT_BITS 56
-#define DOT_SPLIT_MASK 72057594037927935UL // (1UL << DOT_SPLIT_BITS) - 1
+#define __DOT_SPLIT_BITS 56
+#define __DOT_SPLIT_MASK 72057594037927935UL // (1UL << __DOT_SPLIT_BITS) - 1
 
 /*--------------------------------------*/
 /* non-vectorized matrix vector product */
@@ -213,7 +213,7 @@ uint64_t _mm256_hsum(__m256i a)
 uint32_t _nmod32_vec_dot_split_avx2(const uint32_t * vec1, const uint32_t * vec2, int64_t len,
                                     nmod_t mod, uint64_t pow2_precomp)
 {
-    const __m256i low_bits = _mm256_set1_epi64x(DOT_SPLIT_MASK);
+    const __m256i low_bits = _mm256_set1_epi64x(__DOT_SPLIT_MASK);
     __m256i dp_lo0 = _mm256_setzero_si256();
     __m256i dp_hi0 = _mm256_setzero_si256();
 
@@ -260,7 +260,7 @@ uint32_t _nmod32_vec_dot_split_avx2(const uint32_t * vec1, const uint32_t * vec2
         dp_lo0 = _mm256_add_epi64(dp_lo0, dp_lo2);
 
         // split
-        dp_hi0 = _mm256_add_epi64(dp_hi0, _mm256_srli_epi64(dp_lo0, DOT_SPLIT_BITS));
+        dp_hi0 = _mm256_add_epi64(dp_hi0, _mm256_srli_epi64(dp_lo0, __DOT_SPLIT_BITS));
         dp_lo0 = _mm256_and_si256(dp_lo0, low_bits);
     }
 
@@ -281,19 +281,19 @@ uint32_t _nmod32_vec_dot_split_avx2(const uint32_t * vec1, const uint32_t * vec2
         dp_lo0 = _mm256_add_epi64(dp_lo0, _mm256_mul_epu32(v1_0, v2_0));
     }
 
-    dp_hi0 = _mm256_add_epi64(dp_hi0, _mm256_srli_epi64(dp_lo0, DOT_SPLIT_BITS));
+    dp_hi0 = _mm256_add_epi64(dp_hi0, _mm256_srli_epi64(dp_lo0, __DOT_SPLIT_BITS));
     dp_lo0 = _mm256_and_si256(dp_lo0, low_bits);
 
     uint64_t hsum_lo = _mm256_hsum(dp_lo0);
-    uint64_t hsum_hi = _mm256_hsum(dp_hi0) + (hsum_lo >> DOT_SPLIT_BITS);
-    hsum_lo &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi = _mm256_hsum(dp_hi0) + (hsum_lo >> __DOT_SPLIT_BITS);
+    hsum_lo &= __DOT_SPLIT_MASK;
 
     // less than 8 terms remaining, can accumulate
     for (; i < len; i++)
         hsum_lo += (uint64_t)vec1[i] * vec2[i];
 
-    hsum_hi += (hsum_lo >> DOT_SPLIT_BITS);
-    hsum_lo &= DOT_SPLIT_MASK;
+    hsum_hi += (hsum_lo >> __DOT_SPLIT_BITS);
+    hsum_lo &= __DOT_SPLIT_MASK;
 
     // the requirement on "len <= DOT2_ACC8_MAX_LEN"
     // ensures pow2_precomp * hsum_hi + hsum_lo fits in 64 bits
@@ -306,7 +306,7 @@ void _nmod32_vec_dot2_split_avx2(uint32_t * res0, uint32_t * res1,
                                  const uint32_t * vec1, const uint32_t * vec2_0, const uint32_t * vec2_1,
                                  int64_t len, nmod_t mod, uint64_t pow2_precomp)
 {
-    const __m256i low_bits = _mm256_set1_epi64x(DOT_SPLIT_MASK);
+    const __m256i low_bits = _mm256_set1_epi64x(__DOT_SPLIT_MASK);
     __m256i dp_lo0 = _mm256_setzero_si256();
     __m256i dp_lo1 = _mm256_setzero_si256();
     __m256i dp_hi0 = _mm256_setzero_si256();
@@ -376,8 +376,8 @@ void _nmod32_vec_dot2_split_avx2(uint32_t * res0, uint32_t * res1,
         dp_lo1 = _mm256_add_epi64(dp_lo1, dp_lo3);
 
         // split
-        dp_hi0 = _mm256_add_epi64(dp_hi0, _mm256_srli_epi64(dp_lo0, DOT_SPLIT_BITS));
-        dp_hi1 = _mm256_add_epi64(dp_hi1, _mm256_srli_epi64(dp_lo1, DOT_SPLIT_BITS));
+        dp_hi0 = _mm256_add_epi64(dp_hi0, _mm256_srli_epi64(dp_lo0, __DOT_SPLIT_BITS));
+        dp_hi1 = _mm256_add_epi64(dp_hi1, _mm256_srli_epi64(dp_lo1, __DOT_SPLIT_BITS));
         dp_lo0 = _mm256_and_si256(dp_lo0, low_bits);
         dp_lo1 = _mm256_and_si256(dp_lo1, low_bits);
     }
@@ -403,17 +403,17 @@ void _nmod32_vec_dot2_split_avx2(uint32_t * res0, uint32_t * res1,
         dp_lo1 = _mm256_add_epi64(dp_lo1, _mm256_mul_epu32(v1_0, v2_1_0));
     }
 
-    dp_hi0 = _mm256_add_epi64(dp_hi0, _mm256_srli_epi64(dp_lo0, DOT_SPLIT_BITS));
+    dp_hi0 = _mm256_add_epi64(dp_hi0, _mm256_srli_epi64(dp_lo0, __DOT_SPLIT_BITS));
     dp_lo0 = _mm256_and_si256(dp_lo0, low_bits);
-    dp_hi1 = _mm256_add_epi64(dp_hi1, _mm256_srli_epi64(dp_lo1, DOT_SPLIT_BITS));
+    dp_hi1 = _mm256_add_epi64(dp_hi1, _mm256_srli_epi64(dp_lo1, __DOT_SPLIT_BITS));
     dp_lo1 = _mm256_and_si256(dp_lo1, low_bits);
 
     uint64_t hsum_lo0 = _mm256_hsum(dp_lo0);
-    uint64_t hsum_hi0 = _mm256_hsum(dp_hi0) + (hsum_lo0 >> DOT_SPLIT_BITS);
-    hsum_lo0 &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi0 = _mm256_hsum(dp_hi0) + (hsum_lo0 >> __DOT_SPLIT_BITS);
+    hsum_lo0 &= __DOT_SPLIT_MASK;
     uint64_t hsum_lo1 = _mm256_hsum(dp_lo1);
-    uint64_t hsum_hi1 = _mm256_hsum(dp_hi1) + (hsum_lo1 >> DOT_SPLIT_BITS);
-    hsum_lo1 &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi1 = _mm256_hsum(dp_hi1) + (hsum_lo1 >> __DOT_SPLIT_BITS);
+    hsum_lo1 &= __DOT_SPLIT_MASK;
 
     // less than 8 terms remaining, can accumulate
     for (; i < len; i++)
@@ -421,10 +421,10 @@ void _nmod32_vec_dot2_split_avx2(uint32_t * res0, uint32_t * res1,
         hsum_lo0 += (uint64_t)vec1[i] * vec2_0[i];
         hsum_lo1 += (uint64_t)vec1[i] * vec2_1[i];
     }
-    hsum_hi0 += (hsum_lo0 >> DOT_SPLIT_BITS);
-    hsum_lo0 &= DOT_SPLIT_MASK;
-    hsum_hi1 += (hsum_lo1 >> DOT_SPLIT_BITS);
-    hsum_lo1 &= DOT_SPLIT_MASK;
+    hsum_hi0 += (hsum_lo0 >> __DOT_SPLIT_BITS);
+    hsum_lo0 &= __DOT_SPLIT_MASK;
+    hsum_hi1 += (hsum_lo1 >> __DOT_SPLIT_BITS);
+    hsum_lo1 &= __DOT_SPLIT_MASK;
 
     // the requirement on "len <= DOT2_ACC8_MAX_LEN"
     // ensures pow2_precomp * hsum_hi + hsum_lo fits in 64 bits
@@ -436,7 +436,7 @@ void _nmod32_vec_dot3_split_avx2(uint32_t * res, const uint32_t * vec1,
                                  const uint32_t * vec2_0, const uint32_t * vec2_1, const uint32_t * vec2_2,
                                  int64_t len, nmod_t mod, uint64_t pow2_precomp)
 {
-    const __m256i low_bits = _mm256_set1_epi64x(DOT_SPLIT_MASK);
+    const __m256i low_bits = _mm256_set1_epi64x(__DOT_SPLIT_MASK);
 
     __m256i dp_lo[3];
     __m256i dp_hi[3];
@@ -536,9 +536,9 @@ void _nmod32_vec_dot3_split_avx2(uint32_t * res, const uint32_t * vec1,
         dp_lo[2] = _mm256_add_epi64(dp_lo[2], _mm256_mul_epu32(v1, v2[2]));
 
         // split
-        dp_hi[0] = _mm256_add_epi64(dp_hi[0], _mm256_srli_epi64(dp_lo[0], DOT_SPLIT_BITS));
-        dp_hi[1] = _mm256_add_epi64(dp_hi[1], _mm256_srli_epi64(dp_lo[1], DOT_SPLIT_BITS));
-        dp_hi[2] = _mm256_add_epi64(dp_hi[2], _mm256_srli_epi64(dp_lo[2], DOT_SPLIT_BITS));
+        dp_hi[0] = _mm256_add_epi64(dp_hi[0], _mm256_srli_epi64(dp_lo[0], __DOT_SPLIT_BITS));
+        dp_hi[1] = _mm256_add_epi64(dp_hi[1], _mm256_srli_epi64(dp_lo[1], __DOT_SPLIT_BITS));
+        dp_hi[2] = _mm256_add_epi64(dp_hi[2], _mm256_srli_epi64(dp_lo[2], __DOT_SPLIT_BITS));
         dp_lo[0] = _mm256_and_si256(dp_lo[0], low_bits);
         dp_lo[1] = _mm256_and_si256(dp_lo[1], low_bits);
         dp_lo[2] = _mm256_and_si256(dp_lo[2], low_bits);
@@ -573,9 +573,9 @@ void _nmod32_vec_dot3_split_avx2(uint32_t * res, const uint32_t * vec1,
     }
 
     // split
-    dp_hi[0] = _mm256_add_epi64(dp_hi[0], _mm256_srli_epi64(dp_lo[0], DOT_SPLIT_BITS));
-    dp_hi[1] = _mm256_add_epi64(dp_hi[1], _mm256_srli_epi64(dp_lo[1], DOT_SPLIT_BITS));
-    dp_hi[2] = _mm256_add_epi64(dp_hi[2], _mm256_srli_epi64(dp_lo[2], DOT_SPLIT_BITS));
+    dp_hi[0] = _mm256_add_epi64(dp_hi[0], _mm256_srli_epi64(dp_lo[0], __DOT_SPLIT_BITS));
+    dp_hi[1] = _mm256_add_epi64(dp_hi[1], _mm256_srli_epi64(dp_lo[1], __DOT_SPLIT_BITS));
+    dp_hi[2] = _mm256_add_epi64(dp_hi[2], _mm256_srli_epi64(dp_lo[2], __DOT_SPLIT_BITS));
     dp_lo[0] = _mm256_and_si256(dp_lo[0], low_bits);
     dp_lo[1] = _mm256_and_si256(dp_lo[1], low_bits);
     dp_lo[2] = _mm256_and_si256(dp_lo[2], low_bits);
@@ -583,14 +583,14 @@ void _nmod32_vec_dot3_split_avx2(uint32_t * res, const uint32_t * vec1,
     uint64_t hsum_lo[3];
     uint64_t hsum_hi[3];
     hsum_lo[0] = _mm256_hsum(dp_lo[0]);
-    hsum_hi[0] = _mm256_hsum(dp_hi[0]) + (hsum_lo[0] >> DOT_SPLIT_BITS);
-    hsum_lo[0] &= DOT_SPLIT_MASK;
+    hsum_hi[0] = _mm256_hsum(dp_hi[0]) + (hsum_lo[0] >> __DOT_SPLIT_BITS);
+    hsum_lo[0] &= __DOT_SPLIT_MASK;
     hsum_lo[1] = _mm256_hsum(dp_lo[1]);
-    hsum_hi[1] = _mm256_hsum(dp_hi[1]) + (hsum_lo[1] >> DOT_SPLIT_BITS);
-    hsum_lo[1] &= DOT_SPLIT_MASK;
+    hsum_hi[1] = _mm256_hsum(dp_hi[1]) + (hsum_lo[1] >> __DOT_SPLIT_BITS);
+    hsum_lo[1] &= __DOT_SPLIT_MASK;
     hsum_lo[2] = _mm256_hsum(dp_lo[2]);
-    hsum_hi[2] = _mm256_hsum(dp_hi[2]) + (hsum_lo[2] >> DOT_SPLIT_BITS);
-    hsum_lo[2] &= DOT_SPLIT_MASK;
+    hsum_hi[2] = _mm256_hsum(dp_hi[2]) + (hsum_lo[2] >> __DOT_SPLIT_BITS);
+    hsum_lo[2] &= __DOT_SPLIT_MASK;
 
     // less than 8 terms remaining, can accumulate
     for (; i < len; i++)
@@ -600,12 +600,12 @@ void _nmod32_vec_dot3_split_avx2(uint32_t * res, const uint32_t * vec1,
         hsum_lo[2] += (uint64_t)vec1[i] * vec2_2[i];
     }
 
-    hsum_hi[0] += (hsum_lo[0] >> DOT_SPLIT_BITS);
-    hsum_hi[1] += (hsum_lo[1] >> DOT_SPLIT_BITS);
-    hsum_hi[2] += (hsum_lo[2] >> DOT_SPLIT_BITS);
-    hsum_lo[0] &= DOT_SPLIT_MASK;
-    hsum_lo[1] &= DOT_SPLIT_MASK;
-    hsum_lo[2] &= DOT_SPLIT_MASK;
+    hsum_hi[0] += (hsum_lo[0] >> __DOT_SPLIT_BITS);
+    hsum_hi[1] += (hsum_lo[1] >> __DOT_SPLIT_BITS);
+    hsum_hi[2] += (hsum_lo[2] >> __DOT_SPLIT_BITS);
+    hsum_lo[0] &= __DOT_SPLIT_MASK;
+    hsum_lo[1] &= __DOT_SPLIT_MASK;
+    hsum_lo[2] &= __DOT_SPLIT_MASK;
 
     NMOD_RED(res[0], pow2_precomp * hsum_hi[0] + hsum_lo[0], mod);
     NMOD_RED(res[1], pow2_precomp * hsum_hi[1] + hsum_lo[1], mod);
@@ -660,7 +660,7 @@ FLINT_FORCE_INLINE uint64_t _mm512_hsum(__m512i a)
 
 uint32_t _nmod32_vec_dot_split_avx512(const uint32_t * vec1, const uint32_t * vec2, int64_t len, nmod_t mod, uint64_t pow2_precomp)
 {
-    const __m512i low_bits = _mm512_set1_epi64(DOT_SPLIT_MASK);
+    const __m512i low_bits = _mm512_set1_epi64(__DOT_SPLIT_MASK);
     __m512i dp_lo0 = _mm512_setzero_si512();
     __m512i dp_hi0 = _mm512_setzero_si512();
 
@@ -707,7 +707,7 @@ uint32_t _nmod32_vec_dot_split_avx512(const uint32_t * vec1, const uint32_t * ve
         dp_lo0 = _mm512_add_epi64(dp_lo0, dp_lo2);
 
         // split
-        dp_hi0 = _mm512_add_epi64(dp_hi0, _mm512_srli_epi64(dp_lo0, DOT_SPLIT_BITS));
+        dp_hi0 = _mm512_add_epi64(dp_hi0, _mm512_srli_epi64(dp_lo0, __DOT_SPLIT_BITS));
         dp_lo0 = _mm512_and_si512(dp_lo0, low_bits);
     }
 
@@ -745,13 +745,13 @@ uint32_t _nmod32_vec_dot_split_avx512(const uint32_t * vec1, const uint32_t * ve
     }
 
     // split
-    dp_hi0 = _mm512_add_epi64(dp_hi0, _mm512_srli_epi64(dp_lo0, DOT_SPLIT_BITS));
+    dp_hi0 = _mm512_add_epi64(dp_hi0, _mm512_srli_epi64(dp_lo0, __DOT_SPLIT_BITS));
     dp_lo0 = _mm512_and_si512(dp_lo0, low_bits);
 
     // gather 8 terms in single uint64_t
     uint64_t hsum_lo = _mm512_hsum(dp_lo0);
-    uint64_t hsum_hi = _mm512_hsum(dp_hi0) + (hsum_lo >> DOT_SPLIT_BITS);
-    hsum_lo &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi = _mm512_hsum(dp_hi0) + (hsum_lo >> __DOT_SPLIT_BITS);
+    hsum_lo &= __DOT_SPLIT_MASK;
 
     // the requirement "len <= DOT2_ACC8_MAX_LEN"
     // ensures pow2_precomp * hsum_hi + hsum_lo fits in 64 bits
@@ -764,7 +764,7 @@ void _nmod32_vec_dot2_split_avx512(uint32_t * res0, uint32_t * res1,
                                    const uint32_t * vec1, const uint32_t * vec2_0, const uint32_t * vec2_1,
                                    int64_t len, nmod_t mod, uint64_t pow2_precomp)
 {
-    const __m512i low_bits = _mm512_set1_epi64(DOT_SPLIT_MASK);
+    const __m512i low_bits = _mm512_set1_epi64(__DOT_SPLIT_MASK);
     __m512i dp_lo0 = _mm512_setzero_si512();
     __m512i dp_lo1 = _mm512_setzero_si512();
     __m512i dp_hi0 = _mm512_setzero_si512();
@@ -834,8 +834,8 @@ void _nmod32_vec_dot2_split_avx512(uint32_t * res0, uint32_t * res1,
         dp_lo1 = _mm512_add_epi64(dp_lo1, dp_lo3);
 
         // split
-        dp_hi0 = _mm512_add_epi64(dp_hi0, _mm512_srli_epi64(dp_lo0, DOT_SPLIT_BITS));
-        dp_hi1 = _mm512_add_epi64(dp_hi1, _mm512_srli_epi64(dp_lo1, DOT_SPLIT_BITS));
+        dp_hi0 = _mm512_add_epi64(dp_hi0, _mm512_srli_epi64(dp_lo0, __DOT_SPLIT_BITS));
+        dp_hi1 = _mm512_add_epi64(dp_hi1, _mm512_srli_epi64(dp_lo1, __DOT_SPLIT_BITS));
         dp_lo0 = _mm512_and_si512(dp_lo0, low_bits);
         dp_lo1 = _mm512_and_si512(dp_lo1, low_bits);
     }
@@ -886,18 +886,18 @@ void _nmod32_vec_dot2_split_avx512(uint32_t * res0, uint32_t * res1,
     }
 
     // split
-    dp_hi0 = _mm512_add_epi64(dp_hi0, _mm512_srli_epi64(dp_lo0, DOT_SPLIT_BITS));
+    dp_hi0 = _mm512_add_epi64(dp_hi0, _mm512_srli_epi64(dp_lo0, __DOT_SPLIT_BITS));
     dp_lo0 = _mm512_and_si512(dp_lo0, low_bits);
-    dp_hi1 = _mm512_add_epi64(dp_hi1, _mm512_srli_epi64(dp_lo1, DOT_SPLIT_BITS));
+    dp_hi1 = _mm512_add_epi64(dp_hi1, _mm512_srli_epi64(dp_lo1, __DOT_SPLIT_BITS));
     dp_lo1 = _mm512_and_si512(dp_lo1, low_bits);
 
     // gather 8 terms in single uint64_t
     uint64_t hsum_lo0 = _mm512_hsum(dp_lo0);
-    uint64_t hsum_hi0 = _mm512_hsum(dp_hi0) + (hsum_lo0 >> DOT_SPLIT_BITS);
-    hsum_lo0 &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi0 = _mm512_hsum(dp_hi0) + (hsum_lo0 >> __DOT_SPLIT_BITS);
+    hsum_lo0 &= __DOT_SPLIT_MASK;
     uint64_t hsum_lo1 = _mm512_hsum(dp_lo1);
-    uint64_t hsum_hi1 = _mm512_hsum(dp_hi1) + (hsum_lo1 >> DOT_SPLIT_BITS);
-    hsum_lo1 &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi1 = _mm512_hsum(dp_hi1) + (hsum_lo1 >> __DOT_SPLIT_BITS);
+    hsum_lo1 &= __DOT_SPLIT_MASK;
 
     NMOD_RED(*res0, pow2_precomp * hsum_hi0 + hsum_lo0, mod);
     NMOD_RED(*res1, pow2_precomp * hsum_hi1 + hsum_lo1, mod);
@@ -907,7 +907,7 @@ void _nmod32_vec_dot3_split_avx512(uint32_t * res,
                                    const uint32_t * vec1, const uint32_t * vec2_0, const uint32_t * vec2_1, const uint32_t * vec2_2,
                                    int64_t len, nmod_t mod, uint64_t pow2_precomp)
 {
-    const __m512i low_bits = _mm512_set1_epi64(DOT_SPLIT_MASK);
+    const __m512i low_bits = _mm512_set1_epi64(__DOT_SPLIT_MASK);
 
     __m512i dp_lo[3];
     __m512i dp_hi[3];
@@ -997,11 +997,11 @@ void _nmod32_vec_dot3_split_avx512(uint32_t * res,
         dp_lo[2] = _mm512_add_epi64(dp_lo[2], _mm512_mul_epu32(v1[1], v2[5]));
 
         // split
-        dp_hi[0] = _mm512_add_epi64(dp_hi[0], _mm512_srli_epi64(dp_lo[0], DOT_SPLIT_BITS));
+        dp_hi[0] = _mm512_add_epi64(dp_hi[0], _mm512_srli_epi64(dp_lo[0], __DOT_SPLIT_BITS));
         dp_lo[0] = _mm512_and_si512(dp_lo[0], low_bits);
-        dp_hi[1] = _mm512_add_epi64(dp_hi[1], _mm512_srli_epi64(dp_lo[1], DOT_SPLIT_BITS));
+        dp_hi[1] = _mm512_add_epi64(dp_hi[1], _mm512_srli_epi64(dp_lo[1], __DOT_SPLIT_BITS));
         dp_lo[1] = _mm512_and_si512(dp_lo[1], low_bits);
-        dp_hi[2] = _mm512_add_epi64(dp_hi[2], _mm512_srli_epi64(dp_lo[2], DOT_SPLIT_BITS));
+        dp_hi[2] = _mm512_add_epi64(dp_hi[2], _mm512_srli_epi64(dp_lo[2], __DOT_SPLIT_BITS));
         dp_lo[2] = _mm512_and_si512(dp_lo[2], low_bits);
     }
 
@@ -1057,23 +1057,23 @@ void _nmod32_vec_dot3_split_avx512(uint32_t * res,
     }
 
     // split
-    dp_hi[0] = _mm512_add_epi64(dp_hi[0], _mm512_srli_epi64(dp_lo[0], DOT_SPLIT_BITS));
+    dp_hi[0] = _mm512_add_epi64(dp_hi[0], _mm512_srli_epi64(dp_lo[0], __DOT_SPLIT_BITS));
     dp_lo[0] = _mm512_and_si512(dp_lo[0], low_bits);
-    dp_hi[1] = _mm512_add_epi64(dp_hi[1], _mm512_srli_epi64(dp_lo[1], DOT_SPLIT_BITS));
+    dp_hi[1] = _mm512_add_epi64(dp_hi[1], _mm512_srli_epi64(dp_lo[1], __DOT_SPLIT_BITS));
     dp_lo[1] = _mm512_and_si512(dp_lo[1], low_bits);
-    dp_hi[2] = _mm512_add_epi64(dp_hi[2], _mm512_srli_epi64(dp_lo[2], DOT_SPLIT_BITS));
+    dp_hi[2] = _mm512_add_epi64(dp_hi[2], _mm512_srli_epi64(dp_lo[2], __DOT_SPLIT_BITS));
     dp_lo[2] = _mm512_and_si512(dp_lo[2], low_bits);
 
     // gather 8 terms in single uint64_t
     uint64_t hsum_lo0 = _mm512_hsum(dp_lo[0]);
-    uint64_t hsum_hi0 = _mm512_hsum(dp_hi[0]) + (hsum_lo0 >> DOT_SPLIT_BITS);
-    hsum_lo0 &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi0 = _mm512_hsum(dp_hi[0]) + (hsum_lo0 >> __DOT_SPLIT_BITS);
+    hsum_lo0 &= __DOT_SPLIT_MASK;
     uint64_t hsum_lo1 = _mm512_hsum(dp_lo[1]);
-    uint64_t hsum_hi1 = _mm512_hsum(dp_hi[1]) + (hsum_lo1 >> DOT_SPLIT_BITS);
-    hsum_lo1 &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi1 = _mm512_hsum(dp_hi[1]) + (hsum_lo1 >> __DOT_SPLIT_BITS);
+    hsum_lo1 &= __DOT_SPLIT_MASK;
     uint64_t hsum_lo2 = _mm512_hsum(dp_lo[2]);
-    uint64_t hsum_hi2 = _mm512_hsum(dp_hi[2]) + (hsum_lo2 >> DOT_SPLIT_BITS);
-    hsum_lo2 &= DOT_SPLIT_MASK;
+    uint64_t hsum_hi2 = _mm512_hsum(dp_hi[2]) + (hsum_lo2 >> __DOT_SPLIT_BITS);
+    hsum_lo2 &= __DOT_SPLIT_MASK;
 
     NMOD_RED(res[0], pow2_precomp * hsum_hi0 + hsum_lo0, mod);
     NMOD_RED(res[1], pow2_precomp * hsum_hi1 + hsum_lo1, mod);

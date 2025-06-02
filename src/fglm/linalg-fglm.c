@@ -646,7 +646,6 @@ static inline void _avx2_matrix_vector_product(uint32_t * vec_res,
 }
 #endif
 
-#if 0
 /*-------------------------------------------*/
 /* vectorized (AVX512) matrix vector product */
 /*-------------------------------------------*/
@@ -1081,6 +1080,37 @@ void _nmod32_vec_dot3_split_avx512(uint32_t * res,
     NMOD_RED(res[2], pow2_precomp * hsum_hi2 + hsum_lo2, mod);
 }
 
+static inline void _avx512_matrix_vector_product(uint32_t * vec_res,
+                                                 const uint32_t * mat,
+                                                 const uint32_t * vec,
+                                                 const uint32_t * dst,
+                                                 const uint32_t ncols,
+                                                 const uint32_t nrows,
+                                                 const nmod_t mod,
+                                                 const uint64_t pow2_precomp,
+                                                 md_t *st)
+{
+    slong i = 0;
 
-#endif
+    for ( ; i+2 < nrows; i+=3)
+    {
+        int64_t len = ncols - MIN(dst[i], MIN(dst[i+1], dst[i+2]));
+        _nmod32_vec_dot3_split_avx512(vec_res+i, vec,
+                                      mat + i*ncols,
+                                      mat + (i+1)*ncols,
+                                      mat + (i+2)*ncols,
+                                      len, mod, pow2_precomp);
+    }
+
+    if (nrows - i == 2)
+    {
+        int64_t len = ncols - MIN(dst[i], dst[i+1]);
+        _nmod32_vec_dot2_split_avx512(vec_res+i, vec_res+i+1,
+                                      vec, mat + i*ncols, mat + (i+1)*ncols,
+                                      len, mod, pow2_precomp);
+    }
+    else if (nrows - i == 1)
+        vec_res[i] = _nmod32_vec_dot_split_avx512(vec, mat + i*ncols, ncols - dst[i], mod, pow2_precomp);
+}
+
 #endif

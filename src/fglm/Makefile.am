@@ -9,6 +9,5 @@ EXTRA_DIST	=		fglm.h \
 								berlekamp_massey.c \
 								data_fglm.c \
 								fglm_core.c \
-								inner-product.c \
 								matrix-mult.c \
 								linalg-fglm.c

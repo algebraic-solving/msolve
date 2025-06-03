@@ -16,6 +16,7 @@
  * Authors:
  * Jérémy Berthomieu
  * Christian Eder
+ * Vincent Neiger
  * Mohab Safey El Din */
 
 #include <stdint.h>
@@ -624,14 +625,18 @@ static inline void _avx2_matrix_vector_product(uint32_t * vec_res,
 {
     slong i = 0;
 
-    for ( ; i+2 < nrows; i+=3)
+    if (nrows > 2)
     {
-        int64_t len = ncols - MIN(dst[i], MIN(dst[i+1], dst[i+2]));
-        _nmod32_vec_dot3_split_avx2(vec_res+i, vec,
-                                    mat + i*ncols,
-                                    mat + (i+1)*ncols,
-                                    mat + (i+2)*ncols,
-                                    len, mod, pow2_precomp);
+#pragma omp parallel for num_threads (st->nthrds) lastprivate(i)
+        for (i=0; i < nrows-2; i+=3)
+        {
+            int64_t len = ncols - MIN(dst[i], MIN(dst[i+1], dst[i+2]));
+            _nmod32_vec_dot3_split_avx2(vec_res+i, vec,
+                                        mat + i*ncols,
+                                        mat + (i+1)*ncols,
+                                        mat + (i+2)*ncols,
+                                        len, mod, pow2_precomp);
+        }
     }
 
     if (nrows - i == 2)
@@ -1092,14 +1097,18 @@ static inline void _avx512_matrix_vector_product(uint32_t * vec_res,
 {
     slong i = 0;
 
-    for ( ; i+2 < nrows; i+=3)
+    if (nrows > 2)
     {
-        int64_t len = ncols - MIN(dst[i], MIN(dst[i+1], dst[i+2]));
-        _nmod32_vec_dot3_split_avx512(vec_res+i, vec,
-                                      mat + i*ncols,
-                                      mat + (i+1)*ncols,
-                                      mat + (i+2)*ncols,
-                                      len, mod, pow2_precomp);
+#pragma omp parallel for num_threads (st->nthrds) lastprivate(i)
+        for (i = 0; i < nrows-2; i+=3)
+        {
+            int64_t len = ncols - MIN(dst[i], MIN(dst[i+1], dst[i+2]));
+            _nmod32_vec_dot3_split_avx512(vec_res+i, vec,
+                                          mat + i*ncols,
+                                          mat + (i+1)*ncols,
+                                          mat + (i+2)*ncols,
+                                          len, mod, pow2_precomp);
+        }
     }
 
     if (nrows - i == 2)

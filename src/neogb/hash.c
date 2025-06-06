@@ -1372,7 +1372,7 @@ static inline hm_t *multiplied_poly_to_matrix_row(
     const hm_t *poly
     )
 {
-  hm_t *row = (hm_t *)malloc((unsigned long)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
+  hm_t *row = (hm_t *)malloc((uint64_t)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
   row[COEFFS]   = poly[COEFFS];
   row[PRELOOP]  = poly[PRELOOP];
   row[LENGTH]   = poly[LENGTH];

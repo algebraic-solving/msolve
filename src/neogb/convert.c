@@ -325,6 +325,10 @@ static void convert_hashes_to_columns(
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
     hcm = realloc(hcm, (uint64_t)(esld-1) * sizeof(hi_t));
+    if (hcm == NULL) {
+        fprintf(stderr, "Allocating memory for hash-column lookup table failed,\n");
+        fprintf(stderr, "segmentation fault will follow.\n");
+    }
     for (k = 0, j = 0, i = 1; i < esld; ++i) {
         hi  = hds[i].idx;
 

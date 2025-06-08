@@ -324,7 +324,6 @@ static void convert_hashes_to_columns(
 
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
-    printf("hcm new size %llu\n", (uint64_t)(esld-1) * sizeof(hi_t));
     hcm = realloc(hcm, (uint64_t)(esld-1) * sizeof(hi_t));
     if (hcm == NULL) {
         fprintf(stderr, "Allocating memory for hash-column lookup table failed,\n");

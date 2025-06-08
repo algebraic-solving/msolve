@@ -586,6 +586,10 @@ static void symbolic_preprocessing(
     while (mat->sz <= nrr + oesld) {
         mat->sz *=  2;
         mat->rr =   realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
+        if (mat->rr == NULL) {
+            fprintf(stderr, "Allocating memory for matrix failed,\n");
+            fprintf(stderr, "segmentation fault will follow.\n");
+        }
     }
     for (; i < oesld; ++i) {
         if (!sht->hd[i].idx) {
@@ -598,6 +602,10 @@ static void symbolic_preprocessing(
         if (mat->sz == nrr) {
             mat->sz *=  2;
             mat->rr  =  realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
+            if (mat->rr == NULL) {
+                fprintf(stderr, "Allocating memory for matrix failed,\n");
+                fprintf(stderr, "segmentation fault will follow.\n");
+            }
         }
         sht->hd[i].idx = 1;
         mat->nc++;
@@ -611,7 +619,6 @@ static void symbolic_preprocessing(
     mat->sz   =   mat->nr;
     mat->rbal =   mat->nrl;
 
-    printf("all reducers found\n");
     /* initialize memory for reducer bit arrays for tracing information */
     mat->rba  = (rba_t **)malloc((uint64_t)mat->rbal * sizeof(rba_t *));
     const uint64_t len = nrr / 32 + ((nrr % 32) != 0);

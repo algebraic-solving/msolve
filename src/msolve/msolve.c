@@ -2006,8 +2006,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   uint32_t prime = 0;
   uint32_t primeinit = 0;
-  uint32_t lprime = 1303905299;
+  /* max prime "lprime" : this is previous_prime(1303905301) */
+  uint32_t lprime = 1303905299;  
   srand(time(0));
+  /* choose next_prime of some random number between 1<<30 and 1303905301 */
+  /* (roughly, there are ~ 10**7 such primes) */
   prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   while (gens->field_char == 0 && is_lucky_prime_ui(prime, bs_qq)) {
     prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));

@@ -36,7 +36,7 @@ static void convert_multipliers_to_columns(
 
     hi_t *hcm = *hcmp;
     /* clear ht-ev[0] */
-    memset(ht->ev[0], 0, (unsigned long)ht->nv * sizeof(exp_t));
+    memset(ht->ev[0], 0, (uint64_t)ht->nv * sizeof(exp_t));
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -45,11 +45,11 @@ static void convert_multipliers_to_columns(
 
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
-    hcm = realloc(hcm, (unsigned long)sat->ld * sizeof(hi_t));
+    hcm = realloc(hcm, (uint64_t)sat->ld * sizeof(hi_t));
     for (i = 0; i < sat->ld; ++i) {
         hcm[i]  = sat->hm[i][MULT];
     }
-    sort_r(hcm, (unsigned long)sat->ld, sizeof(hi_t), hcm_cmp, ht);
+    sort_r(hcm, (uint64_t)sat->ld, sizeof(hi_t), hcm_cmp, ht);
 
     /* printf("hcmm\n");
      * for (int ii=0; ii<sat->ld; ++ii) {
@@ -105,7 +105,7 @@ static void convert_hashes_to_columns_sat(
 
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
-    hcm = realloc(hcm, (esld-1) * sizeof(hi_t));
+    hcm = realloc(hcm, (uint64_t)(esld-1) * sizeof(hi_t));
     for (k = 0, j = 0, i = 1; i < esld; ++i) {
         hi  = hds[i].idx;
 
@@ -114,7 +114,7 @@ static void convert_hashes_to_columns_sat(
             k++;
         }
     }
-    sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
+    sort_r(hcm, (uint64_t)j, sizeof(hi_t), hcm_cmp, sht);
 
     /* printf("hcm\n");
      * for (int ii=0; ii<j; ++ii) {
@@ -229,7 +229,7 @@ static void sba_convert_hashes_to_columns(
     hd_t *hd       = ht->hd;
     hm_t **cr      = smat->cr;
 
-    hcm = realloc(hcm, (unsigned long)eld * sizeof(hi_t));
+    hcm = realloc(hcm, (uint64_t)eld * sizeof(hi_t));
     k = 0;
     for (i = 0; i < nr; ++i) {
         const len_t len = SM_OFFSET + cr[i][SM_LEN];
@@ -241,8 +241,8 @@ static void sba_convert_hashes_to_columns(
         }
     }
 
-    hcm = realloc(hcm, (unsigned long)k * sizeof(hi_t));
-    sort_r(hcm, (unsigned long)k, sizeof(hi_t), hcm_cmp, ht);
+    hcm = realloc(hcm, (uint64_t)k * sizeof(hi_t));
+    sort_r(hcm, (uint64_t)k, sizeof(hi_t), hcm_cmp, ht);
 
     smat->nc = k;
 
@@ -324,7 +324,11 @@ static void convert_hashes_to_columns(
 
     /* all elements in the sht hash table represent
      * exactly one column of the matrix */
-    hcm = realloc(hcm, (esld-1) * sizeof(hi_t));
+    hcm = realloc(hcm, (uint64_t)(esld-1) * sizeof(hi_t));
+    if (hcm == NULL) {
+        fprintf(stderr, "Allocating memory for hash-column lookup table failed,\n");
+        fprintf(stderr, "segmentation fault will follow.\n");
+    }
     for (k = 0, j = 0, i = 1; i < esld; ++i) {
         hi  = hds[i].idx;
 
@@ -333,7 +337,7 @@ static void convert_hashes_to_columns(
             k++;
         }
     }
-    sort_r(hcm, (unsigned long)j, sizeof(hi_t), hcm_cmp, sht);
+    sort_r(hcm, (uint64_t)j, sizeof(hi_t), hcm_cmp, sht);
 
     /* printf("hcm\n");
     for (int ii=0; ii<j; ++ii) {
@@ -475,7 +479,7 @@ static void add_kernel_elements_to_basis(
         md_t *st
         )
 {
-    len_t *terms  = (len_t *)calloc((unsigned long)sat->ld, sizeof(len_t));
+    len_t *terms  = (len_t *)calloc((uint64_t)sat->ld, sizeof(len_t));
     len_t nterms  = 0;
     len_t i, j, k;
 
@@ -492,7 +496,7 @@ static void add_kernel_elements_to_basis(
 
     /* we need to sort the kernel elements first (in order to track
      * redundancy correctly) */
-    hm_t **rows = (hm_t **)calloc((unsigned long)kernel->ld, sizeof(hm_t *));
+    hm_t **rows = (hm_t **)calloc((uint64_t)kernel->ld, sizeof(hm_t *));
     k = 0;
     for (i = 0; i < kernel->ld; ++i) {
         /* printf("kernel[%u] = %p\n", i, kernel->hm[i]); */

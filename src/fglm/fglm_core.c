@@ -500,16 +500,27 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
   for(szmat_t i = 0; i < ntriv; i++){
     res[mat->triv_idx[i]] = vec[mat->triv_pos[i]];
   }
-#ifdef HAVE_AVX2
-  _8mul_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
-                              ncols, nrows, prime, RED_32, RED_64,
-			      preinv,st);
+#if defined(HAVE_AVX512_F)
+  nmod_t mod;
+  uint64_t pow2_precomp;
+  nmod_init(&mod, (uint64_t)prime);
+  NMOD_RED(pow2_precomp, (UWORD(1) << __DOT_SPLIT_BITS), mod);
+
+  _avx512_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
+                              ncols, nrows, mod, pow2_precomp, st);
+#elif defined(HAVE_AVX2)
+  nmod_t mod;
+  uint64_t pow2_precomp;
+  nmod_init(&mod, (uint64_t)prime);
+  NMOD_RED(pow2_precomp, (UWORD(1) << __DOT_SPLIT_BITS), mod);
+
+  _avx2_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
+                              ncols, nrows, mod, pow2_precomp, st);
 #else
   non_avx_matrix_vector_product(vres, mat->dense_mat, vec,
 				ncols, nrows, prime, RED_32, RED_64,st);
 #endif
-  /* non_avx_matrix_vector_product(vres, mat->dense_mat, vec, */
-  /*                               ncols, nrows, prime, RED_32, RED_64,st); */
+
     for(szmat_t i = 0; i < nrows; i++){
       res[mat->dense_idx[i]] = vres[i];
     }
@@ -550,21 +561,29 @@ static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *ma
   }
   /* printf ("zero\n"); */
   /* printf("ncols %u\n", ncols); */
-#ifdef HAVE_AVX2
-  /* matrix_vector_product(vres, mat->dense_mat, vec, ncols, nrows, prime, RED_32, RED_64); */
-  _8mul_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
-                              ncols, nrows, prime, RED_32, RED_64,
-			      preinv,st);
-  /* printf ("mul AVX\n"); */
+#if defined(HAVE_AVX512_F)
+  nmod_t mod;
+  uint64_t pow2_precomp;
+  nmod_init(&mod, (uint64_t)prime);
+  NMOD_RED(pow2_precomp, (UWORD(1) << __DOT_SPLIT_BITS), mod);
+
+  _avx512_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
+                              ncols, nrows, mod, pow2_precomp, st);
+#elif defined(HAVE_AVX2)
+  nmod_t mod;
+  uint64_t pow2_precomp;
+  nmod_init(&mod, (uint64_t)prime);
+  NMOD_RED(pow2_precomp, (UWORD(1) << __DOT_SPLIT_BITS), mod);
+
+  _avx2_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
+                              ncols, nrows, mod, pow2_precomp, st);
 #else
   non_avx_matrix_vector_product(vres, mat->dense_mat, vec,
 				ncols, nrows, prime, RED_32, RED_64,st);
-  /* printf ("mul non AVX\n"); */
 #endif
-    for(szmat_t i = 0; i < nrows; i++){
+  for(szmat_t i = 0; i < nrows; i++){
       res[mat->dense_idx[i]] = vres[i];
-    }
-    /* printf ("dense\n"); */
+  }
 }
 
 

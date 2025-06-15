@@ -298,3 +298,32 @@ int ratrecon(mpz_t n, mpz_t d, /* output numerator and denominator */
 
   return 0;
 }
+
+int all_ratreconwden(mpz_t n, mpz_t d, /* output numerator and denominator */
+                     mpz_t u, const mpz_t mod, const mpz_t gden,
+                     rrec_data_t recdata, int info_level){
+
+    if(ratreconwden(n, d, u, mod, gden, recdata) == 1){
+        return 1;
+    }
+    mpz_swap(recdata->N, recdata->N1);
+    mpz_swap(recdata->D, recdata->D1);
+    if(ratreconwden(n, d, u, mod, gden, recdata) == 1){
+        mpz_swap(recdata->N, recdata->N1);
+        mpz_swap(recdata->D, recdata->D1);
+        return 1;
+    }
+    mpz_swap(recdata->N, recdata->N1);
+    mpz_swap(recdata->D, recdata->D1);
+    mpz_swap(recdata->N, recdata->N2);
+    mpz_swap(recdata->D, recdata->D2);
+    if(ratreconwden(n, d, u, mod, gden, recdata) == 1){
+        mpz_swap(recdata->N, recdata->N2);
+        mpz_swap(recdata->D, recdata->D2);
+        return 1;
+    }
+    mpz_swap(recdata->N, recdata->N2);
+    mpz_swap(recdata->D, recdata->D2);
+
+    return 0;
+}

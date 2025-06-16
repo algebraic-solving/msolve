@@ -2859,7 +2859,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
 static inline void compute_modular_matrix(sp_matfglm_t *matrix,
         trace_det_fglm_mat_t trace_det,
         uint32_t prime){
-  uint32_t len_xn = matrix->nrows; 
+  uint32_t len_xn = matrix->nrows;
   uint32_t dquot = matrix->ncols;
   matrix->charac = prime;
   int32_t len2 = dquot - matrix->nrows;
@@ -2925,7 +2925,7 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
 							   const int nv,
                                                            const long fc){
 
-  uint32_t len_xn = matrix->nrows; 
+  uint32_t len_xn = matrix->nrows;
   matrix->charac = fc;
   uint64_t len1 = dquot * matrix->nrows;
   int32_t len2 = dquot - matrix->nrows;
@@ -3260,6 +3260,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   if (count_not_lm) {
     free_basis_without_hash_table(&tbr);
   }
+  free(evi);
   /* if(st->info_level){ */
   /*   fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n", */
   /*           len0, len_xn, */
@@ -3851,6 +3852,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
         free(len_gb_xn);
         free(start_cf_gb_xn);
         free(div_xn);
+	free(evi);
         return NULL;
       }
     }
@@ -3879,6 +3881,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	     "multiplication matrix                               ");
     fprintf (stdout,"%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
+  free(evi);
   return matrix;
 }
 

@@ -3079,6 +3079,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   if (count_not_lm) {
     md_t *md = copy_meta_data(st,fc);
     tbr = initialize_basis(md);
+    free_hash_table(&(tbr->ht));
     exp_t *mul = (exp_t *)calloc(ht->evl, sizeof(exp_t));
     tbr->ht = ht;
     /* reduction */
@@ -3179,7 +3180,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
           free(matrix->dst);
           free(matrix);
 
-	  free_basis(&tbr);
+	  free_basis_without_hash_table(&tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3208,7 +3209,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
           free(matrix->dst);
           free(matrix);
 
-	  free_basis(&tbr);
+	  free_basis_without_hash_table(&tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3232,7 +3233,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         free(matrix->dst);
         free(matrix);
 
-	free_basis(&tbr);
+	free_basis_without_hash_table(&tbr);
 	free(cfs_extra_nf);
 	free(exps_extra_nf);
 	free(lens_extra_nf);
@@ -3647,10 +3648,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     exps_extra_nf[i*nv+nv-1]=lmb[j*nv+nv-1]+1;
     cfs_extra_nf[i]=1;
   }
-  bs_t* tbr;
+  bs_t *tbr;
   if (count_not_lm) {
-    md_t* md = copy_meta_data(st,fc);
+    md_t *md = copy_meta_data(st,fc);
     tbr = initialize_basis(md);
+    free_hash_table(&(tbr->ht));
     exp_t *mul = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
     tbr->ht = ht;
     /* reduction */
@@ -3671,6 +3673,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
     free(mul);
     free(md);
+
   }
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
@@ -3784,7 +3787,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
           free(matrix->dst);
           free(matrix);
 
-	  free_basis(&tbr);
+	  free_basis_without_hash_table(&tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3820,7 +3823,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
           free(matrix->dst);
           free(matrix);
 
-	  free_basis(&tbr);
+	  free_basis_without_hash_table(&tbr);
 	  free(cfs_extra_nf);
 	  free(exps_extra_nf);
 	  free(lens_extra_nf);
@@ -3844,7 +3847,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
         free(matrix->dst);
         free(matrix);
 
-	free_basis(&tbr);
+	free_basis_without_hash_table(&tbr);
 	free(cfs_extra_nf);
 	free(exps_extra_nf);
 	free(lens_extra_nf);

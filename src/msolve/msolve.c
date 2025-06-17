@@ -1005,129 +1005,6 @@ static inline void crt_lift_mpz_param(mpz_param_t mpz_param,
  **/
 #define RR 1
 
-static inline int rational_reconstruction_mpz_ptr(
-    mpz_t *recons, mpz_t denominator, mpz_t *pol, deg_t len, mpz_t modulus,
-    deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden, mpz_t *tmp_num,
-    mpz_t *tmp_den, mpz_t lcm, mpz_t guessed_num, mpz_t guessed_den,
-    rrec_data_t rdata) {
-
-  if (ratrecon(rnum, rden, pol[*maxrec], modulus, rdata) == 0) {
-    return 0;
-  }
-  mpz_set(tmp_num[*maxrec], rnum);
-  mpz_set(tmp_den[*maxrec], rden);
-
-  for (deg_t i = *maxrec + 1; i < len; i++) {
-    int b = ratrecon(rnum, rden, pol[i], modulus, rdata);
-    if (b == 0) {
-      *maxrec = i - 1;
-      return b;
-    }
-
-    mpz_set(tmp_num[i], rnum);
-    mpz_set(tmp_den[i], rden);
-  }
-  for (deg_t i = 0; i < *maxrec; i++) {
-    int b = ratrecon(rnum, rden, pol[i], modulus, rdata);
-
-    if (b == 0) {
-      *maxrec = MAX(i - 1, 0);
-      return b;
-    }
-
-    mpz_set(tmp_num[i], rnum);
-    mpz_set(tmp_den[i], rden);
-  }
-
-  mpz_set(lcm, tmp_den[0]);
-  for (deg_t i = 1; i < len; i++) {
-    mpz_lcm(lcm, lcm, tmp_den[i]);
-  }
-  for (deg_t i = 0; i < len; i++) {
-    mpz_divexact(tmp_den[i], lcm, tmp_den[i]);
-  }
-  for (deg_t i = 0; i < len; i++) {
-    mpz_mul(tmp_num[i], tmp_num[i], tmp_den[i]);
-  }
-  for (deg_t i = 0; i < len; i++) {
-    mpz_set(recons[i], tmp_num[i]);
-  }
-  mpz_set(denominator, lcm);
-
-  return 1;
-}
-
-static inline int old_rational_reconstruction_mpz_ptr_with_denom(
-    mpz_t *recons, mpz_t denominator, mpz_t *pol, deg_t len, mpz_t modulus,
-    deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden, mpz_t *tmp_num,
-    mpz_t *tmp_den, mpz_t lcm, mpz_t gnum, mpz_t guessed_den, rrec_data_t rdata) {
-
-  mpz_set(gnum, pol[*maxrec]);
-
-  if (ratreconwden(rnum, rden, gnum, modulus, guessed_den, rdata) == 0) {
-    return 0;
-  }
-
-  mpz_set(tmp_num[*maxrec], rnum);
-  mpz_set(tmp_den[*maxrec], rden);
-
-  for (deg_t i = *maxrec + 1; i < len; i++) {
-    mpz_set(gnum, pol[i]);
-    int b = ratreconwden(rnum, rden, gnum, modulus, guessed_den, rdata);
-
-    if (b == 0) {
-      *maxrec = MAX(0, i - 1);
-      return b;
-    }
-    mpz_set(tmp_num[i], rnum);
-    mpz_set(tmp_den[i], rden);
-  }
-
-  mpz_set(lcm, tmp_den[*maxrec]);
-  for (deg_t i = *maxrec + 1; i < len; i++) {
-    mpz_lcm(lcm, lcm, tmp_den[i]);
-  }
-
-  mpz_t newlcm;
-  mpz_init(newlcm);
-  mpz_set(newlcm, lcm);
-  mpz_mul(newlcm, newlcm, guessed_den);
-
-  for (deg_t i = *maxrec - 1; i >= 0; i--) {
-    mpz_set(gnum, pol[i]);
-    int b = ratreconwden(tmp_num[i], tmp_den[i], gnum, modulus, newlcm, rdata);
-
-    if (b == 0) {
-      *maxrec = MAX(i + 1, 0);
-      mpz_clear(newlcm);
-      return b;
-    }
-
-    mpz_divexact(rden, newlcm, guessed_den);
-    mpz_mul(tmp_den[i], tmp_den[i], rden);
-
-    mpz_lcm(newlcm, newlcm, rden);
-  }
-
-  mpz_set(lcm, tmp_den[0]);
-  for (deg_t i = 1; i < len; i++) {
-    mpz_lcm(lcm, lcm, tmp_den[i]);
-  }
-
-  for (deg_t i = 0; i < len; i++) {
-    mpz_divexact(tmp_den[i], lcm, tmp_den[i]);
-  }
-  for (deg_t i = 0; i < len; i++) {
-    mpz_mul(tmp_num[i], tmp_num[i], tmp_den[i]);
-  }
-  for (deg_t i = 0; i < len; i++) {
-    mpz_set(recons[i], tmp_num[i]);
-  }
-  mpz_set(denominator, lcm);
-  mpz_clear(newlcm);
-  return 1;
-}
-
 
 static inline int new_rational_reconstruction_mpz_ptr_with_denom_param(
     mpz_t *recons, mpz_t denominator, mpz_t *pol, deg_t len, mpz_t modulus,
@@ -1225,17 +1102,6 @@ static inline int rational_reconstruction_mpz_ptr_with_denom_elim(
 
  **/
 
-static inline int rational_reconstruction_upoly(
-    mpz_upoly_t recons, mpz_t denominator, mpz_upoly_t pol, long len,
-    mpz_t modulus, deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden,
-    mpz_upoly_t tmp_num, mpz_upoly_t tmp_den, mpz_t lcm, mpz_t guessed_num,
-    mpz_t guessed_den, rrec_data_t rdata) {
-
-  return rational_reconstruction_mpz_ptr(
-      recons->coeffs, denominator, pol->coeffs, len, modulus, maxrec, coef,
-      rnum, rden, tmp_num->coeffs, tmp_den->coeffs, lcm, guessed_num,
-      guessed_den, rdata);
-}
 
 static inline int rational_reconstruction_upoly_with_denom_elim(
     mpz_upoly_t recons, mpz_t denominator, mpz_upoly_t pol, long len,
@@ -1438,7 +1304,7 @@ returns 0 if rational reconstruction failed
 
  **/
 
-static inline int new_rational_reconstruction(
+static inline int rational_reconstruction_param(
     mpz_param_t mpz_param, mpz_param_t tmp_mpz_param, param_t *nmod_param,
     nvars_t nlins, nvars_t *linvars, uint32_t *lineqs, 
     trace_det_fglm_mat_t trace_det, sp_matfglm_t *mat, mpz_upoly_t numer,
@@ -2589,7 +2455,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         }
         crr = realtime();
         if (mcheck == 1) {
-          br = new_rational_reconstruction(
+          br = rational_reconstruction_param(
               *mpz_paramp, tmp_mpz_param, nmod_params[i], 
               bnlins[i], blinvars[i], lineqs_ptr[i], 
               trace_det, bmatrix[i], numer,

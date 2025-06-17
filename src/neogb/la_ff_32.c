@@ -2788,12 +2788,6 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     /* saturation elements we have to reduce with the known pivots first */
     hm_t **upivs  = sat->hm;
 
-    /* temporary storage for elements to be saturated */
-    /* bs_t *tmp = initialize_basis(sat->ld); */
-    /* temporary storage for corresponding multipliers
-     * which then generate the kernel elements */
-    /* bs_t *mul = initialize_basis(sat->ld); */
-
     int64_t *dr  = (int64_t *)malloc(
             (uint64_t)ncols * st->nthrds * sizeof(int64_t));
     /* mo need to have any sharing dependencies on parallel computation,

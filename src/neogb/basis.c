@@ -157,7 +157,8 @@ void free_basis_without_hash_table(
 }
 
 bs_t *initialize_basis(
-        md_t *md
+        md_t *md,
+        ht_t *ht
         )
 {
     bs_t *bs  = (bs_t *)calloc(1, sizeof(bs_t));
@@ -168,7 +169,11 @@ bs_t *initialize_basis(
     bs->constant  = 0;
     bs->sz        = md->init_bs_sz;
     bs->mltdeg    = 0;
-    bs->ht        = initialize_basis_hash_table(md);
+    if (ht == NULL) {
+        bs->ht        = initialize_basis_hash_table(md);
+    } else {
+        bs->ht = ht;
+    }
 
     /* initialize basis elements data */
     bs->hm    = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));

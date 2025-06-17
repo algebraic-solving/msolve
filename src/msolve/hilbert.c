@@ -1765,8 +1765,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
       exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
     }
   }
-  tbr = initialize_basis(st);
-  tbr->ht = bht;
+  tbr = initialize_basis(st, bht);
 #if REDUCTION_ALLINONE
   import_input_data(tbr, st, 0, tobereduced, lens, exps, (void *)cfs, NULL);
   tbr->ld = tbr->lml  =  tobereduced;
@@ -2000,8 +1999,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 			     tbr, bht, evi, st, nv, maxdeg);
   }
 #else /* the shifts of phi are now reduced */
-  tbr = initialize_basis(st);
-  tbr->ht = bht;
+  tbr = initialize_basis(st, bht);
   import_input_data(tbr, st, count_not_lm, tobereduced, lens, exps, (void *)cfs, NULL);
   tbr->ld = tbr->lml  =  2*nv-2;
   /* printf ("%d imported\n",2*nv-2); */
@@ -2215,8 +2213,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
       exps[(count_not_lm + i*suppsize+j)*nv+nv-1]=bht->ev[hm[j]][evi[nv-1]];
     }
   }
-  tbr = initialize_basis(st);
-  tbr->ht = bht;
+  tbr = initialize_basis(st, bht);
   import_input_data(tbr, st, 0, tobereduced, lens, exps, (void *)cfs, NULL);
   tbr->ld = tbr->lml  =  tobereduced;
   /* printf ("%ld imported\n",tobereduced); */
@@ -3078,10 +3075,8 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   long count_not_lm = matrix->nnfs;
   if (count_not_lm) {
     md_t *md = copy_meta_data(st,fc);
-    tbr = initialize_basis(md);
-    free_hash_table(&(tbr->ht));
+    tbr = initialize_basis(md, ht);
     exp_t *mul = (exp_t *)calloc(ht->evl, sizeof(exp_t));
-    tbr->ht = ht;
     /* reduction */
     import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
 		      (void *)cfs_extra_nf, NULL);
@@ -3651,10 +3646,8 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   bs_t *tbr;
   if (count_not_lm) {
     md_t *md = copy_meta_data(st,fc);
-    tbr = initialize_basis(md);
-    free_hash_table(&(tbr->ht));
+    tbr = initialize_basis(md, ht);
     exp_t *mul = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
-    tbr->ht = ht;
     /* reduction */
     import_input_data(tbr, md, 0, count_not_lm, lens_extra_nf, exps_extra_nf,
 		      (void *)cfs_extra_nf, NULL);

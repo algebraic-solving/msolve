@@ -2013,7 +2013,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /*******************
    * initialize basis
    *******************/
-  bs_t *bs_qq = initialize_basis(st);
+  bs_t *bs_qq = initialize_basis(st, NULL);
   /* read in ideal, move coefficients to integers */
   import_input_data(bs_qq, st, 0, st->ngens_input, lens, exps, cfs,
                     invalid_gens);
@@ -3750,8 +3750,7 @@ restart:
                     bs->lml     = bs->ld;
                 }
             } else {
-                sat = initialize_basis(st);
-                sat->ht = bht;
+                sat = initialize_basis(st, bht);
                 import_input_data(sat, st, gens->ngens-saturate, gens->ngens, gens->lens, gens->exps, (void *)gens->cfs, NULL);
 
                 sat->ld = sat->lml  =  saturate;
@@ -3883,8 +3882,7 @@ restart:
             /* initialize data for elements to be reduced,
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
-            tbr = initialize_basis(st);
-            tbr->ht = bht;
+            tbr = initialize_basis(st, bht);
             import_input_data(tbr, st, gens->ngens-1, gens->ngens, gens->lens, gens->exps, (void *)gens->cfs, NULL);
             tbr->ld = tbr->lml  =  1;
             /* normalize_initial_basis(tbr, st->gfc); */
@@ -4238,8 +4236,7 @@ restart:
             /* initialize data for elements to be reduced,
              * NOTE: Don't initialize BEFORE running core_f4, bht may
              * change, so hash values of tbr may become wrong. */
-            tbr = initialize_basis(st);
-            tbr->ht = bht;
+            tbr = initialize_basis(st, bht);
             import_input_data(tbr, st, gens->ngens-normal_form, gens->ngens,
                     gens->lens, gens->exps, (void *)gens->cfs, NULL);
             tbr->ld = tbr->lml  =  normal_form;
@@ -4568,7 +4565,7 @@ restart:
             /*******************
              * initialize basis
              *******************/
-            bs_t *bs_qq = initialize_basis(st);
+            bs_t *bs_qq = initialize_basis(st, NULL);
             /* initialize basis hash table, update hash table, symbolic hash table */
             ht_t *bht = bs_qq->ht;
             /* hash table to store the hashes of the multiples of
@@ -4621,8 +4618,7 @@ restart:
                     bs_qq->lml     = bs_qq->ld;
                 }
             }
-            sat_qq = initialize_basis(st);
-            sat_qq->ht = bht;
+            sat_qq = initialize_basis(st, bht);
             import_input_data(
                     sat_qq, st, gens->ngens-saturate, gens->ngens,
                     gens->lens, gens->exps, (void *)gens->mpz_cfs, NULL);

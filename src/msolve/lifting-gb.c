@@ -1829,7 +1829,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
 
   FILE *ofile;
   if (flags->files->out_file != NULL) {
-    ofile = fopen(flags->files->out_file, "w+");
+    ofile = fopen(flags->files->out_file, "wb+");
   } else {
     ofile = stdout;
   }
@@ -1866,7 +1866,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   if(flags->print_gb > 1){
 
     if(flags->files->out_file != NULL){
-      FILE *ofile = fopen(flags->files->out_file, "a+");
+      FILE *ofile = fopen(flags->files->out_file, "ab+");
       display_gbmodpoly_cf_qq(ofile, (*modgbsp), gens);
       fclose(ofile);
     }
@@ -1876,7 +1876,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   }
   if(flags->print_gb == 1){
     if(flags->files->out_file != NULL){
-      FILE *ofile = fopen(flags->files->out_file, "a+");
+      FILE *ofile = fopen(flags->files->out_file, "ab+");
       display_lm_gbmodpoly_cf_qq(ofile, (*modgbsp), gens);
       fclose(ofile);
     }

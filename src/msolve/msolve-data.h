@@ -185,6 +185,10 @@ typedef struct{
   mpz_t tmp;
   mpz_t N;
   mpz_t D;
+  mpz_t N1;
+  mpz_t D1;
+  mpz_t N2;
+  mpz_t D2;
 } rrec_data_struct_t;
 
 typedef rrec_data_struct_t rrec_data_t[1];

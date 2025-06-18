@@ -686,7 +686,7 @@ static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det,
   if (trace_det->done_trace && trace_det->done_trace < 2) {
     if (check_trace(trace_det, trace_mod, prime)) {
         trace_det->done_trace++;
-        *maxrec = trace_det->det_idx;
+        *maxrec = trace_det->trace_idx;
     }
     else{
         trace_det->done_trace = 0;
@@ -992,6 +992,14 @@ void initialize_rrec_data(rrec_data_t recdata) {
   mpz_set_ui(recdata->N, 0);
   mpz_init(recdata->D);
   mpz_set_ui(recdata->D, 0);
+  mpz_init(recdata->N1);
+  mpz_set_ui(recdata->N1, 0);
+  mpz_init(recdata->D1);
+  mpz_set_ui(recdata->D1, 0);
+  mpz_init(recdata->N2);
+  mpz_set_ui(recdata->N2, 0);
+  mpz_init(recdata->D2);
+  mpz_set_ui(recdata->D2, 0);
 }
 
 void free_rrec_data(rrec_data_t recdata) {
@@ -1003,4 +1011,8 @@ void free_rrec_data(rrec_data_t recdata) {
   mpz_clear(recdata->tmp);
   mpz_clear(recdata->N);
   mpz_clear(recdata->D);
+  mpz_clear(recdata->N1);
+  mpz_clear(recdata->D1);
+  mpz_clear(recdata->N2);
+  mpz_clear(recdata->D2);
 }

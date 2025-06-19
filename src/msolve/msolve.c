@@ -1858,7 +1858,7 @@ int is_splittable(param_t **nmod_params, const int fc){
     nmod_poly_init(gcd, fc);
     for(int i = 0; i < nmod_params[0]->nvars - 1; i++){
         if(!nmod_poly_is_zero(nmod_params[0]->coords[0])){
-            nmod_poly_gcd(gcd, nmod_params[0]->elim, nmod_params[0]->coords[0]);
+            nmod_poly_gcd(gcd, nmod_params[0]->elim, nmod_params[0]->coords[i]);
             long deg = nmod_poly_degree(gcd);
             fprintf(stderr, "\n -> DEGREE GCD = %ld\n\n", deg);
             if(deg > 0){
@@ -3000,8 +3000,8 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
 }
 
 void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, interval *pos_root, 
-        mpz_t *tab, mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do, mpz_t c, int64_t corr, 
-        int64_t b, const int info_level){
+        mpz_t *tab, mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do, mpz_t c, int64_t *corr, 
+        int64_t *b, const int info_level){
     if (mpz_sgn(rt->numer) >= 0) {
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
       refine_QIR_positive_root(polelim, &ns, rt, tab, 2 * (rt->k), info_level);
@@ -3047,17 +3047,17 @@ void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, 
       ns = param->nsols;
     }
 
-    corr *= 2;
-    b *= 2;
+    *corr *= 2;
+    *b *= 2;
 
     if(rt->isexact){
         mpz_poly_eval_2exp_naive(param->denom->coeffs, param->denom->length - 1,
                         &rt->numer, rt->k, xdo, xup);
         mpz_set(den_up, xdo[0]);
         mpz_set(den_do, xdo[0]);
-        corr = (param->denom->length - 1) * rt->k;
+        *corr = (param->denom->length - 1) * rt->k;
     }
-    generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
+    generate_table_values_full(rt, c, ns, *b, *corr, xdo, xup);
 }
 
 void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
@@ -3087,8 +3087,8 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                         rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
                         s)) {
     refine_root_elim(param, polelim, ns, rt, pos_root, 
-        tab, xdo, xup, den_up, den_do, c, corr, 
-        b, info_level);
+        tab, xdo, xup, den_up, den_do, c, &corr, 
+        &b, info_level);
 
     if (info_level) {
       fprintf(stderr, "<%ld>", rt->k);
@@ -3112,6 +3112,24 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                 param->coords[nv]->length - 1, rt->k, xdo, xup,
                                 tmp, val_do, val_up, corr);
+    fprintf(stderr, "ICI -> %ld[%d, %d, %ld]\n", rt->k, mpz_sgn(val_do), mpz_sgn(val_up), corr);
+    int boo = 0;
+    while(to_split == 0 && mpz_sgn(val_do)*mpz_sgn(val_up) < 0){
+        generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
+        refine_root_elim(param, polelim, ns, rt, pos_root, 
+            tab, xdo, xup, den_up, den_do, c, &corr, 
+            &b, info_level);
+        mpz_scalar_product_interval(param->coords[nv]->coeffs,
+                                    param->coords[nv]->length - 1, rt->k, xdo, xup,
+                                    tmp, val_do, val_up, corr);
+        boo = 1;
+        fprintf(stderr, "ICI -> %ld[%d, %d, %ld]\n", rt->k, mpz_sgn(val_do), mpz_sgn(val_up), corr);
+    }
+    if(boo){
+        newvalue_denom(param->denom->coeffs, param->denom->length - 1,
+                        rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
+                        s);
+    }
     mpz_neg(val_do, val_do);
     mpz_neg(val_up, val_up);
     mpz_swap(val_up, val_do);

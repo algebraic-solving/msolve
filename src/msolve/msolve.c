@@ -2164,7 +2164,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
-  *to_split_ptr = is_splittable(nmod_params, lp->p[0]);
 
   (*mpz_paramp)->dim = *dim_ptr;
   (*mpz_paramp)->dquot = *dquot_ptr;
@@ -2223,6 +2222,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
+  *to_split_ptr = is_splittable(nmod_params, lp->p[0]);
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
                               leadmons_ori, leadmons_current,
@@ -2999,34 +2999,9 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
   return (boo || (mpz_sgn(den_do)==0) || (mpz_sgn(den_up)==0));
 }
 
-void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
-                                 interval *rt, long nb, interval *pos_root,
-                                 mpz_t *xdo, mpz_t *xup, mpz_t den_up,
-                                 mpz_t den_do, mpz_t c, mpz_t tmp, mpz_t val_do,
-                                 mpz_t val_up, mpz_t *tab, real_point_t pt,
-                                 long prec, long nbits, mpz_t s,
-                                 int to_split, int info_level) {
-  long ns = param->nsols;
-  /* root is exact */
-  if (rt->isexact == 1) {
-    single_exact_real_root_param(param, rt, nb, xdo, xup, den_up, den_do, c,
-                                 tmp, val_do, val_up, tab, pt, MAX(rt->k, prec),
-                                 info_level);
-    return;
-  }
-
-  int64_t b = 16;
-  int64_t corr = 2 * (ns + rt->k);
-
-  /* checks whether the abs. value of the root is greater than 1 */
-
-  generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
-  while (rt->isexact == 0 && 
-          newvalue_denom(param->denom->coeffs, param->denom->length - 1,
-                        rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
-                        s)) {
-
-    /* root is positive */
+void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, interval *pos_root, 
+        mpz_t *tab, mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do, mpz_t c, int64_t corr, 
+        int64_t b, const int info_level){
     if (mpz_sgn(rt->numer) >= 0) {
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
       refine_QIR_positive_root(polelim, &ns, rt, tab, 2 * (rt->k), info_level);
@@ -3083,6 +3058,37 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
         corr = (param->denom->length - 1) * rt->k;
     }
     generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
+}
+
+void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
+                                 interval *rt, long nb, interval *pos_root,
+                                 mpz_t *xdo, mpz_t *xup, mpz_t den_up,
+                                 mpz_t den_do, mpz_t c, mpz_t tmp, mpz_t val_do,
+                                 mpz_t val_up, mpz_t *tab, real_point_t pt,
+                                 long prec, long nbits, mpz_t s,
+                                 int to_split, int info_level) {
+  long ns = param->nsols;
+  /* root is exact */
+  if (rt->isexact == 1) {
+    single_exact_real_root_param(param, rt, nb, xdo, xup, den_up, den_do, c,
+                                 tmp, val_do, val_up, tab, pt, MAX(rt->k, prec),
+                                 info_level);
+    return;
+  }
+
+  int64_t b = 16;
+  int64_t corr = 2 * (ns + rt->k);
+
+  /* checks whether the abs. value of the root is greater than 1 */
+
+  generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
+  while (rt->isexact == 0 && 
+          newvalue_denom(param->denom->coeffs, param->denom->length - 1,
+                        rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
+                        s)) {
+    refine_root_elim(param, polelim, ns, rt, pos_root, 
+        tab, xdo, xup, den_up, den_do, c, corr, 
+        b, info_level);
 
     if (info_level) {
       fprintf(stderr, "<%ld>", rt->k);

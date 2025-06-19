@@ -1852,7 +1852,23 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 }
 
 
-
+/* returns 1 if the parametrization can be split, otherwise returns 0*/
+int is_splittable(param_t **nmod_params, const int fc){
+    nmod_poly_t gcd;
+    nmod_poly_init(gcd, fc);
+    for(int i = 0; i < nmod_params[0]->nvars - 1; i++){
+        if(!nmod_poly_is_zero(nmod_params[0]->coords[0])){
+            nmod_poly_gcd(gcd, nmod_params[0]->elim, nmod_params[0]->coords[0]);
+            long deg = nmod_poly_degree(gcd);
+            fprintf(stderr, "\n -> DEGREE GCD = %ld\n\n", deg);
+            if(deg > 0){
+                return 1;
+            }
+        }
+    }
+    nmod_poly_clear(gcd);
+    return 0;
+}
 
 
 /* sets function pointer */
@@ -1952,6 +1968,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     int32_t la_option,
                     int32_t use_signatures,
                     int32_t lift_matrix,
+                    int *to_split_ptr,
                     int32_t info_level,
                     int32_t print_gb,
                     int32_t pbm_file,
@@ -2146,6 +2163,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       }
     }
   }
+
+  *to_split_ptr = is_splittable(nmod_params, lp->p[0]);
 
   (*mpz_paramp)->dim = *dim_ptr;
   (*mpz_paramp)->dquot = *dquot_ptr;
@@ -2986,7 +3005,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  mpz_t den_do, mpz_t c, mpz_t tmp, mpz_t val_do,
                                  mpz_t val_up, mpz_t *tab, real_point_t pt,
                                  long prec, long nbits, mpz_t s,
-                                 int info_level) {
+                                 int to_split, int info_level) {
   long ns = param->nsols;
   /* root is exact */
   if (rt->isexact == 1) {
@@ -3201,7 +3220,7 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv) {
 
 void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
                               real_point_t *pts, long prec, long nbits,
-                              double step, int info_level) {
+                              double step, int to_split, int info_level) {
   long nsols = param->elim->length - 1;
   mpz_t *xup = malloc(sizeof(mpz_t) * nsols);
   mpz_t *xdo = malloc(sizeof(mpz_t) * nsols);
@@ -3239,7 +3258,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 
     lazy_single_real_root_param(param, polelim, rt, nb, pos_root, xdo, xup,
                                 den_up, den_do, c, tmp, val_do, val_up, tab,
-                                pts[nc], prec, nbits, s, info_level);
+                                pts[nc], prec, nbits, s, to_split, info_level);
 
     if (info_level) {
       if (realtime() - et >= step) {
@@ -3278,7 +3297,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 
 real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
                          interval **real_roots_ptr, int32_t precision,
-                         int32_t nr_threads, int32_t info_level) {
+                         int32_t nr_threads, int to_split, int32_t info_level) {
   mpz_t *pol = malloc(param->elim->length * sizeof(mpz_t));
 
   for (long i = 0; i < param->elim->length; i++) {
@@ -3319,7 +3338,7 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
     }
 
     extract_real_roots_param(param, roots, nb, pts, precision, maxnbits, step,
-                             info_level);
+                             to_split, info_level);
     if (info_level) {
       fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
               realtime() - st);
@@ -3338,7 +3357,7 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
 void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
                                interval ***lreal_roots_ptr,
                                real_point_t ***lreal_pts_ptr, int32_t precision,
-                               int32_t nr_threads, int32_t info_level) {
+                               int32_t nr_threads, int to_split, int32_t info_level) {
   long *lnbr = malloc(sizeof(long) * lparams->nb);
   interval **lreal_roots = malloc(sizeof(interval *) * lparams->nb);
   real_point_t **lreal_pts = malloc(sizeof(real_point_t *) * lparams->nb);
@@ -3350,7 +3369,7 @@ void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
   for (int i = 0; i < lparams->nb; i++) {
     lreal_pts[i] =
         isolate_real_roots_param(lparams->params[i], lnbr + i, lreal_roots + i,
-                                 precision, nr_threads, info_level);
+                                 precision, nr_threads, to_split, info_level);
   }
   (*lnbr_ptr) = lnbr;
   (*lreal_roots_ptr) = lreal_roots;
@@ -3389,6 +3408,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 
   double ct0 = cputime();
   double rt0 = realtime();
+  int to_split = 0;
   int b = msolve_trace_qq(mpz_paramp,
                           nmod_param,
                           dim_ptr,
@@ -3403,6 +3423,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           la_option,
                           use_signatures,
                           lift_matrix,
+                          &to_split,
                           info_level,
                           print_gb,
                           pbm_file,
@@ -3441,7 +3462,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 
     pts =
         isolate_real_roots_param(*mpz_paramp, nb_real_roots_ptr, real_roots_ptr,
-                                 precision, nr_threads, info_level);
+                                 precision, nr_threads, to_split, info_level);
     int32_t nb = *nb_real_roots_ptr;
     if (nb) {
       /* If we added a linear form for genericity reasons remove do not

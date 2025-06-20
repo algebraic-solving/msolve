@@ -777,5 +777,9 @@ static int preprocessing(
     } else {
         generate_matrix_from_trace(mat, bs, md);
     }
-    return 0;
+    if (mat->nc == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
 }

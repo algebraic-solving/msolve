@@ -546,7 +546,7 @@ int core_f4sat(
     st->max_gb_degree = INT32_MAX;
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(st);
+    bs_t *kernel  = initialize_basis(st, NULL);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;

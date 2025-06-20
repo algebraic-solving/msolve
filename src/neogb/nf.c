@@ -183,8 +183,7 @@ int64_t export_nf(
     /* initialize data for elements to be reduced,
      * NOTE: Don't initialize BEFORE running core_f4, bht may
      * change, so hash values of tbr may become wrong. */
-    tbr = initialize_basis(md);
-    tbr->ht = bht;
+    tbr = initialize_basis(md, bht);
     import_input_data(tbr, md, 0, nr_tbr_gens,
             tbr_lens, tbr_exps, (void *)tbr_cfs, NULL);
     tbr->ld = tbr->lml  =  nr_tbr_gens;

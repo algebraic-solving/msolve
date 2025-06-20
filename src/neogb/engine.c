@@ -80,7 +80,7 @@ int initialize_gba_input_data(
 
 
     /* initialize basis */
-    bs  = initialize_basis(st);
+    bs  = initialize_basis(st, NULL);
     ht_t *bht = bs->ht;
 
     import_input_data(bs, st, 0, st->ngens_input, lens, exps, cfs, invalid_gens);

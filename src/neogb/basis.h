@@ -40,7 +40,8 @@ void remove_content_of_initial_basis(
         );
 
 bs_t *initialize_basis(
-        md_t *md
+        md_t *md,
+        ht_t *ht
         );
 
 bs_t *copy_basis_mod_p(

@@ -431,7 +431,7 @@ bs_t *f4sat_trace_application_test_phase(
     ht_t *sht = initialize_secondary_hash_table(bht, st);
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(st);
+    bs_t *kernel  = initialize_basis(st, NULL);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
@@ -724,7 +724,7 @@ bs_t *f4sat_trace_application_phase(
     st->ht    = sht;
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(st);
+    bs_t *kernel  = initialize_basis(st, NULL);
 
     bs->ld  = st->ngens;
 
@@ -1210,7 +1210,7 @@ bs_t *f4sat_trace_learning_phase_1(
     st->max_gb_degree = INT32_MAX;
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(st);
+    bs_t *kernel  = initialize_basis(st, NULL);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
@@ -1539,7 +1539,7 @@ bs_t *f4sat_trace_learning_phase_2(
     st->max_gb_degree = INT32_MAX;
 
     /* elements of kernel in saturation step, to be added to basis bs */
-    bs_t *kernel  = initialize_basis(st);
+    bs_t *kernel  = initialize_basis(st, NULL);
 
     /* reset bs->ld for first update process */
     bs->ld  = 0;
@@ -1863,7 +1863,7 @@ int64_t f4_trace_julia(
     /*******************
     * initialize basis
     *******************/
-    bs_t *bs_qq = initialize_basis(st);
+    bs_t *bs_qq = initialize_basis(st, NULL);
     /* initialize basis hash table, update hash table, symbolic hash table */
     ht_t *bht = initialize_basis_hash_table(st);
     /* hash table to store the hashes of the multiples of

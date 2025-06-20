@@ -673,7 +673,7 @@ int core_sba_schreyer(
     crit_t *rew = initialize_signature_criteria(st);
 
     /* initialize an empty basis for keeping the real basis elements */
-    bs_t *bs = initialize_basis(st);
+    bs_t *bs = initialize_basis(st, NULL);
 
     /* sort initial elements, highest lead term first */
     sort_r(in->hm, (unsigned long)in->ld, sizeof(hm_t *),

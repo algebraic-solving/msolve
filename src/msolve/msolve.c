@@ -3112,7 +3112,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                 param->coords[nv]->length - 1, rt->k, xdo, xup,
                                 tmp, val_do, val_up, corr);
-    fprintf(stderr, "ICI -> %ld[%d, %d, %ld]\n", rt->k, mpz_sgn(val_do), mpz_sgn(val_up), corr);
     int boo = 0;
     while(to_split == 0 && mpz_sgn(val_do)*mpz_sgn(val_up) < 0){
         generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
@@ -3146,6 +3145,8 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
     if (rt->isexact==0 && mpz_cmp(val_do, val_up) > 0) {
       fprintf(stderr, "BUG in real root extractor(2)\n");
+      mpz_clear(v1);
+      mpz_clear(v2);
       exit(1);
     }
 

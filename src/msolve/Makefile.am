@@ -17,6 +17,7 @@ EXTRA_DIST	=	  msolve-data.h \
 								iofiles.c \
 								msolve.c \
 								primes.c \
+								getdelim.h \
 								../crt/longlong.h \
 								../crt/ulong_extras.h \
 								../crt/mpq_reconstruct.c \

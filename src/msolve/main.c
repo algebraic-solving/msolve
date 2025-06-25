@@ -117,7 +117,7 @@ static inline void display_help(char *str){
   fprintf(stdout, "         first (n - NF) elements generate already a degree reverse\n");
   fprintf(stdout, "         lexicographical Gröbner basis.\n");
   fprintf(stdout, "-p PRE   Precision of the real root isolation.\n");
-  fprintf(stdout, "         Default is 128.\n");
+  fprintf(stdout, "         Default is 64.\n");
   fprintf(stdout, "-P PAR   Get also rational parametrization of solution set.\n");
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
   fprintf(stdout, "         format please see the general output data format section\n");
@@ -205,7 +205,7 @@ static void getoptions(
     case 'p':
       *precision = strtol(optarg, NULL, 10);
       if (*precision < 0) {
-          *precision = 128;
+          *precision = 64;
       }
       /* if (*precision > 100) { */
       /*     *precision = 100; */
@@ -370,7 +370,7 @@ int main(int argc, char **argv){
     int32_t is_gb                 = 0;
     int32_t lift_matrix           = 0;
     int32_t get_param             = 0;
-    int32_t precision             = 128;
+    int32_t precision             = 64;
     int32_t refine                = 0; /* not used at the moment */
     int32_t isolate               = 0; /* not used at the moment */
 

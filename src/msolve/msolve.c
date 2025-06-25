@@ -2828,7 +2828,8 @@ void generate_table_values(interval *rt, mpz_t c, const long ns, const long b,
  xdo[i] and xup[i] are rt^i and c^i at precision 2^corr
 [xdo[i]/2^corr, xup[i]/2^corr] contain [rt^i, c^i]
  */
-void generate_table_values_full(interval *rt, mpz_t c, const long ns,
+
+void generate_table_values_full_small(interval *rt, mpz_t c, const long ns,
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
 
@@ -2838,10 +2839,50 @@ void generate_table_values_full(interval *rt, mpz_t c, const long ns,
 
     mpz_set_ui(xup[0], 1);
     mpz_set_ui(xdo[0], 1);
+    mpz_mul_2exp(xdo[0], xdo[0], corr);
+    mpz_mul_2exp(xup[0], xup[0], corr);
     for (long i = 1; i < ns; i++) {
+        mpz_mul(xup[i], xup[i - 1], c);
+        mpz_mul(xdo[i], xdo[i - 1], rt->numer);
+        mpz_cdiv_q_2exp(xup[i], xup[i], (rt->k));
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], (rt->k));
+    }
+  } else {
+    mpz_set_ui(xup[0], 1);
+    mpz_set_ui(xdo[0], 1);
+    mpz_mul_2exp(xdo[0], xdo[0], corr);
+    mpz_mul_2exp(xup[0], xup[0], corr);
+    for (long i = 1; i < ns; i++) {
+      if ((i & 1) == 1) {
+        mpz_mul(xup[i], xdo[i - 1], c);
+        mpz_mul(xdo[i], xup[i - 1], rt->numer);
+      } else {
+        mpz_mul(xup[i], xdo[i - 1], rt->numer);
+        mpz_mul(xdo[i], xup[i - 1], c);
+      }
+      mpz_cdiv_q_2exp(xup[i], xup[i], (rt->k) );
+      mpz_fdiv_q_2exp(xdo[i], xdo[i], (rt->k) );
+    }
+  }
+}
 
-      mpz_mul(xup[i], xup[i - 1], c);
-      mpz_mul(xdo[i], xdo[i - 1], rt->numer);
+void generate_table_values_full(interval *rt, mpz_t c, const long ns,
+                                const long b, const long corr, mpz_t *xdo,
+                                mpz_t *xup) {
+
+    if(mpz_sizeinbase(rt->numer, 2) < rt->k - 1){
+        generate_table_values_full_small(rt, c, ns, b, corr, xdo, xup);
+        return;
+    }
+  mpz_add_ui(c, rt->numer, 1);
+
+  if (mpz_sgn(rt->numer) >= 0) {
+
+    mpz_set_ui(xup[0], 1);
+    mpz_set_ui(xdo[0], 1);
+    for (long i = 1; i < ns; i++) {
+        mpz_mul(xup[i], xup[i - 1], c);
+        mpz_mul(xdo[i], xdo[i - 1], rt->numer);
     }
   } else {
 
@@ -2867,7 +2908,6 @@ void generate_table_values_full(interval *rt, mpz_t c, const long ns,
     mpz_fdiv_q_2exp(xdo[i], xdo[i], (rt->k) * i);
   }
 }
-
 /*
   quad:=a*x^2+b*x+c;
   rr1:=r/2^k;
@@ -2939,7 +2979,7 @@ int evalquadric(mpz_t *quad, mpz_t r, long k, mpz_t *tmpquad, mpz_t tmp) {
 }
 
 
-int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
+int newvalue_denom_old(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
                    mpz_t *xup, mpz_t tmp, mpz_t den_do, mpz_t den_up, long corr,
                    mpz_t c) {
 
@@ -2951,6 +2991,15 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
     exit(1);
   }
   return (boo || (mpz_sgn(den_do)==0) || (mpz_sgn(den_up)==0));
+}
+
+int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
+                   mpz_t *xup, mpz_t tmp, mpz_t den_do, mpz_t den_up, long corr,
+                   mpz_t c) {
+
+    mpz_scalar_product_interval(denom, deg, k, xdo, xup, tmp, den_do, den_up, corr);
+    return (mpz_sgn(den_do) != mpz_sgn(den_up) || mpz_sgn(den_do) == 0 || mpz_sgn(den_up) == 0);
+
 }
 
 void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, interval *pos_root, 
@@ -3022,7 +3071,7 @@ void evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
     mpz_swap(val_up, val_do);
 
     long dec = 2 * prec;
-    long kden = (rt->k) * (param->denom->length - 1);
+    long kden = corr; //(rt->k) * (param->denom->length - 1);
 
     if(kden - corr + dec <= 0){
         dec = kden - corr + dec;
@@ -3088,7 +3137,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  mpz_t den_do, mpz_t c, mpz_t tmp, mpz_t val_do,
                                  mpz_t val_up, mpz_t *tab, real_point_t pt,
                                  long prec, long nbits, mpz_t s,
-                                 int to_split, int info_level) {
+                                 int to_split, int info_level, double *st) {
   long ns = param->nsols;
   /* root is exact */
   if (rt->isexact == 1) {
@@ -3103,7 +3152,9 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   /* checks whether the abs. value of the root is greater than 1 */
 
+  double et = realtime();
   generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
+  *st += realtime() - et;
   while (rt->isexact == 0 && 
           newvalue_denom(param->denom->coeffs, param->denom->length - 1,
                         rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
@@ -3116,8 +3167,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
       fprintf(stderr, "<%ld>", rt->k);
     }
   }
-
-
   if (rt->isexact == 1) {
     single_exact_real_root_param(param, rt, nb, xdo, xup, den_up, den_do, c,
                                  tmp, val_do, val_up, tab, pt, MAX(prec, rt->k),
@@ -3170,7 +3219,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
             refine = 0;
         }
         else{
-            double st = cputime();
+            double str = cputime();
             fprintf(stderr, "refinement needed [%ld, %ld]\n", nv, rt->k);
             fprintf(stderr, "(%d, %ld)\n", pt->coords[nv]->k_do, mpz_sizeinbase(tmp, 2));
             mpz_out_str(stderr, 10, val_do);fprintf(stderr, " / 2^%d, ", pt->coords[nv]->k_do);
@@ -3188,7 +3237,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                             rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
                             s);
             fprintf(stderr, "refinement done\n");
-            fprintf(stderr, "time = %f\n",cputime()-st);
+            fprintf(stderr, "time = %f\n",cputime()-str);
         }
     }
   }
@@ -3272,13 +3321,14 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
   mpz_init(s);
 
   double et = realtime();
+  double st = 0;
 
   for (long nc = 0; nc < nb; nc++) {
     interval *rt = roots + nc;
 
     lazy_single_real_root_param(param, polelim, rt, nb, pos_root, xdo, xup,
                                 den_up, den_do, c, tmp, val_do, val_up, tab,
-                                pts[nc], prec, nbits, s, to_split, info_level);
+                                pts[nc], prec, nbits, s, to_split, info_level, &st);
 
     if (info_level) {
       if (realtime() - et >= step) {
@@ -3287,6 +3337,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
       }
     }
   }
+  fprintf(stderr, "profile = %f\n", st);
 
   for (long i = 0; i < nsols; i++) {
     mpz_clear(xup[i]);

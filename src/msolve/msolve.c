@@ -3069,26 +3069,12 @@ void evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
     long dec = 2 * prec;
     long kden = (rt->k) * (param->denom->length - 1);
 
-    /*
-    long nbits = mpz_sizeinbase(val_up, 2) - mpz_sizeinbase(den_up, 2) - mpz_sizeinbase(param->cfs[pos], 2);
-    if(nbits <= 0){
-        dec = prec - nbits;
-    }
-    */
     if(kden - corr + dec <= 0){
+        dec = kden - corr + dec;
     }
     else{
         mpz_mul_2exp(val_up, val_up, kden - corr + dec);
         mpz_mul_2exp(val_do, val_do, kden - corr + dec);
-    }
-
-
-
-    if (rt->isexact==0 && mpz_cmp(val_do, val_up) > 0) {
-      fprintf(stderr, "BUG in real root extractor(2)\n");
-      mpz_clear(v1);
-      mpz_clear(v2);
-      exit(1);
     }
 
     if (mpz_sgn(den_do) >= 0 && mpz_sgn(den_up) >= 0) {

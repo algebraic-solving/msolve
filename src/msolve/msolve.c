@@ -2938,47 +2938,6 @@ int evalquadric(mpz_t *quad, mpz_t r, long k, mpz_t *tmpquad, mpz_t tmp) {
   return 1;
 }
 
-/* evaluates denom (which has degree deg)
-   at the interval [r/2^k, (r+1)/2^k]
-   returns  */
-int value_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo, mpz_t *xup,
-                mpz_t tmp, mpz_t den_do, mpz_t den_up, long corr, mpz_t c) {
-
-  /* /\* boo is 1 if den_do and den_up have not the same sign */
-  /*    else it is 0 */
-  mpz_add_ui(c, r, 1);
-
-  /* mpz_poly_eval_2exp_naive2(denom, deg, r, k, den_do, tmp); */
-  /* mpz_poly_eval_2exp_naive2(denom, deg, c, k, den_up, tmp); */
-
-  /* if(mpz_sgn(den_do)!=mpz_sgn(den_up)){ */
-  /*   return 1; */
-  /* } */
-  /* MODIFS START HERE */
-  /* if(mpz_cmp(den_do, den_up)>0){ */
-  /*   mpz_swap(den_do, den_up); */
-  /* } */
-  /* mpz_mul_2exp(den_do, den_do, corr); */
-  /* mpz_mul_2exp(den_up, den_up, corr); */
-  /* mpz_fdiv_q_2exp(den_do, den_do, k*deg); */
-  /* mpz_cdiv_q_2exp(den_up, den_up, k*deg); */
-  /* return 0; */
-
-  int boo = mpz_poly_eval_interval(denom, deg, k, r, c, tmp, den_do, den_up);
-  if (mpz_cmp(den_do, den_up) > 0) {
-    fprintf(stderr, "BUG (den_do > den_up)\n");
-    exit(1);
-  }
-  mpz_mul_2exp(den_do, den_do, corr);
-  mpz_mul_2exp(den_up, den_up, corr);
-  mpz_fdiv_q_2exp(den_do, den_do, k * deg);
-  mpz_cdiv_q_2exp(den_up, den_up, k * deg);
-
-  if (mpz_sgn(den_do) != mpz_sgn(den_up)) {
-    return 1;
-  }
-  return boo;
-}
 
 int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
                    mpz_t *xup, mpz_t tmp, mpz_t den_do, mpz_t den_up, long corr,
@@ -2991,10 +2950,6 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
     fprintf(stderr, "BUG (den_do > den_up)\n");
     exit(1);
   }
-  //mpz_mul_2exp(den_do, den_do, corr);
-  //mpz_mul_2exp(den_up, den_up, corr);
-  //mpz_fdiv_q_2exp(den_do, den_do, k * deg);
-  //mpz_cdiv_q_2exp(den_up, den_up, k * deg);
   return (boo || (mpz_sgn(den_do)==0) || (mpz_sgn(den_up)==0));
 }
 

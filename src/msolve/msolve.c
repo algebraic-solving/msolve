@@ -3215,6 +3215,25 @@ void evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
     pt->coords[pos]->isexact = 0;
 }
 
+void negate_coeffs_param(mpz_param_t param){
+      for(long i = 0; i < param->elim->length; i++){
+          if(i & 1 == 1){
+              mpz_neg(param->elim->coeffs[i], param->elim->coeffs[i]);
+          }
+      }
+      for(long i = 0; i < param->denom->length; i++){
+          if(i & 1 == 1){
+              mpz_neg(param->denom->coeffs[i], param->denom->coeffs[i]);
+          }
+      }
+      for (long nv = 0; nv < param->nvars - 1; nv++) {
+          for(long i = 0; i < param->coords[nv]->length; i++){
+              if(i & 1 == 1){
+                  mpz_neg(param->coords[nv]->coeffs[i], param->coords[nv]->coeffs[i]);
+              }
+          }
+      }
+}
 
 void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                  interval *rt, long nb, interval *pos_root,
@@ -3235,7 +3254,9 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   int64_t b = 16;
   int64_t corr = 2 * (ns + rt->k);
 
-  /* checks whether the abs. value of the root is greater than 1 */
+  if(mpz_sgn(rt->numer) < 0){
+
+  }
 
   generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
   while (rt->isexact == 0 && 

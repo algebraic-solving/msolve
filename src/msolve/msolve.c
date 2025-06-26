@@ -2829,51 +2829,135 @@ void generate_table_values(interval *rt, mpz_t c, const long ns, const long b,
 [xdo[i]/2^corr, xup[i]/2^corr] contain [rt^i, c^i]
  */
 
-void generate_table_values_full_small(interval *rt, mpz_t c, const long ns,
+void generate_table_values_full_small(mpz_t numer, mpz_t c, const long k, const long ns,
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
 
-  mpz_add_ui(c, rt->numer, 1);
+  mpz_add_ui(c, numer, 1);
 
-  if (mpz_sgn(rt->numer) >= 0) {
-
-    mpz_set_ui(xup[0], 1);
-    mpz_set_ui(xdo[0], 1);
-    mpz_mul_2exp(xdo[0], xdo[0], corr);
-    mpz_mul_2exp(xup[0], xup[0], corr);
+  mpz_set_ui(xup[0], 1);
+  mpz_set_ui(xdo[0], 1);
+  mpz_mul_2exp(xdo[0], xdo[0], corr);
+  mpz_mul_2exp(xup[0], xup[0], corr);
+  if (mpz_sgn(numer) >= 0) {
     for (long i = 1; i < ns; i++) {
         mpz_mul(xup[i], xup[i - 1], c);
-        mpz_mul(xdo[i], xdo[i - 1], rt->numer);
-        mpz_cdiv_q_2exp(xup[i], xup[i], (rt->k));
-        mpz_fdiv_q_2exp(xdo[i], xdo[i], (rt->k));
+        mpz_mul(xdo[i], xdo[i - 1], numer);
+        mpz_cdiv_q_2exp(xup[i], xup[i], k);
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], k);
     }
   } else {
-    mpz_set_ui(xup[0], 1);
-    mpz_set_ui(xdo[0], 1);
-    mpz_mul_2exp(xdo[0], xdo[0], corr);
-    mpz_mul_2exp(xup[0], xup[0], corr);
     for (long i = 1; i < ns; i++) {
       if ((i & 1) == 1) {
         mpz_mul(xup[i], xdo[i - 1], c);
-        mpz_mul(xdo[i], xup[i - 1], rt->numer);
+        mpz_mul(xdo[i], xup[i - 1], numer);
       } else {
-        mpz_mul(xup[i], xdo[i - 1], rt->numer);
+        mpz_mul(xup[i], xdo[i - 1], numer);
         mpz_mul(xdo[i], xup[i - 1], c);
       }
-      mpz_cdiv_q_2exp(xup[i], xup[i], (rt->k) );
-      mpz_fdiv_q_2exp(xdo[i], xdo[i], (rt->k) );
+      mpz_cdiv_q_2exp(xup[i], xup[i], k );
+      mpz_fdiv_q_2exp(xdo[i], xdo[i], k );
     }
   }
+}
+
+void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, const long ns,
+                                const long b, const long corr, mpz_t *xdo,
+                                mpz_t *xup) {
+    
+    double st = realtime();
+
+    mpz_add_ui(c, numer, 1);
+    long newcorr = MAX(corr, 2 * ns * (mpz_sizeinbase(numer, 2) - k));
+    //fprintf(stderr, "newcorr = %ld, corr = %ld\n", newcorr, corr);
+
+    mpz_set_ui(xdo[ns-1], 1);
+    mpz_set_ui(xup[ns-1], 1);
+    mpz_set_ui(xdo[ns-2], 1);
+    mpz_set_ui(xup[ns-2], 1);
+    mpz_mul_2exp(xdo[ns-1], xdo[ns-1], newcorr);
+    mpz_mul_2exp(xup[ns-1], xup[ns-1], newcorr);
+
+    mpz_mul_2exp(xdo[ns-2], xdo[ns-2], newcorr + k);
+    mpz_mul_2exp(xup[ns-2], xup[ns-2], newcorr + k);
+        /*
+        fprintf(stderr, "root = ");
+        mpz_out_str(stderr, 10, numer); 
+        fprintf(stderr, " / 2^%ld\n", k);
+        */
+
+    mpz_fdiv_q(xdo[ns-2], xdo[ns-2], numer);
+    mpz_fdiv_q(xup[ns-2], xup[ns-2], c);
+
+        /*
+        mpz_out_str(stderr, 10, xdo[ns-2]); 
+        fprintf(stderr, " / 2^%ld\n", newcorr);
+        fprintf(stderr, "\n");
+        */
+    for(long i = ns-3; i >= 0; i--){
+        mpz_mul(xdo[i], xdo[i+1], xdo[ns-2]);
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], newcorr);
+        mpz_mul(xup[i], xup[i+1], xup[ns-2]);
+        mpz_cdiv_q_2exp(xup[i], xup[i], newcorr);
+
+            /*
+            mpz_out_str(stderr, 10, xdo[i]); 
+            fprintf(stderr, " / 2^%ld, ", newcorr);
+            */
+    }
+        //fprintf(stderr, "\n");
+    mpz_mul_2exp(c, numer, newcorr);
+    mpz_fdiv_q_2exp(c, c, k);
+    for(long i = 2 ; i < ns; i++){
+        mpz_mul(c, c, numer);
+        mpz_fdiv_q_2exp(c, c, k);
+    }
+    for(long i = 0; i < ns; i++){
+        mpz_mul(xdo[i], xdo[i], c);
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], newcorr);
+
+            /*
+            mpz_out_str(stderr, 10, xdo[i]); 
+            fprintf(stderr, " / 2^%ld, ", newcorr);
+            */
+    }
+        //fprintf(stderr, "\n");
+    mpz_add_ui(c, numer, 1);
+    mpz_mul_2exp(c, numer, newcorr);
+    mpz_cdiv_q_2exp(c, c, k);
+    for(long i = 2 ; i < ns; i++){
+        mpz_mul(c, c, numer);
+        mpz_cdiv_q_2exp(c, c, k);
+    }
+    for(long i = 0; i < ns; i++){
+        mpz_mul(xup[i], xup[i], c);
+        mpz_cdiv_q_2exp(xup[i], xup[i], newcorr);
+    }
+    for(long i = 0; i < ns; i++){
+        mpz_mul_2exp(xdo[i], xdo[i], corr);
+        mpz_mul_2exp(xup[i], xup[i], corr);
+
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], newcorr);
+        mpz_cdiv_q_2exp(xup[i], xup[i], newcorr);
+    }
+    fprintf(stderr, "time = %f\n", realtime()-st);
 }
 
 void generate_table_values_full(interval *rt, mpz_t c, const long ns,
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
 
-    if(mpz_sizeinbase(rt->numer, 2) < rt->k - 1){
-        generate_table_values_full_small(rt, c, ns, b, corr, xdo, xup);
+    if(mpz_sizeinbase(rt->numer, 2) <= rt->k ){
+        generate_table_values_full_small(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
         return;
     }
+    else{
+        if(mpz_sgn(rt->numer) >=0){
+            generate_table_values_full_large_pos(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
+            return;
+        }
+    }
+    double st = realtime();
   mpz_add_ui(c, rt->numer, 1);
 
   if (mpz_sgn(rt->numer) >= 0) {
@@ -2907,6 +2991,7 @@ void generate_table_values_full(interval *rt, mpz_t c, const long ns,
     mpz_mul_2exp(xdo[i], xdo[i], corr);
     mpz_fdiv_q_2exp(xdo[i], xdo[i], (rt->k) * i);
   }
+  fprintf(stderr, "old time = %f\n", realtime()-st);
 }
 /*
   quad:=a*x^2+b*x+c;
@@ -3152,9 +3237,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   /* checks whether the abs. value of the root is greater than 1 */
 
-  double et = realtime();
   generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
-  *st += realtime() - et;
   while (rt->isexact == 0 && 
           newvalue_denom(param->denom->coeffs, param->denom->length - 1,
                         rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
@@ -3189,6 +3272,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   mpz_out_str(stderr, 10, den_do);
   fprintf(stderr, " / 2^%ld\n", (rt->k) * (param->denom->length  -1));
   */
+  double et = realtime();
   for (long nv = 0; nv < param->nvars - 1; nv++) {
 
     int refine = 1;
@@ -3221,7 +3305,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
         }
         else{
             double str = cputime();
-            fprintf(stderr, "refinement needed [%ld, %ld]\n", nv, rt->k);
+            fprintf(stderr, "refinement needed [%ld, %ld, prec = %ld]\n", nv, rt->k, prec);
             fprintf(stderr, "(%d, %ld)\n", pt->coords[nv]->k_do, mpz_sizeinbase(tmp, 2));
             mpz_out_str(stderr, 10, val_do);fprintf(stderr, " / 2^%d, ", pt->coords[nv]->k_do);
             mpz_out_str(stderr, 10, val_up);fprintf(stderr, " / 2^%d\n", pt->coords[nv]->k_up);
@@ -3242,6 +3326,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
         }
     }
   }
+  *st += realtime() - et;
  
   mpz_set(pt->coords[param->nvars - 1]->val_do, rt->numer);
   mpz_set(pt->coords[param->nvars - 1]->val_up, rt->numer);

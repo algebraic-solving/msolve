@@ -3521,6 +3521,7 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
   if(info_level){
       fprintf(stderr, "Maximum bit size in elimination polynomial: %ld\n", maxnbits);
       fprintf(stderr, "Maximum bit size of coeffs in parametrizations: [");
+      fflush(stdout);
   }
   for (int i = 0; i < param->nvars - 1; i++) {
     long cmax = mpz_poly_max_bsize_coeffs(param->coords[i]->coeffs,
@@ -3533,6 +3534,7 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
         }
         else{
             fprintf(stdout, ", ");
+            fflush(stdout);
         }
     }
     maxnbits = MAX(cmax, maxnbits);
@@ -3551,11 +3553,13 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
   real_point_t *pts = NULL;
   if (info_level > 0) {
     fprintf(stdout, "Number of real roots: %ld\n", nb);
+    fflush(stdout);
   }
   if (nb) {
     /* */
     if (info_level) {
       fprintf(stdout, "Starts real root extraction.\n");
+      fflush(stdout);
     }
     double st = realtime();
     pts = malloc(sizeof(real_point_t) * nb);

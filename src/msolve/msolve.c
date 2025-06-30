@@ -1859,7 +1859,7 @@ int is_splittable(param_t **nmod_params, const int fc){
     nmod_poly_t gcd;
     nmod_poly_init(gcd, fc);
     for(int i = 0; i < nmod_params[0]->nvars - 1; i++){
-        if(!nmod_poly_is_zero(nmod_params[0]->coords[0])){
+        if(!nmod_poly_is_zero(nmod_params[0]->coords[i])){
             nmod_poly_gcd(gcd, nmod_params[0]->elim, nmod_params[0]->coords[i]);
             long deg = nmod_poly_degree(gcd);
             if(deg > 0){
@@ -3291,6 +3291,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
             mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                         param->coords[nv]->length - 1, rt->k, xdo, xup,
                                         tmp, val_do, val_up, corr);
+            
             boo = 1;
         }
         if(boo){

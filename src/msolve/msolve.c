@@ -2862,11 +2862,14 @@ void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, co
 
     mpz_set_ui(xdo[ns-1], 1);
     mpz_set_ui(xup[ns-1], 1);
-    mpz_set_ui(xdo[ns-2], 1);
-    mpz_set_ui(xup[ns-2], 1);
     mpz_mul_2exp(xdo[ns-1], xdo[ns-1], newcorr);
     mpz_mul_2exp(xup[ns-1], xup[ns-1], newcorr);
+    if(ns == 1){
+        return;
+    }
 
+    mpz_set_ui(xdo[ns-2], 1);
+    mpz_set_ui(xup[ns-2], 1);
     mpz_mul_2exp(xdo[ns-2], xdo[ns-2], newcorr + k);
     mpz_mul_2exp(xup[ns-2], xup[ns-2], newcorr + k);
 

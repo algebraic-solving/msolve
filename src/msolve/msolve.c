@@ -3130,23 +3130,18 @@ void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, 
     generate_table_values_full(rt, c, ns, *b, *corr, xdo, xup);
 }
 
-void evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt, 
+static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt, 
         int pos, mpz_t val_do, mpz_t val_up, mpz_t tmp,
         mpz_t den_do, mpz_t den_up, const long prec, const int64_t corr, mpz_t v1, mpz_t v2){
     mpz_neg(val_do, val_do);
     mpz_neg(val_up, val_up);
     mpz_swap(val_up, val_do);
 
-    long dec = 2 * prec;
-    long kden = corr; //(rt->k) * (param->denom->length - 1);
+    long alpha = abs(mpz_sizeinbase(den_do, 2) + mpz_sizeinbase(param->cfs[pos], 2) - mpz_sizeinbase(val_do, 2)) / prec;
+    long dec = MAX(2,2*alpha) * prec;
 
-    if(kden - corr + dec <= 0){
-        dec = kden - corr + dec;
-    }
-    else{
-        mpz_mul_2exp(val_up, val_up, kden - corr + dec);
-        mpz_mul_2exp(val_do, val_do, kden - corr + dec);
-    }
+    mpz_mul_2exp(val_up, val_up, dec);
+    mpz_mul_2exp(val_do, val_do, dec);
 
     if (mpz_sgn(den_do) >= 0 && mpz_sgn(den_up) >= 0) {
       if (mpz_sgn(val_do) >= 0 && mpz_sgn(val_up) >= 0) {
@@ -3195,6 +3190,7 @@ void evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
     pt->coords[pos]->k_up = dec;
     pt->coords[pos]->k_do = dec;
     pt->coords[pos]->isexact = 0;
+    return MAX(2, 2*alpha);
 }
 
 void negate_coeffs_param(mpz_param_t param, mpz_t* polelim){
@@ -3249,9 +3245,11 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
 
   generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
   while (rt->isexact == 0 && 
-          newvalue_denom(param->denom->coeffs, param->denom->length - 1,
+          (mpz_cmp_ui(rt->numer, 0) == 0 ||
+           newvalue_denom(param->denom->coeffs, param->denom->length - 1,
                         rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
-                        s)) {
+                        s)
+           )){
     refine_root_elim(param, polelim, ns, rt, pos_root, 
         tab, xdo, xup, den_up, den_do, c, &corr, 
         &b, info_level);
@@ -3303,10 +3301,10 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                             s);
         }
 
-        evaluate_coordinate(param, rt, pt, nv, val_do, val_up, tmp, den_do, den_up, prec, corr, v1, v2);
+        long alpha = evaluate_coordinate(param, rt, pt, nv, val_do, val_up, tmp, den_do, den_up, prec, corr, v1, v2);
         mpz_sub(tmp, pt->coords[nv]->val_up, pt->coords[nv]->val_do);
 
-        if(mpz_sizeinbase(tmp, 2) <= prec + 1){
+        if(mpz_sizeinbase(tmp, 2) <= (alpha - 1) * prec + 1){
             refine = 0;
         }
         else{
@@ -3645,6 +3643,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
         isolate_real_roots_param(*mpz_paramp, nb_real_roots_ptr, real_roots_ptr,
                                  precision, nr_threads, to_split, info_level);
     int32_t nb = *nb_real_roots_ptr;
+
     if (nb) {
       /* If we added a linear form for genericity reasons remove do not
        * return the last (new) variable in the solutions later on */

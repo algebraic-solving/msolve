@@ -474,11 +474,11 @@ int main(int argc, char **argv){
     if (info_level > 0) {
         double st1 = cputime();
         double rt1 = realtime();
-        fprintf(stderr, "\n\n-------------------------------------------------\
+        fprintf(stdout, "\n\n-------------------------------------------------\
 -----------------------------------\n");
-        fprintf(stderr, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
+        fprintf(stdout, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
                 rt1-rt0, st1-st0);
-        fprintf(stderr, "-------------------------------------------------\
+        fprintf(stdout, "-------------------------------------------------\
 -----------------------------------\n");
     }
     free_data_gens(gens);

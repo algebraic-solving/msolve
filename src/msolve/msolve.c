@@ -2208,7 +2208,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(st);
     if (*dim_ptr == 1) {
       if (info_level) {
-        fprintf(stderr, "Positive dimensional Grobner basis\n");
+        fprintf(stdout, "Positive dimensional Grobner basis\n");
       }
       return 0;
     }
@@ -3747,7 +3747,7 @@ void display_output(int b, int dim, int dquot, files_gb *files,
   }
   if (dim > 0) {
     if (info_level > 0) {
-      fprintf(stderr, "The ideal has positive dimension\n");
+      fprintf(stdout, "The ideal has positive dimension\n");
     }
     if (files->out_file != NULL) {
       FILE *ofile2 = fopen(files->out_file, "a+");
@@ -3864,7 +3864,7 @@ restart:
 
             st->gfc  = gens->field_char;
             if(info_level){
-                fprintf(stderr,
+                fprintf(stdout,
                         "NOTE: Field characteristic is now corrected to %u\n",
                         st->gfc);
             }
@@ -3888,7 +3888,7 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stderr, st, bs);
+            get_and_print_final_statistics(stdout, st, bs);
 
             if(nb==0){
                 fprintf(stderr, "Something went wrong during the computation\n");
@@ -3978,7 +3978,7 @@ restart:
                 st->f4_ctime = ct1 - ct0;
                 st->f4_rtime = rt1 - rt0;
 
-                get_and_print_final_statistics(stderr, st, bs);
+                get_and_print_final_statistics(stdout, st, bs);
 
                 if(nb==0){
                     fprintf(stderr, "Something went wrong during the computation\n");
@@ -4033,7 +4033,7 @@ restart:
 
 	    st->gfc  = gens->field_char;
             if(info_level){
-                fprintf(stderr,
+                fprintf(stdout,
                         "NOTE: Field characteristic is now corrected to %u\n",
                         st->gfc);
             }
@@ -4045,11 +4045,11 @@ restart:
 	    ct0p = cputime();
 	    rt0p = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "INIT   TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "INIT   TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt0p-rt0, ct0p-ct0);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
             if (is_gb == 1) {
@@ -4074,11 +4074,11 @@ restart:
 	    ct1 = cputime();
 	    rt1 = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "F4     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "F4     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt1-rt0p, ct1-ct0p);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 
@@ -4109,11 +4109,11 @@ restart:
 	    ct2 = cputime();
 	    rt2 = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "NF     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "NF     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt2-rt1, ct2-ct1);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
             /* print all reduced elements in tbr, first  one
@@ -4209,11 +4209,11 @@ restart:
 	    ct3 = cputime();
 	    rt3 = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "MATRIX TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "MATRIX TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt3-rt2, ct3-ct2);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 	    nvars_t *linvars = calloc(gens->nvars, sizeof(nvars_t));
@@ -4226,32 +4226,32 @@ restart:
 	    ct4 = cputime();
 	    rt4 = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "FGLM  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "FGLM  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt4-rt3, ct4-ct3);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 	    display_fglm_param(stdout, param);
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "TOTAL  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "TOTAL  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt4-rt0, ct4-ct0);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "INIT   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "INIT   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt0p-rt0)/(rt4-rt0), 100*(ct0p-ct0)/(ct4-ct0));
-	      fprintf(stderr, "F4     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "F4     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt1-rt0p)/(rt4-rt0), 100*(ct1-ct0p)/(ct4-ct0));
-	      fprintf(stderr, "NF     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "NF     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt2-rt1)/(rt4-rt0), 100*(ct2-ct1)/(ct4-ct0));
-	      fprintf(stderr, "MATRIX PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "MATRIX PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt3-rt2)/(rt4-rt0), 100*(ct3-ct2)/(ct4-ct0));
-	      fprintf(stderr, "FGLM   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "FGLM   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt4-rt3)/(rt4-rt0), 100*(ct4-ct3)/(ct4-ct0));
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 	    free(param);
@@ -4782,7 +4782,7 @@ restart:
             free(invalid_gens);
             invalid_gens    =   NULL;
 
-            print_initial_statistics(stderr, st);
+            print_initial_statistics(stdout, st);
 
             /* for faster divisibility checks, needs to be done after we have
              * read some input data for applying heuristics */
@@ -4853,10 +4853,10 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stderr, st, bs_qq);
+            get_and_print_final_statistics(stdout, st, bs_qq);
 
             if(info_level){
-                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+                fprintf(stdout, "\nStarts trace based multi-modular computations\n");
             }
 
             prime = next_prime(1<<30);
@@ -4882,10 +4882,10 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stderr, st, bs_qq);
+            get_and_print_final_statistics(stdout, st, bs_qq);
 
             if(info_level){
-                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+                fprintf(stdout, "\nStarts trace based multi-modular computations\n");
             }
 
             int i;
@@ -5333,11 +5333,11 @@ void msolve_julia(
     if (info_level > 0) {
         double st1 = cputime();
         double rt1 = realtime();
-        fprintf(stderr, "\n-------------------------------------------------\
+        fprintf(stdout, "\n-------------------------------------------------\
 -----------------------------------\n");
-        fprintf(stderr, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
+        fprintf(stdout, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
                 rt1-rt0, st1-st0);
-        fprintf(stderr, "-------------------------------------------------\
+        fprintf(stdout, "-------------------------------------------------\
 -----------------------------------\n");
     }
 }

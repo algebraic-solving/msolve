@@ -356,7 +356,7 @@ bs_t *f4_trace_application_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    get_and_print_final_statistics(stderr, st, bs);
+    get_and_print_final_statistics(stdout, st, bs);
 
 stop:
     /* free and clean up */
@@ -647,7 +647,7 @@ bs_t *f4sat_trace_application_test_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    get_and_print_final_statistics(stderr, st, bs);
+    get_and_print_final_statistics(stdout, st, bs);
 
     /* free and clean up */
     free(hcmm);
@@ -931,7 +931,7 @@ bs_t *f4sat_trace_application_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    get_and_print_final_statistics(stderr, st, bs);
+    get_and_print_final_statistics(stdout, st, bs);
 
 stop:
     /* free and clean up */
@@ -1109,7 +1109,7 @@ bs_t *f4_trace_learning_phase(
     st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
-    get_and_print_final_statistics(stderr, st, bs);
+    get_and_print_final_statistics(stdout, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -1430,7 +1430,7 @@ end_sat_step:
     st->f4_rtime = realtime() - rt;
     st->f4_ctime = cputime() - ct;
 
-    get_and_print_final_statistics(stderr, st, bs);
+    get_and_print_final_statistics(stdout, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -1748,7 +1748,7 @@ bs_t *f4sat_trace_learning_phase_2(
     st->f4_rtime = realtime() - rt;
     st->f4_ctime = cputime() - ct;
 
-    get_and_print_final_statistics(stderr, st, bs);
+    get_and_print_final_statistics(stdout, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -1875,7 +1875,7 @@ int64_t f4_trace_julia(
     free(invalid_gens);
     invalid_gens = NULL;
 
-    print_initial_statistics(stderr, st);
+    print_initial_statistics(stdout, st);
 
     /* for faster divisibility checks, needs to be done after we have
      * read some input data for applying heuristics */
@@ -2057,7 +2057,7 @@ bs_t *modular_f4(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    get_and_print_final_statistics(stderr, st, bs);
+    get_and_print_final_statistics(stdout, st, bs);
 
     /* free and clean up */
     free(hcm);

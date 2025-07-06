@@ -351,7 +351,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
       while(right_interval_2exp(upol, deg_ptr, rt, x, b,
                                 vala, valb, q, k, newk)==0 && index <= maxindex){
         if(verbose>0){
-          fprintf(stderr, "->");
+          fprintf(stdout, "->");
         }
         index++;
       }
@@ -393,7 +393,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
       while(left_interval_2exp(upol, deg_ptr, rt,
                                x, b, vala, valb, q, k, newk) == 0){
         if(verbose>0){
-          fprintf(stderr, "<-");
+          fprintf(stdout, "<-");
         }
       }
     }
@@ -507,7 +507,7 @@ static void refine_root_by_N_negative_k(mpz_t *upol, unsigned long int *deg_ptr,
       while(right_interval(upol, deg_ptr, rt, x, b,
                            vala, valb, q, Nlog, k, newk) == 0){
         if(verbose>0){
-          fprintf(stderr, "|->");
+          fprintf(stdout, "|->");
         }
       }
     }
@@ -565,7 +565,7 @@ static void refine_root_by_N_negative_k(mpz_t *upol, unsigned long int *deg_ptr,
       while(left_interval(upol, deg_ptr, rt, x, b,
                           vala, valb, q, Nlog, k, newk) == 0){
         if(verbose>0){
-          fprintf(stderr, "<-|");
+          fprintf(stdout, "<-|");
         }
       }
     }
@@ -817,8 +817,8 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
     if(e_time>=step){
       refine_time = realtime();
       e_time = 0;
-      if(verbose>=1){
-        fprintf(stderr, "{%.2f%s}", ((double)i / nb) * 100, "%");
+      if(verbose>0){
+        fprintf(stdout, "{%.2f%s}", ((double)i / nb) * 100, "%");
       }
     }
   }
@@ -859,14 +859,14 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
     if(e_time>=step){
       refine_time = realtime();
       e_time = 0;
-      if(verbose>=1){
-        fprintf(stderr, "{%.2f%s}", ((double)(i) / nb) * 100, "%");
+      if(verbose>0){
+        fprintf(stdout, "{%.2f%s}", ((double)(i) / nb) * 100, "%");
       }
     }
 
   }
-  if(verbose>=1){
-    fprintf(stderr, "\n");
+  if(verbose>0){
+    fprintf(stdout, "\n");
   }
   for(i = 0; i < 8; i++){
     mpz_clear(tab[i]);
@@ -978,8 +978,8 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
     if(e_time>=step){
       refine_time = realtime();
       e_time = 0;
-      if(verbose>=1){
-        fprintf(stderr, "{%.2f%s}", ((double)i / nb) * 100, "%");
+      if(verbose>0){
+        fprintf(stdout, "{%.2f%s}", ((double)i / nb) * 100, "%");
       }
     }
   }
@@ -1024,14 +1024,14 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
     if(e_time>=step){
       refine_time = realtime();
       e_time = 0;
-      if(verbose>=1){
-        fprintf(stderr, "{%.2f%s}", ((double)(i) / nb) * 100, "%");
+      if(verbose>0){
+        fprintf(stdout, "{%.2f%s}", ((double)(i) / nb) * 100, "%");
       }
     }
 
   }
-  if(verbose>=1){
-    fprintf(stderr, "\n");
+  if(verbose>0){
+    fprintf(stdout, "\n");
   }
   for(i = 0; i < 8; i++){
     mpz_clear(tab[i]);

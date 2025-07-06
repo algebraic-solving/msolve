@@ -1807,7 +1807,7 @@ gb_modpoly_t *groebner_qq(
   md->f4_ctime = ct1 - ct0;
   md->f4_rtime = rt1 - rt0;
 
-  get_and_print_final_statistics(stderr, md, bs);
+  get_and_print_final_statistics(stdout, md, bs);
 
   /* free and clean up */
   free_mstrace(msd, md);
@@ -1975,7 +1975,7 @@ int64_t export_groebner_qq(
     md->f4_ctime = ct1 - ct0;
     md->f4_rtime = rt1 - rt0;
 
-    get_and_print_final_statistics(stderr, md, bs);
+    get_and_print_final_statistics(stdout, md, bs);
 
     /* free and clean up */
     free_mstrace(msd, md);

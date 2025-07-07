@@ -4760,6 +4760,12 @@ restart:
               flags->files = files;
 
               print_msolve_gbtrace_qq(gens, flags);
+
+              free(bld);
+              free(blen);
+              free(bexp);
+              free(bcf);
+
               return 0;
             }
 

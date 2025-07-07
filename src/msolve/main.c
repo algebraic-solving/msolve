@@ -460,6 +460,7 @@ int main(int argc, char **argv){
         free_fglm_param(param);
     }
     mpz_param_clear(*mpz_paramp);
+    free(mpz_paramp);
 
     if (nb_real_roots > 0) {
         for(long i = 0; i < nb_real_roots; i++){

@@ -148,9 +148,7 @@ ht_t *copy_hash_table(
     ht->bpv = bht->bpv;
     ht->dm  = bht->dm;
     ht->rn  = bht->rn;
-
-    ht->dv  = (len_t *)calloc((unsigned long)ht->ndv, sizeof(len_t));
-    memcpy(ht->dv, bht->dv, (unsigned long)ht->ndv * sizeof(len_t));
+    ht->dv  = bht->dv;
 
     /* generate exponent vector */
     /* keep first entry empty for faster divisibility checks */

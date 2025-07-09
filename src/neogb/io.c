@@ -400,6 +400,7 @@ void import_input_data(
                 }
                 off +=  lens[i];
             }
+            mpz_clears(prod_den, mul, NULL);
             break;
         default:
             exit(1);

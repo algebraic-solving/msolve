@@ -499,18 +499,22 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
       free(modgbs->modpolys[i]->cf_32[j]);
       mpz_clear(modgbs->modpolys[i]->cf_zz[j]);
     }
+
     for(uint32_t j = 0; j < 2 * modgbs->modpolys[i]->len; j++){
       mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
     }
+
     mpz_clear(modgbs->modpolys[i]->lm);
     free(modgbs->modpolys[i]->cf_32);
     free(modgbs->modpolys[i]->cf_zz);
     free(modgbs->modpolys[i]->cf_qq);
+    free(modgbs->hm[i]);
   }
+
   free(modgbs->lmps);
   free(modgbs->hm);
-  //free_hash_table(&(modgbs->bht));
-  free_shared_hash_data(modgbs->bht);
+  free(modgbs->cf_64);
+  full_free_hash_table(&modgbs->bht);
   free(modgbs->modpolys);
 }
 
@@ -786,6 +790,7 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     else{
       gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, num_gb[0], leadmons[0], st);
     }
+    free(lens);
     modpgbs_set(modgbs, bs, bht, fc, start, st->nev);
     int is_empty = 0;
     if(bs->lml == 1){
@@ -1756,8 +1761,6 @@ gb_modpoly_t *groebner_qq(
   int32_t nr_vars = gens->nvars;
   int32_t nr_gens = gens->ngens;
   int reduce_gb = 1;
-  int32_t nr_nf = 0;
-  const uint32_t prime_start = pow(2, 30);
 
   /* timings */
   double ct0, ct1, rt0, rt1;
@@ -1778,7 +1781,7 @@ gb_modpoly_t *groebner_qq(
           nr_vars, nr_gens, 0 /* # normal forms */, ht_size,
           nr_threads, max_nr_pairs, reset_ht, la_option, use_signatures,
           reduce_gb, pbm_file, truncate_lifting, info_level);
- 
+
   /* all input generators are invalid */
   if (success == -1) {
       return NULL;
@@ -1808,7 +1811,8 @@ gb_modpoly_t *groebner_qq(
 
   /* free and clean up */
   free_mstrace(msd, md);
-
+  free_basis_without_hash_table(&bs);
+  free_trace(&md->tr);
   free(md);
   md    = NULL;
 
@@ -1975,14 +1979,17 @@ int64_t export_groebner_qq(
 
     /* free and clean up */
     free_mstrace(msd, md);
+    free_basis_without_hash_table(&bs);
+    free_trace(&md->tr);
     free(md);
     md    = NULL;
 
     int64_t nterms  = export_results_from_groebner_qq(bld, blen, bexp,
             bcf, mallocp, elim_block_len, (*modgbsp));
 
-    gb_modpoly_clear((*modgbsp));
-    
+    gb_modpoly_clear(*modgbsp);
+    free(modgbsp);
+
     return nterms;
 
 }

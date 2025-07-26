@@ -85,7 +85,7 @@ int initialize_gba_input_data(
 
     import_input_data(bs, st, 0, st->ngens_input, lens, exps, cfs, invalid_gens);
 
-    print_initial_statistics(stderr, st);
+    print_initial_statistics(stdout, st);
 
     /* for faster divisibility checks, needs to be done after we have
      * read some input data for applying heuristics */

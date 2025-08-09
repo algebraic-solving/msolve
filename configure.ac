@@ -189,6 +189,9 @@ AC_CONFIG_LINKS([
  output_files/kat8-qq-truncate.res:output_files/kat8-qq-truncate.res
  test/diff/diff_truncate_gb.sh:test/diff/diff_truncate_gb.sh
  input_files/one-31.ms:input_files/one-31.ms
+ output_files/one-31.g1.res:output_files/one-31.g1.res
+ test/diff/diff_one-31-g1.sh:test/diff/diff_one-31-g1.sh
+ input_files/one-31.ms:input_files/one-31.ms
  output_files/one-31.res:output_files/one-31.res
  test/diff/diff_one-31.sh:test/diff/diff_one-31.sh
  input_files/one-qq.ms:input_files/one-qq.ms

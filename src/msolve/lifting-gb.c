@@ -446,7 +446,7 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
     fprintf(file, ", \n");
   }
   display_modpoly(file, modgbs, p-1, gens);
-  fprintf(file, "\n");
+  /* fprintf(file, "\n"); */
   fprintf(file, "]:\n");
 }
 
@@ -466,7 +466,7 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
     fprintf(file, ", \n");
   }
   display_monomial_single(file, gens, p-1, &modgbs->ldm);
-  fprintf(file, "\n");
+  /* fprintf(file, "\n"); */
   fprintf(file, "]:\n");
 }
 

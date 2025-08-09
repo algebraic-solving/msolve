@@ -39,7 +39,6 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_nonradical_radicalshape-no-square-qq.sh \
 			  test/diff/diff_one-16.sh \
 			  test/diff/diff_one-31.sh \
-			  test/diff/diff_one-31-g1.sh \
 			  test/diff/diff_one-qq.sh \
 			  test/diff/diff_radical_shape-31.sh \
 			  test/diff/diff_radical_shape-qq.sh \

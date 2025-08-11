@@ -1497,7 +1497,8 @@ static inline int check_param_modular(const mpz_param_t mp_param,
   int c = check_unit_mpz_nmod_poly(len, mp_param->elim, bparam->elim, prime);
   if (c) {
     if (info_level) {
-      fprintf(stderr, "<0,%d>", c);
+      fprintf(stdout, "<0,%d>", c);
+      fflush(stdout);
     }
     is_lifted[0] = 0;
     for (int i = 0; i < mp_param->nvars - 1; i++) {
@@ -1525,7 +1526,8 @@ static inline int check_param_modular(const mpz_param_t mp_param,
             mp_param->elim->length - 1, bparam->coords[i], prime)) {
       is_lifted[i + 1] = 0;
       if (info_level) {
-        fprintf(stderr, "<%d>", i + 1);
+        fprintf(stdout, "<%d>", i + 1);
+        fflush(stdout);
       }
       return 1;
     }
@@ -1852,7 +1854,22 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 }
 
 
-
+/* returns 1 if the parametrization can be split, otherwise returns 0*/
+int is_splittable(param_t **nmod_params, const int fc){
+    nmod_poly_t gcd;
+    nmod_poly_init(gcd, fc);
+    for(int i = 0; i < nmod_params[0]->nvars - 1; i++){
+        if(!nmod_poly_is_zero(nmod_params[0]->coords[i])){
+            nmod_poly_gcd(gcd, nmod_params[0]->elim, nmod_params[0]->coords[i]);
+            long deg = nmod_poly_degree(gcd);
+            if(deg > 0){
+                return 1;
+            }
+        }
+    }
+    nmod_poly_clear(gcd);
+    return 0;
+}
 
 
 /* sets function pointer */
@@ -1952,6 +1969,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     int32_t la_option,
                     int32_t use_signatures,
                     int32_t lift_matrix,
+                    int *to_split_ptr,
                     int32_t info_level,
                     int32_t print_gb,
                     int32_t pbm_file,
@@ -2020,7 +2038,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free(invalid_gens);
   invalid_gens = NULL;
 
-  print_initial_statistics(stderr, st);
+  print_initial_statistics(stdout, st);
 
   /* for faster divisibility checks, needs to be done after we have
    * read some input data for applying heuristics */
@@ -2147,6 +2165,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
+
   (*mpz_paramp)->dim = *dim_ptr;
   (*mpz_paramp)->dquot = *dquot_ptr;
 
@@ -2189,7 +2208,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(st);
     if (*dim_ptr == 1) {
       if (info_level) {
-        fprintf(stderr, "Positive dimensional Grobner basis\n");
+        fprintf(stdout, "Positive dimensional Grobner basis\n");
       }
       return 0;
     }
@@ -2204,6 +2223,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
+  *to_split_ptr = is_splittable(nmod_params, lp->p[0]);
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
                               leadmons_ori, leadmons_current,
@@ -2215,11 +2235,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                                blinvars, lineqs_ptr,
                                bsquvars);
   normalize_nmod_param(nmod_params[0]);
-
-  /* if (info_level) { */
-  /*   fprintf(stderr, "\nStarts multi-modular computations\n"); */
-  /* } */
-  /* print postponed */
 
   mpz_param_t tmp_mpz_param;
   mpz_param_init(tmp_mpz_param);
@@ -2389,22 +2404,16 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     if (nprimes == 1) {
       if (info_level > 2) {
-        fprintf(stderr, "------------------------------------------\n");
-        fprintf(stderr, "#ADDITIONS       %13lu\n",
+        fprintf(stdout, "------------------------------------------\n");
+        fprintf(stdout, "#ADDITIONS       %13lu\n",
                 (unsigned long)st->application_nr_add * 1000);
-        fprintf(stderr, "#MULTIPLICATIONS %13lu\n",
+        fprintf(stdout, "#MULTIPLICATIONS %13lu\n",
                 (unsigned long)st->application_nr_mult * 1000);
-        fprintf(stderr, "#REDUCTIONS      %13lu\n",
+        fprintf(stdout, "#REDUCTIONS      %13lu\n",
                 (unsigned long)st->application_nr_red);
-        fprintf(stderr, "------------------------------------------\n");
+        fprintf(stdout, "------------------------------------------\n");
+        fflush(stdout);
       }
-      /* if (info_level > 1) { */
-      /*   fprintf(stderr, "Application phase %.2f Gops/sec\n", */
-      /*           (st->application_nr_add + st->application_nr_mult) / 1000.0 / */
-      /*               1000.0 / (stf4)); */
-      /*   fprintf(stderr, "Multi-mod time: GB + fglm (elapsed): %.2f sec\n", */
-      /*           (ca1) ); */
-      /* } */
       if(info_level){
 	    fprintf(stdout,
 		    "\n---------------- TIMINGS ----------------\n");
@@ -2427,6 +2436,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 	    }
 	    fprintf(stdout,
 		    "-----------------------------------------\n");
+        fflush(stdout);
       }
       if (info_level) {
 	  fprintf(stdout,
@@ -2534,8 +2544,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
 
   if(info_level){
-    /* fprintf(stderr, "\n%d primes used\n", nprimes); */
-    /* fprintf(stderr, "Time for CRT + rational reconstruction = %.2f\n", strat); */
     fprintf(stdout,"\n---------- COMPUTATIONAL DATA -----------\n");
     fprintf(stdout, "#primes            %16lu\n", (unsigned long) nprimes);
     fprintf(stdout, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
@@ -2543,6 +2551,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(stdout, "\n---------------- TIMINGS ----------------\n");
     fprintf(stdout, "CRT and ratrecon(elapsed) %10.2f sec\n", strat);
     fprintf(stdout, "-----------------------------------------\n");
+    fflush(stdout);
   }
   mpz_param_clear(tmp_mpz_param);
   mpz_upoly_clear(numer);
@@ -2809,10 +2818,124 @@ void generate_table_values(interval *rt, mpz_t c, const long ns, const long b,
  xdo[i] and xup[i] are rt^i and c^i at precision 2^corr
 [xdo[i]/2^corr, xup[i]/2^corr] contain [rt^i, c^i]
  */
+
+void generate_table_values_full_small(mpz_t numer, mpz_t c, const long k, const long ns,
+                                const long b, const long corr, mpz_t *xdo,
+                                mpz_t *xup) {
+
+  mpz_add_ui(c, numer, 1);
+
+  mpz_set_ui(xup[0], 1);
+  mpz_set_ui(xdo[0], 1);
+  mpz_mul_2exp(xdo[0], xdo[0], corr);
+  mpz_mul_2exp(xup[0], xup[0], corr);
+  if (mpz_sgn(numer) >= 0) {
+    for (long i = 1; i < ns; i++) {
+        mpz_mul(xup[i], xup[i - 1], c);
+        mpz_mul(xdo[i], xdo[i - 1], numer);
+        mpz_cdiv_q_2exp(xup[i], xup[i], k);
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], k);
+    }
+  } else {
+    for (long i = 1; i < ns; i++) {
+      if ((i & 1) == 1) {
+        mpz_mul(xup[i], xdo[i - 1], c);
+        mpz_mul(xdo[i], xup[i - 1], numer);
+      } else {
+        mpz_mul(xup[i], xdo[i - 1], numer);
+        mpz_mul(xdo[i], xup[i - 1], c);
+      }
+      mpz_cdiv_q_2exp(xup[i], xup[i], k );
+      mpz_fdiv_q_2exp(xdo[i], xdo[i], k );
+    }
+  }
+}
+
+void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, const long ns,
+                                const long b, const long corr, mpz_t *xdo,
+                                mpz_t *xup) {
+    
+    double st = realtime();
+
+    mpz_add_ui(c, numer, 1);
+    long newcorr = MAX(corr, 2 * ns * (mpz_sizeinbase(numer, 2) - k));
+
+    mpz_set_ui(xdo[ns-1], 1);
+    mpz_set_ui(xup[ns-1], 1);
+    mpz_mul_2exp(xdo[ns-1], xdo[ns-1], newcorr);
+    mpz_mul_2exp(xup[ns-1], xup[ns-1], newcorr);
+    if(ns == 1){
+        return;
+    }
+
+    mpz_set_ui(xdo[ns-2], 1);
+    mpz_set_ui(xup[ns-2], 1);
+    mpz_mul_2exp(xdo[ns-2], xdo[ns-2], newcorr + k);
+    mpz_mul_2exp(xup[ns-2], xup[ns-2], newcorr + k);
+
+    mpz_fdiv_q(xdo[ns-2], xdo[ns-2], c);
+    mpz_cdiv_q(xup[ns-2], xup[ns-2], numer);
+
+    for(long i = ns-3; i >= 0; i--){
+        mpz_mul(xdo[i], xdo[i+1], xdo[ns-2]);
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], newcorr);
+        mpz_mul(xup[i], xup[i+1], xup[ns-2]);
+        mpz_cdiv_q_2exp(xup[i], xup[i], newcorr);
+
+        if(mpz_cmp(xup[i], xdo[i])<0){
+            fprintf(stderr, "BUG in generate (debut %ld)\n", i);
+            mpz_out_str(stderr, 10, xdo[i]);fprintf(stderr, "\n");
+            mpz_out_str(stderr, 10, xup[i]);fprintf(stderr, "\n");
+            exit(1);
+        }
+    }
+    mpz_mul_2exp(c, numer, newcorr);
+    mpz_fdiv_q_2exp(c, c, k);
+    for(long i = 2 ; i < ns; i++){
+        mpz_mul(c, c, numer);
+        mpz_fdiv_q_2exp(c, c, k);
+    }
+    for(long i = 0; i < ns; i++){
+        mpz_mul(xdo[i], xdo[i], c);
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], newcorr);
+    }
+    mpz_add_ui(c, numer, 1);
+    mpz_mul_2exp(c, numer, newcorr);
+    mpz_cdiv_q_2exp(c, c, k);
+    for(long i = 2 ; i < ns; i++){
+        mpz_mul(c, c, numer);
+        mpz_cdiv_q_2exp(c, c, k);
+    }
+    for(long i = 0; i < ns; i++){
+        mpz_mul(xup[i], xup[i], c);
+        mpz_cdiv_q_2exp(xup[i], xup[i], newcorr);
+    }
+    for(long i = 0; i < ns; i++){
+        mpz_mul_2exp(xdo[i], xdo[i], corr);
+        mpz_mul_2exp(xup[i], xup[i], corr);
+
+        mpz_fdiv_q_2exp(xdo[i], xdo[i], newcorr);
+        mpz_cdiv_q_2exp(xup[i], xup[i], newcorr);
+        if(mpz_cmp(xup[i], xdo[i])<0){
+            fprintf(stderr, "BUG in generate (end)\n");
+            exit(1);
+        }
+    }
+}
+
 void generate_table_values_full(interval *rt, mpz_t c, const long ns,
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
 
+    if(mpz_sizeinbase(rt->numer, 2) <= rt->k ){
+        generate_table_values_full_small(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
+        return;
+    }
+    else{
+        generate_table_values_full_large_pos(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
+        return;
+    }
+    double st = realtime();
   mpz_add_ui(c, rt->numer, 1);
 
   if (mpz_sgn(rt->numer) >= 0) {
@@ -2820,9 +2943,8 @@ void generate_table_values_full(interval *rt, mpz_t c, const long ns,
     mpz_set_ui(xup[0], 1);
     mpz_set_ui(xdo[0], 1);
     for (long i = 1; i < ns; i++) {
-
-      mpz_mul(xup[i], xup[i - 1], c);
-      mpz_mul(xdo[i], xdo[i - 1], rt->numer);
+        mpz_mul(xup[i], xup[i - 1], c);
+        mpz_mul(xdo[i], xdo[i - 1], rt->numer);
     }
   } else {
 
@@ -2919,49 +3041,8 @@ int evalquadric(mpz_t *quad, mpz_t r, long k, mpz_t *tmpquad, mpz_t tmp) {
   return 1;
 }
 
-/* evaluates denom (which has degree deg)
-   at the interval [r/2^k, (r+1)/2^k]
-   returns  */
-int value_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo, mpz_t *xup,
-                mpz_t tmp, mpz_t den_do, mpz_t den_up, long corr, mpz_t c) {
 
-  /* /\* boo is 1 if den_do and den_up have not the same sign */
-  /*    else it is 0 */
-  mpz_add_ui(c, r, 1);
-
-  /* mpz_poly_eval_2exp_naive2(denom, deg, r, k, den_do, tmp); */
-  /* mpz_poly_eval_2exp_naive2(denom, deg, c, k, den_up, tmp); */
-
-  /* if(mpz_sgn(den_do)!=mpz_sgn(den_up)){ */
-  /*   return 1; */
-  /* } */
-  /* MODIFS START HERE */
-  /* if(mpz_cmp(den_do, den_up)>0){ */
-  /*   mpz_swap(den_do, den_up); */
-  /* } */
-  /* mpz_mul_2exp(den_do, den_do, corr); */
-  /* mpz_mul_2exp(den_up, den_up, corr); */
-  /* mpz_fdiv_q_2exp(den_do, den_do, k*deg); */
-  /* mpz_cdiv_q_2exp(den_up, den_up, k*deg); */
-  /* return 0; */
-
-  int boo = mpz_poly_eval_interval(denom, deg, k, r, c, tmp, den_do, den_up);
-  if (mpz_cmp(den_do, den_up) > 0) {
-    fprintf(stderr, "BUG (den_do > den_up)\n");
-    exit(1);
-  }
-  mpz_mul_2exp(den_do, den_do, corr);
-  mpz_mul_2exp(den_up, den_up, corr);
-  mpz_fdiv_q_2exp(den_do, den_do, k * deg);
-  mpz_cdiv_q_2exp(den_up, den_up, k * deg);
-
-  if (mpz_sgn(den_do) != mpz_sgn(den_up)) {
-    return 1;
-  }
-  return boo;
-}
-
-int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
+int newvalue_denom_old(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
                    mpz_t *xup, mpz_t tmp, mpz_t den_do, mpz_t den_up, long corr,
                    mpz_t c) {
 
@@ -2972,44 +3053,27 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
     fprintf(stderr, "BUG (den_do > den_up)\n");
     exit(1);
   }
-  mpz_mul_2exp(den_do, den_do, corr);
-  mpz_mul_2exp(den_up, den_up, corr);
-  mpz_fdiv_q_2exp(den_do, den_do, k * deg);
-  mpz_cdiv_q_2exp(den_up, den_up, k * deg);
-
   return (boo || (mpz_sgn(den_do)==0) || (mpz_sgn(den_up)==0));
 }
 
-void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
-                                 interval *rt, long nb, interval *pos_root,
-                                 mpz_t *xdo, mpz_t *xup, mpz_t den_up,
-                                 mpz_t den_do, mpz_t c, mpz_t tmp, mpz_t val_do,
-                                 mpz_t val_up, mpz_t *tab, real_point_t pt,
-                                 long prec, long nbits, mpz_t s,
-                                 int info_level) {
-  long ns = param->nsols;
-  /* root is exact */
-  if (rt->isexact == 1) {
-    single_exact_real_root_param(param, rt, nb, xdo, xup, den_up, den_do, c,
-                                 tmp, val_do, val_up, tab, pt, MAX(rt->k, prec),
-                                 info_level);
-    return;
-  }
+int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
+                   mpz_t *xup, mpz_t tmp, mpz_t den_do, mpz_t den_up, long corr,
+                   mpz_t c) {
 
-  int64_t b = 16;
-  int64_t corr = 2 * (ns + rt->k);
+    mpz_scalar_product_interval(denom, deg, k, xdo, xup, tmp, den_do, den_up, corr);
+    return (mpz_sgn(den_do) != mpz_sgn(den_up) || mpz_sgn(den_do) == 0 || mpz_sgn(den_up) == 0);
 
-  /* checks whether the abs. value of the root is greater than 1 */
+}
 
-  generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
-  while (rt->isexact == 0 &&
-          newvalue_denom(param->denom->coeffs, param->denom->length - 1,
-                        rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
-                        s)) {
-
-    /* root is positive */
+void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, interval *pos_root, 
+        mpz_t *tab, mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do, mpz_t c, int64_t *corr, 
+        int64_t *b, const int info_level){
     if (mpz_sgn(rt->numer) >= 0) {
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
+      if(mpz_sgn(tab[0]) != rt->sign_left){
+          fprintf(stderr, "BUG in get_values_at_bounds (called from refine_root_elim)\n");
+          exit(1);
+      }
       refine_QIR_positive_root(polelim, &ns, rt, tab, 2 * (rt->k), info_level);
     } else {
       /* root is negative */
@@ -3025,7 +3089,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
       }
       get_values_at_bounds(polelim, ns, pos_root, tab);
       refine_QIR_positive_root(polelim, &ns, pos_root, tab,
-                               2 * (pos_root->k) + ns, info_level);
+                               2 * (pos_root->k), info_level);
       for (long i = 0; i <= ns; i++) {
         if ((i & 1) == 1) {
           mpz_neg(polelim[i], polelim[i]);
@@ -3053,28 +3117,157 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
       ns = param->nsols;
     }
 
-    corr *= 2;
-    b *= 2;
+    *corr *= 2;
+    *b *= 2;
 
     if(rt->isexact){
         mpz_poly_eval_2exp_naive(param->denom->coeffs, param->denom->length - 1,
                         &rt->numer, rt->k, xdo, xup);
         mpz_set(den_up, xdo[0]);
         mpz_set(den_do, xdo[0]);
-        corr = (param->denom->length - 1) * rt->k;
+        *corr = (param->denom->length - 1) * rt->k;
     }
-    generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
+    generate_table_values_full(rt, c, ns, *b, *corr, xdo, xup);
+}
 
-    if (info_level) {
-      fprintf(stderr, "<%ld>", rt->k);
+static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt, 
+        int pos, mpz_t val_do, mpz_t val_up, mpz_t tmp,
+        mpz_t den_do, mpz_t den_up, const long prec, const int64_t corr, mpz_t v1, mpz_t v2){
+    mpz_neg(val_do, val_do);
+    mpz_neg(val_up, val_up);
+    mpz_swap(val_up, val_do);
+
+    long alpha = abs(mpz_sizeinbase(den_do, 2) + mpz_sizeinbase(param->cfs[pos], 2) - mpz_sizeinbase(val_do, 2)) / prec;
+    long dec = MAX(2,2*alpha) * prec;
+
+    mpz_mul_2exp(val_up, val_up, dec);
+    mpz_mul_2exp(val_do, val_do, dec);
+
+    if (mpz_sgn(den_do) >= 0 && mpz_sgn(den_up) >= 0) {
+      if (mpz_sgn(val_do) >= 0 && mpz_sgn(val_up) >= 0) {
+        mpz_mul(tmp, den_up, param->cfs[pos]);
+        mpz_fdiv_q(v1, val_do, tmp);
+        mpz_mul(tmp, den_do, param->cfs[pos]);
+        mpz_cdiv_q(v2, val_up, tmp);
+        
+      }
+      if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) >= 0) {
+        mpz_mul(tmp, den_do, param->cfs[pos]);
+        mpz_fdiv_q(v1, val_do, tmp);
+        mpz_cdiv_q(v2, val_up, tmp);
+      }
+      if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) <= 0) {
+        mpz_mul(tmp, den_do, param->cfs[pos]);
+        mpz_fdiv_q(v1, val_do, tmp);
+        mpz_mul(tmp, den_up, param->cfs[pos]);
+        mpz_cdiv_q(v2, val_up, tmp);
+      }
+    } else {
+      if (mpz_sgn(val_do) >= 0 && mpz_sgn(val_up) >= 0) {
+        mpz_mul(tmp, den_up, param->cfs[pos]);
+        mpz_fdiv_q(v1, val_up, tmp);
+        mpz_mul(tmp, den_do, param->cfs[pos]);
+        mpz_cdiv_q(v2, val_do, tmp);
+      }
+      if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) >= 0) {
+        mpz_mul(tmp, den_up, param->cfs[pos]);
+        mpz_fdiv_q(v1, val_up, tmp);
+        mpz_cdiv_q(v2, val_do, tmp);
+      }
+      if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) <= 0) {
+        mpz_mul(tmp, den_do, param->cfs[pos]);
+        mpz_fdiv_q(v1, val_up, tmp);
+        mpz_mul(tmp, den_up, param->cfs[pos]);
+        mpz_cdiv_q(v2, val_do, tmp);
+      }
     }
+    mpz_set(val_do, v1);
+    mpz_set(val_up, v2);
+
+    mpz_set(pt->coords[pos]->val_up, val_up);
+    mpz_set(pt->coords[pos]->val_do, val_do);
+
+    pt->coords[pos]->k_up = dec;
+    pt->coords[pos]->k_do = dec;
+    pt->coords[pos]->isexact = 0;
+    return MAX(2, 2*alpha);
+}
+
+void negate_coeffs_param(mpz_param_t param, mpz_t* polelim){
+      for(long i = 0; i < param->elim->length; i++){
+          if((i & 1) == 1){
+              mpz_neg(param->elim->coeffs[i], param->elim->coeffs[i]);
+              mpz_neg(polelim[i], polelim[i]);
+          }
+      }
+      for(long i = 0; i < param->denom->length; i++){
+          if((i & 1) == 1){
+              mpz_neg(param->denom->coeffs[i], param->denom->coeffs[i]);
+          }
+      }
+      for (long nv = 0; nv < param->nvars - 1; nv++) {
+          for(long i = 0; i < param->coords[nv]->length; i++){
+              if((i & 1) == 1){
+                  mpz_neg(param->coords[nv]->coeffs[i], param->coords[nv]->coeffs[i]);
+              }
+          }
+      }
+}
+
+void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
+                                 interval *rt, long nb, interval *pos_root,
+                                 mpz_t *xdo, mpz_t *xup, mpz_t den_up,
+                                 mpz_t den_do, mpz_t c, mpz_t tmp, mpz_t val_do,
+                                 mpz_t val_up, mpz_t *tab, real_point_t pt,
+                                 long prec, long nbits, mpz_t s,
+                                 int to_split, int info_level, double *st) {
+  long ns = param->nsols;
+  /* root is exact */
+  if (rt->isexact == 1) {
+    single_exact_real_root_param(param, rt, nb, xdo, xup, den_up, den_do, c,
+                                 tmp, val_do, val_up, tab, pt, MAX(rt->k, prec),
+                                 info_level);
+    return;
   }
 
 
+  int64_t b = 16;
+  int64_t corr = 2 * (ns + rt->k);
+  int negate = 0;
+
+  if(mpz_sgn(rt->numer) < 0 && mpz_sizeinbase(rt->numer, 2) > rt->k){
+      negate_coeffs_param(param, polelim);
+      mpz_add_ui(rt->numer, rt->numer, 1);
+      mpz_neg(rt->numer, rt->numer);
+      rt->sign_left = -(rt->sign_left);
+      negate = 1;
+  }
+
+  generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
+  while (rt->isexact == 0 && 
+          (mpz_cmp_ui(rt->numer, 0) == 0 ||
+           newvalue_denom(param->denom->coeffs, param->denom->length - 1,
+                        rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
+                        s)
+           )){
+    refine_root_elim(param, polelim, ns, rt, pos_root, 
+        tab, xdo, xup, den_up, den_do, c, &corr, 
+        &b, info_level);
+
+    if (info_level) {
+      fprintf(stdout, "<%ld>", rt->k);
+    }
+  }
   if (rt->isexact == 1) {
     single_exact_real_root_param(param, rt, nb, xdo, xup, den_up, den_do, c,
                                  tmp, val_do, val_up, tab, pt, MAX(prec, rt->k),
                                  info_level);
+    if(negate){
+        negate_coeffs_param(param, polelim);
+        mpz_neg(rt->numer, rt->numer);
+        mpz_sub_ui(rt->numer, rt->numer, 1);
+        rt->sign_left = -(rt->sign_left);
+    }
     return;
   }
 
@@ -3082,78 +3275,61 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   mpz_init(v1);
   mpz_init(v2);
 
+
+  double et = realtime();
   for (long nv = 0; nv < param->nvars - 1; nv++) {
 
-    mpz_scalar_product_interval(param->coords[nv]->coeffs,
-                                param->coords[nv]->length - 1, rt->k, xdo, xup,
-                                tmp, val_do, val_up, corr);
-    mpz_neg(val_do, val_do);
-    mpz_neg(val_up, val_up);
-    mpz_swap(val_up, val_do);
+    int refine = 1;
+    while(refine){
+        mpz_scalar_product_interval(param->coords[nv]->coeffs,
+                                    param->coords[nv]->length - 1, rt->k, xdo, xup,
+                                    tmp, val_do, val_up, corr);
+        int boo = 0;
+        while(to_split == 0 && mpz_sgn(val_do)*mpz_sgn(val_up) < 0){
+            refine_root_elim(param, polelim, ns, rt, pos_root, 
+                tab, xdo, xup, den_up, den_do, c, &corr, 
+                &b, info_level);
+            mpz_scalar_product_interval(param->coords[nv]->coeffs,
+                                        param->coords[nv]->length - 1, rt->k, xdo, xup,
+                                        tmp, val_do, val_up, corr);
+            
+            boo = 1;
+        }
+        if(boo){
+            newvalue_denom(param->denom->coeffs, param->denom->length - 1,
+                            rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
+                            s);
+        }
 
-    long dec = prec;
+        long alpha = evaluate_coordinate(param, rt, pt, nv, val_do, val_up, tmp, den_do, den_up, prec, corr, v1, v2);
+        mpz_sub(tmp, pt->coords[nv]->val_up, pt->coords[nv]->val_do);
 
-    long nbits = mpz_sizeinbase(val_up, 2) - mpz_sizeinbase(den_up, 2) - mpz_sizeinbase(param->cfs[nv], 2);
-    if(nbits <= 0){
-        dec = prec - nbits;
+        if(mpz_sizeinbase(tmp, 2) <= (alpha - 1) * prec + 1){
+            refine = 0;
+        }
+        else{
+            double str = cputime();
+            refine_root_elim(param, polelim, ns, rt, pos_root, 
+                tab, xdo, xup, den_up, den_do, c, &corr, 
+                &b, info_level);
+            mpz_scalar_product_interval(param->coords[nv]->coeffs,
+                                        param->coords[nv]->length - 1, rt->k, xdo, xup,
+                                        tmp, val_do, val_up, corr);
+            newvalue_denom(param->denom->coeffs, param->denom->length - 1,
+                            rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
+                            s);
+        }
     }
-
-    mpz_mul_2exp(val_up, val_up, dec);
-    mpz_mul_2exp(val_do, val_do, dec);
-
-    if (rt->isexact==0 && mpz_cmp(val_do, val_up) > 0) {
-      fprintf(stderr, "BUG in real root extractor(2)\n");
-      exit(1);
-    }
-
-    if (mpz_sgn(den_do) >= 0 && mpz_sgn(den_up) >= 0) {
-      if (mpz_sgn(val_do) >= 0 && mpz_sgn(val_up) >= 0) {
-        mpz_mul(tmp, den_up, param->cfs[nv]);
-        mpz_fdiv_q(v1, val_do, tmp);
-        mpz_mul(tmp, den_do, param->cfs[nv]);
-        mpz_cdiv_q(v2, val_up, tmp);
-
-      }
-      if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) >= 0) {
-        mpz_mul(tmp, den_do, param->cfs[nv]);
-        mpz_fdiv_q(v1, val_do, tmp);
-        mpz_cdiv_q(v2, val_up, tmp);
-      }
-      if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) <= 0) {
-        mpz_mul(tmp, den_do, param->cfs[nv]);
-        mpz_fdiv_q(v1, val_do, tmp);
-        mpz_mul(tmp, den_up, param->cfs[nv]);
-        mpz_cdiv_q(v2, val_up, tmp);
-      }
-    } else {
-      if (mpz_sgn(val_do) >= 0 && mpz_sgn(val_up) >= 0) {
-        mpz_mul(tmp, den_up, param->cfs[nv]);
-        mpz_fdiv_q(v1, val_up, tmp);
-        mpz_mul(tmp, den_do, param->cfs[nv]);
-        mpz_cdiv_q(v2, val_do, tmp);
-      }
-      if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) >= 0) {
-        mpz_mul(tmp, den_up, param->cfs[nv]);
-        mpz_fdiv_q(v1, val_up, tmp);
-        mpz_cdiv_q(v2, val_do, tmp);
-      }
-      if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) <= 0) {
-        mpz_mul(tmp, den_do, param->cfs[nv]);
-        mpz_fdiv_q(v1, val_up, tmp);
-        mpz_mul(tmp, den_up, param->cfs[nv]);
-        mpz_cdiv_q(v2, val_do, tmp);
-      }
-    }
-    mpz_set(val_do, v1);
-    mpz_set(val_up, v2);
-
-    mpz_set(pt->coords[nv]->val_up, val_up);
-    mpz_set(pt->coords[nv]->val_do, val_do);
-
-    pt->coords[nv]->k_up = dec;
-    pt->coords[nv]->k_do = dec;
-    pt->coords[nv]->isexact = 0;
   }
+  *st += realtime() - et;
+ 
+  if(negate){
+      negate_coeffs_param(param, polelim);
+      mpz_neg(rt->numer, rt->numer);
+      mpz_sub_ui(rt->numer, rt->numer, 1);
+      rt->sign_left = -(rt->sign_left);
+  }
+
   mpz_set(pt->coords[param->nvars - 1]->val_do, rt->numer);
   mpz_set(pt->coords[param->nvars - 1]->val_up, rt->numer);
   mpz_add_ui(pt->coords[param->nvars - 1]->val_up,
@@ -3201,7 +3377,7 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv) {
 
 void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
                               real_point_t *pts, long prec, long nbits,
-                              double step, int info_level) {
+                              double step, int to_split, int info_level) {
   long nsols = param->elim->length - 1;
   mpz_t *xup = malloc(sizeof(mpz_t) * nsols);
   mpz_t *xdo = malloc(sizeof(mpz_t) * nsols);
@@ -3233,17 +3409,19 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
   mpz_init(s);
 
   double et = realtime();
+  double st = 0;
 
   for (long nc = 0; nc < nb; nc++) {
     interval *rt = roots + nc;
 
     lazy_single_real_root_param(param, polelim, rt, nb, pos_root, xdo, xup,
                                 den_up, den_do, c, tmp, val_do, val_up, tab,
-                                pts[nc], prec, nbits, s, info_level);
+                                pts[nc], prec, nbits, s, to_split, info_level, &st);
 
     if (info_level) {
       if (realtime() - et >= step) {
-        fprintf(stderr, "{%.2f%%}", 100 * nc / ((double)nb));
+        fprintf(stdout, "{%.2f%%}", 100 * nc / ((double)nb));
+        fflush(stdout);
         et = realtime();
       }
     }
@@ -3278,7 +3456,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 
 real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
                          interval **real_roots_ptr, int32_t precision,
-                         int32_t nr_threads, int32_t info_level) {
+                         int32_t nr_threads, int to_split, int32_t info_level) {
   mpz_t *pol = malloc(param->elim->length * sizeof(mpz_t));
 
   for (long i = 0; i < param->elim->length; i++) {
@@ -3287,12 +3465,28 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
   long maxnbits =
       mpz_poly_max_bsize_coeffs(param->elim->coeffs, param->elim->length - 1);
 
+  if(info_level){
+      fprintf(stdout, "Maximum bit size in elimination polynomial: %ld\n", maxnbits);
+      fprintf(stdout, "Maximum bit size of coeffs in parametrizations: [");
+      fflush(stdout);
+  }
   for (int i = 0; i < param->nvars - 1; i++) {
     long cmax = mpz_poly_max_bsize_coeffs(param->coords[i]->coeffs,
                                           param->coords[i]->length - 1);
+    if(info_level){
+        fprintf(stdout, "%ld",cmax);
+        if(i == param->nvars - 2){
+            fprintf(stdout, "]\n");
+            fflush(stdout);
+        }
+        else{
+            fprintf(stdout, ", ");
+            fflush(stdout);
+        }
+    }
     maxnbits = MAX(cmax, maxnbits);
   }
-  long prec = MAX(precision, 128 + (maxnbits) / 32);
+  long prec = MAX(2*precision, param->elim->length  / 2 + ( LOG2(maxnbits) ) );
   double st = realtime();
 
   long unsigned int nbpos = 0;
@@ -3304,12 +3498,14 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
 
   real_point_t *pts = NULL;
   if (info_level > 0) {
-    fprintf(stderr, "Number of real roots: %ld\n", nb);
+    fprintf(stdout, "Number of real roots: %ld\n", nb);
+    fflush(stdout);
   }
   if (nb) {
     /* */
     if (info_level) {
-      fprintf(stderr, "Starts real root extraction.\n");
+      fprintf(stdout, "Starts real root extraction.\n");
+      fflush(stdout);
     }
     double st = realtime();
     pts = malloc(sizeof(real_point_t) * nb);
@@ -3319,10 +3515,11 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
     }
 
     extract_real_roots_param(param, roots, nb, pts, precision, maxnbits, step,
-                             info_level);
+                             to_split, info_level);
     if (info_level) {
-      fprintf(stderr, "Elapsed time (real root extraction) = %.2f\n",
+      fprintf(stdout, "Elapsed time (real root extraction) = %.2f\n",
               realtime() - st);
+      fflush(stdout);
     }
   }
   *real_roots_ptr = roots;
@@ -3338,7 +3535,7 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
 void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
                                interval ***lreal_roots_ptr,
                                real_point_t ***lreal_pts_ptr, int32_t precision,
-                               int32_t nr_threads, int32_t info_level) {
+                               int32_t nr_threads, int to_split, int32_t info_level) {
   long *lnbr = malloc(sizeof(long) * lparams->nb);
   interval **lreal_roots = malloc(sizeof(interval *) * lparams->nb);
   real_point_t **lreal_pts = malloc(sizeof(real_point_t *) * lparams->nb);
@@ -3350,7 +3547,7 @@ void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
   for (int i = 0; i < lparams->nb; i++) {
     lreal_pts[i] =
         isolate_real_roots_param(lparams->params[i], lnbr + i, lreal_roots + i,
-                                 precision, nr_threads, info_level);
+                                 precision, nr_threads, to_split, info_level);
   }
   (*lnbr_ptr) = lnbr;
   (*lreal_roots_ptr) = lreal_roots;
@@ -3389,6 +3586,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 
   double ct0 = cputime();
   double rt0 = realtime();
+  int to_split = 0;
   int b = msolve_trace_qq(mpz_paramp,
                           nmod_param,
                           dim_ptr,
@@ -3403,6 +3601,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           la_option,
                           use_signatures,
                           lift_matrix,
+                          &to_split,
                           info_level,
                           print_gb,
                           pbm_file,
@@ -3426,6 +3625,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 	    ct1-ct0);
     fprintf(stdout,
 	    "-----------------------------------------\n");
+    fflush(stdout);
   }
 
   if (get_param > 1) {
@@ -3441,8 +3641,9 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 
     pts =
         isolate_real_roots_param(*mpz_paramp, nb_real_roots_ptr, real_roots_ptr,
-                                 precision, nr_threads, info_level);
+                                 precision, nr_threads, to_split, info_level);
     int32_t nb = *nb_real_roots_ptr;
+
     if (nb) {
       /* If we added a linear form for genericity reasons remove do not
        * return the last (new) variable in the solutions later on */
@@ -3545,7 +3746,7 @@ void display_output(int b, int dim, int dquot, files_gb *files,
   }
   if (dim > 0) {
     if (info_level > 0) {
-      fprintf(stderr, "The ideal has positive dimension\n");
+      fprintf(stdout, "The ideal has positive dimension\n");
     }
     if (files->out_file != NULL) {
       FILE *ofile2 = fopen(files->out_file, "a+");
@@ -3662,7 +3863,7 @@ restart:
 
             st->gfc  = gens->field_char;
             if(info_level){
-                fprintf(stderr,
+                fprintf(stdout,
                         "NOTE: Field characteristic is now corrected to %u\n",
                         st->gfc);
             }
@@ -3686,7 +3887,7 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stderr, st, bs);
+            get_and_print_final_statistics(stdout, st, bs);
 
             if(nb==0){
                 fprintf(stderr, "Something went wrong during the computation\n");
@@ -3775,7 +3976,7 @@ restart:
                 st->f4_ctime = ct1 - ct0;
                 st->f4_rtime = rt1 - rt0;
 
-                get_and_print_final_statistics(stderr, st, bs);
+                get_and_print_final_statistics(stdout, st, bs);
 
                 if(nb==0){
                     fprintf(stderr, "Something went wrong during the computation\n");
@@ -3830,7 +4031,7 @@ restart:
 
 	    st->gfc  = gens->field_char;
             if(info_level){
-                fprintf(stderr,
+                fprintf(stdout,
                         "NOTE: Field characteristic is now corrected to %u\n",
                         st->gfc);
             }
@@ -3842,11 +4043,11 @@ restart:
 	    ct0p = cputime();
 	    rt0p = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "INIT   TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "INIT   TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt0p-rt0, ct0p-ct0);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
             if (is_gb == 1) {
@@ -3871,11 +4072,11 @@ restart:
 	    ct1 = cputime();
 	    rt1 = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "F4     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "F4     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt1-rt0p, ct1-ct0p);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 
@@ -3905,11 +4106,11 @@ restart:
 	    ct2 = cputime();
 	    rt2 = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "NF     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "NF     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt2-rt1, ct2-ct1);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
             /* print all reduced elements in tbr, first  one
@@ -4005,11 +4206,11 @@ restart:
 	    ct3 = cputime();
 	    rt3 = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "MATRIX TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "MATRIX TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt3-rt2, ct3-ct2);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 	    nvars_t *linvars = calloc(gens->nvars, sizeof(nvars_t));
@@ -4022,32 +4223,32 @@ restart:
 	    ct4 = cputime();
 	    rt4 = realtime();
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "FGLM  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "FGLM  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt4-rt3, ct4-ct3);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 	    display_fglm_param(stdout, param);
 	    if (info_level) {
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "TOTAL  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(stdout, "TOTAL  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt4-rt0, ct4-ct0);
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stderr, "INIT   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "INIT   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt0p-rt0)/(rt4-rt0), 100*(ct0p-ct0)/(ct4-ct0));
-	      fprintf(stderr, "F4     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "F4     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt1-rt0p)/(rt4-rt0), 100*(ct1-ct0p)/(ct4-ct0));
-	      fprintf(stderr, "NF     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "NF     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt2-rt1)/(rt4-rt0), 100*(ct2-ct1)/(ct4-ct0));
-	      fprintf(stderr, "MATRIX PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "MATRIX PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt3-rt2)/(rt4-rt0), 100*(ct3-ct2)/(ct4-ct0));
-	      fprintf(stderr, "FGLM   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(stdout, "FGLM   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt4-rt3)/(rt4-rt0), 100*(ct4-ct3)/(ct4-ct0));
-	      fprintf(stderr, "-------------------------------------------------\
+	      fprintf(stdout, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 	    free(param);
@@ -4577,7 +4778,7 @@ restart:
             free(invalid_gens);
             invalid_gens    =   NULL;
 
-            print_initial_statistics(stderr, st);
+            print_initial_statistics(stdout, st);
 
             /* for faster divisibility checks, needs to be done after we have
              * read some input data for applying heuristics */
@@ -4647,10 +4848,10 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stderr, st, bs_qq);
+            get_and_print_final_statistics(stdout, st, bs_qq);
 
             if(info_level){
-                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+                fprintf(stdout, "\nStarts trace based multi-modular computations\n");
             }
 
             prime = next_prime(1<<30);
@@ -4676,10 +4877,10 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stderr, st, bs_qq);
+            get_and_print_final_statistics(stdout, st, bs_qq);
 
             if(info_level){
-                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+                fprintf(stdout, "\nStarts trace based multi-modular computations\n");
             }
 
             int i;
@@ -5133,11 +5334,11 @@ void msolve_julia(
     if (info_level > 0) {
         double st1 = cputime();
         double rt1 = realtime();
-        fprintf(stderr, "\n-------------------------------------------------\
+        fprintf(stdout, "\n-------------------------------------------------\
 -----------------------------------\n");
-        fprintf(stderr, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
+        fprintf(stdout, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
                 rt1-rt0, st1-st0);
-        fprintf(stderr, "-------------------------------------------------\
+        fprintf(stdout, "-------------------------------------------------\
 -----------------------------------\n");
     }
 }

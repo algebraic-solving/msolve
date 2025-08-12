@@ -5,5 +5,4 @@
 #monomial order:       graded reverse lexicographical
 #length of basis:      1 element
 #---
-[1
-]:
+[1]:

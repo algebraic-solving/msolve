@@ -253,7 +253,11 @@ static void print_msolve_polynomials_ff(
                 for (;k < nv; ++k) {
                     if (ht->ev[hm[0]][evi[k]] > 0) {
                         fprintf(file, "*%s^%u",vnames[k], ht->ev[hm[0]][evi[k]]);
+                        ctr++;
                     }
+                }
+                if (ctr == 0) {
+                    fprintf(file, "1");
                 }
                 if (i < to-1) {
                     fprintf(file, ",\n");

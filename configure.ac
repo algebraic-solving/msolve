@@ -190,6 +190,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_truncate_gb.sh:test/diff/diff_truncate_gb.sh
  input_files/one-31.ms:input_files/one-31.ms
  output_files/one-31.res:output_files/one-31.res
+ output_files/one-31.g1.res:output_files/one-31.g1.res
  test/diff/diff_one-31.sh:test/diff/diff_one-31.sh
  input_files/one-qq.ms:input_files/one-qq.ms
  output_files/one-qq.res:output_files/one-qq.res

@@ -1700,8 +1700,8 @@ uint64_t export_results_from_groebner_qq(
         len_t idx = gb->lmps[p];
         hm  = gb->hm[idx]+OFFSET;
         int32_t l = gb->modpolys[p]->len;
-        for(int32_t n = 0; n < nv; n++){
-            exp[term * nve + n + elim_block_len] = gb->ldm[p * nv + n];
+        for(int32_t n = 0; n < nve; n++){
+            exp[term * nv + n + elim_block_len] = gb->ldm[p * nv + n];
         }
         mpz_set(cf_qq[term], gb->modpolys[p]->lm);
 
@@ -1709,8 +1709,8 @@ uint64_t export_results_from_groebner_qq(
         for(int32_t i = l-1; i >= 0; i--){
             
             if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0){
-                for(int32_t n = 0 ; n < nv; n++){
-                    exp[term * nve + n + elim_block_len] = ht->ev[hm[l-i]][evi[n]];
+                for(int32_t n = 0 ; n < nve; n++){
+                    exp[term * nv + n + elim_block_len] = ht->ev[hm[l-i]][evi[n]];
                 }
                 mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[2*i]);
 

@@ -96,9 +96,10 @@ static inline void display_help(char *str){
   fprintf(stdout, "         with respect to the kth polynomial.\n");
   fprintf(stdout, "-e ELIM  Define an elimination order: msolve supports two\n");
   fprintf(stdout, "         blocks of variables, each block using the degree reverse\n");
-  fprintf(stdout, "         lexicographical monomial order. ELIM has to be a number between\n");
-  fprintf(stdout, "         1 and #variables-1. The basis with the first block of variables\n");
-  fprintf(stdout, "         eliminated is then computed.\n");
+  fprintf(stdout, "         lexicographical monomial order. ELIM has to be a number\n");
+  fprintf(stdout, "         between 1 and #variables-1, and gives the number of\n");
+  fprintf(stdout, "         eliminated variables. The basis with the first block of\n");
+  fprintf(stdout, "         ELIM variables eliminated is then computed.\n");
   fprintf(stdout, "-I       Isolates the real roots (provided some univariate data)\n");
   fprintf(stdout, "         without re-computing a Gröbner basis\n");
   fprintf(stdout, "         Default: 0 (no).\n");

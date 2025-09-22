@@ -1643,7 +1643,7 @@ uint64_t export_results_from_groebner_qq(
     /* gb->nv, thus we need to help us with adding elim_block_len */
     /* correspondingly when exporting the basis. */
     int32_t nv    = gb->nv;
-    int32_t nve   = gb->nv + elim_block_len;
+    int32_t nve   = gb->bht->nv;
 
     *bld  = nelts;
 
@@ -1676,17 +1676,17 @@ uint64_t export_results_from_groebner_qq(
         mpz_init(cf_qq[i]);
     }
 
-    hm_t *hm    = NULL;
+    hm_t *hm = NULL;
     ht_t *ht = gb->bht;
     const len_t ebl = ht->ebl;
     const len_t evl = ht->evl;
-    int *evi    =   (int *)malloc((unsigned long)ht->nv * sizeof(int));
+    int *evi = (int *)malloc((unsigned long)ht->nv * sizeof(int));
     if (ebl == 0) {
-      for (len_t i = 1; i < evl; ++i) {
+      for (len_t i = 1; i <= evl; ++i) {
         evi[i-1]    =   i;
       }
     } else {
-      for (len_t i = 1; i < ebl; ++i) {
+      for (len_t i = 1; i <= ebl; ++i) {
         evi[i-1]    =   i;
       }
       for (len_t i = ebl+1; i < evl; ++i) {
@@ -1701,16 +1701,16 @@ uint64_t export_results_from_groebner_qq(
         hm  = gb->hm[idx]+OFFSET;
         int32_t l = gb->modpolys[p]->len;
         for(int32_t n = 0; n < nve; n++){
-            exp[term * nv + n + elim_block_len] = gb->ldm[p * nv + n];
+            exp[term * nve + n + elim_block_len] = gb->ldm[p * nv + n];
         }
         mpz_set(cf_qq[term], gb->modpolys[p]->lm);
 
         term++;
-        for(int32_t i = l-1; i >= 0; i--){
+        for(int32_t i = l-1; i >= 0; i--) {
             
-            if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0){
+            if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0) {
                 for(int32_t n = 0 ; n < nve; n++){
-                    exp[term * nv + n + elim_block_len] = ht->ev[hm[l-i]][evi[n]];
+                    exp[term * nve + n] = ht->ev[hm[l-i]][evi[n]];
                 }
                 mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[2*i]);
 

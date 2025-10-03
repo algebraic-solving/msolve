@@ -24,10 +24,12 @@
 #include "data.h"
 
 void set_function_pointers(
-        const stat_t *st
+        const md_t *st
         );
 
-void set_ff_bits(stat_t *st, int32_t fc);
+void set_ff_bits(md_t *st, int32_t fc);
+
+int32_t check_ff_bits(int32_t fc);
 
 void sort_terms_ff_8(
     cf8_t **cfp,
@@ -55,16 +57,27 @@ void sort_terms_qq(
 
 void import_input_data(
         bs_t *bs,
-        ht_t *ht,
-        stat_t *st,
+        md_t *st,
+        const int32_t start,
+        const int32_t stop,
         const int32_t *lens,
         const int32_t *exps,
         const void *vcfs,
         const int *invalid_gens
         );
 
+void return_zero(
+        int32_t *bload,
+        int32_t **blen,
+        int32_t **bexp,
+        void **bcf,
+        const int32_t nr_vars,
+        const uint32_t field_char,
+        void *(*mallocp) (size_t)
+        );
+
 int32_t check_and_set_meta_data(
-        stat_t *st,
+        md_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
@@ -83,11 +96,12 @@ int32_t check_and_set_meta_data(
         const int32_t use_signatures,
         const int32_t reduce_gb,
         const int32_t pbm_file,
+        const int32_t truncate_lifting,
         const int32_t info_level
         );
 
 int32_t check_and_set_meta_data_trace(
-        stat_t *st,
+        md_t *st,
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
@@ -108,6 +122,7 @@ int32_t check_and_set_meta_data_trace(
         const uint32_t prime_start,
         const int32_t nr_primes,
         const int32_t pbm_file,
+        const int32_t truncate_lifting,
         const int32_t info_level
         );
 
@@ -115,7 +130,7 @@ int32_t check_and_set_meta_data_trace(
 void import_input_data_nf_ff_32(
         bs_t *tbr,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t start,
         const int32_t stop,
         const int32_t *lens,
@@ -126,7 +141,7 @@ void import_input_data_nf_ff_32(
 void import_input_data_nf_ff_16(
                                 bs_t *tbr,
                                 ht_t *ht,
-                                stat_t *st,
+                                md_t *st,
                                 const int32_t start,
                                 const int32_t stop,
                                 const int32_t *lens,
@@ -137,7 +152,7 @@ void import_input_data_nf_ff_16(
 void import_input_data_nf_qq(
         bs_t *tbr,
         ht_t *ht,
-        stat_t *st,
+        md_t *st,
         const int32_t start,
         const int32_t stop,
         const int32_t *lens,
@@ -162,6 +177,7 @@ int validate_input_data(
         int32_t *la_optionp,
         int32_t *use_signaturesp,
         int32_t *reduce_gbp,
+        int32_t *truncate_liftingp,
         int32_t *info_levelp
         );
 #endif

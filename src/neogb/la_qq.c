@@ -349,7 +349,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_qq(
 static void exact_sparse_reduced_echelon_form_ab_first_qq(
         mat_t *mat,
         const bs_t * const bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j, k;
@@ -566,7 +566,7 @@ static void exact_sparse_reduced_echelon_form_ab_first_qq(
 static void exact_sparse_reduced_echelon_form_qq(
         mat_t *mat,
         const bs_t * const bs,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     len_t i = 0, j, k;
@@ -736,8 +736,9 @@ static void exact_sparse_reduced_echelon_form_qq(
 
 static void exact_sparse_linear_algebra_ab_first_qq(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -767,8 +768,9 @@ static void exact_sparse_linear_algebra_ab_first_qq(
 }
 static void exact_sparse_linear_algebra_qq(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -798,7 +800,7 @@ static void exact_sparse_linear_algebra_qq(
 static void interreduce_matrix_rows_qq(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st,
+        md_t *st,
         int free_basis
         )
 {

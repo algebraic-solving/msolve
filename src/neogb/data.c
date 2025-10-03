@@ -60,47 +60,45 @@ int (*hcm_cmp)(
         void *htp
         );
 
-int64_t (*export_julia_data)(
-        int32_t *bload,
-        int32_t **blen,
-        int32_t **bexp,
-        void **bcf,
-        void *(*mallocp) (size_t),
-        const bs_t * const bs,
-        const ht_t * const ht,
-        const uint32_t fc
-        );
-
 /* linear algebra routines */
 void (*sba_linear_algebra)(
         smat_t *smat,
         crit_t *syz,
-        stat_t *st,
+        md_t *st,
         const ht_t * const ht
         );
+
+void (*exact_linear_algebra)(
+        mat_t *mat,
+        const bs_t * const tbr,
+        const bs_t * const bs,
+        md_t *st
+        );
+
 void (*linear_algebra)(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 int (*application_linear_algebra)(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 void (*trace_linear_algebra)(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 void (* interreduce_matrix_rows)(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st,
+        md_t *st,
         int free_basis
         );
 
@@ -121,7 +119,7 @@ hm_t *(*sba_reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const hm_t sm,      /* signature monomial of row reduced */
         const len_t si,     /* signature index of row reduced */
         const len_t ri,     /* index of row in matrix */
-        stat_t *st
+        md_t *st
         );
 
 hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
@@ -131,7 +129,10 @@ hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
         hm_t *const *pivs,
         const hi_t dpiv,
         const hm_t tmp_pos,
-        stat_t *st
+        const len_t mh,     /* multiplier hash for tracing */
+        const len_t bi,     /* basis index of generating element */
+        const len_t tr,     /* trace data? */
+        md_t *st
         );
 
 hm_t *(*trace_reduce_dense_row_by_known_pivots_sparse_ff_32)(
@@ -144,7 +145,7 @@ hm_t *(*trace_reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const hm_t tmp_pos,
         const len_t mh,
         const len_t bi,
-        stat_t *st
+        md_t *st
         );
 
 cf32_t *(*reduce_dense_row_by_all_pivots_ff_32)(

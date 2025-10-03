@@ -43,7 +43,7 @@ static val_t pseudo_random_number_generator(
 }
 
 ht_t *initialize_basis_hash_table(
-    stat_t *st
+    md_t *st
     )
 {
     len_t i;
@@ -128,8 +128,7 @@ ht_t *initialize_basis_hash_table(
 }
 
 ht_t *copy_hash_table(
-    const ht_t *bht,
-    const stat_t *st
+    const ht_t *bht
     )
 {
     hl_t j;
@@ -149,9 +148,7 @@ ht_t *copy_hash_table(
     ht->bpv = bht->bpv;
     ht->dm  = bht->dm;
     ht->rn  = bht->rn;
-
-    ht->dv  = (len_t *)calloc((unsigned long)ht->ndv, sizeof(len_t));
-    memcpy(ht->dv, bht->dv, (unsigned long)ht->ndv * sizeof(len_t));
+    ht->dv  = bht->dv;
 
     /* generate exponent vector */
     /* keep first entry empty for faster divisibility checks */
@@ -182,8 +179,8 @@ ht_t *copy_hash_table(
 
 
 ht_t *initialize_secondary_hash_table(
-    const ht_t *bht,
-    const stat_t *st
+    const ht_t * const bht,
+    const md_t * const md
     )
 {
     hl_t j;
@@ -194,7 +191,7 @@ ht_t *initialize_secondary_hash_table(
     ht->ebl   = bht->ebl;
 
     /* generate map */
-    int32_t min = 3 > st->init_hts-5 ? 3 : st->init_hts-5;
+    int32_t min = 3 > md->init_hts-5 ? 3 : md->init_hts-5;
     ht->hsz   = (hl_t)pow(2, min);
     ht->esz   = ht->hsz / 2;
     ht->hmap  = calloc(ht->hsz, sizeof(hi_t));
@@ -1036,19 +1033,43 @@ restart:
     psl->ld = m;
 }
 
+static inline void switch_hcm_data_to_basis_hash_table(
+    hi_t *hcm,
+    ht_t *bht,
+    const mat_t *mat,
+    const ht_t * const sht
+    )
+{
+    const len_t start = mat->ncl;
+    const len_t end   = mat->nc;
+
+    while (bht->esz - bht->eld < mat->ncr) {
+        enlarge_hash_table(bht);
+    }
+
+    for (len_t i = start; i < end; ++i) {
+#if PARALLEL_HASHING
+        hcm[i] = check_insert_in_hash_table(
+                sht->ev[hcm[i]], sht->hd[hcm[i]].val, bht);
+#else
+        hcm[i] = insert_in_hash_table(sht->ev[hcm[i]], bht);
+#endif
+    }
+}
+
 static inline void insert_in_basis_hash_table_pivots(
     hm_t *row,
     ht_t *bht,
     const ht_t * const sht,
     const hi_t * const hcm,
-    const stat_t * const st
+    const md_t * const st
     )
 {
     len_t l;
 
-    while (bht->esz - bht->eld < row[LENGTH]) {
+    /* while (bht->esz - bht->eld < row[LENGTH]) {
         enlarge_hash_table(bht);
-    }
+    } */
 
     const len_t len = row[LENGTH]+OFFSET;
     const len_t evl = bht->evl;
@@ -1056,22 +1077,33 @@ static inline void insert_in_basis_hash_table_pivots(
     const hd_t * const hds    = sht->hd;
     exp_t * const * const evs = sht->ev;
     
-    exp_t *evt  = (exp_t *)malloc(
-        (unsigned long)(st->nthrds * evl) * sizeof(exp_t));
-#if PARALLEL_HASHING
-#pragma omp parallel for num_threads(st->nthrds) \
-    private(l)
-#endif
+    exp_t *evt  = (exp_t *)malloc((unsigned long)evl * sizeof(exp_t));
     for (l = OFFSET; l < len; ++l) {
-        exp_t *evtl = evt + (omp_get_thread_num() * evl);
-        memcpy(evtl, evs[hcm[row[l]]],
+        memcpy(evt, evs[hcm[row[l]]],
                 (unsigned long)evl * sizeof(exp_t));
+        row[l] = insert_in_hash_table(evt, bht);
+    }
+    free(evt);
+}
 
+static inline void insert_poly_in_hash_table(
+    hm_t *row,
+    const hm_t * const b,
+    const ht_t * const ht1,
+    ht_t *ht2
+    )
+{
+    len_t l;
+
+    const len_t len = b[LENGTH]+OFFSET;
+
+    l = OFFSET;
+
+    for (; l < len; ++l) {
 #if PARALLEL_HASHING
-        const val_t h = hds[hcm[row[l]]].val;
-        row[l] = check_insert_in_hash_table(evtl, h, bht);
+        row[l] = check_insert_in_hash_table(ht1->ev[b[l]], ht1->hd[b[l]].val, ht2);
 #else
-        row[l] = insert_in_hash_table(evtl, bht);
+        row[l] = insert_in_hash_table(ht1->ev[b[l]], ht2);
 #endif
     }
 }
@@ -1200,7 +1232,7 @@ static void reset_hash_table(
     ht_t *ht,
     bs_t *bs,
     ps_t *psl,
-    stat_t *st
+    md_t *st
     )
 {
     /* timings */
@@ -1310,6 +1342,26 @@ static inline hi_t get_lcm(
 #endif
 }
 
+static inline hm_t *poly_to_matrix_row(
+    ht_t *sht,
+    const ht_t *bht,
+    const hm_t *poly
+    )
+{
+  hm_t *row = (hm_t *)malloc((unsigned long)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
+  row[COEFFS]   = poly[COEFFS];
+  row[PRELOOP]  = poly[PRELOOP];
+  row[LENGTH]   = poly[LENGTH];
+  /* hash table product insertions appear only here:
+   * we check for hash table enlargements first and then do the insertions
+   * without further elargment checks there */
+  while (sht->eld+poly[LENGTH] >= sht->esz) {
+    enlarge_hash_table(sht);
+  }
+  insert_poly_in_hash_table(row, poly, bht, sht);
+
+  return row;
+}
 static inline hm_t *multiplied_poly_to_matrix_row(
     ht_t *sht,
     const ht_t *bht,
@@ -1318,7 +1370,7 @@ static inline hm_t *multiplied_poly_to_matrix_row(
     const hm_t *poly
     )
 {
-  hm_t *row = (hm_t *)malloc((unsigned long)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
+  hm_t *row = (hm_t *)malloc((uint64_t)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
   row[COEFFS]   = poly[COEFFS];
   row[PRELOOP]  = poly[PRELOOP];
   row[LENGTH]   = poly[LENGTH];

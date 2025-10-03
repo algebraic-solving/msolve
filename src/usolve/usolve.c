@@ -36,6 +36,7 @@
 #include "flint/fmpz.h"
 #include "flint/fmpz_poly.h"
 
+#include "../msolve/msolve-data.h"
 
 #define THRESHOLDSHIFT 256
 #define POWER_HACK 1
@@ -467,12 +468,12 @@ static long nb_0_case_in_bisection_rec(const mpz_t c, const long k,
     }
 
     if(flags->verbose >= 1){
-      fprintf(stderr,"+");
-      if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+      fprintf(stdout,"+");
+      if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
     }
   }
   if(flags->verbose >= 1){
-    fprintf(stderr,"!");
+    fprintf(stdout,"!");
   }
   mpz_clear(tmp);
   return k;
@@ -494,8 +495,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
         (*nbr) ++;
 
         if(flags->verbose >= 1){
-          fprintf(stderr,"+");
-          if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+          fprintf(stdout,"+");
+          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots == 1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -508,8 +509,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
         (*nbr)++;
 
         if(flags->verbose >= 1){
-          fprintf(stderr,"+");
-          if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+          fprintf(stdout,"+");
+          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
         }
       }
       else{
@@ -521,8 +522,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr)++;
         if(flags->verbose >= 1){
-          fprintf(stderr,"+");
-          if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+          fprintf(stdout,"+");
+          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots==1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -534,8 +535,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                      flags->bound_pos, flags->bound_neg, flags->sign);
           (*nbr)++;
           if(flags->verbose >= 1){
-            fprintf(stderr,"+");
-            if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+            fprintf(stdout,"+");
+            if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
           }
         }
         else{
@@ -545,8 +546,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                      flags->bound_pos, flags->bound_neg, flags->sign);
           (*nbr) ++;
           if(flags->verbose>=1){
-            fprintf(stderr,"+");
-            if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+            fprintf(stdout,"+");
+            if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
           }
           if(flags->hasrealroots == 1 && (*nbr)>0){
             mpz_clear(tmp);
@@ -561,8 +562,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr)++;
         if(flags->verbose>=1){
-          fprintf(stderr,"+");
-          if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+          fprintf(stdout,"+");
+          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots==1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -576,8 +577,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr)++;
         if(flags->verbose >= 1){
-          fprintf(stderr,"+");
-          if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+          fprintf(stdout,"+");
+          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots == 1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -607,8 +608,8 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
       (*nbr)++;
 
       if(flags->verbose>=1){
-        fprintf(stderr,"+");
-        if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+        fprintf(stdout,"+");
+        if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
       }
       if(flags->hasrealroots==1 && (*nbr)>0){
         mpz_clear(tmp);
@@ -621,8 +622,8 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr)++;
         if(flags->verbose >= 1){
-          fprintf(stderr,"+");
-          if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+          fprintf(stdout,"+");
+          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots==1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -634,8 +635,8 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr) ++;
         if(flags->verbose >= 1){
-          fprintf(stderr,"+");
-          if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+          fprintf(stdout,"+");
+          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots == 1 && (*nbr) > 0){
           mpz_clear(tmp);
@@ -650,8 +651,8 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr) ++;
         if(flags->verbose>=1){
-          fprintf(stderr,"+");
-          if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+          fprintf(stdout,"+");
+          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots==1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -683,7 +684,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
   int branch_right = 1;
 
   if(flags->verbose>=1){
-    fprintf(stderr,"-");
+    fprintf(stdout,"-");
   }
   mpz_mul_2exp(tmp, tmp, 1);
   USOLVEmpz_poly_rescale_normalize_2exp_th(upol, -1,
@@ -694,7 +695,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
                          flags, tmp_half);
   }
   else{
-    if(flags->verbose >= 1) fprintf(stderr, "!");
+    if(flags->verbose >= 1) fprintf(stdout, "!");
     oldk = k + 1;
   }
 
@@ -710,8 +711,8 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
                flags->sign);
     (*nbr)++;
     if(flags->verbose>=1){
-      fprintf(stderr,"+");
-      if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+      fprintf(stdout,"+");
+      if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
     }
     if(flags->hasrealroots == 1 && (*nbr)>0){
       mpz_clear(tmp);
@@ -726,7 +727,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
 
   e_time =  realtime();
   if(flags->verbose>=1){
-    fprintf(stderr,"*");
+    fprintf(stdout,"*");
   }
   if(flags->classical_algo==1){
     taylorshift1_naive(upol, *deg);
@@ -750,7 +751,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
   else{
     oldk = k + 1;
     nb = mpz_poly_sgn_variations_coeffs_is_zero(upol, (*deg));
-    if(flags->verbose >= 1) fprintf(stderr, "!");
+    if(flags->verbose >= 1) fprintf(stdout, "!");
     if(nb == 0) oldk = -1;
   }
 
@@ -789,14 +790,14 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
   (flags->node_looked)++;
 
   if(flags->verbose == 4){
-    fprintf(stderr,"[");
-    mpz_out_str(stderr, 10, c);
-    fprintf(stderr,",%lu]", k);
+    fprintf(stdout,"[");
+    mpz_out_str(stdout, 10, c);
+    fprintf(stdout,",%lu]", k);
   }
   if(flags->verbose >= 5){
-    fprintf(stderr,"[");
-    mpz_out_str(stderr, 10, c);
-    fprintf(stderr,",%lu][bs=%lu]", k,
+    fprintf(stdout,"[");
+    mpz_out_str(stdout, 10, c);
+    fprintf(stdout,",%lu][bs=%lu]", k,
             mpz_poly_max_bsize_coeffs(upol, *deg));
   }
 
@@ -841,8 +842,8 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
       (*nbr)++;
 
       if(flags->verbose>=1){
-        fprintf(stderr,"+");
-        if((*nbr) % 100 == 0) fprintf(stderr, "[%lu]",(*nbr));
+        fprintf(stdout,"+");
+        if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
       }
 
       if(flags->hasrealroots==1 && (*nbr)>0){
@@ -852,7 +853,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
     }
 
     if(flags->verbose>=1){
-      fprintf(stderr,"!");
+      fprintf(stdout,"!");
     }
     mpz_clear(tmp);
     return -1;
@@ -860,7 +861,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
 
 
   if(flags->verbose>=2){
-    fprintf(stderr,"c");
+    fprintf(stdout,"c");
   }
 
   e_time = realtime();
@@ -873,7 +874,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
   flags->time_desc += (realtime()-e_time);
 
   if(flags->verbose>=3){
-    fprintf(stderr,"[nb=%lu]",nb);
+    fprintf(stdout,"[nb=%lu]",nb);
   }
 
   if (bsgn == -1){
@@ -1045,6 +1046,8 @@ static inline void free_heap_flags(usolve_flags *flags,
       mpz_clear(flags->tmpol_desc[i]);
       mpz_clear(flags->tmpol[i]);
     }
+    free(flags->tmpol);
+    free(flags->tmpol_desc);
     mpz_clear(flags->Values[0]);
     mpz_clear(flags->Values[1]);
     free(flags->Values);
@@ -1068,13 +1071,13 @@ static inline void free_heap_flags(usolve_flags *flags,
 
 static void display_stats(usolve_flags *flags){
 
-  fprintf(stderr,"\n");
-  fprintf(stderr,"Number of nodes : %lu\n", flags->node_looked);
-  fprintf(stderr,"Number of shifts : %lu\n", flags->transl);
-  fprintf(stderr,"Number of half splits : %lu\n", flags->half_done);
-  fprintf(stderr,"Time in Descartes (elapsed): %.2f sec\n", flags->time_desc);
-  fprintf(stderr,"Time in Taylor shifts (elapsed): %.2f sec\n", flags->time_shift);
-  fprintf(stderr,"\n");
+  fprintf(stdout,"\n");
+  fprintf(stdout,"Number of nodes : %lu\n", flags->node_looked);
+  fprintf(stdout,"Number of shifts : %lu\n", flags->transl);
+  fprintf(stdout,"Number of half splits : %lu\n", flags->half_done);
+  fprintf(stdout,"Time in Descartes (elapsed): %.2f sec\n", flags->time_desc);
+  fprintf(stdout,"Time in Taylor shifts (elapsed): %.2f sec\n", flags->time_shift);
+  fprintf(stdout,"\n");
 
 }
 
@@ -1149,7 +1152,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     flags->bound_pos = bound_roots(upol, deg);
 
     if(flags->verbose>=1){
-      fprintf(stderr, "Bound for positive roots: %ld\n\n", flags->bound_pos);
+      fprintf(stdout, "Bound for positive roots: %ld\n\n", flags->bound_pos);
     }
 
     USOLVEmpz_poly_rescale_normalize_2exp_th(upol,
@@ -1206,7 +1209,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
                                              flags->nthreads);
 
     if(flags->verbose>=1){
-      fprintf(stderr, "\nBound for negative roots: %ld\n\n", flags->bound_neg);
+      fprintf(stdout, "\nBound for negative roots: %ld\n\n", flags->bound_neg);
     }
 
     mpz_set_ui(e, 0);
@@ -1273,7 +1276,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   flags->cur_deg = deg;
   flags->prec_isole = precision;
   if(info_level){
-    fprintf(stderr, "Real root isolation starts at precision %d\n",
+    fprintf(stdout, "Real root isolation starts at precision %d\n",
             precision);
   }
   if (info_level > 0) {
@@ -1286,11 +1289,11 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   }
   flags->nthreads = nthrds;
   if(flags->verbose>=1 || flags->print_stats == 1){
-    fprintf(stderr, "Degree = %ld \t Max bit size = %lu Min bit size = %lu \n",
+    fprintf(stdout, "Degree = %ld \t Max bit size = %lu Min bit size = %lu \n",
             flags->cur_deg,
             mpz_poly_max_bsize_coeffs(upoly, deg),
             mpz_poly_min_bsize_coeffs(upoly, deg));
-    fprintf(stderr, "nthreads = %d\n", flags->nthreads);
+    fprintf(stdout, "nthreads = %d\n", flags->nthreads);
   }
   double e_time = realtime ( );
 
@@ -1306,18 +1309,16 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
     }
   }
 
-  /* display_roots_system(stderr, roots, nbroots); */
-  /* fprintf(stderr, "First root \n"); */
   /* display_root(stderr, roots); */
 
   e_time = realtime ( ) - e_time;
 
   if(flags->verbose>=1){
-    fprintf(stderr, "\n");
+    fprintf(stdout, "\n");
   }
 
   if((flags->verbose>=1) || (flags->print_stats>=1)){
-    fprintf(stderr,"Time for isolation (elapsed): %.2f sec\n", e_time);
+    fprintf(stdout,"Time for isolation (elapsed): %.2f sec\n", e_time);
   }
 
   double refine_time = realtime();
@@ -1348,8 +1349,8 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   }
 
   if((flags->verbose>=1) || (flags->print_stats>=1)){
-    fprintf(stderr,"Time for isolation (elapsed): %.2f sec\n", e_time);
-    fprintf(stderr,"Time for refinement (elapsed): %.2f sec\n", refine_time);
+    fprintf(stdout,"Time for isolation (elapsed): %.2f sec\n", e_time);
+    fprintf(stdout,"Time for refinement (elapsed): %.2f sec\n", refine_time);
   }
 
   free(flags);

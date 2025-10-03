@@ -31,7 +31,7 @@ static void select_all_spairs(
         mat_t *mat,
         const bs_t * const bs,
         ps_t *psl,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         ht_t *bht,
         ht_t *tht
@@ -43,7 +43,7 @@ static void select_all_spairs(
     hi_t lcm;
     len_t *gens;
     exp_t *elcm, *eb;
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -171,8 +171,6 @@ static void select_all_spairs(
     }
     /* printf("nc %u | nr %u || %u\n", mat->nc, mat->nr, sht->eld); */
     /* printf("%u pairs in degree %u\n", ctr, md); */
-    /* clear ht-ev[0] */
-    memset(bht->ev[0], 0, (unsigned long)nv * sizeof(exp_t));
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
@@ -193,23 +191,26 @@ static void select_all_spairs(
 }
 #endif
 
-static void select_spairs_by_minimal_degree(
+/* selection of spairs, at the moment only selection
+by minial degree of the spairs is supported
+
+NOTE: The pair list is already sorted! */
+static int32_t select_spairs_by_minimal_degree(
         mat_t *mat,
-        const bs_t * const bs,
-        ps_t *psl,
-        stat_t *st,
-        ht_t *sht,
-        ht_t *bht,
-        ht_t *tht
+        bs_t *bs,
+        md_t *md
         )
 {
-    len_t i, j, k, l, md, nps, npd, nrr = 0, ntr = 0;
+    len_t i, j, k, l, mdeg, nps, npd, nrr = 0, ntr = 0;
     hm_t *b;
     len_t load = 0;
     hi_t lcm;
     len_t *gens;
     exp_t *elcm, *eb;
-    exp_t *etmp = bht->ev[0];
+    ht_t *bht   = bs->ht;
+    exp_t etmp[bht->evl];
+    ps_t *psl   = md->ps;
+    ht_t *sht   = md->ht;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -222,7 +223,12 @@ static void select_spairs_by_minimal_degree(
     /* sort pair set */
     sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_cmp, bht);
     /* get minimal degree */
-    md  = ps[0].deg;
+    mdeg  = ps[0].deg;
+
+    /* compute a truncated GB? Check maximal degree. */
+    if (md->max_gb_degree < mdeg) {
+        return 1; 
+    }
 
     /* select pairs of this degree respecting maximal selection size mnsel */
 #if 0
@@ -246,7 +252,7 @@ static void select_spairs_by_minimal_degree(
     printf("\n");
 #endif
     for (i = 0; i < psl->ld; ++i) {
-        if (ps[i].deg > md) {
+        if (ps[i].deg > mdeg) {
             break;
         }
     }
@@ -257,8 +263,8 @@ static void select_spairs_by_minimal_degree(
     
     /* if we stopped due to maximal selection size we still get the following
      * pairs of the same lcm in this matrix */
-    if (npd > st->mnsel) {
-        nps = st->mnsel;
+    if (npd > md->mnsel) {
+        nps = md->mnsel;
         lcm = ps[nps].lcm;
         while (nps < npd && ps[nps+1].lcm == lcm) {
             nps++;
@@ -266,12 +272,12 @@ static void select_spairs_by_minimal_degree(
     } else {
         nps = npd;
     }
-    if (st->info_level > 1) {
-        printf("%3d  %6d %7d", md, nps, psl->ld);
+    if (md->info_level > 1) {
+        printf("%3d  %6d %7d", mdeg, nps, psl->ld);
         fflush(stdout);
     }
     /* statistics */
-    st->num_pairsred  +=  nps;
+    md->num_pairsred  +=  nps;
     /* list for generators */
     gens  = (len_t *)malloc(2 * (unsigned long)nps * sizeof(len_t));
     /* preset matrix meta data */
@@ -282,8 +288,6 @@ static void select_spairs_by_minimal_degree(
     mat->sz = 2 * nps;
     mat->nc = mat->ncl = mat->ncr = 0;
     mat->nr = 0;
-
-    int ctr = 0;
 
     i = 0;
 
@@ -320,15 +324,15 @@ static void select_spairs_by_minimal_degree(
          * lcm we add exactly one row to mat->rr */
         rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
-        if (tht != NULL) { 
+        if (md->trace_level == LEARN_TRACER) { 
            rrows[nrr][BINDEX]  = prev;
-            if (tht->eld == tht->esz-1) {
-                enlarge_hash_table(tht);
+            if (bs->ht->eld == bs->ht->esz-1) {
+                enlarge_hash_table(bs->ht);
             }
 #if PARALLEL_HASHING
-            rrows[nrr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+            rrows[nrr][MULT]    = check_insert_in_hash_table(etmp, h, bs->ht);
 #else
-            rrows[nrr][MULT]    = insert_in_hash_table(etmp, tht);
+            rrows[nrr][MULT]    = insert_in_hash_table(etmp, bs->ht);
 #endif
         }
 
@@ -355,32 +359,30 @@ static void select_spairs_by_minimal_degree(
             const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
             /* track trace information ? */
-            if (tht != NULL) {
+            if (md->trace_level == LEARN_TRACER) {
                 trows[ntr][BINDEX]  = prev;
-                if (tht->eld == tht->esz-1) {
-                    enlarge_hash_table(tht);
+                if (bs->ht->eld == bs->ht->esz-1) {
+                    enlarge_hash_table(bs->ht);
                 }
 #if PARALLEL_HASHING
-                trows[ntr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+                trows[ntr][MULT]    = check_insert_in_hash_table(etmp, h, bs->ht);
 #else
-                trows[ntr][MULT]    = insert_in_hash_table(etmp, tht);
+                trows[ntr][MULT]    = insert_in_hash_table(etmp, bs->ht);
 #endif
             }
             /* mark lcm column as lead term column */
             sht->hd[trows[ntr++][OFFSET]].idx = 2;
             mat->nr++;
         }
-        ctr++;
         i = j;
     }
-    /* printf("%u pairs in degree %u\n", ctr, md); */
-    /* clear ht-ev[0] */
-    memset(bht->ev[0], 0, (unsigned long)evl * sizeof(exp_t));
+    /* printf("%u pairs in degree %u\n", ctr, mdeg); */
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
 
-    st->num_rowsred +=  mat->nr - mat->nc;
-    st->current_deg =   md;
+    md->num_rowsred +=  mat->nr - mat->nc;
+    md->current_deg =   mdeg;
+    mat->cd         =   mdeg;
 
     free(gens);
 
@@ -391,15 +393,17 @@ static void select_spairs_by_minimal_degree(
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->select_ctime  +=  ct1 - ct0;
-    st->select_rtime  +=  rt1 - rt0;
+    md->select_ctime  +=  ct1 - ct0;
+    md->select_rtime  +=  rt1 - rt0;
+
+    return 0;
 }
 
 /* write elements straight to sat, not to a matrix */
 static void select_saturation(
         bs_t *sat,
         mat_t *mat,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         ht_t *bht
         )
@@ -447,7 +451,7 @@ static void select_tbr(
         const exp_t * const mul,
         const len_t start,
         mat_t *mat,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
         ht_t *bht,
         ht_t *tht
@@ -485,16 +489,17 @@ static void select_tbr(
 
 
 static inline void find_multiplied_reducer(
-        const bs_t * const bs,
+        bs_t *bs,
         const hm_t m,
-        const ht_t * const bht,
         len_t *nr,
         hm_t **rows,
         ht_t *sht,
-        ht_t *tht
+        const md_t * const md
         )
 {
     len_t i, k;
+
+    ht_t *bht = bs->ht;
 
     const len_t rr  = *nr;
 
@@ -509,7 +514,7 @@ static inline void find_multiplied_reducer(
     const sdm_t * const lms = bs->lm;
     const bl_t * const lmps = bs->lmps;
 
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
     const hd_t * const hdb  = bht->hd;
     exp_t * const * const evb = bht->ev;
 
@@ -532,15 +537,15 @@ start:
         const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
         rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
-        if (tht != NULL) {
+        if (md->trace_level == LEARN_TRACER) {
             rows[rr][BINDEX]  = lmps[i];
-            if (tht->eld == tht->esz-1) {
-                enlarge_hash_table(tht);
+            if (bht->eld == bht->esz-1) {
+                enlarge_hash_table(bht);
             }
 #if PARALLEL_HASHING
-            rows[rr][MULT]    = check_insert_in_hash_table(etmp, h, tht);
+            rows[rr][MULT]    = check_insert_in_hash_table(etmp, h, bht);
 #else
-            rows[rr][MULT]    = insert_in_hash_table(etmp, tht);
+            rows[rr][MULT]    = insert_in_hash_table(etmp, bht);
 #endif
         }
         sht->hd[m].idx  = 2;
@@ -550,11 +555,8 @@ start:
 
 static void symbolic_preprocessing(
         mat_t *mat,
-        const bs_t * const bs,
-        stat_t *st,
-        ht_t *sht,
-        ht_t *tht,
-        const ht_t * const bht
+        bs_t *bs,
+        md_t *md
         )
 {
     hl_t i;
@@ -565,7 +567,9 @@ static void symbolic_preprocessing(
     rt0 = realtime();
 
     /* at the moment we have as many reducers as we have different lcms */
-    len_t nrr = mat->nc; 
+    len_t nrr = mat->nc;
+
+    ht_t *sht = md->ht;
 
     /* note that we have already counted the different lcms, i.e.
      * ncols until this step. moreover, we have also already marked
@@ -582,22 +586,30 @@ static void symbolic_preprocessing(
     while (mat->sz <= nrr + oesld) {
         mat->sz *=  2;
         mat->rr =   realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
+        if (mat->rr == NULL) {
+            fprintf(stderr, "Allocating memory for matrix failed,\n");
+            fprintf(stderr, "segmentation fault will follow.\n");
+        }
     }
     for (; i < oesld; ++i) {
         if (!sht->hd[i].idx) {
             sht->hd[i].idx = 1;
             mat->nc++;
-            find_multiplied_reducer(bs, i, bht, &nrr, mat->rr, sht, tht);
+            find_multiplied_reducer(bs, i, &nrr, mat->rr, sht, md);
         }
     }
     for (; i < sht->eld; ++i) {
         if (mat->sz == nrr) {
             mat->sz *=  2;
             mat->rr  =  realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
+            if (mat->rr == NULL) {
+                fprintf(stderr, "Allocating memory for matrix failed,\n");
+                fprintf(stderr, "segmentation fault will follow.\n");
+            }
         }
         sht->hd[i].idx = 1;
         mat->nc++;
-        find_multiplied_reducer(bs, i, bht, &nrr, mat->rr, sht, tht);
+        find_multiplied_reducer(bs, i, &nrr, mat->rr, sht, md);
     }
     /* realloc to real size */
     mat->rr   =   realloc(mat->rr, (unsigned long)nrr * sizeof(hm_t *));
@@ -608,45 +620,45 @@ static void symbolic_preprocessing(
     mat->rbal =   mat->nrl;
 
     /* initialize memory for reducer bit arrays for tracing information */
-    mat->rba  = (rba_t **)malloc((unsigned long)mat->rbal * sizeof(rba_t *));
-    const unsigned long len = nrr / 32 + ((nrr % 32) != 0);
+    mat->rba  = (rba_t **)malloc((uint64_t)mat->rbal * sizeof(rba_t *));
+    const uint64_t len = nrr / 32 + ((nrr % 32) != 0);
     for (i = 0; i < mat->nrl; ++i) {
         mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
     }
 
     /* statistics */
-    st->max_sht_size  = st->max_sht_size > sht->esz ?
-        st->max_sht_size : sht->esz;
+    md->max_sht_size  = md->max_sht_size > sht->esz ?
+        md->max_sht_size : sht->esz;
 
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->symbol_ctime  +=  ct1 - ct0;
-    st->symbol_rtime  +=  rt1 - rt0;
+    md->symbol_ctime  +=  ct1 - ct0;
+    md->symbol_rtime  +=  rt1 - rt0;
 }
 
 static void generate_matrix_from_trace(
         mat_t *mat,
-        const trace_t * const trace,
-        const len_t idx,
         const bs_t * const bs,
-        stat_t *st,
-        ht_t *sht,
-        const ht_t * const bht,
-        const ht_t * const tht
+        md_t *md
         )
 {
     /* timings */
-    double ct0, ct1, rt0, rt1;
-    ct0 = cputime();
-    rt0 = realtime();
+    double ct, rt;
+    ct = cputime();
+    rt = realtime();
 
     len_t i, nr;
     hm_t *b;
     exp_t *emul;
     hi_t h;
 
-    td_t td       = trace->td[idx];
+    const len_t idx = md->trace_rd;
+
+    td_t td   = md->tr->td[idx];
+    ht_t *bht = bs->ht;
+    ht_t *sht = md->ht;
+
     mat->rr       = (hm_t **)malloc((unsigned long)td.rld * sizeof(hm_t *));
     hm_t **rrows  = mat->rr;
     mat->tr       = (hm_t **)malloc((unsigned long)td.tld * sizeof(hm_t *));
@@ -659,8 +671,9 @@ static void generate_matrix_from_trace(
     nr  = 0;
     while (i < td.rld) {
         b     = bs->hm[td.rri[i++]];
-        emul  = tht->ev[td.rri[i]];
-        h     = tht->hd[td.rri[i++]].val;
+        emul  = bht->ev[td.rri[i]];
+        h     = bht->hd[td.rri[i++]].val;
+
 
         rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         sht->hd[rrows[nr][OFFSET]].idx = 2;
@@ -672,9 +685,8 @@ static void generate_matrix_from_trace(
     nr  = 0;
     while (i < td.tld) {
         b     = bs->hm[td.tri[i++]];
-        emul  = tht->ev[td.tri[i]];
-        h     = tht->hd[td.tri[i]].val;
-
+        emul  = bht->ev[td.tri[i]];
+        h     = bht->hd[td.tri[i]].val;
         trows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         /* At the moment rba is unused */
         rba[nr]   = td.rba[i/2];
@@ -688,14 +700,14 @@ static void generate_matrix_from_trace(
     mat->nc   = sht->eld-1;
 
     /* statistics */
-    st->max_sht_size  = st->max_sht_size > sht->esz ?
-        st->max_sht_size : sht->esz;
+    md->max_sht_size  = md->max_sht_size > sht->esz ?
+        md->max_sht_size : sht->esz;
 
     /* timings */
-    ct1 = cputime();
-    rt1 = realtime();
-    st->symbol_ctime  +=  ct1 - ct0;
-    st->symbol_rtime  +=  rt1 - rt0;
+    md->tracer_ctime += cputime() - ct;
+    md->tracer_rtime += realtime() - rt;
+
+    print_current_trace_meta_data(md);
 }
 
 static void generate_saturation_reducer_rows_from_trace(
@@ -703,10 +715,9 @@ static void generate_saturation_reducer_rows_from_trace(
         const trace_t * const trace,
         const len_t idx,
         const bs_t * const bs,
-        stat_t *st,
+        md_t *st,
         ht_t *sht,
-        const ht_t * const bht,
-        const ht_t * const tht
+        const ht_t * const bht
         )
 {
     /* timings */
@@ -728,8 +739,8 @@ static void generate_saturation_reducer_rows_from_trace(
     nr  = 0;
     while (i < ts.rld) {
         b     = bs->hm[ts.rri[i++]];
-        emul  = tht->ev[ts.rri[i]];
-        h     = tht->hd[ts.rri[i++]].val;
+        emul  = bht->ev[ts.rri[i]];
+        h     = bht->hd[ts.rri[i++]].val;
 
         rrows[nr] = multiplied_poly_to_matrix_row(sht, bht, h, emul, b);
         sht->hd[rrows[nr][OFFSET]].idx = 2;
@@ -750,4 +761,25 @@ static void generate_saturation_reducer_rows_from_trace(
     rt1 = realtime();
     st->symbol_ctime  +=  ct1 - ct0;
     st->symbol_rtime  +=  rt1 - rt0;
+}
+
+static int preprocessing(
+        mat_t *mat,
+        bs_t *bs,
+        md_t *md
+        )
+{
+    if (md->trace_level != APPLY_TRACER) {
+        if (select_spairs_by_minimal_degree(mat, bs, md)) {
+            return 1;
+        }
+        symbolic_preprocessing(mat, bs, md);
+    } else {
+        generate_matrix_from_trace(mat, bs, md);
+    }
+    if (mat->nc == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
 }

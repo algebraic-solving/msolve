@@ -18,6 +18,7 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+
 interval *real_roots(mpz_t *, unsigned long,
                      unsigned long int *,
                      unsigned long int *,
@@ -27,13 +28,15 @@ interval *real_roots(mpz_t *, unsigned long,
 
 void display_roots_system(FILE *, interval *, unsigned long int);
 
+void display_root(FILE *, interval *);
+
 unsigned long int mpz_poly_max_bsize_coeffs(mpz_t *, unsigned long int);
 
 unsigned long int mpz_poly_min_bsize_coeffs(mpz_t *, unsigned long int);
 
 void mpz_poly_eval_2exp_naive(mpz_t *,
-                              unsigned long int,
-                              mpz_t *, const int,
+                              long int,
+                              mpz_t *, const long int,
                               mpz_t *, mpz_t *);
 
 void mpz_poly_eval_2exp_naive2(mpz_t *,

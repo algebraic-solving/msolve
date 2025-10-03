@@ -29,17 +29,42 @@ void get_normal_form_matrix(
         const bs_t * const tbr,
         ht_t * bht,
         const len_t start,
-        stat_t *st,
+        md_t *st,
         ht_t **shtp,
         hi_t **hcmp,
         mat_t **matp
         );
 
-int core_nf(
-        bs_t **tbrp,
-        ht_t **bhtp,
-        stat_t **stp,
+bs_t *core_nf(
+        bs_t *tbr,
+        md_t *md,
         const exp_t * const mul,
-        const bs_t * const bs
+        bs_t *bs,
+        int32_t *errp
+        );
+
+int64_t export_nf(
+        void *(*mallocp) (size_t),
+        /* return values */
+        int32_t *nf_ld,   /* basis load */
+        int32_t **nf_len, /* length of each poly in basis */
+        int32_t **nf_exp, /* basis exponent vectors */
+        void **nf_cf,     /* coefficients of basis elements */
+        /* input values */
+        const int32_t nr_tbr_gens,
+        const int32_t *tbr_lens,
+        const int32_t *tbr_exps,
+        const void *tbr_cfs,
+        const int32_t nr_bs_gens,
+        const int32_t *bs_lens,
+        const int32_t *bs_exps,
+        const void *bs_cfs,
+        const uint32_t field_char,
+        const int32_t mon_order,
+        const int32_t elim_block_len,
+        const int32_t nr_vars,
+        const int32_t bs_is_gb,
+        const int32_t nr_threads,
+        const int32_t info_level
         );
 #endif

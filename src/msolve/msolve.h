@@ -23,52 +23,26 @@
 
 #include "msolve-data.h"
 
-int msolve_ff_alloc(
-        param_t **bparam,
-        int32_t *bld,
-        int32_t **blen,
-        int32_t **bexp,
-        void **bcf,
-        data_gens_ff_t *gens,
-        int32_t initial_hts,
-        int32_t nr_threads,
-        int32_t max_pairs,
-        int32_t elim_block_len,
-        int32_t update_ht,
-        int32_t la_option,
-        int32_t use_signatures,
-        int32_t info_level,
-        int32_t print_gb,
-        files_gb *files
-        );
-
-int modular_run_msolve(
-        param_t **bparam,
-        data_gens_ff_t *gens,
-        int32_t initial_hts,
-        int32_t nr_threads,
-        int32_t max_pairs,
-        int32_t elim_block_len,
-        int32_t update_ht,
-        int32_t la_option,
-        int32_t info_level,
-        files_gb *files,
-        int32_t prime
-        );
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int msolve_trace_qq(
-        mpz_param_t mpz_param,
+        mpz_param_t *mpz_paramp,
         param_t **nmod_param,
         int *dim_ptr,
         long *dquot_ptr,
         data_gens_ff_t *gens,
         int32_t ht_size,
+        int32_t unstable_staircase,
         int32_t nr_threads,
         int32_t max_nr_pairs,
         int32_t elim_block_len,
         int32_t reset_ht,
         int32_t la_option,
         int32_t use_signatures,
+        int32_t lift_matrix,
+        int *to_split_ptr,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -118,7 +92,7 @@ int msolve_qq(
 #endif
 
 int real_msolve_qq(
-        mpz_param_t mp_param,
+        mpz_param_t *mpz_paramp,
         param_t **nmod_param,
         int *dim_ptr,
         long *dquot_ptr,
@@ -127,12 +101,14 @@ int real_msolve_qq(
         real_point_t **real_pts_ptr,
         data_gens_ff_t *gens,
         int32_t ht_size,
+        int32_t unstable_staircase,
         int32_t nr_threads,
         int32_t max_nr_pairs,
         int32_t elim_block_len,
         int32_t reset_ht,
         int32_t la_option,
         int32_t use_signatures,
+        int32_t lift_matrix,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -154,13 +130,16 @@ int core_msolve(
         int32_t generate_pbm,
         int32_t reduce_gb,
         int32_t print_gb,
+        int32_t truncate_lifting,
         int32_t get_param,
         int32_t genericity_handling,
+        int32_t unstable_staircase,
         int32_t saturate,
         int32_t colon,
         int32_t normal_form,
         int32_t normal_form_matrix,
         int32_t is_gb,
+        int32_t lift_matrix,
         int32_t precision,
         files_gb *files,
         data_gens_ff_t *gens,
@@ -217,4 +196,43 @@ void free_msolve_julia_result_data(
         const int64_t nr_sols,
         const int64_t field_char
         );
+
+int64_t export_groebner_qq(
+                void *(*mallocp) (size_t),
+        /* return values */
+        int32_t *bld,   /* basis load */
+        int32_t **blen, /* length of each poly in basis */
+        int32_t **bexp, /* basis exponent vectors */
+        void **bcf,     /* coefficients of basis elements */
+        /* input values */
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *cfs,
+        const uint32_t field_char,
+        const int32_t mon_order,
+        const int32_t elim_block_len,
+        const int32_t nr_vars,
+        const int32_t nr_gens,
+        const int32_t ht_size,
+        const int32_t nr_threads,
+        const int32_t max_nr_pairs,
+        const int32_t reset_ht,
+        const int32_t la_option,
+        const int32_t reduce_gb,
+        const int32_t pbm_file,
+        const int32_t truncate_lifting,
+        const int32_t info_level 
+        );
+
+// Utility functions to init and deinit data structures
+void real_point_clear(real_point_t pt);
+void mpz_param_init(mpz_param_t param);
+void mpz_param_clear(mpz_param_t param);
+data_gens_ff_t* allocate_data_gens();
+void free_data_gens(data_gens_ff_t* gens);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif

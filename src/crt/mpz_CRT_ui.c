@@ -29,10 +29,11 @@ This implementation is a (very) slight modification of the functions in FLINT.
 void
 _mpz_CRT_ui_precomp(mpz_t out, const mpz_t r1, const mpz_t m1, uint64_t r2,
                     uint64_t m2, mp_limb_t m2inv, const mpz_t m1m2, mp_limb_t c,
-                    mpz_t tmp, int sign)
+                    int sign)
 {
   mp_limb_t r1mod, s;
-;
+  mpz_t tmp;
+  mpz_init(tmp);
 
 
   if (mpz_sgn(r1) < 0)
@@ -55,7 +56,7 @@ _mpz_CRT_ui_precomp(mpz_t out, const mpz_t r1, const mpz_t m1, uint64_t r2,
     {
       mpz_swap(out, tmp);
     }
-
+  mpz_clear(tmp);
 }
 
 /**
@@ -81,6 +82,6 @@ void mpz_CRT_ui(mpz_t out, const mpz_t r1, const mpz_t m1,
     }
 
   _mpz_CRT_ui_precomp(out, r1, m1, r2, m2, n_preinvert_limb(m2),
-                      m1m2, c, tmp, sign);
+                      m1m2, c, sign);
 
 }

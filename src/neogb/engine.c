@@ -24,7 +24,7 @@
 int initialize_gba_input_data(
         bs_t **bsp,
         ht_t **bhtp,
-        stat_t **stp,
+        md_t **stp,
         /* input values */
         const int32_t *lens,
         const int32_t *exps,
@@ -43,22 +43,26 @@ int initialize_gba_input_data(
         int32_t use_signatures,
         int32_t reduce_gb,
         int32_t pbm_file,
+        int32_t truncate_lifting,
         int32_t info_level
         )
 {
     bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
+    md_t *st  = *stp;
 
     /* initialize stuff */
-    st  = initialize_statistics();
+    st  = allocate_meta_data();
 
     int *invalid_gens   =   NULL;
     int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &use_signatures,
-            &reduce_gb, &info_level);
+            &reduce_gb, &truncate_lifting, &info_level);
 
+    /* not enough elements available for normal form computations resp. saturation */
+    if (nr_gens <= nr_nf) {
+        return 0;
+    }
     /* all data is corrupt */
     if (res == -1) {
         free(invalid_gens);
@@ -70,21 +74,18 @@ int initialize_gba_input_data(
     if (check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
                 field_char, mon_order, elim_block_len, nr_vars, nr_gens,
                 nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
-                use_signatures, reduce_gb, pbm_file, info_level)) {
+                use_signatures, reduce_gb, pbm_file, truncate_lifting, info_level)) {
         return 0;
     }
 
 
     /* initialize basis */
-    bs  = initialize_basis(st);
-    /* initialize basis hash table */
-    bht = initialize_basis_hash_table(st);
+    bs  = initialize_basis(st, NULL);
+    ht_t *bht = bs->ht;
 
-    import_input_data(bs, bht, st, lens, exps, cfs, invalid_gens);
+    import_input_data(bs, st, 0, st->ngens_input, lens, exps, cfs, invalid_gens);
 
-    if (st->info_level > 0) {
-      print_initial_statistics(stderr, st);
-    }
+    print_initial_statistics(stdout, st);
 
     /* for faster divisibility checks, needs to be done after we have
      * read some input data for applying heuristics */
@@ -111,17 +112,14 @@ int initialize_gba_input_data(
     return 1;
 }
 
-int core_gba(
-        bs_t **bsp,
-        ht_t **bhtp,
-        stat_t **stp
+bs_t *core_gba(
+        bs_t *bs,
+        md_t *md,
+        int32_t *errp,
+        const len_t fc
         )
 {
-    if ((*stp)->use_signatures == 0) {
-        return core_f4(bsp, bhtp, stp);
-    } else {
-        return core_sba_schreyer(bsp, bhtp, stp);
-    }
+    return core_f4(bs, md, errp, fc);
 }
 
 int64_t export_results_from_gba(
@@ -133,7 +131,7 @@ int64_t export_results_from_gba(
     void *(*mallocp) (size_t),
     bs_t **bsp,
     ht_t **bhtp,
-    stat_t **stp
+    md_t **stp
     )
 {
     if ((*stp)->use_signatures == 0) {
@@ -150,7 +148,7 @@ bs_t *gba_trace_learning_phase(
         const bs_t * const ggb,   /* global basis */
         ht_t *gbht,               /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         )
 {
@@ -167,7 +165,7 @@ bs_t *gba_trace_application_phase(
         const bs_t * const ggb,   /* global basis */
         ht_t *lbht,               /* global basis hash table, generated
                                    * in this run, used in upcoming runs */
-        stat_t *gst,              /* global statistics */
+        md_t *gst,              /* global statistics */
         const int32_t fc          /* characteristic of field */
         )
 {

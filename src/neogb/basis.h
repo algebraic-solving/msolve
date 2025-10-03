@@ -23,6 +23,14 @@
 
 #include "data.h"
 
+void free_basis_without_hash_table(
+        bs_t **bsp
+        );
+
+void free_basis_and_only_local_hash_table_data(
+        bs_t **bsp
+        );
+
 void free_basis(
         bs_t **bsp
         );
@@ -32,17 +40,18 @@ void remove_content_of_initial_basis(
         );
 
 bs_t *initialize_basis(
-        const stat_t *st
+        md_t *md,
+        ht_t *ht
         );
 
 bs_t *copy_basis_mod_p(
         const bs_t * const gbs,
-        const stat_t * const st
+        const md_t * const st
         );
 
 void check_enlarge_basis(
         bs_t *bs,
         const len_t added,
-        const stat_t *st
+        const md_t *st
         );
 #endif

@@ -22,7 +22,6 @@
 #ifndef GB_DATA_H
 #define GB_DATA_H
 
-#define _GNU_SOURCE
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -36,11 +35,11 @@
 #include <omp.h>
 #else
 typedef int omp_int_t;
-inline omp_int_t omp_get_thread_num(void) { return 0;}
-inline omp_int_t omp_get_max_threads(void) { return 1;}
+static inline omp_int_t omp_get_thread_num(void) { return 0;}
+static inline omp_int_t omp_get_max_threads(void) { return 1;}
 #endif
 
-#define PARALLEL_HASHING 1
+#define PARALLEL_HASHING 0
 #define ORDER_COLUMNS 1
 /* loop unrolling in sparse linear algebra:
  * we store the offset of the first elements not unrolled
@@ -187,6 +186,7 @@ struct bs_t
     sdm_t *lm;      /* non-redundant lead monomials as short divmask */
     bl_t lml;       /* number of lead monomials of non redundant
                        elements in basis */
+    ht_t *ht;       /* hash table for basis elements */
     int8_t *red;    /* tracks redundancy of basis elements */
     hm_t **hm;      /* hashed monomials representing exponents */
     sm_t *sm;       /* signatures for F5-style computations */
@@ -227,6 +227,7 @@ struct mat_t
     len_t ncl;          /* number of left columns (in ABCD splicing) */
     len_t ncr;          /* number of right columns (in ABCD splicing) */
     len_t rbal;         /* length of reducer binary array */
+    deg_t cd;           /* current degree */
 };
 
 /* signature matrix stuff, stores information from previous and current step */
@@ -290,11 +291,14 @@ struct td_t
     hm_t *nlms;   /* hashes of new leading monomials represented
                    * in basis hash table */
     rba_t **rba;  /* reducer binary array for each to be reduced row */
+    deg_t deg;    /* degree of elements in trace */
     len_t rld;    /* load of reducer rows information*/
     len_t tld;    /* load of to be reduced rows information*/
     len_t nlm;    /* number of new leading monomials in this step */
 };
 
+/* possible trace levels */
+typedef enum {NO_TRACER, LEARN_TRACER, APPLY_TRACER} tl_t;
 typedef struct trace_t trace_t;
 struct trace_t
 {
@@ -318,19 +322,35 @@ struct trace_t
 };
 
 
-/* statistic stuff */
-typedef struct stat_t stat_t;
-struct stat_t
+/* meta data stuff */
+typedef struct md_t md_t;
+struct md_t
 {
+    /* trace data */
+    trace_t *tr;
+    tl_t trace_level;
+    int32_t trace_rd;
+
+    /* hash table data */
+    ht_t *ht;
+
+    len_t np; /* new pivots */
+
+    hi_t *hcm;
+    ps_t *ps;
+
     double round_ctime;
     double select_ctime;
     double symbol_ctime;
     double la_ctime;
     double update_ctime;
     double convert_ctime;
-    double overall_ctime;
+    double f4_ctime;
     double reduce_gb_ctime;
+    double tracer_ctime;
     double rht_ctime;
+    double nf_ctime;
+    double fglm_ctime;
 
     double round_rtime;
     double select_rtime;
@@ -338,9 +358,13 @@ struct stat_t
     double la_rtime;
     double update_rtime;
     double convert_rtime;
-    double overall_rtime;
+    double f4_rtime;
     double reduce_gb_rtime;
+    double tracer_rtime;
     double rht_rtime;
+    double nf_rtime;
+    double fglm_rtime;
+    double learning_rtime;
 
     int64_t num_pairsred;
     int64_t num_gb_crit;
@@ -351,6 +375,9 @@ struct stat_t
     int64_t num_rht;
     int64_t num_rowsred;
     int64_t num_zerored;
+    int64_t mat_max_nrows;
+    int64_t mat_max_ncols;
+    double  mat_max_density;
 
     int32_t ngens_input;
     int32_t ngens_invalid;
@@ -359,6 +386,7 @@ struct stat_t
     int32_t nvars;
     int32_t mnsel;
     int32_t homogeneous;
+    uint32_t gfc; /* global field characteristic */
     uint32_t fc;
     int32_t nev; /* number of elimination variables */
     int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
@@ -368,18 +396,23 @@ struct stat_t
     int32_t reset_ht;
     int32_t current_rd;
     int32_t current_deg;
+    deg_t max_gb_degree;
     uint64_t max_bht_size;
     uint64_t max_sht_size;
     uint64_t max_uht_size;
     int64_t nterms_basis;
     int32_t size_basis;
     int32_t ff_bits;
+    int32_t nf;
+    int32_t f4_qq_round;
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,
                                1=SCHREYER,
                                2=POT,
                                3=DPOT */
     int32_t reduce_gb;
+    int32_t in_final_reduction_step;
+    deg_t min_deg_in_first_deg_fall;
 
     uint32_t prime_start;
     int32_t nprimes;
@@ -393,6 +426,9 @@ struct stat_t
     double application_nr_mult;
     double application_nr_add;
     uint64_t application_nr_red;
+
+    int32_t print_gb;
+    int32_t truncate_lifting;
 
     /* for f4sat */
     uint32_t new_multipliers;
@@ -438,48 +474,45 @@ extern int (*hcm_cmp)(
         void *htp
         );
 
-extern int64_t (*export_julia_data)(
-        int32_t *bload,
-        int32_t **blen,
-        int32_t **bexp,
-        void **bcf,
-        void *(*mallocp) (size_t),
-        const bs_t * const bs,
-        const ht_t * const ht,
-        const uint32_t fc
-        );
-
 /* linear algebra routines */
 extern void (*sba_linear_algebra)(
         smat_t *smat,
         crit_t *syz,
-        stat_t *st,
+        md_t *st,
         const ht_t * const ht
+        );
+
+extern void (*exact_linear_algebra)(
+        mat_t *mat,
+        const bs_t * const tbr,
+        const bs_t * const bs,
+        md_t *st
         );
 
 extern void (*linear_algebra)(
         mat_t *mat,
+        const bs_t * const tbr,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 extern int (*application_linear_algebra)(
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 extern void (*trace_linear_algebra)(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
-        stat_t *st
+        md_t *st
         );
 
 extern void (* interreduce_matrix_rows)(
         mat_t *mat,
         bs_t *bs,
-        stat_t *st,
+        md_t *st,
         int free_basis
         );
 
@@ -500,7 +533,7 @@ extern hm_t *(*sba_reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const hm_t sm,      /* signature monomial of row reduced */
         const len_t si,     /* signature index of row reduced */
         const len_t ri,     /* index of row in matrix */
-        stat_t *st
+        md_t *st
         );
 
 extern hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
@@ -510,7 +543,10 @@ extern hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
         hm_t *const *pivs,
         const hi_t dpiv,
         const hm_t tmp_pos,
-        stat_t *st
+        const len_t mh,     /* multiplier hash for tracing */
+        const len_t bi,     /* basis index of generating element */
+        const len_t tr,     /* trace data? */
+        md_t *st
         );
 
 extern hm_t *(*trace_reduce_dense_row_by_known_pivots_sparse_ff_32)(
@@ -523,7 +559,7 @@ extern hm_t *(*trace_reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const hm_t tmp_pos,
         const len_t mh,
         const len_t bi,
-        stat_t *st
+        md_t *st
         );
 
 extern cf32_t *(*reduce_dense_row_by_all_pivots_ff_32)(

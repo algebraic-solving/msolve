@@ -65,8 +65,7 @@ static void insert_and_update_spairs(
         ps_t *psl,
         bs_t *bs,
         ht_t *bht,
-        stat_t *st,
-        const int32_t check_redundancy
+        md_t *st
         )
 {
     int i, j, l;
@@ -170,7 +169,9 @@ static void insert_and_update_spairs(
             /* try to eliminate this spair with earlier ones */
         } else { 
             for (j = i-1; j >= pl; --j) {
-                if (ps[j].deg <= ps[i].deg && ps[i].lcm == ps[j].lcm) {
+                if (ps[j].deg != -1
+                        && ps[j].deg <= ps[i].deg
+                        && ps[i].lcm == ps[j].lcm) {
                     ps[i].deg   =   -1;
                     break;
                 }
@@ -220,7 +221,7 @@ static void insert_and_update_spairs(
 static void update_lm(
         bs_t *bs,
         const ht_t * const bht,
-        stat_t *st
+        md_t *st
         )
 {
     len_t i, j, k, l;
@@ -275,12 +276,12 @@ static void update_basis_f4(
         ps_t *ps,
         bs_t *bs,
         ht_t *bht,
-        stat_t *st,
-        const len_t npivs,
-        const int32_t check_redundancy
+        md_t *st,
+        const len_t npivs
         )
 {
     len_t i;
+
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -295,7 +296,7 @@ static void update_basis_f4(
     check_enlarge_pairset(ps, np);
 
     for (i = 0; i < npivs; ++i) {
-        insert_and_update_spairs(ps, bs, bht, st, check_redundancy);
+        insert_and_update_spairs(ps, bs, bht, st);
     }
 
     const bl_t lml          = bs->lml;
@@ -350,6 +351,19 @@ static void update_basis_f4(
     st->update_rtime  +=  rt1 - rt0;
 }
 
+static int32_t update(
+        bs_t *bs,
+        md_t *md
+        )
+{
+        update_basis_f4(md->ps, bs, bs->ht, md, md->np);
+        if (bs->constant) {
+            return 1;
+        } else {
+            return md->ps->ld == 0;
+        }
+}
+
 /* not needed right now, maybe in a later iteration of sba implementations */
 #if 0
 static void update_basis_sba_schreyer(
@@ -357,9 +371,8 @@ static void update_basis_sba_schreyer(
         bs_t *bs,
         ht_t *bht,
         ht_t *uht,
-        stat_t *st,
-        const len_t npivs,
-        const int32_t check_redundancy
+        md_t *st,
+        const len_t npivs
         )
 {
     len_t i;
@@ -377,7 +390,7 @@ static void update_basis_sba_schreyer(
     check_enlarge_pairset(ps, np);
 
     for (i = 0; i < npivs; ++i) {
-        insert_and_update_spairs(ps, bs, bht, uht, st, check_redundancy);
+        insert_and_update_spairs(ps, bs, bht, uht, st);
     }
 
     const bl_t lml          = bs->lml;
@@ -399,7 +412,7 @@ static void update_basis_sba_schreyer(
     for (i = bs->lo; i < bs->ld; ++i) {
         if (bs->red[i] == 0) {
             bs->lm[k]   = bht->hd[bs->hm[i][OFFSET]].sdm;
-            bs->lmps[k] = i;
+            j>lmps[k] = i;
             k++;
         }
     }

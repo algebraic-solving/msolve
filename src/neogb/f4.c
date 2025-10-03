@@ -24,18 +24,19 @@
 
 void static final_remove_redundant_elements(
         bs_t *bs,
+        md_t *md,
         const ht_t * const ht
         )
 {
     len_t i, j;
     for (i = 0; i < bs->lml; ++i) {
         hm_t nch = bs->hm[bs->lmps[i]][OFFSET];
-        deg_t dd = bs->hm[bs->lmps[i]][DEG] - ht->hd[nch].deg;
         for (j = 0; j < i; ++j) {
             if (bs->red[bs->lmps[j]] == 0
                     && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
                     ) {
                 bs->red[bs->lmps[i]]  =   1;
+                md->num_redundant++;
                 break;
             }
         }
@@ -44,6 +45,7 @@ void static final_remove_redundant_elements(
                     && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
                     ) {
                 bs->red[bs->lmps[i]]  =   1;
+                md->num_redundant++;
                 break;
             }
         }
@@ -74,11 +76,11 @@ void free_f4_julia_result_data(
     /* lengths resp. nterms */
     int32_t *lens  = *blen;
 
-    /* int64_t i;
-     * int64_t len = 0;
-     * for (i = 0; i < ngens; ++i) {
-     *     len += (int64_t)lens[i];
-     * } */
+    int64_t i;
+    int64_t len = 0;
+    for (i = 0; i < ngens; ++i) {
+        len += (int64_t)lens[i];
+    } 
 
     (*freep)(lens);
     lens  = NULL;
@@ -92,12 +94,10 @@ void free_f4_julia_result_data(
 
     /* coefficients */
     if (field_char == 0) {
-        /* mpz_t **cfs = (mpz_t **)bcf;
-         * for (i = 0; i < len; ++i) {
-         *     mpz_clear((*cfs)[i]);
-         * }
-         * (*freep)(*cfs);
-         * *cfs  = NULL; */
+        mpz_t **cfs = (mpz_t **)bcf;
+        for (i = 0; i < len; ++i) {
+            mpz_clear((*cfs)[i]);
+        }
     } else {
         if (field_char > 0) {
             int32_t *cfs  = *((int32_t **)bcf);
@@ -141,7 +141,7 @@ static void intermediate_reduce_basis(
         hi_t **hcmp,
         ht_t **bhtp,
         ht_t **shtp,
-        stat_t *st
+        md_t *st
         )
 {
     /* timings */
@@ -154,7 +154,7 @@ static void intermediate_reduce_basis(
     ht_t *bht   = *bhtp;
     ht_t *sht   = *shtp;
     hi_t *hcm   = *hcmp;
-    exp_t *etmp = bht->ev[0];
+    exp_t etmp[bht->evl];
     memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
@@ -169,7 +169,7 @@ static void intermediate_reduce_basis(
         mat->nr++;
     }
     mat->nc = mat->nr; /* needed for correct counting in symbol */
-    symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+    symbolic_preprocessing(mat, bs, st, sht, bht);
     /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
     for (i = 0; i < sht->eld; ++i) {
         sht->hd[i].idx = 1;
@@ -180,14 +180,14 @@ static void intermediate_reduce_basis(
         printf("reduce intermediate basis ");
         fflush(stdout);
     }
-    convert_hashes_to_columns(&hcm, mat, st, sht);
+    convert_hashes_to_columns(mat, st, sht);
     mat->nc = mat->ncl + mat->ncr;
     /* sort rows */
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
     /* do the linear algebra reduction, do NOT free basis data */
     interreduce_matrix_rows(mat, bs, st, 0);
     /* remap rows to basis elements (keeping their position in bs) */
-    convert_sparse_matrix_rows_to_basis_elements(mat, bs, bht, sht, hcm, st);
+    convert_sparse_matrix_rows_to_basis_elements(mat, bs, bht, sht, st);
 
     clear_matrix(mat);
     clean_hash_table(sht);
@@ -254,24 +254,22 @@ static void intermediate_reduce_basis(
 static void reduce_basis(
         bs_t *bs,
         mat_t *mat,
-        hi_t **hcmp,
-        ht_t **bhtp,
-        ht_t **shtp,
-        stat_t *st
+        md_t *md
         )
 {
     /* timings */
-    double ct0, ct1, rt0, rt1;
-    ct0 = cputime();
-    rt0 = realtime();
+    double ct, rt;
+    ct = cputime();
+    rt = realtime();
 
     len_t i, j, k;
 
-    ht_t *bht   = *bhtp;
-    ht_t *sht   = *shtp;
-    hi_t *hcm   = *hcmp;
-    exp_t *etmp = bht->ev[0];
+    ht_t *bht   = bs->ht;
+    ht_t *sht   = md->ht;
+    exp_t etmp[bht->evl];
     memset(etmp, 0, (unsigned long)(bht->evl) * sizeof(exp_t));
+
+    md->in_final_reduction_step = 1;
 
     mat->rr = (hm_t **)malloc((unsigned long)bs->lml * 2 * sizeof(hm_t *));
     mat->nr = 0;
@@ -285,37 +283,31 @@ static void reduce_basis(
         mat->nr++;
     }
     mat->nc = mat->nr; /* needed for correct counting in symbol */
-    symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
+    symbolic_preprocessing(mat, bs, md);
     /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
     for (i = 0; i < sht->eld; ++i) {
         sht->hd[i].idx = 1;
     }
 
-    /* free data from bht, we use sht later on */
-    free_hash_table(&bht);
-
     /* generate hash <-> column mapping */
-    if (st->info_level > 1) {
+    if (md->info_level > 1) {
         printf("reduce final basis ");
         fflush(stdout);
     }
-    convert_hashes_to_columns(&hcm, mat, st, sht);
+    convert_hashes_to_columns(mat, md, sht);
     mat->nc = mat->ncl + mat->ncr;
     /* sort rows */
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
     /* do the linear algebra reduction and free basis data afterwards */
-    interreduce_matrix_rows(mat, bs, st, 1);
-    /* remap rows to basis elements (keeping their position in bs) */
-    convert_sparse_matrix_rows_to_basis_elements_use_sht(1, mat, bs, sht, hcm, st);
+    interreduce_matrix_rows(mat, bs, md, 1);
 
-    /* bht becomes sht, so we do not have to convert the hash entries */
-    bht   = sht;
-    *bhtp = bht;
+    convert_sparse_matrix_rows_to_basis_elements(
+            1, mat, bs, bht, sht, md);
 
     /* set sht = NULL, otherwise we might run in a double-free
      * of sht and bht at the end */
-    sht   = NULL;
-    *shtp = sht;
+    /* sht     = NULL;
+    md->ht  = sht; */
 
     bs->ld  = mat->np;
 
@@ -341,158 +333,402 @@ start:
     }
     bs->lml = k;
 
-    *hcmp = hcm;
+    md->in_final_reduction_step = 0;
 
-    /* timings */
-    ct1 = cputime();
-    rt1 = realtime();
-    st->reduce_gb_ctime = ct1 - ct0;
-    st->reduce_gb_rtime = rt1 - rt0;
-    if (st->info_level > 1) {
-        printf("%13.2f sec\n", rt1-rt0);
-    }
-
-    if (st->info_level > 1) {
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
+    print_round_timings(stdout, md, rt, ct);
+    print_round_information_footer(stdout, md);
 }
 
-int core_f4(
-        bs_t **bsp,
-        ht_t **bhtp,
-        stat_t **stp
+static int32_t initialize_f4(
+        bs_t **lbsp,
+        md_t **lmdp,
+        mat_t **matp,
+        md_t *gmd,
+        bs_t *gbs,
+        len_t fc
         )
 {
-    bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
+    bs_t *bs     = *lbsp;
+    mat_t *mat   = *matp;
+    int32_t done = 0;
+    md_t *md     = *lmdp;
 
-    /* timings for one round */
-    double rrt0, rrt1;
+    md      = copy_meta_data(gmd, fc);
+    md->fc  = fc;
+    md->hcm = (hi_t *)malloc(sizeof(hi_t));
 
-    /* initialize update hash table, symbolic hash table */
-    ht_t *sht = initialize_secondary_hash_table(bht, st);
+    if (gmd->fc != fc) {
+        reset_function_pointers(fc, md->laopt);
+        bs = copy_basis_mod_p(gbs, md);
+        if (md->laopt < 40) {
+            if (md->trace_level != APPLY_TRACER) {
+                md->trace_level = LEARN_TRACER;
+            }
+        }
+    } else {
+        bs = gbs;
+        md->trace_level = NO_TRACER;
+    }
+    normalize_initial_basis(bs, fc);
+    md->ht = initialize_secondary_hash_table(bs->ht, md);
 
-    /* hashes-to-columns map, initialized with length 1, is reallocated
-     * in each call when generating matrices for linear algebra */
-    hi_t *hcm = (hi_t *)malloc(sizeof(hi_t));
     /* matrix holding sparse information generated
-     * during symbolic preprocessing */
-    mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
+       during symbolic preprocessing */
+    mat = (mat_t *)calloc(1, sizeof(mat_t));
 
-    ps_t *ps = initialize_pairset();
+    if (md->trace_level != APPLY_TRACER) {
+        /* pair set */
+        md->ps = initialize_pairset();
 
-    int32_t round, i, j;
+        /* reset bs->ld for first update process */
+        bs->ld  = 0;
+    } else {
+        bs->ld = md->ngens;
+    }
 
-    /* reset bs->ld for first update process */
-    bs->ld  = 0;
+    /* TODO: make this a command line argument */
+    md->max_gb_degree = INT32_MAX;
+
+    /* link tracer into basis */
+    if (md->trace_level == LEARN_TRACER) {
+        md->tr = initialize_trace(bs, md);
+        md->min_deg_in_first_deg_fall = INT32_MAX;
+    }
+
 
     /* move input generators to basis and generate first spairs.
-     * always check redundancy since input generators may be redundant
-     * even so they are homogeneous. */
-    update_basis_f4(ps, bs, bht, st, st->ngens, 1);
-
-    /* let's start the f4 rounds,  we are done when no more spairs
-     * are left in the pairset */
-    if (st->info_level > 1) {
-        printf("\ndeg     sel   pairs        mat          density \
-          new data             time(rd)\n");
-        printf("-------------------------------------------------\
-----------------------------------------\n");
+       always check redundancy since input generators may be redundant
+       even so they are homogeneous. */
+    if (md->trace_level != APPLY_TRACER) {
+        md->np = md->ngens;
+        done   = update(bs, md);
     }
-    for (round = 1; ps->ld > 0; ++round) {
-      if (round % st->reset_ht == 0) {
-        reset_hash_table(bht, bs, ps, st);
-        st->num_rht++;
-      }
-      rrt0  = realtime();
-      st->max_bht_size  = st->max_bht_size > bht->esz ?
-        st->max_bht_size : bht->esz;
-      st->current_rd  = round;
 
-      /* preprocess data for next reduction round */
-      select_spairs_by_minimal_degree(mat, bs, ps, st, sht, bht, NULL);
-      symbolic_preprocessing(mat, bs, st, sht, NULL, bht);
-      convert_hashes_to_columns(&hcm, mat, st, sht);
-      sort_matrix_rows_decreasing(mat->rr, mat->nru);
-      sort_matrix_rows_increasing(mat->tr, mat->nrl);
-      /* print pbm files of the matrices */
-      if (st->gen_pbm_file != 0) {
-        write_pbm_file(mat, st);
-      }
-      /* linear algebra, depending on choice, see set_function_pointers() */
-      linear_algebra(mat, bs, st);
-      /* columns indices are mapped back to exponent hashes */
-      if (mat->np > 0) {
+    *lbsp  = bs;
+    *matp  = mat;
+    *lmdp  = md;
+    
+    return done;
+}
+
+static int32_t compute_new_elements(
+    mat_t *mat,
+    bs_t *bs,
+    md_t *md,
+    int32_t *errp
+    )
+{
+    len_t i;
+
+    ht_t *ht  = bs->ht;
+    ht_t *sht = md->ht;
+
+    convert_hashes_to_columns(mat, md, sht);
+    sort_matrix_rows_decreasing(mat->rr, mat->nru);
+    linear_algebra(mat, bs, bs, md);
+
+    /* check for bad prime */
+    if (md->trace_level == APPLY_TRACER) {
+        if (mat->np != md->tr->td[md->trace_rd].nlm) {
+            if (md->info_level > 0) {
+                fprintf(stderr, "Wrong number of new elements, bad prime.");
+            }
+            *errp = 1;
+            return 1;
+        }
+    }
+    /* columns indices are mapped back to exponent hashes */
+    if (mat->np > 0) {
         convert_sparse_matrix_rows_to_basis_elements(
-            -1, mat, bs, bht, sht, hcm, st);
-      }
-      clean_hash_table(sht);
-      /* all rows in mat are now polynomials in the basis,
-       * so we do not need the rows anymore */
-      clear_matrix(mat);
-
-      /* check redundancy only if input is not homogeneous */
-      update_basis_f4(ps, bs, bht, st, mat->np, 1-st->homogeneous);
-
-      /* if we found a constant we are done, so remove all remaining pairs */
-      if (bs->constant  == 1) {
-          ps->ld  = 0;
-      }
-      rrt1 = realtime();
-      if (st->info_level > 1) {
-        printf("%13.2f sec\n", rrt1-rrt0);
-      }
+                -1, mat, bs, ht, sht, md);
     }
-    if (st->info_level > 1) {
-        printf("-------------------------------------------------\
-----------------------------------------\n");
-    }
-    /* remove possible redudant elements */
-    final_remove_redundant_elements(bs, bht);
+    clean_hash_table(sht);
+    /* all rows in mat are now polynomials in the basis,
+     * so we do not need the rows anymore */
+    clear_matrix(mat);
 
-    /* At the moment we do not directly remove the eliminated polynomials from
-     * the resulting basis. */
-#if 0
-    if (st->nev > 0) {
+    /* check for bad prime */
+    if (md->trace_level == APPLY_TRACER) {
+        for (i = 0; i < md->np; ++i) {
+            if (bs->hm[bs->ld+i][OFFSET] != md->tr->td[md->trace_rd].nlms[i]) {
+                if (md->info_level > 0) {
+                fprintf(stderr, "Wrong leading term for new element %u/%u, bad prime.",
+                        i, mat->np);
+                }
+                *errp = 2;
+                return 1;
+            }
+        }
+    }
+    if (md->trace_level == LEARN_TRACER && md->np > 0) {
+        add_lms_to_trace(md->tr, bs, md->np);
+        md->tr->ltd++;
+    }
+    if (md->trace_level == APPLY_TRACER) {
+        bs->ld += md->np;
+        md->trace_rd++;
+        if (md->trace_rd >= md->tr->ltd) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+static void process_redundant_elements(
+        bs_t *bs,
+        md_t *md
+        )
+{
+    len_t i, j;
+
+    ht_t *ht = bs->ht;
+
+    if (md->trace_level != APPLY_TRACER) {
+        for (i = 0; i < bs->lml; ++i) {
+            hm_t nch = bs->hm[bs->lmps[i]][OFFSET];
+            for (j = 0; j < i; ++j) {
+                if (bs->red[bs->lmps[j]] == 0
+                        && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
+                        ) {
+                    bs->red[bs->lmps[i]]  =   1;
+                    md->num_redundant++;
+                    break;
+                }
+            }
+            for (j = i+1; j < bs->lml; ++j) {
+                if (bs->red[bs->lmps[j]] == 0
+                        && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
+                        ) {
+                    bs->red[bs->lmps[i]]  =   1;
+                    md->num_redundant++;
+                    break;
+                }
+            }
+        }
         j = 0;
         for (i = 0; i < bs->lml; ++i) {
-            if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+            if (bs->red[bs->lmps[i]] == 0) {
                 bs->lm[j]   = bs->lm[i];
                 bs->lmps[j] = bs->lmps[i];
                 ++j;
             }
         }
         bs->lml = j;
-    }
+
+        /* At the moment we do not directly remove the eliminated polynomials from
+         * the resulting basis. */
+#if 0
+        if (md->nev > 0) {
+            j = 0;
+            for (i = 0; i < bs->lml; ++i) {
+                if (ht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+                    bs->lm[j]   = bs->lm[i];
+                    bs->lmps[j] = bs->lmps[i];
+                    ++j;
+                }
+            }
+            bs->lml = j;
+        }
 #endif
-
-    /* reduce final basis? */
-    if (st->reduce_gb == 1) {
-        /* note: bht will become sht, and sht will become NULL,
-         * thus we need pointers */
-        reduce_basis(bs, mat, &hcm, &bht, &sht, st);
+    }
+    if (md->trace_level == APPLY_TRACER) {
+        /* apply non-redundant basis data from trace to basis
+         * before interreduction */
+        bs->lml  = md->tr->lml;
+        free(bs->lmps);
+        bs->lmps = (bl_t *)calloc((unsigned long)bs->lml,
+                sizeof(bl_t));
+        memcpy(bs->lmps, md->tr->lmps,
+                (unsigned long)bs->lml * sizeof(bl_t));
+        free(bs->lm);
+        bs->lm   = (sdm_t *)calloc((unsigned long)bs->lml,
+                sizeof(sdm_t));
+        memcpy(bs->lm, md->tr->lm,
+                (unsigned long)bs->lml * sizeof(sdm_t));
     }
 
-    *bsp  = bs;
-    *bhtp = bht;
-    *stp  = st;
-
-    /* free and clean up */
-    free(hcm);
-    /* note that all rows kept from mat during the overall computation are
-     * basis elements and thus we do not need to free the rows itself, but
-     * just the matrix structure */
-    free(mat);
-    if (sht != NULL) {
-        free_hash_table(&sht);
+    if (md->trace_level == LEARN_TRACER) {
+        /* store information in trace */
+        md->tr->lml  = bs->lml;
+        md->tr->lmps = (bl_t *)calloc((unsigned long)md->tr->lml,
+                sizeof(bl_t));
+        memcpy(md->tr->lmps, bs->lmps,
+                (unsigned long)md->tr->lml * sizeof(bl_t));
+        md->tr->lm   = (sdm_t *)calloc((unsigned long)md->tr->lml,
+                sizeof(sdm_t));
+        memcpy(md->tr->lm, bs->lm,
+                (unsigned long)md->tr->lml * sizeof(sdm_t));
+        /* do not track the final reduction step */
     }
-    if (ps != NULL) {
-        free_pairset(&ps);
+}
+
+static void reduce_final_basis(
+        bs_t *bs,
+        mat_t *mat,
+        md_t *md
+        )
+{
+    if (md->reduce_gb) {
+        md->in_final_reduction_step = 1;
+
+        /* timings */
+        double ct, rt;
+        ct = cputime();
+        rt = realtime();
+
+        len_t i;
+
+        ht_t *bht   = bs->ht;
+        ht_t *sht   = md->ht;
+
+        /* add all non-redundant basis elements as matrix rows */
+        mat->tr = (hm_t **)malloc((unsigned long)bs->lml * sizeof(hm_t *));
+        for (i = 0; i < bs->lml; ++i) {
+            mat->tr[i] = poly_to_matrix_row(
+                    sht, bht, bs->hm[bs->lmps[i]]);
+            sht->hd[mat->tr[i][OFFSET]].idx  = 1;
+        }
+        mat->nr = mat->nrl = mat->sz = bs->lml;
+        mat->nc = 0;
+
+        symbolic_preprocessing(mat, bs, md);
+        /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
+        for (i = 0; i < sht->eld; ++i) {
+            sht->hd[i].idx = 1;
+        }
+
+        /* generate hash <-> column mapping */
+        if (md->info_level > 1) {
+            printf("reduce final basis ");
+            fflush(stdout);
+        }
+        convert_hashes_to_columns(mat, md, sht);
+        mat->nc = mat->ncl + mat->ncr;
+
+        sort_matrix_rows_decreasing(mat->rr, mat->nru);
+        sort_matrix_rows_increasing(mat->tr, mat->nrl);
+
+        exact_linear_algebra(mat, bs, bs, md);
+
+        free_basis_elements(bs);
+
+        convert_sparse_matrix_rows_to_basis_elements(
+            0, mat, bs, bht, sht, md);
+
+        bs->ld = bs->lml = mat->np;
+        clear_matrix(mat);
+
+        for (i = 0; i < bs->ld; ++i) {
+            bs->lmps[i] = i;
+            bs->lm[i]   = bht->hd[bs->hm[i][OFFSET]].sdm;
+        }
+
+        md->in_final_reduction_step = 0;
+
+        /* timings */
+        print_round_timings(stdout, md, rt, ct);
+        print_round_information_footer(stdout, md);
+    }
+}
+
+static void free_local_data(
+        mat_t **matp,
+        md_t **mdp
+        )
+{
+    free_meta_data(mdp);
+
+    free(*matp);
+    *matp = NULL;
+}
+
+static void finalize_f4(
+        md_t *gmd,
+        bs_t *gbs,
+        bs_t **bsp,
+        md_t **lmdp,
+        mat_t **matp,
+        int32_t err
+        )
+{
+    if (err > 0) {
+        free_basis_and_only_local_hash_table_data(bsp);
     }
 
-    return 1;
+    if ((*lmdp)->trace_level == LEARN_TRACER) {
+        gmd->tr = (*lmdp)->tr;
+        gmd->trace_level = APPLY_TRACER;
+    }
+    gmd->min_deg_in_first_deg_fall = (*lmdp)->min_deg_in_first_deg_fall;
+    free_local_data(matp, lmdp);
+}
+
+bs_t *core_f4(
+        bs_t *gbs,
+        md_t *gmd,
+        int32_t *errp,
+        const len_t fc
+        )
+{
+    double ct = cputime();
+    double rt = realtime();
+
+    bs_t *bs   = NULL;
+    md_t *md   = NULL;
+    mat_t *mat = NULL;
+
+    /* marker for end of computation */
+    int32_t done = 0;
+
+    /* timings for one round */
+    double rrt, crt;
+
+    done = initialize_f4(&bs, &md, &mat, gmd, gbs, fc);
+
+
+    /* let's start the f4 rounds, we are done when no more spairs
+       are left in the pairset or if we found a constant in the basis. */
+    print_round_information_header(stdout, md);
+    
+    /* reset error */
+    *errp = 0;
+    while (!done) {
+        rrt = realtime();
+        crt = cputime();
+        md->max_bht_size = md->max_bht_size > bs->ht->esz ?
+            md->max_bht_size : bs->ht->esz;
+
+        done = preprocessing(mat, bs, md);
+
+        if (!done) {
+            done = compute_new_elements(mat, bs, md, errp);
+        }
+        if (!done && md->trace_level != APPLY_TRACER) {
+            done = update(bs, md);
+        }
+
+        print_round_timings(stdout, md, rrt, crt);
+    }
+    if (*errp > 0) {
+        free_basis_and_only_local_hash_table_data(&bs);
+    } else {
+        print_round_information_footer(stdout, md);
+
+        /* remove possible redudant elements */
+        process_redundant_elements(bs, md);
+
+        /* reduce final basis? */
+        reduce_final_basis(bs, mat, md);
+
+        md->f4_rtime = realtime() - rt;
+        md->f4_ctime = cputime() - ct;
+
+        get_and_print_final_statistics(stdout, md, bs);
+
+        finalize_f4(gmd, gbs, &bs, &md, &mat, *errp);
+    }
+    return bs;
 }
 
 int64_t export_results_from_f4(
@@ -504,16 +740,16 @@ int64_t export_results_from_f4(
     void *(*mallocp) (size_t),
     bs_t **bsp,
     ht_t **bhtp,
-    stat_t **stp
+    md_t **stp
     )
 {
 
-    bs_t *bs    = *bsp;
-    ht_t *bht   = *bhtp;
-    stat_t *st  = *stp;
+    bs_t *bs  = *bsp;
+    ht_t *bht = *bhtp;
+    md_t *st  = *stp;
 
-    st->nterms_basis  = export_julia_data(
-        bld, blen, bexp, bcf, mallocp, bs, bht, st->fc);
+    st->nterms_basis  = export_data(
+        bld, blen, bexp, bcf, mallocp, bs, bht, st);
     st->size_basis    = *bld;
 
     return st->nterms_basis;
@@ -528,7 +764,7 @@ int64_t export_results_from_f4(
  *     first all exponents of generator 1, then all of generator 2, ...
  *
  *  RETURNs the length of the jl_basis array */
-int64_t f4_julia(
+int64_t export_f4(
         void *(*mallocp) (size_t),
         /* return values */
         int32_t *bld,   /* basis load */
@@ -560,18 +796,18 @@ int64_t f4_julia(
     rt0 = realtime();
 
     /* data structures for basis, hash table and statistics */
-    bs_t *bs    = NULL;
-    ht_t *bht   = NULL;
-    stat_t *st  = NULL;
+    bs_t *bs  = NULL;
+    ht_t *bht = NULL;
+    md_t *md  = NULL;
 
     int success = 0;
 
     const int32_t use_signatures    =   0;
-    success = initialize_gba_input_data(&bs, &bht, &st,
+    success = initialize_gba_input_data(&bs, &bht, &md,
             lens, exps, cfs, field_char, mon_order, elim_block_len,
             nr_vars, nr_gens, 0 /* # normal forms */, ht_size,
             nr_threads, max_nr_pairs, reset_ht, la_option, use_signatures,
-            reduce_gb, pbm_file, info_level);
+            reduce_gb, pbm_file, 0 /*truncate_lifting*/, info_level);
 
     /* all input generators are invalid */
     if (success == -1) {
@@ -583,38 +819,33 @@ int64_t f4_julia(
         exit(1);
     }
 
-    success = core_f4(&bs, &bht, &st);
+    int err = 0;
+    bs = core_f4(bs, md, &err, field_char);
 
-    if (!success) {
+    if (err) {
         printf("Problem with F4, stopped computation.\n");
         exit(1);
     }
 
     int64_t nterms  = export_results_from_f4(bld, blen, bexp,
-            bcf, mallocp, &bs, &bht, &st);
+            bcf, mallocp, &bs, &bht, &md);
 
     /* timings */
     ct1 = cputime();
     rt1 = realtime();
-    st->overall_ctime = ct1 - ct0;
-    st->overall_rtime = rt1 - rt0;
+    md->f4_ctime = ct1 - ct0;
+    md->f4_rtime = rt1 - rt0;
 
-    if (st->info_level > 1) {
-      print_final_statistics(stderr, st);
-    }
+    get_and_print_final_statistics(stderr, md, bs);
 
     /* free and clean up */
     free_shared_hash_data(bht);
-    if (bht != NULL) {
-        free_hash_table(&bht);
-    }
-
     if (bs != NULL) {
         free_basis(&bs);
     }
 
-    free(st);
-    st    = NULL;
+    free(md);
+    md    = NULL;
 
     return nterms;
 }

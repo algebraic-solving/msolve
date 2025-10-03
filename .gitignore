@@ -3,6 +3,8 @@
 *.so
 *.lo
 *.la
+*.log
+*.trs
 *~
 *.libs
 *.in
@@ -31,4 +33,5 @@ libtool
 ltmain.sh
 missing
 stamp-h1
+msolve.pc
 /msolve

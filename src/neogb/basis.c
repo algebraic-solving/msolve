@@ -69,10 +69,26 @@ static void free_basis_elements(
     free(bs->si);
     bs->si  =   NULL;
 
-    bs->ld  = bs->lo  = 0;
+    bs->ld  = bs->lo  = bs->lml = 0;
 }
 
 void free_basis(
+        bs_t **bsp
+        )
+{
+    full_free_hash_table(&((*bsp)->ht));
+    free_basis_without_hash_table(bsp);
+}
+
+void free_basis_and_only_local_hash_table_data(
+        bs_t **bsp
+        )
+{
+    free_hash_table(&((*bsp)->ht));
+    free_basis_without_hash_table(bsp);
+}
+
+void free_basis_without_hash_table(
         bs_t **bsp
         )
 {
@@ -141,7 +157,8 @@ void free_basis(
 }
 
 bs_t *initialize_basis(
-        const stat_t *st
+        md_t *md,
+        ht_t *ht
         )
 {
     bs_t *bs  = (bs_t *)calloc(1, sizeof(bs_t));
@@ -150,8 +167,13 @@ bs_t *initialize_basis(
     bs->ld        = 0;
     bs->lml       = 0;
     bs->constant  = 0;
-    bs->sz        = st->init_bs_sz;
+    bs->sz        = md->init_bs_sz;
     bs->mltdeg    = 0;
+    if (ht == NULL) {
+        bs->ht        = initialize_basis_hash_table(md);
+    } else {
+        bs->ht = ht;
+    }
 
     /* initialize basis elements data */
     bs->hm    = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
@@ -159,12 +181,12 @@ bs_t *initialize_basis(
     bs->lmps  = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));
     bs->red   = (int8_t *)calloc((unsigned long)bs->sz, sizeof(int8_t));
     /* signature-based groebner basis computation? */
-    if (st->use_signatures > 0) {
+    if (md->use_signatures > 0) {
         bs->sm  =   (sm_t *)malloc((unsigned long)bs->sz * sizeof(sm_t));
         bs->si  =   (si_t *)malloc((unsigned long)bs->sz * sizeof(si_t));
     }
     /* initialize coefficients depending on ground field */
-    switch (st->ff_bits) {
+    switch (md->ff_bits) {
         case 8:
             bs->cf_8  = (cf8_t **)malloc((unsigned long)bs->sz * sizeof(cf8_t *));
             break;
@@ -187,7 +209,7 @@ bs_t *initialize_basis(
 void check_enlarge_basis(
         bs_t *bs,
         const len_t added,
-        const stat_t * const st
+        const md_t * const st
         )
 {
     if (bs->ld + added >= bs->sz) {
@@ -240,12 +262,12 @@ static inline void normalize_initial_basis_ff_8(
     cf8_t **cf         = bs->cf_8;
     hm_t * const *hm    = bs->hm;
     const bl_t ld       = bs->ld;
-    const int8_t fc8    = (int8_t)fc;
+    const int16_t fc8    = (int16_t)fc;
 
     for (i = 0; i < ld; ++i) {
         cf8_t *row  = cf[hm[i][COEFFS]];
 
-        const uint8_t inv = mod_p_inverse_8(row[0], fc8);
+        const uint8_t inv = mod_p_inverse_8((int16_t)row[0], (int16_t)fc8);
         const len_t os    = hm[i][PRELOOP];
         const len_t len   = hm[i][LENGTH];
 
@@ -283,12 +305,12 @@ static inline void normalize_initial_basis_ff_16(
     cf16_t **cf         = bs->cf_16;
     hm_t * const *hm    = bs->hm;
     const bl_t ld       = bs->ld;
-    const uint16_t fc16  = (uint16_t)fc;
+    const int32_t fc16  = (int32_t)fc;
 
     for (i = 0; i < ld; ++i) {
         cf16_t *row = cf[hm[i][COEFFS]];
 
-        const uint16_t inv  = mod_p_inverse_16(row[0], fc16);
+        const uint16_t inv  = mod_p_inverse_16((int32_t)row[0], (int32_t)fc16);
         const len_t os      = hm[i][PRELOOP];
         const len_t len     = hm[i][LENGTH];
 
@@ -330,7 +352,7 @@ static inline void normalize_initial_basis_ff_32(
     for (i = 0; i < ld; ++i) {
         cf32_t *row = cf[hm[i][COEFFS]];
 
-        const uint32_t inv  = mod_p_inverse_32((int32_t)row[0], (int32_t)fc);
+        const uint32_t inv  = mod_p_inverse_32((int64_t)row[0], (int64_t)fc);
         const len_t os      = hm[i][PRELOOP]; 
         const len_t len     = hm[i][LENGTH]; 
 
@@ -359,7 +381,7 @@ static inline void normalize_initial_basis_ff_32(
 /* characteristic zero stuff */
 bs_t *copy_basis_mod_p(
         const bs_t * const gbs,
-        const stat_t * const st
+        const md_t *const st
         )
 {
     len_t i, j, idx;
@@ -374,6 +396,11 @@ bs_t *copy_basis_mod_p(
     bs->lml         = gbs->lml;
     bs->sz          = gbs->sz;
     bs->constant    = gbs->constant;
+    if (st->f4_qq_round != 1) {
+        bs->ht = copy_hash_table(gbs->ht);
+    } else {
+        bs->ht = gbs->ht;
+    }
     bs->hm          = (hm_t **)malloc((unsigned long)bs->sz * sizeof(hm_t *));
     bs->lm          = (sdm_t *)malloc((unsigned long)bs->sz * sizeof(sdm_t));
     bs->lmps        = (bl_t *)malloc((unsigned long)bs->sz * sizeof(bl_t));

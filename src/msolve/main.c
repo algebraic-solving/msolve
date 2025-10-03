@@ -99,6 +99,13 @@ static inline void display_help(char *str){
   fprintf(stdout, "         44 - sparse linearization (probabilistic)\n");
   fprintf(stdout, "-m MPR   Maximal number of pairs used per matrix.\n");
   fprintf(stdout, "         Default: 0 (unlimited).\n");
+  fprintf(stdout, "-n NF    Given n input generators compute normal form of the last NF\n");
+  fprintf(stdout, "         elements of the input w.r.t. a degree reverse lexicographical\n");
+  fprintf(stdout, "         Gröbner basis of the first (n - NF) input elements.\n");
+  fprintf(stdout, "         At the moment this only works for prime field computations.\n");
+  fprintf(stdout, "         Combining this option with the \"-i\" option assumes that the\n");
+  fprintf(stdout, "         first (n - NF) elements generate already a degree reverse\n");
+  fprintf(stdout, "         lexicographical Gröbner basis.\n");
   fprintf(stdout, "-p PRE   Precision (in bits) on the output of real root isolation.\n");
   fprintf(stdout, "         Default is 128.\n");
   fprintf(stdout, "-P PAR   Get also rational parametrization of solution set.\n");

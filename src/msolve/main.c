@@ -99,8 +99,8 @@ static inline void display_help(char *str){
   fprintf(stdout, "         44 - sparse linearization (probabilistic)\n");
   fprintf(stdout, "-m MPR   Maximal number of pairs used per matrix.\n");
   fprintf(stdout, "         Default: 0 (unlimited).\n");
-  fprintf(stdout, "-p PRE   Precision of the real root isolation.\n");
-  fprintf(stdout, "         Default is 32.\n");
+  fprintf(stdout, "-p PRE   Precision (in bits) on the output of real root isolation.\n");
+  fprintf(stdout, "         Default is 128.\n");
   fprintf(stdout, "-P PAR   Get also rational parametrization of solution set.\n");
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
   fprintf(stdout, "         format please see the general output data format section\n");

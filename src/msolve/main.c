@@ -117,8 +117,8 @@ static inline void display_help(char *str){
   fprintf(stdout, "         Combining this option with the \"-i\" option assumes that the\n");
   fprintf(stdout, "         first (n - NF) elements generate already a degree reverse\n");
   fprintf(stdout, "         lexicographical Gröbner basis.\n");
-  fprintf(stdout, "-p PRE   Precision of the real root isolation.\n");
-  fprintf(stdout, "         Default is 64.\n");
+  fprintf(stdout, "-p PRE   Precision (in bits) on the output of real root isolation.\n");
+  fprintf(stdout, "         Default is 128.\n");
   fprintf(stdout, "-P PAR   Get also rational parametrization of solution set.\n");
   fprintf(stdout, "         Default is 0. For a detailed description of the output\n");
   fprintf(stdout, "         format please see the general output data format section\n");

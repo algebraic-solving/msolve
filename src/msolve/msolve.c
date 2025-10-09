@@ -1131,7 +1131,7 @@ static inline int rational_reconstruction_upoly_with_denom_param(
 }
 
 
-static inline int lift_coordinate(mpz_param_t mpz_param, mpz_param_t tmp_mpz_param,
+static inline void lift_coordinate(mpz_param_t mpz_param, mpz_param_t tmp_mpz_param,
         param_t *nmod_param, mpz_upoly_t numer, mpz_upoly_t denom, int16_t *check_lift,
         mpz_t modulus, mpz_t prod_crt, int32_t prime, mpq_t *coef, mpz_t rnum, mpz_t rden,
         rrec_data_t recdata, mpz_t guessed_num, mpz_t guessed_den, deg_t *maxrec,

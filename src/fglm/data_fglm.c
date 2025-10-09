@@ -26,6 +26,7 @@
 #include <flint/nmod_poly_factor.h>
 #include <flint/ulong_extras.h>
 
+#include "aligned_alloc.h"
 
 static inline void free_sp_mat_fglm(sp_matfglm_t *mat){
   if(mat!=NULL){
@@ -80,10 +81,10 @@ static inline fglm_data_t *allocate_fglm_data(szmat_t nrows, szmat_t ncols, szma
 
 
 static inline void free_fglm_data(fglm_data_t *data){
-  free(data->vecinit);
-  free(data->res);
-  free(data->vecmult);
-  free(data->vvec);
+  posix_memalign_free(data->vecinit);
+  posix_memalign_free(data->res);
+  posix_memalign_free(data->vecmult);
+  posix_memalign_free(data->vvec);
   free(data->pts);
   free(data);
 }

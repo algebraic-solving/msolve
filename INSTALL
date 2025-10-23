@@ -1,6 +1,8 @@
-If you are working with the git repository
-==========================================
-You will need to have autotools installed on your system.
+If you are working with the git repository OR the *tar.gz from github
+=====================================================================
+
+NOTE: You need to have autotools installed on your system.
+
 1. Run `./autogen.sh` which generates configure and the Makefiles.
 2. Run `./configure` (possibly with options, see `./configure -h` for
    more information).
@@ -9,17 +11,25 @@ You will need to have autotools installed on your system.
 5. Run `make install` in order to globally install the library and the binary
    of msolve.
 
-If you are working on a distribution (downloaded *.tar.gz)
+
+
+If you are working on a distribution, e.g. the PRECONFIGURED *.tar.gz from
+msolve.lip6.fr (note this *.tar.gz differs from the unconfigured one provided
+via github releases)
 ==========================================================
-1. Run `./configure` (possibly with options, see `./configure -help` for more
+
+1. Run `./configure` (possibly with options, see `./configure --help` for more
    information).
 2. Run `make` (possibly with CFLAGS and LDFLAGS adjusted).
 3. Run `make check`.
 4. Run `make install` in order to globally install the library and the binary
    of msolve.
 
+
+
 NOTE TO MAC OS users
 ====================
+
 To build a static binary file, you may need to run `./configure --enable-static`.
 
 You may also need to proceed slightly differently by modifying the `Makefile` file as follows
@@ -29,14 +39,20 @@ LIBS = -lflint -lmpfr -lgmp -lm -fopenmp
 ```
 - change the `CC` variable to your actual `gcc` compiler, e.g.
 ```
-CC = gcc-11
+CC = gcc-15
 ```
-since `gcc` seems to be linked to `clang`.
+since by default `gcc` on MacOS is linked to `clang`.
+
+
 
 If you want to generate a distribution
 ======================================
+
 Run `make dist`.
+
+
 
 If you want to generate a static binary
 =======================================
+
 Add `-all-static` to your LDFLAGS as follows `make LDFLAGS="-all-static"`.

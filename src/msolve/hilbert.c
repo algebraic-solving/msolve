@@ -1544,10 +1544,10 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
         count++;
         if(len_xn < count && i < dquot){
           fprintf(stderr, "One should not arrive here (build_matrix)\n");
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
           free(matrix);
 
           free(len_gb_xn);
@@ -1561,11 +1561,11 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
         fprintf(stderr, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
         fprintf(stderr, " gets outside the staircase\n");
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
+        posix_memalign_free(matrix->dense_mat);
+        posix_memalign_free(matrix->dense_idx);
+        posix_memalign_free(matrix->triv_idx);
+        posix_memalign_free(matrix->triv_pos);
+        posix_memalign_free(matrix->dst);
         free(matrix);
         matrix  = NULL;
 
@@ -1926,12 +1926,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	    free(lens);
 	    free(exps);
 	    free(cfs);
-	    free(matrix->dense_mat);
-	    free(matrix->dense_idx);
-	    free(matrix->triv_idx);
-	    free(matrix->triv_pos);
-	    free(matrix->zero_idx);
-	    free(matrix->dst);
+	    posix_memalign_free(matrix->dense_mat);
+	    posix_memalign_free(matrix->dense_idx);
+	    posix_memalign_free(matrix->triv_idx);
+	    posix_memalign_free(matrix->triv_pos);
+	    posix_memalign_free(matrix->zero_idx);
+	    posix_memalign_free(matrix->dst);
 	    free(matrix);
 	    free(evi);
 	    free(len_gb_xn);
@@ -2384,12 +2384,12 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 	    free(lens);
 	    free(exps);
 	    free(cfs);
-	    free(matrix->dense_mat);
-	    free(matrix->dense_idx);
-	    free(matrix->triv_idx);
-	    free(matrix->triv_pos);
-	    free(matrix->dst);
-	    /* free(matrix->zero_idx); */
+	    posix_memalign_free(matrix->dense_mat);
+	    posix_memalign_free(matrix->dense_idx);
+	    posix_memalign_free(matrix->triv_idx);
+	    posix_memalign_free(matrix->triv_pos);
+	    posix_memalign_free(matrix->dst);
+	    /* posix_memalign_free(matrix->zero_idx); */
 	    free(matrix);
 	    free(evi);
 	    free(len_gb_xn);
@@ -2602,11 +2602,11 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
         count++;
         if(len_xn < count && i < dquot){
           fprintf(stderr, "One should not arrive here (build_matrix)\n");
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
+          posix_memalign_free(matrix->dst);
           free(matrix);
 
           free(len_gb_xn);
@@ -2620,11 +2620,11 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
         fprintf(stderr, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
         fprintf(stderr, " gets outside the staircase\n");
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
+        posix_memalign_free(matrix->dense_mat);
+        posix_memalign_free(matrix->dense_idx);
+        posix_memalign_free(matrix->triv_idx);
+        posix_memalign_free(matrix->triv_pos);
+        posix_memalign_free(matrix->dst);
         free(matrix);
 
         free(len_gb_xn);
@@ -2799,11 +2799,11 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
         count++;
         if(len_xn < count && i < dquot){
           fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
+          posix_memalign_free(matrix->dst);
           free(matrix);
 
           free(len_gb_xn);
@@ -2819,11 +2819,11 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
         display_monomial_full(stderr, nv, NULL, 0, exp);
 #endif
         fprintf(stderr, " gets outside the staircase\n");
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
+        posix_memalign_free(matrix->dense_mat);
+        posix_memalign_free(matrix->dense_idx);
+        posix_memalign_free(matrix->triv_idx);
+        posix_memalign_free(matrix->triv_pos);
+        posix_memalign_free(matrix->dst);
         free(matrix);
 
         free(len_gb_xn);
@@ -2994,11 +2994,11 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
         count++;
         if(len_xn < count && i < dquot){
           fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
+          posix_memalign_free(matrix->dst);
           free(matrix);
 
           free(len_gb_xn);
@@ -3012,11 +3012,11 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
         fprintf(stderr, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
         fprintf(stderr, " gets outside the staircase\n");
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
+        posix_memalign_free(matrix->dense_mat);
+        posix_memalign_free(matrix->dense_idx);
+        posix_memalign_free(matrix->triv_idx);
+        posix_memalign_free(matrix->triv_pos);
+        posix_memalign_free(matrix->dst);
         free(matrix);
 
         free(len_gb_xn);
@@ -3168,11 +3168,11 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         count++;
         if(len_xn < count && i < dquot){
           fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
+          posix_memalign_free(matrix->dst);
           free(matrix);
 
 	  free_basis_without_hash_table(&tbr);
@@ -3197,11 +3197,11 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
 	count_nf++;
 	if (count_not_lm < count_nf && i < dquot) {
           fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
+          posix_memalign_free(matrix->dst);
           free(matrix);
 
 	  free_basis_without_hash_table(&tbr);
@@ -3221,11 +3221,11 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         fprintf(stderr, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
         fprintf(stderr, " gets outside the staircase\n");
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
+        posix_memalign_free(matrix->dense_mat);
+        posix_memalign_free(matrix->dense_idx);
+        posix_memalign_free(matrix->triv_idx);
+        posix_memalign_free(matrix->triv_pos);
+        posix_memalign_free(matrix->dst);
         free(matrix);
 
 	free_basis_without_hash_table(&tbr);
@@ -3416,11 +3416,11 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
           if(info_level){
             fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
           }
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
+          posix_memalign_free(matrix->dst);
           free(matrix);
 
           free(len_gb_xn);
@@ -3436,11 +3436,11 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
           display_monomial_full(stderr, nv, NULL, 0, exp);
           fprintf(stderr, " gets outside the staircase\n");
         }
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
+        posix_memalign_free(matrix->dense_mat);
+        posix_memalign_free(matrix->dense_idx);
+        posix_memalign_free(matrix->triv_idx);
+        posix_memalign_free(matrix->triv_pos);
+        posix_memalign_free(matrix->dst);
         free(matrix);
 
         free(len_gb_xn);
@@ -3772,11 +3772,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	  if (info_level){
 	    fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
 	  }
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
+          posix_memalign_free(matrix->dst);
           free(matrix);
 
 	  free_basis_without_hash_table(&tbr);
@@ -3808,11 +3808,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	  if (info_level){
 	    fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
 	  }
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
+          posix_memalign_free(matrix->dense_mat);
+          posix_memalign_free(matrix->dense_idx);
+          posix_memalign_free(matrix->triv_idx);
+          posix_memalign_free(matrix->triv_pos);
+          posix_memalign_free(matrix->dst);
           free(matrix);
 
 	  free_basis_without_hash_table(&tbr);
@@ -3832,11 +3832,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	fprintf(stderr, "Multiplication by ");
 	display_monomial_full(stderr, nv, NULL, 0, exp);
 	fprintf(stderr, " gets outside the staircase\n");
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
+        posix_memalign_free(matrix->dense_mat);
+        posix_memalign_free(matrix->dense_idx);
+        posix_memalign_free(matrix->triv_idx);
+        posix_memalign_free(matrix->triv_pos);
+        posix_memalign_free(matrix->dst);
         free(matrix);
 
 	free_basis_without_hash_table(&tbr);

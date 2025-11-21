@@ -678,15 +678,6 @@ static inline void copy_poly_in_matrix_old(data_gens_ff_t *gens,
                                        int32_t *lmb){
   int32_t j;
   int32_t end = start + pos;//(*blen)[pos];
-  fprintf(stderr, "copy_poly\n");
-  /* fprintf(stderr, "\nstart = %ld, end = %ld\n", start, end); */
-  /* for(j = start; j < end; j++){ */
-  /*   display_term(stderr, j, gens, blen, bcf, bexp); */
-  /*   if(j < end - 1){ */
-  /*   //    if(j < (*blen)[pos] - 1){ */
-  /*     fprintf(stderr, "+"); */
-  /*   } */
-  /* } */
 
   long N = nrows * (matrix->ncols) - (start + 1);
   if((end-start) == matrix->ncols + 1){
@@ -3416,16 +3407,6 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
           if(info_level){
             fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
           }
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
-          free(matrix);
-
-          free(len_gb_xn);
-          free(start_cf_gb_xn);
-          free(div_xn);
           return NULL;
         }
       }
@@ -3436,16 +3417,6 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
           display_monomial_full(stderr, nv, NULL, 0, exp);
           fprintf(stderr, " gets outside the staircase\n");
         }
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
-        free(matrix);
-
-        free(len_gb_xn);
-        free(start_cf_gb_xn);
-        free(div_xn);
         return NULL;
       }
     }
@@ -3465,6 +3436,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   return matrix;
 }
 
+
 static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv_xn,
 								  int32_t **blen_gb_xn,
 								  int32_t **bstart_cf_gb_xn,
@@ -3475,11 +3447,12 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  int32_t *lmb, long dquot,
 								  bs_t *bs, ht_t *ht,
 								  int32_t *bexp_lm,
-								  const md_t *st,
+								  md_t *st,
 								  const int nv,
 								  const long fc,
 								  const int32_t unstable_staircase,
-								  const int info_level){
+								  const int info_level, 
+                                  files_gb* files){
   double st_fglm = realtime();
   double cst_fglm = cputime();
   *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
@@ -3604,10 +3577,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       fprintf(stderr, "Staircase is not generic\n");
       fprintf(stderr, "and too many normal forms need to be computed\n");
     }
-    free(extra_nf);
-    free(len_gb_xn);
-    free(start_cf_gb_xn);
-    free(div_xn);
     return NULL;
   }
 
@@ -3772,21 +3741,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	  if (info_level){
 	    fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
 	  }
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
-          free(matrix);
-
-	  free_basis_without_hash_table(&tbr);
-	  free(cfs_extra_nf);
-	  free(exps_extra_nf);
-	  free(lens_extra_nf);
-	  free(extra_nf);
-          free(len_gb_xn);
-          free(start_cf_gb_xn);
-          free(div_xn);
 	  free(evi);
           return NULL;
         }
@@ -3808,21 +3762,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	  if (info_level){
 	    fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
 	  }
-          free(matrix->dense_mat);
-          free(matrix->dense_idx);
-          free(matrix->triv_idx);
-          free(matrix->triv_pos);
-          free(matrix->dst);
-          free(matrix);
-
-	  free_basis_without_hash_table(&tbr);
-	  free(cfs_extra_nf);
-	  free(exps_extra_nf);
-	  free(lens_extra_nf);
-	  free(extra_nf);
-          free(len_gb_xn);
-          free(start_cf_gb_xn);
-          free(div_xn);
 	  free(evi);
           return NULL;
         }
@@ -3832,21 +3771,6 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	fprintf(stderr, "Multiplication by ");
 	display_monomial_full(stderr, nv, NULL, 0, exp);
 	fprintf(stderr, " gets outside the staircase\n");
-        free(matrix->dense_mat);
-        free(matrix->dense_idx);
-        free(matrix->triv_idx);
-        free(matrix->triv_pos);
-        free(matrix->dst);
-        free(matrix);
-
-	free_basis_without_hash_table(&tbr);
-	free(cfs_extra_nf);
-	free(exps_extra_nf);
-	free(lens_extra_nf);
-	free(extra_nf);
-        free(len_gb_xn);
-        free(start_cf_gb_xn);
-        free(div_xn);
 	free(evi);
         return NULL;
       }

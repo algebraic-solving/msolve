@@ -1607,8 +1607,8 @@ static int32_t *initial_modular_step(
         param_t **bparam,
         bs_t *gbg,
         md_t *md,
-        const int32_t fc,
-	const int32_t unstable_staircase,
+        const uint32_t fc,
+    	const int32_t unstable_staircase,
         int print_gb,
         int *dim,
         long *dquot_ori,
@@ -1636,6 +1636,8 @@ static int32_t *initial_modular_step(
       dim, dquot_ori, bs, leadmons, 0, md);
 
   if (empty_solution_set == 1) {
+    free_basis_without_hash_table(&(bs));
+    free(bs);
     return NULL;
   }
 
@@ -1671,7 +1673,8 @@ static int32_t *initial_modular_step(
 							    leadmons[0], md,
 							    bs->ht->nv,
 							    fc, unstable_staircase,
-							    md->info_level);
+							    md->info_level, 
+                                files);
 
 	    if(*bmatrix == NULL){
 	      *success = 0;
@@ -1680,6 +1683,8 @@ static int32_t *initial_modular_step(
 	      if(md->info_level > 1){
 		fprintf (stdout,"------------------------------------------------------------------------------------------------------\n");
 	      }
+          free_basis_without_hash_table(&(bs));
+          free(bs);
 	      return NULL;
             }
 
@@ -1691,15 +1696,17 @@ static int32_t *initial_modular_step(
                     *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
                     md->info_level, bdata_fglm, bdata_bms, success, md);
         }
-        free_basis_without_hash_table(&(bs));
         *dim = 0;
         *dquot_ori = dquot;
+        free_basis_without_hash_table(&(bs));
+        free(bs);
         return lmb;
     }
     else{
         *dim  = 1;
         *dquot_ori = -1;
         free_basis_without_hash_table(&(bs));
+        free(bs);
         return NULL;
     }
 }
@@ -1733,7 +1740,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 				    /* trace_t **btrace, */
 				    bs_t *bs_qq,
 				    md_t *st,
-				    const int32_t fc,
+				    const uint32_t fc,
 				    const int32_t unstable_staircase,
 				    int info_level,
 				    bs_t **bs,
@@ -1935,6 +1942,98 @@ static inline int is_lucky_matmul_prime_ui(uint32_t prime,
   return 0;
 }
 
+void free_msolve_trace_qq_secondary_data(mpz_param_t tmp_mpz_param, 
+        trace_det_fglm_mat_t trace_det, mpz_t modulus, mpz_t prod_crt, mpq_t result, 
+        mpq_t test, mpz_t rnum, mpz_t rden, mpz_upoly_t numer, mpz_upoly_t denom, 
+        int16_t *check_lift, mpz_t guessed_num, mpz_t guessed_den, int *is_lifted, 
+        rrec_data_t recdata){
+    mpz_param_clear(tmp_mpz_param);
+    trace_det_clear(trace_det);
+    mpz_clear(modulus);
+    mpz_clear(prod_crt);
+    mpq_clear(result);
+    mpq_clear(test);
+    mpz_clear(rnum);
+    mpz_clear(rden);
+    mpz_upoly_clear(numer);
+    mpz_upoly_clear(denom);
+    free(check_lift);
+    mpz_clear(guessed_num);
+    mpz_clear(guessed_den);
+    free(is_lifted);
+    free_rrec_data(recdata);
+}
+
+void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, primes_t *lp, 
+        bs_t *bs_qq, bs_t **bs, param_t **nmod_params, uint32_t *bad_primes, 
+        sp_matfglm_t **bmatrix, int32_t **bdiv_xn, int32_t **blen_gb_xn, 
+        int32_t **bstart_cf_gb_xn, long**bextra_nf, int32_t **blens_extra_nf, 
+        int32_t **bexps_extra_nf, int32_t **bcfs_extra_nf, fglm_data_t **bdata_fglm, 
+        fglm_bms_data_t **bdata_bms, int32_t *num_gb, int32_t **leadmons_ori, 
+        int32_t **leadmons_current, nvars_t *bnlins, nvars_t **blinvars, 
+        nvars_t *linvars, uint32_t **lineqs_ptr, nvars_t **bsquvars, nvars_t *squvars, 
+        int32_t *lmb_ori, uint32_t field_char){
+    free(invalid_gens);
+    free_lucky_primes(&lp);
+    free(lp);
+    if(field_char == 0){
+        free_basis(&(bs_qq));
+        free(bs_qq);
+    }
+    for (int i = 0; i < st->nthrds; ++i) {
+        if(bmatrix[i] != NULL){
+            free_sp_mat_fglm(bmatrix[i]);
+        }
+        free(bdiv_xn[i]);
+        free(bstart_cf_gb_xn[i]);
+        free(blen_gb_xn[i]);
+        free(bextra_nf[i]);
+        free(blens_extra_nf[i]);
+        free(bexps_extra_nf[i]);
+        free(bcfs_extra_nf[i]);
+        if(bdata_fglm[i] != NULL){
+            free_fglm_data(bdata_fglm[i]);
+        }
+        if(bdata_bms[i] != NULL){
+            free_fglm_bms_data(bdata_bms[i]);
+        }
+        if(nmod_params[i] != NULL){
+            free_fglm_param(nmod_params[i]);
+        }
+        free(leadmons_ori[i]);
+        //free(leadmons_current[i]);
+      if (bs[i] != NULL) {
+        free_basis(&(bs[i]));
+        free(bs[i]);
+      }
+    }
+    free_trace(&(st->tr));
+    free(st);
+    free(bs);
+    free(nmod_params);
+    free(bad_primes);
+    free(bmatrix);
+    free(bdiv_xn);
+    free(blen_gb_xn);
+    free(bstart_cf_gb_xn);
+    free(bextra_nf);
+    free(blens_extra_nf);
+    free(bexps_extra_nf);
+    free(bcfs_extra_nf);
+    free(bdata_fglm);
+    free(bdata_bms);
+    free(num_gb);
+    free(leadmons_ori);
+    free(leadmons_current);
+    free(bnlins);
+    free(blinvars);
+    free(linvars);
+    free(lineqs_ptr);
+    free(bsquvars);
+    free(squvars);
+    free(lmb_ori);
+}
+
 /*
 
   - renvoie 0 si le calcul est ok.
@@ -1995,6 +2094,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   len_t i;
 
+  
   /* initialize stuff */
   md_t *st = allocate_meta_data();
 
@@ -2009,6 +2109,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* all data is corrupt */
   if (res == -1) {
     fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
+    free(st);
     free(invalid_gens);
     return -3;
   }
@@ -2035,7 +2136,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* read in ideal, move coefficients to integers */
   import_input_data(bs_qq, st, 0, st->ngens_input, lens, exps, cfs,
                     invalid_gens);
-  free(invalid_gens);
+  //free(invalid_gens);
   invalid_gens = NULL;
 
   print_initial_statistics(stdout, st);
@@ -2074,12 +2175,16 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* choose next_prime of some random number between 1<<30 and 1303905301 */
   /* (roughly, there are ~ 10**7 such primes) */
   prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
+  prime = 1073741827;
+  //prime = 1073741789;
   while (gens->field_char == 0 && is_lucky_prime_ui(prime, bs_qq)) {
     prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   }
-
   primeinit = prime;
   lp->p[0] = primeinit;
+  if(info_level){
+      fprintf(stdout, "Initial prime is %d\n", lp->p[0]);
+  }
 
   if (gens->field_char) {
     lp->p[0] = gens->field_char;
@@ -2104,6 +2209,22 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int32_t **leadmons_current =
       (int32_t **)malloc(st->nthrds * sizeof(int32_t *));
 
+  for(int i = 0; i < st->nthrds; i++){
+      bs[i] = NULL;
+      bdata_fglm[i] = NULL;
+      bdata_bms[i] = NULL;
+      bmatrix[i] = NULL;
+      nmod_params[i] = NULL;
+      bdiv_xn[i] = NULL;
+      bstart_cf_gb_xn[i] = NULL;
+      blen_gb_xn[i] = NULL;
+      bextra_nf[i] = NULL;
+      bexps_extra_nf[i] = NULL;
+      blens_extra_nf[i] = NULL;
+      bcfs_extra_nf[i] = NULL;
+      leadmons_ori[i] = NULL;
+      leadmons_current[i] = NULL;
+  }
   uint64_t bsz = 0;
 
   int32_t nv = bs_qq->ht->nv;
@@ -2122,7 +2243,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   nvars_t **bsquvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
   nvars_t *squvars = calloc(nr_vars - 1, sizeof(nvars_t));
   bsquvars[0] = squvars;
-
 
   set_linear_function_pointer(gens->field_char);
 
@@ -2153,7 +2273,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
-
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
     if (nmod_params[0]->elim->length - 1 != *dquot_ptr) {
       for (int i = 0; i < nr_vars - 1; i++) {
@@ -2165,29 +2284,16 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
-
   (*mpz_paramp)->dim = *dim_ptr;
   (*mpz_paramp)->dquot = *dquot_ptr;
 
   if (lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
-    free(bs);
-    if (gens->field_char == 0) {
-      free_basis(&bs_qq);
-      /*nmod_params[0] should not be cleaned here (change of primitive
-       * element_*/
-    }
-    free_lucky_primes(&lp);
-    free(bad_primes);
-    free(lp);
-    free(linvars);
-    if (nlins) {
-      free(lineqs_ptr[0]);
-    }
-    free(bnlins);
-    free(lineqs_ptr);
-    free(squvars);
-    free(lmb_ori);
     if (print_gb) {
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+          lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       return 0;
     }
     if (*dim_ptr == 0 && gens->field_char && success) {
@@ -2199,23 +2305,40 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         for (long j = 0; j <= st->nvars - 2; j++) {
           nmod_poly_set(par->coords[j], nmod_params[0]->coords[j]);
         }
-        free_fglm_param(nmod_params[0]);
         (*nmod_param) = par;
       }
-      free(st);
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+          lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       return 0;
     }
-    free(st);
     if (*dim_ptr == 1) {
       if (info_level) {
         fprintf(stdout, "Positive dimensional Grobner basis\n");
       }
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+          lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       return 0;
     }
     if (*dquot_ptr == 0) {
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+          lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       return 0;
     }
     if (*dquot_ptr > 0) {
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+          lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       if (squares == 0) {
         return 2;
       }
@@ -2342,7 +2465,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       }
       lp->p[0] = prime;
     }
-
     for (len_t i = 1; i < st->nthrds; i++) {
       prime = next_prime(prime);
       if (prime >= lprime) {
@@ -2485,21 +2607,18 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       } else {
         if (info_level) {
           fprintf(stdout, "<bp: %d>\n", lp->p[i]);
-	  fflush(stdout);
+	      fflush(stdout);
         }
         nbadprimes++;
         if (nbadprimes > nprimes) {
-          free(linvars);
-          free(bnlins);
-          free(lineqs_ptr[0]);
-          free(lineqs_ptr);
-          free(squvars);
-          free_rrec_data(recdata);
-          free(check_lift);
-          mpz_clear(prod_crt);
-          trace_det_clear(trace_det);
-          free_rrec_data(recdata);
-          fprintf(stderr, "Many other data should be cleaned\n");
+          free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+              bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
+              blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
+              num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+              lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
+          free_msolve_trace_qq_secondary_data(tmp_mpz_param, trace_det, modulus, 
+                  prod_crt, result, test, rnum, rden, numer, denom, check_lift, 
+                  guessed_num, guessed_den, is_lifted, recdata);
           return -4;
         }
       }
@@ -2553,80 +2672,14 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(stdout, "-----------------------------------------\n");
     fflush(stdout);
   }
-  mpz_param_clear(tmp_mpz_param);
-  mpz_upoly_clear(numer);
-  mpz_upoly_clear(denom);
-  mpz_clear(guessed_num);
-  mpz_clear(guessed_den);
-  mpq_clear(test);
-  mpq_clear(result);
-  mpz_clear(rnum);
-  mpz_clear(rden);
-  mpz_clear(modulus);
-  mpz_clear(prod_crt);
-  free(check_lift);
-  free_rrec_data(recdata);
-  trace_det_clear(trace_det);
-
-  for (i = 0; i < st->nthrds; ++i) {
-    if (bs[i] != NULL) {
-      free_basis(&(bs[i]));
-    }
-    free_fglm_bms_data(bdata_bms[i]);
-    free_fglm_data(bdata_fglm[i]);
-
-    free_fglm_param(nmod_params[i]);
-    free(bcfs_extra_nf[i]);
-    free(bexps_extra_nf[i]);
-    free(blens_extra_nf[i]);
-    free(bextra_nf[i]);
-    free(blen_gb_xn[i]);
-    free(bstart_cf_gb_xn[i]);
-    free(bdiv_xn[i]);
-    free(bmatrix[i]->dense_mat);
-    free(bmatrix[i]->dense_idx);
-    free(bmatrix[i]->triv_idx);
-    free(bmatrix[i]->triv_pos);
-    free(bmatrix[i]->dst);
-    free(bmatrix[i]);
-    free(leadmons_ori[i]);
-    free(leadmons_current[i]);
-    /* free_trace(&btrace[i]); */
-
-    free(blinvars[i]);
-    free(lineqs_ptr[i]);
-    free(bsquvars[i]);
-  }
-
-  free_basis(&(bs_qq));
-  free(bs);
-  free(bdata_fglm);
-  free(bdata_bms);
-  free(bmatrix);
-  free(leadmons_ori);
-  free(leadmons_current);
-  free(nmod_params);
-  free(lmb_ori);
-
-  free_lucky_primes(&lp);
-  free_trace(&(st->tr));
-  free(st);
-  free(bad_primes);
-  free(bnlins);
-  free(blinvars);
-  free(lineqs_ptr);
-  free(bsquvars);
-  free(is_lifted);
-  free(num_gb);
-  free(bcfs_extra_nf);
-  free(bexps_extra_nf);
-  free(blens_extra_nf);
-  free(bextra_nf);
-  free(blen_gb_xn);
-  free(bstart_cf_gb_xn);
-  free(bdiv_xn);
-  /* free(btrace); */
-
+  free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+              bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
+              blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
+              num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+              lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
+  free_msolve_trace_qq_secondary_data(tmp_mpz_param, trace_det, modulus, 
+                  prod_crt, result, test, rnum, rden, numer, denom, check_lift, 
+                  guessed_num, guessed_den, is_lifted, recdata);
   return 0;
 }
 
@@ -5024,6 +5077,18 @@ restart:
             }
             if(b == -4){
                 fprintf(stderr, "Bad prime chosen initially\n");
+                free(bld);
+                bld = NULL;
+                free(blen);
+                blen  = NULL;
+                free(bexp);
+                bexp  = NULL;
+                free(bcf);
+                bcf = NULL;
+                free(param);
+                param = NULL;
+                round++;
+                (*mpz_paramp)->dim  = 0;
                 goto restart;
                 /* (*mpz_paramp)->dim  = -4; */
             }

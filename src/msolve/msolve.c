@@ -2069,6 +2069,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     int32_t use_signatures,
                     int32_t lift_matrix,
                     int *to_split_ptr,
+                    primes_t *init_primes,
                     int32_t info_level,
                     int32_t print_gb,
                     int32_t pbm_file,
@@ -3622,6 +3623,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                    int32_t la_option,
                    int32_t use_signatures,
                    int32_t lift_matrix,
+                   primes_t *init_primes,
                    int32_t info_level,
                    int32_t print_gb,
                    int32_t pbm_file,
@@ -3648,7 +3650,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           dquot_ptr,
                           gens,
                           ht_size, //initial_hts,
-			  unstable_staircase,
+			              unstable_staircase,
                           nr_threads,
                           max_nr_pairs,
                           elim_block_len,
@@ -3657,6 +3659,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           use_signatures,
                           lift_matrix,
                           &to_split,
+                          init_primes,
                           info_level,
                           print_gb,
                           pbm_file,
@@ -3871,6 +3874,7 @@ int core_msolve(
     int32_t **blen  = NULL;
     int32_t **bexp  = NULL;
     void **bcf      = NULL;
+    primes_t *init_primes = NULL;
     int b           = 0;
     /* counter for randomly chosen linear forms */
     int round = -1;
@@ -4361,21 +4365,22 @@ restart:
                        real_roots_ptr,
                        real_pts_ptr,
                        gens,
-		       initial_hts, unstable_staircase, nr_threads, max_pairs,
+		               initial_hts, unstable_staircase, nr_threads, max_pairs,
                        elim_block_len, update_ht,
-                       la_option, use_signatures, lift_matrix, info_level, print_gb,
+                       la_option, use_signatures, lift_matrix, 
+                       init_primes, info_level, print_gb,
                        generate_pbm, precision, files, round, get_param);
-          if(print_gb){
-            return 0;
-          }
+      if(print_gb){
+          return 0;
+      }
 
-          manage_output(b, dim, dquot, files, gens, (*paramp), mpz_paramp, get_param,
-                        nb_real_roots_ptr,
-                        real_roots_ptr,
-                        real_pts_ptr,
-                        info_level);
+      manage_output(b, dim, dquot, files, gens, (*paramp), mpz_paramp, get_param,
+                    nb_real_roots_ptr,
+                    real_roots_ptr,
+                    real_pts_ptr,
+                    info_level);
 
-          if (b == 1) {
+          if (b == 1) {// computation failed 
             free(bld);
             bld = NULL;
             free(blen);
@@ -5033,9 +5038,10 @@ restart:
                     real_roots_ptr,
                     real_pts_ptr,
                     gens,
-		    initial_hts, unstable_staircase, nr_threads, max_pairs,
+		            initial_hts, unstable_staircase, nr_threads, max_pairs,
                     elim_block_len, update_ht,
-                    la_option, use_signatures, lift_matrix, info_level, print_gb,
+                    la_option, use_signatures, lift_matrix, 
+                    init_primes, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
 
             if(print_gb){

@@ -2034,6 +2034,23 @@ void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, primes_t *lp
     free(lmb_ori);
 }
 
+void update_initial_primes(primes_t **binit_primes, uint32_t fc){
+    if((*binit_primes) == NULL){
+        (*binit_primes) = (primes_t *)malloc(sizeof(primes_t));
+        (*binit_primes)->old = 0;
+        (*binit_primes)->ld = 1;
+        (*binit_primes)->p = (uint32_t *)malloc((unsigned long)((*binit_primes)->ld) * sizeof(uint32_t));
+        (*binit_primes)->p[0] = fc;
+    }
+    else{
+        (*binit_primes)->old = (*binit_primes)->ld;
+        (*binit_primes)->ld++;
+        (*binit_primes)->p = (uint32_t *)realloc((*binit_primes)->p, 
+                (unsigned long)((*binit_primes)->ld) * sizeof(uint32_t));
+        (*binit_primes)->p[(*binit_primes)->ld - 1] = fc;
+    }
+}
+
 /*
 
   - renvoie 0 si le calcul est ok.
@@ -2069,7 +2086,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     int32_t use_signatures,
                     int32_t lift_matrix,
                     int *to_split_ptr,
-                    primes_t *init_primes,
+                    primes_t **binit_primes,
                     int32_t info_level,
                     int32_t print_gb,
                     int32_t pbm_file,
@@ -2190,6 +2207,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   if (gens->field_char) {
     lp->p[0] = gens->field_char;
   }
+  update_initial_primes(binit_primes, lp->p[0]);
   sp_matfglm_t **bmatrix =
       (sp_matfglm_t **)malloc(st->nthrds * sizeof(sp_matfglm_t *));
 
@@ -3621,7 +3639,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                    int32_t la_option,
                    int32_t use_signatures,
                    int32_t lift_matrix,
-                   primes_t *init_primes,
+                   primes_t **binit_primes,
                    int32_t info_level,
                    int32_t print_gb,
                    int32_t pbm_file,
@@ -3657,7 +3675,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           use_signatures,
                           lift_matrix,
                           &to_split,
-                          init_primes,
+                          binit_primes,
                           info_level,
                           print_gb,
                           pbm_file,
@@ -4366,7 +4384,7 @@ restart:
 		               initial_hts, unstable_staircase, nr_threads, max_pairs,
                        elim_block_len, update_ht,
                        la_option, use_signatures, lift_matrix, 
-                       init_primes, info_level, print_gb,
+                       &init_primes, info_level, print_gb,
                        generate_pbm, precision, files, round, get_param);
       if(print_gb){
           return 0;
@@ -5039,7 +5057,7 @@ restart:
 		            initial_hts, unstable_staircase, nr_threads, max_pairs,
                     elim_block_len, update_ht,
                     la_option, use_signatures, lift_matrix, 
-                    init_primes, info_level, print_gb,
+                    &init_primes, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
 
             if(print_gb){
@@ -5132,6 +5150,7 @@ restart:
         free(blen);
         free(bexp);
         free(bcf);
+        free_lucky_primes(&init_primes);
 
         /* get parametrization */
         *paramp     = param;

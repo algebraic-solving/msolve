@@ -2051,6 +2051,18 @@ void update_initial_primes(primes_t **binit_primes, uint32_t fc){
     }
 }
 
+int is_member(uint32_t fc, primes_t *init_primes){
+    if(init_primes == NULL){
+        return 0;
+    }
+    for(unsigned long int i = 0; i < init_primes->ld; i++){
+        if(fc == init_primes->p[i]){
+            return 1;
+        }
+    }
+    return 0;
+}
+
 /*
 
   - renvoie 0 si le calcul est ok.
@@ -2195,7 +2207,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   prime = 1073741827;
   //prime = 1073741789;
-  while (gens->field_char == 0 && is_lucky_prime_ui(prime, bs_qq)) {
+  while (gens->field_char == 0 && (is_lucky_prime_ui(prime, bs_qq) || is_member(prime, (*binit_primes)))) {
     prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   }
   primeinit = prime;

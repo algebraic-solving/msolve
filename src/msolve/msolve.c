@@ -2487,7 +2487,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       prime = next_prime(1 << 30);
     }
     lp->p[0] = prime;
-    while (is_lucky_prime_ui(prime, bs_qq) || prime == primeinit) {
+    while (is_lucky_prime_ui(prime, bs_qq) || is_member(prime, (*binit_primes))) {
       prime = next_prime(prime);
       if (prime >= lprime) {
         prime = next_prime(1 << 30);

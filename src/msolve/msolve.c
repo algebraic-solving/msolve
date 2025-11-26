@@ -2034,6 +2034,7 @@ static void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, prime
     free(squvars);
     free(lmb_ori);
 }
+
 void update_initial_primes(primes_t **binit_primes, uint32_t fc){
     if((*binit_primes) == NULL){
         (*binit_primes) = (primes_t *)malloc(sizeof(primes_t));
@@ -3219,7 +3220,9 @@ static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
     mpz_neg(val_up, val_up);
     mpz_swap(val_up, val_do);
 
-    long alpha = abs(mpz_sizeinbase(den_do, 2) + mpz_sizeinbase(param->cfs[pos], 2) - mpz_sizeinbase(val_do, 2)) / prec;
+    size_t sz = mpz_sizeinbase(den_do, 2) + mpz_sizeinbase(param->cfs[pos], 2)
+                - mpz_sizeinbase(val_do, 2);
+    long alpha = labs((long) sz) / prec;
     long dec = MAX(2,2*alpha) * prec;
 
     mpz_mul_2exp(val_up, val_up, dec);

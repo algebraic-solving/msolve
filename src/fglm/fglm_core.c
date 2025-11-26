@@ -1697,7 +1697,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
       *success = 0;
       return NULL;
     }
-    else
+    else {
       if (right_param == 1) {
         if(info_level){
           fprintf(stderr,
@@ -1705,7 +1705,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
         }
         *success = 0;
       }
-      else
+      else {
           if (right_param < nvars) {
             if(info_level){
               fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
@@ -1713,6 +1713,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
             }
             *success = 0;
           }
+      }
+    }
   }
   st->fglm_rtime = realtime() - st->fglm_rtime;
   st->fglm_ctime = cputime() - st->fglm_ctime;

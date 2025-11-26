@@ -1942,7 +1942,8 @@ static inline int is_lucky_matmul_prime_ui(uint32_t prime,
   return 0;
 }
 
-void free_msolve_trace_qq_secondary_data(mpz_param_t tmp_mpz_param, 
+
+static void free_msolve_trace_qq_secondary_data(mpz_param_t tmp_mpz_param, 
         trace_det_fglm_mat_t trace_det, mpz_t modulus, mpz_t prod_crt, mpq_t result, 
         mpq_t test, mpz_t rnum, mpz_t rden, mpz_upoly_t numer, mpz_upoly_t denom, 
         int16_t *check_lift, mpz_t guessed_num, mpz_t guessed_den, int *is_lifted, 
@@ -1964,7 +1965,7 @@ void free_msolve_trace_qq_secondary_data(mpz_param_t tmp_mpz_param,
     free_rrec_data(recdata);
 }
 
-void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, primes_t *lp, 
+static void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, primes_t *lp, 
         bs_t *bs_qq, bs_t **bs, param_t **nmod_params, uint32_t *bad_primes, 
         sp_matfglm_t **bmatrix, int32_t **bdiv_xn, int32_t **blen_gb_xn, 
         int32_t **bstart_cf_gb_xn, long**bextra_nf, int32_t **blens_extra_nf, 
@@ -2033,7 +2034,6 @@ void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, primes_t *lp
     free(squvars);
     free(lmb_ori);
 }
-
 void update_initial_primes(primes_t **binit_primes, uint32_t fc){
     if((*binit_primes) == NULL){
         (*binit_primes) = (primes_t *)malloc(sizeof(primes_t));

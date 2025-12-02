@@ -74,7 +74,7 @@ jobs:
       - name: "Build FLINT"
         run: |
           git clone --depth=1 https://github.com/flintlib/flint
-          ./bootstrap.sh && ./configure CC=${CC} --with-ntl --enable-assert
+          cd flint && ./bootstrap.sh && ./configure CC=${CC} --with-ntl --enable-assert
           $MAKE && sudo make install && sudo ldconfig
       - name: "Build and Test msolve"
         run: |

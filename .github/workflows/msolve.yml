@@ -56,8 +56,8 @@ jobs:
                     exit 1
                fi
 
-  FLINT3.4.0-withNTL:
-    name: FLINT v3.4.0 compiled with NTL
+  flintdev-assert-ntl:
+    name: FLINT git version, compiled with assert and NTL
     runs-on: ubuntu-latest
     env:
       CC: "gcc"
@@ -71,11 +71,11 @@ jobs:
           autoconf --version
           libtool --version
           echo "MAKE=make -j$(expr $(nproc) + 1) --output-sync=target" >> $GITHUB_ENV
-      - name: "Build FLINT for msolve"
+      - name: "Build FLINT"
         run: |
+          git clone --depth=1 https://github.com/flintlib/flint
           ./bootstrap.sh && ./configure CC=${CC} --with-ntl --enable-assert
           $MAKE && sudo make install && sudo ldconfig
-      - name: "Test msolve"
+      - name: "Build and Test msolve"
         run: |
-          git clone --depth=1 https://github.com/algebraic-solving/msolve
-          cd msolve/ && ./autogen.sh && ./configure && $MAKE && make check
+          ./autogen.sh && ./configure && $MAKE && make check

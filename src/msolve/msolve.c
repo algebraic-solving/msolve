@@ -708,10 +708,10 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
     int j = 0;
     int32_t sum = 0;
     for (i = 2 * len_old; i < 2 * len_new; i += 2) {
-      gens->random_linear_form[j] = ((int8_t)(rand()));
+      gens->random_linear_form[j] = ((int16_t)(rand()));
 
       while (gens->random_linear_form[j] == 0) {
-        gens->random_linear_form[j] = ((int8_t)(rand()));
+	gens->random_linear_form[j] = ((int16_t)(rand()));
       }
       if (i < 2 * len_new - 1) {
         sum += nvars_old * abs(gens->random_linear_form[j]);
@@ -2937,7 +2937,7 @@ void generate_table_values_full_small(mpz_t numer, mpz_t c, const long k, const 
 void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, const long ns,
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
-    
+
     double st = realtime();
 
     mpz_add_ui(c, numer, 1);
@@ -3148,8 +3148,8 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
 
 }
 
-void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, interval *pos_root, 
-        mpz_t *tab, mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do, mpz_t c, int64_t *corr, 
+void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, interval *pos_root,
+        mpz_t *tab, mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do, mpz_t c, int64_t *corr,
         int64_t *b, const int info_level){
     if (mpz_sgn(rt->numer) >= 0) {
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
@@ -3213,7 +3213,7 @@ void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, 
     generate_table_values_full(rt, c, ns, *b, *corr, xdo, xup);
 }
 
-static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt, 
+static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
         int pos, mpz_t val_do, mpz_t val_up, mpz_t tmp,
         mpz_t den_do, mpz_t den_up, const long prec, const int64_t corr, mpz_t v1, mpz_t v2){
     mpz_neg(val_do, val_do);
@@ -3234,7 +3234,7 @@ static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
         mpz_fdiv_q(v1, val_do, tmp);
         mpz_mul(tmp, den_do, param->cfs[pos]);
         mpz_cdiv_q(v2, val_up, tmp);
-        
+
       }
       if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) >= 0) {
         mpz_mul(tmp, den_do, param->cfs[pos]);
@@ -3329,14 +3329,14 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   }
 
   generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
-  while (rt->isexact == 0 && 
+  while (rt->isexact == 0 &&
           (mpz_cmp_ui(rt->numer, 0) == 0 ||
            newvalue_denom(param->denom->coeffs, param->denom->length - 1,
                         rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
                         s)
            )){
-    refine_root_elim(param, polelim, ns, rt, pos_root, 
-        tab, xdo, xup, den_up, den_do, c, &corr, 
+    refine_root_elim(param, polelim, ns, rt, pos_root,
+        tab, xdo, xup, den_up, den_do, c, &corr,
         &b, info_level);
 
     if (info_level) {
@@ -3371,13 +3371,13 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                     tmp, val_do, val_up, corr);
         int boo = 0;
         while(to_split == 0 && mpz_sgn(val_do)*mpz_sgn(val_up) < 0){
-            refine_root_elim(param, polelim, ns, rt, pos_root, 
-                tab, xdo, xup, den_up, den_do, c, &corr, 
+            refine_root_elim(param, polelim, ns, rt, pos_root,
+                tab, xdo, xup, den_up, den_do, c, &corr,
                 &b, info_level);
             mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                         param->coords[nv]->length - 1, rt->k, xdo, xup,
                                         tmp, val_do, val_up, corr);
-            
+
             boo = 1;
         }
         if(boo){
@@ -3394,8 +3394,8 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
         }
         else{
             double str = cputime();
-            refine_root_elim(param, polelim, ns, rt, pos_root, 
-                tab, xdo, xup, den_up, den_do, c, &corr, 
+            refine_root_elim(param, polelim, ns, rt, pos_root,
+                tab, xdo, xup, den_up, den_do, c, &corr,
                 &b, info_level);
             mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                         param->coords[nv]->length - 1, rt->k, xdo, xup,
@@ -3407,7 +3407,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     }
   }
   *st += realtime() - et;
- 
+
   if(negate){
       negate_coeffs_param(param, polelim);
       mpz_neg(rt->numer, rt->numer);

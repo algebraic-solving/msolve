@@ -709,10 +709,10 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
     int j = 0;
     int32_t sum = 0;
     for (i = 2 * len_old; i < 2 * len_new; i += 2) {
-      gens->random_linear_form[j] = ((int16_t)(rand()));
+      gens->random_linear_form[j] = ((int32_t)(rand()));
 
       while (gens->random_linear_form[j] == 0) {
-	gens->random_linear_form[j] = ((int16_t)(rand()));
+	gens->random_linear_form[j] = ((int32_t)(rand()));
       }
       if (i < 2 * len_new - 1) {
         sum += nvars_old * abs(gens->random_linear_form[j]);

@@ -586,7 +586,6 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
   const int32_t bcf = gens->linear_form_base_coef;
   k = 1;
   printf ("linear form base coef:%d\n",gens->linear_form_base_coef);
-  if (gens->linear_form_base_coef > 3) exit(1);
   if (info_level > 0) {
     printf("\nAdding a linear form with an extra variable ");
     printf("(lowest w.r.t. monomial order)\n");
@@ -2220,7 +2219,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
   primeinit = prime;
   lp->p[0] = primeinit;
-  if(info_level){
+  if(info_level && gens->field_char == 0){
       fprintf(stdout, "Initial prime is %d\n", lp->p[0]);
   }
 

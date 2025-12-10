@@ -2334,6 +2334,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   (*mpz_paramp)->dquot = *dquot_ptr;
 
   if (lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
+    printf ("success 0\n");
     if (print_gb) {
       free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
           bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
@@ -2380,7 +2381,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       return 0;
     }
     if (*dquot_ptr > 0) {
-      if (*minpolydeg_ptr == (*nmod_params)->degsqfrelimpol) {
+      if (success && *minpolydeg_ptr == (*nmod_params)->degsqfrelimpol) {
 	/* same degree as with a random linear form */
 	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
           bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 

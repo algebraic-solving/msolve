@@ -1,9 +1,5 @@
 #!/bin/bash
 
-#test file for real root extraction with adaptative precision
-#For this test file, one coordinate of one solutions is very close to 0
-#msolve's real root extraction should be able to make the distinction
-
 file=issue_230_squared
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \

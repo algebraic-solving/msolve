@@ -585,6 +585,7 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
   gens->linear_form_base_coef++;
   const int32_t bcf = gens->linear_form_base_coef;
   k = 1;
+  printf ("linear form base coef:%d\n",gens->linear_form_base_coef);
   if (info_level > 0) {
     printf("\nAdding a linear form with an extra variable ");
     printf("(lowest w.r.t. monomial order)\n");
@@ -1680,13 +1681,14 @@ static int32_t *initial_modular_step(
 
 	    if(*bmatrix == NULL){
 	      *success = 0;
+	      printf("nmod_fglm_compute_trace over success = 0\n");
 	      *dim = 0;
 	      *dquot_ori = dquot;
 	      if(md->info_level > 1){
 		fprintf (stdout,"------------------------------------------------------------------------------------------------------\n");
 	      }
-          free_basis_without_hash_table(&(bs));
-          free(bs);
+	      free_basis_without_hash_table(&(bs));
+	      free(bs);
 	      return NULL;
             }
 
@@ -2332,24 +2334,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   (*mpz_paramp)->dquot = *dquot_ptr;
 
   if (lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
-    printf ("here\n");
-    free(bs);
-    if (gens->field_char == 0) {
-      free_basis(&bs_qq);
-      /*nmod_params[0] should not be cleaned here (change of primitive
-       * element_*/
-    }
-    free_lucky_primes(&lp);
-    free(bad_primes);
-    free(lp);
-    free(linvars);
-    if (nlins) {
-      free(lineqs_ptr[0]);
-    }
-    free(bnlins);
-    free(lineqs_ptr);
-    free(squvars);
-    free(lmb_ori);
     if (print_gb) {
       free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
           bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
@@ -2410,7 +2394,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
           num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
           lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
-
 	if (*minpolydeg_ptr == -1 && squares == 0) {
 	  return 2;
 	} else {

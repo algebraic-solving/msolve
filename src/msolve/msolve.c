@@ -585,7 +585,6 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
   gens->linear_form_base_coef++;
   const int32_t bcf = gens->linear_form_base_coef;
   k = 1;
-  printf ("linear form base coef:%d\n",gens->linear_form_base_coef);
   if (info_level > 0) {
     printf("\nAdding a linear form with an extra variable ");
     printf("(lowest w.r.t. monomial order)\n");
@@ -683,7 +682,6 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
     }
   }
   gens->linear_form_base_coef++;
-  printf ("linear form base coef:%d\n",gens->linear_form_base_coef);
   /* const int32_t bcf = gens->linear_form_base_coef; */
   if (info_level > 0) {
     printf("\nAdding a linear form with an extra variable ");
@@ -1699,7 +1697,6 @@ static int32_t *initial_modular_step(
             *bparam = nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
                     *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
                     md->info_level, bdata_fglm, bdata_bms, success, md);
-	    printf("nmod_fglm_compute_trace over\n");
         }
         *dim = 0;
         *dquot_ori = dquot;
@@ -2312,12 +2309,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
-  printf ("success %d\n",success);
-  printf ("degree of old minpolydeg_ptr: %d\n",*minpolydeg_ptr);
   if (gens->rand_linear) {
-    printf("here after 1st run\n");
     *minpolydeg_ptr = (*nmod_params)->degsqfrelimpol;
-    printf("degree of minpoly %d\n",*minpolydeg_ptr);
     return 3;
   } 
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
@@ -2336,7 +2329,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   (*mpz_paramp)->dquot = *dquot_ptr;
 
   if (lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
-    printf ("if success %d\n",success);
     if (print_gb) {
       free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
           bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
@@ -3725,7 +3717,6 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           pbm_file,
                           files,
                           round);
-  printf ("msolve_trace_qq returned %d\n",b);
   double ct1 = cputime();
   double rt1 = realtime();
 
@@ -5215,10 +5206,18 @@ restart:
 		    oldminpolydeg = minpolydeg; // need to run a 2nd time
 		  } else if (oldminpolydeg = minpolydeg) {
 			/* same degree for both random linear forms */
-			printf ("restarting with a non-random linear form\n");
+			printf ("\nRestarting with a non-random linear form");
 			/* set back the base coefficient to its previous form
 			   before introducing the random linear form.
 			   Only for value larger than 1
+			*/
+			if (gens->linear_form_base_coef > 1) {
+			  gens->linear_form_base_coef--;
+			}
+			/* set back the base coefficient to the
+                          original one if a non random linear form had
+                          been introduced before.
+			  Only for value larger than 1
 			*/
 			if (gens->linear_form_base_coef > 1) {
 			  gens->linear_form_base_coef--;
@@ -5231,7 +5230,7 @@ restart:
 		  } /* else oldminpolydeg > minpoly deg so need to run
 		       another 2nd time */
 		  minpolydeg = -1;
-		  printf ("restarting with another random linear form\n");
+		  printf ("\nRestarting with another random linear form");
 		  /* set back the base coefficient to its previous form
 		     before introducing the random linear form.
 		     Only for value larger than 1

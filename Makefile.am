@@ -63,7 +63,9 @@ checkdiff               = test/diff/diff_cp_d_3_n_4_p_2.sh \
 			  test/diff/diff_f4sat-field-char.sh \
 			  test/diff/diff_f4sat-zero-input.sh \
 			  test/diff/diff_f4sat-is-saturated-check.sh \
-			  test/diff/diff_maxbitsize-bug.sh
+			  test/diff/diff_maxbitsize-bug.sh \
+			  test/diff/diff_issue_230.sh \
+			  test/diff/diff_issue_230_squared.sh
 
 # dist_check_DATA         = test/input_files
 neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c

@@ -586,6 +586,7 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
   const int32_t bcf = gens->linear_form_base_coef;
   k = 1;
   printf ("linear form base coef:%d\n",gens->linear_form_base_coef);
+  if (gens->linear_form_base_coef > 3) exit(1);
   if (info_level > 0) {
     printf("\nAdding a linear form with an extra variable ");
     printf("(lowest w.r.t. monomial order)\n");
@@ -2312,6 +2313,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
+  printf ("success %d\n",success);
   printf ("degree of old minpolydeg_ptr: %d\n",*minpolydeg_ptr);
   if (gens->rand_linear) {
     printf("here after 1st run\n");
@@ -2320,7 +2322,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     return 3;
   } 
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
-    if (nmod_params[0]->elim->length - 1 != *dquot_ptr) {
+    if (nmod_params[0]->degsqfrelimpol != *minpolydeg_ptr
+	&& nmod_params[0]->elim->length - 1 != *dquot_ptr) {
       for (int i = 0; i < nr_vars - 1; i++) {
         if ((squvars[i] == 0) && round) {
           squares = 0;
@@ -2334,7 +2337,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   (*mpz_paramp)->dquot = *dquot_ptr;
 
   if (lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
-    printf ("success 0\n");
+    printf ("if success %d\n",success);
     if (print_gb) {
       free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
           bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 

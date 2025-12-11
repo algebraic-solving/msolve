@@ -1679,7 +1679,6 @@ static int32_t *initial_modular_step(
 
 	    if(*bmatrix == NULL){
 	      *success = 0;
-	      printf("nmod_fglm_compute_trace over success = 0\n");
 	      *dim = 0;
 	      *dquot_ori = dquot;
 	      if(md->info_level > 1){

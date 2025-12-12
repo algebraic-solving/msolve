@@ -2,8 +2,8 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([msolve], [0.9.3], [ederc@rptu.de,mohab.safey@lip6.fr])
-AC_SUBST([LT_VERSION],[3:3:0])
+AC_INIT([msolve], [0.9.4], [ederc@rptu.de,mohab.safey@lip6.fr])
+AC_SUBST([LT_VERSION],[3:4:0])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign silent-rules subdir-objects color-tests parallel-tests])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_MACRO_DIR([m4])

@@ -274,5 +274,11 @@ AC_CONFIG_LINKS([
  input_files/maxbitsize-bug.ms:input_files/maxbitsize-bug.ms
  output_files/maxbitsize-bug.res:output_files/maxbitsize-bug.res
  test/diff/diff_maxbitsize-bug.sh:test/diff/diff_maxbitsize-bug.sh
+ input_files/issue_230.ms:input_files/issue_230.ms
+ output_files/issue_230.res:output_files/issue_230.res
+ test/diff/diff_issue_230.sh:test/diff/diff_issue_230.sh
+ input_files/issue_230_squared.ms:input_files/issue_230_squared.ms
+ output_files/issue_230_squared.res:output_files/issue_230_squared.res
+ test/diff/diff_issue_230_squared.sh:test/diff/diff_issue_230_squared.sh
 ])
 AC_OUTPUT

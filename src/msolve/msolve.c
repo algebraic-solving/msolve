@@ -708,10 +708,10 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
     int j = 0;
     int32_t sum = 0;
     for (i = 2 * len_old; i < 2 * len_new; i += 2) {
-      gens->random_linear_form[j] = ((int8_t)(rand()));
+      gens->random_linear_form[j] = ((int32_t)(rand()));
 
       while (gens->random_linear_form[j] == 0) {
-        gens->random_linear_form[j] = ((int8_t)(rand()));
+	gens->random_linear_form[j] = ((int32_t)(rand()));
       }
       if (i < 2 * len_new - 1) {
         sum += nvars_old * abs(gens->random_linear_form[j]);
@@ -1597,10 +1597,10 @@ static int32_t *initial_modular_step(
 	int32_t **bexps_extra_nf,
 	int32_t **bcfs_extra_nf,
 
-                     nvars_t *nlins_ptr, nvars_t *linvars,
-                     uint32_t **lineqs_ptr, nvars_t *squvars,
+	nvars_t *nlins_ptr, nvars_t *linvars,
+	uint32_t **lineqs_ptr, nvars_t *squvars,
 
-                     fglm_data_t **bdata_fglm, fglm_bms_data_t **bdata_bms,
+	fglm_data_t **bdata_fglm, fglm_bms_data_t **bdata_bms,
         int32_t *num_gb,
         int32_t **leadmons,
         uint64_t *bsz,
@@ -1612,11 +1612,12 @@ static int32_t *initial_modular_step(
         int print_gb,
         int *dim,
         long *dquot_ori,
+	int *minpolydeg_ori,
         data_gens_ff_t *gens,
         files_gb *files,
         int *success)
 {
-    double rt = realtime();
+  double rt = realtime();
 
   md->print_gb = print_gb;
   md->f4_qq_round = 1;
@@ -1683,8 +1684,8 @@ static int32_t *initial_modular_step(
 	      if(md->info_level > 1){
 		fprintf (stdout,"------------------------------------------------------------------------------------------------------\n");
 	      }
-          free_basis_without_hash_table(&(bs));
-          free(bs);
+	      free_basis_without_hash_table(&(bs));
+	      free(bs);
 	      return NULL;
             }
 
@@ -2066,28 +2067,31 @@ int is_member(uint32_t fc, primes_t *init_primes){
 
 /*
 
-  - renvoie 0 si le calcul est ok.
+  - returns 0 if computation is ok.
   => GB = [1] dim =0 dquot = 0
   => Positive dimension dim > 0
-  => Dimension zero + calcul qui a pu etre fait. dim=0 dquot > 0
+  => Dimension zero + computation that was done. dim=0 dquot > 0
 
-  - renvoie 1 si le calcul a echoue
-  => Dimension 0 => pas en position generique
+  - returns 1 if computation failed
+  => Dimension 0 => not in generic position
 
-  - renvoie 2 si besoin de plus de genericite.
-  => (tous les carres ne sont pas sous l'escalier)
+  - returns 2 if requires more genericity.
+  => (all the squares are not under the staircase)
+  - returns 3 if computation with a random linear form succeeded
+  => charac 0 + requires a non random linear form now
 
-  - renvoie -2 si la carac est > 0
+  - returns -2 if charac > 0
 
-  - renvoie -3 si meta data pas bonnes
+  - returns -3 if meta data are not correct
 
-  - renvoie -4 si bad prime
+  - renvoie -4 if bad prime
 */
 
 int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     param_t **nmod_param,
                     int *dim_ptr,
                     long *dquot_ptr,
+		    int *minpolydeg_ptr,
                     data_gens_ff_t *gens,
                     int32_t ht_size, //initial_hts,
                     int32_t unstable_staircase,
@@ -2211,7 +2215,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
   primeinit = prime;
   lp->p[0] = primeinit;
-  if(info_level){
+  if(info_level && gens->field_char == 0){
       fprintf(stdout, "Initial prime is %d\n", lp->p[0]);
   }
 
@@ -2299,12 +2303,18 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  unstable_staircase,
 					  print_gb,
 					  dim_ptr, dquot_ptr,
+					  minpolydeg_ptr,
 					  gens,
 					  files,
 					  &success);
 
+  if (gens->rand_linear) {
+    *minpolydeg_ptr = (*nmod_params)->degsqfrelimpol;
+    return 3;
+  } 
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
-    if (nmod_params[0]->elim->length - 1 != *dquot_ptr) {
+    if (nmod_params[0]->degsqfrelimpol != *minpolydeg_ptr
+	&& nmod_params[0]->elim->length - 1 != *dquot_ptr) {
       for (int i = 0; i < nr_vars - 1; i++) {
         if ((squvars[i] == 0) && round) {
           squares = 0;
@@ -2364,15 +2374,26 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       return 0;
     }
     if (*dquot_ptr > 0) {
-      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+      if (success && *minpolydeg_ptr == (*nmod_params)->degsqfrelimpol) {
+	/* same degree as with a random linear form */
+	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
           bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
           blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
           num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
           lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
-      if (squares == 0) {
-        return 2;
+	return 0;
+      } else {
+	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+          lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
+	if (*minpolydeg_ptr == -1 && squares == 0) {
+	  return 2;
+	} else {
+	  return 1;
+	}
       }
-      return 1;
     }
   }
 
@@ -2937,7 +2958,7 @@ void generate_table_values_full_small(mpz_t numer, mpz_t c, const long k, const 
 void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, const long ns,
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
-    
+
     double st = realtime();
 
     mpz_add_ui(c, numer, 1);
@@ -3148,8 +3169,8 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
 
 }
 
-void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, interval *pos_root, 
-        mpz_t *tab, mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do, mpz_t c, int64_t *corr, 
+void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, interval *pos_root,
+        mpz_t *tab, mpz_t *xdo, mpz_t *xup, mpz_t den_up, mpz_t den_do, mpz_t c, int64_t *corr,
         int64_t *b, const int info_level){
     if (mpz_sgn(rt->numer) >= 0) {
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
@@ -3213,7 +3234,7 @@ void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, 
     generate_table_values_full(rt, c, ns, *b, *corr, xdo, xup);
 }
 
-static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt, 
+static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
         int pos, mpz_t val_do, mpz_t val_up, mpz_t tmp,
         mpz_t den_do, mpz_t den_up, const long prec, const int64_t corr, mpz_t v1, mpz_t v2){
     mpz_neg(val_do, val_do);
@@ -3234,7 +3255,7 @@ static int evaluate_coordinate(mpz_param_t param, interval *rt, real_point_t pt,
         mpz_fdiv_q(v1, val_do, tmp);
         mpz_mul(tmp, den_do, param->cfs[pos]);
         mpz_cdiv_q(v2, val_up, tmp);
-        
+
       }
       if (mpz_sgn(val_do) <= 0 && mpz_sgn(val_up) >= 0) {
         mpz_mul(tmp, den_do, param->cfs[pos]);
@@ -3329,14 +3350,14 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
   }
 
   generate_table_values_full(rt, c, ns, b, corr, xdo, xup);
-  while (rt->isexact == 0 && 
+  while (rt->isexact == 0 &&
           (mpz_cmp_ui(rt->numer, 0) == 0 ||
            newvalue_denom(param->denom->coeffs, param->denom->length - 1,
                         rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,
                         s)
            )){
-    refine_root_elim(param, polelim, ns, rt, pos_root, 
-        tab, xdo, xup, den_up, den_do, c, &corr, 
+    refine_root_elim(param, polelim, ns, rt, pos_root,
+        tab, xdo, xup, den_up, den_do, c, &corr,
         &b, info_level);
 
     if (info_level) {
@@ -3371,13 +3392,13 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                                     tmp, val_do, val_up, corr);
         int boo = 0;
         while(to_split == 0 && mpz_sgn(val_do)*mpz_sgn(val_up) < 0){
-            refine_root_elim(param, polelim, ns, rt, pos_root, 
-                tab, xdo, xup, den_up, den_do, c, &corr, 
+            refine_root_elim(param, polelim, ns, rt, pos_root,
+                tab, xdo, xup, den_up, den_do, c, &corr,
                 &b, info_level);
             mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                         param->coords[nv]->length - 1, rt->k, xdo, xup,
                                         tmp, val_do, val_up, corr);
-            
+
             boo = 1;
         }
         if(boo){
@@ -3394,8 +3415,8 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
         }
         else{
             double str = cputime();
-            refine_root_elim(param, polelim, ns, rt, pos_root, 
-                tab, xdo, xup, den_up, den_do, c, &corr, 
+            refine_root_elim(param, polelim, ns, rt, pos_root,
+                tab, xdo, xup, den_up, den_do, c, &corr,
                 &b, info_level);
             mpz_scalar_product_interval(param->coords[nv]->coeffs,
                                         param->coords[nv]->length - 1, rt->k, xdo, xup,
@@ -3407,7 +3428,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     }
   }
   *st += realtime() - et;
- 
+
   if(negate){
       negate_coeffs_param(param, polelim);
       mpz_neg(rt->numer, rt->numer);
@@ -3640,7 +3661,7 @@ void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
 }
 
 int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
-                   long *dquot_ptr, long *nb_real_roots_ptr,
+                   long *dquot_ptr, int *minpolydeg_ptr, long *nb_real_roots_ptr,
                    interval **real_roots_ptr, real_point_t **real_pts_ptr,
                    data_gens_ff_t *gens,
                    int32_t ht_size, //initial_hts,
@@ -3677,6 +3698,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           nmod_param,
                           dim_ptr,
                           dquot_ptr,
+			  minpolydeg_ptr,
                           gens,
                           ht_size, //initial_hts,
 			              unstable_staircase,
@@ -3907,6 +3929,10 @@ int core_msolve(
     int b           = 0;
     /* counter for randomly chosen linear forms */
     int round = -1;
+    /* degree of the minimal polynomial for random linear forms,
+       when over Q */
+    int minpolydeg = -1;
+    int oldminpolydeg = -1;
 
 restart:
 
@@ -4390,6 +4416,7 @@ restart:
                        paramp,
                        &dim,
                        &dquot,
+		       &minpolydeg,
                        nb_real_roots_ptr,
                        real_roots_ptr,
                        real_pts_ptr,
@@ -5063,6 +5090,7 @@ restart:
                     &param,
                     &dim,
                     &dquot,
+		    &minpolydeg,
                     nb_real_roots_ptr,
                     real_roots_ptr,
                     real_pts_ptr,
@@ -5157,8 +5185,65 @@ restart:
                 fprintf(stderr, "be done automatically if you run msolve with option\n");
                 fprintf(stderr, "\"-c2\" which is the default.\n");
             }
+	    if(b == 3){
+                free(bld);
+                bld = NULL;
+                free(blen);
+                blen  = NULL;
+                free(bexp);
+                bexp  = NULL;
+                free(bcf);
+                bcf = NULL;
+                free(param);
+                param = NULL;
+                round++;
+                if(gens->change_var_order >= 0){
+                  undo_variable_order_change(gens);
+                }
+                if (genericity_handling == 2) {
+		  if (oldminpolydeg == -1 || oldminpolydeg < minpolydeg) {
+		    oldminpolydeg = minpolydeg; // need to run a 2nd time
+		  } else if (oldminpolydeg == minpolydeg) {
+			/* same degree for both random linear forms */
+			printf ("\nRestarting with a non-random linear form");
+			/* set back the base coefficient to its previous form
+			   before introducing the random linear form.
+			   Only for value larger than 1
+			*/
+			if (gens->linear_form_base_coef > 1) {
+			  gens->linear_form_base_coef--;
+			}
+			/* set back the base coefficient to the
+                          original one if a non random linear form had
+                          been introduced before.
+			  Only for value larger than 1
+			*/
+			if (gens->linear_form_base_coef > 1) {
+			  gens->linear_form_base_coef--;
+			}
+			/* set back the random linear form flag to 0 */
+			gens->rand_linear=0;
+			if (add_linear_form_to_input_system(gens, info_level)) {
+			  goto restart;
+			}
+		  } /* else oldminpolydeg > minpoly deg so need to run
+		       another 2nd time */
+		  minpolydeg = -1;
+		  printf ("\nRestarting with another random linear form");
+		  /* set back the base coefficient to its previous form
+		     before introducing the random linear form.
+		     Only for value larger than 1
+		  */
+		  if (gens->linear_form_base_coef > 1) {
+		    gens->linear_form_base_coef--;
+		  }
+		  if (add_random_linear_form_to_input_system(gens, info_level)) {
+		    goto restart;
+		  }
+		}
+	    }
         }
-
+    
         free(bld);
         free(blen);
         free(bexp);
@@ -5171,6 +5256,7 @@ restart:
         return !(b==0);
     }
 }
+
 
 void export_julia_rational_parametrization_qq(
     void *(*mallocp)(size_t), int32_t *load, int32_t *nvars, int32_t *dim,

@@ -5203,7 +5203,7 @@ restart:
                 if (genericity_handling == 2) {
 		  if (oldminpolydeg == -1 || oldminpolydeg < minpolydeg) {
 		    oldminpolydeg = minpolydeg; // need to run a 2nd time
-		  } else if (oldminpolydeg == minpolydeg) {
+		  } else if (oldminpolydeg == minpolydeg && info_level > 0) {
 			/* same degree for both random linear forms */
 			printf ("\nRestarting with a non-random linear form");
 			/* set back the base coefficient to its previous form
@@ -5229,7 +5229,9 @@ restart:
 		  } /* else oldminpolydeg > minpoly deg so need to run
 		       another 2nd time */
 		  minpolydeg = -1;
-		  printf ("\nRestarting with another random linear form");
+		  if (info_level > 0) {
+		    printf ("\nRestarting with another random linear form");
+          }
 		  /* set back the base coefficient to its previous form
 		     before introducing the random linear form.
 		     Only for value larger than 1

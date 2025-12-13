@@ -18,6 +18,8 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include "getdelim.h"
+
 static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
 {
     len_t i, j, k;

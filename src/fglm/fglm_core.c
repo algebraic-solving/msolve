@@ -1280,7 +1280,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
         }
         else{
           nmod_poly_fit_length(param->coords[nvars-2-nc],
-                               param->elim->length-1 );
+                               FLINT_MAX(2, param->elim->length-1) );
           param->coords[nvars-2-nc]->length = data_bms->BMS->R1->length ;
           param->coords[nvars-2-nc]->coeffs[0] = 0;
           param->coords[nvars-2-nc]->coeffs[1] = 0;

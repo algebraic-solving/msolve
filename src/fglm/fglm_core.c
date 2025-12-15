@@ -70,6 +70,8 @@ double omp_get_wtime(void) { return realtime();}
 #include "../upolmat/nmod_poly_mat_pmbasis.c"
 #endif
 
+#include "aligned_alloc.h"
+
 void print_fglm_data(
         FILE *file,
         const md_t * const st,
@@ -775,9 +777,9 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
                        RED_32,
                        RED_64);
   }
-  free(Rmat);
-  free(res);
-  free(tres);
+  posix_memalign_free(Rmat);
+  posix_memalign_free(res);
+  posix_memalign_free(tres);
 
 }
 
@@ -1544,7 +1546,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 #endif
 
 #if DEBUGFGLM >= 1
-  FILE *fmat = fopen("/tmp/matrix.fglm", "w");
+  FILE *fmat = fopen("/tmp/matrix.fglm", "wb");
   display_fglm_matrix(fmat, matrix);
   fclose(fmat);
 #endif
@@ -1749,7 +1751,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 #endif
 
 #if DEBUGFGLM >= 1
-  FILE *fmat = fopen("/tmp/matrix.fglm", "w");
+  FILE *fmat = fopen("/tmp/matrix.fglm", "wb");
   display_fglm_matrix(fmat, matrix);
   fclose(fmat);
 #endif
@@ -2098,7 +2100,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 #endif
 
 #if DEBUGFGLM >= 1
-  FILE *fmat = fopen("/tmp/matrix.fglm", "w");
+  FILE *fmat = fopen("/tmp/matrix.fglm", "wb");
   display_fglm_colon_matrix(fmat, matrix);
   fclose(fmat);
 #endif

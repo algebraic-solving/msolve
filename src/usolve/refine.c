@@ -38,6 +38,22 @@ static void make_exact_root(mpz_t *upol, unsigned long int *deg,
   }
 }
 
+uint64_t mpz_get_ull(const mpz_t op) {
+  if (mp_bits_per_limb == 64) {
+    mp_limb_t limb = mpz_getlimbn(op, 0);
+    return limb;
+  }
+  if (mpz_size(op) == 0) {
+    return 0;
+  }
+  uint64_t limb_lo = (uint64_t)(mpz_getlimbn(op, 0));
+  uint64_t limb_hi = 0;
+  if (mpz_size(op) >= 2) {
+    limb_hi = (uint64_t)(mpz_getlimbn(op, 1));
+  }
+  return (limb_hi << 32) | limb_lo;
+}
+
 /* computes 2^logN f(a) / (f(a) - f(b)) where f(a) = vala, f(b) = valb */
 static long long int index_linearinterp(mpz_t *vala, mpz_t *valb, mpz_t *q,
                                         long long int logN){
@@ -55,16 +71,31 @@ static long long int index_linearinterp(mpz_t *vala, mpz_t *valb, mpz_t *q,
     }
     return -1;
   }
-  long long int index = mpz_get_ui(*q);
+  long long int index = mpz_get_ull(*q);
   return index;
+}
+
+void mpz_init_set_ull(mpz_t rop, uint64_t op) {
+  if (sizeof(mp_bitcnt_t) == 4) {
+    uint32_t hi = (uint32_t)(op >> 32);
+    uint32_t lo = (uint32_t)(op);
+    mpz_init_set_ui(rop, hi);
+    mpz_mul_2exp(rop, rop, 32);
+    mpz_add_ui(rop, rop, lo);
+  } else {
+    mpz_init_set_ui(rop, op);
+  }
 }
 
 static void getx_and_eval_2exp(mpz_t *upol, unsigned long int deg,
                                mpz_t *a, mpz_t *x, mpz_t *value, mpz_t *q,
-                               int k, long int index){
+                               int k, long long int index){
+  mpz_t index_gmp;
+  mpz_init_set_ull(index_gmp, index);
   mpz_set(*x, *a);
-  mpz_add_ui(*x, *x, index);
+  mpz_add(*x, *x, index_gmp);
   mpz_poly_eval_2exp_naive(upol, deg, x, k, value, q);
+  mpz_clear(index_gmp);
 }
 
 static void getx_and_eval_2exp_mpzidx(mpz_t *upol, unsigned long int deg,
@@ -77,21 +108,26 @@ static void getx_and_eval_2exp_mpzidx(mpz_t *upol, unsigned long int deg,
 
 static void getx_and_eval_2expleft(mpz_t *upol, unsigned long int deg,
                                    mpz_t *a, mpz_t *x, mpz_t *value, mpz_t *q,
-                                   int k, long int index){
+                                   int k, long long int index){
+  mpz_t index_gmp;
+  mpz_init_set_ull(index_gmp, index);
   mpz_set(*x, *a);
-  mpz_sub_ui(*x, *x, index);
+  mpz_sub(*x, *x, index_gmp);
   mpz_poly_eval_2exp_naive(upol, deg, x, k, value, q);
+  mpz_clear(index_gmp);
 }
 
 /* assumes k >= -2 */
 static void getx_and_eval(mpz_t *upol, unsigned long int deg,
                           mpz_t *a, mpz_t *x, mpz_t *value, mpz_t *q,
-                          long int Nlog, long int k, long int index){
+                          long int Nlog, long int k, long long int index){
 
+  mpz_t index_gmp;
+  mpz_init_set_ull(index_gmp, index);
   if(k-Nlog>=0){
     mpz_set_ui(*x, 1);
     mpz_mul_2exp(*x, *x, k - Nlog);
-    mpz_mul_ui(*x,*x,index);
+    mpz_mul(*x,*x,index_gmp);
     mpz_add(*x, *x, *a);
 
     mpz_poly_eval_2exp_naive(upol, deg, x, 0, value, q);
@@ -99,10 +135,11 @@ static void getx_and_eval(mpz_t *upol, unsigned long int deg,
   else{
     mpz_set(*x, *a);
     mpz_mul_2exp(*x, *x, Nlog - k);
-    mpz_add_ui(*x, *x, index);
+    mpz_add(*x, *x, index_gmp);
 
     mpz_poly_eval_2exp_naive(upol, deg, x, Nlog - k, value, q);
   }
+  mpz_clear(index_gmp);
 }
 
 static void getx_and_eval_mpzidx(mpz_t *upol, unsigned long int deg,
@@ -287,7 +324,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
 
   mpz_set(*vala, *tmpvala);
   mpz_set(*valb, *tmpvalb);
-  int64_t maxindex = (1L<<(Nlog));
+  int64_t maxindex = (1LL<<(Nlog));
 
   if(index == -2 || index == 0 || (LOG2(index) > Nlog && index > 0) ){
     if(Nlog == 2) index = 2;

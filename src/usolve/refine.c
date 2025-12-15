@@ -287,7 +287,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
 
   mpz_set(*vala, *tmpvala);
   mpz_set(*valb, *tmpvalb);
-  int64_t maxindex = (1L<<(Nlog));
+  int64_t maxindex = (Nlog >= 64) ? 1 : (INT64_C(1) << Nlog);
 
   if(index == -2 || index == 0 || (LOG2(index) > Nlog && index > 0) ){
     if(Nlog == 2) index = 2;

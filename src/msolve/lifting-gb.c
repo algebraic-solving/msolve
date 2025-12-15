@@ -190,14 +190,9 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   len_t idx;
   for(len_t i = 0; i < modgbs->ld; i++){
       idx = bs->lmps[i];
-      if(i==idx){
-          modgbs->hm[i] = malloc((1+lens[i] + OFFSET)*sizeof(hm_t));
-          for(len_t j = 0; j<lens[i]+1; j++){
-              modgbs->hm[i][j+OFFSET] = bs->hm[i][j+OFFSET];
-          }
-      }
-      else{
-          modgbs->hm[i] = NULL;
+      modgbs->hm[i] = malloc((1+lens[i] + OFFSET)*sizeof(hm_t));
+      for(len_t j = 0; j<lens[i]+1; j++){
+          modgbs->hm[i][j+OFFSET] = bs->hm[idx][j+OFFSET];
       }
   }
   for(bl_t i = 0; i < modgbs->ld; i++){
@@ -1698,7 +1693,7 @@ uint64_t export_results_from_groebner_qq(
     for(int64_t p = 0; p < nelts; p++){
 
         len_t idx = gb->lmps[p];
-        hm  = gb->hm[idx]+OFFSET;
+        hm  = gb->hm[p]+OFFSET;
         int32_t l = gb->modpolys[p]->len;
         for(int32_t n = 0; n < nv; n++){
             exp[term * nve + n + elim_block_len] = gb->ldm[p * nv + n];
@@ -1707,7 +1702,6 @@ uint64_t export_results_from_groebner_qq(
 
         term++;
         for(int32_t i = l-1; i >= 0; i--) {
-            
             if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0) {
                 for(int32_t n = 0 ; n < nve; n++){
                     exp[term * nve + n] = ht->ev[hm[l-i]][evi[n]];

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
       -P 2 -d 0 -l 2 -t 1

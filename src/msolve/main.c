@@ -74,8 +74,8 @@ static inline void display_help(char *str){
   fprintf(stdout, "-a SEED  Random seed to initialize the pseudo");
   fprintf(stdout, "         random generator\n");
   fprintf(stdout, "         0                    - time(0) will be used (default)\n");
-  fprintf(stdout, "         Any positive integer - should be used for\n");
-  fprintf(stdout, "         debug purpose only\n");
+  fprintf(stdout, "         Any positive integer - use at your own risks; this\n");
+  fprintf(stdout, "         is intended for developers and debug purposes only\n");
   fprintf(stdout, "-c GEN   Handling genericity: If the staircase is not generic\n");
   fprintf(stdout, "         enough, msolve can automatically try to fix this\n");
   fprintf(stdout, "         situation via first trying a change of the order of\n");

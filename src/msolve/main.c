@@ -71,6 +71,11 @@ static inline void display_help(char *str){
   fprintf(stdout, "         0 - Nothing is printed. (default)\n");
   fprintf(stdout, "         1 - Leading ideal is printed.\n");
   fprintf(stdout, "         2 - Full reduced Groebner basis is printed.\n");
+  fprintf(stdout, "-a SEED  Random seed to initialize the pseudo");
+  fprintf(stdout, "         random generator\n");
+  fprintf(stdout, "         0                    - time(0) will be used (default)\n");
+  fprintf(stdout, "         Any positive integer - should be used for\n");
+  fprintf(stdout, "         debug purpose only\n");
   fprintf(stdout, "-c GEN   Handling genericity: If the staircase is not generic\n");
   fprintf(stdout, "         enough, msolve can automatically try to fix this\n");
   fprintf(stdout, "         situation via first trying a change of the order of\n");
@@ -174,6 +179,7 @@ static void getoptions(
         int32_t *refine,
         int32_t *isolate,
         int32_t *generate_pbm_files,
+	int32_t *seed,
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
@@ -182,7 +188,7 @@ static void getoptions(
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:L:q:g:c:s:SCr:R:m:M:n:d:Vf:";
+  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:L:q:g:c:s:SCr:R:m:M:n:d:Vf:a:";
   while((opt = getopt(argc, argv, options)) != -1) {
     switch(opt) {
     case 'N':
@@ -319,6 +325,12 @@ static void getoptions(
           *normal_form_matrix  = 0;
       }
       break;
+    case 'a':
+      *seed = strtol(optarg, NULL, 10);
+      if (*seed < 0) {
+	*seed = 0;
+      }
+      break;
     default:
       errflag++;
       break;
@@ -374,6 +386,7 @@ int main(int argc, char **argv){
     int32_t precision             = 64;
     int32_t refine                = 0; /* not used at the moment */
     int32_t isolate               = 0; /* not used at the moment */
+    int32_t seed                  = 0;
 
     files_gb *files = malloc(sizeof(files_gb));
     if(files == NULL) exit(1);
@@ -385,7 +398,15 @@ int main(int argc, char **argv){
                &elim_block_len, &la_option, &use_signatures, &update_ht,
                &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling, &unstable_staircase, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
-               &precision, &refine, &isolate, &generate_pbm, &info_level, files);
+               &precision, &refine, &isolate, &generate_pbm,
+	       &seed, &info_level, files);
+
+    /* srand initialization */
+    if (seed == 0) {
+      srand(time(0));
+    } else {
+      srand(seed);
+    }
 
     FILE *fh  = fopen(files->in_file, "r");
     FILE *bfh  = fopen(files->bin_file, "r");
@@ -452,7 +473,7 @@ int main(int argc, char **argv){
                           initial_hts, max_pairs, elim_block_len, update_ht,
                           generate_pbm, reduce_gb, print_gb, truncate_lifting, get_param,
                           genericity_handling, unstable_staircase, saturate, colon, normal_form,
-                          normal_form_matrix, is_gb, lift_matrix, precision, 
+                          normal_form_matrix, is_gb, lift_matrix, precision,
                           files, gens,
             &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);
 

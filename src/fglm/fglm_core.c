@@ -1490,7 +1490,6 @@ static inline long initialize_fglm_data(sp_matfglm_t *matrix,
     if(matrix->dense_mat[i]==0)
       nb++;
   }
-  srand(time(0));
   for(szmat_t i = 0; i < matrix->ncols; i++){
     data->vecinit[i] = (CF_t)rand() % prime;
   }
@@ -1511,7 +1510,6 @@ static inline long initialize_fglm_colon_data(sp_matfglmcol_t *matrix,
     if(matrix->dense_mat[i]==0)
       nb++;
   }
-  srand(time(0));
   for(szmat_t i = 0; i < matrix->ncols; i++){
     data->vecinit[i] = (CF_t)rand() % prime;
     data->vecinit[i] += (CF_t)rand() % prime;

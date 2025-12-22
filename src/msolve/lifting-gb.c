@@ -168,7 +168,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, int32_t *lens,
                                    bs_t *bs,
                                    int nv, uint32_t ld,
-                                   int32_t *lm, 
+                                   int32_t *lm,
                                    md_t *st){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
@@ -606,7 +606,7 @@ static inline int32_t *array_of_lengths(int32_t *bexp_lm, len_t len,
   int32_t *lens = calloc(len, sizeof(int32_t));
   for(len_t i = 0; i < len; i++){
     len_t idx = bs->lmps[i];
-    lens[i] = bs->hm[idx][LENGTH]-1; 
+    lens[i] = bs->hm[idx][LENGTH]-1;
   }
   return lens;
 }
@@ -1023,7 +1023,7 @@ static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2,
 static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
                                        int32_t start, int32_t end,
                                        mpz_t mod_p, rrec_data_t rd1, rrec_data_t rd2){
- 
+
   mpz_t rnum, rden;
   mpz_init(rnum);
   mpz_init(rden);
@@ -1263,7 +1263,7 @@ long max_bit_size_gb(gb_modpoly_t modgbs){
 
 /*
 
-  - returns 0 if the computation went ok 
+  - returns 0 if the computation went ok
 
   - returns 1 in case of failure
 
@@ -1277,8 +1277,8 @@ gb_modpoly_t *core_groebner_qq(
         bs_t *bs,
         mstrace_t msd,
         md_t *st,
-        int32_t *errp, 
-        const len_t fc, 
+        int32_t *errp,
+        const len_t fc,
         const int print_gb
         )
 {
@@ -1303,7 +1303,6 @@ gb_modpoly_t *core_groebner_qq(
   uint32_t prime = 0;
   uint32_t primeinit = 0;
   uint32_t lprime = 1303905299;
-  srand(time(0));
 
   prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   while(fc == 0 && is_lucky_prime_ui(prime, bs)){
@@ -1322,7 +1321,7 @@ gb_modpoly_t *core_groebner_qq(
 
   int success = 1;
 
-  int32_t maxbitsize = maxbitsize_generators(bs); 
+  int32_t maxbitsize = maxbitsize_generators(bs);
 
   int learn = 1, apply = 1, nprimes = 0;
   double stf4 = 0;
@@ -1412,7 +1411,7 @@ gb_modpoly_t *core_groebner_qq(
       free_rrec_data(recdata2);
 
       fprintf(stdout, "Something went wrong in the learning phase, msolve restarts.");
-      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
+      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb);
     }
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, bs, st, msd->num_gb,
@@ -1542,7 +1541,7 @@ gb_modpoly_t *core_groebner_qq(
         gb_modpoly_without_hash_table_clear((*modgbsp));
         free_rrec_data(recdata1);
         free_rrec_data(recdata2);
-        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); 
+        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb);
 
       }
 
@@ -1660,7 +1659,7 @@ uint64_t export_results_from_groebner_qq(
         nterms += nlen;
     }
 
-    int32_t *exp = (int32_t *)(*mallocp)( 
+    int32_t *exp = (int32_t *)(*mallocp)(
             ((uint64_t)nterms) * ((uint64_t) nve) * sizeof(int32_t));
 
     memset(exp, 0, (unsigned long)nterms * nve * sizeof(int32_t));
@@ -1722,7 +1721,7 @@ uint64_t export_results_from_groebner_qq(
 }
 
 gb_modpoly_t *groebner_qq(
-        data_gens_ff_t *gens, 
+        data_gens_ff_t *gens,
         msflags_t flags)
 {
   int32_t *dim_ptr = &flags->dim;
@@ -1919,7 +1918,7 @@ int64_t export_groebner_qq(
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t truncate_lifting,
-        const int32_t info_level 
+        const int32_t info_level
         )
 {
     /* timings */
@@ -1956,7 +1955,7 @@ int64_t export_groebner_qq(
     int err = 0;
 
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
-    modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, 
+    modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
             2/* if set to 1, only the LM of the Gbs are correct */);
     if (err) {
         printf("Problem with groebner_qq, stopped computation.\n");

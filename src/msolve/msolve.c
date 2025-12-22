@@ -2306,7 +2306,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
-  if (gens->rand_linear) {
+  if (gens->field_char == 0 && gens->rand_linear) {
     *minpolydeg_ptr = (*nmod_params)->degsqfrelimpol;
     return 3;
   }
@@ -3684,6 +3684,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
     0 if comp. is ok
     1 if comp. failed
     2 if more genericity is required
+    3 if computation with a random linear form succeeded
     -2 if charac is > 0
     -3 if meta data are corrupted
     -4 if bad prime
@@ -4419,7 +4420,7 @@ restart:
                        real_roots_ptr,
                        real_pts_ptr,
                        gens,
-		               initial_hts, unstable_staircase, nr_threads, max_pairs,
+			     initial_hts, unstable_staircase, nr_threads, max_pairs,
                        elim_block_len, update_ht,
                        la_option, use_signatures, lift_matrix,
                        &init_primes, info_level, print_gb,
@@ -5203,7 +5204,7 @@ restart:
 			/* same degree for both random linear forms */
 			if (info_level > 0) {
 			    printf ("\nRestarting with a non-random linear form");
-            }
+			}
 			/* set back the base coefficient to its previous form
 			   before introducing the random linear form.
 			   Only for value larger than 1
@@ -5229,7 +5230,7 @@ restart:
 		  minpolydeg = -1;
 		  if (info_level > 0) {
 		    printf ("\nRestarting with another random linear form");
-          }
+		  }
 		  /* set back the base coefficient to its previous form
 		     before introducing the random linear form.
 		     Only for value larger than 1

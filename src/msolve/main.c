@@ -403,9 +403,12 @@ int main(int argc, char **argv){
 
     /* srand initialization */
     if (seed == 0) {
-      srand(time(0));
-    } else {
-      srand(seed);
+      seed = time(0);
+    }
+    srand(seed);
+    if (info_level) {
+      fprintf (stdout,"Initial seed for pseudo-random number generator ");
+      fprintf (stdout,"is %d\n",seed);
     }
 
     FILE *fh  = fopen(files->in_file, "r");

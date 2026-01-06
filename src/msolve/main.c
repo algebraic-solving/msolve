@@ -179,18 +179,58 @@ static void getoptions(
         int32_t *refine,
         int32_t *isolate,
         int32_t *generate_pbm_files,
-	int64_t *seed,
+	int32_t *seed,
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
+  int digit_optind = 0;
   char *filename = NULL;
   char *bin_filename = NULL;
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  char options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:L:q:g:c:s:SCr:R:m:M:n:d:Vf:a:";
-  while((opt = getopt(argc, argv, options)) != -1) {
+  /* char short_options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:L:q:g:c:s:SCr:R:m:M:n:d:Vf:"; */
+  char short_options[] = "c:Cd:e:f:F:g:hiI:l:L:m:M:n:N:o:O:p:P:q:r:R:s:St:u:v:V";
+
+  struct option long_options[] = {
+    {"elim", required_argument, NULL, 'e'},
+    {"elimation", required_argument, NULL, 'e'},
+    {"file", required_argument, NULL, 'f'},
+    {"gb", required_argument, NULL, 'g'},
+    {"groebner_basis", required_argument, NULL, 'g'},
+    {"input_file", required_argument, NULL, 'f'},
+    {"help", no_argument, NULL, 'h'},
+    {"isolate", required_argument, NULL, 'I'},
+    {"linear_algebra", required_argument, NULL, 'l'},
+    {"linalg", required_argument, NULL, 'l'},
+    {"lifting_mulmat", required_argument, NULL, 'L'},
+    {"output", required_argument, NULL, 'o'},
+    {"output_file", required_argument, NULL, 'o'},
+    {"precision", required_argument, NULL, 'p'},
+    {"parametrization", required_argument, NULL, 'P'},
+    {"randomseed", required_argument, seed, 1},
+    {"reduced_gb", required_argument, NULL, 'r'},
+    {"verbose", required_argument, NULL, 'v'},
+    {"version", no_argument, NULL, 'V'},
+    {NULL,0,NULL,0}
+  };
+  
+  while(1) {
+    int this_option_optind = optind ? optind : 1;
+    int option_index = 0;
+    opt = getopt_long(argc, argv, short_options, long_options, &option_index);
+    if (opt == -1) {
+      /* processed all command-line options */
+      break;
+    }
+    
     switch(opt) {
+    case 0:
+      /* no short equivalent */
+      if (*seed < 0) {
+	*seed = 0;
+      }
+      break;
     case 'N':
       *truncate_lifting = strtol(optarg, NULL, 10);
       break;
@@ -325,12 +365,12 @@ static void getoptions(
           *normal_form_matrix  = 0;
       }
       break;
-    case 'a':
-      *seed = strtol(optarg, NULL, 10);
-      if (*seed < 0) {
-	*seed = 0;
-      }
-      break;
+    /* case 'a': */
+    /*   *seed = strtol(optarg, NULL, 10); */
+    /*   if (*seed < 0) { */
+    /* 	*seed = 0; */
+    /*   } */
+    /*   break; */
     default:
       errflag++;
       break;
@@ -386,7 +426,7 @@ int main(int argc, char **argv){
     int32_t precision             = 64;
     int32_t refine                = 0; /* not used at the moment */
     int32_t isolate               = 0; /* not used at the moment */
-    int64_t seed                  = 0;
+    int32_t seed                  = 0;
 
     files_gb *files = malloc(sizeof(files_gb));
     if(files == NULL) exit(1);
@@ -408,7 +448,7 @@ int main(int argc, char **argv){
     srand(seed);
     if (info_level) {
       fprintf (stdout,"Initial seed for pseudo-random number generator ");
-      fprintf (stdout,"is %ld\n",seed);
+      fprintf (stdout,"is %d\n",seed);
     }
 
     FILE *fh  = fopen(files->in_file, "r");

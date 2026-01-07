@@ -265,9 +265,6 @@ static void getoptions(
     case 0: /* no short option equivalent */
       if (random_seed_flag == 1) {
 	*seed = strtol(optarg, NULL, 10);
-	if (*seed < 0) {
-	  *seed = 0;
-	}
       }
       break;
     case 'N':
@@ -404,12 +401,6 @@ static void getoptions(
           *normal_form_matrix  = 0;
       }
       break;
-    /* case 'a': */
-    /*   *seed = strtol(optarg, NULL, 10); */
-    /*   if (*seed < 0) { */
-    /* 	*seed = 0; */
-    /*   } */
-    /*   break; */
     default:
       errflag++;
       break;

@@ -219,7 +219,7 @@ static void getoptions(
         int32_t *refine,
         int32_t *isolate,
         int32_t *generate_pbm_files,
-	int32_t *seed,
+	uint32_t *seed,
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
@@ -264,7 +264,7 @@ static void getoptions(
     switch(opt) {
     case 0: /* no short option equivalent */
       if (random_seed_flag == 1) {
-	*seed = strtol(optarg, NULL, 10);
+        *seed = strtoul(optarg, NULL, 10);
       }
       break;
     case 'N':
@@ -456,7 +456,7 @@ int main(int argc, char **argv){
     int32_t precision             = 64;
     int32_t refine                = 0; /* not used at the moment */
     int32_t isolate               = 0; /* not used at the moment */
-    int32_t seed                  = 0;
+    uint32_t seed                 = 0;
 
     files_gb *files = malloc(sizeof(files_gb));
     if(files == NULL) exit(1);
@@ -478,7 +478,7 @@ int main(int argc, char **argv){
     srand(seed);
     if (info_level) {
       fprintf (stdout,"Initial seed for pseudo-random number generator ");
-      fprintf (stdout,"is %d\n",seed);
+      fprintf (stdout,"is %u\n",seed);
     }
 
     FILE *fh  = fopen(files->in_file, "r");

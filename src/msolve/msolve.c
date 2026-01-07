@@ -4420,7 +4420,7 @@ restart:
                        real_roots_ptr,
                        real_pts_ptr,
                        gens,
-			     initial_hts, unstable_staircase, nr_threads, max_pairs,
+                       initial_hts, unstable_staircase, nr_threads, max_pairs,
                        elim_block_len, update_ht,
                        la_option, use_signatures, lift_matrix,
                        &init_primes, info_level, print_gb,
@@ -5201,30 +5201,30 @@ restart:
 		  if (oldminpolydeg == -1 || oldminpolydeg < minpolydeg) {
 		    oldminpolydeg = minpolydeg; // need to run a 2nd time
 		  } else if (oldminpolydeg == minpolydeg) {
-			/* same degree for both random linear forms */
-			if (info_level > 0) {
-			    printf ("\nRestarting with a non-random linear form");
-			}
-			/* set back the base coefficient to its previous form
-			   before introducing the random linear form.
-			   Only for value larger than 1
-			*/
-			if (gens->linear_form_base_coef > 1) {
-			  gens->linear_form_base_coef--;
-			}
-			/* set back the base coefficient to the
-                          original one if a non random linear form had
-                          been introduced before.
-			  Only for value larger than 1
-			*/
-			if (gens->linear_form_base_coef > 1) {
-			  gens->linear_form_base_coef--;
-			}
-			/* set back the random linear form flag to 0 */
-			gens->rand_linear=0;
-			if (add_linear_form_to_input_system(gens, info_level)) {
-			  goto restart;
-			}
+		    /* same degree for both random linear forms */
+		    if (info_level > 0) {
+		      printf ("\nRestarting with a non-random linear form");
+		    }
+		    /* set back the base coefficient to its previous form
+		       before introducing the random linear form.
+		       Only for value larger than 1
+		    */
+		    if (gens->linear_form_base_coef > 1) {
+		      gens->linear_form_base_coef--;
+		    }
+		    /* set back the base coefficient to the
+		       original one if a non random linear form had
+		       been introduced before.
+		       Only for value larger than 1
+		    */
+		    if (gens->linear_form_base_coef > 1) {
+		      gens->linear_form_base_coef--;
+		    }
+		    /* set back the random linear form flag to 0 */
+		    gens->rand_linear=0;
+		    if (add_linear_form_to_input_system(gens, info_level)) {
+		      goto restart;
+		    }
 		  } /* else oldminpolydeg > minpoly deg so need to run
 		       another 2nd time */
 		  minpolydeg = -1;

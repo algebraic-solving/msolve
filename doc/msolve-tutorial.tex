@@ -1148,9 +1148,9 @@ will display in the \verb+out.ms+ file the following content.
   \hfill \verb+Default value:2+
 
 \item The flag \verb+--random-seed <int>+ tells \msolve which seed must be used
-  to initialize the pseudo-random generator: \verb+0+ means that
+  to initialize the pseudo-random generator: \verb+-1+ means that
   \verb+time(0)+ is used so that the seed is based on current time,
-  otherwise, for any integer \verb+N+, \verb+N+ will be the seed. The
+  otherwise, for any nonnegetive integer \verb+N+, \verb+N+ will be the seed. The
   latter option is for debug purpose only as the lack of randomization
   can lead to failures on some input.
 

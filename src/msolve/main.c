@@ -24,6 +24,40 @@
 #define DEBUGBUILDMATRIX 0
 #define IO_DEBUG 0
 
+#define LONG_OPT_LENGTH 15
+#define ARG_OPT_LENGTH 4
+
+static inline void display_option_help(char short_opt, char *long_opt,
+				       char *arg_opt, char* str) {
+  int long_opt_non_empty= strcmp (long_opt, "");
+  
+  if (short_opt == '\0') {
+    fprintf (stdout, "    ");
+  } else {
+    fprintf (stdout, "-%c", short_opt);
+    if (long_opt_non_empty) {
+      fprintf (stdout, ", ");
+    } else {
+      fprintf (stdout, "  ");
+    }
+  }
+
+  if (long_opt_non_empty) {
+    fprintf (stdout, "--");
+  } else {
+    fprintf (stdout, "  ");
+  }
+  fprintf (stdout, "%-*s ",
+	   LONG_OPT_LENGTH, long_opt);
+  fprintf (stdout, "%-*s  ",
+	   ARG_OPT_LENGTH, arg_opt);
+  fprintf (stdout, "%s", str);
+}
+
+static inline void display_option_help_noopt(char* str) {
+  display_option_help ('\0', "", "", str);
+}
+
 static inline void display_help(char *str){
   fprintf(stdout, "\nmsolve library for polynomial system solving, version %s\n", VERSION);
   fprintf(stdout, "implemented by J. Berthomieu, C. Eder, M. Safey El Din\n");
@@ -35,17 +69,18 @@ static inline void display_help(char *str){
   fprintf(stdout, "FILE1 and FILE2 are respectively the input and output files\n\n");
 
   fprintf(stdout, "Standard options\n\n");
-  fprintf(stdout, "-f, --file        FILE  File name (mandatory).\n\n");
-  fprintf(stdout, "-h, --help              Prints this help.\n");
-  fprintf(stdout, "-o, --output-file FILE  Name of output file.\n");
-  fprintf(stdout, "-t, --threads     THR   Number of threads to be used.\n");
-  fprintf(stdout, "                        Default: 1.\n");
-  fprintf(stdout, "-v, --verbose     VERB  Level of verbosity, 0 - 2\n");
-  fprintf(stdout, "                        0 - no output (default).\n");
-  fprintf(stdout, "                        1 - global information at the start and\n");
-  fprintf(stdout, "                            end of the computation.\n");
-  fprintf(stdout, "                        2 - detailed output for each step of the\n");
-  fprintf(stdout, "                            algorithm, e.g. matrix sizes, #pairs, ...\n");
+  display_option_help('f', "file", "FILE", "File name (mandatory).\n\n");
+  display_option_help('h', "help", "", "Prints this help.\n");
+  display_option_help('o', "output-file", "FILE",  "Name of output file.\n");
+  display_option_help('t', "threads", "THR", "Number of threads to be used.\n");
+  display_option_help_noopt("1       - one thread (default).\n");
+  display_option_help_noopt("THR > 1 - THR threads.\n");
+  display_option_help('v', "verbose", "VERB", "Level of verbosity, 0 - 2\n");
+  display_option_help_noopt("0 - no output (default).\n");
+  display_option_help_noopt("1 - global information at the start and\n");
+  display_option_help_noopt("    end of the computation.\n");
+  display_option_help_noopt("2 - detailed output for each step of the\n");
+  display_option_help_noopt("    algorithm, e.g. matrix sizes, #pairs, ...\n");
 
   fprintf(stdout, "Input file format:\n");
   fprintf(stdout, "\t - first line: variables separated by a comma\n");
@@ -64,93 +99,98 @@ static inline void display_help(char *str){
 
 
   fprintf(stdout, "\nAdvanced options:\n\n");
-  fprintf(stdout, "-F                   FILE  File name encoding parametrizations in binary format.\n\n");
-  fprintf(stdout, "-g, --groebner-basis GB    Prints reduced Groebner bases of input system for\n");
-  fprintf(stdout, "                           first prime characteristic w.r.t. grevlex ordering.\n");
-  fprintf(stdout, "                           One element per line is printed, commata separated.\n");
-  fprintf(stdout, "                           0 - Nothing is printed. (default)\n");
-  fprintf(stdout, "                           1 - Leading ideal is printed.\n");
-  fprintf(stdout, "                           2 - Full reduced Groebner basis is printed.\n");
-  fprintf(stdout, "    --random_seed    SEED  Random seed to initialize the pseudo\n");
-  fprintf(stdout, "                           random generator\n");
-  fprintf(stdout, "                           0   - time(0) will be used (default)\n");
-  fprintf(stdout, "                           N>0 - use at your own risks; this\n");
-  fprintf(stdout, "                                 is intended for developers and debug purposes only\n");
-  fprintf(stdout, "-c                   GEN   Handling genericity: If the staircase is not generic\n");
-  fprintf(stdout, "                           enough, msolve can automatically try to fix this\n");
-  fprintf(stdout, "                           situation via first trying a change of the order of\n");
-  fprintf(stdout, "                           variables and finally adding a random linear form\n");
-  fprintf(stdout, "                           with a new variable (smallest w.r.t. DRL)\n");
-  fprintf(stdout, "                           0 - Nothing is done, msolve quits.\n");
-  fprintf(stdout, "                           1 - Change order of variables.\n");
-  fprintf(stdout, "                           2 - Change order of variables, then try adding a\n");
-  fprintf(stdout, "                               random linear form. (default)\n");
-  fprintf(stdout, "-d                   GEN   Handling genericity further: If the staircase is not generic\n");
-  fprintf(stdout, "                           enough, msolve can still try to perform the full computation\n");
-  fprintf(stdout, "                           by computing some normal forms and build the multiplication matrix,\n");
-  fprintf(stdout, "                           before fixing the situation via option -c\n");
-  fprintf(stdout, "                           0 - No normal forms are computed.\n");
-  fprintf(stdout, "                           1 - Few normal forms are computed.\n");
-  fprintf(stdout, "                           2 - Some normal forms are computed. (default)\n");
-  fprintf(stdout, "                           3 - Lots of normal forms are computed.\n");
-  fprintf(stdout, "                           4 - All the normal forms are computed.\n");
-  fprintf(stdout, "-C                         Use sparse-FGLM-col algorithm:\n");
-  fprintf(stdout, "                           Given an input file with k polynomials\n");
-  fprintf(stdout, "                           compute the quotient of the ideal\n");
-  fprintf(stdout, "                           generated by the first k-1 polynomials\n");
-  fprintf(stdout, "                           with respect to the kth polynomial.\n");
-  fprintf(stdout, "-e, --elimination    ELIM  Define an elimination order: msolve supports two\n");
-  fprintf(stdout, "                           blocks of variables, each block using the degree reverse\n");
-  fprintf(stdout, "                           lexicographical monomial order. ELIM has to be a number\n");
-  fprintf(stdout, "                           between 1 and #variables-1, and gives the number of\n");
-  fprintf(stdout, "                           eliminated variables. The basis with the first block of\n");
-  fprintf(stdout, "                           ELIM variables eliminated is then computed.\n");
-  fprintf(stdout, "-I, --isolate        ISOL  Isolates the real roots (provided some univariate data)\n");
-  fprintf(stdout, "                           without re-computing a Gröbner basis\n");
-  fprintf(stdout, "                           Default: 0 (no).\n");
-  fprintf(stdout, "-l, --linear-algebra LIN   Linear algebra variant to be applied:\n");
-  fprintf(stdout, "                            1 - exact sparse / dense\n");
-  fprintf(stdout, "                            2 - exact sparse (default)\n");
-  fprintf(stdout, "                           42 - sparse / dense linearization (probabilistic)\n");
-  fprintf(stdout, "                           44 - sparse linearization (probabilistic)\n");
-  fprintf(stdout, "-m                   MPR   Maximal number of pairs used per matrix.\n");
-  fprintf(stdout, "                           Default: 0 (unlimited).\n");
-  fprintf(stdout, "-n, --normal-form    NF    Given n input generators compute normal form of the last NF\n");
-  fprintf(stdout, "                           elements of the input w.r.t. a degree reverse lexicographical\n");
-  fprintf(stdout, "                           Gröbner basis of the first (n - NF) input elements.\n");
-  fprintf(stdout, "                           At the moment this only works for prime field computations.\n");
-  fprintf(stdout, "                           Combining this option with the \"-i\" option assumes that the\n");
-  fprintf(stdout, "                           first (n - NF) elements generate already a degree reverse\n");
-  fprintf(stdout, "                           lexicographical Gröbner basis.\n");
-  fprintf(stdout, "-p, --precision      PRE   Precision (in bits) on the output of real root isolation.\n");
-  fprintf(stdout, "                           Default is 128.\n");
-  fprintf(stdout, "-P, --parametrization PAR   Get also rational parametrization of solution set.\n");
-  fprintf(stdout, "                            Default is 0. For a detailed description of the output\n");
-  fprintf(stdout, "                            format please see the general output data format section\n");
-  fprintf(stdout, "                            above.\n");
-  fprintf(stdout, "-L, --lifting-mulmat LIF   Controls lifting of multplication matrices over the rationals.\n");
-  fprintf(stdout, "                           0 - no lifting (default). \n");
-  fprintf(stdout, "                           1 - matrices are lifted.\n");
-  fprintf(stdout, "                               Warning: when activated, this option may cause higher memory consumption.\n");
-  fprintf(stdout, "-q                   Q     Uses signature-based algorithms.\n");
-  fprintf(stdout, "                           Default: 0 (no).\n");
-  fprintf(stdout, "-r, --reduced-gb     RED   Reduce Groebner basis.\n");
-  fprintf(stdout, "                           Default: 1 (yes).\n");
-  /* fprintf(stdout, "-R       Refinement fo real roots.\n"); */
-  /* fprintf(stdout, "         (not implemented yet).\n"); */
-  fprintf(stdout, "-s                   HTS   Initial hash table size given\n");
-  fprintf(stdout, "                           as power of two. Default: 17.\n");
-  fprintf(stdout, "-S                         Use f4sat saturation algorithm:\n");
-  fprintf(stdout, "                           Given an input file with k polynomials\n");
-  fprintf(stdout, "                           compute the saturation of the ideal\n");
-  fprintf(stdout, "                           generated by the first k-1 polynomials\n");
-  fprintf(stdout, "                           with respect to the kth polynomial.\n");
-  fprintf(stdout, "                           Note: At the moment restricted to 32 bit\n");
-  fprintf(stdout, "                           prime fields.\n");
-  fprintf(stdout, "-u                   UHT   Number of steps after which the\n");
-  fprintf(stdout, "                           hash table is newly generated.\n");
-  fprintf(stdout, "                           Default: 0, i.e. no update.\n");
-  fprintf(stdout, "-V, --version              Prints msolve's version\n");
+  display_option_help('F', "", "FILE", "File name encoding parametrizations in binary format.\n\n");
+  display_option_help('g', "groebner-basis", "GB", "Prints reduced Groebner bases of input system for\n");
+  display_option_help_noopt("first prime characteristic w.r.t. grevlex ordering.\n");
+  display_option_help_noopt("One element per line is printed, commata separated.\n");
+  display_option_help_noopt("0 - Nothing is printed. (default)\n");
+  display_option_help_noopt("1 - Leading ideal is printed.\n");
+  display_option_help_noopt("2 - Full reduced Groebner basis is printed.\n");
+  display_option_help('c',"", "GEN", "Handling genericity: If the staircase is not generic\n");
+  display_option_help_noopt("enough, msolve can automatically try to fix this\n");
+  display_option_help_noopt("situation via first trying a change of the order of\n");
+  display_option_help_noopt("variables and finally adding a random linear form\n");
+  display_option_help_noopt("with a new variable (smallest w.r.t. DRL)\n");
+  display_option_help_noopt("0 - Nothing is done, msolve quits.\n");
+  display_option_help_noopt("1 - Change order of variables.\n");
+  display_option_help_noopt("2 - Change order of variables, then try adding a\n");
+  display_option_help_noopt("    random linear form. (default)\n");
+  display_option_help('d', "", "GEN", "Handling genericity further: If the staircase is not generic\n");
+  display_option_help_noopt("enough, msolve can still try to perform the full computation\n");
+  display_option_help_noopt("by computing some normal forms and build the multiplication matrix,\n");
+  display_option_help_noopt("before fixing the situation via option -c\n");
+  display_option_help_noopt("0 - No normal forms are computed.\n");
+  display_option_help_noopt("1 - Few normal forms are computed.\n");
+  display_option_help_noopt("2 - Some normal forms are computed. (default)\n");
+  display_option_help_noopt("3 - Lots of normal forms are computed.\n");
+  display_option_help_noopt("4 - All the normal forms are computed.\n");
+  display_option_help('C', "", "", "Use sparse-FGLM-col algorithm:\n");
+  display_option_help_noopt("Given an input file with k polynomials\n");
+  display_option_help_noopt("compute the quotient of the ideal\n");
+  display_option_help_noopt("generated by the first k-1 polynomials\n");
+  display_option_help_noopt("with respect to the kth polynomial.\n");
+  display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
+  display_option_help_noopt("blocks of variables, each block using the degree reverse\n");
+  display_option_help_noopt("lexicographical monomial order. ELIM has to be a number\n");
+  display_option_help_noopt("between 1 and #variables-1, and gives the number of\n");
+  display_option_help_noopt("eliminated variables. The basis with the first block of\n");
+  display_option_help_noopt("ELIM variables eliminated is then computed.\n");
+  display_option_help('I', "isolate", "ISOL", "Isolates the real roots (provided some univariate data)\n");
+  display_option_help_noopt("without re-computing a Gröbner basis\n");
+  display_option_help_noopt("0 - no (default).\n");
+  display_option_help_noopt("1 - yes.\n");
+  display_option_help('l', "linear-algebra", "LIN", "Linear algebra variant to be applied:\n");
+  display_option_help_noopt(" 1 - exact sparse / dense\n");
+  display_option_help_noopt(" 2 - exact sparse (default)\n");
+  display_option_help_noopt("42 - sparse / dense linearization (probabilistic)\n");
+  display_option_help_noopt("44 - sparse linearization (probabilistic)\n");
+  display_option_help('m', "", "MPR", "Maximal number of pairs used per matrix.\n");
+  display_option_help_noopt("0 - unlimited (default).\n");
+  display_option_help('n', "normal-form", "NF", "Given n input generators compute normal form of the last NF\n");
+  display_option_help_noopt("elements of the input w.r.t. a degree reverse lexicographical\n");
+  display_option_help_noopt("Gröbner basis of the first (n - NF) input elements.\n");
+  display_option_help_noopt("At the moment this only works for prime field computations.\n");
+  display_option_help_noopt("Combining this option with the \"-i\" option assumes that the\n");
+  display_option_help_noopt("first (n - NF) elements generate already a degree reverse\n");
+  display_option_help_noopt("lexicographical Gröbner basis.\n");
+  display_option_help('p', "precision", "PRE", "Precision (in bits) on the output of real root isolation.\n");
+  display_option_help_noopt("128 (default).\n");
+  display_option_help('P', "parametrization", "PAR", "Get also rational parametrization of solution set.\n");
+  display_option_help_noopt("0 (default). For a detailed description of the output\n");
+  display_option_help_noopt("format please see the general output data format section\n");
+  display_option_help_noopt("above.\n");
+  display_option_help('L', "lifting-mulmat", "LIF", "Controls lifting of multplication matrices over the rationals.\n");
+  display_option_help_noopt("0 - no lifting (default). \n");
+  display_option_help_noopt("1 - matrices are lifted.\n");
+  display_option_help_noopt("Warning: when activated, this option may cause higher memory consumption.\n");
+  display_option_help('q', "", "Q", "Uses signature-based algorithms.\n");
+  display_option_help_noopt("0 - no (default).\n");
+  display_option_help_noopt("1 - yes.\n");
+  display_option_help('\0', "random_seed", "SEED", "Random seed to initialize the pseudo\n");
+  display_option_help_noopt("random generator\n");
+  display_option_help_noopt("0        - time(0) will be used (default)\n");
+  display_option_help_noopt("SEED > 0 - use at your own risks;\n");
+  display_option_help_noopt("           this is intended for developers and\n");
+  display_option_help_noopt("           debug purposes only\n");
+  display_option_help('r', "reduce-gb", "RED", "Reduce Groebner basis.\n");
+  display_option_help_noopt("0 - no.\n");
+  display_option_help_noopt("1 - yes (default).\n");
+  /* display_option_help('R', "", "REF", "Refinement fo real roots.\n"); */
+  /* display_option_help_noopt("(not implemented yet).\n"); */
+  display_option_help('s', "", "HTS", "Initial hash table size given\n");
+  display_option_help_noopt("as power of two.\n");
+  display_option_help_noopt("17 (default).\n");
+  display_option_help('S', "", "", "Use f4sat saturation algorithm:\n");
+  display_option_help_noopt("Given an input file with k polynomials\n");
+  display_option_help_noopt("compute the saturation of the ideal\n");
+  display_option_help_noopt("generated by the first k-1 polynomials\n");
+  display_option_help_noopt("with respect to the kth polynomial.\n");
+  display_option_help_noopt("Note: At the moment restricted to 32 bit\n");
+  display_option_help_noopt("prime fields.\n");
+  display_option_help('u', "", "UHT", "Number of steps after which the\n");
+  display_option_help_noopt("hash table is newly generated.\n");
+  display_option_help_noopt("0 - no update (default).\n");
+  display_option_help('V', "version", "", "Prints msolve's version\n");
 }
 
 static void getoptions(
@@ -183,7 +223,6 @@ static void getoptions(
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
-  int digit_optind = 0;
   char *filename = NULL;
   char *bin_filename = NULL;
   char *out_fname = NULL;
@@ -192,20 +231,21 @@ static void getoptions(
   /* char short_options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:L:q:g:c:s:SCr:R:m:M:n:d:Vf:"; */
   char short_options[] = "c:Cd:e:f:F:g:hiI:l:L:m:M:n:N:o:O:p:P:q:r:R:s:St:u:v:V";
 
+  int random_seed_flag = 0;
   struct option long_options[] = {
-    {"elimation", required_argument, NULL, 'e'},
+    {"elimination", required_argument, NULL, 'e'},
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
     {"help", no_argument, NULL, 'h'},
     {"isolate", required_argument, NULL, 'I'},
     {"linear-algebra", required_argument, NULL, 'l'},
     {"lifting-mulmat", required_argument, NULL, 'L'},
-    {"normal-form", required_argument, NULL, 'L'},
+    {"normal-form", required_argument, NULL, 'n'},
     {"output-file", required_argument, NULL, 'o'},
     {"precision", required_argument, NULL, 'p'},
     {"parametrization", required_argument, NULL, 'P'},
-    {"random-seed", required_argument, seed, 1},
-    {"reduced-gb", required_argument, NULL, 'r'},
+    {"random-seed", required_argument, &random_seed_flag, 1},
+    {"reduce-gb", required_argument, NULL, 'r'},
     {"threads", required_argument, NULL, 't'},
     {"verbose", required_argument, NULL, 'v'},
     {"version", no_argument, NULL, 'V'},
@@ -222,10 +262,12 @@ static void getoptions(
     }
     
     switch(opt) {
-    case 0:
-      /* no short equivalent */
-      if (*seed < 0) {
-	*seed = 0;
+    case 0: /* no short option equivalent */
+      if (random_seed_flag == 1) {
+	*seed = strtol(optarg, NULL, 10);
+	if (*seed < 0) {
+	  *seed = 0;
+	}
       }
       break;
     case 'N':

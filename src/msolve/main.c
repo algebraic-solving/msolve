@@ -264,7 +264,7 @@ static void getoptions(
     switch(opt) {
     case 0: /* no short option equivalent */
       if (random_seed_flag == 1) {
-        *seed = strtol(optarg, NULL, 10);
+        *seed = strtoll(optarg, NULL, 10);
       }
       break;
     case 'N':

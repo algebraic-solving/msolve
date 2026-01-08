@@ -476,7 +476,7 @@ int main(int argc, char **argv){
     if (seed < 0) {
       true_seed = time(0);
     } else {
-      true_seed = (int32_t) seed;
+      true_seed = (uint32_t) seed;
     }
     srand(true_seed);
     if (info_level) {

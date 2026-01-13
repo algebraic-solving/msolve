@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=F4SAT-31
+file=f4sat-byone-31
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
       -S -g 2 -l 2 -t 1

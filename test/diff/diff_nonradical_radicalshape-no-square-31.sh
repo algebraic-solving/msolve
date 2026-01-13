@@ -2,8 +2,6 @@
 
 file=nonradical_radicalshape-no-square-31
 
-# source test/diff/diff_source.sh
-
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
       -P 2 -l 2 -t 1 -c 0
 if [ $?  -gt 0 ]; then

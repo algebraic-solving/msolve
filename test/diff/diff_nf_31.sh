@@ -3,7 +3,7 @@
 file=nf-31
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -n2
+      -n 2
 if [ $? -gt 0 ]; then
     exit 1
 fi

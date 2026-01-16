@@ -2,6 +2,8 @@
 
 file=nf-8
 
+source test/diff/diff_source.sh
+
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
       -n 2
 if [ $? -gt 0 ]; then

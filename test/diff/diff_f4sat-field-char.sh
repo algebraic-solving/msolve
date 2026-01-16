@@ -2,6 +2,8 @@
 
 file=f4sat-field-char
 
+source test/diff/diff_source.sh
+
 $(pwd)/msolve -f input_files/$file.ms -S -g2 -o test/diff/$file.res \
       -n2
 if [ $? -gt 0 ]; then

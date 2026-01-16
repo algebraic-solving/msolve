@@ -30,7 +30,11 @@
 static inline void display_option_help(char short_opt, char *long_opt,
 				       char *arg_opt, char* str) {
   int long_opt_non_empty= strcmp (long_opt, "");
+<<<<<<< HEAD
 
+=======
+
+>>>>>>> 7ec0ae3 (some files in make check where not sourcing the template files)
   if (short_opt == 0) {
     fprintf (stdout, "    ");
   } else {
@@ -163,10 +167,19 @@ static inline void display_help(char *str){
   display_option_help_noopt("0 - no lifting (default). \n");
   display_option_help_noopt("1 - matrices are lifted.\n");
   display_option_help_noopt("Warning: when activated, this option may cause higher memory consumption.\n");
+  /* display_option_help(0, "mul-mat", "MAT", "Compute multiplication matrices."); */
+  /* display_option_help_noopt("MAT has to be a number between 1 and #variables,\n"); */
+  /* display_option_help_noopt("and gives the number of multiplication matrices, starting\n"); */
+  /* display_option_help_noopt("from the last one.\n"); */
+  /* display_option_help_noopt("not yet implemented.\n"); */
   display_option_help('q', "", "Q", "Uses signature-based algorithms.\n");
   display_option_help_noopt("0 - no (default).\n");
   display_option_help_noopt("1 - yes.\n");
+<<<<<<< HEAD
   display_option_help(0, "random-seed", "SEED", "Random seed to initialize the pseudo\n");
+=======
+  display_option_help(0, "random_seed", "SEED", "Random seed to initialize the pseudo\n");
+>>>>>>> 7ec0ae3 (some files in make check where not sourcing the template files)
   display_option_help_noopt("random generator\n");
   display_option_help_noopt("-1       - time(0) will be used (default)\n");
   display_option_help_noopt("SEED ≥ 0 - use at your own risks;\n");
@@ -235,9 +248,13 @@ static void getoptions(
      see https://cgit.git.savannah.gnu.org/cgit/coreutils.git/tree/src/ls.c */
   enum {
     RANDOM_SEED_OPTION = CHAR_MAX + 1,
+<<<<<<< HEAD
     /* Below is the template for the next long option with
      * no equivalent short option */
     /* NEXT_OPTION */
+=======
+    /* MUL_MAT_OPION */
+>>>>>>> 7ec0ae3 (some files in make check where not sourcing the template files)
   };
   struct option long_options[] = {
     {"elimination", required_argument, NULL, 'e'},
@@ -247,6 +264,7 @@ static void getoptions(
     {"isolate", required_argument, NULL, 'I'},
     {"linear-algebra", required_argument, NULL, 'l'},
     {"lifting-mulmat", required_argument, NULL, 'L'},
+    /* {"mul-mat", required_argument, NULL, MUL_MAT_OPION}, */
     {"normal-form", required_argument, NULL, 'n'},
     {"output-file", required_argument, NULL, 'o'},
     {"precision", required_argument, NULL, 'p'},

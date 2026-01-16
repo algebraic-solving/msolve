@@ -2,6 +2,8 @@
 
 file=f4sat-31
 
+source test/diff/diff_source.sh
+
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
       -S -g 2 -l 2 -t 1
 if [ $? -gt 0 ]; then

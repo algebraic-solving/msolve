@@ -2,6 +2,8 @@
 
 file=f4sat-zero-input
 
+source test/diff/diff_source.sh
+
 $(pwd)/msolve -f input_files/$file.ms -S -g2 -o test/diff/$file.res \
       -n2
 # should return an error 1 status

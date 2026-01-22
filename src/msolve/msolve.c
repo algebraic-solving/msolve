@@ -688,7 +688,6 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
     printf("(lowest w.r.t. monomial order)\n");
     printf("[coefficients of linear form are randomly chosen]\n");
   }
-  srand(time(0));
   /* gens->random_linear_form = malloc(sizeof(int32_t)*(nvars_new)); */
   gens->random_linear_form =
       realloc(gens->random_linear_form, sizeof(int32_t) * (nvars_new));
@@ -1674,7 +1673,7 @@ static int32_t *initial_modular_step(
 							    leadmons[0], md,
 							    bs->ht->nv,
 							    fc, unstable_staircase,
-							    md->info_level, 
+							    md->info_level,
                                 files);
 
 	    if(*bmatrix == NULL){
@@ -1944,10 +1943,10 @@ static inline int is_lucky_matmul_prime_ui(uint32_t prime,
 }
 
 
-static void free_msolve_trace_qq_secondary_data(mpz_param_t tmp_mpz_param, 
-        trace_det_fglm_mat_t trace_det, mpz_t modulus, mpz_t prod_crt, mpq_t result, 
-        mpq_t test, mpz_t rnum, mpz_t rden, mpz_upoly_t numer, mpz_upoly_t denom, 
-        int16_t *check_lift, mpz_t guessed_num, mpz_t guessed_den, int *is_lifted, 
+static void free_msolve_trace_qq_secondary_data(mpz_param_t tmp_mpz_param,
+        trace_det_fglm_mat_t trace_det, mpz_t modulus, mpz_t prod_crt, mpq_t result,
+        mpq_t test, mpz_t rnum, mpz_t rden, mpz_upoly_t numer, mpz_upoly_t denom,
+        int16_t *check_lift, mpz_t guessed_num, mpz_t guessed_den, int *is_lifted,
         rrec_data_t recdata){
     mpz_param_clear(tmp_mpz_param);
     trace_det_clear(trace_det);
@@ -1966,14 +1965,14 @@ static void free_msolve_trace_qq_secondary_data(mpz_param_t tmp_mpz_param,
     free_rrec_data(recdata);
 }
 
-static void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, primes_t *lp, 
-        bs_t *bs_qq, bs_t **bs, param_t **nmod_params, uint32_t *bad_primes, 
-        sp_matfglm_t **bmatrix, int32_t **bdiv_xn, int32_t **blen_gb_xn, 
-        int32_t **bstart_cf_gb_xn, long**bextra_nf, int32_t **blens_extra_nf, 
-        int32_t **bexps_extra_nf, int32_t **bcfs_extra_nf, fglm_data_t **bdata_fglm, 
-        fglm_bms_data_t **bdata_bms, int32_t *num_gb, int32_t **leadmons_ori, 
-        int32_t **leadmons_current, nvars_t *bnlins, nvars_t **blinvars, 
-        nvars_t *linvars, uint32_t **lineqs_ptr, nvars_t **bsquvars, nvars_t *squvars, 
+static void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, primes_t *lp,
+        bs_t *bs_qq, bs_t **bs, param_t **nmod_params, uint32_t *bad_primes,
+        sp_matfglm_t **bmatrix, int32_t **bdiv_xn, int32_t **blen_gb_xn,
+        int32_t **bstart_cf_gb_xn, long**bextra_nf, int32_t **blens_extra_nf,
+        int32_t **bexps_extra_nf, int32_t **bcfs_extra_nf, fglm_data_t **bdata_fglm,
+        fglm_bms_data_t **bdata_bms, int32_t *num_gb, int32_t **leadmons_ori,
+        int32_t **leadmons_current, nvars_t *bnlins, nvars_t **blinvars,
+        nvars_t *linvars, uint32_t **lineqs_ptr, nvars_t **bsquvars, nvars_t *squvars,
         int32_t *lmb_ori, uint32_t field_char){
     free(invalid_gens);
     free_lucky_primes(&lp);
@@ -2047,7 +2046,7 @@ void update_initial_primes(primes_t **binit_primes, uint32_t fc){
     else{
         (*binit_primes)->old = (*binit_primes)->ld;
         (*binit_primes)->ld++;
-        (*binit_primes)->p = (uint32_t *)realloc((*binit_primes)->p, 
+        (*binit_primes)->p = (uint32_t *)realloc((*binit_primes)->p,
                 (unsigned long)((*binit_primes)->ld) * sizeof(uint32_t));
         (*binit_primes)->p[(*binit_primes)->ld - 1] = fc;
     }
@@ -2129,7 +2128,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   len_t i;
 
-  
+
   /* initialize stuff */
   md_t *st = allocate_meta_data();
 
@@ -2206,7 +2205,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   uint32_t primeinit = 0;
   /* max prime "lprime" : this is previous_prime(1303905301) */
   uint32_t lprime = 1303905299;
-  srand(time(0));
   /* choose next_prime of some random number between 1<<30 and 1303905301 */
   /* (roughly, there are ~ 10**7 such primes) */
   prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
@@ -2308,10 +2306,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
-  if (gens->rand_linear) {
+  if (gens->field_char == 0 && gens->rand_linear) {
     *minpolydeg_ptr = (*nmod_params)->degsqfrelimpol;
     return 3;
-  } 
+  }
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
     if (nmod_params[0]->degsqfrelimpol != *minpolydeg_ptr
 	&& nmod_params[0]->elim->length - 1 != *dquot_ptr) {
@@ -2329,10 +2327,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   if (lmb_ori == NULL || success == 0 || print_gb || gens->field_char) {
     if (print_gb) {
-      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
-          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
-          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
-          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
           lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       return 0;
     }
@@ -2347,10 +2345,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         }
         (*nmod_param) = par;
       }
-      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
-          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
-          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
-          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
           lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       return 0;
     }
@@ -2358,35 +2356,35 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       if (info_level) {
         fprintf(stdout, "Positive dimensional Grobner basis\n");
       }
-      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
-          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
-          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
-          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
           lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       return 0;
     }
     if (*dquot_ptr == 0) {
-      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
-          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
-          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
-          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+      free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
           lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
       return 0;
     }
     if (*dquot_ptr > 0) {
       if (success && *minpolydeg_ptr == (*nmod_params)->degsqfrelimpol) {
 	/* same degree as with a random linear form */
-	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
-          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
-          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
-          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
           lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
 	return 0;
       } else {
-	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
-          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
-          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
-          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+          bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+          blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+          num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
           lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
 	if (*minpolydeg_ptr == -1 && squares == 0) {
 	  return 2;
@@ -2662,13 +2660,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         }
         nbadprimes++;
         if (nbadprimes > nprimes) {
-          free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
-              bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
-              blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
-              num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+          free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+              bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+              blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+              num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
               lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
-          free_msolve_trace_qq_secondary_data(tmp_mpz_param, trace_det, modulus, 
-                  prod_crt, result, test, rnum, rden, numer, denom, check_lift, 
+          free_msolve_trace_qq_secondary_data(tmp_mpz_param, trace_det, modulus,
+                  prod_crt, result, test, rnum, rden, numer, denom, check_lift,
                   guessed_num, guessed_den, is_lifted, recdata);
           return -4;
         }
@@ -2723,13 +2721,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(stdout, "-----------------------------------------\n");
     fflush(stdout);
   }
-  free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params, 
-              bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf, 
-              blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms, 
-              num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars, 
+  free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+              bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+              blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+              num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
               lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
-  free_msolve_trace_qq_secondary_data(tmp_mpz_param, trace_det, modulus, 
-                  prod_crt, result, test, rnum, rden, numer, denom, check_lift, 
+  free_msolve_trace_qq_secondary_data(tmp_mpz_param, trace_det, modulus,
+                  prod_crt, result, test, rnum, rden, numer, denom, check_lift,
                   guessed_num, guessed_den, is_lifted, recdata);
   return 0;
 }
@@ -3686,6 +3684,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
     0 if comp. is ok
     1 if comp. failed
     2 if more genericity is required
+    3 if computation with a random linear form succeeded
     -2 if charac is > 0
     -3 if meta data are corrupted
     -4 if bad prime
@@ -4421,9 +4420,9 @@ restart:
                        real_roots_ptr,
                        real_pts_ptr,
                        gens,
-		               initial_hts, unstable_staircase, nr_threads, max_pairs,
+                       initial_hts, unstable_staircase, nr_threads, max_pairs,
                        elim_block_len, update_ht,
-                       la_option, use_signatures, lift_matrix, 
+                       la_option, use_signatures, lift_matrix,
                        &init_primes, info_level, print_gb,
                        generate_pbm, precision, files, round, get_param);
       if(print_gb){
@@ -4436,7 +4435,7 @@ restart:
                     real_pts_ptr,
                     info_level);
 
-          if (b == 1) {// computation failed 
+          if (b == 1) {// computation failed
             free(bld);
             bld = NULL;
             free(blen);
@@ -4732,7 +4731,6 @@ restart:
             /* initialize tracer */
             trace_t *trace  = initialize_trace(bs_qq, st);
 
-            srand(time(0));
             uint32_t prime = next_prime(1<<30);
             prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
             while(is_lucky_prime_ui(prime, bs_qq)){
@@ -4917,7 +4915,6 @@ restart:
 
             st->tr = trace;
 
-            srand(time(0));
             uint32_t prime = next_prime(1<<30);
             prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
             while(is_lucky_prime_ui(prime, bs_qq)){
@@ -5097,7 +5094,7 @@ restart:
                     gens,
 		            initial_hts, unstable_staircase, nr_threads, max_pairs,
                     elim_block_len, update_ht,
-                    la_option, use_signatures, lift_matrix, 
+                    la_option, use_signatures, lift_matrix,
                     &init_primes, info_level, print_gb,
                     generate_pbm, precision, files, round, get_param);
 
@@ -5204,36 +5201,36 @@ restart:
 		  if (oldminpolydeg == -1 || oldminpolydeg < minpolydeg) {
 		    oldminpolydeg = minpolydeg; // need to run a 2nd time
 		  } else if (oldminpolydeg == minpolydeg) {
-			/* same degree for both random linear forms */
-			if (info_level > 0) {
-			    printf ("\nRestarting with a non-random linear form");
-            }
-			/* set back the base coefficient to its previous form
-			   before introducing the random linear form.
-			   Only for value larger than 1
-			*/
-			if (gens->linear_form_base_coef > 1) {
-			  gens->linear_form_base_coef--;
-			}
-			/* set back the base coefficient to the
-                          original one if a non random linear form had
-                          been introduced before.
-			  Only for value larger than 1
-			*/
-			if (gens->linear_form_base_coef > 1) {
-			  gens->linear_form_base_coef--;
-			}
-			/* set back the random linear form flag to 0 */
-			gens->rand_linear=0;
-			if (add_linear_form_to_input_system(gens, info_level)) {
-			  goto restart;
-			}
+		    /* same degree for both random linear forms */
+		    if (info_level > 0) {
+		      printf ("\nRestarting with a non-random linear form");
+		    }
+		    /* set back the base coefficient to its previous form
+		       before introducing the random linear form.
+		       Only for value larger than 1
+		    */
+		    if (gens->linear_form_base_coef > 1) {
+		      gens->linear_form_base_coef--;
+		    }
+		    /* set back the base coefficient to the
+		       original one if a non random linear form had
+		       been introduced before.
+		       Only for value larger than 1
+		    */
+		    if (gens->linear_form_base_coef > 1) {
+		      gens->linear_form_base_coef--;
+		    }
+		    /* set back the random linear form flag to 0 */
+		    gens->rand_linear=0;
+		    if (add_linear_form_to_input_system(gens, info_level)) {
+		      goto restart;
+		    }
 		  } /* else oldminpolydeg > minpoly deg so need to run
 		       another 2nd time */
 		  minpolydeg = -1;
 		  if (info_level > 0) {
 		    printf ("\nRestarting with another random linear form");
-          }
+		  }
 		  /* set back the base coefficient to its previous form
 		     before introducing the random linear form.
 		     Only for value larger than 1
@@ -5247,7 +5244,7 @@ restart:
 		}
 	    }
         }
-    
+
         free(bld);
         free(blen);
         free(bexp);

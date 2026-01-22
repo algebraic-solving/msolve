@@ -2242,7 +2242,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   }
   primeinit = prime;
-  primeinit = 1246353599;
   lp->p[0] = primeinit;
   if(info_level && gens->field_char == 0){
       fprintf(stdout, "Initial prime is %d\n", lp->p[0]);

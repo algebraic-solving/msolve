@@ -1586,6 +1586,23 @@ static int32_t check_for_single_element_groebner_basis(
   return empty_solution_set;
 }
 
+/*
+ * returns 1 if the parametrizations are the same else it returns 0
+ * */
+static int equal_param(param_t *param, param_t *test_param){
+  for(int i = 0; i < param->nvars-1; i++){
+    if(param->coords[i]->length != test_param->coords[i]->length){
+      return 0;
+    }
+    for(int32_t j = 0; j < param->coords[i]->length; j++){
+      if(param->coords[i]->coeffs[j] != test_param->coords[i]->coeffs[j]){
+        return 0;
+      }
+    }
+  }
+  return 1;
+}
+
 static int32_t *initial_modular_step(
         sp_matfglm_t **bmatrix,
         int32_t **bdiv_xn,
@@ -1695,6 +1712,19 @@ static int32_t *initial_modular_step(
             *bparam = nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
                     *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
                     md->info_level, bdata_fglm, bdata_bms, success, md);
+            if((*bparam)->elim->length - 1 != dquot){
+              param_t **test_nmod_param =
+                    (param_t **)malloc(sizeof(param_t *));
+              *test_nmod_param = nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
+                      *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
+                      0, bdata_fglm, bdata_bms, success, md);
+              int boo = equal_param(*bparam, *test_nmod_param);
+              if(boo == 0){
+                *success = 0;
+              }
+              free_fglm_param(test_nmod_param[0]);
+              free(test_nmod_param);
+            }
         }
         *dim = 0;
         *dquot_ori = dquot;
@@ -2212,6 +2242,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   }
   primeinit = prime;
+  primeinit = 1246353599;
   lp->p[0] = primeinit;
   if(info_level && gens->field_char == 0){
       fprintf(stdout, "Initial prime is %d\n", lp->p[0]);

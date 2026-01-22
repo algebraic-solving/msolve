@@ -1154,7 +1154,6 @@ static inline int invert_table_polynomial (param_t *param,
     if (lambda == 0) {
       nmod_poly_set_coeff_ui (data_bms->BMS->R0,i,
 			      data->res[(length-i-1)*block_size+ncoord]);
-
     }
     else {
       uint64_t coeff= (lambda*data->res[(length-i-1)*block_size]) % prime;
@@ -1164,6 +1163,8 @@ static inline int invert_table_polynomial (param_t *param,
     }
 
   }
+
+  nmod_poly_zero(data_bms->BMS->R1);
 
   nmod_poly_mul (data_bms->Z1,data_bms->BMS->R0,data_bms->BMS->V1);
   nmod_poly_shift_right (data_bms->Z1,data_bms->Z1,length);
@@ -1186,6 +1187,7 @@ static inline void divide_table_polynomials (param_t *param,
   szmat_t length= data_bms->BMS->V1->length-1;
   nmod_poly_zero (data_bms->BMS->R0);
   nmod_poly_fit_length(data_bms->BMS->R0, length);
+  nmod_poly_zero(data_bms->BMS->R1);
 
   for (long i = 0; i < length; i++){
     if (lambda == 0) {
@@ -1268,6 +1270,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
     fprintf(stdout, "invC1=");
     nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
 #endif
+
     long dec = 0;
 
     for(long nc = 0; nc < nvars - 1 ; nc++){

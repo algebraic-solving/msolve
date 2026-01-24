@@ -204,7 +204,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_radical_shape-qq.sh:test/diff/diff_radical_shape-qq.sh
  input_files/choice-linear-form-qq.ms:input_files/choice-linear-form-qq.ms
  output_files/choice-linear-form-qq.res:output_files/choice-linear-form-qq.res
- test/diff/diff_choice-linear-form.sh:test/diff/diff_choice-linear-form.sh
+ test/diff/diff_choice-linear-form-qq.sh:test/diff/diff_choice-linear-form-qq.sh
  input_files/choice-linear-form-qq-real-roots.ms:input_files/choice-linear-form-qq-real-roots.ms
  output_files/choice-linear-form-qq-real-roots.res:output_files/choice-linear-form-qq-real-roots.res
  test/diff/diff_choice-linear-form-real-roots.sh:test/diff/diff_choice-linear-form-real-roots.sh

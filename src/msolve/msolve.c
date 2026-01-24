@@ -1591,13 +1591,8 @@ static int32_t check_for_single_element_groebner_basis(
  * */
 static int equal_param(param_t *param, param_t *test_param){
   for(int i = 0; i < param->nvars-1; i++){
-    if(param->coords[i]->length != test_param->coords[i]->length){
+    if(!nmod_poly_equal(param->coords[i], test_param->coords[i])){
       return 0;
-    }
-    for(int32_t j = 0; j < param->coords[i]->length; j++){
-      if(param->coords[i]->coeffs[j] != test_param->coords[i]->coeffs[j]){
-        return 0;
-      }
     }
   }
   return 1;

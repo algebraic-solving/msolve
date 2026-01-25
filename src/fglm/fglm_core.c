@@ -39,7 +39,7 @@ double omp_get_wtime(void) { return realtime();}
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 
 #define DEBUGFGLM 0
-#define BLOCKWIED 0
+//#define BLOCKWIED 0
 
 #include <flint/fmpz.h>
 #include <flint/nmod_poly.h>
@@ -711,6 +711,7 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
 }
 #endif
 
+#ifdef BLOCKWIED 
 static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
                                      szmat_t block_size, long dimquot,
                                      nvars_t* squvars,
@@ -780,6 +781,7 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
   free(tres);
 
 }
+#endif
 
 static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
                                     szmat_t block_size, szmat_t dimquot,
@@ -927,7 +929,6 @@ static inline long make_square_free_elim_poly_colon(param_t *param,
 						    fglm_bms_data_t *data_bms,
 						    long dimquot,
 						    int info_level){
-  long dim = data_bms->BMS->V1->length - 1;
 
   int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
 
@@ -1563,7 +1564,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   param_t *param = allocate_fglm_param(prime, nvars);
 
   szmat_t sz = matrix->ncols * matrix->nrows;
-  szmat_t nb = initialize_fglm_data(matrix, *bdata, prime, sz, block_size);
+  initialize_fglm_data(matrix, *bdata, prime, sz, block_size);
 
   /* if(info_level){ */
   /*   fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n", */
@@ -1599,7 +1600,6 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 #endif
 
   if(info_level > 1){
-    double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
     /* fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm); */

@@ -125,31 +125,31 @@ AC_CONFIG_LINKS([
  output_files/choice-linear-form-qq-real-roots.res:output_files/choice-linear-form-qq-real-roots.res
  test/diff/diff_choice-linear-form-qq-real-roots.sh:test/diff/diff_choice-linear-form-qq-real-roots.sh
  input_files/cp_d_3_n_4_p_2.ms:input_files/cp_d_3_n_4_p_2.ms
- output_files/cp_d_3_n_4_p_2.res:output_files/cp_d_3_n_4_p_2.P2.d0.res
+ output_files/cp_d_3_n_4_p_2.P2.d0.res:output_files/cp_d_3_n_4_p_2.P2.d0.res
  test/diff/diff_cp_d_3_n_4_p_2.sh:test/diff/diff_cp_d_3_n_4_p_2.sh
  input_files/cyclic5-16.ms:input_files/cyclic5-16.ms
- output_files/cyclic5-16.res:output_files/cyclic5-16.P2.d4.res
+ output_files/cyclic5-16.P2.d4.res:output_files/cyclic5-16.P2.d4.res
  test/diff/diff_cyclic5-16.sh:test/diff/diff_cyclic5-16.sh
  input_files/cyclic5-31.ms:input_files/cyclic5-31.ms
- output_files/cyclic5-31.res:output_files/cyclic5-31.P2.d4.res
+ output_files/cyclic5-31.P2.d4.res:output_files/cyclic5-31.P2.d4.res
  test/diff/diff_cyclic5-31.sh:test/diff/diff_cyclic5-31.sh
  input_files/cyclic5-qq.ms:input_files/cyclic5-qq.ms
- output_files/cyclic5-qq.res:output_files/cyclic5-qq.P2.d4.res
+ output_files/cyclic5-qq.P2.d4.res:output_files/cyclic5-qq.P2.d4.res
  output_files/cyclic5-qq.g2.res:output_files/cyclic5-qq.g2.res
  output_files/cyclic5-qq.g2.e1.res:output_files/cyclic5-qq.g2.e1.res
  output_files/cyclic5-qq.g2.e2.res:output_files/cyclic5-qq.g2.e2.res
  test/diff/diff_cyclic5-qq.sh:test/diff/diff_cyclic5-qq.sh
  input_files/eco10-31.ms:input_files/eco10-31.ms
- output_files/eco10-31.res:output_files/eco10-31.P2.d0.res
+ output_files/eco10-31.P2.d0.res:output_files/eco10-31.P2.d0.res
  test/diff/diff_eco10-31.sh:test/diff/diff_eco10-31.sh
  input_files/eco6-16.ms:input_files/eco6-16.ms
- output_files/eco6-16.res:output_files/eco6-16.P2.d4.res
+ output_files/eco6-16.P2.d4.res:output_files/eco6-16.P2.d4.res
  test/diff/diff_eco6-16.sh:test/diff/diff_eco6-16.sh
  input_files/eco6-31.ms:input_files/eco6-31.ms
- output_files/eco6-31.res:output_files/eco6-31.P2.d4.res
+ output_files/eco6-31.P2.d4.res:output_files/eco6-31.P2.d4.res
  test/diff/diff_eco6-31.sh:test/diff/diff_eco6-31.sh
  input_files/eco6-qq.ms:input_files/eco6-qq.ms
- output_files/eco6-qq.res:output_files/eco6-qq.P2.d4.res
+ output_files/eco6-qq.P2.d4.res:output_files/eco6-qq.P2.d4.res
  test/diff/diff_eco6-qq.sh:test/diff/diff_eco6-qq.sh
  input_files/elim-31.ms:input_files/elim-31.ms
  output_files/elim-31.g2.e1.res:output_files/elim-31.g2.e1.res

@@ -3062,7 +3062,6 @@ void generate_table_values_full(interval *rt, mpz_t c, const long ns,
         generate_table_values_full_large_pos(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
         return;
     }
-    double st = realtime();
   mpz_add_ui(c, rt->numer, 1);
 
   if (mpz_sgn(rt->numer) >= 0) {
@@ -3437,7 +3436,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
             refine = 0;
         }
         else{
-            double str = cputime();
             refine_root_elim(param, polelim, ns, rt, pos_root,
                 tab, xdo, xup, den_up, den_do, c, &corr,
                 &b, info_level);

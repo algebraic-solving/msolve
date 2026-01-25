@@ -3054,14 +3054,14 @@ void generate_table_values_full(interval *rt, mpz_t c, const long ns,
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
 
-    if(mpz_sizeinbase(rt->numer, 2) <= rt->k ){
-        generate_table_values_full_small(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
-        return;
-    }
-    else{
-        generate_table_values_full_large_pos(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
-        return;
-    }
+  if(mpz_sizeinbase(rt->numer, 2) <= rt->k ){
+      generate_table_values_full_small(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
+      return;
+  }
+  else{
+      generate_table_values_full_large_pos(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
+      return;
+  }
   mpz_add_ui(c, rt->numer, 1);
 
   if (mpz_sgn(rt->numer) >= 0) {

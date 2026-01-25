@@ -2982,8 +2982,6 @@ void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, co
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
 
-    double st = realtime();
-
     mpz_add_ui(c, numer, 1);
     long newcorr = MAX(corr, 2 * ns * (mpz_sizeinbase(numer, 2) - k));
 

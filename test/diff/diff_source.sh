@@ -21,8 +21,8 @@ echo -e "${colseed}SEED${std}: $seed"
 
 # each diff_example.sh is built by running msolve on $file.ms
 # with options -L 0 -l 2 -t 1
-# if the execution fails, exit 1
-# then compare the output with the expected one, if different, exit 2
+# if the execution fails, print_exit 1
+# then compare the output with the expected one, if different, print_exit 2
 # repeat for other execution parameters with exit 3 and 4 and so on, until at most 19 and 20
 
 # repeat all these tests changing -L 0 into -L 1, -l 2 into -l 44 and -t 1 into -t 2

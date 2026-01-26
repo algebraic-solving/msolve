@@ -2150,10 +2150,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int32_t nr_nf = 0;
   const uint32_t prime_start = (uint32_t)(1) << 30;
   const int32_t nr_primes = nr_threads;
-
-  len_t i;
-
-
   /* initialize stuff */
   md_t *st = allocate_meta_data();
 
@@ -2982,8 +2978,6 @@ void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, co
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
 
-    double st = realtime();
-
     mpz_add_ui(c, numer, 1);
     long newcorr = MAX(corr, 2 * ns * (mpz_sizeinbase(numer, 2) - k));
 
@@ -3054,15 +3048,14 @@ void generate_table_values_full(interval *rt, mpz_t c, const long ns,
                                 const long b, const long corr, mpz_t *xdo,
                                 mpz_t *xup) {
 
-    if(mpz_sizeinbase(rt->numer, 2) <= rt->k ){
-        generate_table_values_full_small(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
-        return;
-    }
-    else{
-        generate_table_values_full_large_pos(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
-        return;
-    }
-    double st = realtime();
+  if(mpz_sizeinbase(rt->numer, 2) <= rt->k ){
+      generate_table_values_full_small(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
+      return;
+  }
+  else{
+      generate_table_values_full_large_pos(rt->numer, c, rt->k, ns, b, corr, xdo, xup);
+      return;
+  }
   mpz_add_ui(c, rt->numer, 1);
 
   if (mpz_sgn(rt->numer) >= 0) {
@@ -3437,7 +3430,6 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
             refine = 0;
         }
         else{
-            double str = cputime();
             refine_root_elim(param, polelim, ns, rt, pos_root,
                 tab, xdo, xup, den_up, den_do, c, &corr,
                 &b, info_level);

@@ -2150,10 +2150,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int32_t nr_nf = 0;
   const uint32_t prime_start = (uint32_t)(1) << 30;
   const int32_t nr_primes = nr_threads;
-
-  len_t i;
-
-
   /* initialize stuff */
   md_t *st = allocate_meta_data();
 

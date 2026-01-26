@@ -10,6 +10,13 @@ else
     std=
 fi
 
+# print in color the exit code
+print_exit() {
+    local excode=$1
+    echo -e "${colexit}EXIT${std}: $excode"
+    exit "$excode"
+}
+
 echo -e "${colseed}SEED${std}: $seed"
 
 # each diff_example.sh is built by running msolve on $file.ms

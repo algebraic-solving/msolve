@@ -1,5 +1,3 @@
-source test/diff/diff_source-param-fullnf.sh
-
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.81.res \
       --random-seed $seed \
       -P 2 -d 4 -L 1 -l 2 -t 1

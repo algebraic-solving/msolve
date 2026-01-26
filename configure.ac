@@ -119,11 +119,10 @@ AC_CONFIG_LINKS([
  output_files/bug-empty-tracer.g2.res:output_files/bug-empty-tracer.g2.res
  test/diff/diff_bug-empty-tracer.sh:test/diff/diff_bug-empty-tracer.sh
  input_files/choice-linear-form-qq.ms:input_files/choice-linear-form-qq.ms
- output_files/choice-linear-form-qq.res:output_files/choice-linear-form-qq.res
+ output_files/choice-linear-form-qq.P2.d0.res:output_files/choice-linear-form-qq.P2.d0.res
+ output_files/choice-linear-form-qq.p128.res:output_files/choice-linear-form-qq.p128.res
+ output_files/choice-linear-form-qq.p1024.res:output_files/choice-linear-form-qq.p1024.res
  test/diff/diff_choice-linear-form-qq.sh:test/diff/diff_choice-linear-form-qq.sh
- input_files/choice-linear-form-qq-real-roots.ms:input_files/choice-linear-form-qq-real-roots.ms
- output_files/choice-linear-form-qq-real-roots.res:output_files/choice-linear-form-qq-real-roots.res
- test/diff/diff_choice-linear-form-qq-real-roots.sh:test/diff/diff_choice-linear-form-qq-real-roots.sh
  input_files/cp-d3-n4-p2.ms:input_files/cp-d3-n4-p2.ms
  output_files/cp-d3-n4-p2.P2.d0.res:output_files/cp-d3-n4-p2.P2.d0.res
  test/diff/diff_cp-d3-n4-p2.sh:test/diff/diff_cp-d3-n4-p2.sh

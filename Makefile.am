@@ -17,7 +17,6 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_bug-68.sh \
 			  test/diff/diff_bug-empty-tracer.sh \
 			  test/diff/diff_choice-linear-form-qq.sh \
-			  test/diff/diff_choice-linear-form-qq-real-roots.sh \
 			  test/diff/diff_cp-d3-n4-p2.sh \
 			  test/diff/diff_cyclic5-16.sh \
 			  test/diff/diff_cyclic5-31.sh \

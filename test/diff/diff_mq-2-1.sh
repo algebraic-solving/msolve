@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=bug_68
+file=mq-2-1
 
 source test/diff/diff_source.sh
 

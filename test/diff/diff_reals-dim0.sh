@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=reals_dim0-extract
+file=reals-dim0
 
 source test/diff/diff_source.sh
 

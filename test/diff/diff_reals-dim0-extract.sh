@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=reals_dim0-swapvar
+file=reals-dim0-extract
 
 source test/diff/diff_source.sh
 

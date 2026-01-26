@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=nonradical_shape-qq
+file=nonradical-shape-qq
 
 source test/diff/diff_source.sh
 

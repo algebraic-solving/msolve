@@ -111,22 +111,22 @@ AC_CONFIG_LINKS([
  test/diff/diff_source-real.sh:test/diff/diff_source-real.sh
  input_files/bug-2nd-prime-bad.ms:input_files/bug-2nd-prime-bad.ms
  output_files/bug-2nd-prime-bad.g2.res:output_files/bug-2nd-prime-bad.g2.res
- test/diff/diff_bug_2nd_prime_bad.sh:test/diff/diff_bug_2nd_prime_bad.sh
- input_files/bug_68.ms:input_files/bug_68.ms
- output_files/bug_68.res:output_files/bug_68.res
- test/diff/diff_bug_68.sh:test/diff/diff_bug_68.sh
+ test/diff/diff_bug-2nd-prime_bad.sh:test/diff/diff_bug-2nd-prime-bad.sh
+ input_files/bug-68.ms:input_files/bug-68.ms
+ output_files/bug-68.res:output_files/bug-68.res
+ test/diff/diff_bug-68.sh:test/diff/diff_bug-68.sh
  input_files/bug-empty-tracer.ms:input_files/bug-empty-tracer.ms
  output_files/bug-empty-tracer.g2.res:output_files/bug-empty-tracer.g2.res
- test/diff/diff_bug_empty_tracer.sh:test/diff/diff_bug_empty_tracer.sh
+ test/diff/diff_bug-empty-tracer.sh:test/diff/diff_bug-empty-tracer.sh
  input_files/choice-linear-form-qq.ms:input_files/choice-linear-form-qq.ms
  output_files/choice-linear-form-qq.res:output_files/choice-linear-form-qq.res
  test/diff/diff_choice-linear-form-qq.sh:test/diff/diff_choice-linear-form-qq.sh
  input_files/choice-linear-form-qq-real-roots.ms:input_files/choice-linear-form-qq-real-roots.ms
  output_files/choice-linear-form-qq-real-roots.res:output_files/choice-linear-form-qq-real-roots.res
  test/diff/diff_choice-linear-form-qq-real-roots.sh:test/diff/diff_choice-linear-form-qq-real-roots.sh
- input_files/cp_d_3_n_4_p_2.ms:input_files/cp_d_3_n_4_p_2.ms
- output_files/cp_d_3_n_4_p_2.P2.d0.res:output_files/cp_d_3_n_4_p_2.P2.d0.res
- test/diff/diff_cp_d_3_n_4_p_2.sh:test/diff/diff_cp_d_3_n_4_p_2.sh
+ input_files/cp-d3-n4-p2.ms:input_files/cp-d3-n4-p2.ms
+ output_files/cp-d3-n4-p2.P2.d0.res:output_files/cp-d3-n4-p2.P2.d0.res
+ test/diff/diff_cp-d3-n4-p2.sh:test/diff/diff_cp-d3-n4-p2.sh
  input_files/cyclic5-16.ms:input_files/cyclic5-16.ms
  output_files/cyclic5-16.P2.d4.res:output_files/cyclic5-16.P2.d4.res
  test/diff/diff_cyclic5-16.sh:test/diff/diff_cyclic5-16.sh
@@ -186,32 +186,32 @@ AC_CONFIG_LINKS([
  input_files/input-overflow-16.ms:input_files/input-overflow-16.ms
  output_files/input-overflow-16.P2.d0.res:output_files/input-overflow-16.P2.d0.res
  test/diff/diff_input-overflow-16.sh:test/diff/diff_input-overflow-16.sh
- input_files/issue_230.ms:input_files/issue_230.ms
- output_files/issue_230.P1.d0.p128.res:output_files/issue_230.P1.d0.p128.res
- output_files/issue_230.P1.d0.p1024.res:output_files/issue_230.P1.d0.p1024.res
- test/diff/diff_issue_230.sh:test/diff/diff_issue_230.sh
- input_files/issue_230_squared.ms:input_files/issue_230_squared.ms
- output_files/issue_230_squared.P1.d0.p128.res:output_files/issue_230_squared.P1.d0.p128.res
- output_files/issue_230_squared.P1.d0.p1024.res:output_files/issue_230_squared.P1.d0.p1024.res
- test/diff/diff_issue_230_squared.sh:test/diff/diff_issue_230_squared.sh
+ input_files/issue-230.ms:input_files/issue-230.ms
+ output_files/issue-230.P1.d0.p128.res:output_files/issue-230.P1.d0.p128.res
+ output_files/issue-230.P1.d0.p1024.res:output_files/issue-230.P1.d0.p1024.res
+ test/diff/diff_issue-230.sh:test/diff/diff_issue-230.sh
+ input_files/issue-230-squared.ms:input_files/issue-230-squared.ms
+ output_files/issue-230-squared.P1.d0.p128.res:output_files/issue-230-squared.P1.d0.p128.res
+ output_files/issue-230-squared.P1.d0.p1024.res:output_files/issue-230-squared.P1.d0.p1024.res
+ test/diff/diff_issue-230-squared.sh:test/diff/diff_issue-230-squared.sh
  input_files/kat6-31.ms:input_files/kat6-31.ms
  output_files/kat6-31.P2.d0.res:output_files/kat6-31.P2.d0.res
  test/diff/diff_kat6-31.sh:test/diff/diff_kat6-31.sh
  input_files/kat7-qq.ms:input_files/kat7-qq.ms
  output_files/kat7-qq.P2.d0.res:output_files/kat7-qq.P2.d0.res
  test/diff/diff_kat7-qq.sh:test/diff/diff_kat7-qq.sh
- test/diff/diff_kat8-qq-truncate.sh:test/diff/diff_kat8-qq-truncate.sh
  input_files/kat8-qq-truncate.ms:input_files/kat8-qq-truncate.ms
  output_files/kat8-qq-truncate.res:output_files/kat8-qq-truncate.res
+ test/diff/diff_kat8-qq-truncate.sh:test/diff/diff_kat8-qq-truncate.sh
  input_files/linear-qq.ms:input_files/linear-qq.ms
  output_files/linear-qq.P2.d0.res:output_files/linear-qq.P2.d0.res
  test/diff/diff_linear-qq.sh:test/diff/diff_linear-qq.sh
  input_files/maxbitsize-bug.ms:input_files/maxbitsize-bug.ms
  output_files/maxbitsize-bug.res:output_files/maxbitsize-bug.res
  test/diff/diff_maxbitsize-bug.sh:test/diff/diff_maxbitsize-bug.sh
- input_files/mq_2_1.ms:input_files/mq_2_1.ms
- output_files/mq_2_1.res:output_files/mq_2_1.res
- test/diff/diff_mq_2_1.sh:test/diff/diff_mq_2_1.sh
+ input_files/mq-2-1.ms:input_files/mq-2-1.ms
+ output_files/mq-2-1.res:output_files/mq-2-1.res
+ test/diff/diff_mq-2-1.sh:test/diff/diff_mq-2-1.sh
  input_files/multy-16.ms:input_files/multy-16.ms
  output_files/multy-16.P2.d0.res:output_files/multy-16.P2.d0.res
  test/diff/diff_multy-16.sh:test/diff/diff_multy-16.sh
@@ -223,35 +223,35 @@ AC_CONFIG_LINKS([
  test/diff/diff_multy-qq.sh:test/diff/diff_multy-qq.sh
  input_files/nf-8.ms:input_files/nf-8.ms
  output_files/nf-8.res:output_files/nf-8.res
- test/diff/diff_nf_8.sh:test/diff/diff_nf_8.sh
+ test/diff/diff_nf-8.sh:test/diff/diff_nf-8.sh
  input_files/nf-16.ms:input_files/nf-16.ms
  output_files/nf-16.res:output_files/nf-16.res
- test/diff/diff_nf_16.sh:test/diff/diff_nf_16.sh
+ test/diff/diff_nf-16.sh:test/diff/diff_nf-16.sh
  input_files/nf-31.ms:input_files/nf-31.ms
  output_files/nf-31.res:output_files/nf-31.res
- test/diff/diff_nf_31.sh:test/diff/diff_nf_31.sh
+ test/diff/diff_nf-31.sh:test/diff/diff_nf-31.sh
  input_files/nf-lm-bug.ms:input_files/nf-lm-bug.ms
  output_files/nf-lm-bug.res:output_files/nf-lm-bug.res
- test/diff/diff_nf_lm_bug.sh:test/diff/diff_nf_lm_bug.sh
- input_files/nonradical_shape-31.ms:input_files/nonradical_shape-31.ms
- output_files/nonradical_shape-31.res:output_files/nonradical_shape-31.res
- input_files/nonradical_shape-qq.ms:input_files/nonradical_shape-qq.ms
- output_files/nonradical_shape-qq.P1.d0.p128.res:output_files/nonradical_shape-qq.P1.d0.p128.res
- output_files/nonradical_shape-qq.P1.d0.p1024.res:output_files/nonradical_shape-qq.P1.d0.p1024.res
- test/diff/diff_nonradical_shape-qq.sh:test/diff/diff_nonradical_shape-qq.sh
- input_files/nonradical_radicalshape-31.ms:input_files/nonradical_radicalshape-31.ms
- output_files/nonradical_radicalshape-31.res:output_files/nonradical_radicalshape-31.res
- input_files/nonradical_radicalshape-qq.ms:input_files/nonradical_radicalshape-qq.ms
- output_files/nonradical_radicalshape-qq.P1.d0.p128.res:output_files/nonradical_radicalshape-qq.P1.d0.p128.res
- output_files/nonradical_radicalshape-qq.P1.d0.p1024.res:output_files/nonradical_radicalshape-qq.P1.d0.p1024.res
- test/diff/diff_nonradical_radicalshape-qq.sh:test/diff/diff_nonradical_radicalshape-qq.sh
- input_files/nonradical_radicalshape-no-square-31.ms:input_files/nonradical_radicalshape-no-square-31.ms
- output_files/nonradical_radicalshape-no-square-31.c0.res:output_files/nonradical_radicalshape-no-square-31.c0.res
- test/diff/diff_nonradical_radicalshape-no-square-31.sh:test/diff/diff_nonradical_radicalshape-no-square-31.sh
- input_files/nonradical_radicalshape-no-square-qq.ms:input_files/nonradical_radicalshape-no-square-qq.ms
- output_files/nonradical_radicalshape-no-square-qq.P1.d0.p128.res:output_files/nonradical_radicalshape-no-square-qq.P1.d0.p128.res
- output_files/nonradical_radicalshape-no-square-qq.P1.d0.p1024.res:output_files/nonradical_radicalshape-no-square-qq.P1.d0.p1024.res
- test/diff/diff_nonradical_radicalshape-no-square-qq.sh:test/diff/diff_nonradical_radicalshape-no-square-qq.sh
+ test/diff/diff_nf-lm-bug.sh:test/diff/diff_nf-lm-bug.sh
+ input_files/nonradical-radicalshape-no-square-31.ms:input_files/nonradical-radicalshape-no-square-31.ms
+ output_files/nonradical-radicalshape-no-square-31.c0.res:output_files/nonradical-radicalshape-no-square-31.c0.res
+ test/diff/diff_nonradical-radicalshape-no-square-31.sh:test/diff/diff_nonradical-radicalshape-no-square-31.sh
+ input_files/nonradical-radicalshape-no-square-qq.ms:input_files/nonradical-radicalshape-no-square-qq.ms
+ output_files/nonradical-radicalshape-no-square-qq.P1.d0.p128.res:output_files/nonradical-radicalshape-no-square-qq.P1.d0.p128.res
+ output_files/nonradical-radicalshape-no-square-qq.P1.d0.p1024.res:output_files/nonradical-radicalshape-no-square-qq.P1.d0.p1024.res
+ test/diff/diff_nonradical-radicalshape-no-square-qq.sh:test/diff/diff_nonradical-radicalshape-no-square-qq.sh
+ input_files/nonradical-radicalshape-31.ms:input_files/nonradical-radicalshape-31.ms
+ output_files/nonradical-radicalshape-31.res:output_files/nonradical-radicalshape-31.res
+ input_files/nonradical-radicalshape-qq.ms:input_files/nonradical-radicalshape-qq.ms
+ output_files/nonradical-radicalshape-qq.P1.d0.p128.res:output_files/nonradical-radicalshape-qq.P1.d0.p128.res
+ output_files/nonradical-radicalshape-qq.P1.d0.p1024.res:output_files/nonradical-radicalshape-qq.P1.d0.p1024.res
+ test/diff/diff_nonradical-radicalshape-qq.sh:test/diff/diff_nonradical-radicalshape-qq.sh
+ input_files/nonradical-shape-31.ms:input_files/nonradical-shape-31.ms
+ output_files/nonradical-shape-31.res:output_files/nonradical-shape-31.res
+ input_files/nonradical-shape-qq.ms:input_files/nonradical-shape-qq.ms
+ output_files/nonradical-shape-qq.P1.d0.p128.res:output_files/nonradical-shape-qq.P1.d0.p128.res
+ output_files/nonradical-shape-qq.P1.d0.p1024.res:output_files/nonradical-shape-qq.P1.d0.p1024.res
+ test/diff/diff_nonradical-shape-qq.sh:test/diff/diff_nonradical-shape-qq.sh
  input_files/one-16.ms:input_files/one-16.ms
  output_files/one-16.res:output_files/one-16.res
  test/diff/diff_one-16.sh:test/diff/diff_one-16.sh
@@ -263,12 +263,12 @@ AC_CONFIG_LINKS([
  output_files/one-qq.res:output_files/one-qq.res
  output_files/one-qq.g2.res:output_files/one-qq.g2.res
  test/diff/diff_one-qq.sh:test/diff/diff_one-qq.sh
- input_files/radical_shape-31.ms:input_files/radical_shape-31.ms
- output_files/radical_shape-31.P2.d0.res:output_files/radical_shape-31.P2.d0.res
- test/diff/diff_radical_shape-31.sh:test/diff/diff_radical_shape-31.sh
- input_files/radical_shape-qq.ms:input_files/radical_shape-qq.ms
- output_files/radical_shape-qq.P2.d0.res:output_files/radical_shape-qq.P2.d0.res
- test/diff/diff_radical_shape-qq.sh:test/diff/diff_radical_shape-qq.sh
+ input_files/radical-shape-31.ms:input_files/radical-shape-31.ms
+ output_files/radical-shape-31.P2.d0.res:output_files/radical-shape-31.P2.d0.res
+ test/diff/diff_radical-shape-31.sh:test/diff/diff_radical-shape-31.sh
+ input_files/radical-shape-qq.ms:input_files/radical-shape-qq.ms
+ output_files/radical-shape-qq.P2.d0.res:output_files/radical-shape-qq.P2.d0.res
+ test/diff/diff_radical-shape-qq.sh:test/diff/diff_radical-shape-qq.sh
  input_files/realroot1.ms:input_files/realroot1.ms
  output_files/realroot1.p128.res:output_files/realroot1.p128.res
  output_files/realroot1.p1024.res:output_files/realroot1.p1024.res
@@ -277,22 +277,22 @@ AC_CONFIG_LINKS([
  output_files/realroot-extraction-exact-root.p128.res:output_files/realroot-extraction-exact-root.p128.res
  output_files/realroot-extraction-exact-root.p1024.res:output_files/realroot-extraction-exact-root.p1024.res
  test/diff/diff_realroot-extraction-exact-root.sh:test/diff/diff_realroot-extraction-exact-root.sh
- input_files/reals_dim0-chgvar.ms:input_files/reals_dim0-chgvar.ms
- output_files/reals_dim0-chgvar.p128.res:output_files/reals_dim0-chgvar.p128.res
- output_files/reals_dim0-chgvar.p1024.res:output_files/reals_dim0-chgvar.p1024.res
- test/diff/diff_reals_dim0-chgvar.sh:test/diff/diff_reals_dim0-chgvar.sh
- input_files/reals_dim0-extract.ms:input_files/reals_dim0-extract.ms
- output_files/reals_dim0-extract.p128.res:output_files/reals_dim0-extract.p128.res
- output_files/reals_dim0-extract.p1024.res:output_files/reals_dim0-extract.p1024.res
- test/diff/diff_reals_dim0-extract.sh:test/diff/diff_reals_dim0-extract.sh
- input_files/reals_dim0.ms:input_files/reals_dim0.ms
- output_files/reals_dim0.p128.res:output_files/reals_dim0.p128.res
- output_files/reals_dim0.p1024.res:output_files/reals_dim0.p1024.res
- test/diff/diff_reals_dim0.sh:test/diff/diff_reals_dim0.sh
- input_files/reals_dim0-swapvar.ms:input_files/reals_dim0-swapvar.ms
- output_files/reals_dim0-swapvar.p128.res:output_files/reals_dim0-swapvar.p128.res
- output_files/reals_dim0-swapvar.p1024.res:output_files/reals_dim0-swapvar.p1024.res
- test/diff/diff_reals_dim0-swapvar.sh:test/diff/diff_reals_dim0-swapvar.sh
+ input_files/reals-dim0-chgvar.ms:input_files/reals-dim0-chgvar.ms
+ output_files/reals-dim0-chgvar.p128.res:output_files/reals-dim0-chgvar.p128.res
+ output_files/reals-dim0-chgvar.p1024.res:output_files/reals-dim0-chgvar.p1024.res
+ test/diff/diff_reals-dim0-chgvar.sh:test/diff/diff_reals-dim0-chgvar.sh
+ input_files/reals-dim0-extract.ms:input_files/reals-dim0-extract.ms
+ output_files/reals-dim0-extract.p128.res:output_files/reals-dim0-extract.p128.res
+ output_files/reals-dim0-extract.p1024.res:output_files/reals-dim0-extract.p1024.res
+ test/diff/diff_reals-dim0-extract.sh:test/diff/diff_reals-dim0-extract.sh
+ input_files/reals-dim0.ms:input_files/reals-dim0.ms
+ output_files/reals-dim0.p128.res:output_files/reals-dim0.p128.res
+ output_files/reals-dim0.p1024.res:output_files/reals-dim0.p1024.res
+ test/diff/diff_reals-dim0.sh:test/diff/diff_reals-dim0.sh
+ input_files/reals-dim0-swapvar.ms:input_files/reals-dim0-swapvar.ms
+ output_files/reals-dim0-swapvar.p128.res:output_files/reals-dim0-swapvar.p128.res
+ output_files/reals-dim0-swapvar.p1024.res:output_files/reals-dim0-swapvar.p1024.res
+ test/diff/diff_reals-dim0-swapvar.sh:test/diff/diff_reals-dim0-swapvar.sh
  input_files/test-lifting2.ms:input_files/test-lifting2.ms
  output_files/test-lifting2.P2.d0.res:output_files/test-lifting2.P2.d0.res
  test/diff/diff_test-lifting2.sh:test/diff/diff_test-lifting2.sh

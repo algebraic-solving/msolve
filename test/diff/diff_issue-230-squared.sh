@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=nonradical_radicalshape-no-square-qq
+file=issue-230-squared
 
 source test/diff/diff_source.sh
 

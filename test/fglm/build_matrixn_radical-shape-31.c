@@ -24,7 +24,7 @@ int main(void)
     int32_t refine                = 0; /* not used at the moment */
     int32_t isolate               = 0; /* not used at the moment */
     files_gb *files = malloc(sizeof(files_gb));
-    files->in_file  = "input_files/nonradical_radicalshape-31.ms";
+    files->in_file  = "input_files/radical-shape-31.ms";
     files->out_file  = NULL;
     FILE *fh  = fopen(files->in_file, "r");
 
@@ -36,7 +36,7 @@ int main(void)
 
     get_data_from_file(files->in_file, &nr_vars, &field_char,&nr_gens,gens);
 
-    if (nr_vars != 2) return 101;
+    if (nr_vars != 3) return 101;
     if (field_char != 1073741827) return 102;
     if (nr_gens != 3) return 103;
 
@@ -74,10 +74,10 @@ int main(void)
     ht_t *bht = NULL;
     md_t *st  = NULL;
 
-    int error   = 0;
-    int success = 0;
+    int success   = 0;
+    int32_t error = 0;
 
-    success = initialize_gba_input_data(&bs, &bht, &st,gens->lens, gens->exps, (void *)gens->cfs,	1073741827, 0 /* DRL order */,elim_block_len, gens->nvars,/* gens->field_char,0 [> DRL order <], gens->nvars, */ gens->ngens, saturate,	initial_hts, nr_threads, max_pairs,	update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,	0/*truncate_lifting*/, info_level);
+    success = initialize_gba_input_data(&bs, &bht, &st,gens->lens, gens->exps, (void *)gens->cfs,	1073741827, 0 /* DRL order */,elim_block_len, gens->nvars,/* gens->field_char,0 [> DRL order <], gens->nvars, */ gens->ngens, saturate,	initial_hts, nr_threads, max_pairs,	update_ht, la_option, use_signatures, 1 /* reduce_gb */, 0,	0 /*truncate_lifting*/, info_level);
     bs = core_gba(bs, st, &error, 1073741827);
     if (!success || error) {
       printf("Problem with F4, stopped computation.\n");
@@ -95,24 +95,32 @@ int main(void)
     /* display_fglm_matrix (stdout, matrix); */
 
     if (matrix->charac != field_char) return 105;
-    if (matrix->ncols != 3) return 106;
-    if (matrix->nrows != 2) return 107;
+    if (matrix->ncols != 4) return 106;
+    if (matrix->nrows != 3) return 107;
 
-    if (matrix->dense_mat[0] != 0) return 201;
-    if (matrix->dense_mat[1] != 0) return 202;
-    if (matrix->dense_mat[2] != 0) return 203;
-    if (matrix->dense_mat[3] != 0) return 204;
-    if (matrix->dense_mat[4] != 0) return 205;
-    if (matrix->dense_mat[5] != 0) return 206;
+    if (matrix->dense_mat[0] != 429496729) return 201;
+    if (matrix->dense_mat[1] != 858993461) return 202;
+    if (matrix->dense_mat[2] != 214748365) return 203;
+    if (matrix->dense_mat[3] != 429496731) return 204;
+    if (matrix->dense_mat[4] != 858993459) return 205;
+    if (matrix->dense_mat[5] != 644245095) return 206;
+    if (matrix->dense_mat[6] != 429496730) return 207;
+    if (matrix->dense_mat[7] != 858993462) return 208;
+    if (matrix->dense_mat[8] != 858993447) return 209;
+    if (matrix->dense_mat[9] != 644245093) return 210;
+    if (matrix->dense_mat[10] != 429496731) return 211;
+    if (matrix->dense_mat[11] != 858993464) return 212;
 
-    if (matrix->triv_idx[0] != 0) return 207;
-    if (matrix->triv_pos[0] != 1) return 208;
+    if (matrix->triv_idx[0] != 0) return 213;
+    if (matrix->triv_pos[0] != 1) return 214;
 
-    if (matrix->dense_idx[0] != 1) return 209;
-    if (matrix->dense_idx[1] != 2) return 210;
+    if (matrix->dense_idx[0] != 1) return 215;
+    if (matrix->dense_idx[1] != 2) return 216;
+    if (matrix->dense_idx[2] != 3) return 217;
 
-    if (matrix->dst[0] != 3) return 211;
-    if (matrix->dst[1] != 3) return 212;
+    if (matrix->dst[0] != 0) return 218;
+    if (matrix->dst[1] != 0) return 219;
+    if (matrix->dst[2] != 0) return 220;
 
     return 0;
 }

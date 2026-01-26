@@ -1,6 +1,6 @@
 #!/bin/bash
 
-file=nonradical_radicalshape-no-square-31
+file=nonradical-radicalshape-no-square-31
 
 source test/diff/diff_source.sh
 

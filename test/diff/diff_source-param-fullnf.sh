@@ -24,6 +24,8 @@ if [ $? -gt 0 ]; then
     exit 22
 fi
 
+rm test/diff/$file.21.res
+
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.41.res \
       --random-seed $seed \
       -P 2 -d 4 -L 0 -l 44 -t 1

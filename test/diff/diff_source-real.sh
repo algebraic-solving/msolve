@@ -80,7 +80,7 @@ if [ $? -gt 0 ]; then
     exit 54
 fi
 
-rm test/diff/$file.53..res
+rm test/diff/$file.53.res
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.71.res \
       --random-seed $seed \

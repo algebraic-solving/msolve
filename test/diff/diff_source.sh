@@ -1,16 +1,16 @@
-# seed=$EPOCHSECONDS
 seed=${SEED:-$EPOCHSECONDS}
 
 if [ -t 2 ]; then
-    col='\033[0;96m' # High Intensity Light blue. 
+    colseed='\033[0;96m' # High Intensity Light blue.
+    colexit='\033[0;93m' # High Intensity Yellow.
     std='\033[0m'
 else
-    col=
+    colseed=
+    colexit=
     std=
 fi
 
-echo -e "${col}SEED${std}: $seed" >&2
-echo -e "${col}SEED${std}: $seed"
+echo -e "${colseed}SEED${std}: $seed"
 
 # each diff_example.sh is built by running msolve on $file.ms
 # with options -L 0 -l 2 -t 1

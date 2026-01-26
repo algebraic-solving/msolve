@@ -77,6 +77,7 @@ fglm_build_matrixn_nonradical_radicalshape_31_SOURCES = test/fglm/build_matrixn_
 line_endings_support_SOURCES = test/msolve/line_endings_support.c
 
 TESTS = $(check_PROGRAMS) $(checkdiff)
+TESTS_ENVIRONMENT = SEED=$${SEED:-$${EPOCHSECONDS}}
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = msolve.pc

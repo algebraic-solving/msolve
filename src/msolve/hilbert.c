@@ -1548,10 +1548,10 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
         }
       }
       else{
-        fprintf(stderr, "\nStaircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
-        display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(stdout, "\nStaircase is not generic\n");
+        fprintf(stdout, "Multiplication by ");
+        display_monomial_full(stdout, nv, NULL, 0, exp);
+        fprintf(stdout, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -2607,10 +2607,10 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
         }
       }
       else{
-        fprintf(stderr, "Staircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
+        fprintf(stdout, "Staircase is not generic\n");
+        fprintf(stdout, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(stdout, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -2804,12 +2804,12 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
         }
       }
       else{
-        fprintf(stderr, "Staircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
+        fprintf(stdout, "Staircase is not generic\n");
+        fprintf(stdout, "Multiplication by ");
 #if DEBUGBUILDMATRIX > 0
         display_monomial_full(stderr, nv, NULL, 0, exp);
 #endif
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(stdout, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -2999,10 +2999,10 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
         }
       }
       else{
-        fprintf(stderr, "Staircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
+        fprintf(stdout, "Staircase is not generic\n");
+        fprintf(stdout, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(stdout, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -3208,10 +3208,10 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         }
       }
       else{ /* should not arrive here */
-        fprintf(stderr, "Staircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
+        fprintf(stdout, "Staircase is not generic\n");
+        fprintf(stdout, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(stdout, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -3405,17 +3405,17 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
 
         if(len_xn < count && i < dquot){
           if(info_level){
-            fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
+            fprintf(stdout, "Staircase is not generic (1 => explain better)\n");
           }
           return NULL;
         }
       }
       else{
         if(info_level){
-          fprintf(stderr, "Staircase is not generic\n");
-          fprintf(stderr, "Multiplication by ");
+          fprintf(stdout, "Staircase is not generic\n");
+          fprintf(stdout, "Multiplication by ");
           display_monomial_full(stderr, nv, NULL, 0, exp);
-          fprintf(stderr, " gets outside the staircase\n");
+          fprintf(stdout, " gets outside the staircase\n");
         }
         return NULL;
       }
@@ -3739,7 +3739,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
         count++;
         if(len_xn < count && i < dquot){
 	  if (info_level){
-	    fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
+	    fprintf(stdout, "Staircase is not generic (1 => explain better)\n");
 	  }
 	  free(evi);
           return NULL;
@@ -3760,7 +3760,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	count_nf++;
         if(count_not_lm < count_nf && i < dquot){
 	  if (info_level){
-	    fprintf(stderr, "Staircase is not generic (1 => explain better)\n");
+	    fprintf(stdout, "Staircase is not generic (1 => explain better)\n");
 	  }
 	  free(evi);
           return NULL;

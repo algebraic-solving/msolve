@@ -1701,7 +1701,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     else {
       if (right_param == 1) {
         if(info_level){
-          fprintf(stderr,
+          fprintf(stdout,
                   "Ideal not in generic position, parametrizations are not correct\n");
         }
         *success = 0;
@@ -1709,8 +1709,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
       else {
           if (right_param < nvars) {
             if(info_level){
-              fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-              fprintf(stderr, "the radical ideal are correct\n");
+              fprintf(stdout, "Only the first %d parametrizations of ",right_param-1);
+              fprintf(stdout, "the radical ideal are correct\n");
             }
             *success = 0;
           }
@@ -1772,10 +1772,10 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   const long nb = initialize_fglm_data(matrix, data_fglm, prime, sz, block_size);
 
   if(info_level){
-    fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n",
+    fprintf(stdout, "[%u, %u], Dense / Total = %.2f%%\n",
             matrix->ncols, matrix->nrows,
             100*((double)matrix->nrows / (double)matrix->ncols));
-    fprintf(stderr, "Density of non-trivial part %.2f%%\n",
+    fprintf(stdout, "Density of non-trivial part %.2f%%\n",
             100-100*(float)nb/(float)sz);
   }
 
@@ -1799,7 +1799,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   if(info_level){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
     double rt_fglm = realtime()-st_fglm;
-    fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm);
+    fprintf(stdout, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm);
   }
 
   st_fglm = realtime();
@@ -1811,11 +1811,11 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
                   info_level);
 
   if(info_level){
-    fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
+    fprintf(stdout, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
             realtime()-st_fglm);
   }
   if(param->elim->length-1 != deg_init){
-    fprintf(stderr, "Warning: Degree of elim poly = %ld\n", param->elim->length-1);
+    fprintf(stdout, "Warning: Degree of elim poly = %ld\n", param->elim->length-1);
     return 1;
   }
 
@@ -2124,10 +2124,10 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   long nb = initialize_fglm_colon_data(matrix, data, prime, sz, block_size);
 
   if(info_level){
-    fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n",
+    fprintf(stdout, "[%u, %u], Dense / Total = %.2f%%\n",
             matrix->ncols, matrix->nrows,
             100*((double)matrix->nrows / (double)matrix->ncols));
-    fprintf(stderr, "Density of non-trivial part %.2f%%\n",
+    fprintf(stdout, "Density of non-trivial part %.2f%%\n",
             100-100*(float)nb/(float)sz);
   }
   ulong dimquot = (matrix->ncols);
@@ -2154,10 +2154,10 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   //////////////////////////////////////////////////////////////////
 
   if(info_level){
-    fprintf(stderr,"Time spent to generate sequence\n");
-    fprintf(stderr,"and compute eliminating polynomial (elapsed): %.2f sec\n",
+    fprintf(stdout,"Time spent to generate sequence\n");
+    fprintf(stdout,"and compute eliminating polynomial (elapsed): %.2f sec\n",
             omp_get_wtime()-st0);
-    fprintf(stderr, "Elimination done.\n");
+    fprintf(stdout, "Elimination done.\n");
   }
 
   /* nmod_poly_fprint_pretty(stderr, param->elim, "x"); fprintf (stdout,"\n"); */
@@ -2180,21 +2180,21 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
     free_fglm_data(data);
     return NULL;
   } else if (right_param == 1) {
-    fprintf(stderr, "Ideal might have no correct parametrization\n");
+    fprintf(stdout, "Ideal might have no correct parametrization\n");
   } else if (right_param == 2) {
-    fprintf(stderr, "Only the first parametrization of ");
-    fprintf (stderr,"the ideal seems correct\n");
+    fprintf(stdout, "Only the first parametrization of ");
+    fprintf (stdout,"the ideal seems correct\n");
   } else if (right_param < nvars) {
-    fprintf(stderr, "Only the first %d parametrizations of ",right_param-1);
-    fprintf(stderr, "the ideal seem correct\n");
+    fprintf(stdout, "Only the first %d parametrizations of ",right_param-1);
+    fprintf(stdout, "the ideal seem correct\n");
   } else {
-    fprintf(stderr, "All the parametrizations of ");
-    fprintf(stderr, "the ideal seem correct\n");
+    fprintf(stdout, "All the parametrizations of ");
+    fprintf(stdout, "the ideal seem correct\n");
   }
   if(info_level){
-    fprintf(stderr, "Time spent to compute parametrizations (elapsed): %.2f sec\n",
+    fprintf(stdout, "Time spent to compute parametrizations (elapsed): %.2f sec\n",
             omp_get_wtime()-st0);
-    fprintf(stderr, "Parametrizations done.\n");
+    fprintf(stdout, "Parametrizations done.\n");
   }
   free_fglm_bms_data(data_bms);
   free_fglm_data(data);

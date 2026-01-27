@@ -1815,7 +1815,9 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
             realtime()-st_fglm);
   }
   if(param->elim->length-1 != deg_init){
-    fprintf(stdout, "Warning: Degree of elim poly = %ld\n", param->elim->length-1);
+    if(info_level){
+      fprintf(stdout, "Warning: Degree of elim poly = %ld\n", param->elim->length-1);
+    }
     return 1;
   }
 

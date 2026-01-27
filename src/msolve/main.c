@@ -30,7 +30,7 @@
 static inline void display_option_help(char short_opt, char *long_opt,
 				       char *arg_opt, char* str) {
   int long_opt_non_empty= strcmp (long_opt, "");
-  
+
   if (short_opt == 0) {
     fprintf (stdout, "    ");
   } else {
@@ -163,11 +163,6 @@ static inline void display_help(char *str){
   display_option_help_noopt("0 - no lifting (default). \n");
   display_option_help_noopt("1 - matrices are lifted.\n");
   display_option_help_noopt("Warning: when activated, this option may cause higher memory consumption.\n");
-  /* display_option_help(0, "mul-mat", "MAT", "Compute multiplication matrices."); */
-  /* display_option_help_noopt("MAT has to be a number between 1 and #variables,\n"); */
-  /* display_option_help_noopt("and gives the number of multiplication matrices, starting\n"); */
-  /* display_option_help_noopt("from the last one.\n"); */
-  /* display_option_help_noopt("not yet implemented.\n"); */
   display_option_help('q', "", "Q", "Uses signature-based algorithms.\n");
   display_option_help_noopt("0 - no (default).\n");
   display_option_help_noopt("1 - yes.\n");
@@ -240,9 +235,7 @@ static void getoptions(
      non-character as a pseudo short option, starting with CHAR_MAX + 1.
      see https://cgit.git.savannah.gnu.org/cgit/coreutils.git/tree/src/ls.c */
   enum {
-    RANDOM_SEED_OPTION = CHAR_MAX + 1,
-    /* MUL_MAT_OPION */
-    /* NEXT_OPTION */
+    RANDOM_SEED_OPTION = CHAR_MAX + 1
   };
   struct option long_options[] = {
     {"elimination", required_argument, NULL, 'e'},
@@ -265,7 +258,7 @@ static void getoptions(
     /* {"next-option", required_argument, NULL, NEXT_OPION}, */
     {NULL,0,NULL,0}
   };
-  
+
   while(1) {
     int option_index = 0;
     opt = getopt_long(argc, argv, short_options, long_options, &option_index);
@@ -273,7 +266,7 @@ static void getoptions(
       /* processed all command-line options */
       break;
     }
-    
+
     switch(opt) {
     case 'N':
       *truncate_lifting = strtol(optarg, NULL, 10);
@@ -412,12 +405,6 @@ static void getoptions(
     case RANDOM_SEED_OPTION:
       *seed = strtoll(optarg, NULL, 10);
       break;
-    /* case MUL_MAT_OPTION: */
-    /*   printf ("not implement yet\n"); */
-    /*   break; */
-    /* case NEXT_OPTION: */
-    /*   printf ("not implement yet\n"); */
-    /*   break; */
     default:
       errflag++;
       break;

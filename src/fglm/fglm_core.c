@@ -711,7 +711,7 @@ static inline void generate_sequence(sp_matfglm_t *matrix, fglm_data_t * data,
 }
 #endif
 
-#ifdef BLOCKWIED 
+#ifdef BLOCKWIED
 static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
                                      szmat_t block_size, long dimquot,
                                      nvars_t* squvars,
@@ -2179,17 +2179,21 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
     free_fglm_bms_data(data_bms);
     free_fglm_data(data);
     return NULL;
-  } else if (right_param == 1) {
-    fprintf(stdout, "Ideal might have no correct parametrization\n");
-  } else if (right_param == 2) {
-    fprintf(stdout, "Only the first parametrization of ");
-    fprintf (stdout,"the ideal seems correct\n");
-  } else if (right_param < nvars) {
-    fprintf(stdout, "Only the first %d parametrizations of ",right_param-1);
-    fprintf(stdout, "the ideal seem correct\n");
   } else {
-    fprintf(stdout, "All the parametrizations of ");
-    fprintf(stdout, "the ideal seem correct\n");
+    if (right_param == 1) {
+      if(info_level){
+	fprintf(stdout,
+		"Colon ideal not in generic position, parametrizations are not correct\n");
+      }
+    }
+    else {
+      if (right_param < nvars) {
+	if (info_level){
+	  fprintf(stdout, "Only the first %d parametrizations of ",right_param-1);
+	  fprintf(stdout, "the colon ideal are correct\n");
+	}
+      }
+    }
   }
   if(info_level){
     fprintf(stdout, "Time spent to compute parametrizations (elapsed): %.2f sec\n",

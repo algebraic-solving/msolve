@@ -228,7 +228,6 @@ static void getoptions(
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  /* char short_options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:L:q:g:c:s:SCr:R:m:M:n:d:Vf:"; */
   char short_options[] = "c:Cd:e:f:F:g:hiI:l:L:m:M:n:N:o:O:p:P:q:r:R:s:St:u:v:V";
 
   /* For long options that have no equivalent short option, use a
@@ -245,7 +244,6 @@ static void getoptions(
     {"isolate", required_argument, NULL, 'I'},
     {"linear-algebra", required_argument, NULL, 'l'},
     {"lifting-mulmat", required_argument, NULL, 'L'},
-    /* {"mul-mat", required_argument, NULL, MUL_MAT_OPION}, */
     {"normal-form", required_argument, NULL, 'n'},
     {"output-file", required_argument, NULL, 'o'},
     {"precision", required_argument, NULL, 'p'},
@@ -255,7 +253,6 @@ static void getoptions(
     {"threads", required_argument, NULL, 't'},
     {"verbose", required_argument, NULL, 'v'},
     {"version", no_argument, NULL, 'V'},
-    /* {"next-option", required_argument, NULL, NEXT_OPION}, */
     {NULL,0,NULL,0}
   };
 

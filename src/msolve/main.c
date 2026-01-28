@@ -234,7 +234,10 @@ static void getoptions(
      non-character as a pseudo short option, starting with CHAR_MAX + 1.
      see https://cgit.git.savannah.gnu.org/cgit/coreutils.git/tree/src/ls.c */
   enum {
-    RANDOM_SEED_OPTION = CHAR_MAX + 1
+    RANDOM_SEED_OPTION = CHAR_MAX + 1,
+    /* Below is the template for the next long option with
+     * no equivalent short option */
+    /* NEXT_OPTION */
   };
   struct option long_options[] = {
     {"elimination", required_argument, NULL, 'e'},
@@ -253,6 +256,10 @@ static void getoptions(
     {"threads", required_argument, NULL, 't'},
     {"verbose", required_argument, NULL, 'v'},
     {"version", no_argument, NULL, 'V'},
+    /* Below is the template for the next long option with
+     * no equivalent short option,
+     * adapt the 2nd field accordingly */
+    /* {"next-option", required_argument, NULL, NEXT_OPION}, */
     {NULL,0,NULL,0}
   };
 
@@ -402,6 +409,10 @@ static void getoptions(
     case RANDOM_SEED_OPTION:
       *seed = strtoll(optarg, NULL, 10);
       break;
+    /* Below is the template for the next long option with
+     * no equivalent short option */
+    /* case NEXT_OPTION: */
+    /*   break; */
     default:
       errflag++;
       break;

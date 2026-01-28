@@ -166,7 +166,7 @@ static inline void display_help(char *str){
   display_option_help('q', "", "Q", "Uses signature-based algorithms.\n");
   display_option_help_noopt("0 - no (default).\n");
   display_option_help_noopt("1 - yes.\n");
-  display_option_help(0, "random_seed", "SEED", "Random seed to initialize the pseudo\n");
+  display_option_help(0, "random-seed", "SEED", "Random seed to initialize the pseudo\n");
   display_option_help_noopt("random generator\n");
   display_option_help_noopt("-1       - time(0) will be used (default)\n");
   display_option_help_noopt("SEED ≥ 0 - use at your own risks;\n");

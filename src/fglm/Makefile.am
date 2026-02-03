@@ -6,6 +6,7 @@ libfglm_la_CFLAGS		= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS)
 
 EXTRA_DIST	=		fglm.h \
                 libfglm.h \
+					aligned_alloc.h \
 								berlekamp_massey.c \
 								data_fglm.c \
 								fglm_core.c \

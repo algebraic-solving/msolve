@@ -2804,10 +2804,10 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
         }
       }
       else{
-	fprintf(stderr, "Staircase is not generic\n");
-	fprintf(stderr, "Multiplication by ");
-	display_monomial_full(stderr, nv, NULL, 0, exp);
-	fprintf(stderr, " gets outside the staircase\n");
+	fprintf(stdout, "Staircase is not generic\n");
+	fprintf(stdout, "Multiplication by ");
+	display_monomial_full(stdout, nv, NULL, 0, exp);
+	fprintf(stdout, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);

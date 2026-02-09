@@ -21,7 +21,10 @@
 
 #include <stdint.h>
 #include <inttypes.h>
+
+#ifdef HAVE_FLINT_NMOD_H
 #include <flint/nmod.h>
+#endif
 
 #ifdef HAVE_AVX2
 #include <immintrin.h>

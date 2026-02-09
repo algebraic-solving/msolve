@@ -38,6 +38,8 @@ AC_SEARCH_LIBS([fmpz_add_ui],[flint],
     [],
     [AC_MSG_ERROR([FLINT library was not found.])])
 
+AC_CHECK_HEADERS([flint/nmod.h])
+
 # check if we want OpenMP support
 AC_ARG_ENABLE([openmp],
 	[  --enable-openmp         Enable OpenMP support],

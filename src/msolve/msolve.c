@@ -4727,7 +4727,7 @@ restart:
             import_input_data(bs_qq, st, 0, st->ngens_input, gens->lens, gens->exps,
                     (void *)gens->mpz_cfs, invalid_gens);
 
-            print_initial_statistics(stderr, st);
+            print_initial_statistics(stdout, st);
 
             /* for faster divisibility checks, needs to be done after we have
              * read some input data for applying heuristics */
@@ -4790,10 +4790,10 @@ restart:
             st->f4_rtime = rt1 - rt0;
 
             if (st->info_level > 1) {
-                print_final_statistics(stderr, st);
+                print_final_statistics(stdout, st);
             }
             if(info_level){
-                fprintf(stderr, "\nStarts trace based multi-modular computations\n");
+                fprintf(stdout, "\nStarts trace based multi-modular computations\n");
             }
 
             int i;

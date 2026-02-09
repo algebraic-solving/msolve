@@ -30,8 +30,8 @@
 static inline void display_option_help(char short_opt, char *long_opt,
 				       char *arg_opt, char* str) {
   int long_opt_non_empty= strcmp (long_opt, "");
-  
-  if (short_opt == '\0') {
+
+  if (short_opt == 0) {
     fprintf (stdout, "    ");
   } else {
     fprintf (stdout, "-%c", short_opt);
@@ -55,7 +55,7 @@ static inline void display_option_help(char short_opt, char *long_opt,
 }
 
 static inline void display_option_help_noopt(char* str) {
-  display_option_help ('\0', "", "", str);
+  display_option_help (0, "", "", str);
 }
 
 static inline void display_help(char *str){
@@ -166,7 +166,7 @@ static inline void display_help(char *str){
   display_option_help('q', "", "Q", "Uses signature-based algorithms.\n");
   display_option_help_noopt("0 - no (default).\n");
   display_option_help_noopt("1 - yes.\n");
-  display_option_help('\0', "random_seed", "SEED", "Random seed to initialize the pseudo\n");
+  display_option_help(0, "random-seed", "SEED", "Random seed to initialize the pseudo\n");
   display_option_help_noopt("random generator\n");
   display_option_help_noopt("-1       - time(0) will be used (default)\n");
   display_option_help_noopt("SEED ≥ 0 - use at your own risks;\n");
@@ -228,10 +228,17 @@ static void getoptions(
   char *out_fname = NULL;
   char *bin_out_fname = NULL;
   opterr = 1;
-  /* char short_options[] = "hf:N:F:v:l:t:e:o:O:u:iI:p:P:L:q:g:c:s:SCr:R:m:M:n:d:Vf:"; */
   char short_options[] = "c:Cd:e:f:F:g:hiI:l:L:m:M:n:N:o:O:p:P:q:r:R:s:St:u:v:V";
 
-  int random_seed_flag = 0;
+  /* For long options that have no equivalent short option, use a
+     non-character as a pseudo short option, starting with CHAR_MAX + 1.
+     see https://cgit.git.savannah.gnu.org/cgit/coreutils.git/tree/src/ls.c */
+  enum {
+    RANDOM_SEED_OPTION = CHAR_MAX + 1,
+    /* Below is the template for the next long option with
+     * no equivalent short option */
+    /* NEXT_OPTION */
+  };
   struct option long_options[] = {
     {"elimination", required_argument, NULL, 'e'},
     {"file", required_argument, NULL, 'f'},
@@ -244,29 +251,27 @@ static void getoptions(
     {"output-file", required_argument, NULL, 'o'},
     {"precision", required_argument, NULL, 'p'},
     {"parametrization", required_argument, NULL, 'P'},
-    {"random-seed", required_argument, &random_seed_flag, 1},
+    {"random-seed", required_argument, NULL, RANDOM_SEED_OPTION},
     {"reduce-gb", required_argument, NULL, 'r'},
     {"threads", required_argument, NULL, 't'},
     {"verbose", required_argument, NULL, 'v'},
     {"version", no_argument, NULL, 'V'},
+    /* Below is the template for the next long option with
+     * no equivalent short option,
+     * adapt the 2nd field accordingly */
+    /* {"next-option", required_argument, NULL, NEXT_OPION}, */
     {NULL,0,NULL,0}
   };
-  
+
   while(1) {
-    int this_option_optind = optind ? optind : 1;
     int option_index = 0;
     opt = getopt_long(argc, argv, short_options, long_options, &option_index);
     if (opt == -1) {
       /* processed all command-line options */
       break;
     }
-    
+
     switch(opt) {
-    case 0: /* no short option equivalent */
-      if (random_seed_flag == 1) {
-        *seed = strtoll(optarg, NULL, 10);
-      }
-      break;
     case 'N':
       *truncate_lifting = strtol(optarg, NULL, 10);
       break;
@@ -401,6 +406,13 @@ static void getoptions(
           *normal_form_matrix  = 0;
       }
       break;
+    case RANDOM_SEED_OPTION:
+      *seed = strtoll(optarg, NULL, 10);
+      break;
+    /* Below is the template for the next long option with
+     * no equivalent short option */
+    /* case NEXT_OPTION: */
+    /*   break; */
     default:
       errflag++;
       break;

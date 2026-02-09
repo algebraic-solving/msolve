@@ -111,7 +111,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_source-real.sh:test/diff/diff_source-real.sh
  input_files/bug-2nd-prime-bad.ms:input_files/bug-2nd-prime-bad.ms
  output_files/bug-2nd-prime-bad.g2.res:output_files/bug-2nd-prime-bad.g2.res
- test/diff/diff_bug-2nd-prime_bad.sh:test/diff/diff_bug-2nd-prime-bad.sh
+ test/diff/diff_bug-2nd-prime-bad.sh:test/diff/diff_bug-2nd-prime-bad.sh
  input_files/bug-68.ms:input_files/bug-68.ms
  output_files/bug-68.res:output_files/bug-68.res
  test/diff/diff_bug-68.sh:test/diff/diff_bug-68.sh

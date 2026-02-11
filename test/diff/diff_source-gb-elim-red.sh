@@ -109,5 +109,3 @@ if [ $? -gt 0 ]; then
 fi
 
 rm test/diff/$file.67.res
-
-

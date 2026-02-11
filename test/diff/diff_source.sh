@@ -1,35 +1,58 @@
 seed=${SEED:-$EPOCHSECONDS}
-isatty=false
 
-[ -t 1 ] && isatty=true
-[ -t 2 ] && isatty=true
+setup_output() {
 
+    # already initialized? -> do nothing
+    [ -n "${_msolve_test_output:-}" ] && return
+    _msolve_test_output=1
 
-if $isatty; then
-    # colseed='\033[0;96m' # High Intensity Light blue.
-    colseed=$(tput setaf 14) # High Intensity Light blue.
-    # colexit='\033[0;93m' # High Intensity Yellow.
-    colexit=$(tput setaf 11) # High Intensity Yellow.
-    # std='\033[0m'
-    std=$(tput sgr0)
-else
-    colseed=
-    colexit=
-    std=
-fi
+    # defaults (safe for logs / CI / pipes)
+    isatty=0
+    use_color=0
+    use_cr=0
+
+    # No colored output (default)
+    colseed=""
+    colexit=""
+    std=""
+
+    # Last character after normal exit
+    lastcharexit="\n"
+
+    # Detect terminal on stderr (diagnostics channel)
+    if [ -t 2 ] && [ -n "$TERM" ] && [ "$TERM" != dumb ]; then
+        isatty=1
+        use_color=1
+        use_cr=1
+    fi
+
+    # Colored output
+    if [ "$use_color" -eq 1 ]; then
+	# colseed='\033[0;96m' # High Intensity Light blue.
+	colseed=$(tput setaf 14) # High Intensity Light blue.
+	# colexit='\033[0;93m' # High Intensity Yellow.
+	colexit=$(tput setaf 11) # High Intensity Yellow.
+	# std='\033[0m'
+	std=$(tput sgr0)
+    fi
+
+    # Carriage return afer normal exit
+    if [ "$use_cr" -eq 1 ]; then
+	lastcharexit="\r"
+    fi
+}
 
 # print the seed in color
-# carriage return if tty to prevent too many lines
-# when the test is successful
 print_seed() {
-    if $isatty; then
-	# interactive terminal -> overwrite line
-	printf "\r"
-    fi
-    printf "${colseed}SEED${std}: %-10d " $seed >&2
+    setup_output
+    printf "${beforeseed}${colseed}SEED${std}: %-10d " $seed >&2
 }
 
 print_seed
+
+normal_exit() {
+    printf "$lastcharexit" >&2
+}
 
 # print the exit code in color
 print_exit() {

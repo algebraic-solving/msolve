@@ -16,3 +16,5 @@ if [ $? -gt 0 ]; then
 fi
 
 rm test/diff/$file.1.res
+
+normal_exit

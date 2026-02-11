@@ -12,3 +12,4 @@ source test/diff/diff_source-gb-red.sh
 
 source test/diff/diff_source-gb-elim-red.sh
 
+normal_exit

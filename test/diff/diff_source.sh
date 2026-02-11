@@ -1,23 +1,42 @@
 seed=${SEED:-$EPOCHSECONDS}
+isatty=false
 
-if [ -t 2 ]; then
-    colseed='\033[0;96m' # High Intensity Light blue.
-    colexit='\033[0;93m' # High Intensity Yellow.
-    std='\033[0m'
+[ -t 1 ] && isatty=true
+[ -t 2 ] && isatty=true
+
+
+if $isatty; then
+    # colseed='\033[0;96m' # High Intensity Light blue.
+    colseed=$(tput setaf 14) # High Intensity Light blue.
+    # colexit='\033[0;93m' # High Intensity Yellow.
+    colexit=$(tput setaf 11) # High Intensity Yellow.
+    # std='\033[0m'
+    std=$(tput sgr0)
 else
     colseed=
     colexit=
     std=
 fi
 
-# print in color the exit code
-print_exit() {
-    local excode=$1
-    echo -e "${colexit}EXIT${std}: $excode"
-    exit "$excode"
+# print the seed in color
+# carriage return if tty to prevent too many lines
+# when the test is successful
+print_seed() {
+    if $isatty; then
+	# interactive terminal -> overwrite line
+	printf "\r"
+    fi
+    printf "${colseed}SEED${std}: %-10d " $seed >&2
 }
 
-echo -e "${colseed}SEED${std}: $seed"
+print_seed
+
+# print the exit code in color
+print_exit() {
+    local excode=$1
+    printf "${colexit}EXIT${std}: $excode\n" >&2
+    exit "$excode"
+}
 
 # each diff_example.sh is built by running msolve on $file.ms
 # with options -L 0 -l 2 -t 1

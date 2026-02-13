@@ -34,7 +34,7 @@ typedef struct{
                        * modulo several primes
                        */
   mpz_t *cf_zz; /* array which stores CRT lifting of
-                    the coefficiels */
+                    the coefficients */
   mpz_t *cf_qq; /* array which stores rational coefficients
                   being lifted, numerators and denominators
                   are given given as mpz_t

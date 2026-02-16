@@ -1548,10 +1548,10 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
         }
       }
       else{
-        fprintf(stdout, "\nStaircase is not generic\n");
-        fprintf(stdout, "Multiplication by ");
-        display_monomial_full(stdout, nv, NULL, 0, exp);
-        fprintf(stdout, " gets outside the staircase\n");
+        fprintf(stderr, "\nStaircase is not generic\n");
+        fprintf(stderr, "Multiplication by ");
+        display_monomial_full(stderr, nv, NULL, 0, exp);
+        fprintf(stderr, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -2607,10 +2607,10 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
         }
       }
       else{
-        fprintf(stdout, "Staircase is not generic\n");
-        fprintf(stdout, "Multiplication by ");
+        fprintf(stderr, "Staircase is not generic\n");
+        fprintf(stderr, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stdout, " gets outside the staircase\n");
+        fprintf(stderr, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -2997,10 +2997,10 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
         }
       }
       else{
-        fprintf(stdout, "Staircase is not generic\n");
-        fprintf(stdout, "Multiplication by ");
+        fprintf(stderr, "Staircase is not generic\n");
+        fprintf(stderr, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stdout, " gets outside the staircase\n");
+        fprintf(stderr, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -3206,10 +3206,10 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         }
       }
       else{ /* should not arrive here */
-        fprintf(stdout, "Staircase is not generic\n");
-        fprintf(stdout, "Multiplication by ");
+        fprintf(stderr, "Staircase is not generic\n");
+        fprintf(stderr, "Multiplication by ");
         display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stdout, " gets outside the staircase\n");
+        fprintf(stderr, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);

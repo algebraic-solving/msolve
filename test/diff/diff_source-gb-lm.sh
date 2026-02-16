@@ -1,0 +1,55 @@
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.3.res \
+      --random-seed $seed \
+      -g 1 -l 2 -t 1
+if [ $? -gt 0 ]; then
+    print_exit 3
+fi
+
+diff test/diff/$file.3.res output_files/$file.g1.res
+if [ $? -gt 0 ]; then
+    print_exit 4
+fi
+
+rm test/diff/$file.3.res
+
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.23.res \
+      --random-seed $seed \
+      -g 1 -l 2 -t 2
+if [ $? -gt 0 ]; then
+    print_exit 23
+fi
+
+diff test/diff/$file.23.res output_files/$file.g1.res
+if [ $? -gt 0 ]; then
+    print_exit 24
+fi
+
+rm test/diff/$file.23.res
+
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.43.res \
+      --random-seed $seed \
+      -g 1 -l 44 -t 1
+if [ $? -gt 0 ]; then
+    print_exit 43
+fi
+
+diff test/diff/$file.43.res output_files/$file.g1.res
+if [ $? -gt 0 ]; then
+    print_exit 44
+fi
+
+rm test/diff/$file.43.res
+
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.63.res \
+      --random-seed $seed \
+      -g 1 -l 44 -t 2
+if [ $? -gt 0 ]; then
+    print_exit 63
+fi
+
+diff test/diff/$file.63.res output_files/$file.g1.res
+if [ $? -gt 0 ]; then
+    print_exit 64
+fi
+
+rm test/diff/$file.63.res

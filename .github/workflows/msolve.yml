@@ -47,9 +47,7 @@ jobs:
         run: make check
       - name: show test-suite.log if test failed
         if: failure()
-        run: |
-              echo "======= test-suite.log ======="
-              cat test-suite.log || true
+        run: cat test-suite.log || true
       - name: make distcheck
         run: |
                if [ "$RUNNER_OS" == "Linux" ]; then

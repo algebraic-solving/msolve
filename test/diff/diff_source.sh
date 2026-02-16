@@ -1,83 +1,67 @@
-seed=$(date +%s)
-# seed=${SEED:-$EPOCHSECONDS}
+seed=${SEED:-$(date +%s)}
 
-# setup_output() {
+setup_output() {
 
-#     # already initialized? -> do nothing
-#     [ -n "${_msolve_test_output:-}" ] && return
-#     _msolve_test_output=1
+    # already initialized? -> do nothing
+    [ -n "${_msolve_test_output:-}" ] && return
+    _msolve_test_output=1
 
-#     # defaults (safe for logs / CI / pipes)
-#     isatty=0
-#     use_color=0
-#     use_cr=0
+    # defaults (safe for logs / CI / pipes)
+    isatty=0
+    use_color=0
+    use_cr=0
 
-#     # No colored output (default)
-#     colseed=""
-#     colexit=""
-#     std=""
+    # No colored output (default)
+    colseed=""
+    colexit=""
+    std=""
 
-#     # Last character after normal exit
-#     lastcharexit="\n"
+    # Last character after normal exit
+    lastcharexit="\n"
 
-#     # Detect terminal on stderr (diagnostics channel)
-#     if [ -t 2 ] && [ -n "$TERM" ] && [ "$TERM" != dumb ]; then
-#         isatty=1
-#         use_color=1
-#         use_cr=1
-#     fi
+    # Detect terminal on stderr (diagnostics channel)
+    if [ -t 2 ] && [ -n "$TERM" ] && [ "$TERM" != dumb ]; then
+        isatty=1
+        use_color=1
+        use_cr=1
+    fi
 
-#     # Colored output
-#     if [ "$use_color" -eq 1 ]; then
-# 	# colseed='\033[0;96m' # High Intensity Light blue.
-# 	colseed=$(tput setaf 14) # High Intensity Light blue.
-# 	# colexit='\033[0;93m' # High Intensity Yellow.
-# 	colexit=$(tput setaf 11) # High Intensity Yellow.
-# 	# std='\033[0m'
-# 	std=$(tput sgr0)
-#     fi
+    # Colored output
+    if [ "$use_color" -eq 1 ]; then
+	# colseed='\033[0;96m' # High Intensity Light blue.
+	colseed=$(tput setaf 14) # High Intensity Light blue.
+	# colexit='\033[0;93m' # High Intensity Yellow.
+	colexit=$(tput setaf 11) # High Intensity Yellow.
+	# std='\033[0m'
+	std=$(tput sgr0)
+    fi
 
-#     # Carriage return afer normal exit
-#     if [ "$use_cr" -eq 1 ]; then
-# 	lastcharexit="\r"
-#     fi
-# }
+    # Carriage return afer normal exit
+    if [ "$use_cr" -eq 1 ]; then
+	lastcharexit="\r"
+    fi
+}
 
 # print the seed in color
 print_seed() {
-    printf "SEED $seed\n" >&2
+    setup_output
+    printf "${beforeseed}${colseed}SEED${std}: %-10d " $seed >&2
 }
-
-
-# print_seed() {
-#     setup_output
-#     printf "${beforeseed}${colseed}SEED${std}: %-10d " $seed >&2
-# }
 
 print_seed
 
 # print a last character depending on the output stream
 normal_exit() {
-    :
+    printf "$lastcharexit" >&2
 }
-
-# normal_exit() {
-#     printf "$lastcharexit" >&2
-# }
 
 
 # print the exit code in color
 print_exit() {
     local excode=$1
-    printf "EXIT: $excode\n" >&2
+    printf "${colexit}EXIT${std}: $excode\n" >&2
     exit "$excode"
 }
-
-# print_exit() {
-#     local excode=$1
-#     printf "${colexit}EXIT${std}: $excode\n" >&2
-#     exit "$excode"
-# }
 
 # each diff_example.sh is built by running msolve on $file.ms
 # with options -L 0 -l 2 -t 1

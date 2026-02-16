@@ -1,4 +1,4 @@
-seed=$EPOCHSECONDS
+seed=$(date +%s)
 # seed=${SEED:-$EPOCHSECONDS}
 
 # setup_output() {

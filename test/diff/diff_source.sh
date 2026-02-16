@@ -58,8 +58,13 @@ print_seed
 
 # print a last character depending on the output stream
 normal_exit() {
-    # printf "$lastcharexit" >&2
+    :
 }
+
+# normal_exit() {
+#     printf "$lastcharexit" >&2
+# }
+
 
 # print the exit code in color
 print_exit() {

@@ -1,91 +1,80 @@
-#!/bin/bash
+seed=${SEED:-$(date +%s)}
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -P 2 -d 0 -l 2 -t 1
-if [ $? -gt 0 ]; then
-    exit 1
-fi
+setup_output() {
 
-diff test/diff/$file.res output_files/$file.res
-if [ $? -gt 0 ]; then
-    exit 2
-fi
+    # already initialized? -> do nothing
+    [ -n "${_msolve_test_output:-}" ] && return
+    _msolve_test_output=1
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -L 1 -P 2 -d 0 -l 2 -t 1
-if [ $? -gt 0 ]; then
-    exit 101
-fi
+    # defaults (safe for logs / CI / pipes)
+    isatty=0
+    use_color=0
+    use_cr=0
 
-diff test/diff/$file.res output_files/$file.res
-if [ $? -gt 0 ]; then
-    exit 201
-fi
+    # No colored output (default)
+    colseed=""
+    colexit=""
+    std=""
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -P 2 -d 0 -l 2 -t 2
-if [ $? -gt 0 ]; then
-    exit 21
-fi
+    # Last character after normal exit
+    lastcharexit="\n"
 
-diff test/diff/$file.res output_files/$file.res
-if [ $? -gt 0 ]; then
-    exit 22
-fi
+    # Detect terminal on stderr (diagnostics channel)
+    if [ -t 2 ] && [ -n "$TERM" ] && [ "$TERM" != dumb ]; then
+        isatty=1
+        use_color=1
+        use_cr=1
+    fi
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -L 1 -P 2 -d 0 -l 2 -t 2
-if [ $? -gt 0 ]; then
-    exit 211
-fi
+    # Colored output
+    if [ "$use_color" -eq 1 ]; then
+	# colseed='\033[0;96m' # High Intensity Light blue.
+	colseed=$(tput setaf 14) # High Intensity Light blue.
+	# colexit='\033[0;93m' # High Intensity Yellow.
+	colexit=$(tput setaf 11) # High Intensity Yellow.
+	# std='\033[0m'
+	std=$(tput sgr0)
+    fi
 
-diff test/diff/$file.res output_files/$file.res
-if [ $? -gt 0 ]; then
-    exit 221
-fi
+    # Carriage return afer normal exit
+    if [ "$use_cr" -eq 1 ]; then
+	lastcharexit="\r"
+    fi
+}
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -P 2 -d 0 -l 44 -t 1
-if [ $? -gt 0 ]; then
-    exit 41
-fi
+# print the seed in color
+print_seed() {
+    setup_output
+    printf "${beforeseed}${colseed}SEED${std}: %-10d " $seed >&2
+}
 
-diff test/diff/$file.res output_files/$file.res
-if [ $? -gt 0 ]; then
-    exit 42
-fi
+print_seed
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -L 1 -P 2 -d 0 -l 44 -t 1
-if [ $? -gt 0 ]; then
-    exit 411
-fi
+# print a last character depending on the output stream
+normal_exit() {
+    printf "$lastcharexit" >&2
+}
 
-diff test/diff/$file.res output_files/$file.res
-if [ $? -gt 0 ]; then
-    exit 421
-fi
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -P 2 -d 0 -l 44 -t 2
-if [ $? -gt 0 ]; then
-    exit 61
-fi
+# print the exit code in color
+print_exit() {
+    local excode=$1
+    printf "${colexit}EXIT${std}: $excode\n" >&2
+    exit "$excode"
+}
 
-diff test/diff/$file.res output_files/$file.res
-if [ $? -gt 0 ]; then
-    exit 62
-fi
+# each diff_example.sh is built by running msolve on $file.ms
+# with options -L 0 -l 2 -t 1
+# if the execution fails, print_exit 1
+# then compare the output with the expected one, if different, print_exit 2
+# repeat for other execution parameters with exit 3 and 4 and so on, until at most 19 and 20
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.res \
-      -L 1 -P 2 -d 0 -l 44 -t 2
-if [ $? -gt 0 ]; then
-    exit 611
-fi
-
-diff test/diff/$file.res output_files/$file.res
-if [ $? -gt 0 ]; then
-    exit 621
-fi
-
-rm test/diff/$file.res
+# repeat all these tests changing -L 0 into -L 1, -l 2 into -l 44 and -t 1 into -t 2
+# increase all exit codes by
+# 20 for -t 2
+# 40 for -l 44
+# thus 60 for -l 44 and -t 2
+# 80 for -L 1
+# thus 100 for -L 1 and -t 2
+# thus 120 for -L 1 and -l 44
+# thus 140 for -L 1, -l 44 and -t 2

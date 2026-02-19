@@ -1,5 +1,7 @@
 #!/bin/bash
 
-file=nonradical_radicalshape-31
+file=nonradical-radicalshape-31
 
 source test/diff/diff_source.sh
+
+normal_exit

@@ -227,7 +227,6 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                       uint32_t newalloc,
                                       int32_t start){
 
-
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
 
@@ -443,7 +442,6 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
     fprintf(file, ", \n");
   }
   display_modpoly(file, modgbs, p-1, gens);
-  /* fprintf(file, "\n"); */
   fprintf(file, "]:\n");
 }
 
@@ -463,7 +461,6 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
     fprintf(file, ", \n");
   }
   display_monomial_single(file, gens, p-1, &modgbs->ldm);
-  /* fprintf(file, "\n"); */
   fprintf(file, "]:\n");
 }
 
@@ -491,11 +488,11 @@ static inline void gb_modpoly_without_hash_table_clear(gb_modpoly_t modgbs){
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   free(modgbs->ldm);
+
   for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < 2 * modgbs->modpolys[i]->len; j++){
       mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
     }
-
     mpz_clear(modgbs->modpolys[i]->lm);
     free(modgbs->modpolys[i]->cf_qq);
     free(modgbs->hm[i]);
@@ -759,7 +756,6 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
       leadmons[0] = bexp_lm2;
     }
     /************************************************/
-    /************************************************/
 
     int32_t *lmb;
     if(st->nev){
@@ -769,7 +765,6 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
       lmb = NULL; //monomial_basis_enlarged(num_gb[0], bht->nv,  bexp_lm, &dquot);
     }
 
-    /************************************************/
     /************************************************/
 
     int32_t *lens = array_of_lengths(leadmons[0], num_gb[0], bs, bht->nv - st->nev);
@@ -1082,10 +1077,6 @@ static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef
 
 static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
                                      int thrds){
-  /* verification of the basis is performed at the very end of the computation */
-  if(dl->check1[dl->end-1] == 0){
-      //return 1;
-  }
   int b = 1;
   mpz_t den;
   mpz_init(den);
@@ -1398,7 +1389,7 @@ gb_modpoly_t *core_groebner_qq(
       int s= 0;
       for(int i = 0; i < dlift->nsteps; i++){
         fprintf(stdout, "[%d]", dlift->steps[i]);
-	fflush(stdout);
+        fflush(stdout);
         s+=dlift->steps[i];
       }
       fprintf(stdout, "\n");
@@ -1513,9 +1504,9 @@ gb_modpoly_t *core_groebner_qq(
 		    "-----------------------------------------\n");
         }
       if (info_level) {
-	    fprintf(stdout,
-		    "\nmulti-modular steps\n");
-	    fprintf(stdout, "-------------------------------------------------\
+	      fprintf(stdout,
+		      "\nmulti-modular steps\n");
+	      fprintf(stdout, "-------------------------------------------------\
 -----------------------------------------------------\n");
         }
       }
@@ -1589,7 +1580,7 @@ gb_modpoly_t *core_groebner_qq(
       if(dlift->lstart != lstart){
         if(info_level){
           fprintf(stdout, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), (*modgbsp)->ld)/(*modgbsp)->ld);
-	  fflush(stdout);
+	        fflush(stdout);
         }
         lstart = dlift->lstart;
       }
@@ -1601,13 +1592,8 @@ gb_modpoly_t *core_groebner_qq(
 -----------------------------------------------------\n");
     }
   }
-  /* if(info_level){ */
-  /*   fprintf(stderr, "\nCRT time = %.2f, Rational reconstruction time = %.2f\n", st_crt, st_rrec); */
-  /* } */
   if(info_level){
     long nbits = max_bit_size_gb((*modgbsp));
-    /* fprintf(stderr, "Maximum bit size of the coefficients: %ld\n", nbits); */
-    /* fprintf(stderr, "%d primes used. \nElapsed time: %.2f\n", nprimes, realtime()-st0); */
     fprintf(stdout,"\n\n---------- COMPUTATIONAL DATA -----------\n");
     fprintf(stdout, "Max coeff. bitsize %16lu\n", (unsigned long) nbits);
     fprintf(stdout, "#primes            %16lu\n", (unsigned long) nprimes);
@@ -1616,7 +1602,6 @@ gb_modpoly_t *core_groebner_qq(
     fprintf(stdout, "\n---------------- TIMINGS ----------------\n");
     fprintf(stdout, "CRT     (elapsed)         %10.2f sec\n", st_crt);
     fprintf(stdout, "ratrecon(elapsed)         %10.2f sec\n", st_rrec);
-    /* fprintf(stdout, "CRT and ratrecon(elapsed) %10.2f sec\n", realtime()-st0); */
     fprintf(stdout, "-----------------------------------------\n");
   }
 
@@ -1955,7 +1940,7 @@ int64_t export_groebner_qq(
         return 1;
     }
     if (success == 0) {
-        printf("Bad input data, stopped computation.\n");
+        fprintf(stderr, "Bad input data, stopped computation.\n");
         exit(1);
     }
 
@@ -1967,7 +1952,7 @@ int64_t export_groebner_qq(
     core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
             2/* if set to 1, only the LM of the Gbs are correct */);
     if (err) {
-        printf("Problem with groebner_qq, stopped computation.\n");
+        fprintf(stderr, "Problem with groebner_qq, stopped computation.\n");
         exit(1);
     }
 

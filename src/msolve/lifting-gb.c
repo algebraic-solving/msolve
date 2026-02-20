@@ -33,8 +33,10 @@ typedef struct{
   uint32_t **cf_32; /* array of arrays of coefficients
                        * modulo several primes
                        */
+  /* Warning: this is free-ed dynamically */
   mpz_t *cf_zz; /* array which stores CRT lifting of
                     the coefficients */
+  /* Warning: this is free-ed dynamically */
   mpz_t *cf_qq; /* array which stores rational coefficients
                   being lifted, numerators and denominators
                   are given given as mpz_t
@@ -490,14 +492,6 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   free(modgbs->ldm);
   for(uint32_t i = 0; i < modgbs->ld; i++){
-    /*
-    for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
-      free(modgbs->modpolys[i]->cf_32[j]);
-      mpz_clear(modgbs->modpolys[i]->cf_zz[j]);
-    }
-    free(modgbs->modpolys[i]->cf_32);
-    free(modgbs->modpolys[i]->cf_zz);
-  */
     for(uint32_t j = 0; j < 2 * modgbs->modpolys[i]->len; j++){
       mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
     }

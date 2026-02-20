@@ -323,7 +323,7 @@ static inline void display_modpoly(FILE *file,
   const len_t ebl = ht->ebl;
   const len_t evl = ht->evl;
 
-  int *evi    =   (int *)malloc((unsigned long)ht->nv * sizeof(int));
+  int *evi    =   (int *)malloc((unsigned long)(ht->nv + 1) * sizeof(int));
   if (ebl == 0) {
     for (i = 1; i < evl; ++i) {
       evi[i-1]    =   i;
@@ -490,18 +490,19 @@ static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   free(modgbs->ldm);
   for(uint32_t i = 0; i < modgbs->ld; i++){
+    /*
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       free(modgbs->modpolys[i]->cf_32[j]);
       mpz_clear(modgbs->modpolys[i]->cf_zz[j]);
     }
-
+    free(modgbs->modpolys[i]->cf_32);
+    free(modgbs->modpolys[i]->cf_zz);
+  */
     for(uint32_t j = 0; j < 2 * modgbs->modpolys[i]->len; j++){
       mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
     }
 
     mpz_clear(modgbs->modpolys[i]->lm);
-    free(modgbs->modpolys[i]->cf_32);
-    free(modgbs->modpolys[i]->cf_zz);
     free(modgbs->modpolys[i]->cf_qq);
     free(modgbs->hm[i]);
   }
@@ -1358,7 +1359,7 @@ gb_modpoly_t *core_groebner_qq(
 
   while(learn){
 
-    int32_t is_empty = gb_modular_trace_learning(*modgbsp,
+    int32_t is_empty = gb_modular_trace_learning((*modgbsp),
                                                  msd->mgb,
                                                  msd->num_gb, msd->leadmons_ori,
                                                  msd->btrace[0],
@@ -1678,7 +1679,7 @@ uint64_t export_results_from_groebner_qq(
 
     memset(exp, 0, (unsigned long)nterms * nve * sizeof(int32_t));
 
-    mpz_t *cf_qq = (mpz_t *)malloc(
+    mpz_t *cf_qq = (mpz_t *)(*mallocp)(
             nterms *sizeof(mpz_t));
     for(int64_t i = 0; i < nterms; i++){
         mpz_init(cf_qq[i]);
@@ -1688,7 +1689,7 @@ uint64_t export_results_from_groebner_qq(
     ht_t *ht = gb->bht;
     const len_t ebl = ht->ebl;
     const len_t evl = ht->evl;
-    int *evi = (int *)malloc((unsigned long)ht->nv * sizeof(int));
+    int *evi = (int *)(*mallocp)((unsigned long)(ht->nv + 1) * sizeof(int));
     if (ebl == 0) {
       for (len_t i = 1; i <= evl; ++i) {
         evi[i-1]    =   i;
@@ -1704,7 +1705,6 @@ uint64_t export_results_from_groebner_qq(
 
     int64_t term = 0;
     for(int64_t p = 0; p < nelts; p++){
-
         len_t idx = gb->lmps[p];
         hm  = gb->hm[p]+OFFSET;
         int32_t l = gb->modpolys[p]->len;
@@ -1895,8 +1895,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
       display_lm_gbmodpoly_cf_qq(stdout, (*modgbsp), gens);
     }
   }
-  fprintf(stderr, "REMOVED\n");
-  //gb_modpoly_clear((*modgbsp));
+  gb_modpoly_clear((*modgbsp));
   free(modgbsp);
 }
 
@@ -1970,7 +1969,8 @@ int64_t export_groebner_qq(
     int err = 0;
 
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
-    modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
+    modgbsp = 
+    core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
             2/* if set to 1, only the LM of the Gbs are correct */);
     if (err) {
         printf("Problem with groebner_qq, stopped computation.\n");
@@ -1985,17 +1985,16 @@ int64_t export_groebner_qq(
 
     get_and_print_final_statistics(stdout, md, bs);
 
+    int64_t nterms  = export_results_from_groebner_qq(bld, blen, bexp,
+            bcf, mallocp, elim_block_len, (*modgbsp));
+
     /* free and clean up */
     free_mstrace(msd, md);
     free_basis_without_hash_table(&bs);
     free_trace(&md->tr);
     free(md);
-    md    = NULL;
-
-    int64_t nterms  = export_results_from_groebner_qq(bld, blen, bexp,
-            bcf, mallocp, elim_block_len, (*modgbsp));
-
-    gb_modpoly_clear(*modgbsp);
+    md = NULL;
+    gb_modpoly_clear((*modgbsp));
     free(modgbsp);
 
     return nterms;

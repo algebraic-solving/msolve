@@ -1564,7 +1564,7 @@ gb_modpoly_t *core_groebner_qq(
       if(info_level){
         if(!(nprimes & (nprimes - 1))){
           fprintf(stdout, "{%d}", nprimes);
-	        fflush(stdout);
+	      fflush(stdout);
         }
       }
       apply = 0;

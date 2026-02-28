@@ -1580,7 +1580,7 @@ gb_modpoly_t *core_groebner_qq(
       if(dlift->lstart != lstart){
         if(info_level){
           fprintf(stdout, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), (*modgbsp)->ld)/(*modgbsp)->ld);
-	        fflush(stdout);
+	      fflush(stdout);
         }
         lstart = dlift->lstart;
       }

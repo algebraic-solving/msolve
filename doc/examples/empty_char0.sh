@@ -1,3 +1,3 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ../../msolve -f empty_char0.ms -o empty_char0.res

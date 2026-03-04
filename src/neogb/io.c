@@ -407,7 +407,7 @@ void import_input_data(
     }
     /* maybe some input elements are invalid, so reset ngens here */
     ngens = ctr;
-            
+
     /* set total degree of input polynomials */
     deg_t deg = 0;
     if (st->nev) {
@@ -1119,7 +1119,7 @@ int32_t check_and_set_meta_data_trace(
     return check_and_set_meta_data(st, lens, exps, cfs, invalid_gens,
             field_char, mon_order, elim_block_len, nr_vars, nr_gens,
             nr_nf, ht_size, nr_threads, max_nr_pairs, reset_hash_table,
-            la_option, use_signatures, reduce_gb, pbm_file, truncate_lifting, 
+            la_option, use_signatures, reduce_gb, pbm_file, truncate_lifting,
             info_level);
 }
 

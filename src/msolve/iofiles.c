@@ -380,7 +380,7 @@ static int32_t get_nvars(const char *fn)
     char * line = NULL;
     char * line2 = NULL;
     size_t len;
-    nvars_t nvars = -1; 
+    nvars_t nvars = -1;
 
     /* number of variables is read from first line, it is 1 + (number of commata) */
     if (getline(&line, &len, fh) != -1)
@@ -612,11 +612,11 @@ static void remove_trailing_delim(char *line, ssize_t *len, char delim) {
     }
 }
 
-static void get_nterms_and_all_nterms(FILE *fh, 
+static void get_nterms_and_all_nterms(FILE *fh,
                                       int max_line_size, data_gens_ff_t *gens,
                                       int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
 
-    char *line  = NULL; 
+    char *line  = NULL;
     size_t size;
     ssize_t len;
     for (int32_t i = 0; i < *nr_gens; i++) {
@@ -873,7 +873,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, nelts_t all_nterms,
     size_t size;
     ssize_t len;
 
-    char *line  = NULL; 
+    char *line  = NULL;
     if(getline(&line, &size, fh) !=-1){
     }
     if(getline(&line, &size, fh) !=-1){
@@ -909,7 +909,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, nelts_t all_nterms,
     size_t size;
     ssize_t len;
 
-    char *line  = NULL; 
+    char *line  = NULL;
     if(getline(&line, &size, fh) !=-1){
     }
     if(getline(&line, &size, fh) !=-1){

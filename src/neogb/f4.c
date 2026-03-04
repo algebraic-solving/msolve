@@ -80,7 +80,7 @@ void free_f4_julia_result_data(
     int64_t len = 0;
     for (i = 0; i < ngens; ++i) {
         len += (int64_t)lens[i];
-    } 
+    }
 
     (*freep)(lens);
     lens  = NULL;
@@ -407,7 +407,7 @@ static int32_t initialize_f4(
     *lbsp  = bs;
     *matp  = mat;
     *lmdp  = md;
-    
+
     return done;
 }
 
@@ -690,7 +690,7 @@ bs_t *core_f4(
     /* let's start the f4 rounds, we are done when no more spairs
        are left in the pairset or if we found a constant in the basis. */
     print_round_information_header(stdout, md);
-    
+
     /* reset error */
     *errp = 0;
     while (!done) {

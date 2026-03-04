@@ -831,7 +831,7 @@ int32_t check_and_set_meta_data(
     /* elimination block order? If so, store the blocks length */
     st->nev = elim_block_len >= 0 ? elim_block_len : 0;
     if (st->nev >= st->nvars) {
-        printf("error: Too large elimination block.\n");
+        fprintf(stderr,"error: Too large elimination block.\n");
         exit(1);
     }
     /* set hash table size */

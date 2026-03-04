@@ -523,7 +523,7 @@ static void get_variables(FILE *fh, char * line, int max_line_size,
   if (fgets(line, max_line_size, fh) != NULL) {
     tmp = line;
   } else {
-    printf("Bad file format (variable names).\n");
+    fprintf(stderr,"Bad file format (variable names).\n");
     /* free(vnames);
      * free(line); */
     fclose(fh);
@@ -978,11 +978,11 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                                       int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
   if (*nr_vars == -1)
-    printf("Bad file format (first line).\n");
+    fprintf(stderr,"Bad file format (first line).\n");
 
   *nr_gens = get_ngenerators(fn);
   if (*nr_gens == -1)
-    printf("Bad file format (generators).\n");
+    fprintf(stderr,"Bad file format (generators).\n");
 
   const int max_line_size  = 1073741824;
   char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));

@@ -94,7 +94,9 @@ static int is_already_saturated(
         md_t *st
         )
 {
-    printf("testing if system is already saturated: ");
+    if(st->info_level){
+      printf("testing if system is already saturated: ");
+    }
     double rrt0, rrt1;
     rrt0  = realtime();
 
@@ -201,10 +203,12 @@ static int is_already_saturated(
     *bhtp = bht;
     *shtp = sht;
 
-    if (is_constant == 1) {
+    if (st->info_level){
+      if (is_constant == 1) {
         printf("yes.");
-    } else {
+      } else {
         printf("no.");
+      }
     }
 
     rrt1 = realtime();

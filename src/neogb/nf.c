@@ -162,7 +162,7 @@ int64_t export_nf(
         return 1;
     }
     if (success == 0) {
-        printf("Bad input data, stopped computation.\n");
+        printf(stderr,"Bad input data, stopped computation.\n");
         exit(1);
     }
     if (bs_is_gb == 1) {

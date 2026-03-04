@@ -815,7 +815,7 @@ int64_t export_f4(
         return 1;
     }
     if (success == 0) {
-        printf("Bad input data, stopped computation.\n");
+        fprintf(stderr,"Bad input data, stopped computation.\n");
         exit(1);
     }
 
@@ -823,7 +823,7 @@ int64_t export_f4(
     bs = core_f4(bs, md, &err, field_char);
 
     if (err) {
-        printf("Problem with F4, stopped computation.\n");
+        fprintf(stderr,"Problem with F4, stopped computation.\n");
         exit(1);
     }
 

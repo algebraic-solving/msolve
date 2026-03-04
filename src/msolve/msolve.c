@@ -3998,14 +3998,14 @@ restart:
                         st->gfc);
             }
             if (!success) {
-                printf("Bad input data, stopped computation.\n");
+                fprintf(stderr,"Bad input data, stopped computation.\n");
                 exit(1);
             }
             /* compute a gb for initial generators */
             success = core_sba_schreyer(&bs, &bht, &st);
 
             if (!success) {
-                printf("Problem with sba, stopped computation.\n");
+                fprintf(stderr,"Problem with sba, stopped computation.\n");
                 exit(1);
             }
             int64_t nb  = export_results_from_gba(bld, blen, bexp,
@@ -4068,7 +4068,7 @@ restart:
                     0 /*truncate_lifting */, info_level);
 
             if (!success) {
-                printf("Bad input data, stopped computation.\n");
+                fprintf(stderr,"Bad input data, stopped computation.\n");
                 exit(1);
             }
 
@@ -4094,7 +4094,7 @@ restart:
                 success = core_f4sat(bs, sat, st, &error);
 
                 if (!success) {
-                    printf("Problem with f4sat, stopped computation.\n");
+                    fprintf(stderr,"Problem with f4sat, stopped computation.\n");
                     exit(1);
                 }
                 int64_t nb  = export_results_from_gba(bld, blen, bexp,
@@ -4166,7 +4166,7 @@ restart:
                         st->gfc);
             }
             if (!success) {
-                printf("Bad input data, stopped computation.\n");
+                fprintf(stderr,"Bad input data, stopped computation.\n");
                 exit(1);
             }
 
@@ -4192,7 +4192,7 @@ restart:
                 bs = core_gba(bs, st, &err, gens->field_char);
 
                 if (err) {
-                    printf("Problem with F4, stopped computation.\n");
+                    fprintf(stderr,"Problem with F4, stopped computation.\n");
                     exit(1);
                 }
             }
@@ -4226,7 +4226,7 @@ restart:
             tbr = core_nf(tbr, st, mul, bs, &err);
 
             if (err) {
-                printf("Problem with normalform, stopped computation.\n");
+                fprintf(stderr,"Problem with normalform, stopped computation.\n");
                 exit(1);
             }
             /* print reduced element in tbr, last one is the input element */
@@ -4546,7 +4546,7 @@ restart:
 
             st->gfc  = gens->field_char;
             if (!success) {
-                printf("Bad input data, stopped computation.\n");
+                fprintf(stderr,"Bad input data, stopped computation.\n");
                 exit(1);
             }
 
@@ -4585,7 +4585,7 @@ restart:
             tbr = core_nf(tbr, st, mul, bs, &err);
 
             if (err) {
-                printf("Problem with normalform, stopped computation.\n");
+                fprintf(stderr,"Problem with normalform, stopped computation.\n");
                 exit(1);
             }
             /* print all reduced elements in tbr, first normal_form ones
@@ -4959,7 +4959,9 @@ restart:
                 sat_qq->lmps[k]  = k; /* fix input element in tbr */
             }
 
-            printf("LEARNING PHASE -- PART 1\n");
+            if (info_level){
+                fprintf(stdout,"LEARNING PHASE -- PART 1\n");
+            }
             f4sat_trace_learning_phase_1(
                     trace,
                     tht,
@@ -4988,7 +4990,9 @@ restart:
 
             lp->p[0]  = prime;
 
-            printf("LEARNING PHASE -- PART 2\n");
+            if (info_level){
+                fprintf(stdout,"LEARNING PHASE -- PART 2\n");
+            }
             f4sat_trace_learning_phase_2(
                     trace,
                     tht,

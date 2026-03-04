@@ -592,7 +592,7 @@ static void trim_polynomial(char *poly) {
     poly[k] = '\0';
 }
 
-static void remove_newlines(char *line, size_t *len) {
+static void remove_newlines(char *line, ssize_t *len) {
     while (*len && line[*len - 1] == '\0') {
         (*len)--;
     }
@@ -606,7 +606,7 @@ static void remove_newlines(char *line, size_t *len) {
     }
 }
 
-static void remove_trailing_delim(char *line, size_t *len, char delim) {
+static void remove_trailing_delim(char *line, ssize_t *len, char delim) {
     if (*len > 0 && line[*len - 1] == delim) {
         line[--(*len)] = '\0';
     }
@@ -617,12 +617,12 @@ static void get_nterms_and_all_nterms(FILE *fh,
                                       int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
 
     char *line  = NULL; 
-    size_t len = 0;
-    ssize_t nread;
+    size_t size;
+    ssize_t len;
     for (int32_t i = 0; i < *nr_gens; i++) {
         do {
-            nread = getdelim(&line, &len, ',', fh);
-        } while (nread != -1 && is_line_empty(line, ','));
+            len = getdelim(&line, &size, ',', fh);
+        } while (len != -1 && is_line_empty(line, ','));
         if (i < *nr_gens - 1) {
             remove_trailing_delim(line, &len, ',');
         }
@@ -870,21 +870,21 @@ static int get_coefficient_mpz_and_term_from_line(char *line, int32_t nterms,
 static void get_coeffs_and_exponents_ff32(FILE *fh, nelts_t all_nterms,
         int32_t *nr_gens, data_gens_ff_t *gens){
     int32_t pos = 0;
-    size_t len = 0;
-    ssize_t nread;
+    size_t size;
+    ssize_t len;
 
     char *line  = NULL; 
-    if(getline(&line, &len, fh) !=-1){
+    if(getline(&line, &size, fh) !=-1){
     }
-    if(getline(&line, &len, fh) !=-1){
+    if(getline(&line, &size, fh) !=-1){
     }
 
     gens->cfs = (int32_t *)(malloc(sizeof(int32_t) * all_nterms));
     gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
     for (int32_t i = 0; i < *nr_gens; i++) {
         do {
-            nread = getdelim(&line, &len, ',', fh);
-        } while (nread != -1 && is_line_empty(line, ','));
+            len = getdelim(&line, &size, ',', fh);
+        } while (len != -1 && is_line_empty(line, ','));
         if (i < *nr_gens - 1) {
             remove_trailing_delim(line, &len, ',');
         }
@@ -906,13 +906,13 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, nelts_t all_nterms,
 static void get_coeffs_and_exponents_mpz(FILE *fh, nelts_t all_nterms,
         int32_t *nr_gens, data_gens_ff_t *gens){
     int32_t pos = 0;
-    size_t len = 0;
-    ssize_t nread;
+    size_t size;
+    ssize_t len;
 
     char *line  = NULL; 
-    if(getline(&line, &len, fh) !=-1){
+    if(getline(&line, &size, fh) !=-1){
     }
-    if(getline(&line, &len, fh) !=-1){
+    if(getline(&line, &size, fh) !=-1){
     }
 
     gens->cfs = (int32_t*)(malloc(sizeof(int32_t) * all_nterms));
@@ -926,8 +926,8 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, nelts_t all_nterms,
     gens->exps = (int32_t *)calloc(all_nterms * gens->nvars, sizeof(int32_t));
     for (int32_t i = 0; i < *nr_gens; i++) {
         do {
-            nread = getdelim(&line, &len, ',', fh);
-        } while (nread != -1 && is_line_empty(line, ','));
+            len = getdelim(&line, &size, ',', fh);
+        } while (len != -1 && is_line_empty(line, ','));
         if (i < *nr_gens - 1) {
             remove_trailing_delim(line, &len, ',');
         }

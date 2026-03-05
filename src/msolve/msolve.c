@@ -1823,7 +1823,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
         }
         if(lml != num_gb[i]){
             if (bs[i] != NULL) {
-	        free_basis_and_only_local_hash_table_data(&(bs[i]));
+                free_basis_and_only_local_hash_table_data(&(bs[i]));
             }
             /* nmod_params[i] = NULL; */
             bad_primes[i] = 1;

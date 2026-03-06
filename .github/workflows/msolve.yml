@@ -58,6 +58,9 @@ jobs:
                     echo "$RUNNER_OS not supported"
                     exit 1
                fi
+      - name: show test-suite.log if test failed
+        if: failure()
+        run: cat test-suite.log || true
 
   flintdev-assert-ntl:
     name: FLINT git version, compiled with assert and NTL
@@ -82,3 +85,6 @@ jobs:
       - name: "Build and Test msolve"
         run: |
           ./autogen.sh && ./configure && $MAKE && make check
+      - name: show test-suite.log if test failed
+        if: failure()
+        run: cat test-suite.log || true

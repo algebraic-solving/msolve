@@ -121,7 +121,7 @@ static inline void sort_matrix_rows_decreasing(
         const len_t nrows
         )
 {
-    if (rows != NULL)
+    if (rows != NULL) {
     {
         qsort(rows, (unsigned long)nrows, sizeof(hm_t *),
               &matrix_row_cmp_decreasing);

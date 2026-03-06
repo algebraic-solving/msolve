@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 file=reals-dim0-chgvar
 

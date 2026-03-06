@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 file=mq-2-1
 

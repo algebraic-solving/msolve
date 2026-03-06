@@ -1,3 +1,8 @@
+Prerequisites
+=============
+
+The current version of `msolve` does not support 32 bit architectures.
+
 If you are working with the git repository OR the *tar.gz from github
 =====================================================================
 

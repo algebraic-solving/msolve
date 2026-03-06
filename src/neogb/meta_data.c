@@ -273,7 +273,7 @@ static void get_final_statistics(
 }
 
 void get_and_print_final_statistics(
-        FILE *file, 
+        FILE *file,
         md_t *st,
         const bs_t * const bs
         )

@@ -575,7 +575,7 @@ static void refine_root_by_N_negative_k(mpz_t *upol, unsigned long int *deg_ptr,
 
 /*
   Let f = upol and (a, b) be an isolating interval
-  Computes ( 4 f(a) / (f(a) - f(b)) ) and the closest integer k 
+  Computes ( 4 f(a) / (f(a) - f(b)) ) and the closest integer k
 
   One has w = (b-a) / 4 and a_i = a_i + i x w
 
@@ -671,7 +671,7 @@ static void refine_root_naive(mpz_t *upol, unsigned long int deg,
   }
 
   long newk;
-  int sgn_middle; 
+  int sgn_middle;
   if((rt->k) >= 0){
     /* interval is (numer, numer + 2^(-k)) */
     mpz_mul_ui(*middle, rt->numer, 2);

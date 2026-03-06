@@ -27,7 +27,7 @@ this.
 
 # Install Instructions
 
-See the INSTALL file.
+See the INSTALL file. At the moment, `msolve` does not support 32 bit architectures.
 
 # Input File Format
 

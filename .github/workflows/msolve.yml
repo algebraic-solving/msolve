@@ -76,7 +76,7 @@ jobs:
           make --version
           autoconf --version
           libtool --version
-          echo "MAKE=make -j$(expr $(nproc) + 1) --output-sync=target" >> $GITHUB_ENV
+          echo "MAKE=make -j 2 --output-sync=target" >> $GITHUB_ENV
       - name: "Build FLINT"
         run: |
           git clone --depth=1 https://github.com/flintlib/flint

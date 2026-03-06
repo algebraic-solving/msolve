@@ -2311,7 +2311,8 @@ static void probabilistic_sparse_reduced_echelon_form_ff_32(
 
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((uint64_t)ncols, sizeof(hm_t *));
-    memcpy(pivs, mat->rr, (uint64_t)mat->nru * sizeof(hm_t *));
+    if (mat->rr != NULL)
+        memcpy(pivs, mat->rr, (uint64_t)mat->nru * sizeof(hm_t *));
     j = nrl;
     for (i = 0; i < mat->nru; ++i) {
         mat->cf_32[j]      = bs->cf_32[mat->rr[i][COEFFS]];

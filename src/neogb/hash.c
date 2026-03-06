@@ -404,7 +404,7 @@ static inline sdm_t generate_short_divmask(
   for (i = 0; i < ndv; ++i) {
     for (j = 0; j < bpv; ++j) {
       if ((sdm_t)a[dv[i]] >= ht->dm[ctr]) {
-        res |= 1 << ctr;
+        res |= (uint32_t)(1u) << ctr;
       }
       ctr++;
     }

@@ -496,8 +496,14 @@ int main(int argc, char **argv){
       fprintf (stdout,"is %u\n",true_seed);
     }
 
-    FILE *fh  = fopen(files->in_file, "r");
-    FILE *bfh  = fopen(files->bin_file, "r");
+    FILE *fh = NULL;
+    FILE *bfh = NULL;
+    if (files->in_file) {
+      fh = fopen(files->in_file, "r");
+    }
+    if (files->bin_file) {
+      bfh = fopen(files->bin_file, "r");
+    }
 
     if (fh == NULL && bfh == NULL) {
       fprintf(stderr, "Input file not found.\n");

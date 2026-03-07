@@ -358,7 +358,9 @@ static int32_t initialize_f4(
     md->hcm = (hi_t *)malloc(sizeof(hi_t));
 
     if (gmd->fc != fc) {
-        reset_function_pointers(fc, md->laopt);
+        if (gmd->f4_qq_round != 2) {
+            reset_function_pointers(fc, md->laopt);
+        }
         bs = copy_basis_mod_p(gbs, md);
         if (md->laopt < 40) {
             if (md->trace_level != APPLY_TRACER) {

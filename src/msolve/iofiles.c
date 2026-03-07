@@ -447,10 +447,11 @@ static inline char *get_variable_name(const char *line, char **prev_pos)
 {
   const char comma_splicer  = ',';
 
-  char *tmp_var   = (char *)malloc(50 * sizeof(char));
+  char *tmp_var;
   char *curr_pos  = strchr(*prev_pos, comma_splicer);
   if (curr_pos != NULL) {
     size_t var_diff   = (size_t)(curr_pos - *prev_pos);
+    tmp_var = (char *)malloc((var_diff + 1) * sizeof(char));
     memcpy(tmp_var, *prev_pos, var_diff);
     tmp_var[var_diff] = '\0';
     *prev_pos = curr_pos+1;
@@ -458,6 +459,7 @@ static inline char *get_variable_name(const char *line, char **prev_pos)
     int prev_idx    = (int)(*prev_pos - line);
     int curr_idx    = (int)(strlen(line)+1);
     size_t var_diff = (size_t)(curr_idx - prev_idx);
+    tmp_var = (char *)malloc((var_diff + 1) * sizeof(char));
     memcpy(tmp_var, *prev_pos, var_diff);
     tmp_var[var_diff] = '\0';
   }

@@ -663,7 +663,7 @@ static inline void get_term(const char *line, char **prev_pos,
     /** if "-" is the first char in the line, we have to adjust the
       * if minus is nearer */
     if (term_diff_add > term_diff_minus) {
-      if( term_diff_minus > *term_size){
+      if( term_diff_minus >= *term_size){
         fprintf(stderr, "Too large input integers, exit...\n");
         exit(1);
       }
@@ -673,7 +673,7 @@ static inline void get_term(const char *line, char **prev_pos,
       return;
     /** if plus is nearer */
     } else {
-      if(term_diff_add > *term_size){
+      if(term_diff_add >= *term_size){
         fprintf(stderr, "Too large input integers, exit...\n");
         exit(1);
       }
@@ -685,7 +685,7 @@ static inline void get_term(const char *line, char **prev_pos,
   } else {
     if (curr_pos_add != NULL) {
       size_t term_diff_add   = (size_t)(curr_pos_add - start_pos);
-      if(term_diff_add > *term_size){
+      if(term_diff_add >= *term_size){
         fprintf(stderr, "Too large input integers, exit...\n");
         exit(1);
       }
@@ -696,7 +696,7 @@ static inline void get_term(const char *line, char **prev_pos,
     }
     if (curr_pos_minus != NULL) {
       size_t term_diff_minus = (size_t)(curr_pos_minus - start_pos);
-      if(term_diff_minus > *term_size){
+      if(term_diff_minus >= *term_size){
         fprintf(stderr, "Too large input integers, exit...\n");
         exit(1);
       }
@@ -708,7 +708,7 @@ static inline void get_term(const char *line, char **prev_pos,
     if (curr_pos_add == NULL && curr_pos_minus == NULL) {
       size_t prev_idx  = (size_t)(start_pos - line);
       size_t term_diff = strlen(line) + 1 - prev_idx;
-      if(term_diff > *term_size){
+      if(term_diff >= *term_size){
         fprintf(stderr, "Too large input integers, exit...\n");
         exit(1);
       }

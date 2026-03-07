@@ -162,7 +162,7 @@ int64_t export_nf(
         return 1;
     }
     if (success == 0) {
-        printf("Bad input data, stopped computation.\n");
+        fprintf(stderr,"Bad input data, stopped computation.\n");
         exit(1);
     }
     if (bs_is_gb == 1) {
@@ -176,7 +176,7 @@ int64_t export_nf(
         bs = core_gba(bs, md, &err, md->fc);
 
         if (err) {
-            printf("Problem with F4, stopped computation.\n");
+            fprintf(stderr,"Problem with F4, stopped computation.\n");
             exit(1);
         }
     }
@@ -195,7 +195,7 @@ int64_t export_nf(
     tbr = core_nf(tbr, md, mul, bs, &err);
 
     if (err) {
-        printf("Problem with normalform, stopped computation.\n");
+        fprintf(stderr,"Problem with normalform, stopped computation.\n");
         exit(1);
     }
 

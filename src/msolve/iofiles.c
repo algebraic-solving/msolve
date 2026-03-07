@@ -380,7 +380,7 @@ static int32_t get_nvars(const char *fn)
     char * line = NULL;
     char * line2 = NULL;
     size_t len;
-    nvars_t nvars = -1; 
+    nvars_t nvars = -1;
 
     /* number of variables is read from first line, it is 1 + (number of commata) */
     if (getline(&line, &len, fh) != -1)
@@ -523,7 +523,7 @@ static void get_variables(FILE *fh, char * line, int max_line_size,
   if (fgets(line, max_line_size, fh) != NULL) {
     tmp = line;
   } else {
-    printf("Bad file format (variable names).\n");
+    fprintf(stderr,"Bad file format (variable names).\n");
     /* free(vnames);
      * free(line); */
     fclose(fh);
@@ -612,11 +612,11 @@ static void remove_trailing_delim(char *line, ssize_t *len, char delim) {
     }
 }
 
-static void get_nterms_and_all_nterms(FILE *fh, 
+static void get_nterms_and_all_nterms(FILE *fh,
                                       int max_line_size, data_gens_ff_t *gens,
                                       int32_t *nr_gens, nelts_t *nterms, nelts_t *all_nterms){
 
-    char *line  = NULL; 
+    char *line  = NULL;
     size_t size;
     ssize_t len;
     for (int32_t i = 0; i < *nr_gens; i++) {
@@ -873,7 +873,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, nelts_t all_nterms,
     size_t size;
     ssize_t len;
 
-    char *line  = NULL; 
+    char *line  = NULL;
     if(getline(&line, &size, fh) !=-1){
     }
     if(getline(&line, &size, fh) !=-1){
@@ -909,7 +909,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, nelts_t all_nterms,
     size_t size;
     ssize_t len;
 
-    char *line  = NULL; 
+    char *line  = NULL;
     if(getline(&line, &size, fh) !=-1){
     }
     if(getline(&line, &size, fh) !=-1){
@@ -978,11 +978,11 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                                       int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
   if (*nr_vars == -1)
-    printf("Bad file format (first line).\n");
+    fprintf(stderr,"Bad file format (first line).\n");
 
   *nr_gens = get_ngenerators(fn);
   if (*nr_gens == -1)
-    printf("Bad file format (generators).\n");
+    fprintf(stderr,"Bad file format (generators).\n");
 
   const int max_line_size  = 1073741824;
   char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));

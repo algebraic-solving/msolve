@@ -43,7 +43,7 @@ static inline int is_pure_power(
     const len_t ebl = ht->ebl;
     const len_t evl = ht->evl;
     const len_t nv  = ht->nv;
-    
+
     for (i = 1; i < ebl; ++i) {
         if (ev[i] == 0) {
             ctr++;
@@ -69,7 +69,7 @@ static inline int is_zero_dimensional(
     len_t i;
 
     len_t ctr = 0;
-    
+
     const len_t nv  = ht->nv;
     const len_t lml = bs->lml;
 
@@ -78,7 +78,7 @@ static inline int is_zero_dimensional(
             ctr ++;
         }
     }
-    
+
     if (ctr == nv) {
         return 1;
     }
@@ -94,7 +94,9 @@ static int is_already_saturated(
         md_t *st
         )
 {
-    printf("testing if system is already saturated: ");
+    if(st->info_level){
+      printf("testing if system is already saturated: ");
+    }
     double rrt0, rrt1;
     rrt0  = realtime();
 
@@ -120,7 +122,7 @@ static int is_already_saturated(
     memcpy(lmps, bs->lmps, (unsigned long)lml * sizeof(bl_t));
     int8_t *red     = (int8_t *)malloc((unsigned long)bs->sz * sizeof(int8_t));
     memcpy(red, bs->red, (unsigned long)bs->sz * sizeof(int8_t));
-    
+
     ps_t *ps = st->ps;
 
     cf32_t *cf  = (cf32_t *)malloc(
@@ -137,7 +139,7 @@ static int is_already_saturated(
     bs->hm[bs->ld]    = hm;
 
     update_basis_f4(ps, bs, bht, st, 1);
-    
+
     /* suppress infolevel printing in the test step */
     int32_t infolevel = st->info_level;
     st->info_level  = 0;
@@ -201,10 +203,12 @@ static int is_already_saturated(
     *bhtp = bht;
     *shtp = sht;
 
-    if (is_constant == 1) {
+    if (st->info_level){
+      if (is_constant == 1) {
         printf("yes.");
-    } else {
+      } else {
         printf("no.");
+      }
     }
 
     rrt1 = realtime();

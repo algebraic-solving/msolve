@@ -722,7 +722,7 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     st->f4_qq_round = 1;
     bs = core_gba(bs_qq, st, &err, fc);
     if (err) {
-      printf("Problem with F4, stopped computation.\n");
+      fprintf(stderr,"Problem with F4, stopped computation.\n");
       exit(1);
     }
 
@@ -1773,7 +1773,7 @@ gb_modpoly_t *groebner_qq(
       return NULL;
   }
   if (success == 0) {
-      printf("Bad input data, stopped computation.\n");
+      fprintf(stderr,"Bad input data, stopped computation.\n");
       exit(1);
   }
 
@@ -1783,7 +1783,7 @@ gb_modpoly_t *groebner_qq(
   gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
   modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, print_gb);
   if (err) {
-      printf("Problem with groebner_qq, stopped computation (%d).\n", err);
+      fprintf(stderr,"Problem with groebner_qq, stopped computation (%d).\n", err);
       exit(1);
   }
 
@@ -1948,7 +1948,7 @@ int64_t export_groebner_qq(
     int err = 0;
 
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
-    modgbsp = 
+    modgbsp =
     core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
             2/* if set to 1, only the LM of the Gbs are correct */);
     if (err) {

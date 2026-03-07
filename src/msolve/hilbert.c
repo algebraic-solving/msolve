@@ -1770,7 +1770,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   int32_t err = 0;
   tbr = core_nf(tbr, st, mul, bs, &err);
   if (err) {
-    printf("Problem with normalform, stopped computation.\n");
+    fprintf(stderr,"Problem with normalform, stopped computation.\n");
     exit(1);
   }
   /* printf ("reductions\n"); */
@@ -1953,7 +1953,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  /* 		      st, gens->vnames, 0); */
 	  success = core_nf(&tbr, &bht, &st, mul, bs);
 	  if (!success) {
-	    printf("Problem with normalform, stopped computation.\n");
+	    fprintf(stderr,"Problem with normalform, stopped computation.\n");
 	    exit(1);
 	  }
 	  /* printf ("reduction\n"); */
@@ -2002,7 +2002,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* 			      st, gens->vnames, 0); */
   int success = core_nf(&tbr, &bht, &st, mul, bs);
   if (!success) {
-    printf("Problem with normalform, stopped computation.\n");
+    fprintf(stderr,"Problem with normalform, stopped computation.\n");
     exit(1);
   }
   /* printf ("reductions\n"); */
@@ -2217,7 +2217,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   int32_t err = 0;
   tbr = core_nf(tbr, st, mul, bs, &err);
   if (err) {
-    printf("Problem with normalform, stopped computation.\n");
+    fprintf(stderr,"Problem with normalform, stopped computation.\n");
     exit(1);
   }
   /* printf ("reductions\n"); */
@@ -3076,7 +3076,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
     int32_t err = 0;
     tbr = core_nf(tbr, md, mul, bs, &err);
     if (err) {
-      printf("Problem with normalform, stopped computation.\n");
+      fprintf(stderr,"Problem with normalform, stopped computation.\n");
       exit(1);
     }
     free(mul);

@@ -706,6 +706,7 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
   } else {
     for (i = len_old; i < len_new; i++) {
       int32_t rdval;
+      rdval = rand();
       while (rdval == 0) {
         rdval = rand();
       }

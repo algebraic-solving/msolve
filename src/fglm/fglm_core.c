@@ -25,6 +25,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
+#include<stdint.h>
 #include<unistd.h>
 #include<time.h>
 /* for timing functions */
@@ -504,7 +505,7 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
   nmod_t mod;
   uint64_t pow2_precomp;
   nmod_init(&mod, (uint64_t)prime);
-  NMOD_RED(pow2_precomp, (UWORD(1) << __DOT_SPLIT_BITS), mod);
+  NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
 
   _avx512_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
                               ncols, nrows, mod, pow2_precomp, st);
@@ -512,7 +513,7 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
   nmod_t mod;
   uint64_t pow2_precomp;
   nmod_init(&mod, (uint64_t)prime);
-  NMOD_RED(pow2_precomp, (UWORD(1) << __DOT_SPLIT_BITS), mod);
+  NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
 
   _avx2_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
                               ncols, nrows, mod, pow2_precomp, st);
@@ -565,7 +566,7 @@ static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *ma
   nmod_t mod;
   uint64_t pow2_precomp;
   nmod_init(&mod, (uint64_t)prime);
-  NMOD_RED(pow2_precomp, (UWORD(1) << __DOT_SPLIT_BITS), mod);
+  NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
 
   _avx512_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
                               ncols, nrows, mod, pow2_precomp, st);
@@ -573,7 +574,7 @@ static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *ma
   nmod_t mod;
   uint64_t pow2_precomp;
   nmod_init(&mod, (uint64_t)prime);
-  NMOD_RED(pow2_precomp, (UWORD(1) << __DOT_SPLIT_BITS), mod);
+  NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
 
   _avx2_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
                               ncols, nrows, mod, pow2_precomp, st);
@@ -2207,5 +2208,4 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   /* printf ("free fglm\n"); */
   return param;
 }
-
 

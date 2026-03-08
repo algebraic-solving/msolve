@@ -912,12 +912,12 @@ static inline void normalize_nmod_param(param_t *nmod_param) {
 
     for (long i = 1; i < nmod_param->elim->length; i++) {
       nmod_param->denom->coeffs[i - 1] =
-          (i * nmod_param->elim->coeffs[i]) % prime;
+          (uint64_t)i * (uint64_t)nmod_param->elim->coeffs[i] % (uint64_t)prime;
     }
 
     for (long i = 0; i < nmod_param->elim->length - 1; i++) {
       nmod_param->denom->coeffs[i] =
-          (inv * nmod_param->denom->coeffs[i]) % prime;
+          (uint64_t)inv * (uint64_t)nmod_param->denom->coeffs[i] % (uint64_t)prime;
     }
 
     for (int j = 0; j < nmod_param->nvars - 1; j++) {

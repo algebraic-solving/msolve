@@ -704,23 +704,14 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
       j++;
     }
   } else {
-    int j = 0;
-    int32_t sum = 0;
-    for (i = 2 * len_old; i < 2 * len_new; i += 2) {
-      gens->random_linear_form[j] = ((int32_t)(rand()));
-
-      while (gens->random_linear_form[j] == 0) {
-	gens->random_linear_form[j] = ((int32_t)(rand()));
+    for (i = len_old; i < len_new; i++) {
+      int32_t rdval;
+      while (rdval == 0) {
+        rdval = rand();
       }
-      if (i < 2 * len_new - 1) {
-        sum += nvars_old * abs(gens->random_linear_form[j]);
-      } else {
-        gens->random_linear_form[j] = sum;
-      }
-      mpz_set_si(*(gens->mpz_cfs[i]), gens->random_linear_form[j]);
-      mpz_set_ui(*(gens->mpz_cfs[i + 1]), 1);
-
-      j++;
+      gens->random_linear_form[i] = rdval;
+      mpz_set_si(*(gens->mpz_cfs[2*i]), rdval);
+      mpz_set_ui(*(gens->mpz_cfs[2*i + 1]), 1);
     }
   }
   gens->rand_linear = 1;

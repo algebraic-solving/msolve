@@ -67,7 +67,9 @@ bs_t *core_nf(
 
     /* reset to exact linear algebra for normal form computation */
     md->laopt = 2;
-    set_function_pointers(md);
+    if (md->f4_qq_round != 2) {
+        set_function_pointers(md);
+    }
 
     /* matrix holding sparse information generated
      * during symbolic preprocessing */

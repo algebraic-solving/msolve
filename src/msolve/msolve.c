@@ -1895,6 +1895,7 @@ int is_splittable(param_t **nmod_params, const int fc){
             nmod_poly_gcd(gcd, nmod_params[0]->elim, nmod_params[0]->coords[i]);
             long deg = nmod_poly_degree(gcd);
             if(deg > 0){
+                nmod_poly_clear(gcd);
                 return 1;
             }
         }

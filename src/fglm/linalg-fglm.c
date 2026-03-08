@@ -211,7 +211,13 @@ uint64_t _mm256_hsum(__m256i a)
     __m256i sum_lo = _mm256_add_epi64(a, a_hi);
     __m128i sum_hi = _mm256_extracti128_si256(sum_lo, 1);
     __m128i sum = _mm_add_epi64(_mm256_castsi256_si128(sum_lo), sum_hi);
+#if defined(__x86_64__) || defined(_M_X64)
     return (uint64_t) _mm_cvtsi128_si64(sum);
+#else
+    uint64_t lo = (uint32_t) _mm_cvtsi128_si32(sum);
+    uint64_t hi = (uint32_t) _mm_cvtsi128_si32(_mm_srli_si128(sum, 4));
+    return lo | (hi << 32);
+#endif
 }
 
 uint32_t _nmod32_vec_dot_split_avx2(const uint32_t * vec1, const uint32_t * vec2, int64_t len,

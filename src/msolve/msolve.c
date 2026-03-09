@@ -2102,8 +2102,12 @@ int is_member(uint32_t fc, primes_t *init_primes){
 
   - returns 2 if requires more genericity.
   => (all the squares are not under the staircase)
+
   - returns 3 if computation with a random linear form succeeded
   => charac 0 + requires a non random linear form now
+
+  - returns 4 if probabilistic F4 yields dim > 0 while it is
+  known to satisfy dim = 0
 
   - returns -2 if charac > 0
 
@@ -2116,7 +2120,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     param_t **nmod_param,
                     int *dim_ptr,
                     long *dquot_ptr,
-		    int *minpolydeg_ptr,
+                    int *minpolydeg_ptr,
+                    int *is0dim_ptr,
                     data_gens_ff_t *gens,
                     int32_t ht_size, //initial_hts,
                     int32_t unstable_staircase,
@@ -2328,6 +2333,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
+  if (*dim_ptr > 0 && *is0dim_ptr == 1) {
+      return 4;
+  }
   if (gens->field_char == 0 && gens->rand_linear) {
     *minpolydeg_ptr = (*nmod_params)->degsqfrelimpol;
     return 3;
@@ -2394,6 +2402,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       return 0;
     }
     if (*dquot_ptr > 0) {
+      *is0dim_ptr= 1;
       if (success && *minpolydeg_ptr == (*nmod_params)->degsqfrelimpol) {
 	/* same degree as with a random linear form */
 	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
@@ -3677,11 +3686,12 @@ void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
 }
 
 int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
-                   long *dquot_ptr, int *minpolydeg_ptr, long *nb_real_roots_ptr,
+                   long *dquot_ptr, int *minpolydeg_ptr, int* is0dim_ptr,
+                   long *nb_real_roots_ptr,
                    interval **real_roots_ptr, real_point_t **real_pts_ptr,
                    data_gens_ff_t *gens,
                    int32_t ht_size, //initial_hts,
-		   int32_t unstable_staircase,
+                   int32_t unstable_staircase,
                    int32_t nr_threads,
                    int32_t max_nr_pairs,
                    int32_t elim_block_len,
@@ -3715,7 +3725,8 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           nmod_param,
                           dim_ptr,
                           dquot_ptr,
-			  minpolydeg_ptr,
+                          minpolydeg_ptr,
+                          is0dim_ptr,
                           gens,
                           ht_size, //initial_hts,
 			              unstable_staircase,
@@ -3950,6 +3961,7 @@ int core_msolve(
        when over Q */
     int minpolydeg = -1;
     int oldminpolydeg = -1;
+    int is0dim = 0;
 
 restart:
 
@@ -4433,7 +4445,8 @@ restart:
                        paramp,
                        &dim,
                        &dquot,
-		       &minpolydeg,
+                       &minpolydeg,
+                       &is0dim,
                        nb_real_roots_ptr,
                        real_roots_ptr,
                        real_pts_ptr,
@@ -5109,7 +5122,8 @@ restart:
                     &param,
                     &dim,
                     &dquot,
-		    &minpolydeg,
+                    &minpolydeg,
+                    &is0dim,
                     nb_real_roots_ptr,
                     real_roots_ptr,
                     real_pts_ptr,
@@ -5265,6 +5279,14 @@ restart:
 		  }
 		}
 	    }
+        if (b == 4){
+            /* Probabilistic linear algebra yields a positive-dimensional Gröbner basis
+               but we have already computed that the dimension is 0
+               restart with the same linear form */
+            fprintf (stdout, "\nThe Groebner basis is not 0-dimensional\n");
+            fprintf (stdout, "Restarting with the same linear form\n");
+            goto restart;
+        }
         }
 
         free(bld);

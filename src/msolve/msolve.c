@@ -4438,7 +4438,7 @@ restart:
 
       if(elim_block_len > 0 && print_gb == 0){
           fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
-          fprintf(stderr, "Computing Gröbner basis\n");
+          fprintf(stderr, "Computing Groebner basis\n");
           print_gb=2;
       }
 	  b = real_msolve_qq(mpz_paramp,
@@ -5280,11 +5280,13 @@ restart:
 		}
 	    }
         if (b == 4){
-            /* Probabilistic linear algebra yields a positive-dimensional Gröbner basis
+            /* Probabilistic linear algebra yields a positive-dimensional Groebner basis
                but we have already computed that the dimension is 0
                restart with the same linear form */
-            fprintf (stdout, "\nThe Groebner basis is not 0-dimensional\n");
-            fprintf (stdout, "Restarting with the same linear form\n");
+            if (info_level > 0) {
+                fprintf (stdout, "\nThe Groebner basis is not 0-dimensional\n");
+                fprintf (stdout, "Restarting with the same linear form\n");
+            }
             goto restart;
         }
         }

@@ -1602,7 +1602,8 @@ static int32_t *initial_modular_step(
                                      nvars_t *nlins_ptr, nvars_t *linvars,
                                      uint32_t **lineqs_ptr, nvars_t *squvars,
 
-                                     fglm_data_t **bdata_fglm, fglm_bms_data_t **bdata_bms,
+                                     fglm_data_t **bdata_fglm,
+                                     fglm_bms_data_t **bdata_bms,
                                      int32_t *num_gb,
                                      int32_t **leadmons,
                                      uint64_t *bsz,
@@ -1709,7 +1710,8 @@ static int32_t *initial_modular_step(
                     (param_t **)malloc(sizeof(param_t *));
                 *test_nmod_param = nmod_fglm_compute_trace_data(
                                       *bmatrix, fc, bs->ht->nv,
-                                      *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
+                                      *bsz, *nlins_ptr, linvars, lineqs_ptr[0],
+                                      squvars,
                                       0, bdata_fglm, bdata_bms, success, md);
                 int boo = equal_param(*bparam, *test_nmod_param);
                 /* reset info_level to its previous status */
@@ -5280,9 +5282,9 @@ restart:
 		}
 	    }
         if (b == 4){
-            /* Probabilistic linear algebra yields a positive-dimensional Groebner basis
-               but we have already computed that the dimension is 0
-               restart with the same linear form */
+            /* Probabilistic linear algebra yields a positive-dimensional
+               Groebner basis but we have already computed that the dimension
+               is 0, restart with the same linear form */
             if (info_level > 0) {
                 fprintf (stdout, "\nThe Groebner basis is not 0-dimensional\n");
                 fprintf (stdout, "Restarting with the same linear form\n");

@@ -1702,6 +1702,9 @@ static int32_t *initial_modular_step(
                                                    md->info_level, bdata_fglm,
                                                    bdata_bms, success, md);
             if((*bparam)->elim->length - 1 != dquot){
+                int32_t info_level= md->info_level;
+                /* do not print anything for this rerun */
+                md->info_level= 0;
                 param_t **test_nmod_param =
                     (param_t **)malloc(sizeof(param_t *));
                 *test_nmod_param = nmod_fglm_compute_trace_data(
@@ -1709,6 +1712,8 @@ static int32_t *initial_modular_step(
                                       *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
                                       0, bdata_fglm, bdata_bms, success, md);
                 int boo = equal_param(*bparam, *test_nmod_param);
+                /* reset info_level to its previous status */
+                md->info_level= info_level;
                 if(boo == 0){
                     *success = 0;
                 }

@@ -45,7 +45,7 @@ int msolve_trace_qq(
         int32_t use_signatures,
         int32_t lift_matrix,
         int *to_split_ptr,
-        primes_t **binit_primes, 
+        primes_t **binit_primes,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -227,7 +227,7 @@ int64_t export_groebner_qq(
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t truncate_lifting,
-        const int32_t info_level 
+        const int32_t info_level
         );
 
 // Utility functions to init and deinit data structures

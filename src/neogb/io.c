@@ -765,6 +765,405 @@ int validate_input_data(
     return 1;
 }
 
+static inline int use_block_order(
+        const ht_t *ht
+        )
+{
+    return ht->ebl > 0;
+}
+
+static inline int use_lex_order(
+        const ht_t *ht
+        )
+{
+    return ht->ebl == 0 && ht->mo == 1;
+}
+
+static inline int use_17_bit_reduction(
+        const uint32_t fc
+        )
+{
+    return fc < ((uint32_t)1u << 18);
+}
+
+int dispatch_initial_input_cmp(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    ht_t *ht = (ht_t *)htp;
+    if (use_block_order(ht)) {
+        return initial_input_cmp_be(a, b, htp);
+    }
+    if (use_lex_order(ht)) {
+        return initial_input_cmp_lex(a, b, htp);
+    }
+    return initial_input_cmp_drl(a, b, htp);
+}
+
+int dispatch_initial_gens_cmp(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    ht_t *ht = (ht_t *)htp;
+    if (use_block_order(ht)) {
+        return initial_gens_cmp_be(a, b, htp);
+    }
+    if (use_lex_order(ht)) {
+        return initial_gens_cmp_lex(a, b, htp);
+    }
+    return initial_gens_cmp_drl(a, b, htp);
+}
+
+int dispatch_monomial_cmp(
+        const hi_t a,
+        const hi_t b,
+        const ht_t *ht
+        )
+{
+    if (use_block_order(ht)) {
+        return monomial_cmp_be(a, b, ht);
+    }
+    if (use_lex_order(ht)) {
+        return monomial_cmp_lex(a, b, ht);
+    }
+    return monomial_cmp_drl(a, b, ht);
+}
+
+int dispatch_spair_cmp(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    ht_t *ht = (ht_t *)htp;
+    if (use_block_order(ht)) {
+        return spair_cmp_be(a, b, htp);
+    }
+    if (use_lex_order(ht)) {
+        return spair_cmp_deglex(a, b, htp);
+    }
+    return spair_cmp_drl(a, b, htp);
+}
+
+int dispatch_hcm_cmp(
+        const void *a,
+        const void *b,
+        void *htp
+        )
+{
+    ht_t *ht = (ht_t *)htp;
+    if (use_block_order(ht)) {
+        return hcm_cmp_pivots_be(a, b, htp);
+    }
+    if (use_lex_order(ht)) {
+        return hcm_cmp_pivots_lex(a, b, htp);
+    }
+    return hcm_cmp_pivots_drl(a, b, htp);
+}
+
+void dispatch_sba_linear_algebra(
+        smat_t *smat,
+        crit_t *syz,
+        md_t *st,
+        const ht_t * const ht
+        )
+{
+    sba_linear_algebra_ff_32(smat, syz, st, ht);
+}
+
+void dispatch_linear_algebra(
+        mat_t *mat,
+        const bs_t * const tbr,
+        const bs_t * const bs,
+        md_t *st
+        )
+{
+    switch (st->ff_bits) {
+        case 0:
+            if (st->laopt == 1) {
+                exact_sparse_linear_algebra_ab_first_qq(mat, tbr, bs, st);
+            } else {
+                exact_sparse_linear_algebra_qq(mat, tbr, bs, st);
+            }
+            return;
+        case 8:
+            switch (st->laopt) {
+                case 1:
+                    exact_sparse_dense_linear_algebra_ff_8(mat, tbr, bs, st);
+                    return;
+                case 2:
+                    exact_sparse_linear_algebra_ff_8(mat, tbr, bs, st);
+                    return;
+                case 42:
+                    probabilistic_sparse_dense_linear_algebra_ff_8(mat, tbr, bs, st);
+                    return;
+                case 43:
+                    probabilistic_sparse_dense_linear_algebra_ff_8_2(mat, tbr, bs, st);
+                    return;
+                case 44:
+                    probabilistic_sparse_linear_algebra_ff_8(mat, tbr, bs, st);
+                    return;
+                default:
+                    exact_sparse_linear_algebra_ff_8(mat, tbr, bs, st);
+                    return;
+            }
+        case 16:
+            switch (st->laopt) {
+                case 1:
+                    exact_sparse_dense_linear_algebra_ff_16(mat, tbr, bs, st);
+                    return;
+                case 2:
+                    exact_sparse_linear_algebra_ff_16(mat, tbr, bs, st);
+                    return;
+                case 42:
+                    probabilistic_sparse_dense_linear_algebra_ff_16(mat, tbr, bs, st);
+                    return;
+                case 43:
+                    probabilistic_sparse_dense_linear_algebra_ff_16_2(mat, tbr, bs, st);
+                    return;
+                case 44:
+                    probabilistic_sparse_linear_algebra_ff_16(mat, tbr, bs, st);
+                    return;
+                default:
+                    exact_sparse_linear_algebra_ff_16(mat, tbr, bs, st);
+                    return;
+            }
+        case 32:
+        default:
+            switch (st->laopt) {
+                case 1:
+                    exact_sparse_dense_linear_algebra_ff_32(mat, tbr, bs, st);
+                    return;
+                case 2:
+                    exact_sparse_linear_algebra_ff_32(mat, tbr, bs, st);
+                    return;
+                case 42:
+                    probabilistic_sparse_dense_linear_algebra_ff_32(mat, tbr, bs, st);
+                    return;
+                case 43:
+                    probabilistic_sparse_dense_linear_algebra_ff_32_2(mat, tbr, bs, st);
+                    return;
+                case 44:
+                    probabilistic_sparse_linear_algebra_ff_32(mat, tbr, bs, st);
+                    return;
+                default:
+                    exact_sparse_linear_algebra_ff_32(mat, tbr, bs, st);
+                    return;
+            }
+    }
+}
+
+void dispatch_exact_linear_algebra(
+        mat_t *mat,
+        const bs_t * const tbr,
+        const bs_t * const bs,
+        md_t *st
+        )
+{
+    switch (st->ff_bits) {
+        case 0:
+            exact_sparse_linear_algebra_qq(mat, tbr, bs, st);
+            return;
+        case 8:
+            exact_sparse_linear_algebra_ff_8(mat, tbr, bs, st);
+            return;
+        case 16:
+            exact_sparse_linear_algebra_ff_16(mat, tbr, bs, st);
+            return;
+        case 32:
+        default:
+            exact_sparse_linear_algebra_ff_32(mat, tbr, bs, st);
+            return;
+    }
+}
+
+int dispatch_application_linear_algebra(
+        mat_t *mat,
+        const bs_t * const bs,
+        md_t *st
+        )
+{
+    switch (st->ff_bits) {
+        case 8:
+            return exact_application_sparse_linear_algebra_ff_8(mat, bs, st);
+        case 16:
+            return exact_application_sparse_linear_algebra_ff_16(mat, bs, st);
+        case 32:
+        default:
+            return exact_application_sparse_linear_algebra_ff_32(mat, bs, st);
+    }
+}
+
+void dispatch_trace_linear_algebra(
+        trace_t *trace,
+        mat_t *mat,
+        const bs_t * const bs,
+        md_t *st
+        )
+{
+    switch (st->ff_bits) {
+        case 8:
+            exact_trace_sparse_linear_algebra_ff_8(trace, mat, bs, st);
+            return;
+        case 16:
+            exact_trace_sparse_linear_algebra_ff_16(trace, mat, bs, st);
+            return;
+        case 32:
+        default:
+            exact_trace_sparse_linear_algebra_ff_32(trace, mat, bs, st);
+            return;
+    }
+}
+
+void dispatch_interreduce_matrix_rows(
+        mat_t *mat,
+        bs_t *bs,
+        md_t *st,
+        int free_basis
+        )
+{
+    switch (st->ff_bits) {
+        case 0:
+            interreduce_matrix_rows_qq(mat, bs, st, free_basis);
+            return;
+        case 8:
+            interreduce_matrix_rows_ff_8(mat, bs, st, free_basis);
+            return;
+        case 16:
+            interreduce_matrix_rows_ff_16(mat, bs, st, free_basis);
+            return;
+        case 32:
+        default:
+            interreduce_matrix_rows_ff_32(mat, bs, st, free_basis);
+            return;
+    }
+}
+
+void dispatch_normalize_initial_basis(
+        bs_t *bs,
+        const uint32_t fc
+        )
+{
+    if (fc == 0) {
+        return;
+    }
+    if (fc < ((uint32_t)1u << 8)) {
+        normalize_initial_basis_ff_8(bs, fc);
+        return;
+    }
+    if (fc < ((uint32_t)1u << 16)) {
+        normalize_initial_basis_ff_16(bs, fc);
+        return;
+    }
+    normalize_initial_basis_ff_32(bs, fc);
+}
+
+cf32_t *dispatch_reduce_dense_row_by_old_pivots_ff_32(
+        int64_t *dr,
+        mat_t *mat,
+        const bs_t * const bs,
+        hm_t * const * const pivs,
+        const hi_t dpiv,
+        const uint32_t fc
+        )
+{
+    if (use_17_bit_reduction(fc)) {
+        return reduce_dense_row_by_old_pivots_17_bit(dr, mat, bs, pivs, dpiv, fc);
+    }
+    return reduce_dense_row_by_old_pivots_31_bit(dr, mat, bs, pivs, dpiv, fc);
+}
+
+hm_t *dispatch_sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
+        int64_t *dr,
+        smat_t *smat,
+        hm_t *const *pivs,
+        const hi_t dpiv,
+        const hm_t sm,
+        const len_t si,
+        const len_t ri,
+        md_t *st
+        )
+{
+    return sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
+            dr, smat, pivs, dpiv, sm, si, ri, st);
+}
+
+hm_t *dispatch_reduce_dense_row_by_known_pivots_sparse_ff_32(
+        int64_t *dr,
+        mat_t *mat,
+        const bs_t * const bs,
+        hm_t *const *pivs,
+        const hi_t dpiv,
+        const hm_t tmp_pos,
+        const len_t mh,
+        const len_t bi,
+        const len_t tr,
+        md_t *st
+        )
+{
+    if (use_17_bit_reduction(st->fc)) {
+        return reduce_dense_row_by_known_pivots_sparse_17_bit(
+                dr, mat, bs, pivs, dpiv, tmp_pos, mh, bi, tr, st);
+    }
+    return reduce_dense_row_by_known_pivots_sparse_31_bit(
+            dr, mat, bs, pivs, dpiv, tmp_pos, mh, bi, tr, st);
+}
+
+hm_t *dispatch_trace_reduce_dense_row_by_known_pivots_sparse_ff_32(
+        rba_t *rba,
+        int64_t *dr,
+        mat_t *mat,
+        const bs_t * const bs,
+        hm_t *const *pivs,
+        const hi_t dpiv,
+        const hm_t tmp_pos,
+        const len_t mh,
+        const len_t bi,
+        md_t *st
+        )
+{
+    if (use_17_bit_reduction(st->fc)) {
+        return trace_reduce_dense_row_by_known_pivots_sparse_17_bit(
+                rba, dr, mat, bs, pivs, dpiv, tmp_pos, mh, bi, st);
+    }
+    return trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
+            rba, dr, mat, bs, pivs, dpiv, tmp_pos, mh, bi, st);
+}
+
+cf32_t *dispatch_reduce_dense_row_by_all_pivots_ff_32(
+        int64_t *dr,
+        mat_t *mat,
+        const bs_t * const bs,
+        len_t *pc,
+        hm_t *const *pivs,
+        cf32_t *const *dpivs,
+        const uint32_t fc
+        )
+{
+    if (use_17_bit_reduction(fc)) {
+        return reduce_dense_row_by_all_pivots_17_bit(dr, mat, bs, pc, pivs, dpivs, fc);
+    }
+    return reduce_dense_row_by_all_pivots_31_bit(dr, mat, bs, pc, pivs, dpivs, fc);
+}
+
+cf32_t *dispatch_reduce_dense_row_by_dense_new_pivots_ff_32(
+        int64_t *dr,
+        len_t *pc,
+        cf32_t * const * const pivs,
+        const len_t ncr,
+        const uint32_t fc
+        )
+{
+    if (use_17_bit_reduction(fc)) {
+        return reduce_dense_row_by_dense_new_pivots_17_bit(dr, pc, pivs, ncr, fc);
+    }
+    return reduce_dense_row_by_dense_new_pivots_31_bit(dr, pc, pivs, ncr, fc);
+}
+
 int32_t check_and_set_meta_data(
         md_t *st,
         const int32_t *lens,
@@ -887,199 +1286,7 @@ void set_function_pointers(
         const md_t *st
         )
 {
-  /* todo: this needs to be generalized for different monomial orders */
-    if (st->nev > 0) {
-      initial_input_cmp   = initial_input_cmp_be;
-      initial_gens_cmp    = initial_gens_cmp_be;
-      monomial_cmp        = monomial_cmp_be;
-      spair_cmp           = spair_cmp_be;
-      hcm_cmp             = hcm_cmp_pivots_be;
-    } else {
-        switch (st->mo) {
-            case 0:
-                initial_input_cmp   = initial_input_cmp_drl;
-                initial_gens_cmp    = initial_gens_cmp_drl;
-                monomial_cmp        = monomial_cmp_drl;
-                spair_cmp           = spair_cmp_drl;
-                hcm_cmp             = hcm_cmp_pivots_drl;
-                break;
-            case 1:
-                initial_input_cmp   = initial_input_cmp_lex;
-                initial_gens_cmp    = initial_gens_cmp_lex;
-                monomial_cmp        = monomial_cmp_lex;
-                spair_cmp           = spair_cmp_deglex;
-                hcm_cmp             = hcm_cmp_pivots_lex;
-                break;
-            default:
-                initial_input_cmp   = initial_input_cmp_drl;
-                initial_gens_cmp    = initial_gens_cmp_drl;
-                monomial_cmp        = monomial_cmp_drl;
-                spair_cmp           = spair_cmp_drl;
-                hcm_cmp             = hcm_cmp_pivots_drl;
-        }
-    }
-
-  /* up to 17 bits we can use one modular operation for reducing a row. this works
-   * for matrices with #rows <= 54 million */
-  switch (st->ff_bits) {
-    case 0:
-      switch (st->laopt) {
-        case 1:
-          linear_algebra  = exact_sparse_linear_algebra_ab_first_qq;
-          break;
-        case 2:
-          linear_algebra  = exact_sparse_linear_algebra_qq;
-          break;
-        default:
-          linear_algebra  = exact_sparse_linear_algebra_qq;
-      }
-      interreduce_matrix_rows = interreduce_matrix_rows_qq;
-      break;
-
-    case 8:
-      switch (st->laopt) {
-        case 1:
-          linear_algebra  = exact_sparse_dense_linear_algebra_ff_8;
-          break;
-        case 2:
-          linear_algebra  = exact_sparse_linear_algebra_ff_8;
-          break;
-        case 42:
-          linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_8;
-          break;
-        case 43:
-          linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_8_2;
-          break;
-        case 44:
-          linear_algebra  = probabilistic_sparse_linear_algebra_ff_8;
-          break;
-        default:
-          linear_algebra  = exact_sparse_linear_algebra_ff_8;
-      }
-      exact_linear_algebra    = exact_sparse_linear_algebra_ff_8;
-      interreduce_matrix_rows = interreduce_matrix_rows_ff_8;
-      normalize_initial_basis = normalize_initial_basis_ff_8;
-      break;
-
-    case 16:
-      switch (st->laopt) {
-        case 1:
-          linear_algebra  = exact_sparse_dense_linear_algebra_ff_16;
-          break;
-        case 2:
-          linear_algebra  = exact_sparse_linear_algebra_ff_16;
-          break;
-        case 42:
-          linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_16;
-          break;
-        case 43:
-          linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_16_2;
-          break;
-        case 44:
-          linear_algebra  = probabilistic_sparse_linear_algebra_ff_16;
-          break;
-        default:
-          linear_algebra  = exact_sparse_linear_algebra_ff_16;
-      }
-      exact_linear_algebra    = exact_sparse_linear_algebra_ff_16;
-      interreduce_matrix_rows = interreduce_matrix_rows_ff_16;
-      normalize_initial_basis = normalize_initial_basis_ff_16;
-      break;
-
-    case 32:
-      switch (st->laopt) {
-        case 1:
-          linear_algebra  = exact_sparse_dense_linear_algebra_ff_32;
-          break;
-        case 2:
-          linear_algebra  = exact_sparse_linear_algebra_ff_32;
-          break;
-        case 42:
-          linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_32;
-          break;
-        case 43:
-          linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_32_2;
-          break;
-        case 44:
-          linear_algebra  = probabilistic_sparse_linear_algebra_ff_32;
-          break;
-        default:
-          linear_algebra  = exact_sparse_linear_algebra_ff_32;
-      }
-      exact_linear_algebra    = exact_sparse_linear_algebra_ff_32;
-      interreduce_matrix_rows = interreduce_matrix_rows_ff_32;
-      normalize_initial_basis = normalize_initial_basis_ff_32;
-      sba_linear_algebra      = sba_linear_algebra_ff_32;
-
-      sba_reduce_dense_row_by_known_pivots_sparse_ff_32 =
-        sba_reduce_dense_row_by_known_pivots_sparse_31_bit;
-      /* if coeffs are smaller than 17 bit we can optimize reductions */
-      if (st->fc < (int32_t)(1) << 18) {
-        reduce_dense_row_by_all_pivots_ff_32 =
-          reduce_dense_row_by_all_pivots_17_bit;
-        reduce_dense_row_by_old_pivots_ff_32 =
-          reduce_dense_row_by_old_pivots_17_bit;
-        reduce_dense_row_by_known_pivots_sparse_ff_32 =
-          reduce_dense_row_by_known_pivots_sparse_17_bit;
-        reduce_dense_row_by_dense_new_pivots_ff_32  =
-          reduce_dense_row_by_dense_new_pivots_17_bit;
-      } else {
-          reduce_dense_row_by_all_pivots_ff_32 =
-            reduce_dense_row_by_all_pivots_31_bit;
-          reduce_dense_row_by_old_pivots_ff_32 =
-            reduce_dense_row_by_old_pivots_31_bit;
-          reduce_dense_row_by_known_pivots_sparse_ff_32 =
-            reduce_dense_row_by_known_pivots_sparse_31_bit;
-          reduce_dense_row_by_dense_new_pivots_ff_32  =
-            reduce_dense_row_by_dense_new_pivots_31_bit;
-      }
-      break;
-
-    default:
-      switch (st->laopt) {
-        case 1:
-          linear_algebra  = exact_sparse_dense_linear_algebra_ff_32;
-          break;
-        case 2:
-          linear_algebra  = exact_sparse_linear_algebra_ff_32;
-          break;
-        case 42:
-          linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_32;
-          break;
-        case 43:
-          linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_32_2;
-          break;
-        case 44:
-          linear_algebra  = probabilistic_sparse_linear_algebra_ff_32;
-          break;
-        default:
-          linear_algebra  = exact_sparse_linear_algebra_ff_32;
-      }
-      exact_linear_algebra    = exact_sparse_linear_algebra_ff_32;
-      interreduce_matrix_rows = interreduce_matrix_rows_ff_32;
-      normalize_initial_basis = normalize_initial_basis_ff_32;
-
-      /* if coeffs are smaller than 17 bit we can optimize reductions */
-      if (st->fc < (int32_t)(1) << 18) {
-        reduce_dense_row_by_all_pivots_ff_32 =
-          reduce_dense_row_by_all_pivots_17_bit;
-        reduce_dense_row_by_old_pivots_ff_32 =
-          reduce_dense_row_by_old_pivots_17_bit;
-        reduce_dense_row_by_known_pivots_sparse_ff_32 =
-          reduce_dense_row_by_known_pivots_sparse_17_bit;
-        reduce_dense_row_by_dense_new_pivots_ff_32  =
-          reduce_dense_row_by_dense_new_pivots_17_bit;
-      } else {
-          reduce_dense_row_by_all_pivots_ff_32 =
-            reduce_dense_row_by_all_pivots_31_bit;
-          reduce_dense_row_by_old_pivots_ff_32 =
-            reduce_dense_row_by_old_pivots_31_bit;
-          reduce_dense_row_by_known_pivots_sparse_ff_32 =
-            reduce_dense_row_by_known_pivots_sparse_31_bit;
-          reduce_dense_row_by_dense_new_pivots_ff_32  =
-            reduce_dense_row_by_dense_new_pivots_31_bit;
-      }
-  }
+    (void)st;
 }
 
 int32_t check_and_set_meta_data_trace(
@@ -1128,148 +1335,14 @@ static inline void reset_function_pointers(
         const uint32_t laopt
         )
 {
-    if (prime < (int32_t)(1) << 8) {
-        exact_linear_algebra    = exact_sparse_linear_algebra_ff_8;
-        interreduce_matrix_rows = interreduce_matrix_rows_ff_8;
-        normalize_initial_basis = normalize_initial_basis_ff_8;
-        switch (laopt) {
-          case 1:
-            linear_algebra  = exact_sparse_dense_linear_algebra_ff_8;
-            break;
-          case 2:
-            linear_algebra  = exact_sparse_linear_algebra_ff_8;
-            break;
-          case 42:
-            linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_8;
-            break;
-          case 43:
-            linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_8_2;
-            break;
-          case 44:
-            linear_algebra  = probabilistic_sparse_linear_algebra_ff_8;
-            break;
-          default:
-            linear_algebra  = exact_sparse_linear_algebra_ff_8;
-        }
-    } else {
-        if (prime < (int32_t)(1) << 16) {
-            exact_linear_algebra    = exact_sparse_linear_algebra_ff_16;
-            interreduce_matrix_rows = interreduce_matrix_rows_ff_16;
-            normalize_initial_basis = normalize_initial_basis_ff_16;
-            switch (laopt) {
-              case 1:
-                linear_algebra  = exact_sparse_dense_linear_algebra_ff_16;
-                break;
-              case 2:
-                linear_algebra  = exact_sparse_linear_algebra_ff_16;
-                break;
-              case 42:
-                linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_16;
-                break;
-              case 43:
-                linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_16_2;
-                break;
-              case 44:
-                linear_algebra  = probabilistic_sparse_linear_algebra_ff_16;
-                break;
-              default:
-                linear_algebra  = exact_sparse_linear_algebra_ff_16;
-            }
-        } else {
-            exact_linear_algebra    = exact_sparse_linear_algebra_ff_32;
-            interreduce_matrix_rows = interreduce_matrix_rows_ff_32;
-            normalize_initial_basis = normalize_initial_basis_ff_32;
-            switch (laopt) {
-              case 1:
-                linear_algebra  = exact_sparse_dense_linear_algebra_ff_32;
-                break;
-              case 2:
-                linear_algebra  = exact_sparse_linear_algebra_ff_32;
-                break;
-              case 42:
-                linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_32;
-                break;
-              case 43:
-                linear_algebra  = probabilistic_sparse_dense_linear_algebra_ff_32_2;
-                break;
-              case 44:
-                linear_algebra  = probabilistic_sparse_linear_algebra_ff_32;
-                break;
-              default:
-                linear_algebra  = exact_sparse_linear_algebra_ff_32;
-            }
-            if (prime < (int32_t)(1) << 18) {
-                reduce_dense_row_by_all_pivots_ff_32 =
-                    reduce_dense_row_by_all_pivots_17_bit;
-                reduce_dense_row_by_old_pivots_ff_32 =
-                    reduce_dense_row_by_old_pivots_17_bit;
-                reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                    reduce_dense_row_by_known_pivots_sparse_17_bit;
-                reduce_dense_row_by_dense_new_pivots_ff_32  =
-                    reduce_dense_row_by_dense_new_pivots_17_bit;
-            } else {
-                reduce_dense_row_by_all_pivots_ff_32 =
-                  reduce_dense_row_by_all_pivots_31_bit;
-                reduce_dense_row_by_old_pivots_ff_32 =
-                  reduce_dense_row_by_old_pivots_31_bit;
-                reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                  reduce_dense_row_by_known_pivots_sparse_31_bit;
-                reduce_dense_row_by_dense_new_pivots_ff_32  =
-                  reduce_dense_row_by_dense_new_pivots_31_bit;
-            }
-        }
-    }
-
+    (void)prime;
+    (void)laopt;
 }
 static inline void reset_trace_function_pointers(
         const uint32_t prime
         )
 {
-    if (prime < (int32_t)(1) << 8) {
-        exact_linear_algebra        = exact_sparse_linear_algebra_ff_8;
-        interreduce_matrix_rows     = interreduce_matrix_rows_ff_8;
-        normalize_initial_basis     = normalize_initial_basis_ff_8;
-        application_linear_algebra  = exact_application_sparse_linear_algebra_ff_8;
-        trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_8;
-    } else {
-        if (prime < (int32_t)(1) << 16) {
-            exact_linear_algebra        = exact_sparse_linear_algebra_ff_16;
-            interreduce_matrix_rows     = interreduce_matrix_rows_ff_16;
-            normalize_initial_basis     = normalize_initial_basis_ff_16;
-            application_linear_algebra  = exact_application_sparse_linear_algebra_ff_16;
-            trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_16;
-        } else {
-            exact_linear_algebra        = exact_sparse_linear_algebra_ff_32;
-            interreduce_matrix_rows     = interreduce_matrix_rows_ff_32;
-            normalize_initial_basis     = normalize_initial_basis_ff_32;
-            application_linear_algebra  = exact_application_sparse_linear_algebra_ff_32;
-            trace_linear_algebra        = exact_trace_sparse_linear_algebra_ff_32;
-            if (prime < (int32_t)(1) << 18) {
-                reduce_dense_row_by_all_pivots_ff_32 =
-                    reduce_dense_row_by_all_pivots_17_bit;
-                reduce_dense_row_by_old_pivots_ff_32 =
-                    reduce_dense_row_by_old_pivots_17_bit;
-                trace_reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                    trace_reduce_dense_row_by_known_pivots_sparse_17_bit;
-                reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                    reduce_dense_row_by_known_pivots_sparse_17_bit;
-                reduce_dense_row_by_dense_new_pivots_ff_32  =
-                    reduce_dense_row_by_dense_new_pivots_17_bit;
-            } else {
-                reduce_dense_row_by_all_pivots_ff_32 =
-                  reduce_dense_row_by_all_pivots_31_bit;
-                reduce_dense_row_by_old_pivots_ff_32 =
-                  reduce_dense_row_by_old_pivots_31_bit;
-                trace_reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                  trace_reduce_dense_row_by_known_pivots_sparse_31_bit;
-                reduce_dense_row_by_known_pivots_sparse_ff_32 =
-                  reduce_dense_row_by_known_pivots_sparse_31_bit;
-                reduce_dense_row_by_dense_new_pivots_ff_32  =
-                  reduce_dense_row_by_dense_new_pivots_31_bit;
-            }
-        }
-    }
-
+    (void)prime;
 }
 
 static void write_pbm_file(

@@ -2335,6 +2335,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
+  if (*dim_ptr == 0) {
+      *is0dim_ptr= 1;
+  }
   if (*dim_ptr > 0 && *is0dim_ptr == 1) {
       return 4;
   }
@@ -2404,7 +2407,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       return 0;
     }
     if (*dquot_ptr > 0) {
-      *is0dim_ptr= 1;
       if (success && *minpolydeg_ptr == (*nmod_params)->degsqfrelimpol) {
 	/* same degree as with a random linear form */
 	free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,

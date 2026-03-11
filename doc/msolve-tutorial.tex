@@ -306,7 +306,7 @@ colframe=white!40!black,coltext=white!25!black,colback=white
 \msolve~is a C library for solving multivariate polynomial systems of equations.
 It relies on computer algebra, a.k.a.\ symbolic computation, algorithms to
 compute \emph{algebraic} representations of the solution set from which
-many, if not all, informations can be extracted.
+many, if not all, information can be extracted.
 
 Solving polynomial systems with \msolve~is \emph{global} by contrast to
 \emph{local} numerical routines. The use of computer algebra methods allow also
@@ -326,7 +326,7 @@ library (handling arithmetics of univariate polynomials).
 \begin{center}
   \url{https://msolve.lip6.fr}
 \end{center}
-where binaries (for \texttt{x86} processors runing Linux operating systems) and
+where binaries (for \texttt{x86} processors running Linux operating systems) and
 source files are provided.
 
 \msolve~is designed for $64$ bit architectures, with \texttt{AVX2} instructions.
@@ -374,7 +374,7 @@ zero. Finally, \cref{sec:flags} summarizes some options which can be used.
 The \msolve library is described in \cite{msolve} with implementation details on
 the algorithms used therein. All computations performed over the rational numbers
 (e.g. for computing real roots) are based on multi-modular computations with a
-probabilistic stopping criterion. Unless explicitely requested by the user (see the
+probabilistic stopping criterion. Unless explicitly requested by the user (see the
 \verb+-l+ flag in \cref{sec:flags}), all computations of Gr\"obner bases
 in prime fields use deterministic
 algorithms. Change of order algorithms which are used are deterministic
@@ -413,7 +413,7 @@ Hence the structure of input files to \msolve is as follows:
 
 In each given polynomial, \msolve expects a single occurrence of each monomial;
 if some monomial appears several times (e.g.\ as in \verb#x+2*y+2*z-x#),
-the behaviour of \msolve's parser is undefined.
+the behavior of \msolve's parser is undefined.
 
 When one wants to solve this system over $\frac{\Z}{65521\Z}$ one just replaces
 $0$ by $65521$ in the second line. Note that in the positive characteristic case
@@ -423,7 +423,7 @@ the coefficients used should be smaller or equal to $2^{31}-1$.
 
 \section{Computing the dimension}\label{sec:dim}
 
-To make things explicit on the behaviour of \msolve when the input system
+To make things explicit on the behavior of \msolve when the input system
 does not have finitely many complex solutions, let us consider first the example
 below.
 \msolveinput{examples/empty_char0.ms}
@@ -597,7 +597,7 @@ contain pure powers of all variables. The degree of the ideal is also $8$ since
 there are $8$ monomials in $z_1, z_2, z_3$ which are not divisible by the above
 leading monomials.
 
-\msolve also allows you to perform Gröbner bases computations using
+\msolve also allows you to perform Gr\"obner bases computations using
 \emph{one-block elimination monomial order}
 thanks to the \verb+-e+ flag. The following command
 \begin{tcolorbox} % examples/elim_char1073741827.sh
@@ -607,7 +607,7 @@ thanks to the \verb+-e+ flag. The following command
 \end{tcolorbox}
 on
 \msolveinput{examples/elim_char1073741827.ms}
-will perform the Gröbner basis computation eliminating the first
+will perform the Gr\"obner basis computation eliminating the first
 variable.
 The output is
 \begin{tcolorbox}
@@ -631,11 +631,11 @@ The output is
 where we see that the first $6$ polynomials are only in $w,x,y,z$,
 which corresponds to the elimination of the variable $t$. When the input
 coefficients lie in the field of rational numbers (hence, characteristic $0$),
-the returned Gröbner basis is the one of the {\em elimination ideal}, i.e. they
+the returned Gr\"obner basis is the one of the {\em elimination ideal}, i.e. they
 have partial degree $0$ in the variables to eliminate.
 
 More generally, using \verb+-e k+ will eliminate the $k$ first
-variables. Thus
+variables. Thus,
 \begin{tcolorbox} % examples/elim2_char1073741827.sh
   \begin{verbatim}
     ./msolve -e 2 -g 2 -f in.ms -o out.ms
@@ -885,7 +885,7 @@ polynomials $h$, such that
 $h \varphi\in\langle f_1,\ldots,f_m\rangle$.
 
 A Gr\"obner basis for the \emph{grevlex order} can be computed in the
-former case with an input file containg $f_1,\ldots,f_m,\varphi$ and
+former case with an input file containing $f_1,\ldots,f_m,\varphi$ and
 called with the flag \verb+-S+ to use the F4SAT algorithm. Note that this option
 is at the moment restricted to 32 bit prime fields.
 
@@ -1120,7 +1120,7 @@ will display in the \verb+out.ms+ file the following content.
   rational parametrization computed for solving zero-dimensional polynomial
   systems (those with finitely many solutions in an algebraic closure of the base field).
   When \verb+-P 0+ is set, such a parametrization is not returned, when \verb+-P 1+ is
-  set, the parametrization is returned and, in the charactersitic zero case (rational
+  set, the parametrization is returned and, in the characteristic zero case (rational
   coefficients), real solutions are returned, when \verb+-P 2+ is set, only the
   rational parametrization is returned.
   
@@ -1150,7 +1150,7 @@ will display in the \verb+out.ms+ file the following content.
 \item The flag \verb+--random-seed <int>+ tells \msolve which seed must be used
   to initialize the pseudo-random generator: \verb+-1+ means that
   \verb+time(0)+ is used so that the seed is based on current time,
-  otherwise, for any nonnegetive integer \verb+N+, \verb+N+ will be the seed. The
+  otherwise, for any nonnegative integer \verb+N+, \verb+N+ will be the seed. The
   latter option is for debug purpose only as the lack of randomization
   can lead to failures on some input.
 
@@ -1175,11 +1175,11 @@ where
 The most common options for calling \texttt{msolve()} in Julia are:
 \begin{itemize}
     \item \texttt{info\_level} with values \texttt{0} (no information printing;
-        default), \texttt{1} (slight information printing on comptutational
+        default), \texttt{1} (slight information printing on computational
         status) or \texttt{2} (full information printing also on intermediate
         steps),
     \item \texttt{la\_option} for the linear algebra variant to be chosen inside
-        F4: \texttt{2} for exact linear algebra and tracing multi modular
+        F4: \texttt{2} for exact linear algebra and tracing multi-modular
         computations (default) or \texttt{44} for probabilistic linear algebra
         with independent modular computations;
     \item \texttt{precision} for the bit precision with which the solutions are

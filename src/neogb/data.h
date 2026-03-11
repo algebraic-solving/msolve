@@ -130,6 +130,7 @@ struct ht_t
     len_t ebl;    /* elimination block length:
                    * degree + #elimination variables,
                    * 0 if no elimination order */
+    int32_t mo;   /* monomial ordering: 0=DRL, 1=LEX */
     len_t nv;     /* number of variables */
     len_t evl;    /* real length of exponent vector,
                    * includes degree (or two degrees

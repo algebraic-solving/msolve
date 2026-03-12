@@ -2110,6 +2110,7 @@ int is_member(uint32_t fc, primes_t *init_primes){
 
   - returns 4 if probabilistic F4 yields dim > 0 while it is
   known to satisfy dim = 0
+  or returns dim = 0 with wrong dquot
 
   - returns -2 if charac > 0
 
@@ -2335,10 +2336,16 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
-  if (*dim_ptr == 0) {
-      *is0dim_ptr= 1;
-  }
-  if (*dim_ptr > 0 && *is0dim_ptr == 1) {
+
+  if (*is0dim_ptr == -1) {
+      if (*dim_ptr == 0) {
+          /* first run, detects that the ideal is 0-dim
+             and save its degree */
+          *is0dim_ptr= *dquot_ptr;
+      }
+  } else if (*dim_ptr > 0 || *is0dim_ptr != *dquot_ptr) {
+      /* another run, detects that the ideal is positive-dimensional
+         or has the wrong degree */
       return 4;
   }
   if (gens->field_char == 0 && gens->rand_linear) {
@@ -3965,7 +3972,7 @@ int core_msolve(
        when over Q */
     int minpolydeg = -1;
     int oldminpolydeg = -1;
-    int is0dim = 0;
+    int is0dim = -1;
 
 restart:
 
@@ -5284,11 +5291,12 @@ restart:
 		}
 	    }
         if (b == 4){
-            /* Probabilistic linear algebra yields a positive-dimensional
-               Groebner basis but we have already computed that the dimension
-               is 0, restart with the same linear form */
+            /* Probabilistic linear algebra yields a
+               Groebner basis of a positive-dimensional ideal
+               or of a 0-dimensional ideal of wrong degree,
+               restart with the same linear form */
             if (info_level > 0) {
-                fprintf (stdout, "\nThe Groebner basis is not 0-dimensional\n");
+                fprintf (stdout, "\nWrong dimension or degree\n");
                 fprintf (stdout, "Restarting with the same linear form\n");
             }
             goto restart;

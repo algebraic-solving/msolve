@@ -1703,9 +1703,9 @@ static int32_t *initial_modular_step(
                                                    md->info_level, bdata_fglm,
                                                    bdata_bms, success, md);
             if((*bparam)->elim->length - 1 != dquot){
-                int32_t info_level= md->info_level;
-                /* do not print anything for this rerun */
-                md->info_level= 0;
+                /* reset times for change of order */
+                md->fglm_ctime = cputime();
+                md->fglm_rtime = realtime();
                 param_t **test_nmod_param =
                     (param_t **)malloc(sizeof(param_t *));
                 *test_nmod_param = nmod_fglm_compute_trace_data(
@@ -1714,12 +1714,19 @@ static int32_t *initial_modular_step(
                                       squvars,
                                       0, bdata_fglm, bdata_bms, success, md);
                 int boo = equal_param(*bparam, *test_nmod_param);
-                /* reset info_level to its previous status */
-                md->info_level= info_level;
-                if(boo == 0){
-                    *success = 0;
+                if ((*test_nmod_param)->degelimpol == dquot) {
+                    /* shape position
+                       replace with the new parametrizations
+                       necessarily correct */
+                    free_fglm_param(bparam[0]);
+                    *bparam = *test_nmod_param;
+                } else {
+                    if(boo == 0) {
+                        /* both parametrizations might be incorrect */
+                        *success = 0;
+                    }
+                    free_fglm_param(test_nmod_param[0]);
                 }
-                free_fglm_param(test_nmod_param[0]);
                 free(test_nmod_param);
             }
         }

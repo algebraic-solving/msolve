@@ -55,7 +55,12 @@ static long long int index_linearinterp(mpz_t *vala, mpz_t *valb, mpz_t *q,
     }
     return -1;
   }
+#if ULONG_MAX == ULLONG_MAX
   long long int index = mpz_get_ui(*q);
+#else
+  long long int index = 0;
+  mpz_export(&index, NULL, 1, sizeof(index), 0, 0, *q);
+#endif
   return index;
 }
 
@@ -305,8 +310,17 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
   mpz_mul_2exp(rt->numer, rt->numer, Nlog);
 
   if(index >= 0){
+#if ULONG_MAX == ULLONG_MAX
     getx_and_eval_2exp(upol, *deg_ptr, &(rt->numer),x, vala, q,
                        newk, index);
+#else
+    mpz_t index_tmp;
+    mpz_init(index_tmp);
+    mpz_import(index_tmp, 1, 1, sizeof(index), 0, 0, &index);
+    getx_and_eval_2exp_mpzidx(upol, *deg_ptr, &(rt->numer), x, vala, q,
+                              newk, &index_tmp);
+    mpz_clear(index_tmp);
+#endif
   }
   else{
     getx_and_eval_2exp_mpzidx(upol, *deg_ptr, &(rt->numer), x, vala, q,
@@ -446,8 +460,17 @@ static void refine_root_by_N_negative_k(mpz_t *upol, unsigned long int *deg_ptr,
   }
 
   if(index >= 0){
+#if ULONG_MAX == ULLONG_MAX
     getx_and_eval(upol, *deg_ptr, &(rt->numer), x, vala, q,
                   Nlog, k, index);
+#else
+    mpz_t index_tmp;
+    mpz_init(index_tmp);
+    mpz_import(index_tmp, 1, 1, sizeof(index), 0, 0, &index);
+    getx_and_eval_mpzidx(upol, *deg_ptr, &(rt->numer),x, vala, q,
+                         Nlog, k, &index_tmp);
+    mpz_clear(index_tmp);
+#endif
   }
   else{
     getx_and_eval_mpzidx(upol, *deg_ptr, &(rt->numer),x, vala, q,

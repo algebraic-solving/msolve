@@ -40,7 +40,7 @@
 
 // parameters for splitting
 #define __DOT_SPLIT_BITS 56
-#define __DOT_SPLIT_MASK 72057594037927935UL // (1UL << __DOT_SPLIT_BITS) - 1
+#define __DOT_SPLIT_MASK UINT64_C(72057594037927935) // (UINT64_C(1) << __DOT_SPLIT_BITS) - 1
 
 /*--------------------------------------*/
 /* non-vectorized matrix vector product */

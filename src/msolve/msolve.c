@@ -2110,7 +2110,7 @@ int is_member(uint32_t fc, primes_t *init_primes){
 
   - returns 4 if probabilistic F4 yields dim > 0 while it is
   known to satisfy dim = 0
-  or returns dim = 0 with wrong dquot
+  or returns dim = 0 with a wrong (too large) degree
 
   - returns -2 if charac > 0
 
@@ -2343,9 +2343,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
              and save its degree */
           *is0dim_ptr= *dquot_ptr;
       }
-  } else if (*dim_ptr > 0 || *is0dim_ptr != *dquot_ptr) {
+  } else if (*dim_ptr > 0 || *is0dim_ptr < *dquot_ptr) {
       /* another run, detects that the ideal is positive-dimensional
-         or has the wrong degree */
+         or has a wrong degree, too large */
       return 4;
   }
   if (gens->field_char == 0 && gens->rand_linear) {

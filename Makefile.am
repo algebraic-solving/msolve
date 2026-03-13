@@ -53,6 +53,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_nonradical-radicalshape-no-square-31.sh \
 			  test/diff/diff_nonradical-radicalshape-no-square-qq.sh \
 			  test/diff/diff_nonradical-radicalshape-qq.sh \
+			  test/diff/diff_nonradical-shape-31.sh \
 			  test/diff/diff_nonradical-shape-qq.sh \
 			  test/diff/diff_one-16.sh \
 			  test/diff/diff_one-31.sh \

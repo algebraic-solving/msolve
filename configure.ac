@@ -246,7 +246,8 @@ AC_CONFIG_LINKS([
  output_files/nonradical-radicalshape-qq.P1.d0.p1024.res:output_files/nonradical-radicalshape-qq.P1.d0.p1024.res
  test/diff/diff_nonradical-radicalshape-qq.sh:test/diff/diff_nonradical-radicalshape-qq.sh
  input_files/nonradical-shape-31.ms:input_files/nonradical-shape-31.ms
- output_files/nonradical-shape-31.res:output_files/nonradical-shape-31.res
+ output_files/nonradical-shape-31.P2.d0.res:output_files/nonradical-shape-31.P2.d0.res
+ test/diff/diff_nonradical-shape-31.sh:test/diff/diff_nonradical-shape-31.sh
  input_files/nonradical-shape-qq.ms:input_files/nonradical-shape-qq.ms
  output_files/nonradical-shape-qq.P1.d0.p128.res:output_files/nonradical-shape-qq.P1.d0.p128.res
  output_files/nonradical-shape-qq.P1.d0.p1024.res:output_files/nonradical-shape-qq.P1.d0.p1024.res

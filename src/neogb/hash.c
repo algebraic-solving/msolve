@@ -53,6 +53,7 @@ ht_t *initialize_basis_hash_table(
 
     ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
     ht->nv    = nv;
+    ht->mo    = st->mo;
     /* generate map */
     ht->bpv = (len_t)((CHAR_BIT * sizeof(sdm_t)) / (unsigned long)nv);
     if (ht->bpv == 0) {
@@ -136,6 +137,7 @@ ht_t *copy_hash_table(
     ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
 
     ht->nv    = bht->nv;
+    ht->mo    = bht->mo;
     ht->evl   = bht->evl;
     ht->ebl   = bht->ebl;
     ht->hsz   = bht->hsz;
@@ -187,6 +189,7 @@ ht_t *initialize_secondary_hash_table(
 
     ht_t *ht  = (ht_t *)malloc(sizeof(ht_t)); 
     ht->nv    = bht->nv;
+    ht->mo    = bht->mo;
     ht->evl   = bht->evl;
     ht->ebl   = bht->ebl;
 

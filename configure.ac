@@ -299,5 +299,10 @@ AC_CONFIG_LINKS([
  input_files/xy-qq.ms:input_files/xy-qq.ms
  output_files/xy-qq.P2.d0.res:output_files/xy-qq.P2.d0.res
  test/diff/diff_xy-qq.sh:test/diff/diff_xy-qq.sh
+ input_files/x2y2-qq.ms:input_files/x2y2-qq.ms
+ output_files/x2y2-qq.P2.d0.res:output_files/x2y2-qq.P2.d0.res
+ output_files/x2y2-qq.p128.res:output_files/x2y2-qq.p128.res
+ output_files/x2y2-qq.p1024.res:output_files/x2y2-qq.p1024.res
+ test/diff/diff_x2y2-qq.sh:test/diff/diff_x2y2-qq.sh
 ])
 AC_OUTPUT

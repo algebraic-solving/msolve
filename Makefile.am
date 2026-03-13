@@ -16,7 +16,6 @@ check_PROGRAMS		= neogb_io \
 checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_bug-68.sh \
 			  test/diff/diff_bug-empty-tracer.sh \
-			  test/diff/diff_choice-linear-form-qq.sh \
 			  test/diff/diff_cp-d3-n4-p2.sh \
 			  test/diff/diff_cyclic5-16.sh \
 			  test/diff/diff_cyclic5-31.sh \
@@ -67,7 +66,8 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_reals-dim0.sh \
 			  test/diff/diff_reals-dim0-swapvar.sh \
 			  test/diff/diff_test-lifting2.sh \
-			  test/diff/diff_xy-qq.sh
+			  test/diff/diff_xy-qq.sh \
+			  test/diff/diff_x2y2-qq.sh
 
 # dist_check_DATA         = test/input_files
 neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c

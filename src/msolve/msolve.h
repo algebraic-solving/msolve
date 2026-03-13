@@ -32,7 +32,8 @@ int msolve_trace_qq(
         param_t **nmod_param,
         int *dim_ptr,
         long *dquot_ptr,
-	int *minpolydeg_ptr,
+        int *minpolydeg_ptr,
+        int *is0dim_ptr,
         data_gens_ff_t *gens,
         int32_t ht_size,
         int32_t unstable_staircase,
@@ -44,7 +45,7 @@ int msolve_trace_qq(
         int32_t use_signatures,
         int32_t lift_matrix,
         int *to_split_ptr,
-        primes_t **binit_primes, 
+        primes_t **binit_primes,
         int32_t info_level,
         int32_t print_gb,
         int32_t pbm_file,
@@ -99,6 +100,7 @@ int real_msolve_qq(
         int *dim_ptr,
         long *dquot_ptr,
         int *minpolydeg_ptr,
+        int *is0dim_ptr,
         long *nb_real_roots_ptr,
         interval **real_roots_ptr,
         real_point_t **real_pts_ptr,
@@ -225,7 +227,7 @@ int64_t export_groebner_qq(
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t truncate_lifting,
-        const int32_t info_level 
+        const int32_t info_level
         );
 
 // Utility functions to init and deinit data structures

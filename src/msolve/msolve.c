@@ -1590,59 +1590,61 @@ static int equal_param(param_t *param, param_t *test_param){
 }
 
 static int32_t *initial_modular_step(
-        sp_matfglm_t **bmatrix,
-        int32_t **bdiv_xn,
-        int32_t **blen_gb_xn,
-        int32_t **bstart_cf_gb_xn,
-	long **bextra_nf,
-	int32_t **blens_extra_nf,
-	int32_t **bexps_extra_nf,
-	int32_t **bcfs_extra_nf,
+                                     sp_matfglm_t **bmatrix,
+                                     int32_t **bdiv_xn,
+                                     int32_t **blen_gb_xn,
+                                     int32_t **bstart_cf_gb_xn,
+                                     long **bextra_nf,
+                                     int32_t **blens_extra_nf,
+                                     int32_t **bexps_extra_nf,
+                                     int32_t **bcfs_extra_nf,
 
-	nvars_t *nlins_ptr, nvars_t *linvars,
-	uint32_t **lineqs_ptr, nvars_t *squvars,
+                                     nvars_t *nlins_ptr, nvars_t *linvars,
+                                     uint32_t **lineqs_ptr, nvars_t *squvars,
 
-	fglm_data_t **bdata_fglm, fglm_bms_data_t **bdata_bms,
-        int32_t *num_gb,
-        int32_t **leadmons,
-        uint64_t *bsz,
-        param_t **bparam,
-        bs_t *gbg,
-        md_t *md,
-        const uint32_t fc,
-    	const int32_t unstable_staircase,
-        int print_gb,
-        int *dim,
-        long *dquot_ori,
-	int *minpolydeg_ori,
-        data_gens_ff_t *gens,
-        files_gb *files,
-        int *success)
+                                     fglm_data_t **bdata_fglm,
+                                     fglm_bms_data_t **bdata_bms,
+                                     int32_t *num_gb,
+                                     int32_t **leadmons,
+                                     uint64_t *bsz,
+                                     param_t **bparam,
+                                     bs_t *gbg,
+                                     md_t *md,
+                                     const uint32_t fc,
+                                     const int32_t unstable_staircase,
+                                     int print_gb,
+                                     int *dim,
+                                     long *dquot_ori,
+                                     int *minpolydeg_ori,
+                                     data_gens_ff_t *gens,
+                                     files_gb *files,
+                                     int *success)
 {
-  double rt = realtime();
+    double rt = realtime();
 
-  md->print_gb = print_gb;
-  md->f4_qq_round = 1;
+    md->print_gb = print_gb;
+    md->f4_qq_round = 1;
 
-  int32_t error = 0;
-  int32_t empty_solution_set = 1;
-  bs_t *bs = core_gba(gbg, md, &error, fc);
+    int32_t error = 0;
+    int32_t empty_solution_set = 1;
+    bs_t *bs = core_gba(gbg, md, &error, fc);
 
-  md->learning_rtime = realtime()-rt;
-  print_tracer_statistics(stdout, rt, md);
+    md->learning_rtime = realtime()-rt;
+    print_tracer_statistics(stdout, rt, md);
 
-  get_leading_ideal_information(num_gb, leadmons, 0, bs);
+    get_leading_ideal_information(num_gb, leadmons, 0, bs);
 
-  print_groebner_basis(files, gens, bs, md, fc);
+    print_groebner_basis(files, gens, bs, md, fc);
 
-  empty_solution_set = check_for_single_element_groebner_basis(
-      dim, dquot_ori, bs, leadmons, 0, md);
+    empty_solution_set = check_for_single_element_groebner_basis(dim, dquot_ori,
+                                                                 bs, leadmons, 0,
+                                                                 md);
 
-  if (empty_solution_set == 1) {
-    free_basis_without_hash_table(&(bs));
-    free(bs);
-    return NULL;
-  }
+    if (empty_solution_set == 1) {
+        free_basis_without_hash_table(&(bs));
+        free(bs);
+        return NULL;
+    }
 
 
     check_and_set_linear_poly(nlins_ptr, linvars, lineqs_ptr, bs->ht,
@@ -1655,61 +1657,77 @@ static int32_t *initial_modular_step(
         /*     fprintf(stderr, "Dimension of quotient: %ld\n", dquot); */
         /* } */
         if(print_gb==0){
-	    /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
-	    /* 					 blen_gb_xn, */
-	    /* 					 bstart_cf_gb_xn, */
-	    /* 					 lmb, dquot, bs, bs->ht, */
-	    /* 					 leadmons[0], bs->ht->nv, */
-	    /* 					 fc, */
-	    /* 					 md->info_level); */
-	    md->fglm_rtime = realtime();
-	    md->fglm_ctime = cputime();
-	    print_fglm_header (stdout,md);
-	    *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
-							    blen_gb_xn,
-							    bstart_cf_gb_xn,
-							    bextra_nf,
-							    blens_extra_nf,
-							    bexps_extra_nf,
-							    bcfs_extra_nf,
-							    lmb, dquot, bs, bs->ht,
-							    leadmons[0], md,
-							    bs->ht->nv,
-							    fc, unstable_staircase,
-							    md->info_level,
-                                files);
+            /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
+            /* 					 blen_gb_xn, */
+            /* 					 bstart_cf_gb_xn, */
+            /* 					 lmb, dquot, bs, bs->ht, */
+            /* 					 leadmons[0], bs->ht->nv, */
+            /* 					 fc, */
+            /* 					 md->info_level); */
+            md->fglm_rtime = realtime();
+            md->fglm_ctime = cputime();
+            print_fglm_header (stdout,md);
+            *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
+                                                            blen_gb_xn,
+                                                            bstart_cf_gb_xn,
+                                                            bextra_nf,
+                                                            blens_extra_nf,
+                                                            bexps_extra_nf,
+                                                            bcfs_extra_nf,
+                                                            lmb, dquot, bs, bs->ht,
+                                                            leadmons[0], md,
+                                                            bs->ht->nv,
+                                                            fc, unstable_staircase,
+                                                            md->info_level,
+                                                            files);
 
-	    if(*bmatrix == NULL){
-	      *success = 0;
-	      *dim = 0;
-	      *dquot_ori = dquot;
-	      if(md->info_level > 1){
-		fprintf (stdout,"------------------------------------------------------------------------------------------------------\n");
-	      }
-	      free_basis_without_hash_table(&(bs));
-	      free(bs);
-	      return NULL;
+            if(*bmatrix == NULL){
+                *success = 0;
+                *dim = 0;
+                *dquot_ori = dquot;
+                if(md->info_level > 1){
+                    fprintf (stdout,"------------------------------------------------------------------------------------------------------\n");
+                }
+                free_basis_without_hash_table(&(bs));
+                free(bs);
+                return NULL;
             }
 
             *bsz = bs->ht->nv - (*nlins_ptr); //nlins ;
 
             check_and_set_vars_squared_in_monomial_basis(squvars, lmb,
-                    dquot, gens->nvars);
+                                                         dquot, gens->nvars);
             *bparam = nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
-                    *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
-                    md->info_level, bdata_fglm, bdata_bms, success, md);
+                                                   *bsz, *nlins_ptr, linvars,
+                                                   lineqs_ptr[0], squvars,
+                                                   md->info_level, bdata_fglm,
+                                                   bdata_bms, success, md);
             if((*bparam)->elim->length - 1 != dquot){
-              param_t **test_nmod_param =
+                /* reset times for change of order */
+                md->fglm_ctime = cputime();
+                md->fglm_rtime = realtime();
+                param_t **test_nmod_param =
                     (param_t **)malloc(sizeof(param_t *));
-              *test_nmod_param = nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
-                      *bsz, *nlins_ptr, linvars, lineqs_ptr[0], squvars,
-                      0, bdata_fglm, bdata_bms, success, md);
-              int boo = equal_param(*bparam, *test_nmod_param);
-              if(boo == 0){
-                *success = 0;
-              }
-              free_fglm_param(test_nmod_param[0]);
-              free(test_nmod_param);
+                *test_nmod_param = nmod_fglm_compute_trace_data(
+                                      *bmatrix, fc, bs->ht->nv,
+                                      *bsz, *nlins_ptr, linvars, lineqs_ptr[0],
+                                      squvars,
+                                      0, bdata_fglm, bdata_bms, success, md);
+                int boo = equal_param(*bparam, *test_nmod_param);
+                if ((*test_nmod_param)->degelimpol == dquot) {
+                    /* shape position
+                       replace with the new parametrizations
+                       necessarily correct */
+                    free_fglm_param(bparam[0]);
+                    *bparam = *test_nmod_param;
+                } else {
+                    if(boo == 0) {
+                        /* both parametrizations might be incorrect */
+                        *success = 0;
+                    }
+                    free_fglm_param(test_nmod_param[0]);
+                }
+                free(test_nmod_param);
             }
         }
         *dim = 0;
@@ -2093,8 +2111,13 @@ int is_member(uint32_t fc, primes_t *init_primes){
 
   - returns 2 if requires more genericity.
   => (all the squares are not under the staircase)
+
   - returns 3 if computation with a random linear form succeeded
   => charac 0 + requires a non random linear form now
+
+  - returns 4 if probabilistic F4 yields dim > 0 while it is
+  known to satisfy dim = 0
+  or returns dim = 0 with a wrong (too large) degree
 
   - returns -2 if charac > 0
 
@@ -2107,7 +2130,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     param_t **nmod_param,
                     int *dim_ptr,
                     long *dquot_ptr,
-		    int *minpolydeg_ptr,
+                    int *minpolydeg_ptr,
+                    int *is0dim_ptr,
                     data_gens_ff_t *gens,
                     int32_t ht_size, //initial_hts,
                     int32_t unstable_staircase,
@@ -2319,6 +2343,18 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 					  files,
 					  &success);
 
+
+  if (*is0dim_ptr == -1) {
+      if (*dim_ptr == 0) {
+          /* first run, detects that the ideal is 0-dim
+             and save its degree */
+          *is0dim_ptr= *dquot_ptr;
+      }
+  } else if (*dim_ptr > 0 || *is0dim_ptr < *dquot_ptr) {
+      /* another run, detects that the ideal is positive-dimensional
+         or has a wrong degree, too large */
+      return 4;
+  }
   if (gens->field_char == 0 && gens->rand_linear) {
     *minpolydeg_ptr = (*nmod_params)->degsqfrelimpol;
     return 3;
@@ -3668,11 +3704,12 @@ void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
 }
 
 int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
-                   long *dquot_ptr, int *minpolydeg_ptr, long *nb_real_roots_ptr,
+                   long *dquot_ptr, int *minpolydeg_ptr, int* is0dim_ptr,
+                   long *nb_real_roots_ptr,
                    interval **real_roots_ptr, real_point_t **real_pts_ptr,
                    data_gens_ff_t *gens,
                    int32_t ht_size, //initial_hts,
-		   int32_t unstable_staircase,
+                   int32_t unstable_staircase,
                    int32_t nr_threads,
                    int32_t max_nr_pairs,
                    int32_t elim_block_len,
@@ -3706,7 +3743,8 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           nmod_param,
                           dim_ptr,
                           dquot_ptr,
-			  minpolydeg_ptr,
+                          minpolydeg_ptr,
+                          is0dim_ptr,
                           gens,
                           ht_size, //initial_hts,
 			              unstable_staircase,
@@ -3941,6 +3979,7 @@ int core_msolve(
        when over Q */
     int minpolydeg = -1;
     int oldminpolydeg = -1;
+    int is0dim = -1;
 
 restart:
 
@@ -4424,7 +4463,8 @@ restart:
                        paramp,
                        &dim,
                        &dquot,
-		       &minpolydeg,
+                       &minpolydeg,
+                       &is0dim,
                        nb_real_roots_ptr,
                        real_roots_ptr,
                        real_pts_ptr,
@@ -5100,7 +5140,8 @@ restart:
                     &param,
                     &dim,
                     &dquot,
-		    &minpolydeg,
+                    &minpolydeg,
+                    &is0dim,
                     nb_real_roots_ptr,
                     real_roots_ptr,
                     real_pts_ptr,
@@ -5256,6 +5297,17 @@ restart:
 		  }
 		}
 	    }
+        if (b == 4){
+            /* Probabilistic linear algebra yields a
+               Groebner basis of a positive-dimensional ideal
+               or of a 0-dimensional ideal of wrong degree,
+               restart with the same linear form */
+            if (info_level > 0) {
+                fprintf (stdout, "\nWrong dimension or degree\n");
+                fprintf (stdout, "Restarting with the same linear form\n");
+            }
+            goto restart;
+        }
         }
 
         free(bld);

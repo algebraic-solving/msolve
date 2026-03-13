@@ -607,12 +607,17 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
 
   szmat_t nb = 2 * matxn->ncols / BL;
   for(szmat_t i = 0; i < nb; i++){
+#ifdef HAVE_AVX2
     sparse_matfglm_mul(res, matxn, Rmat,
                        tres,
                        BL,
                        prime, preinv,
                        RED_32,
                        RED_64);
+#else
+    fprintf(stderr, "Not implemented yet\n");
+    exit(1);
+#endif
   }
   free(Rmat);
   free(res);

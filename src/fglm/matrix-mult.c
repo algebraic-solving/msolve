@@ -266,6 +266,8 @@ void _mod_mat_addmul_transpose_op(uint32_t *D,
 }
 #endif
 
+/* not yet implemented for non-AVX machine */
+#ifdef HAVE_AVX2
 static inline void sparse_matfglm_mul(CF_t *res, sp_matfglm_t *matxn, CF_t *R,
                                       CF_t *tres,
                                       const int nc,
@@ -283,17 +285,11 @@ static inline void sparse_matfglm_mul(CF_t *res, sp_matfglm_t *matxn, CF_t *R,
     }
   }
 
-
   /* real product */
-#ifdef HAVE_AVX2
   _mod_mat_addmul_transpose_op(tres, matxn->dense_mat, R,
                                matxn->nrows, matxn->ncols, nc,
                                prime, preinv,
                                RED_32, RED_64);
-#else
-  fprintf(stderr, "Not implemented yet\n");
-  exit(1);
-#endif
 
   for(szmat_t j = 0; j < nrows; j++){
     for(int i = 0; i < nc; i++){
@@ -302,3 +298,4 @@ static inline void sparse_matfglm_mul(CF_t *res, sp_matfglm_t *matxn, CF_t *R,
     }
   }
 }
+#endif

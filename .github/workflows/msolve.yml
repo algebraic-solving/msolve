@@ -36,7 +36,8 @@ jobs:
                if [ "$RUNNER_OS" == "Linux" ]; then
                     ./configure
                elif [ "$RUNNER_OS" == "macOS" ]; then
-                    ./configure LDFLAGS="-L$(brew --prefix)/lib/" CFLAGS="-g -O2 -I$(brew --prefix)/include/"
+                    ./configure LDFLAGS="-L$(brew --prefix)/lib/" \
+                    CFLAGS="-g -O2 -I$(brew --prefix)/include/"
                else
                     echo "$RUNNER_OS not supported"
                     exit 1
@@ -53,7 +54,8 @@ jobs:
                if [ "$RUNNER_OS" == "Linux" ]; then
                     make distcheck
                elif [ "$RUNNER_OS" == "macOS" ]; then
-                    make distcheck LDFLAGS="-L$(brew --prefix)/lib/" CFLAGS="-g -O2 -I$(brew --prefix)/include/"
+                    make distcheck LDFLAGS="-L$(brew --prefix)/lib/" \
+                    CFLAGS="-g -O2 -I$(brew --prefix)/include/"
                else
                     echo "$RUNNER_OS not supported"
                     exit 1
@@ -61,6 +63,65 @@ jobs:
       - name: show test-suite.log if test failed
         if: failure()
         run: cat test-suite.log || true
+
+  build-fixed-seed:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: "Install dependencies"
+        run: |
+               if [ "$RUNNER_OS" == "Linux" ]; then
+                    # sharutils is for uudecode
+                    sudo apt install libgmp-dev libflint-dev libmpfr-dev libntl-dev
+               elif [ "$RUNNER_OS" == "macOS" ]; then
+                    brew install autoconf automake libtool gmp flint mpfr ntl
+               else
+                    echo "$RUNNER_OS not supported"
+                    exit 1
+               fi
+      - name: autogen
+        run: ./autogen.sh
+      - name: configure
+        run: |
+               if [ "$RUNNER_OS" == "Linux" ]; then
+                    ./configure
+               elif [ "$RUNNER_OS" == "macOS" ]; then
+                    ./configure LDFLAGS="-L$(brew --prefix)/lib/" \
+                    CFLAGS="-g -O2 -I$(brew --prefix)/include/"
+               else
+                    echo "$RUNNER_OS not supported"
+                    exit 1
+               fi
+      - name: make
+        run: make
+      - name: make check with fixed seed
+        run: SEED=1617753600 make check
+      - name: show test-suite.log if test failed
+        if: failure()
+        run: cat test-suite.log || true
+      - name: make distcheck with fixed seed
+        run: |
+               if [ "$RUNNER_OS" == "Linux" ]; then
+                    make distcheck DISTCHECK_CONFIGURE_FLAGS="SEED=1617753600"
+               elif [ "$RUNNER_OS" == "macOS" ]; then
+                    make distcheck LDFLAGS="-L$(brew --prefix)/lib/" \
+                    CFLAGS="-g -O2 -I$(brew --prefix)/include/" \
+                    DISTCHECK_CONFIGURE_FLAGS="SEED=1617753600"
+               else
+                    echo "$RUNNER_OS not supported"
+                    exit 1
+               fi
+      - name: show test-suite.log if test failed
+        if: failure()
+        run: cat test-suite.log || true
+
 
   flintdev-assert-ntl:
     name: FLINT git version, compiled with assert and NTL
@@ -85,6 +146,33 @@ jobs:
       - name: "Build and Test msolve"
         run: |
           ./autogen.sh && ./configure && $MAKE && make check
+      - name: show test-suite.log if test failed
+        if: failure()
+        run: cat test-suite.log || true
+
+  flintdev-assert-ntl-fixed-seed:
+    name: FLINT git version, compiled with assert and NTL, make check with fixed seed
+    runs-on: ubuntu-latest
+    env:
+      CC: "gcc"
+    steps:
+      - uses: actions/checkout@v6
+      - name: "Setup"
+        run: |
+          sudo apt-get install -y libgmp-dev libmpfr-dev libntl-dev autoconf libtool-bin
+          $CC --version
+          make --version
+          autoconf --version
+          libtool --version
+          echo "MAKE=make -j$(expr $(nproc) + 1) --output-sync=target" >> $GITHUB_ENV
+      - name: "Build FLINT"
+        run: |
+          git clone --depth=1 https://github.com/flintlib/flint
+          cd flint && ./bootstrap.sh && ./configure CC=${CC} --with-ntl --enable-assert
+          $MAKE && sudo make install && sudo ldconfig
+      - name: "Build and Test msolve"
+        run: |
+          ./autogen.sh && ./configure && $MAKE && SEED=1617753600 make check
       - name: show test-suite.log if test failed
         if: failure()
         run: cat test-suite.log || true

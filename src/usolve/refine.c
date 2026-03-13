@@ -46,7 +46,7 @@ static long long int index_linearinterp(mpz_t *vala, mpz_t *valb, mpz_t *q,
   mpz_tdiv_q(*q, *vala, *valb);
 
   long int sizeq = ilog2_mpz(*q);
-  if(sizeq >= 8 * sizeof(long long int)){
+  if((long unsigned int)sizeq >= 8 * sizeof(long long int)){
     if(sizeq > logN){
       fprintf(stderr,"Valeur de q = "); mpz_out_str(stderr, 10, *q);puts("");
       fprintf(stderr, "Valeur de Nlog = %lld\n", logN);
@@ -134,7 +134,7 @@ static void getx_and_eval_mpzidx(mpz_t *upol, unsigned long int deg,
 static int right_interval_2exp(mpz_t *upol, unsigned long int *deg_ptr,
                                interval *rt, mpz_t *x, mpz_t *b,
                                mpz_t *vala, mpz_t *valb, mpz_t *q,
-                               int k, int newk){
+                               int newk){
 
   mpz_swap(*x, *b);
   mpz_swap(*vala, *valb);
@@ -159,8 +159,7 @@ static int right_interval_2exp(mpz_t *upol, unsigned long int *deg_ptr,
 static int left_interval_2exp(mpz_t *upol, unsigned long int *deg_ptr,
                                    interval *rt, mpz_t *x, mpz_t *b,
                                    mpz_t *vala, mpz_t *valb, mpz_t *q,
-                                   int k, int newk){
-
+                                   int newk) {
   getx_and_eval_2expleft(upol, *deg_ptr, x, b, valb, q,
                          newk, 1);
   mpz_swap(*x, *b);
@@ -363,7 +362,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
         return;
       }
       while(right_interval_2exp(upol, deg_ptr, rt, x, b,
-                                vala, valb, q, k, newk)==0 && index <= maxindex){
+                                vala, valb, q, newk)==0 && index <= maxindex){
         if(verbose>0){
           fprintf(stdout, "->");
         }
@@ -405,7 +404,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
         return;
       }
       while(left_interval_2exp(upol, deg_ptr, rt,
-                               x, b, vala, valb, q, k, newk) == 0){
+                               x, b, vala, valb, q, newk) == 0){
         if(verbose>0){
           fprintf(stdout, "<-");
         }
@@ -688,7 +687,7 @@ void get_values_at_bounds(mpz_t *upol, unsigned long int deg,
 }
 
 static void refine_root_naive(mpz_t *upol, unsigned long int deg,
-                              interval *rt, mpz_t *middle, int calgo){
+                              interval *rt, mpz_t *middle){
   if(rt->isexact == 1){
     return;
   }
@@ -709,7 +708,7 @@ static void refine_root_naive(mpz_t *upol, unsigned long int deg,
     mpz_add(*middle, *middle, rt->numer);
     newk = ( (rt->k) + 1 );
 
-    sgn_middle = sgn_mpz_poly_eval_at_point_naive(upol, deg, middle, calgo);
+    sgn_middle = sgn_mpz_poly_eval_at_point_naive(upol, deg, middle);
   }
   int sign_left = rt->sign_left;
 
@@ -728,7 +727,7 @@ static void refine_root_naive(mpz_t *upol, unsigned long int deg,
 
 static void remove_exact_roots_by_division(mpz_t *upol, unsigned long int *deg,
                                            interval *roots,
-                                           unsigned long int nbroots, int nthreads){
+                                           unsigned long int nbroots) {
   for(unsigned long int i = 0; i < nbroots; i++){
     interval *rt = roots + i;
     if(rt->isexact==1){
@@ -749,7 +748,7 @@ static void remove_exact_roots_by_division(mpz_t *upol, unsigned long int *deg,
 /* divisions when there are exact roots */
 void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
                       int nbneg, int nbpos,
-                      int prec, int verbose, double step, int nthreads){
+                      int prec, int verbose, double step){
   unsigned long int i;
   /* table for intermediate values */
   mpz_t *tab = (mpz_t *)(malloc(sizeof(mpz_t) * 8));
@@ -760,7 +759,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
   double e_time = 0, refine_time = realtime();
   int nb = nbneg + nbpos;
 
-  remove_exact_roots_by_division(upol, deg, roots, nb, nthreads);
+  remove_exact_roots_by_division(upol, deg, roots, nb);
 
 
   interval *pos_rt = (interval *)(malloc(sizeof(interval)));
@@ -774,7 +773,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
     }
   }
 
-  for(i = 0; i < nbneg; i++){
+  for(i = 0; i < (long unsigned int)nbneg; i++){
 
     interval *rt = roots + i;
 
@@ -857,7 +856,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
     }
   }
 
-  for(i=nbneg; i < nb; i++){
+  for(i=nbneg; i < (long unsigned int)nb; i++){
     interval *rt = roots + i;
 
     if(rt->isexact==0){
@@ -904,7 +903,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
 /* the precision of the refinement depends on the value of the root to be defined */
 void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *roots,
                                  int nbneg, int nbpos,
-                                 int prec, int verbose, double step, int nthreads){
+                                 int prec, int verbose, double step){
 
   unsigned long int i;
   /* table for intermediate values */
@@ -916,7 +915,7 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
   double e_time = 0, refine_time = realtime();
   int nb = nbneg + nbpos;
 
-  remove_exact_roots_by_division(upol, deg, roots, nb, nthreads);
+  remove_exact_roots_by_division(upol, deg, roots, nb);
 
 
   interval *pos_rt = (interval *)(malloc(sizeof(interval)));
@@ -930,7 +929,7 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
     }
   }
 
-  for(i = 0; i < nbneg; i++){
+  for (i = 0; i < (long unsigned int)nbneg; i++){
 
     interval *rt = roots + i;
 
@@ -1018,7 +1017,7 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
     }
   }
 
-  for(i=nbneg; i < nb; i++){
+  for(i=nbneg; i < (long unsigned int)nb; i++){
     interval *rt = roots + i;
 
     if(rt->isexact==0){
@@ -1065,13 +1064,13 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
 
 void refine_all_roots_naive(mpz_t *upol, unsigned long int deg,
                             interval *roots, unsigned long int nb,
-                            unsigned int prec, int calgo, int debug){
+                            unsigned int prec){
   mpz_t *middle=malloc(sizeof(mpz_t));
   mpz_init(middle[0]);
 
   for(unsigned long int j = 0; j < nb; j++){
     while((roots+j)->k < prec && (roots+j)->isexact == 0){
-      refine_root_naive(upol, deg, roots+j, middle, calgo);
+      refine_root_naive(upol, deg, roots+j, middle);
     }
   }
   mpz_clear(middle[0]);

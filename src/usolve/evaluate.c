@@ -83,7 +83,7 @@ static inline void basic_mpz_poly_eval_at_point(mpz_t *up, unsigned long int deg
 }
 
 
-static inline int sgn_mpz_poly_eval_at_point_naive(mpz_t *upoly, unsigned long int deg, mpz_t *c, int classical_algo){
+static inline int sgn_mpz_poly_eval_at_point_naive(mpz_t *upoly, unsigned long int deg, mpz_t *c){
   mpz_t val;
   mpz_init(val);
   basic_mpz_poly_eval_at_point(upoly, deg, c, &val);
@@ -257,7 +257,7 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
 
    returns (mpz_sgn(val_do) != mpz_sgn(val_up))
  */
-int mpz_scalar_product_interval(mpz_t *up, const long int deg, const long k,
+int mpz_scalar_product_interval(mpz_t *up, const long int deg,
                                 mpz_t *xdo, mpz_t *xup,
                                 mpz_t tmp,
                                 mpz_t val_do, mpz_t val_up,
@@ -314,7 +314,8 @@ int lazy_mpz_poly_eval_interval(mpz_t *up, const unsigned long int deg,
                                 mpz_t tmp,
                                 mpz_t val_do, mpz_t val_up){
 
-  if(deg==-1){
+  /* comparison to be checked; this was deg == -1 but deg is unsigned */
+  if(deg==(unsigned long int)(-1)){
     mpz_set_ui(val_up, 0);
     mpz_set_ui(val_do, 0);
     return 0;

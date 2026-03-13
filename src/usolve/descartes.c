@@ -30,7 +30,7 @@ static unsigned long descartes_classical(const mpz_t *, mpz_t *,
 
 static long descartes_truncate(mpz_t *, const unsigned long,
                                const unsigned long,
-                               long, long *, usolve_flags *);
+                               usolve_flags *);
 
 /* one assumes upol[0] != 0 */
 /* stopped as soon as more than 3 sgn variations are found */
@@ -58,7 +58,7 @@ static long mpz_poly_sgn_variations_coeffs(mpz_t* upol, unsigned long deg){
 
 static unsigned long int descartes(mpz_t *upol1, mpz_t *upol2,
                                    const unsigned long deg,
-                                   long sigh, long *flag, usolve_flags *flags){
+                                   usolve_flags *flags){
   unsigned long int i;
 #pragma omp parallel for num_threads(flags->nthreads)
   for(i = 0; i <= deg; i++){
@@ -67,7 +67,7 @@ static unsigned long int descartes(mpz_t *upol1, mpz_t *upol2,
 
   /* Max bit size of coefficients in upol1 */
   const unsigned long nbits = mpz_poly_max_bsize_coeffs(upol1, deg);
-  long nb = descartes_truncate(upol2, deg, nbits, sigh, flag, flags);
+  long nb = descartes_truncate(upol2, deg, nbits, flags);
 
   if(nb >= 0){
     return nb;
@@ -88,8 +88,8 @@ static unsigned long int descartes(mpz_t *upol1, mpz_t *upol2,
 /* assumes upol1 and upol2 are the same polynomials */
 static long descartes_truncate(mpz_t *upol2,
                                const unsigned long deg,
-                               const unsigned long nbits, long sigh,
-                               long *flag, usolve_flags *flags){
+                               const unsigned long nbits,
+                               usolve_flags *flags){
   int i;
   /* /\* Max bit size of coefficients in upol1 *\/ */
   /* const unsigned long int nbits = mpz_poly_max_bsize_coeffs(upol1, deg); */
@@ -142,11 +142,11 @@ static unsigned long descartes_classical(const mpz_t *upol, mpz_t *tpol,
       return nb;
   }
 
-  for (long i = 0; i <= deg; i++) {
+  for (unsigned long i = 0; i <= deg; i++) {
     mpz_set(tpol[i], upol[i]);
   }
 
-  for (long i = 0; i <= deg - 1; i++){
+  for (unsigned long i = 0; i < deg; i++){
     mpz_add(tpol[i+1], tpol[i+1], tpol[i]);
   }
 
@@ -154,7 +154,7 @@ static unsigned long descartes_classical(const mpz_t *upol, mpz_t *tpol,
 
   *bsgn = s && (s == mpz_sgn(upol[0])) && (s == -hsgn);
 
-  for (long i = 1; i <= deg - 1; i++){
+  for (unsigned long i = 1; i < deg; i++){
     j = deg - i;
     t = s;
     while (t == 0){
@@ -166,8 +166,8 @@ static unsigned long descartes_classical(const mpz_t *upol, mpz_t *tpol,
     if (j < 0){
         return nb;
     }
-    for (j = 0; j <= deg - i - 1; j++){
-      mpz_add(tpol[j+1], tpol[j+1], tpol[j]);
+    for (unsigned long jj = 0; jj < deg - i; jj++){
+      mpz_add(tpol[jj+1], tpol[jj+1], tpol[jj]);
     }
     if (s == 0){
       s = mpz_sgn(tpol[deg-i]);

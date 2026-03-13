@@ -405,7 +405,7 @@ static inline void check_and_set_linear_poly_32(nvars_t *nlins_ptr,
   lineqs_ptr[0] = lineqs;
 }
 
-static void inline compute_modular_linear_forms(int nlins, nvars_t sz,
+static inline void compute_modular_linear_forms(int nlins, nvars_t sz,
                                                 uint32_t *mod_linear_forms,
                                                 mpz_t *mpz_linear_forms,
                                                 uint32_t prime) {

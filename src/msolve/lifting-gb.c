@@ -622,7 +622,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
    * *****************************************************/
 
   len_t len   = 0;
-  hm_t *hm    = NULL;
+  /* hm_t *hm    = NULL; */
 
   const len_t nv  = ht->nv;
   const len_t ebl = ht->ebl;
@@ -634,7 +634,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       fprintf(stderr, " poly is 0\n");
       exit(1);
     } else {
-      hm  = bs->hm[idx]+OFFSET;
+      /* hm  = bs->hm[idx]+OFFSET; */
       len = bs->hm[idx][LENGTH];
     }
     int32_t bc = modgbs->modpolys[i]->len - 1;
@@ -757,13 +757,15 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     }
     /************************************************/
 
-    int32_t *lmb;
-    if(st->nev){
-      lmb = NULL; //monomial_basis_enlarged(num_gb[0], bht->nv - st->nev,  bexp_lm2, &dquot);
-    }
-    else{
-      lmb = NULL; //monomial_basis_enlarged(num_gb[0], bht->nv,  bexp_lm, &dquot);
-    }
+    /**
+    * int32_t *lmb;
+    * if(st->nev){
+    *   lmb = NULL; //monomial_basis_enlarged(num_gb[0], bht->nv - st->nev,  bexp_lm2, &dquot);
+    * }
+    * else{
+    *   lmb = NULL; //monomial_basis_enlarged(num_gb[0], bht->nv,  bexp_lm, &dquot);
+    * }
+    */
 
     /************************************************/
 
@@ -827,7 +829,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
 
   /* current load of the hash table */
-  hl_t eld = bs_qq->ht->eld;
+  /* hl_t eld = bs_qq->ht->eld; */
   bs_t *bs = NULL;
   int32_t error = 0;
   bs = core_gba(bs_qq, st, &error, lp->p[0]);
@@ -1283,8 +1285,6 @@ gb_modpoly_t *core_groebner_qq(
         const int print_gb
         )
 {
-  double st0 = realtime();
-
   *errp = 0;
 
   int32_t info_level = st->info_level;
@@ -1546,8 +1546,6 @@ gb_modpoly_t *core_groebner_qq(
       }
 
       int lstart = dlift->lstart;
-      double ost_rrec = st_rrec;
-      double ost_crt = st_crt;
       st_wit = 0;
 
       if(!bad){
@@ -1684,7 +1682,6 @@ uint64_t export_results_from_groebner_qq(
 
     int64_t term = 0;
     for(int64_t p = 0; p < nelts; p++){
-        len_t idx = gb->lmps[p];
         hm  = gb->hm[p]+OFFSET;
         int32_t l = gb->modpolys[p]->len;
         for(int32_t n = 0; n < nv; n++){
@@ -1717,8 +1714,6 @@ gb_modpoly_t *groebner_qq(
         data_gens_ff_t *gens,
         msflags_t flags)
 {
-  int32_t *dim_ptr = &flags->dim;
-  int64_t *dquot_ptr = &flags->dquot;
   int32_t ht_size = flags->ht_size;
   int32_t nr_threads = flags->nr_threads;
   int32_t max_nr_pairs = flags->max_nr_pairs;

@@ -185,10 +185,6 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->hm = (hm_t **)malloc(modgbs->ld * sizeof(hm_t *));
   modgbs->lmps = (bl_t *)calloc(modgbs->ld, sizeof(bl_t));
 
-  ht_t *ht = modgbs->bht;
-  const len_t ebl = ht->ebl;
-  const len_t evl = ht->evl;
-
   len_t idx;
   for(len_t i = 0; i < modgbs->ld; i++){
       idx = bs->lmps[i];
@@ -314,7 +310,7 @@ static inline void display_modpoly(FILE *file,
   }
   display_monomial_single(file, gens, pos, &modgbs->ldm);
 
-  len_t idx, i, j, k;
+  len_t idx, i, k;
   hm_t *hm    = NULL;
   idx = modgbs->lmps[pos];
   hm  = modgbs->hm[idx]+OFFSET;
@@ -614,7 +610,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
   }
   modgbs->primes[modgbs->nprimes] = fc;
 
-  len_t i, j, k, idx;
+  len_t i, j, idx;
 
   /*****************************************************
    * It should be checked if modbgs->ht needs to be updated as well as
@@ -623,10 +619,6 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
 
   len_t len   = 0;
   /* hm_t *hm    = NULL; */
-
-  const len_t nv  = ht->nv;
-  const len_t ebl = ht->ebl;
-  const len_t evl = ht->evl;
 
   for(i = start; i < modgbs->ld; i++){
     idx = bs->lmps[i];

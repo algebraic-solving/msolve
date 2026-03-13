@@ -166,7 +166,7 @@ static inline param_t *allocate_fglm_param(mp_limb_t prime, long nvars){
 static inline void free_fglm_param(param_t *param){
   nmod_poly_clear(param->elim);
   nmod_poly_clear(param->denom);
-  for(szmat_t i = 0; i < param->nvars-1; i++){
+  for(szmat_t i = 0; i < (unsigned int)param->nvars-1; i++){
     nmod_poly_clear(param->coords[i]);
   }
   free(param->coords);

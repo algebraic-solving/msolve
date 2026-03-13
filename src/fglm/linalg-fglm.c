@@ -49,9 +49,7 @@
 
 static inline void non_avx_matrix_vector_product(uint32_t* vec_res, const uint32_t* mat,
                                                  const uint32_t* vec, const uint32_t ncols,
-                                                 const uint32_t nrows, const uint32_t PRIME,
-                                                 const uint32_t RED_32, const uint32_t RED_64,
-                                                 md_t *st)
+                                                 const uint32_t nrows, const uint32_t PRIME)
 {
     uint32_t i, j;
     int64_t prod1, prod2, prod3, prod4;

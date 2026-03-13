@@ -100,15 +100,17 @@ static inline uint64_t ADDMODRED32(uint64_t a, uint64_t b,
                                    const uint32_t p, const uint32_t preinv)
 {
   const long neg = p - a;
-  return (neg > b) ? MODRED32((a + b), p, preinv) : MODRED32((b - neg), p, preinv);
+  return (neg > (long)b) ? MODRED32((a + b), p, preinv) : MODRED32((b - neg), p, preinv);
 }
 
-static inline uint64_t SUBMODRED32(uint64_t a, uint64_t b,
-                                   const uint32_t p, const uint32_t preinv)
-{
-  const long neg = a - b;
-  return (a < b) ? (p + neg) : (neg);
-}
+/** currently unused
+* static inline uint64_t SUBMODRED32(uint64_t a, uint64_t b,
+*                                    const uint32_t p, const uint32_t preinv)
+* {
+*   const long neg = a - b;
+*   return (a < b) ? (p + neg) : (neg);
+* }
+*/
 
 #if HAVE_AVX2
 static inline void REDUCE(uint64_t *acc64, uint64_t *acc4x64,

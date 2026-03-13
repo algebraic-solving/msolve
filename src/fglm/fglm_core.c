@@ -222,7 +222,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t deg){
 
   mirror_points(data_bms->BMS, data_bms->BMS->points->length);
 
-  nmod_em_gcd(data_bms->BMS, 0);
+  nmod_em_gcd(data_bms->BMS);
   if(data_bms->BMS->R1->length-1 < dim-1 && dim > 1){
     fprintf(stderr, "Singular matrix\n");
     return 0;
@@ -242,7 +242,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t deg){
     data_bms->BMS->npoints = 0;
 
     //(R_i, R_{i+1}, V_i, V_{i+1}) = EMGCD(R_0, R_1)
-    nmod_em_gcd(data_bms->BMS, 0);
+    nmod_em_gcd(data_bms->BMS);
     //Z2 = LC(R_{i+1})^{-1} x (V_{i+1})
     inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
                    (data_bms->BMS->R1->mod).n);

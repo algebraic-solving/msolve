@@ -3208,7 +3208,7 @@ int newvalue_denom(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
                    mpz_t *xup, mpz_t tmp, mpz_t den_do, mpz_t den_up, long corr,
                    mpz_t c) {
 
-    mpz_scalar_product_interval(denom, deg, k, xdo, xup, tmp, den_do, den_up, corr);
+    mpz_scalar_product_interval(denom, deg, xdo, xup, tmp, den_do, den_up, corr);
     return (mpz_sgn(den_do) != mpz_sgn(den_up) || mpz_sgn(den_do) == 0 || mpz_sgn(den_up) == 0);
 
 }
@@ -3432,7 +3432,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
     int refine = 1;
     while(refine){
         mpz_scalar_product_interval(param->coords[nv]->coeffs,
-                                    param->coords[nv]->length - 1, rt->k, xdo, xup,
+                                    param->coords[nv]->length - 1, xdo, xup,
                                     tmp, val_do, val_up, corr);
         int boo = 0;
         while(to_split == 0 && mpz_sgn(val_do)*mpz_sgn(val_up) < 0){
@@ -3440,7 +3440,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                 tab, xdo, xup, den_up, den_do, c, &corr,
                 &b, info_level);
             mpz_scalar_product_interval(param->coords[nv]->coeffs,
-                                        param->coords[nv]->length - 1, rt->k, xdo, xup,
+                                        param->coords[nv]->length - 1, xdo, xup,
                                         tmp, val_do, val_up, corr);
 
             boo = 1;
@@ -3462,7 +3462,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
                 tab, xdo, xup, den_up, den_do, c, &corr,
                 &b, info_level);
             mpz_scalar_product_interval(param->coords[nv]->coeffs,
-                                        param->coords[nv]->length - 1, rt->k, xdo, xup,
+                                        param->coords[nv]->length - 1, xdo, xup,
                                         tmp, val_do, val_up, corr);
             newvalue_denom(param->denom->coeffs, param->denom->length - 1,
                             rt->numer, rt->k, xdo, xup, tmp, den_do, den_up, corr,

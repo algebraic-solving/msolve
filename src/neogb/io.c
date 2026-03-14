@@ -791,7 +791,6 @@ int32_t check_and_set_meta_data(
     if (nr_gens <= 0
             || nr_nf < 0
             || nr_vars <= 0
-            || field_char < 0
             || use_signatures < 0
             || lens == NULL
             || cfs == NULL

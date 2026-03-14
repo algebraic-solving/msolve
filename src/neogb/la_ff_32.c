@@ -20,7 +20,7 @@
 
 #include "data.h"
 
-/* That's also enough if AVX512 is avaialable on the system */
+/* That's also enough if AVX512 is available on the system */
 #if defined HAVE_AVX2
 #include <immintrin.h>
 #elif defined __aarch64__
@@ -1624,7 +1624,8 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
     return row;
 }
 
-
+/* unused at the moment */
+#if 0
 static hm_t *reduce_dense_row_by_known_pivots_sparse_32_bit(
         int64_t *dr,
         mat_t *mat,
@@ -1732,7 +1733,10 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_32_bit(
 
     return row;
 }
+#endif
 
+/* unused at the moment */
+#if 0
 static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_32_bit(
         rba_t *rba,
         int64_t *dr,
@@ -1830,6 +1834,7 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_32_bit(
 
     return row;
 }
+#endif
 
 static cf32_t *reduce_dense_row_by_all_pivots_17_bit(
         int64_t *dr,

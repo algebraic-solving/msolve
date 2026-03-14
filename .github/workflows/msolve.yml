@@ -62,7 +62,7 @@ jobs:
                fi
       - name: show test-suite.log if test failed
         if: failure()
-        run: cat test-suite.log || true
+        run: cat msolve-*/_build/sub/test-suite.log || true
 
   build-fixed-seed:
     runs-on: ${{ matrix.os }}

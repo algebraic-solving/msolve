@@ -191,8 +191,7 @@ void nmod_berlekamp_massey_add_point_modif(
     B->points->length = old_length + 1;
 }
 
-//shift ne sert pas 
-int nmod_em_gcd(nmod_berlekamp_massey_t B, long shift){
+int nmod_em_gcd(nmod_berlekamp_massey_t B){
   slong i, l, k, queue_len, queue_lo, queue_hi;
   queue_lo = B->npoints; // vaut 0 en entree
   queue_hi = B->points->length; //vaut 2*dim ou dim est la dimension du quotient
@@ -316,7 +315,6 @@ int nmod_em_gcd(nmod_berlekamp_massey_t B, long shift){
 }
 
 
-//shift ne sert pas 
 int nmod_em_gcd_preinstantiated(nmod_berlekamp_massey_t B, long shift){
   slong l, k, queue_len, queue_lo, queue_hi;
   queue_lo = B->npoints; // vaut 0 en entree
@@ -436,7 +434,6 @@ int nmod_em_gcd_preinstantiated(nmod_berlekamp_massey_t B, long shift){
   FLINT_ASSERT(2*nmod_poly_degree(B->V1) <= B->npoints);
   FLINT_ASSERT(2*nmod_poly_degree(B->R0) >= B->npoints);
   FLINT_ASSERT(2*nmod_poly_degree(B->R1) <  B->npoints);
-
   
   return 1;
 }

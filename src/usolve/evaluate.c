@@ -83,7 +83,7 @@ static inline void basic_mpz_poly_eval_at_point(mpz_t *up, unsigned long int deg
 }
 
 
-static inline int sgn_mpz_poly_eval_at_point_naive(mpz_t *upoly, unsigned long int deg, mpz_t *c, int classical_algo){
+static inline int sgn_mpz_poly_eval_at_point_naive(mpz_t *upoly, unsigned long int deg, mpz_t *c){
   mpz_t val;
   mpz_init(val);
   basic_mpz_poly_eval_at_point(upoly, deg, c, &val);
@@ -257,7 +257,7 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
 
    returns (mpz_sgn(val_do) != mpz_sgn(val_up))
  */
-int mpz_scalar_product_interval(mpz_t *up, const long int deg, const long k,
+int mpz_scalar_product_interval(mpz_t *up, const long int deg,
                                 mpz_t *xdo, mpz_t *xup,
                                 mpz_t tmp,
                                 mpz_t val_do, mpz_t val_up,
@@ -306,7 +306,7 @@ int mpz_scalar_product_interval(mpz_t *up, const long int deg, const long k,
 /* up( [ xdo[1], xup[1] ] ) */
 /* xup[i] and xdo[i] are given mod 2^corr when i%b == 0 */
 
-int lazy_mpz_poly_eval_interval(mpz_t *up, const unsigned long int deg,
+int lazy_mpz_poly_eval_interval(mpz_t *up, const long int deg,
                                 const long k,
                                 mpz_t *xdo, mpz_t *xup,
                                 const long prec, const long corr,
@@ -327,8 +327,8 @@ int lazy_mpz_poly_eval_interval(mpz_t *up, const unsigned long int deg,
 
   mpz_set_ui(val_up, 0);
   mpz_set_ui(val_do, 0);
-  const long t = (deg) / b;
-  long rd = (deg) % b;
+  const long t = deg / b;
+  long rd = deg % b;
   mpz_t fdo, fup;
   mpz_init(fdo);
   mpz_init(fup);

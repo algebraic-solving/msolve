@@ -44,7 +44,7 @@ static void mpz_poly_add(mpz_t *res,
 /*naive taylor shift by 1 (in place)*/
 static void taylorshift1_naive(mpz_t *upol, const unsigned long int deg){
   long int i,j;
-  for (i = 0; i <= deg-1; i++){
+  for (i = 0; (unsigned long int)i < deg; i++){
     for (j = deg-1 ; j >= i; j--){
       mpz_add(upol[j], upol[j], upol[j+1]);
     }
@@ -191,9 +191,9 @@ static void taylorshift1_dac(mpz_t *upol,
     }
 
     nblocks = nblocks / 2;
-    for(int count = 1; count <= nblocks ; count++){
+    for (unsigned int count = 1; count <= nblocks ; count++){
       unsigned long int newdeg;
-      if(count == nblocks){
+      if (count == nblocks){
         newdeg = fdeg;
       }
       else{
@@ -281,10 +281,10 @@ static long mpz_poly_sgn_variations_coeffs_bsize_with_index(mpz_t* upol,
     int c = mpz_cmp_ui(upol[i],0);
     long int l = ilog2_mpz(upol[i]);
     N = min((bsize - i +1)*L + 1, min(deg, (i+1)*L + 1));
-    if(l <= N || c==0){
+    if(l <= (long int)N || c==0){
       boo = 0;
     }
-    if( mpz_sgn(upol[i]) * s < 0 && l > N && c!=0){
+    if( mpz_sgn(upol[i]) * s < 0 && l > (long int)N && c!=0){
       nb = nb + 1;
       s = mpz_sgn(upol[i]);
       if(nb >= 3){
@@ -297,10 +297,10 @@ static long mpz_poly_sgn_variations_coeffs_bsize_with_index(mpz_t* upol,
   N = L + 1;
   int c = mpz_cmp_ui(upol[0],0);
   long int l = ilog2_mpz(upol[0]);
-  if(l <= N || c==0){
+  if(l <= (long int)N || c==0){
     boo = 0;
   }
-  if(s*mpz_sgn(upol[0]) < 0 && l> N && c!=0){
+  if(s*mpz_sgn(upol[0]) < 0 && l> (long int)N && c!=0){
     nb = nb + 1;
   }
   if(nb>=3 || boo == 1){
@@ -359,7 +359,7 @@ static long taylorshift1_dac_wsgnvar(mpz_t *pol,
   unsigned long int npwr = LOG2(nblocks);
   mpz_t *current_shifted_powerX = NULL;
 
-  for(i=0;i<npwr-1; i++){
+  for(i=0; (unsigned int)i < npwr-1; i++){
     current_shifted_powerX = shift_pwx[i];
 
     if(nblocks>1){
@@ -375,7 +375,7 @@ static long taylorshift1_dac_wsgnvar(mpz_t *pol,
 
       unsigned long int ndeg;
 
-      if(count==nblocks){
+      if(count == (long int)nblocks){
         ndeg = fdeg;
       }
       else{

@@ -1702,7 +1702,8 @@ static int32_t *initial_modular_step(
                                                    lineqs_ptr[0], squvars,
                                                    md->info_level, bdata_fglm,
                                                    bdata_bms, success, md);
-            if((*bparam)->elim->length - 1 != dquot){
+            if((*bparam)->degelimpol != dquot){
+                /* not in shape position */
                 /* reset times for change of order */
                 md->fglm_ctime = cputime();
                 md->fglm_rtime = realtime();
@@ -2361,11 +2362,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
     if (nmod_params[0]->degsqfrelimpol != *minpolydeg_ptr
-	&& nmod_params[0]->elim->length - 1 != *dquot_ptr) {
+        && nmod_params[0]->degelimpol != *dquot_ptr) {
       for (int i = 0; i < nr_vars - 1; i++) {
         if ((squvars[i] == 0) && round) {
           squares = 0;
           success = 0;
+          break;
         }
       }
     }

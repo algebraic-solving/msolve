@@ -113,7 +113,6 @@ static long bound_roots(mpz_t *upol, const unsigned long deg){
 }
 
 static inline void compute_shift_pwx(mpz_t **shifted,
-                                     const unsigned long int deg,
                                      const unsigned long int npwr,
                                      unsigned long int pwx,
                                      const unsigned int nthreads){
@@ -217,9 +216,9 @@ static inline void allocate_shift_pwx(mpz_t **shifted,
   unsigned long int newpwx=pwx;
   mp_bitcnt_t nbits=LOG2(newpwx);
 
-  for(int i = 0; i < npwr; i++){
+  for(long unsigned int i = 0; i < npwr; i++){
     shifted[i] = (mpz_t *)malloc(sizeof(mpz_t)*(newpwx+1));
-    for(int j = 0; j <= newpwx; j++){
+    for(long unsigned int j = 0; j <= newpwx; j++){
       mpz_init2(shifted[i][j], nbits);
     }
     newpwx = 2 * newpwx;
@@ -233,13 +232,13 @@ static inline void allocate_shift_pwx(mpz_t **shifted,
 static inline void unallocate_shift_pwx(mpz_t **shifted,
                                         const unsigned long int npwr,
                                         unsigned long int pwx){
-  for(int i = 0; i < npwr; i++){
-    for(int j = 0;j <= pwx; j++){
+  for(long unsigned int i = 0; i < npwr; i++){
+    for(long unsigned int j = 0; j <= pwx; j++){
       mpz_clear(shifted[i][j]);
     }
     pwx=2*pwx;
   }
-  for(int i = 0; i < npwr; i++){
+  for(long unsigned int i = 0; i < npwr; i++){
     free(shifted[i]);
   }
 }
@@ -333,7 +332,6 @@ static void is_zero_root(mpz_t *upol, mpz_t c, long k,
                            flags->npwr, flags->pwx);
 
         compute_shift_pwx(flags->shift_pwx,
-                          flags->cur_deg,
                           flags->npwr,
                           flags->pwx,
                           flags->nthreads);
@@ -372,13 +370,13 @@ static void numer_quotient_uint(mpz_t *upol, unsigned long int *deg,
   mpz_t tmp;
   mpz_init(tmp);
 
-  for(long int i = *deg - 1; i >=1; i--){
+  for(long int i = *deg - 1; i >= 1; i--){
     mpz_div_2exp(tmp, upol[i+1], k);
     mpz_mul_ui(tmp, tmp, c);
     mpz_add(upol[i], upol[i], tmp);
   }
 
-  for(long int i = 0 ; i <= *deg - 1; i++){
+  for(unsigned long int i = 0 ; i < *deg; i++){
     mpz_set(upol[i], upol[i+1]);
   }
 
@@ -389,10 +387,9 @@ static void numer_quotient_uint(mpz_t *upol, unsigned long int *deg,
 
 
 static long int manage_root_at_one_half(mpz_t *upol,
-                                        mpz_t c, long k,
+                                        mpz_t c,
                                         unsigned long *deg,
                                         mpz_t tmp,
-                                        unsigned long int *nbr,
                                         usolve_flags *flags){
   long int sh = sgn_mpz_upoly_eval_onehalf(upol, *deg, flags);
 
@@ -436,7 +433,6 @@ static long int manage_root_at_one_half(mpz_t *upol,
                                   flags->pwx);
 
         compute_shift_pwx(flags->shift_pwx,
-                                 flags->cur_deg,
                                  flags->npwr,
                                  flags->pwx,
                                  flags->nthreads);
@@ -812,10 +808,8 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
 
   /* if 1 / 2 is a root, upol is divided by (x-1/2) */
   /* shalf takes the sign of the new obtained poly at 1/2 */
-  shalf = manage_root_at_one_half(upol, c, k, deg,
-                                  tmp_half,
-                                  nbr,
-                                  flags);
+  shalf = manage_root_at_one_half(upol, c, deg,
+                                  tmp_half, flags);
   if(flags->hasrealroots == 1 && (*nbr)>0){
     mpz_clear(tmp);
     return -1;
@@ -869,7 +863,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
     nb = descartes_classical(upol, flags->tmpol_desc, *deg, shalf, &bsgn);
   }
   else{
-    nb = descartes(upol, flags->tmpol_desc, *deg, shalf, &bsgn, flags);
+    nb = descartes(upol, flags->tmpol_desc, *deg, flags);
   }
   flags->time_desc += (realtime()-e_time);
 
@@ -913,6 +907,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
                                         bot, top, shalf);
 
     }
+      /* falls through */
 	default: /* recursive call on each half of the interval */
     return nb_default_case_in_bisection_rec(upol, deg, c, k, tmp,
                                             roots, nbr,
@@ -985,7 +980,6 @@ static void initialize_heap_flags(usolve_flags *flags,
                          flags->pwx);
 
       compute_shift_pwx(flags->shift_pwx,
-                        flags->cur_deg,
                         flags->npwr,
                         flags->pwx,
                         flags->nthreads);
@@ -994,11 +988,11 @@ static void initialize_heap_flags(usolve_flags *flags,
       flags->shift_pwx = NULL;
     }
     flags->tmpol = (mpz_t *)(malloc(sizeof(mpz_t)*(deg+1)));
-    for(int i=0; i<=deg; i++){
+    for(long unsigned int i=0; i<=deg; i++){
       mpz_init(flags->tmpol[i]);
     }
     flags->tmpol_desc = (mpz_t *)(malloc(sizeof(mpz_t)*(deg+1)));
-    for(int i=0; i<=deg; i++){
+    for(long unsigned int i=0; i<=deg; i++){
       mpz_init(flags->tmpol_desc[i]);
     }
 
@@ -1009,7 +1003,7 @@ static void initialize_heap_flags(usolve_flags *flags,
       mpz_t ** tmp = flags->tmp_threads;
       mpz_t ** pols = flags->pols_threads;
 
-      for(int i = 0; i <= flags->nthreads; i++){
+      for(long unsigned int i = 0; i <= flags->nthreads; i++){
         tmp[i] = (mpz_t *)malloc((deg + 1) * sizeof(mpz_t));
 
         for(unsigned long int j = 0; j <= deg; j++){
@@ -1018,7 +1012,7 @@ static void initialize_heap_flags(usolve_flags *flags,
 
       }
 
-      for(int i = 0; i < flags->nthreads; i++){
+      for(long unsigned int i = 0; i < flags->nthreads; i++){
         pols[i] = (mpz_t *)malloc((deg + 1) * sizeof(mpz_t));
 
         for(unsigned long int j = 0; j <= deg; j++){
@@ -1053,7 +1047,7 @@ static inline void free_heap_flags(usolve_flags *flags,
     free(flags->Values);
 
     if(flags->nthreads>=1 &&0==1){
-      for(int i = 0; i < flags->nthreads; i++){
+      for(long unsigned int i = 0; i < flags->nthreads; i++){
 
         for(unsigned long int j = 0; j <= deg; j++){
           mpz_clear(flags->tmp_threads[i][j]);
@@ -1136,12 +1130,12 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
   mpz_t *upol = (mpz_t *) malloc ((deg + 1) * sizeof(mpz_t));
 
   if(zero_root == 0){
-    for (long i = 0; i <= deg; i++){
+    for (long unsigned i = 0; i <= deg; i++){
       mpz_init_set(upol[i], upol0[i]);
     }
   }
   else{
-    for (long i = 0; i <= deg; i++){
+    for (long unsigned i = 0; i <= deg; i++){
       mpz_init_set(upol[i], upol0[1 + i]);
     }
   }
@@ -1180,7 +1174,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     deg = (deg0 - 1);
   }
   if(zero_root==0){
-    for(long i = 0; i <= deg; i++){
+    for(long unsigned i = 0; i <= deg; i++){
         if (i % 2 == 1){
           mpz_neg(upol[i], upol0[i]);
         }
@@ -1190,7 +1184,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
       }
   }
   else{
-    for(long i = 0; i <= deg; i++)
+    for(long unsigned i = 0; i <= deg; i++)
       {
         if (i % 2 == 1){
           mpz_neg(upol[i], upol0[i + 1]);
@@ -1251,7 +1245,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
   else{
     deg = (deg0 - 1);
   }
-  for(long i = 0; i <= deg; i++){
+  for(long unsigned i = 0; i <= deg; i++){
     mpz_clear(upol[i]);
   }
 
@@ -1327,11 +1321,11 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   if(nbroots > 0 && flags->prec_isole >= 0){
     if(flags->classical_algo > 0){
       refine_all_roots_naive(upoly,deg, roots, nbroots,
-                             flags->prec_isole, flags->classical_algo, flags->debug);
+                             flags->prec_isole);
     }
     else{
       refine_QIR_roots_adaptative(upoly, &deg, roots, *nb_neg_roots, *nb_pos_roots,
-                                  flags->prec_isole, flags->verbose, step, flags->nthreads);
+                                  flags->prec_isole, flags->verbose, step);
     }
   }
   refine_time = realtime() - refine_time;

@@ -119,7 +119,7 @@ static void USOLVEnumer_quotient(mpz_t *upol, unsigned long int *deg, mpz_t c, u
     mpz_add(upol[i], upol[i], tmp);
   }
 
-  for(long int i = 0 ; i <= *deg - 1; i++){
+  for(unsigned long int i = 0 ; i <= *deg - 1; i++){
     mpz_set(upol[i], upol[i+1]);
   }
   mpz_poly_remove_binary_content(upol, *deg - 1);
@@ -129,8 +129,7 @@ static void USOLVEnumer_quotient(mpz_t *upol, unsigned long int *deg, mpz_t c, u
 
 /* prints coefficients of pol in increasing degree order */
 static inline void USOLVEmpz_poly_print(mpz_t *upol, unsigned long int deg){
-  int  i;
-  for(i=0;i<=deg;i++){
+  for(unsigned long int i=0; i<=deg; i++) {
     gmp_printf("%Zd", upol[i]);
     fprintf(stdout," ");
   }
@@ -250,10 +249,10 @@ static long USOLVEmpz_poly_sgn_variations_coeffs_bsize(mpz_t* upol,
     int c = mpz_cmp_ui(upol[i],0);
     long int l = ilog2_mpz(upol[i]);
     N = min((bsize - i + 1) * L + 1, min(deg, (i + 1)*L + 1));
-    if(l <= N || c==0){
+    if(l <= (long int)N || c==0){
       boo = 0;
     }
-    if( mpz_sgn(upol[i]) * s < 0 && l > N && c!=0){
+    if( mpz_sgn(upol[i]) * s < 0 && l > (long int)N && c!=0){
       nb = nb + 1;
       s = mpz_sgn(upol[i]);
       if(nb >= 3){
@@ -264,10 +263,10 @@ static long USOLVEmpz_poly_sgn_variations_coeffs_bsize(mpz_t* upol,
   N = L + 1;
   int c = mpz_cmp_ui(upol[0],0);
   long int l = ilog2_mpz(upol[0]);
-  if(l <= N || c==0){
+  if(l <= (long int)N || c==0){
     boo = 0;
   }
-  if(s*mpz_sgn(upol[0]) < 0 && l> N && c!=0){
+  if(s*mpz_sgn(upol[0]) < 0 && l > (long int)N && c!=0){
     nb = nb + 1;
   }
   if(nb>=3 || boo == 1){

@@ -2,7 +2,7 @@ noinst_LTLIBRARIES 		= libusolve.la
 libusolve_la_SOURCES 	= usolve.c
 libusolve_ladir				=	$(includedir)/msolve/usolve
 libusolve_la_HEADERS	= libusolve.h
-libusolve_la_CFLAGS		= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS)
+libusolve_la_CFLAGS		= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS) -Wall -Wextra
 
 EXTRA_DIST = 		libusolve.h \
                 bisection.h \

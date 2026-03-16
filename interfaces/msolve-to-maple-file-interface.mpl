@@ -49,14 +49,20 @@ mladirname:=cat(homedir,"/libs/MSolve.mla");
 MSolve:=module()
 option package;
 
-export MSolveGroebner, MSolveGroebnerLM, MSolveRealRoots,MSolveParam;
+export MSolveGroebner, MSolveGroebnerLM,
+MSolveRealRoots,MSolveParam,NonZeroIntervalEvaluate,SplitAndRefinePerCoordinates;
 
 local GetSystem, ToMSolve, GetOptions, CheckCharacteristic, ReadPolynomial,
 ExtractParametrization, RemoveFiles, 
 SplitParamCoord, CallMSolve, 
-SelectVanishingSols, NonNegativeIntervalEvaluate, NonZeroIntervalEvaluate,
+SelectVanishingSols, 
+NonNegativeIntervalEvaluate, 
+#NonZeroIntervalEvaluate,
 BuildSolution, Eval_linform, MakeBinaryInterval, 
-Parametrization,RefineSolutions,SplitAndRefinePerConstraints, SplitAndRefinePerCoordinates;
+Parametrization,RefineSolutions,
+#SplitAndRefinePerCoordinates,
+SplitAndRefinePerConstraints; 
+
 
 
 GetSystem:=proc()
@@ -453,12 +459,18 @@ psols2;
           end if;
       end do;
   end do;
+
 #idx is the set of indices of variables that have an undetermined sign
   lparam:=[[elim, den, cfs, nums]]:
   for i from 1 to nops(idx) do 
       newlparam :=[]:
       for j from 1 to nops(lparam) do 
-        g:=gcd(lparam[j][1], lparam[j][-1][idx[i]]);
+        if idx[i]=nops(vars) and member(indets(lin_form)[1], vars)
+          then 
+          g:=gcd(lparam[j][1], lin_form):
+        else 
+          g:=gcd(lparam[j][1], lparam[j][-1][idx[i]]);
+        fi:
         if degree(g) > 0 then 
           splitparam := SplitParamCoord(lparam[j], g, idx[i]);
           newlparam := [op(newlparam), op(splitparam)]:

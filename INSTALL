@@ -30,25 +30,35 @@ via github releases)
 4. Run `make install` in order to globally install the library and the binary
    of msolve.
 
+Note to macOS users
+===================
 
+On macOS, we recommend building msolve with LLVM Clang rather than Apple Clang,
+as LLVM Clang provides better OpenMP support. You can install LLVM Clang and
+the required dependencies with Homebrew:
 
-NOTE TO MAC OS users
-====================
-
-To build a static binary file, you may need to run `./configure --enable-static`.
-
-You may also need to proceed slightly differently by modifying the `Makefile` file as follows
-- add to the `LIBS` variable the `-fopenmp` option
+```shell
+brew install autoconf automake flint gmp libomp libtool llvm mpfr
 ```
-LIBS = -lflint -lmpfr -lgmp -lm -fopenmp
-```
-- change the `CC` variable to your actual `gcc` compiler, e.g.
-```
-CC = gcc-15
-```
-since by default `gcc` on MacOS is linked to `clang`.
 
+Before building as described above, make sure to set these environment
+variables so the build uses the correct compiler and flags:
 
+```shell
+export CC="$(brew --prefix llvm)/bin/clang"
+export CFLAGS="-I$(brew --prefix)/include -I$(brew --prefix libomp)/include"
+export LDFLAGS="-L$(brew --prefix)/lib -L$(brew --prefix libomp)/lib"
+```
+
+If you choose a different compiler toolchain, such as GCC, make sure only one
+OpenMP runtime is linked. You can verify this with
+
+```shell
+otool -L path/to/libmsolve.dylib
+```
+
+If both `libomp` (LLVM's OpenMP runtime) and `libgomp` (GCC's OpenMP runtime)
+are listed, rebuild with a consistent toolchain and matching linker flags.
 
 If you want to generate a distribution
 ======================================

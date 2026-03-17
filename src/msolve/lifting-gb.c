@@ -1533,6 +1533,8 @@ gb_modpoly_t *core_groebner_qq(
         gb_modpoly_without_hash_table_clear((*modgbsp));
         free_rrec_data(recdata1);
         free_rrec_data(recdata2);
+        /* reset info_level to previous setting */
+        st->info_level = info_level;
         return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb);
 
       }

@@ -1190,7 +1190,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
       }
     }
   }
-  if(dl->check2[modgbs->ld] == NBCHECK){
+  if(dl->check2[modgbs->ld-1] == NBCHECK){
     return;
   }
   *st_rrec += realtime()-st;

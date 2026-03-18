@@ -50,7 +50,7 @@ MSolve:=module()
 option package;
 
 export MSolveGroebner, MSolveGroebnerLM,
-MSolveRealRoots,MSolveParam,SplitAndRefinePerConstraints;
+MSolveRealRoots,MSolveParam;
 
 local GetSystem, ToMSolve, GetOptions, CheckCharacteristic, ReadPolynomial,
 ExtractParametrization, RemoveFiles, 
@@ -60,7 +60,7 @@ NonNegativeIntervalEvaluate,
 NonZeroIntervalEvaluate,
 BuildSolution, Eval_linform, MakeBinaryInterval, 
 Parametrization,RefineSolutions,
-#SplitAndRefinePerConstraints, 
+SplitAndRefinePerConstraints, 
 SplitAndRefinePerCoordinates;
 
 

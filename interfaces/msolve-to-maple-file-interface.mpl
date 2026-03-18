@@ -50,18 +50,18 @@ MSolve:=module()
 option package;
 
 export MSolveGroebner, MSolveGroebnerLM,
-MSolveRealRoots,MSolveParam,NonZeroIntervalEvaluate,SplitAndRefinePerCoordinates;
+MSolveRealRoots,MSolveParam,SplitAndRefinePerConstraints;
 
 local GetSystem, ToMSolve, GetOptions, CheckCharacteristic, ReadPolynomial,
 ExtractParametrization, RemoveFiles, 
 SplitParamCoord, CallMSolve, 
 SelectVanishingSols, 
 NonNegativeIntervalEvaluate, 
-#NonZeroIntervalEvaluate,
+NonZeroIntervalEvaluate,
 BuildSolution, Eval_linform, MakeBinaryInterval, 
 Parametrization,RefineSolutions,
-#SplitAndRefinePerCoordinates,
-SplitAndRefinePerConstraints; 
+#SplitAndRefinePerConstraints, 
+SplitAndRefinePerCoordinates;
 
 
 
@@ -527,18 +527,29 @@ end proc;
 
 #return value boo is true if some coordinates have no determined sign yet
 BuildSolution:=proc(param, interv, vars)
-local i, coords, boo, var, den, nums, cfs, lb;
+local i, j, coords, boo, var, den, nums, cfs, lb;
   var := indets(param[1])[1];
   den:=NonZeroIntervalEvaluate([var = interv], param[2]);
   cfs := param[3]:
   nums := [seq(NonZeroIntervalEvaluate([var=interv], param[-1][i]),
-  i=1..nops(param[-1]))];
+            i=1..nops(param[-1]))];
   coords := [seq([nums[i][1]/(den[2]*cfs[i]), nums[i][2]/(den[1]*cfs[i])], 
           i=1..nops(nums)), interv];
   lb := map(_c->(_c[1]<=0 and _c[2]>=0) and (_c[1]<>0 or _c[2]<>0), 
         coords);
   boo := member(true, lb, 'pos');
-  return [seq(vars[i]=coords[i],i=1..nops(vars))], boo;
+  if member(var, vars) then 
+      return [op(map(i->if coords[i][2]<0 then
+        vars[i]=[-coords[i][1],-coords[i][2]] else
+        vars[i]=[-coords[i][2],-coords[i][1]] fi,
+        [seq(j,j=1..nops(vars)-1)])),var=interv], 
+        boo;
+  else 
+    return map(i->if coords[i][2]<0 then
+            vars[i]=[-coords[i][1],-coords[i][2]] else
+            vars[i]=[-coords[i][2],-coords[i][1]] fi, [seq(j,j=1..nops(vars))]),
+            boo;
+  end if;
 end proc;
 
 MakeBinaryInterval:=proc(interv)
@@ -554,7 +565,6 @@ local elim, v, i, newsols, sol, interv, prec, newsol, boo;
   v := indets(elim)[1]:
   newsols:=[]:
   for i from 1 to nops(psols) do 
-    lprint("i=",i);
     sol := psols[i]:
     lprint("sol",evalf(sol));
 #Assumes all coefficients of lin_form are >=0
@@ -573,7 +583,7 @@ local elim, v, i, newsols, sol, interv, prec, newsol, boo;
       prec := 2*(abs(ilog2(abs(interv[2]-interv[1])))+256);
       printf("[r]");
       interv := RootFinding[RefineRoot](interv, elim, digits = iquo(prec,4));
-      newsol, boo := BuildSolution(interv, param);
+      newsol, boo := BuildSolution(param, interv, vars);
     end do;
     newsols:=[op(newsols), newsol]:
   end do;
@@ -751,15 +761,19 @@ pvars, n, gb, boo, interv, prec, newsol, val, vvar, new_lin_form;
 
    for i from 1 to nops(newtsols) do 
     boo:= false:
+    lprint("newtsols -> ", evalf(newtsols[i..i]));
+    newsol:=newtsols[i..i]:
     while boo = false do 
-      lprint("newtsols -> ", evalf(newtsols[i]));
-      interv := MakeBinaryInterval(Eval_linform(lin_form, newtsols[i..i])[1]):
+      lprint("newsol", evalf(newsol));
+      interv := MakeBinaryInterval(Eval_linform(lin_form, newsol)[1]):
       prec := 2*(abs(ilog2(abs(interv[2]-interv[1])))+256);
       lprint("prec", prec);
       printf("{%d}",degree(elim));
       interv := RootFinding[RefineRoot](interv, elim):#, digits = iquo(prec,4));
       printf("[r]");
       newsol, boo := BuildSolution([elim, den, cfs, nums] , interv, vars);
+      newsol:=[newsol]:
+      lprint("newsol", newsol);
       for j from 1 to nops(newtvals[i]) do 
         boo:=true:
         if (newtvals[i][j][1]<=0 and newtvals[i][j][2]>=0) and
@@ -767,7 +781,7 @@ pvars, n, gb, boo, interv, prec, newsol, val, vvar, new_lin_form;
           if member(j, idx, 'r') = false then 
               error "Bug in refinement";
           end if;
-          val := NonZeroIntervalEvaluate(newsol, cstr[r]):
+          val := NonZeroIntervalEvaluate(newsol[1], cstr[r]):
           printf("[e]");
           if val[1]<=0 and val[2]>=0 then
               boo := false:
@@ -892,7 +906,7 @@ OldDigits;
    cstr := map(i->G[i], idx);
    if nops(cstr) > 0 then 
        sols, vals := SplitAndRefinePerConstraints(lparam, sols,
-       vals, F, vars, cstr,  idx, opts);
+       vals, F, newvars[1..nops(vars)], cstr,  idx, opts);
        return [0, sols, vals];
    end if;
    return [0, sols, vals];

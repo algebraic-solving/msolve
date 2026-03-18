@@ -1528,7 +1528,9 @@ restart:
 
       if(nbadprimes >= nprimes){
         if(info_level){
-          fprintf(stdout, "Too many bad primes, computation will restart\n");
+          fprintf(stdout, "\nToo many bad primes, computation will restart\n");
+          fprintf(stdout, "-------------------------------------------------\
+-----------------------------------------------------\n");
         }
         if(dlinit){
           data_lift_clear(dlift);

@@ -1277,6 +1277,9 @@ gb_modpoly_t *core_groebner_qq(
         const int print_gb
         )
 {
+
+restart:
+
   *errp = 0;
 
   int32_t info_level = st->info_level;
@@ -1404,7 +1407,8 @@ gb_modpoly_t *core_groebner_qq(
       free_rrec_data(recdata2);
 
       fprintf(stdout, "Something went wrong in the learning phase, msolve restarts.");
-      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb);
+      /* return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); */
+      goto restart;
     }
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, bs, st, msd->num_gb,
@@ -1535,7 +1539,8 @@ gb_modpoly_t *core_groebner_qq(
         free_rrec_data(recdata2);
         /* reset info_level to previous setting */
         st->info_level = info_level;
-        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb);
+        /* return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); */
+        goto restart;
 
       }
 

@@ -1521,7 +1521,7 @@ restart:
             if(info_level > 1){
                 fprintf(stdout, "[!!]");
             }
-            nbadprimes = nprimes;
+            /* nbadprimes = nprimes; */
             msd->bad_primes[i] = 0;
         }
       }

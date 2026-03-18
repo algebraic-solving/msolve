@@ -22,7 +22,7 @@
 #include "f4.h"
 
 
-void static final_remove_redundant_elements(
+static void final_remove_redundant_elements(
         bs_t *bs,
         md_t *md,
         const ht_t * const ht

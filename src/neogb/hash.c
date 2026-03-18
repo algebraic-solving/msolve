@@ -1074,7 +1074,7 @@ static inline void insert_in_basis_hash_table_pivots(
     const len_t len = row[LENGTH]+OFFSET;
     const len_t evl = bht->evl;
 
-    const hd_t * const hds    = sht->hd;
+    /* const hd_t * const hds    = sht->hd; */
     exp_t * const * const evs = sht->ev;
     
     exp_t *evt  = (exp_t *)malloc((unsigned long)evl * sizeof(exp_t));
@@ -1124,7 +1124,7 @@ static inline void insert_multiplied_poly_in_hash_table(
     const len_t evl = ht1->evl;
 
     exp_t * const *ev1      = ht1->ev;
-    const hd_t * const hd1  = ht1->hd;
+    /* const hd_t * const hd1  = ht1->hd; */
     
     exp_t **ev2     = ht2->ev;
 

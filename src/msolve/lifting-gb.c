@@ -857,7 +857,8 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   if (lml != num_gb[0]) {
       if (bs != NULL) {
-        free_basis_and_only_local_hash_table_data(&bs);
+          bad_primes[0] = 2;
+          free_basis_and_only_local_hash_table_data(&bs);
       }
       return;
   }

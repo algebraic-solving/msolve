@@ -1522,6 +1522,7 @@ restart:
                 fprintf(stdout, "[!!]");
             }
             /* nbadprimes = nprimes; */
+            nbadprimes++;
             msd->bad_primes[i] = 0;
         }
       }

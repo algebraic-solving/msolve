@@ -1509,12 +1509,12 @@ restart:
       int bad = 0;
       for(int i = 0; i < nthrds/* st->nthrds */; i++){
         if(msd->bad_primes[i] == 1){
-          bad = 1;
-          if(info_level > 1){
-              fprintf(stdout, "[!]");
-          }
-          nbadprimes++;
-          msd->bad_primes[i] = 0;
+            bad = 1;
+            if(info_level > 1){
+                fprintf(stdout, "[!]");
+            }
+            nbadprimes++;
+            msd->bad_primes[i] = 0;
         }
         if(msd->bad_primes[i] == 2){
             bad = 1;

@@ -67,7 +67,7 @@ static inline void duplicate_tracer(
             /* non-redundant lead mon. as short divmask */
             btrace[i]->lm   = (sdm_t *)calloc((unsigned long)btrace[0]->lml,
                     sizeof(sdm_t));
-            memcpy(btrace[0]->lm, btrace[i]->lm,
+            memcpy(btrace[i]->lm, btrace[0]->lm,
                     (unsigned long)btrace[0]->lml * sizeof(sdm_t));
 
             /* array of trace data per F4 round */

@@ -50,8 +50,19 @@ export CFLAGS="-I$(brew --prefix)/include -I$(brew --prefix libomp)/include"
 export LDFLAGS="-L$(brew --prefix)/lib -L$(brew --prefix libomp)/lib"
 ```
 
-If you choose a different compiler toolchain, such as GCC, make sure only one
-OpenMP runtime is linked. You can verify this with
+If you choose to use Apple Clang while linking against Homebrew's `libomp`
+(note that this setup is not officially supported), set the environment
+variables as follows:
+
+```shell
+export CC="/usr/bin/clang"
+export CFLAGS="-I$(brew --prefix)/include -I$(brew --prefix libomp)/include"
+export CPPFLAGS="-Xpreprocessor -fopenmp"
+export LDFLAGS="-L$(brew --prefix)/lib -L$(brew --prefix libomp)/lib -lomp"
+```
+
+For other compiler toolchains, such as GCC, make sure only one OpenMP runtime
+is linked. You can verify this with
 
 ```shell
 otool -L path/to/libmsolve.dylib

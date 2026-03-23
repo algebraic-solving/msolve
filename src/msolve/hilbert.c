@@ -261,7 +261,7 @@ static inline int32_t *monomial_basis(long length, long nvars,
 #endif
   while(new_length>0){
     int32_t *basis2 = realloc(basis,
-                              ((*dquot) + new_length) * nvars * sizeof(int32_t *));
+                              ((*dquot) + new_length) * nvars * sizeof(int32_t));
     if(basis2==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);
@@ -342,7 +342,7 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
 #endif
   long deg = 1;
   while(new_length>0 && deg <= maxdeg){
-    int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t *));
+    int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t));
     if(basis2==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);
@@ -422,7 +422,7 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
 #endif
   long deg = 1;
   while(new_length>0 && deg <= maxdeg){
-    int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t *));
+    int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t));
     if(basis2==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);

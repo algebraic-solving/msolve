@@ -162,8 +162,8 @@ static inline int is_divisible_lexp_without_last_variable(long nvars, long lengt
 
 /*ind is an array of long of length length
   adds entries of ind  */
-static inline int32_t sum(int32_t *ind, int32_t length){
-  int32_t s= 0;
+static inline int64_t sum(int32_t *ind, int32_t length){
+  int64_t s = 0;
   for(int32_t i = 0; i < length; i++){
     s += ind[i];
   }

@@ -857,7 +857,8 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
   if (lml != num_gb[0]) {
       if (bs != NULL) {
-        free_basis_and_only_local_hash_table_data(&bs);
+          bad_primes[0] = 2;
+          free_basis_and_only_local_hash_table_data(&bs);
       }
       return;
   }
@@ -1190,7 +1191,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
       }
     }
   }
-  if(dl->check2[modgbs->ld] == NBCHECK){
+  if(dl->check2[modgbs->ld-1] == NBCHECK){
     return;
   }
   *st_rrec += realtime()-st;
@@ -1277,6 +1278,9 @@ gb_modpoly_t *core_groebner_qq(
         const int print_gb
         )
 {
+
+restart:
+
   *errp = 0;
 
   int32_t info_level = st->info_level;
@@ -1404,7 +1408,8 @@ gb_modpoly_t *core_groebner_qq(
       free_rrec_data(recdata2);
 
       fprintf(stdout, "Something went wrong in the learning phase, msolve restarts.");
-      return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb);
+      /* return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); */
+      goto restart;
     }
     /* duplicate data for multi-threaded multi-mod computation */
     duplicate_data_mthread_gbtrace(st->nthrds, bs, st, msd->num_gb,
@@ -1505,26 +1510,29 @@ gb_modpoly_t *core_groebner_qq(
       int bad = 0;
       for(int i = 0; i < nthrds/* st->nthrds */; i++){
         if(msd->bad_primes[i] == 1){
-          bad = 1;
-          if(info_level > 1){
-              fprintf(stdout, "[!]");
-          }
-          nbadprimes++;
-          msd->bad_primes[i] = 0;
+            bad = 1;
+            if(info_level > 1){
+                fprintf(stdout, "[!]");
+            }
+            nbadprimes++;
+            msd->bad_primes[i] = 0;
         }
         if(msd->bad_primes[i] == 2){
             bad = 1;
             if(info_level > 1){
                 fprintf(stdout, "[!!]");
             }
-            nbadprimes = nprimes;
+            /* nbadprimes = nprimes; */
+            nbadprimes++;
             msd->bad_primes[i] = 0;
         }
       }
 
       if(nbadprimes >= nprimes){
         if(info_level){
-          fprintf(stdout, "Too many bad primes, computation will restart\n");
+          fprintf(stdout, "\nToo many bad primes, computation will restart\n");
+          fprintf(stdout, "-------------------------------------------------\
+-----------------------------------------------------\n");
         }
         if(dlinit){
           data_lift_clear(dlift);
@@ -1533,7 +1541,10 @@ gb_modpoly_t *core_groebner_qq(
         gb_modpoly_without_hash_table_clear((*modgbsp));
         free_rrec_data(recdata1);
         free_rrec_data(recdata2);
-        return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb);
+        /* reset info_level to previous setting */
+        st->info_level = info_level;
+        /* return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); */
+        goto restart;
 
       }
 

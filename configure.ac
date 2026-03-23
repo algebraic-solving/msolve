@@ -182,9 +182,12 @@ AC_CONFIG_LINKS([
  output_files/henrion5-qq.g2.e1.res:output_files/henrion5-qq.g2.e1.res
  output_files/henrion5-qq.g2.e2.res:output_files/henrion5-qq.g2.e2.res
  test/diff/diff_henrion5-qq.sh:test/diff/diff_henrion5-qq.sh
- input_files/input-overflow-16.ms:input_files/input-overflow-16.ms
- output_files/input-overflow-16.P2.d0.res:output_files/input-overflow-16.P2.d0.res
- test/diff/diff_input-overflow-16.sh:test/diff/diff_input-overflow-16.sh
+ input_files/input-overflow-a-16.ms:input_files/input-overflow-a-16.ms
+ output_files/input-overflow-a-16.P2.d0.res:output_files/input-overflow-a-16.P2.d0.res
+ test/diff/diff_input-overflow-a-16.sh:test/diff/diff_input-overflow-a-16.sh
+ input_files/input-overflow-b-16.ms:input_files/input-overflow-b-16.ms
+ output_files/input-overflow-b-16.res:output_files/input-overflow-b-16.res
+ test/diff/diff_input-overflow-b-16.sh:test/diff/diff_input-overflow-b-16.sh
  input_files/issue-230.ms:input_files/issue-230.ms
  output_files/issue-230.P1.d0.p128.res:output_files/issue-230.P1.d0.p128.res
  output_files/issue-230.P1.d0.p1024.res:output_files/issue-230.P1.d0.p1024.res

@@ -527,7 +527,7 @@ static inline int32_t *array_nbdegrees(int32_t *bexp_lm, int len,
       deg = newdeg;
     }
   }
-  int32_t *ldeg = calloc(sizeof(int32_t), *nb);
+  int32_t *ldeg = calloc(*nb, sizeof(int32_t));
   deg = degree(bexp_lm, nv);
   ldeg[0] = 1;
   int32_t i = 0, j = 1;

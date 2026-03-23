@@ -1702,7 +1702,9 @@ static int32_t *initial_modular_step(
                                                    lineqs_ptr[0], squvars,
                                                    md->info_level, bdata_fglm,
                                                    bdata_bms, success, md);
-            if((*bparam)->degelimpol != dquot){
+            if (*bparam == NULL) {
+                *success = 0;
+            } else if((*bparam)->degelimpol != dquot){
                 /* not in shape position */
                 /* reset times for change of order */
                 md->fglm_ctime = cputime();
@@ -1714,21 +1716,29 @@ static int32_t *initial_modular_step(
                                       *bsz, *nlins_ptr, linvars, lineqs_ptr[0],
                                       squvars,
                                       0, bdata_fglm, bdata_bms, success, md);
-                int boo = equal_param(*bparam, *test_nmod_param);
-                if ((*test_nmod_param)->degelimpol == dquot) {
-                    /* shape position
-                       replace with the new parametrizations
-                       necessarily correct */
-                    free_fglm_param(bparam[0]);
-                    *bparam = *test_nmod_param;
+                if (*test_nmod_param == NULL) {
+                    *success = 0;
                 } else {
-                    if(boo == 0) {
-                        /* both parametrizations might be incorrect */
-                        *success = 0;
+                    int boo = equal_param(*bparam, *test_nmod_param);
+                    printf("equal param boo %d\n",boo);
+                    printf ("degelim=%d, dquot=%ld\n",
+                            (*test_nmod_param)->degelimpol,
+                            dquot);
+                    if ((*test_nmod_param)->degelimpol == dquot) {
+                        /* shape position
+                           replace with the new parametrizations
+                           necessarily correct */
+                        free_fglm_param(bparam[0]);
+                        *bparam = *test_nmod_param;
+                    } else {
+                        if(boo == 0) {
+                            /* both parametrizations might be incorrect */
+                            *success = 0;
+                        }
+                        free_fglm_param(test_nmod_param[0]);
                     }
-                    free_fglm_param(test_nmod_param[0]);
+                    free(test_nmod_param);
                 }
-                free(test_nmod_param);
             }
         }
         *dim = 0;

@@ -18,29 +18,51 @@
  * Christian Eder
  * Mohab Safey El Din */
 
-static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
+#include <errno.h>
+
+static inline int store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
 {
     len_t i, j, k;
 
     len_t op = 0;
+    len_t index = 0;
+
+    int res = 0;
+    mpz_t tmp_z;
+    mpq_t tmp_q;
+    if (gens->field_char > 0) {
+        mpz_init(tmp_z);
+    } else {
+        mpq_init(tmp_q);
+    }
+
     char *var = NULL;
     char *ev  = NULL;
+    char *end = NULL;
     for (i = 0; i < strlen(term)+1; ++i) {
         if (term[i] == '*' || i == strlen(term)) {
             j = op;
             while (j < i && term[j] != '^') {
                 ++j;
             }
-            if (term[j-1] == ',') {
-                --j;
-            }
             while(term[op] == ' ' || term[op] == '+' || term[op] == '-') {
                 ++op;
+            }
+            if (op >= j) {
+                fprintf(stderr, "Error when parsing term %s (missing operand for *)\n", term);
+                res = 1;
+                break;
             }
             var = realloc(var, sizeof(char)*(j-op+1));
             memcpy(var, term+op, j-op);
             var[j-op] = '\0';
-            if (term[j] == '^') {
+            int has_exponent = (j < i && term[j] == '^');
+            if (has_exponent) {
+                if (j + 1 >= i) {
+                    fprintf(stderr, "Error when parsing term %s (missing exponent)\n", term);
+                    res = 1;
+                    break;
+                }
                 ev = realloc(ev, (sizeof(char)*(i-j)));
                 ev = memcpy(ev, term+(j+1), i-j-1);
                 ev[i-j-1] = '\0';
@@ -49,17 +71,76 @@ static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_
                 ev[0] = '1';
                 ev[1] ='\0';
             }
+            int is_var = 0;
             for (k = 0; k < gens->nvars; ++k) {
                 if (strcmp(gens->vnames[k], var) == 0) {
-                    ((gens->exps) + pos)[k] = strtol(ev, NULL, 10);
+                    is_var = 1;
+                    if (((gens->exps) + pos)[k] != 0) {
+                        fprintf(stderr, "Error when parsing term %s (variable appears multiple times)\n", term);
+                        res = 1;
+                        break;
+                    }
+                    long val = strtol(ev, &end, 10);
+                    if (ev == end) {
+                        fprintf(stderr, "Error when parsing term %s (invalid exponent)\n", term);
+                        res = 1;
+                        break;
+                    }
+                    if (errno == ERANGE || val > INT_MAX) {
+                        fprintf(stderr, "Error when parsing term %s (exponent out of range)\n", term);
+                        res = 1;
+                        break;
+                    }
+                    if (val <= 0) {
+                        fprintf(stderr, "Error when parsing term %s (exponent must be positive)\n", term);
+                        res = 1;
+                        break;
+                    }
+                    ((gens->exps) + pos)[k] = val;
                     break;
                 }
             }
+            if (res == 1) {
+                break;
+            }
+            if (is_var == 0) {
+                if (has_exponent) {
+                    fprintf(stderr, "Error when parsing term %s (coefficient cannot have an exponent)\n", term);
+                    res = 1;
+                    break;
+                }
+                if (index > 0) {
+                    fprintf(stderr, "Error when parsing term %s (multiple coefficients are not allowed)\n", term);
+                    res = 1;
+                    break;
+                }
+                if (gens->field_char > 0) {
+                    if (mpz_set_str(tmp_z, var, 10) != 0) {
+                        fprintf(stderr, "Error when parsing term %s (invalid coefficient for finite field)\n", term);
+                        res = 1;
+                        break;
+                    }
+                } else {
+                    if (mpq_set_str(tmp_q, var, 10) != 0) {
+                        fprintf(stderr, "Error when parsing term %s (invalid coefficient)\n", term);
+                        res = 1;
+                        break;
+                    }
+                }
+            }
             op = i+1;
+            index++;
         }
     }
+
     free(var);
     free(ev);
+    if (gens->field_char > 0) {
+        mpz_clear(tmp_z);
+    } else {
+        mpq_clear(tmp_q);
+    }
+    return res;
 }
 
 
@@ -769,7 +850,10 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
       iv_tmp  +=  field_char; //MS change int -> long int
     }
     gens->cfs[pos]  = (int32_t)iv_tmp;
-    store_exponent(term, gens, pos*gens->nvars);
+    if (store_exponent(term, gens, pos*gens->nvars)) {
+      free(term);
+      return 1;
+    }
     for(int j = 1; j < nterms; j++){
       get_term(line, &prev_pos, &term, &term_size);
       if (term != NULL) {
@@ -792,7 +876,10 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
           cf_tmp  += field_char;
         }
         gens->cfs[pos+j] = (int32_t)cf_tmp;
-        store_exponent(term, gens, (pos+j)*gens->nvars);
+        if (store_exponent(term, gens, (pos+j)*gens->nvars)) {
+          free(term);
+          return 1;
+        }
       }
       //      store_exponent(term, basis, ht);
     }
@@ -880,11 +967,17 @@ static int get_coefficient_mpz_and_term_from_line(char *line, int32_t nterms,
   if(term != NULL){
 
     beginning_strterm_to_mpz(term, gens->mpz_cfs[pos], gens->mpz_cfs[pos+1]);
-    store_exponent(term, gens, pos/2*gens->nvars);
+    if (store_exponent(term, gens, pos/2*gens->nvars)) {
+      free(term);
+      return 1;
+    }
     for(int j = 2; j < 2*nterms; j+=2){
       get_term(line, &prev_pos, &term, &term_size);
       inner_strterm_to_mpz(term, gens->mpz_cfs[pos+j], gens->mpz_cfs[pos+j+1]);
-      store_exponent(term, gens, ((pos+j)/2)*gens->nvars);
+      if (store_exponent(term, gens, ((pos+j)/2)*gens->nvars)) {
+        free(term);
+        return 1;
+      }
     }
     free(term);
     return 0;

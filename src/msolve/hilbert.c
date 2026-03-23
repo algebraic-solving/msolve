@@ -286,7 +286,7 @@ static inline int32_t *monomial_basis(long length, long nvars,
 
     int32_t *new_basis2 = realloc(new_basis,
                                  sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
-    if(new_basis==NULL){
+    if(new_basis2==NULL){
       fprintf(stderr, "Issue with realloc\n");
       exit(1);
     }

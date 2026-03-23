@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-file=input-overflow-16
+file=input-overflow-a-16
 
 source test/diff/diff_source.sh
 

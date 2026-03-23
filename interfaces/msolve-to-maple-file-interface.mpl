@@ -952,6 +952,7 @@ end:
 end module:
 
 libname:=savelibname,libname:
+ssystem(cat("mkdir -p ", savelibname)):
 ssystem(cat("rm ", mladirname)):
 march(`create`, mladirname);
 savelib(`MSolve`);

@@ -713,14 +713,13 @@ static inline void compute_elim_poly(fglm_data_t *data,
 }
 
 
-static inline long make_square_free_elim_poly(param_t *param,
+static inline void make_square_free_elim_poly(param_t *param,
                                               fglm_bms_data_t *data_bms,
                                               long dimquot
                                               )
 {
   long dim = data_bms->BMS->V1->length - 1;
   param->degelimpol = dim;
-
   int boo = nmod_poly_is_squarefree(data_bms->BMS->V1);
 
   if(boo && dim == dimquot){
@@ -765,18 +764,10 @@ static inline long make_square_free_elim_poly_colon(param_t *param,
 static inline void compute_minpoly(param_t *param,
                                    fglm_data_t *data,
                                    fglm_bms_data_t *data_bms,
-                                   long dimquot,
-                                   long *dim)
+                                   long dimquot)
 {
   compute_elim_poly(data, data_bms, dimquot);
-  if(data_bms->BMS->V1->length == 1){
-    nmod_poly_fit_length(data_bms->BMS->V1, 2);
-    data_bms->BMS->V1->length = 2;
-    data_bms->BMS->V1->coeffs[0] = 0;
-    data_bms->BMS->V1->coeffs[1] = 1;
-  }
-  *dim = make_square_free_elim_poly(param, data_bms, dimquot);
-
+  make_square_free_elim_poly(param, data_bms, dimquot);
 }
 
 static void set_param_linear_vars(param_t *param,
@@ -1501,23 +1492,21 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
       *success = 0;
       return NULL;
     }
-    else {
-      if (right_param == 1) {
+    if (right_param == 1) {
         if(info_level){
-          fprintf(stdout,
-                  "Ideal not in generic position, parametrizations are not correct\n");
+            fprintf(stdout,
+                    "Ideal not in generic position, parametrizations are not correct\n");
         }
         *success = 0;
-      }
-      else {
-          if (right_param < (int)nvars) {
+    } else {
+        if (right_param < (int)nvars) {
             if(info_level){
-              fprintf(stdout, "Only the first %d parametrizations of ",right_param-1);
-              fprintf(stdout, "the radical ideal are correct\n");
+                fprintf(stdout, "Only the first %d parametrizations of ",right_param-1);
+                fprintf(stdout, "the radical ideal are correct\n");
             }
             *success = 0;
-          }
-      }
+        }
+
     }
   }
   st->fglm_rtime = realtime() - st->fglm_rtime;

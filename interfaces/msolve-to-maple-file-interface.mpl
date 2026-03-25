@@ -54,14 +54,16 @@ MSolveRealRoots,MSolveParam;
 
 local GetSystem, ToMSolve, GetOptions, CheckCharacteristic, ReadPolynomial,
 ExtractParametrization, RemoveFiles, 
-SplitParamCoord, CallMSolve, 
+SplitParamCoord, 
+CallMSolve, 
 SelectVanishingSols, 
 NonNegativeIntervalEvaluate, 
 NonZeroIntervalEvaluate,
 BuildSolution, Eval_linform, MakeBinaryInterval, 
-Parametrization,RefineSolutions,
-SplitAndRefinePerConstraints, 
-SplitAndRefinePerCoordinates;
+Parametrization,
+RefineSolutions,
+SplitAndRefinePerCoordinates,
+SplitAndRefinePerConstraints;
 
 
 
@@ -404,10 +406,12 @@ local param, den, cfs, newres;
    return param, den, cfs, newres;
 end proc;
 
-SplitParamCoord:=proc(param, pol, c)
-local param1, param2, lparam, newelim;
+SplitParamCoord:=proc(param, pol)
+local param1, param2, lparam, newelim, _p;
   param1 := [pol, param[2], param[3], [op(param[4][1..c-1]), 0,
   op(param[4][c+1..-1])]]:
+  param1 := [pol, param[2], param[3], map(_p->if divide(_p, pol) then
+  0 else _p fi, param[4])]:
   lparam:=[param1];
   newelim := normal(param[1]/pol);
   if degree(newelim)>0 then 
@@ -472,7 +476,7 @@ psols2;
           g:=gcd(lparam[j][1], lparam[j][-1][idx[i]]);
         fi:
         if degree(g) > 0 then 
-          splitparam := SplitParamCoord(lparam[j], g, idx[i]);
+          splitparam := SplitParamCoord(lparam[j], g);
           newlparam := [op(newlparam), op(splitparam)]:
         else
           newlparam := [op(newlparam), lparam[j]]:
@@ -582,7 +586,7 @@ local elim, v, i, newsols, sol, interv, prec, newsol, boo;
     while boo = true and interv[2]<> interv[1] do 
       prec := 2*(abs(ilog2(abs(interv[2]-interv[1])))+256);
       printf("[r]");
-      interv := RootFinding[RefineRoot](interv, elim, digits = iquo(prec,4));
+      interv := RootFinding[RefineRoot](interv, elim);
       newsol, boo := BuildSolution(param, interv, vars);
     end do;
     newsols:=[op(newsols), newsol]:

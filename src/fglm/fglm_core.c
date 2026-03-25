@@ -1284,10 +1284,7 @@ static inline long initialize_fglm_data(sp_matfglm_t *matrix,
     if(matrix->dense_mat[i]==0)
       nb++;
   }
-  do{
-      data->vecinit[0] = (CF_t)rand() % prime;
-      /* printf ("data->vecinit[0]=%d\n",data->vecinit[0]); */
-  }while(data->vecinit[0] == 0);
+  data->vecinit[0] = 1 + ((CF_t) rand() % (prime-1)); /* random, nonzero */
   for(szmat_t i = 1; i < matrix->ncols; i++){
     data->vecinit[i] = (CF_t)rand() % prime;
   }

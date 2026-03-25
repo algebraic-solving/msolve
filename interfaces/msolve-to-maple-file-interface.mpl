@@ -469,7 +469,7 @@ psols2;
   for i from 1 to nops(idx) do 
       newlparam :=[]:
       for j from 1 to nops(lparam) do 
-        if idx[i]=nops(vars) and member(indets(lin_form)[1], vars)
+        if idx[i]=nops(vars) and indets(lin_form)={vars[-1]}
           then 
           g:=gcd(lparam[j][1], lin_form):
         else 

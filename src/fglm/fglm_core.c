@@ -190,164 +190,158 @@ static inline void mirror_poly_inplace(nmod_poly_t in){
   }
 }
 
-
-
 /*
 
   U is a Hankel matrix of size dim
 
   returns 0 when U is not invertible else it returns 1.
  */
-static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t deg){
+static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
 
-  nmod_poly_one(data_bms->BMS->R0);
-  nmod_poly_zero(data_bms->BMS->R1);
-  nmod_poly_zero(data_bms->BMS->V0);
-  nmod_poly_one(data_bms->BMS->V1);
-  szmat_t dim = deg; //B->points->length / 2;
-  data_bms->BMS->npoints = 0;
-
-  data_bms->BMS->points->length = 2 * dim - 1;
-
-  mirror_points(data_bms->BMS, data_bms->BMS->points->length);
-
-  nmod_em_gcd(data_bms->BMS);
-  if(data_bms->BMS->R1->length-1 < dim-1 && dim > 1){
-    fprintf(stderr, "Singular matrix\n");
-    return 0;
-  }
-
-  if(data_bms->BMS->V1->coeffs[0]!=0){
-    //Compute Z1 = LC(R1)^{-1} * V1
-    mp_limb_t inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
-                             (data_bms->BMS->R1->mod).n);
-    nmod_poly_scalar_mul_nmod(data_bms->Z1, data_bms->BMS->V1, inv);
-
-    mirror_points(data_bms->BMS, data_bms->BMS->points->length);
-    nmod_poly_one(data_bms->BMS->R0); //x^(2dim -1)
-    nmod_poly_zero(data_bms->BMS->R1);
-    nmod_poly_zero(data_bms->BMS->V0);
-    nmod_poly_one(data_bms->BMS->V1);
-    data_bms->BMS->npoints = 0;
-
-    //(R_i, R_{i+1}, V_i, V_{i+1}) = EMGCD(R_0, R_1)
-    nmod_em_gcd(data_bms->BMS);
-    //Z2 = LC(R_{i+1})^{-1} x (V_{i+1})
-    inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
-                   (data_bms->BMS->R1->mod).n);
-    nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
-
-  }
-  else{//V1(0) = 0
-    fprintf(stderr, "Warning: this part of the code has not been tested intensively\n");
     nmod_poly_one(data_bms->BMS->R0);
     nmod_poly_zero(data_bms->BMS->R1);
     nmod_poly_zero(data_bms->BMS->V0);
     nmod_poly_one(data_bms->BMS->V1);
     data_bms->BMS->npoints = 0;
 
-    data_bms->BMS->points->length = 2 * dim + 1;
+    data_bms->BMS->points->length = 2 * dim - 1;
 
-    long queue_lo = (data_bms->BMS->npoints);
-    long queue_len = (data_bms->BMS->points->length) - queue_lo;
-    nmod_poly_zero(data_bms->BMS->rt);
-    nmod_poly_set_coeff_ui(data_bms->BMS->rt, queue_len+1, 1);
-    for (long i = 0; i < queue_len; i++)
-      {
-        nmod_poly_set_coeff_ui(data_bms->BMS->rt, queue_len - i,
-                               data_bms->BMS->points->coeffs[queue_lo + i]);
-      }
-    nmod_poly_set_coeff_ui(data_bms->BMS->rt, 0, 1);
+    mirror_points(data_bms->BMS, data_bms->BMS->points->length);
 
-    nmod_em_gcd_preinstantiated(data_bms->BMS, 0);//B->rt is pre-instantied
-
-    if(data_bms->BMS->R1->length-1 == dim){
-      mp_limb_t inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
-                               (data_bms->BMS->R1->mod).n);
-      nmod_poly_scalar_mul_nmod(data_bms->Z1, data_bms->BMS->V1, inv);
-
-
-      nmod_poly_set_coeff_ui(data_bms->BMS->rt, queue_len+1, 1);
-      for (long i = 0; i < queue_len; i++)
-        {
-          nmod_poly_set_coeff_ui(data_bms->BMS->rt, i + 1,
-                                 data_bms->BMS->points->coeffs[queue_lo + i]);
-        }
-      nmod_poly_set_coeff_ui(data_bms->BMS->rt, 0, 1);
-
-      nmod_poly_one(data_bms->BMS->R0); //x^(2dim +1)
-      nmod_poly_zero(data_bms->BMS->R1);
-      nmod_poly_zero(data_bms->BMS->V0);
-      nmod_poly_one(data_bms->BMS->V1);
-      data_bms->BMS->npoints = 0;
-
-      //(R_i, R_{i+1}, V_i, V_{i+1}) = EMGCD(R_0, R_1)
-      nmod_em_gcd_preinstantiated(data_bms->BMS, 0);
-      //Z2 = LC(R_{i+1})^{-1} x (V_{i+1})
-      inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
-                     (data_bms->BMS->R1->mod).n);
-      nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
-      fprintf(stderr, "Something should be checked\n");
-      return 1;
+    nmod_em_gcd(data_bms->BMS);
+    if(data_bms->BMS->R1->length-1 < dim-1 && dim > 1){
+        fprintf(stderr, "Singular matrix\n");
+        return 0;
     }
-    else{
-      nmod_poly_one(data_bms->BMS->R0);
-      nmod_poly_zero(data_bms->BMS->R1);
-      nmod_poly_zero(data_bms->BMS->V0);
-      nmod_poly_one(data_bms->BMS->V1);
-      data_bms->BMS->npoints = 0;
 
-      data_bms->BMS->points->length = 2 * dim + 1;
-
-      queue_lo = (data_bms->BMS->npoints);
-      queue_len = (data_bms->BMS->points->length) - queue_lo;
-      nmod_poly_zero(data_bms->BMS->rt);
-      nmod_poly_set_coeff_ui(data_bms->BMS->rt, queue_len+1, data_bms->BMS->R1->mod.n - 1);
-      for (long i = 0; i < queue_len; i++)
-        {
-          nmod_poly_set_coeff_ui(data_bms->BMS->rt, queue_len - i,
-                                 data_bms->BMS->points->coeffs[queue_lo + i]);
-        }
-      nmod_poly_set_coeff_ui(data_bms->BMS->rt, 0, 1);
-
-      nmod_em_gcd_preinstantiated(data_bms->BMS, 0);//B->rt is pre-instantied
-
-      if(data_bms->BMS->R1->length-1 == dim){
+    if(data_bms->BMS->V1->coeffs[0]!=0){
+        //Compute Z1 = LC(R1)^{-1} * V1
         mp_limb_t inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
                                  (data_bms->BMS->R1->mod).n);
         nmod_poly_scalar_mul_nmod(data_bms->Z1, data_bms->BMS->V1, inv);
 
-
-        nmod_poly_set_coeff_ui(data_bms->BMS->rt, queue_len+1, 1);
-        for (long i = 0; i < queue_len; i++)
-          {
-            nmod_poly_set_coeff_ui(data_bms->BMS->rt, i + 1,
-                                   data_bms->BMS->points->coeffs[queue_lo + i]);
-          }
-        nmod_poly_set_coeff_ui(data_bms->BMS->rt, 0, data_bms->BMS->R1->mod.n - 1);
-
-        nmod_poly_one(data_bms->BMS->R0); //x^(2dim +1)
+        mirror_points(data_bms->BMS, data_bms->BMS->points->length);
+        nmod_poly_one(data_bms->BMS->R0); //x^(2dim -1)
         nmod_poly_zero(data_bms->BMS->R1);
         nmod_poly_zero(data_bms->BMS->V0);
         nmod_poly_one(data_bms->BMS->V1);
         data_bms->BMS->npoints = 0;
 
         //(R_i, R_{i+1}, V_i, V_{i+1}) = EMGCD(R_0, R_1)
-        nmod_em_gcd_preinstantiated(data_bms->BMS, 0);
+        nmod_em_gcd(data_bms->BMS);
         //Z2 = LC(R_{i+1})^{-1} x (V_{i+1})
         inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
                        (data_bms->BMS->R1->mod).n);
         nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
-        fprintf(stderr, "Something should be checked\n");
-        return 1;
-      }
-      else{
-        fprintf(stderr, "There should be a bug here (invert_hankel)\n");
-        return 0;
-      }
+
     }
-  }
-  return 1;
+    else{//V1(0) = 0
+        fprintf(stderr, "Warning: this part of the code has not been ");
+        fprintf(stderr, "tested intensively\n");
+        nmod_poly_one(data_bms->BMS->R0);
+        nmod_poly_zero(data_bms->BMS->R1);
+        nmod_poly_zero(data_bms->BMS->V0);
+        nmod_poly_one(data_bms->BMS->V1);
+        data_bms->BMS->npoints = 0;
+
+        data_bms->BMS->points->length = 2 * dim + 1;
+
+        nmod_poly_zero(data_bms->BMS->rt);
+        nmod_poly_set_coeff_ui(data_bms->BMS->rt, 0, 1);
+        for (long i = 0; i < 2*dim; i++){
+            nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim - (i+1),
+                                 data_bms->BMS->points->coeffs[i]);
+        }
+        nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim, 1);
+
+        nmod_em_gcd_preinstantiated(data_bms->BMS, 0);//B->rt is pre-instantied
+
+        if(data_bms->BMS->R1->length-1 == dim){
+            mp_limb_t inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
+                                     (data_bms->BMS->R1->mod).n);
+            nmod_poly_scalar_mul_nmod(data_bms->Z1, data_bms->BMS->V1, inv);
+
+
+            nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim, 1);
+            for (long i = 0; i < 2*dim; i++){
+                nmod_poly_set_coeff_ui(data_bms->BMS->rt, i+1,
+                                       data_bms->BMS->points->coeffs[i]);
+            }
+
+            nmod_poly_one(data_bms->BMS->R0); //x^(2dim +1)
+            nmod_poly_zero(data_bms->BMS->R1);
+            nmod_poly_zero(data_bms->BMS->V0);
+            nmod_poly_one(data_bms->BMS->V1);
+            data_bms->BMS->npoints = 0;
+
+            //(R_i, R_{i+1}, V_i, V_{i+1}) = EMGCD(R_0, R_1)
+            nmod_em_gcd_preinstantiated(data_bms->BMS, 0);
+            //Z2 = LC(R_{i+1})^{-1} x (V_{i+1})
+            inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
+                           (data_bms->BMS->R1->mod).n);
+            nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
+            /* fprintf(stderr, "Something should be checked\n"); */
+            return 1;
+        }
+        else{
+            fprintf(stderr, "Warning: this part of the code has not been ");
+            fprintf(stderr, "tested intensively at all\n");
+            nmod_poly_one(data_bms->BMS->R0);
+            nmod_poly_zero(data_bms->BMS->R1);
+            nmod_poly_zero(data_bms->BMS->V0);
+            nmod_poly_one(data_bms->BMS->V1);
+            data_bms->BMS->npoints = 0;
+
+            data_bms->BMS->points->length = 2 * dim + 1;
+
+            nmod_poly_zero(data_bms->BMS->rt);
+            nmod_poly_set_coeff_ui(data_bms->BMS->rt, 0, 1);
+            for (long i = 0; i < 2*dim; i++){
+                nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim - (i+1),
+                                       data_bms->BMS->points->coeffs[i]);
+            }
+            nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim,
+                                   (data_bms->BMS->R1->mod).n-1);
+            nmod_poly_print_pretty (data_bms->BMS->rt,"x");
+            printf("\n");
+
+            nmod_em_gcd_preinstantiated(data_bms->BMS, 0);//B->rt is pre-instantied
+
+            if(data_bms->BMS->R1->length-1 == dim){
+                mp_limb_t inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
+                                         (data_bms->BMS->R1->mod).n);
+                nmod_poly_scalar_mul_nmod(data_bms->Z1, data_bms->BMS->V1, inv);
+
+                nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim, 1);
+                for (long i = 0; i < 2*dim; i++){
+                    nmod_poly_set_coeff_ui(data_bms->BMS->rt, i+1,
+                                           data_bms->BMS->points->coeffs[i]);
+                }
+                nmod_poly_set_coeff_ui(data_bms->BMS->rt, 0,
+                                       (data_bms->BMS->R1->mod).n - 1);
+
+                nmod_poly_one(data_bms->BMS->R0); //x^(2dim +1)
+                nmod_poly_zero(data_bms->BMS->R1);
+                nmod_poly_zero(data_bms->BMS->V0);
+                nmod_poly_one(data_bms->BMS->V1);
+                data_bms->BMS->npoints = 0;
+
+                //(R_i, R_{i+1}, V_i, V_{i+1}) = EMGCD(R_0, R_1)
+                nmod_em_gcd_preinstantiated(data_bms->BMS, 0);
+                //Z2 = LC(R_{i+1})^{-1} x (V_{i+1})
+                inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
+                               (data_bms->BMS->R1->mod).n);
+                nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
+                /* fprintf(stderr, "Something should be checked\n"); */
+                return 1;
+            }
+            else{
+                fprintf(stderr, "There should be a bug here (invert_hankel)\n");
+                return 0;
+            }
+        }
+    }
+    return 1;
 }
 
 
@@ -745,7 +739,6 @@ static inline long make_square_free_elim_poly(param_t *param,
   }
 
   data_bms->sqf->num=0;
-  return param->elim->length - 1;
 }
 
 static inline long make_square_free_elim_poly_colon(param_t *param,
@@ -1300,7 +1293,11 @@ static inline long initialize_fglm_data(sp_matfglm_t *matrix,
     if(matrix->dense_mat[i]==0)
       nb++;
   }
-  for(szmat_t i = 0; i < matrix->ncols; i++){
+  do{
+      data->vecinit[0] = (CF_t)rand() % prime;
+      /* printf ("data->vecinit[0]=%d\n",data->vecinit[0]); */
+  }while(data->vecinit[0] == 0);
+  for(szmat_t i = 1; i < matrix->ncols; i++){
     data->vecinit[i] = (CF_t)rand() % prime;
   }
   data->res[0] = data->vecinit[0];
@@ -1370,6 +1367,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   param_t *param = allocate_fglm_param(prime, nvars);
 
   szmat_t sz = matrix->ncols * matrix->nrows;
+
+ restart:
   initialize_fglm_data(matrix, *bdata, prime, sz, block_size);
 
   /* if(info_level){ */
@@ -1423,8 +1422,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   /* Berlekamp-Massey data */
   *bdata_bms = allocate_fglm_bms_data(dimquot, prime);
 
-  long dim = 0;
-  compute_minpoly(param, *bdata, *bdata_bms, dimquot, &dim);
+  compute_minpoly(param, *bdata, *bdata_bms, dimquot);
 
   if(info_level > 1){
     /* fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n", */
@@ -1433,13 +1431,13 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     double crt_fglm = cputime()-cst_fglm;
     fprintf (stdout, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
-
-
-  if (dimquot == dim) {
-
-    /* if(info_level){ */
-    /*   fprintf(stderr, "Elimination polynomial has degree %d.\n", dimquot); */
-    /* } */
+  if (param->degelimpol < 1) {
+      if (info_level > 1) {
+          fprintf (stdout, "Constant polynomial, computation will restart\n");
+          goto restart;
+      }
+  }
+  if (dimquot == param->degelimpol) {
 
     st_fglm = realtime();
     cst_fglm = cputime();
@@ -1450,7 +1448,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     }
 
     if(compute_parametrizations(param, *bdata, *bdata_bms,
-                                dim, block_size,
+                                dimquot, block_size,
                                 nlins, linvars, lineqs,
                                 nvars) == 0){
 
@@ -1611,8 +1609,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
   fglm_bms_data_set_prime(data_bms, prime);
 
-  long dim = 0;
-  compute_minpoly(param, data_fglm, data_bms, dimquot, &dim);
+  compute_minpoly(param, data_fglm, data_bms, dimquot);
 
   if(info_level){
     fprintf(stdout, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
@@ -1625,10 +1622,10 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
     return 1;
   }
 
-  if (dimquot == (long unsigned int)dim) {
+  if (dimquot == (long unsigned int)(param->degelimpol)) {
 
     if(compute_parametrizations(param, data_fglm, data_bms,
-				dim, block_size,
+				dimquot, block_size,
 				nlins, linvars, lineqs,
 				nvars) == 0){
 

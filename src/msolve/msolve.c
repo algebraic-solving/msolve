@@ -823,7 +823,7 @@ check_and_set_linear_poly_non_hashed(long *nlins_ptr, nvars_t *linvars,
     }
     if (deg == 1) {
       nlins++;
-      for (int k = 0; k < nvars; k++) {
+      for (int k = 0; k < nvars-1; k++) {
         if (bexp_lm[i * nvars + k] == 1) {
           linvars[k] = i + 1;
           coefpos[k] = pos;
@@ -1704,26 +1704,29 @@ static int32_t *initial_modular_step(
                                                    bdata_bms, success, md);
             if (*bparam == NULL) {
                 *success = 0;
-            } else if((*bparam)->degelimpol != dquot){
+                *dim = 0;
+                *dquot_ori = dquot;
+                free_basis_without_hash_table(&(bs));
+                free(bs);
+                return NULL;
+            }
+            if((*bparam)->degelimpol != dquot){
                 /* not in shape position */
                 /* reset times for change of order */
                 md->fglm_ctime = cputime();
                 md->fglm_rtime = realtime();
                 param_t **test_nmod_param =
                     (param_t **)malloc(sizeof(param_t *));
-                *test_nmod_param = nmod_fglm_compute_trace_data(
-                                      *bmatrix, fc, bs->ht->nv,
-                                      *bsz, *nlins_ptr, linvars, lineqs_ptr[0],
-                                      squvars,
-                                      0, bdata_fglm, bdata_bms, success, md);
-                if (*test_nmod_param == NULL) {
+                *test_nmod_param =
+                    nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
+                                                 *bsz, *nlins_ptr, linvars,
+                                                 lineqs_ptr[0], squvars,
+                                                 0, bdata_fglm, bdata_bms,
+                                                 success, md);
+                if(*test_nmod_param == NULL){
                     *success = 0;
                 } else {
                     int boo = equal_param(*bparam, *test_nmod_param);
-                    printf("equal param boo %d\n",boo);
-                    printf ("degelim=%d, dquot=%ld\n",
-                            (*test_nmod_param)->degelimpol,
-                            dquot);
                     if ((*test_nmod_param)->degelimpol == dquot) {
                         /* shape position
                            replace with the new parametrizations

@@ -220,10 +220,16 @@ static inline void check_and_set_linear_poly_8(nvars_t *nlins_ptr,
 
     if (deg == 1) {
       nlins++;
-      for (int k = 0; k < bht->nv; k++) {
+      int linvarsxn = 1;
+      for (int k = 0; k < bht->nv-1; k++) {
         if (bexp_lm[i * bht->nv + k] == 1) {
           linvars[k] = i + 1;
+          linvarsxn = 0;
+          break;
         }
+      }
+      if (linvarsxn){
+          nlins--;
       }
     }
   }
@@ -288,10 +294,16 @@ static inline void check_and_set_linear_poly_16(nvars_t *nlins_ptr,
 
     if (deg == 1) {
       nlins++;
-      for (int k = 0; k < bht->nv; k++) {
+      int linvarsxn = 1;
+      for (int k = 0; k < bht->nv-1; k++) {
         if (bexp_lm[i * bht->nv + k] == 1) {
           linvars[k] = i + 1;
+          linvarsxn = 0;
+          break;
         }
+      }
+      if (linvarsxn){
+          nlins--;
       }
     }
   }
@@ -356,10 +368,16 @@ static inline void check_and_set_linear_poly_32(nvars_t *nlins_ptr,
 
     if (deg == 1) {
       nlins++;
-      for (int k = 0; k < bht->nv; k++) {
+      int linvarsxn = 1;
+      for (int k = 0; k < bht->nv-1; k++) {
         if (bexp_lm[i * bht->nv + k] == 1) {
           linvars[k] = i + 1;
+          linvarsxn = 0;
+          break;
         }
+      }
+      if (linvarsxn){
+          nlins--;
       }
     }
   }

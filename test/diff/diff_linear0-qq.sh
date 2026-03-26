@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-file=linear-qq
+file=linear0-qq
 
 source test/diff/diff_source.sh
 

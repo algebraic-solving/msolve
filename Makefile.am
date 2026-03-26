@@ -40,7 +40,9 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_kat6-31.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_kat8-qq-truncate.sh \
-			  test/diff/diff_linear-qq.sh \
+			  test/diff/diff_linear0-qq.sh \
+			  test/diff/diff_linear1-qq.sh \
+			  test/diff/diff_linear2-qq.sh \
 			  test/diff/diff_maxbitsize-bug.sh \
 			  test/diff/diff_mq-2-1.sh \
 			  test/diff/diff_multy-16.sh \
@@ -58,6 +60,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_one-16.sh \
 			  test/diff/diff_one-31.sh \
 			  test/diff/diff_one-qq.sh \
+			  test/diff/diff_quadratic-nonradical-qq.sh \
 			  test/diff/diff_radical-shape-31.sh \
 			  test/diff/diff_radical-shape-qq.sh \
 			  test/diff/diff_realroot1.sh \
@@ -66,9 +69,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_reals-dim0-extract.sh \
 			  test/diff/diff_reals-dim0.sh \
 			  test/diff/diff_reals-dim0-swapvar.sh \
-			  test/diff/diff_test-lifting2.sh \
-			  test/diff/diff_xy-qq.sh \
-			  test/diff/diff_x2y2-qq.sh
+			  test/diff/diff_test-lifting2.sh
 
 # dist_check_DATA         = test/input_files
 neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c

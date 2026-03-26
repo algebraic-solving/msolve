@@ -205,9 +205,15 @@ AC_CONFIG_LINKS([
  input_files/kat8-qq-truncate.ms:input_files/kat8-qq-truncate.ms
  output_files/kat8-qq-truncate.res:output_files/kat8-qq-truncate.res
  test/diff/diff_kat8-qq-truncate.sh:test/diff/diff_kat8-qq-truncate.sh
- input_files/linear-qq.ms:input_files/linear-qq.ms
- output_files/linear-qq.P2.d0.res:output_files/linear-qq.P2.d0.res
- test/diff/diff_linear-qq.sh:test/diff/diff_linear-qq.sh
+ input_files/linear0-qq.ms:input_files/linear0-qq.ms
+ output_files/linear0-qq.P2.d0.res:output_files/linear0-qq.P2.d0.res
+ test/diff/diff_linear0-qq.sh:test/diff/diff_linear0-qq.sh
+ input_files/linear1-qq.ms:input_files/linear1-qq.ms
+ output_files/linear1-qq.P2.d0.res:output_files/linear1-qq.P2.d0.res
+ test/diff/diff_linear1-qq.sh:test/diff/diff_linear1-qq.sh
+ input_files/linear2-qq.ms:input_files/linear2-qq.ms
+ output_files/linear2-qq.P2.d0.res:output_files/linear2-qq.P2.d0.res
+ test/diff/diff_linear2-qq.sh:test/diff/diff_linear2-qq.sh
  input_files/maxbitsize-bug.ms:input_files/maxbitsize-bug.ms
  output_files/maxbitsize-bug.res:output_files/maxbitsize-bug.res
  test/diff/diff_maxbitsize-bug.sh:test/diff/diff_maxbitsize-bug.sh
@@ -266,6 +272,11 @@ AC_CONFIG_LINKS([
  output_files/one-qq.res:output_files/one-qq.res
  output_files/one-qq.g2.res:output_files/one-qq.g2.res
  test/diff/diff_one-qq.sh:test/diff/diff_one-qq.sh
+ input_files/quadratic-nonradical-qq.ms:input_files/quadratic-nonradical-qq.ms
+ output_files/quadratic-nonradical-qq.P2.d0.res:output_files/quadratic-nonradical-qq.P2.d0.res
+ output_files/quadratic-nonradical-qq.p128.res:output_files/quadratic-nonradical-qq.p128.res
+ output_files/quadratic-nonradical-qq.p1024.res:output_files/quadratic-nonradical-qq.p1024.res
+ test/diff/diff_quadratic-nonradical-qq.sh:test/diff/diff_quadratic-nonradical-qq.sh
  input_files/radical-shape-31.ms:input_files/radical-shape-31.ms
  output_files/radical-shape-31.P2.d0.res:output_files/radical-shape-31.P2.d0.res
  test/diff/diff_radical-shape-31.sh:test/diff/diff_radical-shape-31.sh
@@ -299,13 +310,5 @@ AC_CONFIG_LINKS([
  input_files/test-lifting2.ms:input_files/test-lifting2.ms
  output_files/test-lifting2.P2.d0.res:output_files/test-lifting2.P2.d0.res
  test/diff/diff_test-lifting2.sh:test/diff/diff_test-lifting2.sh
- input_files/xy-qq.ms:input_files/xy-qq.ms
- output_files/xy-qq.P2.d0.res:output_files/xy-qq.P2.d0.res
- test/diff/diff_xy-qq.sh:test/diff/diff_xy-qq.sh
- input_files/x2y2-qq.ms:input_files/x2y2-qq.ms
- output_files/x2y2-qq.P2.d0.res:output_files/x2y2-qq.P2.d0.res
- output_files/x2y2-qq.p128.res:output_files/x2y2-qq.p128.res
- output_files/x2y2-qq.p1024.res:output_files/x2y2-qq.p1024.res
- test/diff/diff_x2y2-qq.sh:test/diff/diff_x2y2-qq.sh
 ])
 AC_OUTPUT

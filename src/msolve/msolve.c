@@ -823,7 +823,7 @@ check_and_set_linear_poly_non_hashed(long *nlins_ptr, nvars_t *linvars,
     }
     if (deg == 1) {
       nlins++;
-      for (int k = 0; k < nvars; k++) {
+      for (int k = 0; k < nvars-1; k++) {
         if (bexp_lm[i * nvars + k] == 1) {
           linvars[k] = i + 1;
           coefpos[k] = pos;
@@ -1702,6 +1702,14 @@ static int32_t *initial_modular_step(
                                                    lineqs_ptr[0], squvars,
                                                    md->info_level, bdata_fglm,
                                                    bdata_bms, success, md);
+            if (*bparam == NULL) {
+                *success = 0;
+                *dim = 0;
+                *dquot_ori = dquot;
+                free_basis_without_hash_table(&(bs));
+                free(bs);
+                return NULL;
+            }
             if((*bparam)->degelimpol != dquot){
                 /* not in shape position */
                 /* reset times for change of order */
@@ -1709,26 +1717,31 @@ static int32_t *initial_modular_step(
                 md->fglm_rtime = realtime();
                 param_t **test_nmod_param =
                     (param_t **)malloc(sizeof(param_t *));
-                *test_nmod_param = nmod_fglm_compute_trace_data(
-                                      *bmatrix, fc, bs->ht->nv,
-                                      *bsz, *nlins_ptr, linvars, lineqs_ptr[0],
-                                      squvars,
-                                      0, bdata_fglm, bdata_bms, success, md);
-                int boo = equal_param(*bparam, *test_nmod_param);
-                if ((*test_nmod_param)->degelimpol == dquot) {
-                    /* shape position
-                       replace with the new parametrizations
-                       necessarily correct */
-                    free_fglm_param(bparam[0]);
-                    *bparam = *test_nmod_param;
+                *test_nmod_param =
+                    nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
+                                                 *bsz, *nlins_ptr, linvars,
+                                                 lineqs_ptr[0], squvars,
+                                                 0, bdata_fglm, bdata_bms,
+                                                 success, md);
+                if(*test_nmod_param == NULL){
+                    *success = 0;
                 } else {
-                    if(boo == 0) {
-                        /* both parametrizations might be incorrect */
-                        *success = 0;
+                    int boo = equal_param(*bparam, *test_nmod_param);
+                    if ((*test_nmod_param)->degelimpol == dquot) {
+                        /* shape position
+                           replace with the new parametrizations
+                           necessarily correct */
+                        free_fglm_param(bparam[0]);
+                        *bparam = *test_nmod_param;
+                    } else {
+                        if(boo == 0) {
+                            /* both parametrizations might be incorrect */
+                            *success = 0;
+                        }
+                        free_fglm_param(test_nmod_param[0]);
                     }
-                    free_fglm_param(test_nmod_param[0]);
+                    free(test_nmod_param);
                 }
-                free(test_nmod_param);
             }
         }
         *dim = 0;

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-file=xy-qq
+file=linear2-qq
 
 source test/diff/diff_source.sh
 

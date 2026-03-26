@@ -129,8 +129,8 @@ typedef struct{
 #endif
 typedef struct{
   CF_t *vecinit ALIGNED32; /* init vector used in Wiedemann's implementation */
-  CF_t *vecmult ALIGNED32; /* vector used to store the multiplication of the 
-                            * dense part of the multiplication matrix with a 
+  CF_t *vecmult ALIGNED32; /* vector used to store the multiplication of the
+                            * dense part of the multiplication matrix with a
                             * vector in Wiedemann */
   CF_t *vvec ALIGNED32; /* stores the result of matrix vector product in Wiedeman */
   CF_t *res ALIGNED32; /* array storing the term sequences needed after Wiedeman */
@@ -280,15 +280,15 @@ typedef struct{
 
   uint32_t nrows; /* number of non trivial rows in matrix multiplication */
   uint32_t ncols; /* number of non trivial columns in matrix multiplication */
-  szmat_t *triv_idx; 
-  szmat_t *triv_pos; 
-  szmat_t *dense_idx; 
-  szmat_t *dst; 
+  szmat_t *triv_idx;
+  szmat_t *triv_pos;
+  szmat_t *dense_idx;
+  szmat_t *dst;
 
   uint32_t nlifted; /* number of rows whose witness coefficients could be lifted */
   uint32_t w_checked; /* number of rows whose witness coefficients is checked */
-  uint64_t *matmul_indices; /* indices per row of matrix multiplication used 
-                              for lifting (witness coefficient); given index is the one of 
+  uint64_t *matmul_indices; /* indices per row of matrix multiplication used
+                              for lifting (witness coefficient); given index is the one of
                               the dense matrix format */
   mpz_t *matmul_wcrt; /* crt for witness coefficients */
   mpz_t *matmul_wqq; /* stores reconstruction */

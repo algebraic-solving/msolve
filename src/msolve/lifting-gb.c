@@ -1669,7 +1669,7 @@ uint64_t export_results_from_groebner_qq(
     ht_t *ht = gb->bht;
     const len_t ebl = ht->ebl;
     const len_t evl = ht->evl;
-    int *evi = (int *)(*mallocp)((unsigned long)(ht->nv + 1) * sizeof(int));
+    int *evi = (int *)malloc((unsigned long)(ht->nv + 1) * sizeof(int));
     if (ebl == 0) {
       for (len_t i = 1; i <= evl; ++i) {
         evi[i-1]    =   i;

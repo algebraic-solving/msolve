@@ -746,7 +746,8 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
             break;
       }
     }
-    while (iv_tmp < 0) {
+    iv_tmp %= field_char;
+    if (iv_tmp < 0) {
       iv_tmp  +=  field_char; //MS change int -> long int
     }
     gens->cfs[pos]  = (int32_t)iv_tmp;
@@ -763,10 +764,11 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
             cf_tmp = 1;
           }
         }
-        while (cf_tmp < 0) {
+        cf_tmp %= field_char;
+        if (cf_tmp < 0) {
           cf_tmp  += field_char;
         }
-        gens->cfs[pos+j] = (int32_t)(cf_tmp % field_char);
+        gens->cfs[pos+j] = (int32_t)cf_tmp;
         store_exponent(term, gens, (pos+j)*gens->nvars);
       }
       //      store_exponent(term, basis, ht);

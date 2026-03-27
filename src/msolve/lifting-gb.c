@@ -135,7 +135,6 @@ static inline void data_lift_init(data_lift_t dl,
   dl->start = 0;
   dl->end = npol;
   dl->check1 = calloc(npol, sizeof(int));
-  fprintf(stderr, "NPOL = %d\n", npol);
   dl->check2 = calloc(npol, sizeof(int));
 
 }
@@ -1192,7 +1191,6 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
       }
     }
   }
-  fprintf(stderr, "modgbs->ld-1 = %d\n", modgbs->ld-1);
   if(dl->check2[modgbs->ld-1] == NBCHECK){
     return;
   }

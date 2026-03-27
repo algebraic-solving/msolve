@@ -1361,7 +1361,6 @@ restart:
 
       return modgbsp;
     }
-    fprintf(stderr, "Load after learning = %d\n", (*modgbsp)->ld);
 
     apply = 1;
 

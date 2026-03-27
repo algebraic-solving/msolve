@@ -135,6 +135,7 @@ static inline void data_lift_init(data_lift_t dl,
   dl->start = 0;
   dl->end = npol;
   dl->check1 = calloc(npol, sizeof(int));
+  fprintf(stderr, "NPOL = %d\n", npol);
   dl->check2 = calloc(npol, sizeof(int));
 
 }
@@ -1191,6 +1192,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
       }
     }
   }
+  fprintf(stderr, "modgbs->ld-1 = %d\n", modgbs->ld-1);
   if(dl->check2[modgbs->ld-1] == NBCHECK){
     return;
   }
@@ -1352,7 +1354,7 @@ restart:
                                                  0,
                                                  maxbitsize,
                                                  &success);
-    if(is_empty == 1 || print_gb == 1){
+    if(is_empty == 1 || print_gb == 1 || (*modgbsp)->ld == 0){
       if(dlinit){
         data_lift_clear(dlift);
       }
@@ -1361,6 +1363,7 @@ restart:
 
       return modgbsp;
     }
+    fprintf(stderr, "Load after learning = %d\n", (*modgbsp)->ld);
 
     apply = 1;
 

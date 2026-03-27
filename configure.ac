@@ -158,6 +158,10 @@ AC_CONFIG_LINKS([
  output_files/elim-qq.g2.e1.res:output_files/elim-qq.g2.e1.res
  output_files/elim-qq.g2.e2.res:output_files/elim-qq.g2.e2.res
  test/diff/diff_elim-qq.sh:test/diff/diff_elim-qq.sh
+ input_files/empty-elim-qq.ms:input_files/empty-elim-qq.ms
+ output_files/empty-elim-qq.g2.e1.res:output_files/empty-elim-qq.g2.e1.res
+ output_files/empty-elim-qq.g2.e2.res:output_files/empty-elim-qq.g2.e2.res
+ test/diff/diff_empty-elim-qq.sh:test/diff/diff_empty-elim-qq.sh
  input_files/f4sat-31.ms:input_files/f4sat-31.ms
  output_files/f4sat-31.res:output_files/f4sat-31.res
  test/diff/diff_f4sat-31.sh:test/diff/diff_f4sat-31.sh

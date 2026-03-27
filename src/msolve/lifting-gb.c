@@ -1099,14 +1099,12 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
           if(dl->check2[k] == NBCHECK){
             dl->S = k+1;
             dl->lstart = dl->S;
-            if(modgbs->modpolys[k] != NULL){
-              for(uint32_t j = 0; j < modgbs->modpolys[k]->len; j++){
-                free(modgbs->modpolys[k]->cf_32[j]);
-                mpz_clear(modgbs->modpolys[k]->cf_zz[j]);
-              }
-              free(modgbs->modpolys[k]->cf_32);
-              free(modgbs->modpolys[k]->cf_zz);
+            for(uint32_t j = 0; j < modgbs->modpolys[k]->len; j++){
+              free(modgbs->modpolys[k]->cf_32[j]);
+              mpz_clear(modgbs->modpolys[k]->cf_zz[j]);
             }
+            free(modgbs->modpolys[k]->cf_32);
+            free(modgbs->modpolys[k]->cf_zz);
           }
         }
       }

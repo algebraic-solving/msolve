@@ -154,7 +154,7 @@ static inline void USOLVEmpz_poly_print_maple(mpz_t *upol, unsigned long int deg
 */
 static inline int USOLVEmpz_poly_rescale_normalize_2exp_th(mpz_t *upol, long int b, unsigned long deg,
                                                            unsigned int nthreads){
-  long int i;
+  unsigned long int i;
   if (b > 0) {
     //    j = b;
 #ifdef _OPENMP
@@ -170,7 +170,7 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th(mpz_t *upol, long int
     omp_set_num_threads(nthreads);
 #endif
 #pragma omp parallel for num_threads(nthreads)
-      for(i=0; i<deg; i++){
+      for(i = 0; i < deg; i++){
         mpz_mul_2exp(upol[i], upol[i], (i-deg)*b);
     }
   }
@@ -187,7 +187,7 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
                                                                 long int b,
                                                                 long int c,
                                                                 unsigned int nthreads){
-  long int i;
+  unsigned long int i;
   mpz_t coef;mpz_init(coef);mpz_set_si(coef, c);
   if (b > 0) {
 #ifdef _OPENMP
@@ -205,7 +205,7 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
     omp_set_num_threads(nthreads);
 #endif
 #pragma omp parallel for num_threads(nthreads)
-    for(i=0; i<deg; i++){
+    for(i = 0; i < deg; i++){
       mpz_mul(upol[i], upol[i], coef);
       mpz_mul_2exp(upol[i], upol[i], (i-deg)*b);
       mpz_mul_si(coef, coef, c);

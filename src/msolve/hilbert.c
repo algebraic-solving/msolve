@@ -183,7 +183,6 @@ static inline int32_t generate_new_elts_basis(int32_t nvars, int32_t *ind,
                                               int32_t *bexp_lm){
 
   len_t c = 0;
-  len_t def = 0;
   for(int64_t n = nvars-1; n >= 0; n--){
     for(len_t i = ind[nvars-1-n]; i < len1; i++){
       for(int64_t k = 0; k < nvars; k++){
@@ -192,9 +191,6 @@ static inline int32_t generate_new_elts_basis(int32_t nvars, int32_t *ind,
       new_basis[c*nvars+n]++;
       if(!is_divisible_lexp(nvars, len_lm, (new_basis+c*nvars), bexp_lm)){
         c++;
-      }
-      else{
-        def++;
       }
     }
   }
@@ -3813,19 +3809,18 @@ static inline int32_t *get_lm_from_bs(const bs_t * const bs, const ht_t * const 
   int32_t *exp  = (int32_t *)malloc(
                                     (unsigned long)(nelts) * (unsigned long)(nv) * sizeof(int32_t));
   /* counters for lengths, exponents and coefficients */
-  int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
+  int64_t ce = 0;
 
-  for (long i = 0; i < nelts; ++i) {
+  for (len_t i = 0; i < nelts; ++i) {
     const bl_t bi = bs->lmps[i];
 
     dt  = bs->hm[bi] + OFFSET;
-    for (int k = 1; k < ebl; ++k) {
+    for (len_t k = 1; k < ebl; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
-    for (int k = ebl+1; k < evl; ++k) {
+    for (len_t k = ebl+1; k < evl; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
-    cl++;
   }
   return exp;
 }
@@ -3838,21 +3833,18 @@ static inline void get_lm_from_bs_trace(bs_t *bs, const ht_t *ht, int32_t *exp){
   const len_t evl = ht->evl;
 
   /* counters for lengths, exponents and coefficients */
-  int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
+  int64_t ce = 0;
 
-  for (long i = 0; i < nelts; ++i) {
+  for (len_t i = 0; i < nelts; ++i) {
     const bl_t bi = bs->lmps[i];
-    //    len[cl] = bs->hm[bi][LENGTH];
 
     dt  = bs->hm[bi] + OFFSET;
-    for (int k = 1; k < ebl; ++k) {
+    for (len_t k = 1; k < ebl; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
-    for (int k = ebl+1; k < evl; ++k) {
+    for (len_t k = ebl+1; k < evl; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
-    //    cc  +=  len[cl];
-    cl++;
   }
 }
 
@@ -3863,21 +3855,15 @@ static inline void get_lm_from_bs_trace_elim(bs_t *bs, const ht_t *ht, int32_t *
   const len_t evl = ht->evl;
 
   /* counters for lengths, exponents and coefficients */
-  int64_t cl = 0, ce = 0;//, cc = 0, ctmp  = 0;;
+  int64_t ce = 0;
 
-  for (long i = 0; i < nelts; ++i) {
+  for (len_t i = 0; i < nelts; ++i) {
     const bl_t bi = bs->lmps[i];
-    //    len[cl] = bs->hm[bi][LENGTH];
 
     dt  = bs->hm[bi] + OFFSET;
-    /* for (int k = 1; k < ebl; ++k) { */
-    /*   exp[ce++] = (int32_t)ht->ev[dt[0]][k]; */
-    /* } */
-    for (int k = ebl+1; k < evl; ++k) {
+    for (len_t k = ebl+1; k < evl; ++k) {
       exp[ce++] = (int32_t)ht->ev[dt[0]][k];
     }
-    //    cc  +=  len[cl];
-    cl++;
   }
 }
 

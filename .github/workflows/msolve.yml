@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -143,6 +143,10 @@ jobs:
           git clone --depth=1 https://github.com/flintlib/flint
           cd flint && ./bootstrap.sh && ./configure CC=${CC} --with-ntl --enable-assert
           $MAKE && sudo make install && sudo ldconfig
+      - name: "Test FLINT"
+        run: |
+          cd flint && $MAKE tests && $MAKE check
+        continue-on-error: true
       - name: "Build and Test msolve"
         run: |
           ./autogen.sh && ./configure && $MAKE && make check
@@ -170,6 +174,10 @@ jobs:
           git clone --depth=1 https://github.com/flintlib/flint
           cd flint && ./bootstrap.sh && ./configure CC=${CC} --with-ntl --enable-assert
           $MAKE && sudo make install && sudo ldconfig
+      - name: "Test FLINT"
+        run: |
+          cd flint && $MAKE tests && $MAKE check
+        continue-on-error: true
       - name: "Build and Test msolve"
         run: |
           ./autogen.sh && ./configure && $MAKE && SEED=1617753600 make check

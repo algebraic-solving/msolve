@@ -26,7 +26,7 @@
 #include<stdlib.h>
 #include<gmp.h>
 #ifdef _OPENMP
-#include <omp.h>
+#include<omp.h>
 #endif
 
 /* for timing functions */

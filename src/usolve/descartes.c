@@ -90,7 +90,7 @@ static long descartes_truncate(mpz_t *upol2,
                                const unsigned long deg,
                                const unsigned long nbits,
                                usolve_flags *flags){
-  int i;
+  unsigned long i;
   /* /\* Max bit size of coefficients in upol1 *\/ */
   /* const unsigned long int nbits = mpz_poly_max_bsize_coeffs(upol1, deg); */
 

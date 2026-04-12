@@ -1,5 +1,3 @@
-macro(_MSPATH="msolve"):
-
 # /* This file is part of msolve.
 #  *
 #  * msolve is free software: you can redistribute it and/or modify
@@ -50,7 +48,8 @@ MSolve:=module()
 option package;
 
 export MSolveGroebner, MSolveGroebnerLM,
-MSolveRealRoots,MSolveParam;
+MSolveRealRoots,MSolveParam,
+SetMSolvePath, GetMSolvePath;
 
 local GetSystem, ToMSolve, GetOptions, CheckCharacteristic, ReadPolynomial,
 ExtractParametrization, RemoveFiles, 
@@ -63,9 +62,19 @@ BuildSolution, Eval_linform, MakeBinaryInterval,
 Parametrization,
 RefineSolutions,
 SplitAndRefinePerCoordinates,
-SplitAndRefinePerConstraints;
+SplitAndRefinePerConstraints,
+DefaultMSolvePath;
 
+DefaultMSolvePath := "msolve":
 
+GetMSolvePath:=proc()
+  return DefaultMSolvePath:
+end proc:
+
+SetMSolvePath:=proc(path::string)
+  DefaultMSolvePath := path:
+  return DefaultMSolvePath:
+end proc:
 
 GetSystem:=proc()
 local sys;
@@ -173,7 +182,7 @@ verb, param, nthreads, output, gb, elim, linalg;
        printf("Error in format options");
      end if;
   else
-     msolve_path := _MSPATH;
+     msolve_path := DefaultMSolvePath;
   end if;
 
   if member("file_dir", map(lhs, opts)) then

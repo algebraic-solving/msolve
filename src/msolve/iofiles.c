@@ -410,13 +410,15 @@ static int32_t get_nvars(const char *fn)
  * \return 1 if the line is empty, else 0
  */
 static inline int is_line_empty(const char *line, const char delim) {
-    while (*line != '\0' && *line != ',') {
+    while (*line != '\0' && *line != delim) {
         if (!isspace(*line))
             return 0;
         line++;
     }
     return 1;
 }
+
+static void trim_polynomial(char *poly);
 
 static int32_t get_ngenerators(char *fn)
 {
@@ -430,11 +432,18 @@ static int32_t get_ngenerators(char *fn)
         || getline(&line, &len, fh) == -1)
         ngens = -1;
 
-    /* go through subsequent lines, not counting empty ones */
-    else
-        while(getdelim(&line, &len, ',', fh) != -1)
-            if (! is_line_empty(line, ','))
+    /* go through subsequent lines, not counting empty or zero ones */
+    else {
+        while(getdelim(&line, &len, ',', fh) != -1) {
+            if (is_line_empty(line, ',')) {
+                continue;
+            }
+            trim_polynomial(line);
+            if (strcmp(line, "0") != 0) {
                 ngens++;
+            }
+        }
+    }
 
     free(line);
     fclose(fh);
@@ -630,6 +639,10 @@ static void get_nterms_and_all_nterms(FILE *fh,
         }
         remove_newlines(line, &len);
         trim_polynomial(line);
+        if (strcmp(line, "0") == 0) {
+            i--;
+            continue;
+        }
         *nterms  = get_number_of_terms(line);
         gens->lens[i] = *nterms;
         *all_nterms += *nterms;
@@ -747,6 +760,11 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
       }
     }
     iv_tmp %= field_char;
+    if (iv_tmp == 0) {
+      fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %d).\n", term, field_char);
+      free(term);
+      return 1;
+    }
     if (iv_tmp < 0) {
       iv_tmp  +=  field_char; //MS change int -> long int
     }
@@ -765,6 +783,11 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
           }
         }
         cf_tmp %= field_char;
+        if (cf_tmp == 0) {
+          fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %d).\n", term, field_char);
+          free(term);
+          return 1;
+        }
         if (cf_tmp < 0) {
           cf_tmp  += field_char;
         }
@@ -894,6 +917,10 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, nelts_t all_nterms,
         }
         remove_newlines(line, &len);
         trim_polynomial(line);
+        if (strcmp(line, "0") == 0) {
+            i--;
+            continue;
+        }
         if(get_coefficient_ff_and_term_from_line(line, gens->lens[i], gens->field_char,
                     gens, pos)){
             fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
@@ -937,6 +964,10 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, nelts_t all_nterms,
         }
         remove_newlines(line, &len);
         trim_polynomial(line);
+        if (strcmp(line, "0") == 0) {
+            i--;
+            continue;
+        }
         if(get_coefficient_mpz_and_term_from_line(line, gens->lens[i], gens->field_char,
                     gens, pos)){
             fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");

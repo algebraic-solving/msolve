@@ -212,6 +212,18 @@ in particular those involed
 in this [ticket](https://trac.sagemath.org/ticket/33734)
 
 
+# `msolve` in [Macaulay2](https://macaulay2.com/)
+
+[Macaulay2](https://macaulay2.com/) is a software system devoted to
+supporting research in algebraic geometry and commutative algebra. 
+
+It comes now with an `msolve` package providing to the users of
+Macaulay2 functionalities offered by `msolve`.
+
+See
+[here](https://macaulay2.com/doc/Macaulay2/share/doc/Macaulay2/Msolve/html/index.html)
+for a full documentation on this package and how to use `msolve` in [Macaulay2](https://macaulay2.com/). 
+
 # Citing `msolve`
 
 If you have used `msolve` in the preparation of some paper, we are grateful that you 

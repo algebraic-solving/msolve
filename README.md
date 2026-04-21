@@ -154,7 +154,17 @@ and independent prime computations are run in parallel)
 # `msolve` in [AlgebraicSolving](https://github.com/algebraic-solving/AlgebraicSolving.jl)
 
 [AlgebraicSolving](https://github.com/algebraic-solving/AlgebraicSolving.jl) is a Julia package
-that wraps `msolve` and provides some more functionality like computing rational solutions.
+that wraps `msolve` and provides some more functionality like
+normal form computations, Hilbert series and Krull dimension, or 
+computing rational solutions to zero-dimensional systems of polynomial
+equations.
+
+It contains also some more contributions by [Rafel
+Mohr](https://rafaeldavidmohr.github.io/) and [Rémi
+Prébet](https://rprebet.github.io/) providing advanced algorithms for
+computing equidimensional decomposition of polynomial ideals as well
+as algorithms for analyzing the connectivity of real algebraic sets. 
+
 See [here](https://algebraic-solving.github.io/) for more information and documentation.
 
 # `msolve` in [Oscar](https://oscar-system.github.io/Oscar.jl)
@@ -181,6 +191,9 @@ julia> real_solutions(I)
 
 # `msolve` in [SageMath](https://sagemath.org)
 
+[SageMath](https://sagemath.org)
+ is a free open-source mathematics software system.
+
 When you have `msolve` installed, it is used by [SageMath](https://sagemath.org) 
 when you call the `Variety` function for solving polynomial systems with real 
 coefficients. 
@@ -190,12 +203,29 @@ You can have a look
 and 
 [here](https://github.com/sagemath/sage/blob/develop/src/sage/rings/polynomial/multi_polynomial_ideal.py) 
 
+See also
+[here](https://doc.sagemath.org/html/en/reference/polynomial_rings/sage/rings/polynomial/msolve.html)
+for a documentation on how to solve systems of polynomial equations in
+[SageMath](https://sagemath.org) using `msolve`.
+
 We are grateful to Marc Mezzarobba who initiated the usage of 
 `msolve`in [SageMath](https://sagemath.org)
 and the whole development team of [SageMath](https://sagemath.org), 
 in particular those involed 
 in this [ticket](https://trac.sagemath.org/ticket/33734)
 
+
+# `msolve` in [Macaulay2](https://macaulay2.com/)
+
+[Macaulay2](https://macaulay2.com/) is a software system devoted to
+support research in algebraic geometry and commutative algebra. 
+
+It comes now with an `msolve` package providing to the users of
+Macaulay2 functionalities offered by `msolve`.
+
+See
+[here](https://macaulay2.com/doc/Macaulay2/share/doc/Macaulay2/Msolve/html/index.html)
+for a full documentation on this package and how to use `msolve` in [Macaulay2](https://macaulay2.com/). 
 
 # Citing `msolve`
 
@@ -235,4 +265,6 @@ The paper can be downloaded [here](https://hal.sorbonne-universite.fr/hal-031916
 
 # Funding
 
-The development of `msolve` is supported by the [Forschungsinitiative Rheinland-Pfalz](https://rptu.de/forschung/forschungsinitiative-rlp).
+The development of `msolve` is supported by the [Forschungsinitiative
+Rheinland-Pfalz](https://rptu.de/forschung/forschungsinitiative-rlp)
+and the [Agence Nationale de la Recherche](https://anr.fr/).

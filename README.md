@@ -162,7 +162,7 @@ equations.
 It contains also some more contributions by [Rafel
 Mohr](https://rafaeldavidmohr.github.io/) and [Rémi
 Prébet](https://rprebet.github.io/) providing advanced algorithms for
-computing equidimesnional decomposition of polynomial ideals as well
+computing equidimensional decomposition of polynomial ideals as well
 as algorithms for analyzing the connectivity of real algebraic sets. 
 
 See [here](https://algebraic-solving.github.io/) for more information and documentation.
@@ -218,7 +218,7 @@ in this [ticket](https://trac.sagemath.org/ticket/33734)
 # `msolve` in [Macaulay2](https://macaulay2.com/)
 
 [Macaulay2](https://macaulay2.com/) is a software system devoted to
-supporting research in algebraic geometry and commutative algebra. 
+support research in algebraic geometry and commutative algebra. 
 
 It comes now with an `msolve` package providing to the users of
 Macaulay2 functionalities offered by `msolve`.

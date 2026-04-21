@@ -235,4 +235,6 @@ The paper can be downloaded [here](https://hal.sorbonne-universite.fr/hal-031916
 
 # Funding
 
-The development of `msolve` is supported by the [Forschungsinitiative Rheinland-Pfalz](https://rptu.de/forschung/forschungsinitiative-rlp).
+The development of `msolve` is supported by the [Forschungsinitiative
+Rheinland-Pfalz](https://rptu.de/forschung/forschungsinitiative-rlp)
+and the [Agence Nationale de la Recherche](https://anr.fr/).

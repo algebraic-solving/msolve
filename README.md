@@ -191,6 +191,9 @@ julia> real_solutions(I)
 
 # `msolve` in [SageMath](https://sagemath.org)
 
+[SageMath](https://sagemath.org)
+ is a free open-source mathematics software system.
+
 When you have `msolve` installed, it is used by [SageMath](https://sagemath.org) 
 when you call the `Variety` function for solving polynomial systems with real 
 coefficients. 

@@ -154,7 +154,17 @@ and independent prime computations are run in parallel)
 # `msolve` in [AlgebraicSolving](https://github.com/algebraic-solving/AlgebraicSolving.jl)
 
 [AlgebraicSolving](https://github.com/algebraic-solving/AlgebraicSolving.jl) is a Julia package
-that wraps `msolve` and provides some more functionality like computing rational solutions.
+that wraps `msolve` and provides some more functionality like
+normal form computations, Hilbert series and Krull dimension, or 
+computing rational solutions to zero-dimensional systems of polynomial
+equations.
+
+It contains also some more contributions by [Rafel
+Mohr](https://rafaeldavidmohr.github.io/) and [Rémi
+Prébet](https://rprebet.github.io/) providing advanced algorithms for
+computing equidimesnional decomposition of polynomial ideals as well
+as algorithms for analyzing the connectivity of real algebraic sets. 
+
 See [here](https://algebraic-solving.github.io/) for more information and documentation.
 
 # `msolve` in [Oscar](https://oscar-system.github.io/Oscar.jl)
@@ -189,6 +199,11 @@ You can have a look
 [here](https://github.com/sagemath/sage/blob/develop/src/sage/rings/polynomial/msolve.py) 
 and 
 [here](https://github.com/sagemath/sage/blob/develop/src/sage/rings/polynomial/multi_polynomial_ideal.py) 
+
+See also
+[here](https://doc.sagemath.org/html/en/reference/polynomial_rings/sage/rings/polynomial/msolve.html)
+for a documentation on how to solve systems of polynomial equations in
+[SageMath](https://sagemath.org) using `msolve`.
 
 We are grateful to Marc Mezzarobba who initiated the usage of 
 `msolve`in [SageMath](https://sagemath.org)

@@ -21,9 +21,9 @@
 #  * Bruno Salvy */
 
 ##Repositories to adapt 
-homedir:=kernelopts(homedir);
+homedir:=kernelopts(homedir):
 savelibname:=cat(homedir, "/libs/"):
-mladirname:=cat(homedir,"/libs/MSolve.mla");
+mladirname:=cat(homedir,"/libs/MSolve.mla"):
 
 # Installation 
 # Run maple once on this file (after adjusting the above repositories)
@@ -271,8 +271,7 @@ output, fd;
       opts):
       fclose(fd);
       lprint(str);
-      error "There has been an issue in msolve computation (see
-      /tmp/bug-call-msolve.mpl)";
+      error "There has been an issue in msolve computation (see /tmp/bug-call-msolve.mpl)";
    end;
 
    RemoveFiles(fname1, fname2);
@@ -964,11 +963,12 @@ end:
 
 end module:
 
+ssystem(cat("rm -f ", mladirname)):
 libname:=savelibname,libname:
 ssystem(cat("mkdir -p ", savelibname)):
-ssystem(cat("rm ", mladirname)):
 march(`create`, mladirname);
 savelib(`MSolve`);
+printf("Installed MSolve package into %s\n", mladirname):
 
 
 # #Input data

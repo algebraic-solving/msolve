@@ -135,50 +135,21 @@ static void insert_and_update_spairs(
     /* sort new pairs by increasing lcm, earlier polys coming first */
     sort_r(pp, (unsigned long)bl, sizeof(spair_t), spair_cmp_update, bht);
 
-    /* Gebauer-Moeller: remove real multiples of new spairs */
-    for (i = pl; i < nl; ++i) {
+    /* Gebauer-Moeller: remove multiples of new spairs */
+    for (i = pl+1; i < nl; ++i) {
         if (ps[i].deg < 0) {
             continue;
         }
         for (j = pl; j < i; ++j) {
-            if (i == j || ps[j].deg == -1) {
+            if (ps[j].deg == -1) {
                 continue;
             }
-            if (ps[i].lcm != ps[j].lcm
-                    && ps[i].deg >= ps[j].deg
-                    && check_monomial_division(ps[i].lcm, ps[j].lcm, bht)) {
+            if (check_monomial_division(ps[i].lcm, ps[j].lcm, bht)) {
                 ps[i].deg   =   -1;
                 break;
             }
         }
     }
-
-
-    /* Gebauer-Moeller: remove same lcm spairs from the new ones */
-    for (i = pl; i < nl; ++i) {
-        if (ps[i].deg == -1) {
-            continue;
-        }
-        /* try to remove all others if product criterion applies */
-        if (ps[i].deg == -2) {
-            for (j = pl; j < nl; ++j) {
-                if (ps[j].lcm == ps[i].lcm) {
-                    ps[j].deg   =   -1;
-                }
-            }
-            /* try to eliminate this spair with earlier ones */
-        } else { 
-            for (j = i-1; j >= pl; --j) {
-                if (ps[j].deg != -1
-                        && ps[j].deg <= ps[i].deg
-                        && ps[i].lcm == ps[j].lcm) {
-                    ps[i].deg   =   -1;
-                    break;
-                }
-            }
-        }
-    }
-
 
     /* remove useless pairs from pairset */
     j = 0;

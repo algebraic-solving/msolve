@@ -24,6 +24,7 @@
 
 #include "msolve-data.h"
 #include "msolve-data.c"
+#include "streams.h"
 #include "iofiles.c"
 #include "hilbert.c"
 #include "primes.c"

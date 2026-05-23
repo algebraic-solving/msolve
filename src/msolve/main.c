@@ -19,7 +19,6 @@
  * Mohab Safey El Din */
 
 #include "libmsolve.c"
-#include "streams.h"
 
 #define DEBUGGB 0
 #define DEBUGBUILDMATRIX 0

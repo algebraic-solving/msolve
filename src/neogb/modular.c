@@ -20,6 +20,7 @@
 
 
 #include "modular.h"
+#include "../msolve/streams.h"
 
 static int minimal_traced_lm_is_equal(
         const hm_t *lmh,
@@ -147,8 +148,8 @@ void reduce_basis_no_hash_table_switching(
 
     /* generate hash <-> column mapping */
     if (st->info_level > 1) {
-        printf("reduce basis       ");
-        fflush(stdout);
+        fprintf(VERBSTREAM, "reduce basis       ");
+        fflush(VERBSTREAM);
     }
     convert_hashes_to_columns(mat, st, sht);
     mat->nc = mat->ncl + mat->ncr;
@@ -189,11 +190,11 @@ start:
     st->reduce_gb_ctime = ct1 - ct0;
     st->reduce_gb_rtime = rt1 - rt0;
     if (st->info_level > 1) {
-        printf("%13.2f sec\n", rt1-rt0);
+        fprintf(VERBSTREAM, "%13.2f sec\n", rt1-rt0);
     }
 
     if (st->info_level > 1) {
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
 }
@@ -243,15 +244,15 @@ bs_t *f4_trace_application_phase(
     bs->ld  = st->ngens;
 
     if(st->info_level>1){
-      printf("Application phase with prime p = %d, overall there are %u rounds\n",
+      fprintf(VERBSTREAM, "Application phase with prime p = %d, overall there are %u rounds\n",
              fc, trace->ltd);
     }
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
     if (st->info_level > 1) {
-        printf("\nround   deg          mat          density \
+        fprintf(VERBSTREAM, "\nround   deg          mat          density \
           new data             time(rd)\n");
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
     for (round = 0; round < trace->ltd; ++round) {
@@ -264,9 +265,9 @@ bs_t *f4_trace_application_phase(
        * sorted correspondingly */
       generate_matrix_from_trace(mat, bs, st);
         if (st->info_level > 1) {
-            printf("%5d", round+1);
-            printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
-            fflush(stdout);
+            fprintf(VERBSTREAM, "%5d", round+1);
+            fprintf(VERBSTREAM, "%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
+            fflush(VERBSTREAM);
         }
       convert_hashes_to_columns(mat, st, sht);
       /* linear algebra, depending on choice, see set_function_pointers() */
@@ -278,7 +279,7 @@ bs_t *f4_trace_application_phase(
       /* columns indices are mapped back to exponent hashes */
       if (mat->np > 0) {
           if (mat->np != trace->td[round].nlm) {
-              fprintf(stderr, "Wrong number of new elements when applying tracer.");
+              fprintf(ERRSTREAM, "Wrong number of new elements when applying tracer.");
               ret = 1;
               goto stop;
           }
@@ -286,7 +287,7 @@ bs_t *f4_trace_application_phase(
                   -1, mat, bs, bht, sht, st);
           for (i = 0; i < mat->np; ++i) {
               if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
-                  fprintf(stderr, "Wrong leading term for new element %u/%u.",
+                  fprintf(ERRSTREAM, "Wrong leading term for new element %u/%u.",
                           i, mat->np);
                   ret = 1;
                   goto stop;
@@ -301,11 +302,11 @@ bs_t *f4_trace_application_phase(
 
       rrt1 = realtime();
       if (st->info_level > 1) {
-        printf("%13.2f sec\n", rrt1-rrt0);
+        fprintf(VERBSTREAM, "%13.2f sec\n", rrt1-rrt0);
       }
     }
     if (st->info_level > 1) {
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
 
@@ -356,7 +357,7 @@ bs_t *f4_trace_application_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    get_and_print_final_statistics(stdout, st, bs);
+    get_and_print_final_statistics(VERBSTREAM, st, bs);
 
 stop:
     /* free and clean up */
@@ -441,15 +442,15 @@ bs_t *f4sat_trace_application_test_phase(
     update_basis_f4(ps, bs, bht, st, st->ngens);
 
     if(st->info_level>1){
-        printf("Application phase with prime p = %d, overall there are %u rounds\n",
+        fprintf(VERBSTREAM, "Application phase with prime p = %d, overall there are %u rounds\n",
                 fc, trace->ltd);
     }
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
     if (st->info_level > 1) {
-        printf("\ndeg     sel   pairs        mat          density \
+        fprintf(VERBSTREAM, "\ndeg     sel   pairs        mat          density \
           new data             time(rd)\n");
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
     round = 1;
@@ -489,10 +490,10 @@ bs_t *f4sat_trace_application_test_phase(
         /* if we found a constant we are done, so remove all remaining pairs */
         rrt1 = realtime();
         if (st->info_level > 1) {
-            printf("%13.2f sec\n", rrt1-rrt0);
+            fprintf(VERBSTREAM, "%13.2f sec\n", rrt1-rrt0);
         }
         if (bs->constant  == 1) {
-            printf("basis is constant\n");
+            fprintf(VERBSTREAM, "basis is constant\n");
             ps->ld  = 0;
             break;
         }
@@ -513,7 +514,7 @@ bs_t *f4sat_trace_application_test_phase(
             if (mat->nru > 0) {
                 if (st->info_level > 1) {
                     /* printf("kernel computation "); */
-                    printf("%3u  compute kernel", sat_deg);
+                    fprintf(VERBSTREAM, "%3u  compute kernel", sat_deg);
                 }
                 /* int ctr = 0;
                  * for (int ii = 1; ii < sat->ld; ++ii) {
@@ -542,7 +543,7 @@ bs_t *f4sat_trace_application_test_phase(
 
                 if (kernel->ld > 0) {
                     if (st->info_level > 1) {
-                        printf("\n                                               ");
+                        fprintf(VERBSTREAM, "\n                                               ");
                     }
                     clear_matrix(mat);
                     /* interreduce kernel */
@@ -563,7 +564,7 @@ bs_t *f4sat_trace_application_test_phase(
                     update_basis_f4(ps, bs, bht, st, mat->np);
                     kernel->ld  = 0;
                     if (st->info_level > 1) {
-                        printf("   ");
+                        fprintf(VERBSTREAM, "   ");
                     }
                 }
                 /* columns indices are mapped back to exponent hashes */
@@ -605,12 +606,12 @@ bs_t *f4sat_trace_application_test_phase(
 
             rrt1 = realtime();
             if (st->info_level > 1) {
-                printf("%10.2f sec\n", rrt1-rrt0);
+                fprintf(VERBSTREAM, "%10.2f sec\n", rrt1-rrt0);
             }
         }
     }
     if (st->info_level > 1) {
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
                 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
@@ -647,7 +648,7 @@ bs_t *f4sat_trace_application_test_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    get_and_print_final_statistics(stdout, st, bs);
+    get_and_print_final_statistics(VERBSTREAM, st, bs);
 
     /* free and clean up */
     free(hcmm);
@@ -731,12 +732,12 @@ bs_t *f4sat_trace_application_phase(
     update_lm(bs, bht, st);
 
     if(st->info_level>1){
-        printf("Application phase with prime p = %d\n%u f4 rounds and %u saturation rounds\n",
+        fprintf(VERBSTREAM, "Application phase with prime p = %d\n%u f4 rounds and %u saturation rounds\n",
                 fc, trace->ltd, trace->rld);
     }
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
-    print_round_information_header(stdout, st);
+    print_round_information_header(VERBSTREAM, st);
     round = 0;
     for (; round < trace->ltd; ++round) {
         rrt = realtime();
@@ -750,9 +751,9 @@ bs_t *f4sat_trace_application_phase(
         generate_matrix_from_trace(mat, bs, st);
         st->trace_rd++;
         /* if (st->info_level > 1) {
-            printf("%5d", round+1);
-            printf("%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
-            fflush(stdout);
+            fprintf(VERBSTREAM, "%5d", round+1);
+            fprintf(VERBSTREAM, "%6u ", sht->ev[mat->tr[0][OFFSET]][DEG]);
+            fflush(VERBSTREAM);
         } */
         convert_hashes_to_columns(mat, st, sht);
         /* linear algebra, depending on choice, see set_function_pointers() */
@@ -764,7 +765,7 @@ bs_t *f4sat_trace_application_phase(
         /* columns indices are mapped back to exponent hashes */
         if (mat->np > 0) {
             if (mat->np != trace->td[round].nlm) {
-                fprintf(stderr, "Wrong number of new elements when applying tracer.");
+                fprintf(ERRSTREAM, "Wrong number of new elements when applying tracer.");
                 ret = 1;
                 goto stop;
             }
@@ -772,7 +773,7 @@ bs_t *f4sat_trace_application_phase(
                     -1, mat, bs, bht, sht, st);
             for (i = 0; i < mat->np; ++i) {
                 if (bs->hm[bs->ld+i][OFFSET] != trace->td[round].nlms[i]) {
-                    fprintf(stderr, "Wrong leading term for new element %u/%u.",
+                    fprintf(ERRSTREAM, "Wrong leading term for new element %u/%u.",
                             i, mat->np);
                     ret = 1;
                     goto stop;
@@ -786,7 +787,7 @@ bs_t *f4sat_trace_application_phase(
          * so we do not need the rows anymore */
         clear_matrix(mat);
 
-        print_round_timings(stdout, st, rrt, crt);
+        print_round_timings(VERBSTREAM, st, rrt, crt);
         /* saturation step starts here */
         while (ctr < trace->rld && trace->rd[ctr]  ==  round) {
             ctr++;
@@ -808,7 +809,7 @@ bs_t *f4sat_trace_application_phase(
             if (mat->nru > 0) {
                 if (st->info_level > 1) {
                     /* printf("kernel computation "); */
-                    printf("sat %5u %7u  ", ctr, sat_deg);
+                    fprintf(VERBSTREAM, "sat %5u %7u  ", ctr, sat_deg);
                 }
                 /* int ctr = 0;
                  * for (int ii = 1; ii < sat->ld; ++ii) {
@@ -836,12 +837,12 @@ bs_t *f4sat_trace_application_phase(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (st->info_level > 1) {
-                    printf("%56d new kernel elements", kernel->ld);
-                    fflush(stdout);
+                    fprintf(VERBSTREAM, "%56d new kernel elements", kernel->ld);
+                    fflush(VERBSTREAM);
                     printf("\n                                               ");
                 }
                 if (kernel->ld == 0) {
-                    fprintf(stderr, "Trivial kernel when applying tracer.");
+                    fprintf(ERRSTREAM, "Trivial kernel when applying tracer.");
                     ret = 1;
                     goto stop;
                 }
@@ -897,10 +898,10 @@ bs_t *f4sat_trace_application_phase(
             }
             clean_hash_table(sht);
 
-            print_round_timings(stdout, st, rrt, crt);
+            print_round_timings(VERBSTREAM, st, rrt, crt);
         }
     }
-    print_round_information_footer(stdout, st);
+    print_round_information_footer(VERBSTREAM, st);
 
     /* apply non-redundant basis data from trace to basis
      * before interreduction */
@@ -931,7 +932,7 @@ bs_t *f4sat_trace_application_phase(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    get_and_print_final_statistics(stdout, st, bs);
+    get_and_print_final_statistics(VERBSTREAM, st, bs);
 
 stop:
     /* free and clean up */
@@ -1011,10 +1012,10 @@ bs_t *f4_trace_learning_phase(
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
     if (st->info_level > 1) {
-      printf("Learning phase with prime p = %d\n", fc);
-        printf("\ndeg     sel   pairs        mat          density \
+      fprintf(VERBSTREAM, "Learning phase with prime p = %d\n", fc);
+      fprintf(VERBSTREAM, "\ndeg     sel   pairs        mat          density \
           new data             time(rd)\n");
-        printf("-------------------------------------------------\
+      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
     for (round = 1; ps->ld > 0; ++round) {
@@ -1057,11 +1058,11 @@ bs_t *f4_trace_learning_phase(
 
       rrt1 = realtime();
       if (st->info_level > 1) {
-        printf("%13.2f sec\n", rrt1-rrt0);
+        fprintf(VERBSTREAM, "%13.2f sec\n", rrt1-rrt0);
       }
     }
     if (st->info_level > 1) {
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
     /* remove possible redudant elements */
@@ -1109,7 +1110,7 @@ bs_t *f4_trace_learning_phase(
     st->f4_ctime = ct1 - ct0;
     st->f4_rtime = rt1 - rt0;
 
-    get_and_print_final_statistics(stdout, st, bs);
+    get_and_print_final_statistics(VERBSTREAM, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -1222,7 +1223,7 @@ bs_t *f4sat_trace_learning_phase_1(
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
-    print_round_information_header(stdout, st);
+    print_round_information_header(VERBSTREAM, st);
     round = 1;
 end_sat_step:
     for (; ps->ld > 0; ++round) {
@@ -1254,12 +1255,12 @@ end_sat_step:
         update_basis_f4(ps, bs, bht, st, mat->np);
 
         if (bs->constant  == 1) {
-            printf("basis is constant\n");
+            fprintf(VERBSTREAM, "basis is constant\n");
             ps->ld  = 0;
             break;
         }
         clean_hash_table(sht);
-        print_round_timings(stdout, st, rrt, crt);
+        print_round_timings(VERBSTREAM, st, rrt, crt);
 
         /* saturation step starts here */
         if ((bs->mltdeg >= sat->hm[0][DEG] && sat_test != 0) || ps->ld == 0) {
@@ -1296,7 +1297,7 @@ end_sat_step:
                 if (mat->nru > 0) {
                     if (st->info_level > 1) {
                         /* printf("kernel computation "); */
-                        printf("%3u  compute kernel", sat_deg);
+                        fprintf(VERBSTREAM, "%3u  compute kernel", sat_deg);
                     }
                     convert_hashes_to_columns_sat(mat, sat, st, sht);
                     convert_multipliers_to_columns(&hcmm, sat, st, bht);
@@ -1305,13 +1306,13 @@ end_sat_step:
                     compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                     if (st->info_level > 1) {
-                        printf("%56d new kernel elements", kernel->ld);
-                        fflush(stdout);
+                        fprintf(VERBSTREAM, "%56d new kernel elements", kernel->ld);
+                        fflush(VERBSTREAM);
                     }
 
                     if (kernel->ld > 0) {
                         if (st->info_level > 1) {
-                            printf("\n                                               ");
+                            fprintf(VERBSTREAM, "\n                                               ");
                         }
                         clear_matrix(mat);
                         /* interreduce kernel */
@@ -1345,7 +1346,7 @@ end_sat_step:
                         update_basis_f4(ps, bs, bht, st, mat->np);
                         kernel->ld  = 0;
                         if (st->info_level > 1) {
-                            printf("   ");
+                            fprintf(VERBSTREAM, "   ");
                         }
                     }
                     /* all rows in mat are now polynomials in the basis,
@@ -1381,7 +1382,7 @@ end_sat_step:
 
                 }
                 clean_hash_table(sht);
-                print_sat_round_timings(stdout, st, rrt, crt);
+                print_sat_round_timings(VERBSTREAM, st, rrt, crt);
 
                 if (bld != bs->ld) {
                     next_deg  = ii;
@@ -1393,7 +1394,7 @@ end_sat_step:
         }
     }
 
-    print_round_information_footer(stdout, st);
+    print_round_information_footer(VERBSTREAM, st);
 
     /* remove possible redudant elements */
     final_remove_redundant_elements(bs, st, bht);
@@ -1430,7 +1431,7 @@ end_sat_step:
     st->f4_rtime = realtime() - rt;
     st->f4_ctime = cputime() - ct;
 
-    get_and_print_final_statistics(stdout, st, bs);
+    get_and_print_final_statistics(VERBSTREAM, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -1551,7 +1552,7 @@ bs_t *f4sat_trace_learning_phase_2(
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
-    print_round_information_header(stdout, st);
+    print_round_information_header(VERBSTREAM, st);
     round = 1;
     for (; ps->ld > 0; ++round) {
         /* check if we have already computed the
@@ -1595,12 +1596,12 @@ bs_t *f4sat_trace_learning_phase_2(
 
         /* if we found a constant we are done, so remove all remaining pairs */
         if (bs->constant  == 1) {
-            printf("basis is constant\n");
+            fprintf(VERBSTREAM, "basis is constant\n");
             ps->ld  = 0;
             break;
         }
         clean_hash_table(sht);
-        print_round_timings(stdout, st, rrt, crt);
+        print_round_timings(VERBSTREAM, st, rrt, crt);
 
         /* saturation step starts here */
         /* if (ts_ctr < trace->lts && minimal_traced_lm_is_equal(trace->ts[ts_ctr].lmh, trace->ts[ts_ctr].lml, bs) == 1) { */
@@ -1620,7 +1621,7 @@ bs_t *f4sat_trace_learning_phase_2(
             if (mat->nru > 0) {
                 if (st->info_level > 1) {
                     /* printf("kernel computation "); */
-                    printf("%3u  compute kernel", next_deg);
+                    fprintf(VERBSTREAM, "%3u  compute kernel", next_deg);
                 }
                 convert_hashes_to_columns_sat(mat, sat, st, sht);
                 convert_multipliers_to_columns(&hcmm, sat, st, bht);
@@ -1630,9 +1631,9 @@ bs_t *f4sat_trace_learning_phase_2(
                 compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                 if (st->info_level > 1) {
-                    printf("%56d new kernel elements", kernel->ld);
-                    fflush(stdout);
-                    printf("\n                                               ");
+                    fprintf(VERBSTREAM, "%56d new kernel elements", kernel->ld);
+                    fflush(VERBSTREAM);
+                    fprintf(VERBSTREAM, "\n                                               ");
                 }
                 clear_matrix(mat);
                 /* interreduce kernel */
@@ -1665,7 +1666,7 @@ bs_t *f4sat_trace_learning_phase_2(
                 update_basis_f4(ps, bs, bht, st, mat->np);
                 kernel->ld  = 0;
                 if (st->info_level > 1) {
-                    printf("   ");
+                    fprintf(VERBSTREAM, "   ");
                 }
                 /* columns indices are mapped back to exponent hashes */
                 /* return_normal_forms_to_basis(
@@ -1703,12 +1704,12 @@ bs_t *f4sat_trace_learning_phase_2(
                 }
             }
             clean_hash_table(sht);
-            print_sat_round_timings(stdout, st, rrt, crt);
+            print_sat_round_timings(VERBSTREAM, st, rrt, crt);
             ts_ctr++;
         }
     }
 
-    print_round_information_footer(stdout, st);
+    print_round_information_footer(VERBSTREAM, st);
     /* remove possible redudant elements */
     final_remove_redundant_elements(bs, st, bht);
 
@@ -1748,7 +1749,7 @@ bs_t *f4sat_trace_learning_phase_2(
     st->f4_rtime = realtime() - rt;
     st->f4_ctime = cputime() - ct;
 
-    get_and_print_final_statistics(stdout, st, bs);
+    get_and_print_final_statistics(VERBSTREAM, st, bs);
 
     /* free and clean up
      * note: we keep the basis hash table bht for all upcoming runs.
@@ -1818,9 +1819,9 @@ int64_t f4_trace_julia(
 {
     /* only for computations over the rationals */
     if (field_char != 0) {
-        fprintf(stderr, "Tracer only for computations over Q. Call\n");
-        fprintf(stderr, "standard F4 Algorithm for computations over\n");
-        fprintf(stderr, "finite fields.\n");
+        fprintf(ERRSTREAM, "Tracer only for computations over Q. Call\n");
+        fprintf(ERRSTREAM, "standard F4 Algorithm for computations over\n");
+        fprintf(ERRSTREAM, "finite fields.\n");
         return 1;
     }
 
@@ -1875,7 +1876,7 @@ int64_t f4_trace_julia(
     free(invalid_gens);
     invalid_gens = NULL;
 
-    print_initial_statistics(stdout, st);
+    print_initial_statistics(VERBSTREAM, st);
 
     /* for faster divisibility checks, needs to be done after we have
      * read some input data for applying heuristics */
@@ -1975,9 +1976,9 @@ bs_t *modular_f4(
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
     if (st->info_level > 1) {
-        printf("\ndeg     sel   pairs        mat          density \
+        fprintf(VERBSTREAM, "\ndeg     sel   pairs        mat          density \
           new data             time(rd)\n");
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
     for (round = 1; ps->ld > 0; ++round) {
@@ -2013,11 +2014,11 @@ bs_t *modular_f4(
 
       rrt1 = realtime();
       if (st->info_level > 1) {
-        printf("%13.2f sec\n", rrt1-rrt0);
+        fprintf(VERBSTREAM, "%13.2f sec\n", rrt1-rrt0);
       }
     }
     if (st->info_level > 1) {
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
 
@@ -2057,7 +2058,7 @@ bs_t *modular_f4(
     for (i = 0; i < bs->lml; ++i) {
         st->nterms_basis +=  (int64_t)bs->hm[bs->lmps[i]][LENGTH];
     }
-    get_and_print_final_statistics(stdout, st, bs);
+    get_and_print_final_statistics(VERBSTREAM, st, bs);
 
     /* free and clean up */
     free(hcm);

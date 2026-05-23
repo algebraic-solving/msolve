@@ -19,10 +19,12 @@
  * Mohab Safey El Din */
 
 #include "msolve.h"
+#include "streams.h"
 #include "duplicate.c"
 #include "linear.c"
 #include "lifting.c"
 #include "lifting-gb.c"
+#include "streams.h"
 
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -39,7 +41,7 @@ static void mpz_upoly_init(mpz_upoly_t poly, deg_t alloc) {
   if (alloc) {
     tmp = (mpz_t *)(malloc(alloc * sizeof(mpz_t)));
     if (tmp == NULL) {
-      fprintf(stderr, "Unable to allocate in mpz_upoly_init\n");
+      fprintf(ERRSTREAM, "Unable to allocate in mpz_upoly_init\n");
       exit(1);
     }
     for (deg_t i = 0; i < alloc; i++) {
@@ -57,7 +59,7 @@ static void mpz_upoly_init2(mpz_upoly_t poly, deg_t alloc, bits_t nbits) {
   if (alloc) {
     tmp = (mpz_t *)(malloc(alloc * sizeof(mpz_t)));
     if (tmp == NULL) {
-      fprintf(stderr, "Unable to allocate in mpz_upoly_init\n");
+      fprintf(ERRSTREAM, "Unable to allocate in mpz_upoly_init\n");
       exit(1);
     }
     for (deg_t i = 0; i < alloc; i++) {
@@ -496,11 +498,11 @@ static int change_variable_order_in_input_system(data_gens_ff_t *gens,
     len += gens->lens[i] * nvars;
   }
   if (info_level > 0) {
-    printf("\nChanging variable order for possibly more generic staircase:\n");
+    fprintf(VERBSTREAM, "\nChanging variable order for possibly more generic staircase:\n");
     for (int i = 0; i < nvars - 1; i++) {
-      fprintf(stdout, "%s, ", gens->vnames[i]);
+      fprintf(VERBSTREAM, "%s, ", gens->vnames[i]);
     }
-    fprintf(stdout, "%s\n", gens->vnames[nvars - 1]);
+    fprintf(VERBSTREAM, "%s\n", gens->vnames[nvars - 1]);
   }
   return 1;
 }
@@ -586,9 +588,9 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
   const int32_t bcf = gens->linear_form_base_coef;
   k = 1;
   if (info_level > 0) {
-    printf("\nAdding a linear form with an extra variable ");
-    printf("(lowest w.r.t. monomial order)\n");
-    printf("[coefficients of linear form are k^%d for k looping over variable "
+    fprintf(VERBSTREAM, "\nAdding a linear form with an extra variable ");
+    fprintf(VERBSTREAM, "(lowest w.r.t. monomial order)\n");
+    fprintf(VERBSTREAM, "[coefficients of linear form are k^%d for k looping over variable "
            "index 1...n]\n",
            bcf - 1);
   }
@@ -684,9 +686,9 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
   gens->linear_form_base_coef++;
   /* const int32_t bcf = gens->linear_form_base_coef; */
   if (info_level > 0) {
-    printf("\nAdding a linear form with an extra variable ");
-    printf("(lowest w.r.t. monomial order)\n");
-    printf("[coefficients of linear form are randomly chosen]\n");
+    fprintf(VERBSTREAM, "\nAdding a linear form with an extra variable ");
+    fprintf(VERBSTREAM, "(lowest w.r.t. monomial order)\n");
+    fprintf(VERBSTREAM, "[coefficients of linear form are randomly chosen]\n");
   }
   /* gens->random_linear_form = malloc(sizeof(int32_t)*(nvars_new)); */
   gens->random_linear_form =
@@ -781,7 +783,7 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam) {
       param->coords[i]->length = bparam->elim->length - 1;
     }
   } else {
-    fprintf(stderr, "Error when initializing parametrization\n");
+    fprintf(ERRSTREAM, "Error when initializing parametrization\n");
     exit(1);
   }
   param->cfs = (mpz_t *)malloc(sizeof(mpz_t) * (param->nvars - 1));
@@ -791,7 +793,7 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam) {
       mpz_set_ui(param->cfs[i], 1);
     }
   } else {
-    fprintf(stderr, "Error when allocating cfs\n");
+    fprintf(ERRSTREAM, "Error when allocating cfs\n");
     exit(1);
   }
 }
@@ -1151,7 +1153,7 @@ static inline void lift_coordinate(mpz_param_t mpz_param, mpz_param_t tmp_mpz_pa
                       mpz_param->coords[idx]->coeffs[j], mpq_numref(c));
             }
             if(info_level){
-                fprintf(stdout, "[%d]", idx + 1);
+                fprintf(VERBSTREAM, "[%d]", idx + 1);
             }
         }
       }
@@ -1183,7 +1185,7 @@ static inline int lift_parametrization(mpz_param_t mpz_param, mpz_param_t tmp_mp
       }
       is_lifted[0] = 1;
       if (info_level) {
-        fprintf(stdout, "[0]");
+        fprintf(VERBSTREAM, "[0]");
       }
 
     }
@@ -1487,8 +1489,8 @@ static inline int check_param_modular(const mpz_param_t mp_param,
   int c = check_unit_mpz_nmod_poly(len, mp_param->elim, bparam->elim, prime);
   if (c) {
     if (info_level) {
-      fprintf(stdout, "<0,%d>", c);
-      fflush(stdout);
+      fprintf(VERBSTREAM, "<0,%d>", c);
+      fflush(VERBSTREAM);
     }
     is_lifted[0] = 0;
     for (int i = 0; i < mp_param->nvars - 1; i++) {
@@ -1516,8 +1518,8 @@ static inline int check_param_modular(const mpz_param_t mp_param,
             mp_param->elim->length - 1, bparam->coords[i], prime)) {
       is_lifted[i + 1] = 0;
       if (info_level) {
-        fprintf(stdout, "<%d>", i + 1);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "<%d>", i + 1);
+        fflush(VERBSTREAM);
       }
       return 1;
     }
@@ -1555,7 +1557,7 @@ static int32_t check_for_single_element_groebner_basis(
 
   if (bs->lml == 1) {
     if (md->info_level > 0) {
-      fprintf(stdout, "Grobner basis has a single element\n");
+      fprintf(VERBSTREAM, "Grobner basis has a single element\n");
     }
     for (i = 0; i < bs->ht->nv; i++) {
       if (leadmons[pos][i] != 0) {
@@ -1567,7 +1569,7 @@ static int32_t check_for_single_element_groebner_basis(
       *dquot_ori = 0;
       *dim = 0;
       if (md->info_level > 0) {
-        fprintf(stdout, "No solution\n");
+        fprintf(VERBSTREAM, "No solution\n");
       }
     }
   } else {
@@ -1630,7 +1632,7 @@ static int32_t *initial_modular_step(
     bs_t *bs = core_gba(gbg, md, &error, fc);
 
     md->learning_rtime = realtime()-rt;
-    print_tracer_statistics(stdout, rt, md);
+    print_tracer_statistics(VERBSTREAM, rt, md);
 
     get_leading_ideal_information(num_gb, leadmons, 0, bs);
 
@@ -1654,7 +1656,7 @@ static int32_t *initial_modular_step(
         int32_t *lmb = monomial_basis(bs->lml, bs->ht->nv, leadmons[0], &dquot);
 
         /* if(md->info_level){ */
-        /*     fprintf(stderr, "Dimension of quotient: %ld\n", dquot); */
+        /*     fprintf(ERRSTREAM, "Dimension of quotient: %ld\n", dquot); */
         /* } */
         if(print_gb==0){
             /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
@@ -1666,7 +1668,7 @@ static int32_t *initial_modular_step(
             /* 					 md->info_level); */
             md->fglm_rtime = realtime();
             md->fglm_ctime = cputime();
-            print_fglm_header (stdout,md);
+            print_fglm_header (VERBSTREAM,md);
             *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
                                                             blen_gb_xn,
                                                             bstart_cf_gb_xn,
@@ -1686,7 +1688,7 @@ static int32_t *initial_modular_step(
                 *dim = 0;
                 *dquot_ori = dquot;
                 if(md->info_level > 1){
-                    fprintf (stdout,"------------------------------------------------------------------------------------------------------\n");
+                    fprintf (VERBSTREAM,"------------------------------------------------------------------------------------------------------\n");
                 }
                 free_basis_without_hash_table(&(bs));
                 free(bs);
@@ -2193,7 +2195,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
   /* all data is corrupt */
   if (res == -1) {
-    fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
+    fprintf(ERRSTREAM, "Invalid input generators, msolve now terminates.\n");
     free(st);
     free(invalid_gens);
     return -3;
@@ -2224,7 +2226,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   //free(invalid_gens);
   invalid_gens = NULL;
 
-  print_initial_statistics(stdout, st);
+  print_initial_statistics(VERBSTREAM, st);
 
   /* for faster divisibility checks, needs to be done after we have
    * read some input data for applying heuristics */
@@ -2265,7 +2267,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   primeinit = prime;
   lp->p[0] = primeinit;
   if(info_level && gens->field_char == 0){
-      fprintf(stdout, "Initial prime is %d\n", lp->p[0]);
+      fprintf(VERBSTREAM, "Initial prime is %d\n", lp->p[0]);
   }
 
   if (gens->field_char) {
@@ -2418,7 +2420,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     if (*dim_ptr == 1) {
       if (info_level) {
-        fprintf(stdout, "Positive dimensional Grobner basis\n");
+        fprintf(VERBSTREAM, "Positive dimensional Grobner basis\n");
       }
       free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
           bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
@@ -2639,44 +2641,44 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     if (nprimes == 1) {
       if (info_level > 2) {
-        fprintf(stdout, "------------------------------------------\n");
-        fprintf(stdout, "#ADDITIONS       %13lu\n",
+        fprintf(VERBSTREAM, "------------------------------------------\n");
+        fprintf(VERBSTREAM, "#ADDITIONS       %13lu\n",
                 (unsigned long)st->application_nr_add * 1000);
-        fprintf(stdout, "#MULTIPLICATIONS %13lu\n",
+        fprintf(VERBSTREAM, "#MULTIPLICATIONS %13lu\n",
                 (unsigned long)st->application_nr_mult * 1000);
-        fprintf(stdout, "#REDUCTIONS      %13lu\n",
+        fprintf(VERBSTREAM, "#REDUCTIONS      %13lu\n",
                 (unsigned long)st->application_nr_red);
-        fprintf(stdout, "------------------------------------------\n");
-        fflush(stdout);
+        fprintf(VERBSTREAM, "------------------------------------------\n");
+        fflush(VERBSTREAM);
       }
       if(info_level){
-	    fprintf(stdout,
+	    fprintf(VERBSTREAM,
 		    "\n---------------- TIMINGS ----------------\n");
-	    fprintf(stdout,
+	    fprintf(VERBSTREAM,
 		    "multi-mod overall(elapsed) %9.2f sec\n",
 		    ca1);
-	    fprintf(stdout,
+	    fprintf(VERBSTREAM,
 		    "multi-mod F4               %9.2f sec\n",
 		    stf4);
-	    fprintf(stdout,
+	    fprintf(VERBSTREAM,
 		    "multi-mod FGLM             %9.2f sec\n",
 		    ca1-stf4);
 	    if (info_level > 1){
-	      fprintf(stdout,
+	      fprintf(VERBSTREAM,
 		      "learning phase             %9.2f Gops/sec\n",
 		      (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(st->learning_rtime));
-	      fprintf(stdout,
+	      fprintf(VERBSTREAM,
 		      "application phase          %9.2f Gops/sec\n",
 		      (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
 	    }
-	    fprintf(stdout,
+	    fprintf(VERBSTREAM,
 		    "-----------------------------------------\n");
-        fflush(stdout);
+        fflush(VERBSTREAM);
       }
       if (info_level) {
-	  fprintf(stdout,
+	  fprintf(VERBSTREAM,
 		  "\nmulti-modular steps\n");
-	  fprintf(stdout, "-------------------------------------------------\
+	  fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------------------------\n");
       }
 
@@ -2719,8 +2721,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         nprimes++;
       } else {
         if (info_level) {
-          fprintf(stdout, "<bp: %d>\n", lp->p[i]);
-	      fflush(stdout);
+          fprintf(VERBSTREAM, "<bp: %d>\n", lp->p[i]);
+	      fflush(VERBSTREAM);
         }
         nbadprimes++;
         if (nbadprimes > nprimes) {
@@ -2744,8 +2746,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       lpow2 = 2 * nprimes;
       doit = 0;
       if (info_level) {
-        fprintf(stdout, "\n<Step:%d/%.2f/%.2f>", nbdoit, scrr, t);
-    	fflush(stdout);
+        fprintf(VERBSTREAM, "\n<Step:%d/%.2f/%.2f>", nbdoit, scrr, t);
+    	fflush(VERBSTREAM);
       }
     }
     prdone++;
@@ -2753,8 +2755,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     if ((LOG2(nprimes) > clog) ||
         (nbdoit != 1 && (nprimes % (lpow2 + 1) == 0))) {
       if (info_level) {
-        fprintf(stdout, "{%d}", nprimes);
-	fflush(stdout);
+        fprintf(VERBSTREAM, "{%d}", nprimes);
+	fflush(VERBSTREAM);
       }
       clog++;
       lpow2 = 2 * lpow2;
@@ -2769,21 +2771,21 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                (*mpz_paramp)->denom->coeffs[i - 1], i);
   }
   if(info_level){
-    fprintf(stdout,
+    fprintf(VERBSTREAM,
 	    "\n-------------------------------------------------\
 -----------------------------------------------------\n");
   }
 
 
   if(info_level){
-    fprintf(stdout,"\n---------- COMPUTATIONAL DATA -----------\n");
-    fprintf(stdout, "#primes            %16lu\n", (unsigned long) nprimes);
-    fprintf(stdout, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
-    fprintf(stdout, "-----------------------------------------\n");
-    fprintf(stdout, "\n---------------- TIMINGS ----------------\n");
-    fprintf(stdout, "CRT and ratrecon(elapsed) %10.2f sec\n", strat);
-    fprintf(stdout, "-----------------------------------------\n");
-    fflush(stdout);
+    fprintf(VERBSTREAM,"\n---------- COMPUTATIONAL DATA -----------\n");
+    fprintf(VERBSTREAM, "#primes            %16lu\n", (unsigned long) nprimes);
+    fprintf(VERBSTREAM, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
+    fprintf(VERBSTREAM, "-----------------------------------------\n");
+    fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
+    fprintf(VERBSTREAM, "CRT and ratrecon(elapsed) %10.2f sec\n", strat);
+    fprintf(VERBSTREAM, "-----------------------------------------\n");
+    fflush(VERBSTREAM);
   }
   free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
               bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
@@ -3047,9 +3049,9 @@ void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, co
         mpz_cdiv_q_2exp(xup[i], xup[i], newcorr);
 
         if(mpz_cmp(xup[i], xdo[i])<0){
-            fprintf(stderr, "BUG in generate (debut %ld)\n", i);
-            mpz_out_str(stderr, 10, xdo[i]);fprintf(stderr, "\n");
-            mpz_out_str(stderr, 10, xup[i]);fprintf(stderr, "\n");
+            fprintf(ERRSTREAM, "BUG in generate (debut %ld)\n", i);
+            mpz_out_str(ERRSTREAM, 10, xdo[i]);fprintf(ERRSTREAM, "\n");
+            mpz_out_str(ERRSTREAM, 10, xup[i]);fprintf(ERRSTREAM, "\n");
             exit(1);
         }
     }
@@ -3081,7 +3083,7 @@ void generate_table_values_full_large_pos(mpz_t numer, mpz_t c, const long k, co
         mpz_fdiv_q_2exp(xdo[i], xdo[i], newcorr);
         mpz_cdiv_q_2exp(xup[i], xup[i], newcorr);
         if(mpz_cmp(xup[i], xdo[i])<0){
-            fprintf(stderr, "BUG in generate (end)\n");
+            fprintf(ERRSTREAM, "BUG in generate (end)\n");
             exit(1);
         }
     }
@@ -3213,7 +3215,7 @@ int newvalue_denom_old(mpz_t *denom, long deg, mpz_t r, long k, mpz_t *xdo,
   /*boo = 1 if sgn(den_do) != sgn(den_up) else it is 0*/
   int boo = mpz_poly_eval_interval(denom, deg, k, r, c, tmp, den_do, den_up);
   if (mpz_cmp(den_do, den_up) > 0) {
-    fprintf(stderr, "BUG (den_do > den_up)\n");
+    fprintf(ERRSTREAM, "BUG (den_do > den_up)\n");
     exit(1);
   }
   return (boo || (mpz_sgn(den_do)==0) || (mpz_sgn(den_up)==0));
@@ -3234,7 +3236,7 @@ void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, 
     if (mpz_sgn(rt->numer) >= 0) {
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
       if(mpz_sgn(tab[0]) != rt->sign_left){
-          fprintf(stderr, "BUG in get_values_at_bounds (called from refine_root_elim)\n");
+          fprintf(ERRSTREAM, "BUG in get_values_at_bounds (called from refine_root_elim)\n");
           exit(1);
       }
       refine_QIR_positive_root(polelim, &ns, rt, tab, 2 * (rt->k), info_level);
@@ -3420,7 +3422,7 @@ void lazy_single_real_root_param(mpz_param_t param, mpz_t *polelim,
         &b, info_level);
 
     if (info_level) {
-      fprintf(stdout, "<%ld>", rt->k);
+      fprintf(VERBSTREAM, "<%ld>", rt->k);
     }
   }
   if (rt->isexact == 1) {
@@ -3584,8 +3586,8 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 
     if (info_level) {
       if (realtime() - et >= step) {
-        fprintf(stdout, "{%.2f%%}", 100 * nc / ((double)nb));
-        fflush(stdout);
+        fprintf(VERBSTREAM, "{%.2f%%}", 100 * nc / ((double)nb));
+        fflush(VERBSTREAM);
         et = realtime();
       }
     }
@@ -3630,22 +3632,22 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
       mpz_poly_max_bsize_coeffs(param->elim->coeffs, param->elim->length - 1);
 
   if(info_level){
-      fprintf(stdout, "Maximum bit size in elimination polynomial: %ld\n", maxnbits);
-      fprintf(stdout, "Maximum bit size of coeffs in parametrizations: [");
-      fflush(stdout);
+      fprintf(VERBSTREAM, "Maximum bit size in elimination polynomial: %ld\n", maxnbits);
+      fprintf(VERBSTREAM, "Maximum bit size of coeffs in parametrizations: [");
+      fflush(VERBSTREAM);
   }
   for (int i = 0; i < param->nvars - 1; i++) {
     long cmax = mpz_poly_max_bsize_coeffs(param->coords[i]->coeffs,
                                           param->coords[i]->length - 1);
     if(info_level){
-        fprintf(stdout, "%ld",cmax);
+        fprintf(VERBSTREAM, "%ld",cmax);
         if(i == param->nvars - 2){
-            fprintf(stdout, "]\n");
-            fflush(stdout);
+            fprintf(VERBSTREAM, "]\n");
+            fflush(VERBSTREAM);
         }
         else{
-            fprintf(stdout, ", ");
-            fflush(stdout);
+            fprintf(VERBSTREAM, ", ");
+            fflush(VERBSTREAM);
         }
     }
     maxnbits = MAX(cmax, maxnbits);
@@ -3662,14 +3664,14 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
 
   real_point_t *pts = NULL;
   if (info_level > 0) {
-    fprintf(stdout, "Number of real roots: %ld\n", nb);
-    fflush(stdout);
+    fprintf(VERBSTREAM, "Number of real roots: %ld\n", nb);
+    fflush(VERBSTREAM);
   }
   if (nb) {
     /* */
     if (info_level) {
-      fprintf(stdout, "Starts real root extraction.\n");
-      fflush(stdout);
+      fprintf(VERBSTREAM, "Starts real root extraction.\n");
+      fflush(VERBSTREAM);
     }
     double st = realtime();
     pts = malloc(sizeof(real_point_t) * nb);
@@ -3681,9 +3683,9 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
     extract_real_roots_param(param, roots, nb, pts, precision, maxnbits, step,
                              to_split, info_level);
     if (info_level) {
-      fprintf(stdout, "Elapsed time (real root extraction) = %.2f\n",
+      fprintf(VERBSTREAM, "Elapsed time (real root extraction) = %.2f\n",
               realtime() - st);
-      fflush(stdout);
+      fflush(VERBSTREAM);
     }
   }
   *real_roots_ptr = roots;
@@ -3782,20 +3784,20 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 
   if(info_level && print_gb == 0){
     /* fprintf( */
-    /*     stderr, */
+    /*     ERRSTREAM, */
     /*     "Time for rational param: %13.2f (elapsed) sec / %5.2f sec (cpu)\n\n", */
     /*     rt1 - rt0, ct1 - ct0); */
-    fprintf (stdout,
+    fprintf (VERBSTREAM,
 	     "\n---------------- TIMINGS ----------------\n");
-    fprintf(stdout,
+    fprintf(VERBSTREAM,
 	    "rational param(elapsed) %12.2f sec\n",
 	    rt1-rt0);
-    fprintf(stdout,
+    fprintf(VERBSTREAM,
 	    "rational param(cpu) %16.2f sec\n",
 	    ct1-ct0);
-    fprintf(stdout,
+    fprintf(VERBSTREAM,
 	    "-----------------------------------------\n");
-    fflush(stdout);
+    fflush(VERBSTREAM);
   }
 
   if (get_param > 1) {
@@ -3858,13 +3860,13 @@ void display_arrays_of_real_roots(files_gb *files, int32_t len,
     fprintf(ofile, "];\n");
     fclose(ofile);
   } else {
-    fprintf(stdout, "[");
+    fprintf(VERBSTREAM, "[");
     for (int i = 0; i < len - 1; i++) {
-      display_real_points(stdout, lreal_pts[i], lnbr[i]);
-      fprintf(stdout, ", \n");
+      display_real_points(VERBSTREAM, lreal_pts[i], lnbr[i]);
+      fprintf(VERBSTREAM, ", \n");
     }
-    display_real_points(stdout, lreal_pts[len - 1], lnbr[len - 1]);
-    fprintf(stdout, "];\n");
+    display_real_points(VERBSTREAM, lreal_pts[len - 1], lnbr[len - 1]);
+    fprintf(VERBSTREAM, "];\n");
   }
 }
 
@@ -3879,7 +3881,7 @@ void display_output(int b, int dim, int dquot, files_gb *files,
       fprintf(ofile, "[-1]:\n");
       fclose(ofile);
     } else {
-      fprintf(stdout, "[-1]:\n");
+      fprintf(OUTSTREAM, "[-1]:\n");
     }
     return;
   }
@@ -3901,22 +3903,22 @@ void display_output(int b, int dim, int dquot, files_gb *files,
       fprintf(ofile, "]:\n");
       fclose(ofile);
     } else {
-      fprintf(stdout, "[0, ");
+      fprintf(OUTSTREAM, "[0, ");
       if (get_param >= 1 || gens->field_char) {
-        mpz_param_out_str_maple(stdout, gens, dquot, *mpz_paramp, param);
+        mpz_param_out_str_maple(OUTSTREAM, gens, dquot, *mpz_paramp, param);
       }
       if (get_param <= 1 && gens->field_char == 0) {
         if (get_param) {
-          fprintf(stdout, ",");
+          fprintf(OUTSTREAM, ",");
         }
-        display_real_points(stdout, *real_pts_ptr, *nb_real_roots_ptr);
+        display_real_points(OUTSTREAM, *real_pts_ptr, *nb_real_roots_ptr);
       }
-      fprintf(stdout, "]:\n");
+      fprintf(OUTSTREAM, "]:\n");
     }
   }
   if (dim > 0) {
     if (info_level > 0) {
-      fprintf(stdout, "The ideal has positive dimension\n");
+      fprintf(VERBSTREAM, "The ideal has positive dimension\n");
     }
     if (files->out_file != NULL) {
       FILE *ofile2 = fopen(files->out_file, "a+");
@@ -3924,7 +3926,7 @@ void display_output(int b, int dim, int dquot, files_gb *files,
       fprintf(ofile2, "[1, %d, -1, []]:\n", gens->nvars);
       fclose(ofile2);
     } else {
-      fprintf(stdout, "[1, %d, -1, []]:\n", gens->nvars);
+      fprintf(OUTSTREAM, "[1, %d, -1, []]:\n", gens->nvars);
     }
   }
 }
@@ -3939,11 +3941,11 @@ void manage_output(int b, int dim, int dquot, files_gb *files,
                    nb_real_roots_ptr, real_roots_ptr, real_pts_ptr, info_level);
   }
   if (b == -2) {
-    fprintf(stderr, "Characteristic of the field here shouldn't be positive\n");
+    fprintf(ERRSTREAM, "Characteristic of the field here shouldn't be positive\n");
     (*mpz_paramp)->dim = -2;
   }
   if (b == -3) {
-    fprintf(stderr, "Problem when checking meta data\n");
+    fprintf(ERRSTREAM, "Problem when checking meta data\n");
     (*mpz_paramp)->dim = -3;
   }
 }
@@ -4032,26 +4034,26 @@ restart:
                     0 /*truncate_lifting */, info_level);
 
             if (st->homogeneous != 1) {
-                fprintf(stderr,
+                fprintf(ERRSTREAM,
                         "Input system must be homogeneous.\n");
                 exit(1);
             }
 
             st->gfc  = gens->field_char;
             if(info_level){
-                fprintf(stdout,
+                fprintf(VERBSTREAM,
                         "NOTE: Field characteristic is now corrected to %u\n",
                         st->gfc);
             }
             if (!success) {
-                fprintf(stderr,"Bad input data, stopped computation.\n");
+                fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
                 exit(1);
             }
             /* compute a gb for initial generators */
             success = core_sba_schreyer(&bs, &bht, &st);
 
             if (!success) {
-                fprintf(stderr,"Problem with sba, stopped computation.\n");
+                fprintf(ERRSTREAM,"Problem with sba, stopped computation.\n");
                 exit(1);
             }
             int64_t nb  = export_results_from_gba(bld, blen, bexp,
@@ -4063,10 +4065,10 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stdout, st, bs);
+            get_and_print_final_statistics(VERBSTREAM, st, bs);
 
             if(nb==0){
-                fprintf(stderr, "Something went wrong during the computation\n");
+                fprintf(ERRSTREAM, "Something went wrong during the computation\n");
                 return -1;
             }
             return 0;
@@ -4092,7 +4094,7 @@ restart:
             int success   = 0;
 
             if(check_ff_bits(gens->field_char) < 32){
-              fprintf(stderr, "Error: not implemented yet (prime field of too low characteristic)\n");
+              fprintf(ERRSTREAM, "Error: not implemented yet (prime field of too low characteristic)\n");
               return 1;
             }
             /*             initialize generators of ideal, note the "gens->ngens-normal_form" which
@@ -4114,7 +4116,7 @@ restart:
                     0 /*truncate_lifting */, info_level);
 
             if (!success) {
-                fprintf(stderr,"Bad input data, stopped computation.\n");
+                fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
                 exit(1);
             }
 
@@ -4140,7 +4142,7 @@ restart:
                 success = core_f4sat(bs, sat, st, &error);
 
                 if (!success) {
-                    fprintf(stderr,"Problem with f4sat, stopped computation.\n");
+                    fprintf(ERRSTREAM,"Problem with f4sat, stopped computation.\n");
                     exit(1);
                 }
                 int64_t nb  = export_results_from_gba(bld, blen, bexp,
@@ -4152,10 +4154,10 @@ restart:
                 st->f4_ctime = ct1 - ct0;
                 st->f4_rtime = rt1 - rt0;
 
-                get_and_print_final_statistics(stdout, st, bs);
+                get_and_print_final_statistics(VERBSTREAM, st, bs);
 
                 if(nb==0){
-                    fprintf(stderr, "Something went wrong during the computation\n");
+                    fprintf(ERRSTREAM, "Something went wrong during the computation\n");
                     return -1;
                 }
                 if (print_gb) {
@@ -4207,23 +4209,23 @@ restart:
 
 	    st->gfc  = gens->field_char;
             if(info_level){
-                fprintf(stdout,
+                fprintf(VERBSTREAM,
                         "NOTE: Field characteristic is now corrected to %u\n",
                         st->gfc);
             }
             if (!success) {
-                fprintf(stderr,"Bad input data, stopped computation.\n");
+                fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
                 exit(1);
             }
 
 	    ct0p = cputime();
 	    rt0p = realtime();
 	    if (info_level) {
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stdout, "INIT   TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(VERBSTREAM, "INIT   TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt0p-rt0, ct0p-ct0);
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
             if (is_gb == 1) {
@@ -4238,21 +4240,21 @@ restart:
                 bs = core_gba(bs, st, &err, gens->field_char);
 
                 if (err) {
-                    fprintf(stderr,"Problem with F4, stopped computation.\n");
+                    fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
                     exit(1);
                 }
             }
 	    export_results_from_gba(bld, blen, bexp,
 						  bcf, &malloc, &bs, &bht, &st);
-            printf("size of basis: %u\n", bs->lml);
+        fprintf(VERBSTREAM, "size of basis: %u\n", bs->lml);
 	    ct1 = cputime();
 	    rt1 = realtime();
 	    if (info_level) {
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stdout, "F4     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(VERBSTREAM, "F4     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt1-rt0p, ct1-ct0p);
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 
@@ -4272,32 +4274,32 @@ restart:
             tbr = core_nf(tbr, st, mul, bs, &err);
 
             if (err) {
-                fprintf(stderr,"Problem with normalform, stopped computation.\n");
+                fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
                 exit(1);
             }
             /* print reduced element in tbr, last one is the input element */
 	    /* printf ("normal form:\n"); */
-            /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
+            /* print_msolve_polynomials_ff(VERBSTREAM, 1, tbr->lml, tbr, bht, */
 	    /* 				st, gens->vnames, 0); */
 	    ct2 = cputime();
 	    rt2 = realtime();
 	    if (info_level) {
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stdout, "NF     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(VERBSTREAM, "NF     TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt2-rt1, ct2-ct1);
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
             /* print all reduced elements in tbr, first  one
              * is the input element */
-            /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
+            /* print_msolve_polynomials_ff(VERBSTREAM, 1, tbr->lml, tbr, bht, */
 	    /* 				st, gens->vnames, 0); */
 	    /* printf("\n"); */
 	    /* list of monomials */
 	    /* size of the list */
 	    long suppsize= tbr->hm[tbr->lmps[1]][LENGTH]; // bs->hm[bs->lmps[1]][LENGTH]
-	    printf("Length of the support of phi: %lu\n",
+	    fprintf(VERBSTREAM, "Length of the support of phi: %lu\n",
 		   suppsize);
 
 	    /* sht and hcm will store the support of the normal form in tbr. */
@@ -4308,7 +4310,7 @@ restart:
 	    /* printf("Starts computation of normal form matrix\n"); */
 	    get_normal_form_matrix(tbr, bht, 1,
 				   st, &sht, &hcm, &mat);
-	    printf("Length of union of support of all normal forms: %u\n",
+	    fprintf(VERBSTREAM, "Length of union of support of all normal forms: %u\n",
 		   mat->nc);
 
 	    /* printf("\nUnion of support, sorted by decreasing monomial order:\n"); */
@@ -4350,7 +4352,7 @@ restart:
 	    /*   } */
 	    /*   printf("\n"); */
 	    /* } */
-	    printf("Subspace of quotient algebra has dimension: %ld\n",dquot);
+	    fprintf(VERBSTREAM, "Subspace of quotient algebra has dimension: %ld\n",dquot);
 	    uint32_t * leftvector = calloc(dquot,sizeof (uint32_t));
 	    uint32_t ** leftvectorsparam = malloc(2*(gens->nvars-1)*sizeof (uint32_t *));
 	    for (long i = 0; i < 2*(gens->nvars-1); i++) {
@@ -4382,11 +4384,11 @@ restart:
 	    ct3 = cputime();
 	    rt3 = realtime();
 	    if (info_level) {
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stdout, "MATRIX TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(VERBSTREAM, "MATRIX TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt3-rt2, ct3-ct2);
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 	    nvars_t *linvars = calloc(gens->nvars, sizeof(nvars_t));
@@ -4399,32 +4401,32 @@ restart:
 	    ct4 = cputime();
 	    rt4 = realtime();
 	    if (info_level) {
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stdout, "FGLM  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(VERBSTREAM, "FGLM  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt4-rt3, ct4-ct3);
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
-	    display_fglm_param(stdout, param);
+	    display_fglm_param(VERBSTREAM, param);
 	    if (info_level) {
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stdout, "TOTAL  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
+	      fprintf(VERBSTREAM, "TOTAL  TIMING %13.2f sec (REAL) / %5.2f sec (CPU)\n",
 		      rt4-rt0, ct4-ct0);
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
-	      fprintf(stdout, "INIT   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(VERBSTREAM, "INIT   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt0p-rt0)/(rt4-rt0), 100*(ct0p-ct0)/(ct4-ct0));
-	      fprintf(stdout, "F4     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(VERBSTREAM, "F4     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt1-rt0p)/(rt4-rt0), 100*(ct1-ct0p)/(ct4-ct0));
-	      fprintf(stdout, "NF     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(VERBSTREAM, "NF     PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt2-rt1)/(rt4-rt0), 100*(ct2-ct1)/(ct4-ct0));
-	      fprintf(stdout, "MATRIX PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(VERBSTREAM, "MATRIX PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt3-rt2)/(rt4-rt0), 100*(ct3-ct2)/(ct4-ct0));
-	      fprintf(stdout, "FGLM   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
+	      fprintf(VERBSTREAM, "FGLM   PERCTG %13.2f%% (REAL) / %5.2f%% (CPU)\n",
 		      100*(rt4-rt3)/(rt4-rt0), 100*(ct4-ct3)/(ct4-ct0));
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
 	    }
 	    free(param);
@@ -4470,8 +4472,8 @@ restart:
 	  long dquot = -1;
 
       if(elim_block_len > 0 && print_gb == 0){
-          fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
-          fprintf(stderr, "Computing Groebner basis\n");
+          fprintf(ERRSTREAM, "Warning: elim order not available for rational parametrizations\n");
+          fprintf(ERRSTREAM, "Computing Groebner basis\n");
           print_gb=2;
       }
 	  b = real_msolve_qq(mpz_paramp,
@@ -4520,13 +4522,13 @@ restart:
                 }
               }
             }
-            fprintf(stderr, "\n=====> Computation failed <=====\n");
-            fprintf(stderr, "Try to add a random linear form with ");
-            fprintf(stderr, "a new variable\n");
-            fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
-            fprintf(stderr, "This will\n");
-            fprintf(stderr, "be done automatically if you run msolve with option\n");
-            fprintf(stderr, "\"-c2\" which is the default.\n");
+            fprintf(ERRSTREAM, "\n=====> Computation failed <=====\n");
+            fprintf(ERRSTREAM, "Try to add a random linear form with ");
+            fprintf(ERRSTREAM, "a new variable\n");
+            fprintf(ERRSTREAM, "(smallest w.r.t. DRL) to the input system. ");
+            fprintf(ERRSTREAM, "This will\n");
+            fprintf(ERRSTREAM, "be done automatically if you run msolve with option\n");
+            fprintf(ERRSTREAM, "\"-c2\" which is the default.\n");
           }
           if(b == 2){
             free(bld);
@@ -4548,13 +4550,13 @@ restart:
 		goto restart;
 	      }
 	    }
-	    fprintf(stderr, "\n=====> Computation failed <=====\n");
-            fprintf(stderr, "Try to add a random linear form with ");
-            fprintf(stderr, "a new variable\n");
-            fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
-            fprintf(stderr, "This will\n");
-            fprintf(stderr, "be done automatically if you run msolve with option\n");
-            fprintf(stderr, "\"-c2\" which is the default.\n");
+	    fprintf(ERRSTREAM, "\n=====> Computation failed <=====\n");
+        fprintf(ERRSTREAM, "Try to add a random linear form with ");
+        fprintf(ERRSTREAM, "a new variable\n");
+        fprintf(ERRSTREAM, "(smallest w.r.t. DRL) to the input system. ");
+        fprintf(ERRSTREAM, "This will\n");
+        fprintf(ERRSTREAM, "be done automatically if you run msolve with option\n");
+        fprintf(ERRSTREAM, "\"-c2\" which is the default.\n");
 	  }
         }
 	else {
@@ -4593,7 +4595,7 @@ restart:
 
             st->gfc  = gens->field_char;
             if (!success) {
-                fprintf(stderr,"Bad input data, stopped computation.\n");
+                fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
                 exit(1);
             }
 
@@ -4609,7 +4611,7 @@ restart:
                 bs = core_gba(bs, st, &err, gens->field_char);
 
                 if (err) {
-                    printf("Problem with F4, stopped computation.\n");
+                    fprintf(ERRSTREAM, "Problem with F4, stopped computation.\n");
                     exit(1);
                 }
             }
@@ -4632,7 +4634,7 @@ restart:
             tbr = core_nf(tbr, st, mul, bs, &err);
 
             if (err) {
-                fprintf(stderr,"Problem with normalform, stopped computation.\n");
+                fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
                 exit(1);
             }
             /* print all reduced elements in tbr, first normal_form ones
@@ -4645,54 +4647,54 @@ restart:
                 hi_t *hcm   = (hi_t *)malloc(sizeof(hi_t));
                 mat_t *mat  = (mat_t *)calloc(1, sizeof(mat_t));
 
-                printf("\nStarts computation of normal form matrix\n");
+                fprintf(VERBSTREAM, "\nStarts computation of normal form matrix\n");
                 get_normal_form_matrix(tbr, tbr->ht, normal_form,
                         st, &sht, &hcm, &mat);
 
-                printf("\n\nLength of union of support of all normal forms: %u\n",
+                fprintf(VERBSTREAM, "\n\nLength of union of support of all normal forms: %u\n",
                         mat->nc);
 
-                printf("\nUnion of support, sorted by decreasing monomial order:\n");
+                fprintf(VERBSTREAM, "\nUnion of support, sorted by decreasing monomial order:\n");
                 for (len_t k = 0; k < mat->nc; ++k) {
                     for (len_t l = 1; l <= sht->nv; ++l) {
-                        printf("%2u ", sht->ev[hcm[k]][l]);
+                        fprintf(VERBSTREAM, "%2u ", sht->ev[hcm[k]][l]);
                     }
-                    printf("\n");
+                    fprintf(VERBSTREAM, "\n");
                 }
 
                 /* sparse represented matrix of normal forms, note that the column entries
                  * of the rows are not sorted, but you can do so using any sort algorithm */
-                printf("\nMatrix of normal forms (sparse format, note that entries are\n");
-                printf("NOT completely sorted by column index):\n");
+                fprintf(VERBSTREAM, "\nMatrix of normal forms (sparse format, note that entries are\n");
+                fprintf(VERBSTREAM, "NOT completely sorted by column index):\n");
                 int64_t nterms  = 0;
                 for (len_t k = 0; k < mat->nr; ++k) {
-                    printf("row %u | ", k);
+                    fprintf(VERBSTREAM, "row %u | ", k);
                     for (len_t l = 0; l < mat->tr[k][LENGTH]; ++l) {
-                        printf("%u at %u, ",
+                        fprintf(VERBSTREAM, "%u at %u, ",
                                 tbr->cf_32[mat->tr[k][COEFFS]][l],
                                 mat->tr[k][l+OFFSET]);
                     }
-                    printf("\n");
+                    fprintf(VERBSTREAM, "\n");
                     nterms  +=  mat->tr[k][LENGTH];
                 }
                 nterms  *=  100; /* for percentage */
                 double density = (double)nterms / (double)mat->nr / (double)mat->nc;
-                printf("\nMatrix of normal forms (dense format)\n");
+                fprintf(VERBSTREAM, "\nMatrix of normal forms (dense format)\n");
                 cf32_t *dr  = (cf32_t *)malloc(
                         (unsigned long)mat->nc * sizeof(cf32_t));
                 for (len_t k = 0; k < mat->nr; ++k) {
                     memset(dr, 0, (unsigned long)mat->nc * sizeof(cf32_t));
-                    printf("row %u | ", k);
+                    fprintf(VERBSTREAM, "row %u | ", k);
                     for (len_t l = 0; l < mat->tr[k][LENGTH]; ++l) {
                         dr[mat->tr[k][l+OFFSET]]  =
                             tbr->cf_32[mat->tr[k][COEFFS]][l];
                     }
                     for (len_t l = 0; l < mat->nc; ++l) {
-                        printf("%u, ", dr[l]);
+                        fprintf(VERBSTREAM, "%u, ", dr[l]);
                     }
-                    printf("\n");
+                    fprintf(VERBSTREAM, "\n");
                 }
-                printf("density of matrix: %.2f%%\n", density);
+                fprintf(VERBSTREAM, "density of matrix: %.2f%%\n", density);
                 for (len_t k = 0; k < mat->nr; ++k) {
                     free(mat->tr[k]);
                 }
@@ -4741,7 +4743,7 @@ restart:
 
             /* all data is corrupt */
             if (res == -1) {
-                fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
+                fprintf(ERRSTREAM, "Invalid input generators, msolve now terminates.\n");
                 free(invalid_gens);
                 return -3;
             }
@@ -4774,7 +4776,7 @@ restart:
             import_input_data(bs_qq, st, 0, st->ngens_input, gens->lens, gens->exps,
                     (void *)gens->mpz_cfs, invalid_gens);
 
-            print_initial_statistics(stdout, st);
+            print_initial_statistics(VERBSTREAM, st);
 
             /* for faster divisibility checks, needs to be done after we have
              * read some input data for applying heuristics */
@@ -4837,10 +4839,10 @@ restart:
             st->f4_rtime = rt1 - rt0;
 
             if (st->info_level > 1) {
-                print_final_statistics(stdout, st);
+                print_final_statistics(VERBSTREAM, st);
             }
             if(info_level){
-                fprintf(stdout, "\nStarts trace based multi-modular computations\n");
+                fprintf(VERBSTREAM, "\nStarts trace based multi-modular computations\n");
             }
 
             int i;
@@ -4884,7 +4886,7 @@ restart:
                             lp->p[i]);
 
                     stf4 = realtime()-ca0;
-                    printf("F4 trace timing %13.2f\n", stf4);
+                    fprintf(VERBSTREAM, "F4 trace timing %13.2f\n", stf4);
                     /* printf("bs[%u]->lml = %u\n", i, bs[i]->lml); */
                 }
             /* } */
@@ -4920,7 +4922,7 @@ restart:
 
             /* all data is corrupt */
             if (res == -1) {
-                fprintf(stderr, "Invalid input generators, msolve now terminates.\n");
+                fprintf(ERRSTREAM, "Invalid input generators, msolve now terminates.\n");
                 free(invalid_gens);
                 return -3;
             }
@@ -4956,7 +4958,7 @@ restart:
             free(invalid_gens);
             invalid_gens    =   NULL;
 
-            print_initial_statistics(stdout, st);
+            print_initial_statistics(VERBSTREAM, st);
 
             /* for faster divisibility checks, needs to be done after we have
              * read some input data for applying heuristics */
@@ -5007,7 +5009,7 @@ restart:
             }
 
             if (info_level){
-                fprintf(stdout,"LEARNING PHASE -- PART 1\n");
+                fprintf(VERBSTREAM,"LEARNING PHASE -- PART 1\n");
             }
             f4sat_trace_learning_phase_1(
                     trace,
@@ -5027,10 +5029,10 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stdout, st, bs_qq);
+            get_and_print_final_statistics(VERBSTREAM, st, bs_qq);
 
             if(info_level){
-                fprintf(stdout, "\nStarts trace based multi-modular computations\n");
+                fprintf(VERBSTREAM, "\nStarts trace based multi-modular computations\n");
             }
 
             prime = next_prime(1<<30);
@@ -5038,7 +5040,7 @@ restart:
             lp->p[0]  = prime;
 
             if (info_level){
-                fprintf(stdout,"LEARNING PHASE -- PART 2\n");
+                fprintf(VERBSTREAM,"LEARNING PHASE -- PART 2\n");
             }
             f4sat_trace_learning_phase_2(
                     trace,
@@ -5058,10 +5060,10 @@ restart:
             st->f4_ctime = ct1 - ct0;
             st->f4_rtime = rt1 - rt0;
 
-            get_and_print_final_statistics(stdout, st, bs_qq);
+            get_and_print_final_statistics(VERBSTREAM, st, bs_qq);
 
             if(info_level){
-                fprintf(stdout, "\nStarts trace based multi-modular computations\n");
+                fprintf(VERBSTREAM, "\nStarts trace based multi-modular computations\n");
             }
 
             int i;
@@ -5107,7 +5109,7 @@ restart:
 
                     stf4 = realtime()-ca0;
                     if (info_level) {
-                        printf("F4 trace timing %13.2f\n", stf4);
+                        fprintf(VERBSTREAM, "F4 trace timing %13.2f\n", stf4);
                     }
                     /* printf("bs[%u]->lml = %u\n", i, bs[i]->lml); */
                 }
@@ -5119,8 +5121,8 @@ restart:
             long dquot = -1;
 
             if(elim_block_len && print_gb == 0){
-                fprintf(stderr, "Warning: elim order not available for rational parametrizations\n");
-                fprintf(stderr, "Computing Groebner basis\n");
+                fprintf(ERRSTREAM, "Warning: elim order not available for rational parametrizations\n");
+                fprintf(ERRSTREAM, "Computing Groebner basis\n");
                 print_gb=2;
             }
 
@@ -5197,17 +5199,17 @@ restart:
                         }
                     }
                 }
-                fprintf(stderr, "\n=====> Computation failed <=====\n");
-                fprintf(stderr, "Try to add a random linear form with ");
-                fprintf(stderr, "a new variable\n");
-                fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
-                fprintf(stderr, "This will\n");
-                fprintf(stderr, "be done automatically if you run msolve with option\n");
-                fprintf(stderr, "\"-c2\" which is the default.\n");
+                fprintf(ERRSTREAM, "\n=====> Computation failed <=====\n");
+                fprintf(ERRSTREAM, "Try to add a random linear form with ");
+                fprintf(ERRSTREAM, "a new variable\n");
+                fprintf(ERRSTREAM, "(smallest w.r.t. DRL) to the input system. ");
+                fprintf(ERRSTREAM, "This will\n");
+                fprintf(ERRSTREAM, "be done automatically if you run msolve with option\n");
+                fprintf(ERRSTREAM, "\"-c2\" which is the default.\n");
                 (*mpz_paramp)->dim  = -1;
             }
             if(b == -4){
-                fprintf(stderr, "Bad prime chosen initially\n");
+                fprintf(ERRSTREAM, "Bad prime chosen initially\n");
                 free(bld);
                 bld = NULL;
                 free(blen);
@@ -5243,13 +5245,13 @@ restart:
                     goto restart;
                   }
                 }
-                fprintf(stderr, "\n=====> Computation failed <=====\n");
-                fprintf(stderr, "Try to add a random linear form with ");
-                fprintf(stderr, "a new variable\n");
-                fprintf(stderr, "(smallest w.r.t. DRL) to the input system. ");
-                fprintf(stderr, "This will\n");
-                fprintf(stderr, "be done automatically if you run msolve with option\n");
-                fprintf(stderr, "\"-c2\" which is the default.\n");
+                fprintf(ERRSTREAM, "\n=====> Computation failed <=====\n");
+                fprintf(ERRSTREAM, "Try to add a random linear form with ");
+                fprintf(ERRSTREAM, "a new variable\n");
+                fprintf(ERRSTREAM, "(smallest w.r.t. DRL) to the input system. ");
+                fprintf(ERRSTREAM, "This will\n");
+                fprintf(ERRSTREAM, "be done automatically if you run msolve with option\n");
+                fprintf(ERRSTREAM, "\"-c2\" which is the default.\n");
             }
 	    if(b == 3){
                 free(bld);
@@ -5318,8 +5320,8 @@ restart:
                or of a 0-dimensional ideal of wrong degree,
                restart with the same linear form */
             if (info_level > 0) {
-                fprintf (stdout, "\nWrong dimension or degree\n");
-                fprintf (stdout, "Restarting with the same linear form\n");
+                fprintf (VERBSTREAM, "\nWrong dimension or degree\n");
+                fprintf (VERBSTREAM, "Restarting with the same linear form\n");
             }
             goto restart;
         }
@@ -5604,11 +5606,11 @@ void msolve_julia(
     if (info_level > 0) {
         double st1 = cputime();
         double rt1 = realtime();
-        fprintf(stdout, "\n-------------------------------------------------\
+        fprintf(VERBSTREAM, "\n-------------------------------------------------\
 -----------------------------------\n");
-        fprintf(stdout, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
+        fprintf(VERBSTREAM, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
                 rt1-rt0, st1-st0);
-        fprintf(stdout, "-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------\n");
     }
 }

@@ -18,6 +18,8 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include "streams.h"
+
 void (*set_linear_poly)(nvars_t nlins, uint32_t *lineqs, nvars_t *linvars,
                         ht_t *bht, int32_t *bexp_lm, bs_t *bs);
 
@@ -439,14 +441,14 @@ static inline void compute_modular_linear_forms(int nlins, nvars_t sz,
     }
   }
 #ifdef DEBUGLIFTMAT
-  fprintf(stderr, "\nModular linear forms (prime = %u)\n", prime);
+  fprintf(ERRSTREAM, "\nModular linear forms (prime = %u)\n", prime);
   for (int i = 0; i < nlins; i++) {
     nvars_t n = i * sz;
     nvars_t n2 = i * (sz + 1);
     for (int j = 0; j < sz; j++) {
-      fprintf(stderr, "%d, ", mod_linear_forms[n + j]);
+      fprintf(ERRSTREAM, "%d, ", mod_linear_forms[n + j]);
     }
-    fprintf(stderr, "\n");
+    fprintf(ERRSTREAM, "\n");
   }
 #endif
 }

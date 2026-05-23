@@ -20,6 +20,7 @@
 
 
 #include "f4sat.h"
+#include "../msolve/streams.h"
 
 static inline void free_kernel_coefficients(
         bs_t *kernel
@@ -95,7 +96,7 @@ static int is_already_saturated(
         )
 {
     if(st->info_level){
-      printf("testing if system is already saturated: ");
+      fprintf(VERBSTREAM, "testing if system is already saturated: ");
     }
     double rrt0, rrt1;
     rrt0  = realtime();
@@ -205,15 +206,15 @@ static int is_already_saturated(
 
     if (st->info_level){
       if (is_constant == 1) {
-        printf("yes.");
+        fprintf(VERBSTREAM, "yes.");
       } else {
-        printf("no.");
+        fprintf(VERBSTREAM, "no.");
       }
     }
 
     rrt1 = realtime();
     if (st->info_level > 1) {
-        printf("%40.2f sec\n", rrt1-rrt0);
+        fprintf(VERBSTREAM, "%40.2f sec\n", rrt1-rrt0);
     }
 
     return is_constant;
@@ -561,7 +562,7 @@ int core_f4sat(
 
     /* let's start the f4 rounds,  we are done when no more spairs
      * are left in the pairset */
-    print_round_information_header(stdout, st);
+    print_round_information_header(VERBSTREAM, st);
     round = 1;
 end_sat_step:
     for (; ps->ld > 0; ++round) {
@@ -600,12 +601,12 @@ end_sat_step:
         update_basis_f4(ps, bs, bht, st, mat->np);
 
         if (bs->constant  == 1) {
-            printf("basis is constant\n");
+            fprintf(VERBSTREAM, "basis is constant\n");
             ps->ld  = 0;
             break;
         }
         clean_hash_table(sht);
-        print_round_timings(stdout, st, rrt, crt);
+        print_round_timings(VERBSTREAM, st, rrt, crt);
 
         /* saturation step starts here */
         if ((bs->mltdeg >= sat->hm[0][DEG] && sat_test != 0) || ps->ld == 0) {
@@ -643,7 +644,7 @@ end_sat_step:
                 if (mat->nru > 0) {
                     if (st->info_level > 1) {
                         /* printf("kernel computation "); */
-                        printf("%3u  compute kernel", sat_deg);
+                        fprintf(VERBSTREAM, "%3u  compute kernel", sat_deg);
                     }
                     convert_hashes_to_columns_sat(mat, sat, st, sht);
                     convert_multipliers_to_columns(&hcmm, sat, st, bht);
@@ -652,13 +653,13 @@ end_sat_step:
                     compute_kernel_sat_ff_32(sat, mat, kernel, bs, st);
 
                     if (st->info_level > 1) {
-                        printf("%56d new kernel elements", kernel->ld);
-                        fflush(stdout);
+                        fprintf(VERBSTREAM, "%56d new kernel elements", kernel->ld);
+                        fflush(VERBSTREAM);
                     }
 
                     if (kernel->ld > 0) {
                         if (st->info_level > 1) {
-                            printf("\n                                               ");
+                            fprintf(VERBSTREAM, "\n                                               ");
                         }
                         clear_matrix(mat);
                         /* interreduce kernel */
@@ -682,7 +683,7 @@ end_sat_step:
                         update_basis_f4(ps, bs, bht, st, mat->np);
                         kernel->ld  = 0;
                         if (st->info_level > 1) {
-                            printf("   ");
+                            fprintf(VERBSTREAM, "   ");
                         }
                     }
                     /* all rows in mat are now polynomials in the basis,
@@ -718,7 +719,7 @@ end_sat_step:
                 }
                 clean_hash_table(sht);
 
-                print_sat_round_timings(stdout, st, rrt, crt);
+                print_sat_round_timings(VERBSTREAM, st, rrt, crt);
                 if (bld != bs->ld) {
                     next_deg  = ii;
                     goto end_sat_step;
@@ -727,7 +728,7 @@ end_sat_step:
             next_deg  = sat_deg;
         }
     }
-    print_round_information_footer(stdout, st);
+    print_round_information_footer(VERBSTREAM, st);
     /* remove possible redudant elements */
     final_remove_redundant_elements(bs, st, bht);
 
@@ -740,7 +741,7 @@ end_sat_step:
     st->f4_rtime = realtime() - rt;
     st->f4_ctime = cputime() - ct;
 
-    get_and_print_final_statistics(stdout, st, bs);
+    get_and_print_final_statistics(VERBSTREAM, st, bs);
 /*     printf("basis has  %u elements.\n", bs->lml);
  *
  *     for (i = 0; i < bs->lml; ++i) {

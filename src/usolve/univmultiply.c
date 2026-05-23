@@ -24,6 +24,8 @@
 #include<omp.h>
 #endif
 
+#include "../msolve/streams.h"
+
 #define USEFLINT 1
 
 #ifdef USEFLINT
@@ -119,7 +121,7 @@ static void mpz_poly_mul(mpz_t *res,
   fmpz_poly_clear(pol2_fmpz_poly);
 
 #else
-  fprintf(stderr, "FLINT is missing for univariate polynomial multiplication\n");
+  fprintf(ERRSTREAM, "FLINT is missing for univariate polynomial multiplication\n");
   exit(1);
 #endif
 }

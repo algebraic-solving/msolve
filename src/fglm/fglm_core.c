@@ -30,6 +30,7 @@
 #include<time.h>
 /* for timing functions */
 #include "../neogb/tools.h"
+#include "../msolve/streams.h"
 
 #ifdef _OPENMP
 #include<omp.h>
@@ -210,7 +211,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
 
     nmod_em_gcd(data_bms->BMS);
     if(data_bms->BMS->R1->length-1 < dim-1 && dim > 1){
-        fprintf(stderr, "Singular matrix\n");
+        fprintf(ERRSTREAM, "Singular matrix\n");
         return 0;
     }
 
@@ -236,8 +237,8 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
 
     }
     else{//V1(0) = 0
-        fprintf(stderr, "Warning: this part of the code has not been ");
-        fprintf(stderr, "tested intensively\n");
+        fprintf(ERRSTREAM, "Warning: this part of the code has not been ");
+        fprintf(ERRSTREAM, "tested intensively\n");
         nmod_poly_one(data_bms->BMS->R0);
         nmod_poly_zero(data_bms->BMS->R1);
         nmod_poly_zero(data_bms->BMS->V0);
@@ -280,12 +281,12 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
             inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
                            (data_bms->BMS->R1->mod).n);
             nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
-            /* fprintf(stderr, "Something should be checked\n"); */
+            /* fprintf(ERRSTREAM, "Something should be checked\n"); */
             return 1;
         }
         else{
-            fprintf(stderr, "Warning: this part of the code has not been ");
-            fprintf(stderr, "tested intensively at all\n");
+            fprintf(ERRSTREAM, "Warning: this part of the code has not been ");
+            fprintf(ERRSTREAM, "tested intensively at all\n");
             nmod_poly_one(data_bms->BMS->R0);
             nmod_poly_zero(data_bms->BMS->R1);
             nmod_poly_zero(data_bms->BMS->V0);
@@ -303,7 +304,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
             nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim,
                                    (data_bms->BMS->R1->mod).n-1);
             nmod_poly_print_pretty (data_bms->BMS->rt,"x");
-            printf("\n");
+            fprintf(ERRSTREAM, "\n");
 
             nmod_em_gcd_preinstantiated(data_bms->BMS, 0);//B->rt is pre-instantied
 
@@ -332,11 +333,11 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
                 inv = n_invmod(data_bms->BMS->R1->coeffs[data_bms->BMS->R1->length-1],
                                (data_bms->BMS->R1->mod).n);
                 nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
-                /* fprintf(stderr, "Something should be checked\n"); */
+                /* fprintf(ERRSTREAM, "Something should be checked\n"); */
                 return 1;
             }
             else{
-                fprintf(stderr, "There should be a bug here (invert_hankel)\n");
+                fprintf(ERRSTREAM, "There should be a bug here (invert_hankel)\n");
                 return 0;
             }
         }
@@ -362,10 +363,10 @@ static inline void solve_hankel(fglm_bms_data_t *data_bms,
   }
 
   #if DEBUGFGLM > 0
-  fprintf(stdout, "\n ncoord = %d\n", ncoord);
-  fprintf(stdout, "V = ");
-  nmod_poly_fprint_pretty(stdout, data_bms->V, "x");
-  fprintf(stdout, "\n");
+  fprintf(VERBSTREAM, "\n ncoord = %d\n", ncoord);
+  fprintf(VERBSTREAM, "V = ");
+  nmod_poly_fprint_pretty(VERBSTREAM, data_bms->V, "x");
+  fprintf(VERBSTREAM, "\n");
   #endif
 
   mirror_poly_inplace(data_bms->V);
@@ -524,11 +525,11 @@ static inline void print_vec(FILE *file, CF_t *vec, szmat_t len){
 static inline void mynmod_berlekamp_massey_print(const nmod_berlekamp_massey_t B)
 {
   slong i;
-  nmod_poly_fprint_pretty(stderr, B->V1, "x");
-  fprintf(stderr, ", ");
+  nmod_poly_fprint_pretty(ERRSTREAM, B->V1, "x");
+  fprintf(ERRSTREAM, ", ");
   for (i = 0; i < B->points->length; i++)
     {
-      fprintf(stderr, " %lu", B->points->coeffs[i]);
+      fprintf(ERRSTREAM, " %lu", B->points->coeffs[i]);
     }
 }
 
@@ -571,7 +572,7 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
   /* allocates random matrix */
   CF_t *Rmat ALIGNED32;
   if(posix_memalign((void **)&Rmat, 32, BL*ncols*sizeof(CF_t))){
-    fprintf(stderr, "posix_memalign failed\n");
+    fprintf(ERRSTREAM, "posix_memalign failed\n");
     exit(1);
   }
   memset(Rmat, 0, (ncols)*sizeof(CF_t));
@@ -586,7 +587,7 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
   /* allocates result matrix (matxn * Rmat) */
   CF_t *res ALIGNED32;
   if(posix_memalign((void **)&res, 32, BL*ncols*sizeof(CF_t))){
-    fprintf(stderr, "posix_memalign failed\n");
+    fprintf(ERRSTREAM, "posix_memalign failed\n");
     exit(1);
   }
   memset(res, 0, BL*ncols*sizeof(CF_t));
@@ -594,7 +595,7 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
   /* allocates temporary matrix */
   CF_t *tres ALIGNED32;
   if(posix_memalign((void **)&tres, 32, nrows*ncols*sizeof(CF_t))){
-    fprintf(stderr, "posix_memalign failed\n");
+    fprintf(ERRSTREAM, "posix_memalign failed\n");
     exit(1);
   }
   memset(tres, 0, nrows*ncols*sizeof(CF_t));
@@ -609,7 +610,7 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
                        RED_32,
                        RED_64);
 #else
-    fprintf(stderr, "Not implemented yet\n");
+    fprintf(ERRSTREAM, "Not implemented yet\n");
     exit(1);
 #endif
   }
@@ -641,7 +642,7 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
                              data->vecinit, data->vecmult,
                              prime, st);
 #if DEBUGFGLM > 1
-    print_vec(stderr, data->vvec, matrix->ncols);
+    print_vec(ERRSTREAM, data->vvec, matrix->ncols);
 #endif
 
 
@@ -661,12 +662,12 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
     }
 
 #if DEBUGFGLM > 1
-    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
+    print_vec(VERBSTREAM, data->res, 2*block_size * matrix->ncols);
 #endif
 
 #if DEBUGFGLM > 2
-    fprintf(stderr, "res = ");
-    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
+    fprintf(ERRSTREAM, "res = ");
+    print_vec(VERBSTREAM, data->res+i*matrix->ncols, matrix->ncols);
 #endif
   }
   for(szmat_t i = matrix->ncols; i < 2*matrix->ncols; i++){
@@ -674,7 +675,7 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
                              data->vecinit, data->vecmult,
                              prime, st);
 #if DEBUGFGLM > 1
-    print_vec(stderr, data->vvec, matrix->ncols);
+    print_vec(ERRSTREAM, data->vvec, matrix->ncols);
 #endif
 
 
@@ -684,12 +685,12 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
     data->res[i*block_size] = data->vecinit[0];
 
 #if DEBUGFGLM > 1
-    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
+    print_vec(VERBSTREAM, data->res, 2*block_size * matrix->ncols);
 #endif
 
 #if DEBUGFGLM > 2
-    fprintf(stderr, "res = ");
-    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
+    fprintf(ERRSTREAM, "res = ");
+    print_vec(VERBSTREAM, data->res+i*matrix->ncols, matrix->ncols);
 #endif
   }
 
@@ -852,7 +853,7 @@ static void set_param_linear_vars(param_t *param,
   }
 
 #if DEBUGFGLM >0
-  display_fglm_param(stderr, param);
+  display_fglm_param(ERRSTREAM, param);
 #endif
 }
 
@@ -872,8 +873,8 @@ static int compute_parametrizations(param_t *param,
   if(nlins != nvars){
     b = invert_hankel_matrix(data_bms, dim);
 #if DEBUGFGLM > 0
-    fprintf(stdout, "Z1 = "); nmod_poly_fprint_pretty(stdout, data_bms->Z1, "x");fprintf(stdout, "\n");
-    fprintf(stdout, "Z2 = "); nmod_poly_fprint_pretty(stdout, data_bms->Z2, "x");fprintf(stdout, "\n");
+    fprintf(VERBSTREAM, "Z1 = "); nmod_poly_fprint_pretty(VERBSTREAM, data_bms->Z1, "x");fprintf(VERBSTREAM, "\n");
+    fprintf(VERBSTREAM, "Z2 = "); nmod_poly_fprint_pretty(VERBSTREAM, data_bms->Z2, "x");fprintf(VERBSTREAM, "\n");
 #endif
   }
 
@@ -893,8 +894,8 @@ static int compute_parametrizations(param_t *param,
                       param->elim);
 
 #if DEBUGFGLM > 0
-        nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
-        fprintf(stdout, "\n");
+        nmod_poly_fprint_pretty(VERBSTREAM, param->coords[nvars-2-nc], "X");
+        fprintf(VERBSTREAM, "\n");
 #endif
 
       }
@@ -916,9 +917,9 @@ static int compute_parametrizations(param_t *param,
     set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
 
 #if DEBUGFGLM > 0
-    fprintf(stderr, "PARAM = ");
-    display_fglm_param_maple(stderr, param);
-    fprintf(stderr, "\n");
+    fprintf(ERRSTREAM, "PARAM = ");
+    display_fglm_param_maple(ERRSTREAM, param);
+    fprintf(ERRSTREAM, "\n");
 #endif
     return 1;
   }
@@ -1057,10 +1058,10 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
   if (invert_table_polynomial (param, data, data_bms, block_size,
                                prime, 0, 0)) {
 #if DEBUGFGLM > 0
-    fprintf (stdout,"C1=");
-    nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
-    fprintf(stdout, "invC1=");
-    nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+    fprintf (VERBSTREAM,"C1=");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+    fprintf(VERBSTREAM, "invC1=");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
 #endif
 
     long dec = 0;
@@ -1083,8 +1084,8 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
         }
 
 #if DEBUGFGLM > 0
-        nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
-        fprintf(stdout, "\n");
+        nmod_poly_fprint_pretty(VERBSTREAM, param->coords[nvars-2-nc], "X");
+        fprintf(VERBSTREAM, "\n");
 #endif
       }
       else{
@@ -1117,10 +1118,10 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           invert_table_polynomial (param, data, data_bms, block_size,
                                    prime, nc+1-dec, lambda);
 #if DEBUGFGLM > 1
-          fprintf (stdout,"C2=");
-          nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
-          fprintf(stdout, "invC2=");
-          nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+          fprintf (VERBSTREAM,"C2=");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+          fprintf(VERBSTREAM, "invC2=");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
 #endif
 
           divide_table_polynomials(param,data,data_bms, dimquot, block_size,
@@ -1128,8 +1129,8 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           nmod_poly_neg(data_bms->BMS->R1, data_bms->BMS->R1);
 
 #if DEBUGFGLM > 1
-          nmod_poly_fprint_pretty(stdout, data_bms->BMS->R1, "X");
-          fprintf(stdout, "\n");
+          nmod_poly_fprint_pretty(VERBSTREAM, data_bms->BMS->R1, "X");
+          fprintf(VERBSTREAM, "\n");
 #endif
 
           if (! nmod_poly_equal (param->coords[nvars-2-nc],data_bms->BMS->R1)) {
@@ -1165,7 +1166,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
     set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
 
 #if DEBUGFGLM>0
-    display_fglm_param_maple(stderr, param);
+    display_fglm_param_maple(ERRSTREAM, param);
 #endif
 
     return nvars-1-nr_fail_param;
@@ -1190,10 +1191,10 @@ static int compute_parametrizations_colon(param_t *param,
   if (invert_table_polynomial (param, data, data_bms, block_size,
                                prime, 0, 0)) {
 #if DEBUGFGLM > 0
-    fprintf (stdout,"C1=");
-    nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
-    fprintf(stdout, "invC1=");
-    nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+    fprintf (VERBSTREAM,"C1=");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+    fprintf(VERBSTREAM, "invC1=");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
 #endif
     long dec = 0;
     for(long nc = 0; nc < nvars - 1 ; nc++){
@@ -1202,8 +1203,8 @@ static int compute_parametrizations_colon(param_t *param,
 				       nc + 1-dec,nvars,0);
         nmod_poly_neg(param->coords[nvars-2-nc], data_bms->BMS->R1);
 #if DEBUGFGLM > 0
-        nmod_poly_fprint_pretty(stdout, param->coords[nvars-2-nc], "X");
-        fprintf(stdout, "\n");
+        nmod_poly_fprint_pretty(VERBSTREAM, param->coords[nvars-2-nc], "X");
+        fprintf(VERBSTREAM, "\n");
 #endif
       }
       else{
@@ -1224,10 +1225,10 @@ static int compute_parametrizations_colon(param_t *param,
           invert_table_polynomial (param, data, data_bms, block_size,
                                    prime, nc+1-dec, lambda);
 #if DEBUGFGLM > 1
-          fprintf (stdout,"C2=");
-          nmod_poly_fprint_pretty (stdout, data_bms->Z1, "x"); fprintf (stdout,"\n");
-          fprintf(stdout, "invC2=");
-          nmod_poly_fprint_pretty (stdout, data_bms->Z2, "x"); fprintf (stdout,"\n");
+          fprintf (VERBSTREAM,"C2=");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+          fprintf(VERBSTREAM, "invC2=");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
 #endif
 
           divide_table_polynomials_colon(param,data,data_bms, block_size,
@@ -1235,8 +1236,8 @@ static int compute_parametrizations_colon(param_t *param,
           nmod_poly_neg(data_bms->BMS->R1, data_bms->BMS->R1);
 
 #if DEBUGFGLM > 1
-          nmod_poly_fprint_pretty(stdout, data_bms->BMS->R1, "X");
-          fprintf(stdout, "\n");
+          nmod_poly_fprint_pretty(VERBSTREAM, data_bms->BMS->R1, "X");
+          fprintf(VERBSTREAM, "\n");
 #endif
           if (! nmod_poly_equal (param->coords[nvars-2-nc],data_bms->BMS->R1)) {
             if (nr_fail_param == -1) {
@@ -1265,7 +1266,7 @@ static int compute_parametrizations_colon(param_t *param,
     set_param_linear_vars(param, nlins, linvars, lineqs, nvars);
 
 #if DEBUGFGLM>0
-    display_fglm_param_maple(stderr, param);
+    display_fglm_param_maple(ERRSTREAM, param);
 #endif
 
     return nvars-1-nr_fail_param;
@@ -1333,7 +1334,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                       int *success,
                                       md_t *st){
 #if DEBUGFGLM > 0
-  fprintf(stderr, "prime = %u\n", prime);
+  fprintf(ERRSTREAM, "prime = %u\n", prime);
 #endif
 
 #if DEBUGFGLM >= 1
@@ -1344,8 +1345,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   /* 1147878294 */
   if(prime>=1518500213){
-    fprintf(stderr, "Prime %u is too large.\n", prime);
-    fprintf(stderr, "One needs to use updated linear algebra fglm functions\n");
+    fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
+    fprintf(ERRSTREAM, "One needs to use updated linear algebra fglm functions\n");
     return NULL;
   }
 
@@ -1360,10 +1361,10 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   initialize_fglm_data(matrix, *bdata, prime, sz, block_size);
 
   /* if(info_level){ */
-  /*   fprintf(stderr, "[%u, %u], Dense / Total = %.2f%%\n", */
+  /*   fprintf(ERRSTREAM, "[%u, %u], Dense / Total = %.2f%%\n", */
   /*           matrix->ncols, matrix->nrows, */
   /*           100*((double)matrix->nrows / (double)matrix->ncols)); */
-  /*   fprintf(stderr, "Density of non-trivial part %.2f%%\n", */
+  /*   fprintf(ERRSTREAM, "Density of non-trivial part %.2f%%\n", */
   /*           100-100*(float)nb/(float)sz); */
   /* } */
 
@@ -1373,20 +1374,20 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   double cst_fglm = cputime();
 
 #if BLOCKWIED > 0
-  fprintf(stderr, "Starts computation of matrix sequence\n");
+  fprintf(ERRSTREAM, "Starts computation of matrix sequence\n");
   double st0 = omp_get_wtime();
   generate_matrix_sequence(matrix, *bdata, block_size, dimquot,
                            squvars, linvars, nvars, prime, st);
   double et0 = omp_get_wtime() - st0;
-  fprintf(stderr, "Matrix sequence computed\n");
-  fprintf(stderr, "Elapsed time : %.2f\n", et0);
-  fprintf(stderr, "Implementation to be completed\n");
+  fprintf(ERRSTREAM, "Matrix sequence computed\n");
+  fprintf(ERRSTREAM, "Elapsed time : %.2f\n", et0);
+  fprintf(ERRSTREAM, "Implementation to be completed\n");
   exit(1);
 #else
   if (info_level > 1) {
-    fprintf(stdout,
+    fprintf(VERBSTREAM,
 	    "scalar sequence                                     ");
-    fflush(stdout);
+    fflush(VERBSTREAM);
   }
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
                           squvars, linvars, nvars, prime, st);
@@ -1395,16 +1396,16 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   if(info_level > 1){
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
-    /* fprintf(stderr, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm); */
-    fprintf (stdout, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+    /* fprintf(ERRSTREAM, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm); */
+    fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
 
   st_fglm = realtime();
   cst_fglm = cputime();
   if (info_level > 1) {
-    fprintf(stdout,
+    fprintf(VERBSTREAM,
 	    "elimination polynomial                              ");
-    fflush(stdout);
+    fflush(VERBSTREAM);
   }
 
   /* Berlekamp-Massey data */
@@ -1413,15 +1414,15 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   compute_minpoly(param, *bdata, *bdata_bms, dimquot);
 
   if(info_level > 1){
-    /* fprintf(stderr, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n", */
+    /* fprintf(ERRSTREAM, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n", */
     /*         realtime()-st_fglm); */
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
-    fprintf (stdout, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+    fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
   if (param->degelimpol < 1) {
       if (info_level > 1) {
-          fprintf (stdout, "Constant polynomial, computation will restart\n");
+          fprintf (VERBSTREAM, "Constant polynomial, computation will restart\n");
           goto restart;
       }
   }
@@ -1430,9 +1431,9 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     st_fglm = realtime();
     cst_fglm = cputime();
     if (info_level > 1){
-      fprintf(stdout,
+      fprintf(VERBSTREAM,
 	      "parametrizations                                    ");
-      fflush(stdout);
+      fflush(VERBSTREAM);
     }
 
     if(compute_parametrizations(param, *bdata, *bdata_bms,
@@ -1440,15 +1441,15 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                 nlins, linvars, lineqs,
                                 nvars) == 0){
 
-      fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
+      fprintf(ERRSTREAM, "Matrix is not invertible (there should be a bug)\n");
       return NULL;
 
     }
     if (info_level > 1){
       double rt_fglm = realtime()-st_fglm;
       double crt_fglm = cputime()-cst_fglm;
-      fprintf(stdout, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
-      fprintf(stdout,
+      fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+      fprintf(VERBSTREAM,
 	      "-------------------------------------------------\
 -----------------------------------------------------\n");
     }
@@ -1456,12 +1457,12 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   else {
     /* computes the param of the radical */
     /* if(info_level){ */
-    /*   fprintf(stderr, "Elimination polynomial is not squarefree.\n"); */
+    /*   fprintf(ERRSTREAM, "Elimination polynomial is not squarefree.\n"); */
     /* } */
 
     st_fglm = realtime();
     if (info_level > 1){
-      fprintf (stdout,
+      fprintf (VERBSTREAM,
 	       "parametrizations                                               ");
     }
     int right_param= compute_parametrizations_non_shape_position_case(param,
@@ -1477,29 +1478,29 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
     if (info_level > 1){
       double rt_fglm = realtime()-st_fglm;
-      fprintf(stdout, "%.2f\n",rt_fglm);
-      fprintf(stdout,
+      fprintf(VERBSTREAM, "%.2f\n",rt_fglm);
+      fprintf(VERBSTREAM,
 	      "-------------------------------------------------\
 -----------------------------------------------------\n");
     }
     if (right_param == 0) {
       if(info_level){
-        fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
+        fprintf(ERRSTREAM, "Matrix is not invertible (there should be a bug)\n");
       }
       *success = 0;
       return NULL;
     }
     if (right_param == 1) {
         if(info_level){
-            fprintf(stdout,
+            fprintf(VERBSTREAM,
                     "Ideal not in generic position, parametrizations are not correct\n");
         }
         *success = 0;
     } else {
         if (right_param < (int)nvars) {
             if(info_level){
-                fprintf(stdout, "Only the first %d parametrizations of ",right_param-1);
-                fprintf(stdout, "the radical ideal are correct\n");
+                fprintf(VERBSTREAM, "Only the first %d parametrizations of ",right_param-1);
+                fprintf(VERBSTREAM, "the radical ideal are correct\n");
             }
             *success = 0;
         }
@@ -1508,7 +1509,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   }
   st->fglm_rtime = realtime() - st->fglm_rtime;
   st->fglm_ctime = cputime() - st->fglm_ctime;
-  print_fglm_data (stdout, st, matrix, param);
+  print_fglm_data (VERBSTREAM, st, matrix, param);
   return param;
 }
 
@@ -1535,7 +1536,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
                                        const int info_level,
 				       md_t *st){
 #if DEBUGFGLM > 0
-  fprintf(stderr, "prime = %u\n", prime);
+  fprintf(ERRSTREAM, "prime = %u\n", prime);
 #endif
 
 #if DEBUGFGLM >= 1
@@ -1545,8 +1546,8 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 #endif
 
   if(prime>=1518500213){
-    fprintf(stderr, "Prime %u is too large.\n", prime);
-    fprintf(stderr, "One needs to use update linear algebra fglm functions\n");
+    fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
+    fprintf(ERRSTREAM, "One needs to use update linear algebra fglm functions\n");
     exit(1);
   }
 
@@ -1561,19 +1562,19 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   const long nb = initialize_fglm_data(matrix, data_fglm, prime, sz, block_size);
 
   if(info_level){
-    fprintf(stdout, "[%u, %u], Dense / Total = %.2f%%\n",
+    fprintf(VERBSTREAM, "[%u, %u], Dense / Total = %.2f%%\n",
             matrix->ncols, matrix->nrows,
             100*((double)matrix->nrows / (double)matrix->ncols));
-    fprintf(stdout, "Density of non-trivial part %.2f%%\n",
+    fprintf(VERBSTREAM, "Density of non-trivial part %.2f%%\n",
             100-100*(float)nb/(float)sz);
   }
 
   const ulong dimquot = (matrix->ncols);
 
 #if DEBUGFGLM > 0
-  print_vec(stderr, data_fglm->vecinit, matrix->ncols);
-  print_vec(stderr, data_fglm->res, 2 * block_size * matrix->ncols);
-  fprintf(stderr, "\n");
+  print_vec(ERRSTREAM, data_fglm->vecinit, matrix->ncols);
+  print_vec(ERRSTREAM, data_fglm->res, 2 * block_size * matrix->ncols);
+  fprintf(ERRSTREAM, "\n");
 #endif
 
   double st_fglm = realtime();
@@ -1588,7 +1589,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   if(info_level){
     double nops = 2 * (matrix->nrows/ 1000.0) * (matrix->ncols / 1000.0)  * (matrix->ncols / 1000.0);
     double rt_fglm = realtime()-st_fglm;
-    fprintf(stdout, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm);
+    fprintf(VERBSTREAM, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm);
   }
 
   st_fglm = realtime();
@@ -1598,12 +1599,12 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   compute_minpoly(param, data_fglm, data_bms, dimquot);
 
   if(info_level){
-    fprintf(stdout, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
+    fprintf(VERBSTREAM, "Time spent to compute eliminating polynomial (elapsed): %.2f sec\n",
             realtime()-st_fglm);
   }
   if(param->elim->length-1 != deg_init){
     if(info_level){
-      fprintf(stdout, "Warning: Degree of elim poly = %ld\n", param->elim->length-1);
+      fprintf(VERBSTREAM, "Warning: Degree of elim poly = %ld\n", param->elim->length-1);
     }
     return 1;
   }
@@ -1615,7 +1616,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 				nlins, linvars, lineqs,
 				nvars) == 0){
 
-      fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
+      fprintf(ERRSTREAM, "Matrix is not invertible (there should be a bug)\n");
       exit(1);
     }
 
@@ -1691,7 +1692,7 @@ guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
 				   prime, st);
     /* printf ("sparse_mat\n"); */
 #if DEBUGFGLM > 1
-    print_vec(stderr, data->vvec, matrix->ncols);
+    print_vec(ERRSTREAM, data->vvec, matrix->ncols);
 #endif
 
     CF_t *tmp = data->vecinit;
@@ -1716,12 +1717,12 @@ guess_sequence_colon(sp_matfglmcol_t *matrix, fglm_data_t * data,
     data_backup[i] = acc;
 
 #if DEBUGFGLM > 1
-    print_vec(stdout, data->res, 2*block_size * matrix->ncols);
+    print_vec(VERBSTREAM, data->res, 2*block_size * matrix->ncols);
 #endif
 
 #if DEBUGFGLM > 2
-    fprintf(stderr, "res = ");
-    print_vec(stdout, data->res+i*matrix->ncols, matrix->ncols);
+    fprintf(ERRSTREAM, "res = ");
+    print_vec(VERBSTREAM, data->res+i*matrix->ncols, matrix->ncols);
 #endif
     if (i == 2*tentative_degree-1) {
       /* printf ("guessing min poly\n"); */
@@ -1754,7 +1755,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 			       const int info_level,
 			       md_t *st){
 #if DEBUGFGLM > 0
-  fprintf(stderr, "prime = %u\n", prime);
+  fprintf(ERRSTREAM, "prime = %u\n", prime);
 #endif
 
 #if DEBUGFGLM >= 1
@@ -1764,8 +1765,8 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 #endif
   /* 1147878294 */
   if(prime>=1518500213){
-    fprintf(stderr, "Prime %u is too large.\n", prime);
-    fprintf(stderr, "One needs to use update linear algebra fglm functions\n");
+    fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
+    fprintf(ERRSTREAM, "One needs to use update linear algebra fglm functions\n");
     return NULL;
   }
 
@@ -1783,19 +1784,19 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   long nb = initialize_fglm_colon_data(matrix, data, prime, sz, block_size);
 
   if(info_level){
-    fprintf(stdout, "[%u, %u], Dense / Total = %.2f%%\n",
+    fprintf(VERBSTREAM, "[%u, %u], Dense / Total = %.2f%%\n",
             matrix->ncols, matrix->nrows,
             100*((double)matrix->nrows / (double)matrix->ncols));
-    fprintf(stdout, "Density of non-trivial part %.2f%%\n",
+    fprintf(VERBSTREAM, "Density of non-trivial part %.2f%%\n",
             100-100*(float)nb/(float)sz);
   }
   ulong dimquot = (matrix->ncols);
   //Berlekamp-Massey data
   fglm_bms_data_t *data_bms = allocate_fglm_bms_data(dimquot, prime);
 #if DEBUGFGLM > 1
-  print_vec(stderr, data->vecinit, matrix->ncols);
-  print_vec(stderr, data->res, 2 * block_size * matrix->ncols);
-  fprintf(stderr, "\n");
+  print_vec(ERRSTREAM, data->vecinit, matrix->ncols);
+  print_vec(ERRSTREAM, data->res, 2 * block_size * matrix->ncols);
+  fprintf(ERRSTREAM, "\n");
 #endif
   long dim=0;
   double st0 = omp_get_wtime();
@@ -1811,13 +1812,13 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   //////////////////////////////////////////////////////////////////
 
   if(info_level){
-    fprintf(stdout,"Time spent to generate sequence\n");
-    fprintf(stdout,"and compute eliminating polynomial (elapsed): %.2f sec\n",
+    fprintf(VERBSTREAM,"Time spent to generate sequence\n");
+    fprintf(VERBSTREAM,"and compute eliminating polynomial (elapsed): %.2f sec\n",
             omp_get_wtime()-st0);
-    fprintf(stdout, "Elimination done.\n");
+    fprintf(VERBSTREAM, "Elimination done.\n");
   }
 
-  /* nmod_poly_fprint_pretty(stderr, param->elim, "x"); fprintf (stdout,"\n"); */
+  /* nmod_poly_fprint_pretty(ERRSTREAM, param->elim, "x"); fprintf (VERBSTREAM,"\n"); */
 
   //////////////////////////////////////////////////////////////////
 
@@ -1831,30 +1832,30 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
 						  nvars, prime,
 						  1);
   if (right_param == 0) {
-    fprintf(stderr, "Matrix is not invertible (there should be a bug)\n");
+    fprintf(ERRSTREAM, "Matrix is not invertible (there should be a bug)\n");
     free_fglm_bms_data(data_bms);
     free_fglm_data(data);
     return NULL;
   } else {
     if (right_param == 1) {
       if(info_level){
-	fprintf(stdout,
+	fprintf(VERBSTREAM,
 		"Colon ideal not in generic position, parametrizations are not correct\n");
       }
     }
     else {
       if (right_param < nvars) {
 	if (info_level){
-	  fprintf(stdout, "Only the first %d parametrizations of ",right_param-1);
-	  fprintf(stdout, "the colon ideal are correct\n");
+	  fprintf(VERBSTREAM, "Only the first %d parametrizations of ",right_param-1);
+	  fprintf(VERBSTREAM, "the colon ideal are correct\n");
 	}
       }
     }
   }
   if(info_level){
-    fprintf(stdout, "Time spent to compute parametrizations (elapsed): %.2f sec\n",
+    fprintf(VERBSTREAM, "Time spent to compute parametrizations (elapsed): %.2f sec\n",
             omp_get_wtime()-st0);
-    fprintf(stdout, "Parametrizations done.\n");
+    fprintf(VERBSTREAM, "Parametrizations done.\n");
   }
   free_fglm_bms_data(data_bms);
   free_fglm_data(data);

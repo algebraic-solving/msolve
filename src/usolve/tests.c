@@ -309,14 +309,14 @@ void multi_mod_taylor_shift(mpz_t *pol, unsigned long int deg,
                             int nthreads){
 
   unsigned long int nbits = USOLVEmpz_poly_max_bsize_coeffs(pol, deg);
-  fprintf(stderr, "nbits = %lu\n", nbits);
+  fprintf(ERRSTREAM, "nbits = %lu\n", nbits);
   nbits = nbits + deg + 1 + LOG2(deg + 1);
-  fprintf(stderr, "nbits = %lu\n", nbits);
+  fprintf(ERRSTREAM, "nbits = %lu\n", nbits);
 
   /* gets primes between 2^63 and 2^64 */
   unsigned long int nprimes = (nbits + (BITSPRIME - 1) - 1) / (BITSPRIME - 1);
   mp_ptr primes = malloc(sizeof(mp_limb_t) * nprimes);
-  fprintf(stderr, "%lu\n", UWORD(1) << (BITSPRIME - 1));
+  fprintf(ERRSTREAM, "%lu\n", UWORD(1) << (BITSPRIME - 1));
   primes[0] = n_nextprime(UWORD(1) << (BITSPRIME - 1), 1);
   for (unsigned long int i = 1; i < nprimes; i++)
     primes[i] = n_nextprime(primes[i-1], 1);
@@ -327,7 +327,7 @@ void multi_mod_taylor_shift(mpz_t *pol, unsigned long int deg,
     residues[i] = malloc(sizeof(mp_limb_t) * (deg + 1));
   }
 
-  fprintf(stderr, "nprimes = %lu\n", nprimes);
+  fprintf(ERRSTREAM, "nprimes = %lu\n", nprimes);
   //allocates space for shiftedpowers of X
   unsigned long int nblocks = 1<<LOG2(deg/pwx);
   unsigned long int npowers=LOG2(nblocks);
@@ -343,7 +343,7 @@ void multi_mod_taylor_shift(mpz_t *pol, unsigned long int deg,
       pX = 2 * pX;
     }
   }
-  fprintf(stderr, "Modular residues (shifted powers of X) obtained\n");
+  fprintf(ERRSTREAM, "Modular residues (shifted powers of X) obtained\n");
   mp_ptr tmp;
 
   fmpz_comb_t comb;
@@ -355,7 +355,7 @@ void multi_mod_taylor_shift(mpz_t *pol, unsigned long int deg,
 
   mp_ptr tmp_pol = malloc(sizeof(mp_limb_t) * (deg + 1));
   unsigned long int length = deg + 1;
-  fprintf(stderr, "Allocation done\n");
+  fprintf(ERRSTREAM, "Allocation done\n");
   double e = realtime();
   for(unsigned long int j = 0; j < length; j++){
     //    fmpz_multi_mod_ui(tmp, pol + i, comb, comb_temp);
@@ -364,7 +364,7 @@ void multi_mod_taylor_shift(mpz_t *pol, unsigned long int deg,
       //      residues[i][j] = mpz_fdiv_ui(pol[j], primes[i]);
       residues[i][j] = mpz_fdiv_ui(pol[j], primes[i]);
   }
-  fprintf(stderr, "Residues loaded (%f sec)\n", realtime() - e);
+  fprintf(ERRSTREAM, "Residues loaded (%f sec)\n", realtime() - e);
   for(unsigned long int i = 0; i < nprimes; i++){
     nmod_t mod;
     mp_limb_t p;
@@ -373,7 +373,7 @@ void multi_mod_taylor_shift(mpz_t *pol, unsigned long int deg,
     nmod_init(&mod, p);
     nmod_upoly_taylor_shift(residues[i], deg, tmp_pol, residues_shift_pwx[i], pwx, mod);
   }
-  fprintf(stderr, "Time multimod = %f\n", realtime() - e);
+  fprintf(ERRSTREAM, "Time multimod = %f\n", realtime() - e);
   free(tmp);
   for(unsigned long int i = 0; i < nprimes; i++){
     free(residues[i]);
@@ -411,18 +411,18 @@ void tbr_taylor_shift(mpz_t *pol, unsigned long int deg, mpz_t **tmp, mpz_t **po
   long int nbits = USOLVEmpz_poly_max_bsize_coeffs(pol, deg);
   //  mpz_poly_print_maple(pol, deg);
   //  long int sb = 2 * nbits / (nthreads * deg);
-  //  fprintf(stderr, "[sb = %ld]\n", sb);
+  //  fprintf(ERRSTREAM, "[sb = %ld]\n", sb);
   if(nthreads >= 1){
-    //    fprintf(stderr, "New algo starts\n");
+    //    fprintf(ERRSTREAM, "New algo starts\n");
     split_coeffs_poly(pols, pol, deg, nbits, nthreads);
     //double e = realtime();
 #pragma omp parallel for num_threads(nthreads)
     for(int j = 0; j < nthreads; j++){
-      //      fprintf(stderr, "bs = %ld\n", mpz_poly_max_bsize_coeffs(pols[j], deg));
+      //      fprintf(ERRSTREAM, "bs = %ld\n", mpz_poly_max_bsize_coeffs(pols[j], deg));
       //      mpz_poly_print_maple(pols[j], deg);
       taylorshift1_dac(pols[j], deg, tmp[j], shift_pwx, pwx, 0);
     }
-    //    fprintf(stderr, "time %f\n", realtime() - e);
+    //    fprintf(ERRSTREAM, "time %f\n", realtime() - e);
     //    e = realtime();
 #pragma omp parallel for num_threads(nthreads)
     for(int j = 0; j < nthreads; j++){
@@ -431,7 +431,7 @@ void tbr_taylor_shift(mpz_t *pol, unsigned long int deg, mpz_t **tmp, mpz_t **po
         mpz_mul_2exp(pols[j][i], pols[j][i], trunc);
       }
     }
-    //    fprintf(stderr, "Rescaling done (time = %f)\n", realtime() - e);
+    //    fprintf(ERRSTREAM, "Rescaling done (time = %f)\n", realtime() - e);
 #pragma omp parallel for num_threads(nthreads)
     for(unsigned long int i = 0; i <= deg; i++){
       mpz_set_ui(pol[i], 0);
@@ -484,7 +484,7 @@ void taylor_shift(mpz_t *pol, unsigned long int deg, mpz_t **tmp, mpz_t **pols,
   if(nthreads >= 1 && nblocks > 0){
 
     if(nblocks <= nthreads){
-      fprintf(stderr, "nblocks (%ld) <= nthreads (%d)\n", nblocks, nthreads);
+      fprintf(ERRSTREAM, "nblocks (%ld) <= nthreads (%d)\n", nblocks, nthreads);
       //      long int nt = nthreads / nblocks;
       //pol = pols[0] + 2^(2*deg) * pols[1] + 2^(4*deg) * pols[2] + 2^(6*deg) *pols[3] +...+2^(nblocks*2*deg)*pols[nblocks]
       decompose_bits_poly(pols, pol, deg, cutoff, nbits, nblocks);
@@ -496,13 +496,13 @@ void taylor_shift(mpz_t *pol, unsigned long int deg, mpz_t **tmp, mpz_t **pols,
         //#pragma omp parallel for num_threads(nthreads) schedule(dynamic)
 #pragma omp parallel for schedule(dynamic)
       for(int j = 0; j < nblocks; j++){
-      //        fprintf(stderr, "bs = %ld\n", mpz_poly_max_bsize_coeffs(pols[j], deg));
+      //        fprintf(ERRSTREAM, "bs = %ld\n", mpz_poly_max_bsize_coeffs(pols[j], deg));
         mpz_t *local_pol = pols[j];
         mpz_t *local_tmp = tmp[j];
         taylorshift1_dac(local_pol, deg, local_tmp, shift_pwx, pwx, 1);
       }
       }
-      //      fprintf(stderr, "time %f\n", realtime() - e);
+      //      fprintf(ERRSTREAM, "time %f\n", realtime() - e);
       //      mpz_poly_print_maple(pols[0], deg);
       //      e = realtime();
       for(long int j = nblocks-1; j >=0; j--){
@@ -527,7 +527,7 @@ void taylor_shift(mpz_t *pol, unsigned long int deg, mpz_t **tmp, mpz_t **pols,
       return;
     }
     else{//nblocks > nthreads
-      fprintf(stderr, "nblocks (%ld) > nthreads (%d)\n", nblocks, nthreads);
+      fprintf(ERRSTREAM, "nblocks (%ld) > nthreads (%d)\n", nblocks, nthreads);
       //nblocks = nbits / cutoff
       long int q = nblocks / nthreads ;//pb quand nthreads = 1 (doit prendre q+1)
       if(nthreads==1){
@@ -565,7 +565,7 @@ void taylor_shift(mpz_t *pol, unsigned long int deg, mpz_t **tmp, mpz_t **pols,
         nbits -= cutoff * nthreads;
         q--;
       }
-      //      fprintf(stderr, "time = %f\n", e);
+      //      fprintf(ERRSTREAM, "time = %f\n", e);
 
       long rth = nblocks % nthreads + 1;
 
@@ -579,7 +579,7 @@ void taylor_shift(mpz_t *pol, unsigned long int deg, mpz_t **tmp, mpz_t **pols,
       tmp_e = realtime();
       decompose_bits_poly(pols, pol, deg, cutoff, nbits, rth);
       e += (realtime() - tmp_e);
-      //      fprintf(stderr, "time in decompose_bits_poly = %f\n", e);
+      //      fprintf(ERRSTREAM, "time in decompose_bits_poly = %f\n", e);
       //      e = realtime();
       //#pragma omp parallel for num_threads(rth)
       for(int j = 0; j < rth; j++){
@@ -612,8 +612,8 @@ void taylor_shift(mpz_t *pol, unsigned long int deg, mpz_t **tmp, mpz_t **pols,
 
 int main(int argc, char **argv){
   if(argc!=5){
-    fprintf(stderr, "Runs taylor shifts and measures timings\n");
-    fprintf(stderr, "Usage is %s <degree> <nbits> <nthreads> <nloops>\n", argv[0]);
+    fprintf(ERRSTREAM, "Runs taylor shifts and measures timings\n");
+    fprintf(ERRSTREAM, "Usage is %s <degree> <nbits> <nthreads> <nloops>\n", argv[0]);
     exit(1);
   }
   unsigned long int deg = atoi(argv[1]);
@@ -631,12 +631,12 @@ int main(int argc, char **argv){
     mpz_init2(tmpol[i], deg + nbits);
   }
   usolve_flags *flags = (usolve_flags*)(malloc(sizeof(usolve_flags)));
-  fprintf(stderr, "Starting initialization of data\n");
+  fprintf(ERRSTREAM, "Starting initialization of data\n");
   double t = realtime();
   initialize_flags(flags);
 
   initialize_heap_flags(flags, deg);
-  fprintf(stderr, "Time for initialization = %f\n", realtime()-t);
+  fprintf(ERRSTREAM, "Time for initialization = %f\n", realtime()-t);
   mpz_random_dense_poly(pol1, deg, nbits);
   //  USOLVEmpz_poly_print_maple(pol1, deg);
 
@@ -645,7 +645,7 @@ int main(int argc, char **argv){
     mpz_set(pol3[i], pol1[i]);
   }
   int nloops = atoi(argv[4]);
-  fprintf(stderr, "nloops = %d\n\n", nloops);
+  fprintf(ERRSTREAM, "nloops = %d\n\n", nloops);
 
   double e_time = realtime();
 
@@ -656,11 +656,11 @@ int main(int argc, char **argv){
   e_time =  realtime();
   for(int i = 0; i < nloops; i++)
     taylorshift1_dac(pol1, deg, tmpol, flags->shift_pwx, flags->pwx, nthreads);
-  fprintf(stdout, "Elapsed time %f (Taylor shift Usolve nthreads = %d)\n", realtime() - e_time, nthreads);
+  fprintf(VERBSTREAM, "Elapsed time %f (Taylor shift Usolve nthreads = %d)\n", realtime() - e_time, nthreads);
 
   mpz_t **tmp = malloc(sizeof(mpz_t *) * (nthreads + 1));
   mpz_t **pols = malloc(sizeof(mpz_t *) * nthreads);
-  fprintf(stderr, "Allocation starts\n");
+  fprintf(ERRSTREAM, "Allocation starts\n");
   for(int i = 0; i <= nthreads; i++){
     tmp[i] = (mpz_t *)malloc((deg + 1) * sizeof(mpz_t));
     for(unsigned long int j = 0; j <= deg; j++){
@@ -673,18 +673,18 @@ int main(int argc, char **argv){
       mpz_init2(pols[i][j], 2 * deg);
     }
   }
-  fprintf(stderr, "Allocation done\n\n");
+  fprintf(ERRSTREAM, "Allocation done\n\n");
 
   e_time = realtime();
   for(int i=0; i < nloops; i++)
     tbr_taylor_shift(pol2, deg, tmp, pols, flags->shift_pwx, flags->pwx, nthreads);
-  fprintf(stdout, "Elapsed time (New TBR_Taylor shift with nthreads = %d) %f\n\n", nthreads, realtime() - e_time);
+  fprintf(VERBSTREAM, "Elapsed time (New TBR_Taylor shift with nthreads = %d) %f\n\n", nthreads, realtime() - e_time);
 
 
   e_time = realtime();
   for(int i=0; i < nloops; i++)
     taylor_shift(pol3, deg, tmp, pols, flags->shift_pwx, flags->pwx, nthreads);
-  fprintf(stdout, "Elapsed time (New Taylor shift not in Usolve yet with nthreads = %d) %f\n\n", nthreads, realtime() - e_time);
+  fprintf(VERBSTREAM, "Elapsed time (New Taylor shift not in Usolve yet with nthreads = %d) %f\n\n", nthreads, realtime() - e_time);
 
   for(int i = 0; i < nthreads; i++){
     for(unsigned long int j = 0; j <= deg; j++){
@@ -699,11 +699,11 @@ int main(int argc, char **argv){
 
   for(unsigned long i=0; i <= deg; i++){
     if(mpz_cmp(pol1[i], pol2[i])!=0){
-      fprintf(stderr, "BUG in TBR\n\n");
+      fprintf(ERRSTREAM, "BUG in TBR\n\n");
       return 1;
     }
     if(mpz_cmp(pol1[i], pol3[i])!=0){
-      fprintf(stderr, "BUG in TL\n\n");
+      fprintf(ERRSTREAM, "BUG in TL\n\n");
       return 1;
     }
   }

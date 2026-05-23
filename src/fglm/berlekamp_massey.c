@@ -36,7 +36,7 @@
 //#include "nmod_poly.h"
 //#include "mpn_extras.h"
 
-
+#include "../msolve/streams.h"
 
 /*
 typedef struct {
@@ -205,7 +205,7 @@ int nmod_em_gcd(nmod_berlekamp_massey_t B){
     }
   B->npoints = queue_hi;
 
-  //  nmod_poly_fprint_pretty(stderr, B->R0, "x");fprintf(stderr, "\n");
+  //  nmod_poly_fprint_pretty(ERRSTREAM, B->R0, "x");fprintf(ERRSTREAM, "\n");
 
   /* Ri = Ri * x^queue_len + Vi*rt */
   //R0 vaut x^queue_len-1 avec queue_len = 2*dim - 1
@@ -267,11 +267,11 @@ int nmod_em_gcd(nmod_berlekamp_massey_t B){
       nmod_poly_init_mod(r1, B->V1->mod);
       nmod_poly_init_mod(t0, B->V1->mod);
       nmod_poly_init_mod(t1, B->V1->mod);
-      
+
       nmod_poly_shift_right(r0, B->R0, k);
       nmod_poly_shift_right(r1, B->R1, k);
       sgnM = nmod_poly_hgcd(m11, m12, m21, m22, t0, t1, r0, r1);
-      
+
       /* multiply [[V0 R0] [V1 R1]] by M^(-1) on the left */
       nmod_poly_mul(B->rt, m22, B->V0);
       nmod_poly_mul(B->qt, m12, B->V1);
@@ -283,7 +283,7 @@ int nmod_em_gcd(nmod_berlekamp_massey_t B){
         : nmod_poly_sub(r1, B->qt, B->rt);
       nmod_poly_swap(B->V0, r0);
       nmod_poly_swap(B->V1, r1);
-      
+
       nmod_poly_mul(B->rt, m22, B->R0);
       nmod_poly_mul(B->qt, m12, B->R1);
       sgnM > 0 ? nmod_poly_sub(r0, B->rt, B->qt)
@@ -294,7 +294,7 @@ int nmod_em_gcd(nmod_berlekamp_massey_t B){
         : nmod_poly_sub(r1, B->qt, B->rt);
       nmod_poly_swap(B->R0, r0);
       nmod_poly_swap(B->R1, r1);
-      
+
       nmod_poly_clear(m11);
       nmod_poly_clear(m12);
       nmod_poly_clear(m21);
@@ -304,13 +304,13 @@ int nmod_em_gcd(nmod_berlekamp_massey_t B){
       nmod_poly_clear(t0);
       nmod_poly_clear(t1);
     }
-  
+
   FLINT_ASSERT(nmod_poly_degree(B->V1) >= 0);
   FLINT_ASSERT(2*nmod_poly_degree(B->V1) <= B->npoints);
   FLINT_ASSERT(2*nmod_poly_degree(B->R0) >= B->npoints);
   FLINT_ASSERT(2*nmod_poly_degree(B->R1) <  B->npoints);
 
-  
+
   return 1;
 }
 
@@ -330,7 +330,7 @@ int nmod_em_gcd_preinstantiated(nmod_berlekamp_massey_t B, long shift){
   /*   } */
   B->npoints = queue_hi;
 
-  //  nmod_poly_fprint_pretty(stderr, B->R0, "x");fprintf(stderr, "\n");
+  //  nmod_poly_fprint_pretty(ERRSTREAM, B->R0, "x");fprintf(ERRSTREAM, "\n");
 
   /* Ri = Ri * x^queue_len + Vi*rt */
   //R0 vaut x^queue_len-1 avec queue_len = 2*dim - 1
@@ -392,11 +392,11 @@ int nmod_em_gcd_preinstantiated(nmod_berlekamp_massey_t B, long shift){
       nmod_poly_init_mod(r1, B->V1->mod);
       nmod_poly_init_mod(t0, B->V1->mod);
       nmod_poly_init_mod(t1, B->V1->mod);
-      
+
       nmod_poly_shift_right(r0, B->R0, k);
       nmod_poly_shift_right(r1, B->R1, k);
       sgnM = nmod_poly_hgcd(m11, m12, m21, m22, t0, t1, r0, r1);
-      
+
       /* multiply [[V0 R0] [V1 R1]] by M^(-1) on the left */
       nmod_poly_mul(B->rt, m22, B->V0);
       nmod_poly_mul(B->qt, m12, B->V1);
@@ -408,7 +408,7 @@ int nmod_em_gcd_preinstantiated(nmod_berlekamp_massey_t B, long shift){
         : nmod_poly_sub(r1, B->qt, B->rt);
       nmod_poly_swap(B->V0, r0);
       nmod_poly_swap(B->V1, r1);
-      
+
       nmod_poly_mul(B->rt, m22, B->R0);
       nmod_poly_mul(B->qt, m12, B->R1);
       sgnM > 0 ? nmod_poly_sub(r0, B->rt, B->qt)
@@ -419,7 +419,7 @@ int nmod_em_gcd_preinstantiated(nmod_berlekamp_massey_t B, long shift){
         : nmod_poly_sub(r1, B->qt, B->rt);
       nmod_poly_swap(B->R0, r0);
       nmod_poly_swap(B->R1, r1);
-      
+
       nmod_poly_clear(m11);
       nmod_poly_clear(m12);
       nmod_poly_clear(m21);
@@ -429,12 +429,12 @@ int nmod_em_gcd_preinstantiated(nmod_berlekamp_massey_t B, long shift){
       nmod_poly_clear(t0);
       nmod_poly_clear(t1);
     }
-  
+
   FLINT_ASSERT(nmod_poly_degree(B->V1) >= 0);
   FLINT_ASSERT(2*nmod_poly_degree(B->V1) <= B->npoints);
   FLINT_ASSERT(2*nmod_poly_degree(B->R0) >= B->npoints);
   FLINT_ASSERT(2*nmod_poly_degree(B->R1) <  B->npoints);
-  
+
   return 1;
 }
 
@@ -465,12 +465,12 @@ int nmod_berlekamp_massey_reduce_modif(
                                       B->points->coeffs[queue_lo + i]);
     }
     B->npoints = queue_hi;
-    //    fprintf(stderr, "queue_len = %ld, queue_hi = %ld, queue_lo=%ld\n", queue_len, queue_hi, queue_lo);
-    //    nmod_poly_fprint_pretty(stderr, B->R0, "x");fprintf(stderr, "\n");
+    //    fprintf(ERRSTREAM, "queue_len = %ld, queue_hi = %ld, queue_lo=%ld\n", queue_len, queue_hi, queue_lo);
+    //    nmod_poly_fprint_pretty(ERRSTREAM, B->R0, "x");fprintf(ERRSTREAM, "\n");
     /* Ri = Ri * x^queue_len + Vi*rt */
     //R0 vaut x^queue_len
     nmod_poly_shift_left(B->R0, B->R0, queue_len);
-    //    nmod_poly_fprint_pretty(stderr, B->R0, "x");fprintf(stderr, "\n");
+    //    nmod_poly_fprint_pretty(ERRSTREAM, B->R0, "x");fprintf(ERRSTREAM, "\n");
     //done.
 
     nmod_poly_mul(B->qt, B->V0, B->rt);

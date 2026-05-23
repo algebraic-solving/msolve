@@ -18,6 +18,8 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include "streams.h"
+
 static inline void duplicate_linear_data(int nthreads, int nvars, int nlins,
                                          nvars_t **blinvars, uint32_t **blineqs,
                                          nvars_t **bsquvars){
@@ -142,7 +144,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
                                                 nvars_t **blinvars,
                                                 uint32_t **blineqs,
                                                 nvars_t **bsquvars){
-  const long len0 = bmatrix[0]->nrows;  
+  const long len0 = bmatrix[0]->nrows;
   const long lextra_nf = bmatrix[0]->nnfs;
   const long len_xn = len0 - lextra_nf;
   const long dquot = bmatrix[0]->ncols;
@@ -202,7 +204,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
 
     sp_matfglm_t *matrix = bmatrix[i];
     if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
-      fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
       exit(1);
     }
     else{
@@ -211,7 +213,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
       }
     }
     if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
-      fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
       exit(1);
     }
     else{
@@ -220,7 +222,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
       }
     }
     if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-      fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
       exit(1);
     }
     else{
@@ -229,7 +231,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
       }
     }
     if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len0)){
-      fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
       exit(1);
     }
     else{
@@ -238,7 +240,7 @@ static inline void duplicate_data_mthread_trace(int nthreads,
       }
     }
     if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len0)){
-      fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
       exit(1);
     }
     else{
@@ -321,7 +323,7 @@ static inline void duplicate_data_mthread(int nthreads,
 
     sp_matfglm_t *matrix = bmatrix[i];
     if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
-      fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
       exit(1);
     }
     else{
@@ -330,7 +332,7 @@ static inline void duplicate_data_mthread(int nthreads,
       }
     }
     if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*(dquot - len_xn))){
-      fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
       exit(1);
     }
     else{
@@ -339,7 +341,7 @@ static inline void duplicate_data_mthread(int nthreads,
       }
     }
     if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-      fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
       exit(1);
     }
     else{
@@ -348,7 +350,7 @@ static inline void duplicate_data_mthread(int nthreads,
       }
     }
     if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len_xn)){
-      fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
       exit(1);
     }
     else{
@@ -357,7 +359,7 @@ static inline void duplicate_data_mthread(int nthreads,
       }
     }
     if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len_xn)){
-      fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+      fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
       exit(1);
     }
     else{
@@ -379,7 +381,7 @@ static inline void duplicate_data_mthread(int nthreads,
   }
 
   if(nthreads > 1){
-    fprintf(stderr, "Duplication of data to be implemented\n");
+    fprintf(ERRSTREAM, "Duplication of data to be implemented\n");
     exit(1);
   }
 

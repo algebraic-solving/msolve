@@ -25,6 +25,7 @@ This implementation is a (very) slight modification of the functions in FLINT.
  **/
 
 #include "ulong_extras.h"
+#include "../msolve/streams.h"
 
 void
 _mpz_CRT_ui_precomp(mpz_t out, const mpz_t r1, const mpz_t m1, uint64_t r2,
@@ -77,7 +78,7 @@ void mpz_CRT_ui(mpz_t out, const mpz_t r1, const mpz_t m1,
 
   if (c == 0)
     {
-      fprintf(stderr, "Exception (fmpz_CRT_ui). m1 not invertible modulo m2.\n");
+      fprintf(ERRSTREAM, "Exception (fmpz_CRT_ui). m1 not invertible modulo m2.\n");
       exit(1);
     }
 

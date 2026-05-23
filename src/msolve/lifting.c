@@ -18,6 +18,8 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include "streams.h"
+
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
@@ -199,19 +201,19 @@ static inline void copy_modular_matrix(trace_det_fglm_mat_t trace_det,
     if(trace_det->num_mat == trace_det->mat_alloc ){
         int32_t old_alloc = trace_det->mat_alloc;
         trace_det->mat_alloc += newalloc;
-        size_t sz2 = sz * trace_det->mat_alloc; 
+        size_t sz2 = sz * trace_det->mat_alloc;
 
-        int32_t *tmp = (int32_t *)realloc(trace_det->modular_matrices, 
+        int32_t *tmp = (int32_t *)realloc(trace_det->modular_matrices,
                 sz2 * sizeof(int32_t));
         if(tmp == NULL){
-            fprintf(stderr, "Problem when allocating modular matrices (amount = %zu)\n", trace_det->mat_alloc * sz);
+            fprintf(ERRSTREAM, "Problem when allocating modular matrices (amount = %zu)\n", trace_det->mat_alloc * sz);
             exit(1);
         }
         for(int64_t i = sz*old_alloc; i < sz2; i++){
             tmp[i] = 0;
         }
         trace_det->modular_matrices = tmp;
-        trace_det->primes = flint_realloc(trace_det->primes, 
+        trace_det->primes = flint_realloc(trace_det->primes,
                 trace_det->mat_alloc * sizeof(mp_limb_t));
     }
 
@@ -226,13 +228,13 @@ static inline void copy_modular_matrix(trace_det_fglm_mat_t trace_det,
 
 static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
                                      uint32_t trace_mod, uint32_t det_mod,
-                                     uint32_t tridx, uint32_t detidx, 
-                                     sp_matfglm_t **mod_mat, 
-                                     int lift_matrix, 
-                                     int nlins, 
+                                     uint32_t tridx, uint32_t detidx,
+                                     sp_matfglm_t **mod_mat,
+                                     int lift_matrix,
+                                     int nlins,
                                      int32_t nv,
                                      uint32_t **lineqs_ptr,
-                                     uint32_t newalloc, 
+                                     uint32_t newalloc,
                                      mp_limb_t prime) {
   mpz_init_set_ui(trace_det->trace_crt, trace_mod);
   mpz_init_set_ui(trace_det->det_crt, det_mod);
@@ -416,10 +418,10 @@ static inline void crt_lift_dense_rows(mpz_t *rows, uint32_t *mod_rows,
 static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,
                                       uint32_t trace_mod, uint32_t det_mod,
                                       sp_matfglm_t *mod_mat,
-                                      uint32_t *lineqs, 
+                                      uint32_t *lineqs,
                                       param_t *nmod_param,
                                       mpz_t modulus, mpz_t prod,
-                                      uint32_t prime, 
+                                      uint32_t prime,
                                       int nthrds
                                       ) {
   mpz_CRT_ui(trace_det->trace_crt, trace_det->trace_crt, modulus, trace_mod,
@@ -440,8 +442,8 @@ static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,
   }
 
   for(uint32_t i = trace_det->w_checked; i < mod_mat->nrows; i++){
-      mpz_CRT_ui(trace_det->matmul_wcrt[i], trace_det->matmul_wcrt[i], modulus, 
-                 mod_mat->dense_mat[trace_det->matmul_indices[i]], prime, prod, 
+      mpz_CRT_ui(trace_det->matmul_wcrt[i], trace_det->matmul_wcrt[i], modulus,
+                 mod_mat->dense_mat[trace_det->matmul_indices[i]], prime, prod,
                  trace_det->tmp, 0);
   }
 }
@@ -479,16 +481,16 @@ static inline void build_linear_forms(mpz_t *mpz_linear_forms,
   for (int i = 0; i < nlins; i++) {
     int32_t nc = i * sz;
     int32_t nc2 = i * (sz + 1);
-    fprintf(stderr, " ===> (%d, %d) ", nc, sz);
-    mpz_out_str(stderr, 10, mpz_linear_forms[nc2 + sz]);
-    fprintf(stderr, "\n");
+    fprintf(ERRSTREAM, " ===> (%d, %d) ", nc, sz);
+    mpz_out_str(ERRSTREAM, 10, mpz_linear_forms[nc2 + sz]);
+    fprintf(ERRSTREAM, "\n");
     for (int j = 0; j < sz; j++) {
-      mpz_out_str(stderr, 10, mpz_linear_forms[nc2 + j]);
-      fprintf(stderr, " / ");
-      mpz_out_str(stderr, 10, mpz_linear_forms[nc2 + sz]);
-      fprintf(stderr, ", ");
+      mpz_out_str(ERRSTREAM, 10, mpz_linear_forms[nc2 + j]);
+      fprintf(ERRSTREAM, " / ");
+      mpz_out_str(ERRSTREAM, 10, mpz_linear_forms[nc2 + sz]);
+      fprintf(ERRSTREAM, ", ");
     }
-    fprintf(stderr, "\n");
+    fprintf(ERRSTREAM, "\n");
   }
 #endif
   mpz_clear(lcm);
@@ -535,7 +537,7 @@ static inline int rat_recon_array(mpz_t *res, mpz_t *crt, int32_t sz,
 static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
                                       rrec_data_t recdata, mpz_t modulus,
                                       mpz_t rnum, mpz_t rden, mpz_t gden) {
-    
+
     if(trace_det->done_det > 1 && trace_det->done_trace > 1){
         return 1;
     }
@@ -577,9 +579,9 @@ static inline int rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
             mpz_mul(trace_det->matmul_wqq[2*i + 1], trace_det->matmul_wqq[2*i + 1],
                     gden);
             mpz_gcd(gcd, trace_det->matmul_wqq[2*i], trace_det->matmul_wqq[2*i + 1]);
-            mpz_divexact(trace_det->matmul_wqq[2*i + 1], 
+            mpz_divexact(trace_det->matmul_wqq[2*i + 1],
                     trace_det->matmul_wqq[2*i + 1], gcd);
-            mpz_divexact(trace_det->matmul_wqq[2*i], 
+            mpz_divexact(trace_det->matmul_wqq[2*i],
                     trace_det->matmul_wqq[2*i], gcd);
             nlifted++;
         }
@@ -662,7 +664,7 @@ static inline int check_det(trace_det_fglm_mat_t trace_det, uint32_t det_mod,
   return (c == det_mod);
 }
 
-static inline int check_lifted_coeff(mpz_t num, mpz_t den, 
+static inline int check_lifted_coeff(mpz_t num, mpz_t den,
         uint32_t mod, uint32_t prime){
   uint32_t lc = mpz_fdiv_ui(den, prime);
   lc = mod_p_inverse_32(lc, prime);
@@ -674,13 +676,13 @@ static inline int check_lifted_coeff(mpz_t num, mpz_t den,
   return (c == mod);
 }
 
-static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det, 
-        deg_t *maxrec, 
-        uint32_t trace_mod, 
-        uint32_t det_mod, 
+static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det,
+        deg_t *maxrec,
+        uint32_t trace_mod,
+        uint32_t det_mod,
         uint32_t *modular_linear_forms,
-        sp_matfglm_t *mod_mat, 
-        int32_t prime, 
+        sp_matfglm_t *mod_mat,
+        int32_t prime,
         int lift_matrix){
   //checks if trace is lifted
   if (trace_det->done_trace && trace_det->done_trace < 2) {
@@ -709,9 +711,9 @@ static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det,
               nvars_t n = i * sz;
               nvars_t n2 = i * (sz + 1);
               for(nvars_t j = 0; j < sz; j++){
-                  if(!check_lifted_coeff(trace_det->mpz_linear_forms[n2+j], 
-                             trace_det->mpz_linear_forms[n2+sz], 
-                             modular_linear_forms[n+j], 
+                  if(!check_lifted_coeff(trace_det->mpz_linear_forms[n2+j],
+                             trace_det->mpz_linear_forms[n2+sz],
+                             modular_linear_forms[n+j],
                              prime)){
                       trace_det->lin_lifted = 0;
                       return 0;
@@ -725,8 +727,8 @@ static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det,
       int64_t sz = trace_det->nrows * trace_det->ncols * (trace_det->num_mat - 1);
       int32_t nr = trace_det->w_checked;
       for(deg_t i = trace_det->w_checked; i < trace_det->nlifted; i++){
-          if(check_lifted_coeff(trace_det->matmul_wqq[2*i], 
-                  trace_det->matmul_wqq[2*i+1], 
+          if(check_lifted_coeff(trace_det->matmul_wqq[2*i],
+                  trace_det->matmul_wqq[2*i+1],
                   trace_det->modular_matrices[sz + trace_det->matmul_indices[i]], prime)){
               trace_det->done_coeffs[i]++;
               if(trace_det->done_coeffs[i] > 0){
@@ -743,7 +745,7 @@ static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det,
   return 0;
 }
 
-static inline int check_linear_forms(trace_det_fglm_mat_t trace_det, 
+static inline int check_linear_forms(trace_det_fglm_mat_t trace_det,
         uint32_t *modular_linear_forms,
         int32_t prime){
     int32_t nlins = trace_det->nlins;
@@ -753,9 +755,9 @@ static inline int check_linear_forms(trace_det_fglm_mat_t trace_det,
         nvars_t n = i *sz;
         nvars_t n2 = i * (sz + 1);
         for(int32_t j = 0; j < sz; j++){
-            int b = check_lifted_coeff(trace_det->mpz_linear_forms[n2 + j], 
+            int b = check_lifted_coeff(trace_det->mpz_linear_forms[n2 + j],
                     trace_det->mpz_linear_forms[n2+sz],
-                    modular_linear_forms[n], 
+                    modular_linear_forms[n],
                     prime);
             if(!b) return 0;
         }
@@ -763,17 +765,17 @@ static inline int check_linear_forms(trace_det_fglm_mat_t trace_det,
     return 1;
 }
 
-static inline void check_matrix(trace_det_fglm_mat_t trace_det, 
-        sp_matfglm_t *mod_mat, 
+static inline void check_matrix(trace_det_fglm_mat_t trace_det,
+        sp_matfglm_t *mod_mat,
         int32_t prime){
     int32_t nrows = trace_det->nrows;
     int32_t ncols = trace_det->ncols;
     for(int32_t row = 0; row < nrows; row++){
         int32_t sz = row * ncols;
         for(int32_t col = 0; col < ncols; col++){
-            int b = check_lifted_coeff(trace_det->dense_mat[sz + col], 
-                    trace_det->mat_denoms[row], 
-                    mod_mat->dense_mat[sz + col], 
+            int b = check_lifted_coeff(trace_det->dense_mat[sz + col],
+                    trace_det->mat_denoms[row],
+                    mod_mat->dense_mat[sz + col],
                     prime);
             if(!b){
                 trace_det->mat_lifted = 0;
@@ -785,7 +787,7 @@ static inline void check_matrix(trace_det_fglm_mat_t trace_det,
 }
 
 
-static inline void mulmat_reconstruct(trace_det_fglm_mat_t trace_det, 
+static inline void mulmat_reconstruct(trace_det_fglm_mat_t trace_det,
         mpz_t modulus){
     int32_t num_primes = trace_det->num_primes;
     fmpz_comb_init(trace_det->comb, trace_det->primes, num_primes);
@@ -796,7 +798,7 @@ static inline void mulmat_reconstruct(trace_det_fglm_mat_t trace_det,
     int32_t ncols = trace_det->ncols;
     int32_t sz = nrows * ncols;
 
-    fmpz_t y; 
+    fmpz_t y;
     fmpz_init(y);
     fmpz_t fmodulus;
     fmpz_init(fmodulus);
@@ -821,7 +823,7 @@ static inline void mulmat_reconstruct(trace_det_fglm_mat_t trace_det,
         for(int32_t i = 0; i < num_primes; i++){
             trace_det->residues[i] = (mp_limb_t)trace_det->modular_matrices[i*sz + elt];
         }
-        fmpz_multi_CRT_ui(y, trace_det->residues, 
+        fmpz_multi_CRT_ui(y, trace_det->residues,
                 trace_det->comb, trace_det->comb_temp, 0);
         boo = fmpq_reconstruct_fmpz(res, y, fmodulus);
         if(boo == 0) {
@@ -836,10 +838,10 @@ static inline void mulmat_reconstruct(trace_det_fglm_mat_t trace_det,
             mpz_set(trace_det->mat_denoms[row], lcm);
             mpz_set_ui(lcm, 1);
             for(int32_t nc = 0; nc < ncols; nc++){
-                mpz_divexact(rowdenoms[nc], trace_det->mat_denoms[row], 
+                mpz_divexact(rowdenoms[nc], trace_det->mat_denoms[row],
                         rowdenoms[nc]);
-                mpz_mul(trace_det->dense_mat[row*ncols + nc], 
-                        trace_det->dense_mat[row*ncols + nc], 
+                mpz_mul(trace_det->dense_mat[row*ncols + nc],
+                        trace_det->dense_mat[row*ncols + nc],
                         rowdenoms[nc]);
             }
             row++;
@@ -914,9 +916,9 @@ rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
     }
 
     for(uint32_t j = 0; j < ncols; j++){
-        mpz_mul(mpq_mat->dense_mat[2 * c+ 2 * j], mpq_mat->dense_mat[2 * c+ 2 * j], 
+        mpz_mul(mpq_mat->dense_mat[2 * c+ 2 * j], mpq_mat->dense_mat[2 * c+ 2 * j],
                 mpq_mat->denoms[i]);
-        mpz_divexact(mpq_mat->dense_mat[2 * c + 2 * j], mpq_mat->dense_mat[2 * c + 2 * j], 
+        mpz_divexact(mpq_mat->dense_mat[2 * c + 2 * j], mpq_mat->dense_mat[2 * c + 2 * j],
                 mpq_mat->dense_mat[2 * c + 2 * j + 1]);
     }
     (*matrec)++;
@@ -929,7 +931,7 @@ rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
 }
 
 
-static inline void check_matrix_and_linear_forms(mpq_matfglm_t mpq_mat, sp_matfglm_t *mod_mat, 
+static inline void check_matrix_and_linear_forms(mpq_matfglm_t mpq_mat, sp_matfglm_t *mod_mat,
         mpz_t *mpz_lin, uint32_t *mod_lin, const int nlins, const nvars_t nv,
         int *mat_lifted, int* lin_lifted, deg_t *oldmatrec_checked, deg_t *matrec_checked, const uint32_t prime){
     *oldmatrec_checked = *matrec_checked;

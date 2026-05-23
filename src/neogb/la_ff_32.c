@@ -19,6 +19,7 @@
  * Mohab Safey El Din */
 
 #include "data.h"
+#include "../msolve/streams.h"
 
 /* That's also enough if AVX512 is available on the system */
 #if defined HAVE_AVX2
@@ -2703,7 +2704,7 @@ static void exact_sparse_reduced_echelon_form_ff_32(
         }
         mat->np = 0;
         if (st->info_level > 0) {
-            fprintf(stderr, "Zero reduction while applying tracer, bad prime.\n");
+            fprintf(ERRSTREAM, "Zero reduction while applying tracer, bad prime.\n");
         }
         return;
     }
@@ -2869,9 +2870,9 @@ static void exact_sparse_reduced_echelon_form_sat_ff_32(
     len_t ctr = 0;
 
     if (st->info_level > 1) {
-      printf("        normal form time");
+      fprintf(VERBSTREAM, "        normal form time");
     }
-    print_sat_nf_round_timings(stdout, st, rt, ct);
+    print_sat_nf_round_timings(VERBSTREAM, st, rt, ct);
     /* compute kernel */
     for (i = 0; i < sat->ld; ++i) {
         if (sat->hm[i] != NULL) {
@@ -3191,7 +3192,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_32(
                 npiv  = mat->tr[i]  = reduce_dense_row_by_known_pivots_sparse_ff_32(
                         drl, mat, bs, pivs, sc, i, mh, bi, 0, st);
                 if (!npiv) {
-                    fprintf(stderr, "Unlucky prime detected, row reduced to zero.");
+                    fprintf(ERRSTREAM, "Unlucky prime detected, row reduced to zero.");
                     flag  = 0;
                     break;
                 }
@@ -3924,8 +3925,8 @@ static void probabilistic_sparse_linear_algebra_ff_32(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -3983,8 +3984,8 @@ static void exact_sparse_linear_algebra_ff_32(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -4064,8 +4065,8 @@ static int exact_application_sparse_linear_algebra_ff_32(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 
     return ret;
@@ -4097,8 +4098,8 @@ static void exact_trace_sparse_linear_algebra_ff_32(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -4147,8 +4148,8 @@ static void exact_sparse_dense_linear_algebra_ff_32(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -4197,8 +4198,8 @@ static void probabilistic_sparse_dense_linear_algebra_ff_32_2(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -4245,8 +4246,8 @@ static void probabilistic_sparse_dense_linear_algebra_ff_32(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -4264,7 +4265,7 @@ static void interreduce_matrix_rows_ff_32(
 
     /* adjust displaying timings for statistic printout */
     if (st->info_level > 1) {
-        printf("                          ");
+        fprintf(VERBSTREAM, "                          ");
     }
 
     mat->tr = realloc(mat->tr, (uint64_t)ncols * sizeof(hm_t *));

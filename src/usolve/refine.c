@@ -48,9 +48,9 @@ static long long int index_linearinterp(mpz_t *vala, mpz_t *valb, mpz_t *q,
   long int sizeq = ilog2_mpz(*q);
   if((long unsigned int)sizeq >= 8 * sizeof(long long int)){
     if(sizeq > logN){
-      fprintf(stderr,"Valeur de q = "); mpz_out_str(stderr, 10, *q);puts("");
-      fprintf(stderr, "Valeur de Nlog = %lld\n", logN);
-      fprintf(stderr, "ilog2(q) = %ld\n", sizeq);
+      fprintf(ERRSTREAM,"Valeur de q = "); mpz_out_str(ERRSTREAM, 10, *q);puts("");
+      fprintf(ERRSTREAM, "Valeur de Nlog = %lld\n", logN);
+      fprintf(ERRSTREAM, "ilog2(q) = %ld\n", sizeq);
       return -2;
     }
     return -1;
@@ -364,7 +364,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
       while(right_interval_2exp(upol, deg_ptr, rt, x, b,
                                 vala, valb, q, newk)==0 && index <= maxindex){
         if(verbose>0){
-          fprintf(stdout, "->");
+          fprintf(VERBSTREAM, "->");
         }
         index++;
       }
@@ -406,7 +406,7 @@ static void refine_root_by_N_positive_k(mpz_t *upol, unsigned long int *deg_ptr,
       while(left_interval_2exp(upol, deg_ptr, rt,
                                x, b, vala, valb, q, newk) == 0){
         if(verbose>0){
-          fprintf(stdout, "<-");
+          fprintf(VERBSTREAM, "<-");
         }
       }
     }
@@ -529,7 +529,7 @@ static void refine_root_by_N_negative_k(mpz_t *upol, unsigned long int *deg_ptr,
       while(right_interval(upol, deg_ptr, rt, x, b,
                            vala, valb, q, Nlog, k, newk) == 0){
         if(verbose>0){
-          fprintf(stdout, "|->");
+          fprintf(VERBSTREAM, "|->");
         }
       }
     }
@@ -587,7 +587,7 @@ static void refine_root_by_N_negative_k(mpz_t *upol, unsigned long int *deg_ptr,
       while(left_interval(upol, deg_ptr, rt, x, b,
                           vala, valb, q, Nlog, k, newk) == 0){
         if(verbose>0){
-          fprintf(stdout, "<-|");
+          fprintf(VERBSTREAM, "<-|");
         }
       }
     }
@@ -653,7 +653,7 @@ void refine_QIR_positive_root(mpz_t *upol, unsigned long int *deg_ptr,
     if(rt->isexact==1) return;
 
     if(mpz_sgn(tab[0]) == mpz_sgn(tab[1])) {
-      fprintf(stderr, "BUG in refine_QIR_positive_root");
+      fprintf(ERRSTREAM, "BUG in refine_QIR_positive_root");
       exit(1);
     }
     if(success == 1){
@@ -777,7 +777,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
 
     interval *rt = roots + i;
 
-    /* display_root(stderr, rt); */
+    /* display_root(ERRSTREAM, rt); */
 
     if(rt->k > 0){
       if(rt->isexact!=1){
@@ -803,13 +803,13 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
     if(pos_rt->isexact==0){
       get_values_at_bounds(upol, *deg, pos_rt, tab);
       if(mpz_sgn(tab[0])==0 || mpz_sgn(tab[1])==0){
-        fprintf(stderr, "Error in refinement (neg. roots): these values should not be zero\n");
+        fprintf(ERRSTREAM, "Error in refinement (neg. roots): these values should not be zero\n");
         exit(1);
       }
       refine_QIR_positive_root(upol, deg, pos_rt, tab, prec, verbose);
 
       if(mpz_sgn(tab[0])==mpz_sgn(tab[1])){
-        fprintf(stderr, "BUG in refinement (sgn tab[0]==sgn tab[1]) for neg. roots");
+        fprintf(ERRSTREAM, "BUG in refinement (sgn tab[0]==sgn tab[1]) for neg. roots");
         exit(1);
       }
     }
@@ -840,7 +840,7 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
       refine_time = realtime();
       e_time = 0;
       if(verbose>0){
-        fprintf(stdout, "{%.2f%s}", ((double)i / nb) * 100, "%");
+        fprintf(VERBSTREAM, "{%.2f%s}", ((double)i / nb) * 100, "%");
       }
     }
   }
@@ -862,12 +862,12 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
     if(rt->isexact==0){
       get_values_at_bounds(upol, *deg, rt, tab);
       if(mpz_sgn(tab[1])==0 || mpz_sgn(tab[0])==0){
-        fprintf(stderr, "Error in refinement (pos. roots): these values should not be zero\n");
+        fprintf(ERRSTREAM, "Error in refinement (pos. roots): these values should not be zero\n");
         exit(1);
       }
       refine_QIR_positive_root(upol, deg, rt, tab, prec, verbose);
       if(mpz_sgn(tab[0])==mpz_sgn(tab[1])){
-        fprintf(stderr,"BUG in refinement (sgn tab[0]=sgn tab[1] for pos. roots)");
+        fprintf(ERRSTREAM,"BUG in refinement (sgn tab[0]=sgn tab[1] for pos. roots)");
         exit(1);
       }
       if(rt->isexact==1){
@@ -882,13 +882,13 @@ void refine_QIR_roots(mpz_t *upol, unsigned long int *deg, interval *roots,
       refine_time = realtime();
       e_time = 0;
       if(verbose>0){
-        fprintf(stdout, "{%.2f%s}", ((double)(i) / nb) * 100, "%");
+        fprintf(VERBSTREAM, "{%.2f%s}", ((double)(i) / nb) * 100, "%");
       }
     }
 
   }
   if(verbose>0){
-    fprintf(stdout, "\n");
+    fprintf(VERBSTREAM, "\n");
   }
   for(i = 0; i < 8; i++){
     mpz_clear(tab[i]);
@@ -933,7 +933,7 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
 
     interval *rt = roots + i;
 
-    /* display_root(stderr, rt); */
+    /* display_root(ERRSTREAM, rt); */
 
     if(rt->k > 0){
       if(rt->isexact!=1){
@@ -959,18 +959,18 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
     if(pos_rt->isexact==0){
       get_values_at_bounds(upol, *deg, pos_rt, tab);
       if(mpz_sgn(tab[0])==0 || mpz_sgn(tab[1])==0){
-        fprintf(stderr, "Error in refinement (neg. roots): these values should not be zero\n");
+        fprintf(ERRSTREAM, "Error in refinement (neg. roots): these values should not be zero\n");
         exit(1);
       }
       long d = 1 + ilog2_mpz(pos_rt->numer) - rt->k;
 
-      /* fprintf(stderr, "[%d, %ld]", prec, */
+      /* fprintf(ERRSTREAM, "[%d, %ld]", prec, */
       /*         prec + ((*deg) * MAX(0, d)) / 32); */
       refine_QIR_positive_root(upol, deg, pos_rt, tab,
                                prec + (((*deg)-1) * MAX(0, d)) / 32, verbose);
 
       if(mpz_sgn(tab[0])==mpz_sgn(tab[1])){
-        fprintf(stderr, "BUG in refinement (sgn tab[0]==sgn tab[1]) for neg. roots");
+        fprintf(ERRSTREAM, "BUG in refinement (sgn tab[0]==sgn tab[1]) for neg. roots");
         exit(1);
       }
     }
@@ -1001,7 +1001,7 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
       refine_time = realtime();
       e_time = 0;
       if(verbose>0){
-        fprintf(stdout, "{%.2f%s}", ((double)i / nb) * 100, "%");
+        fprintf(VERBSTREAM, "{%.2f%s}", ((double)i / nb) * 100, "%");
       }
     }
   }
@@ -1023,16 +1023,16 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
     if(rt->isexact==0){
       get_values_at_bounds(upol, *deg, rt, tab);
       if(mpz_sgn(tab[1])==0 || mpz_sgn(tab[0])==0){
-        fprintf(stderr, "Error in refinement (pos. roots): these values should not be zero\n");
+        fprintf(ERRSTREAM, "Error in refinement (pos. roots): these values should not be zero\n");
         exit(1);
       }
       long d = 1 + ilog2_mpz(rt->numer) - rt->k;
 
-      /* fprintf(stderr, "[%d, %ld]", prec, prec + ((*deg) * MAX(0, 1 + d)) / 32); */
+      /* fprintf(ERRSTREAM, "[%d, %ld]", prec, prec + ((*deg) * MAX(0, 1 + d)) / 32); */
       refine_QIR_positive_root(upol, deg, rt, tab,
                                prec + (((*deg) - 1) * MAX(0, 1 + d)) / 32, verbose);
       if(mpz_sgn(tab[0])==mpz_sgn(tab[1])){
-        fprintf(stderr,"BUG in refinement (sgn tab[0]=sgn tab[1] for pos. roots)");
+        fprintf(ERRSTREAM,"BUG in refinement (sgn tab[0]=sgn tab[1] for pos. roots)");
         exit(1);
       }
       if(rt->isexact==1){
@@ -1047,13 +1047,13 @@ void refine_QIR_roots_adaptative(mpz_t *upol, unsigned long int *deg, interval *
       refine_time = realtime();
       e_time = 0;
       if(verbose>0){
-        fprintf(stdout, "{%.2f%s}", ((double)(i) / nb) * 100, "%");
+        fprintf(VERBSTREAM, "{%.2f%s}", ((double)(i) / nb) * 100, "%");
       }
     }
 
   }
   if(verbose>0){
-    fprintf(stdout, "\n");
+    fprintf(VERBSTREAM, "\n");
   }
   for(i = 0; i < 8; i++){
     mpz_clear(tab[i]);

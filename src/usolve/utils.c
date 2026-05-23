@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <math.h>
+#include "../msolve/streams.h"
 
 #define bit_one_index(x) mpz_scan1((x), 0)
 
@@ -131,9 +132,9 @@ static void USOLVEnumer_quotient(mpz_t *upol, unsigned long int *deg, mpz_t c, u
 static inline void USOLVEmpz_poly_print(mpz_t *upol, unsigned long int deg){
   for(unsigned long int i=0; i<=deg; i++) {
     gmp_printf("%Zd", upol[i]);
-    fprintf(stdout," ");
+    fprintf(VERBSTREAM," ");
   }
-  fprintf(stdout, "\n");
+  fprintf(VERBSTREAM, "\n");
 }
 
 /* prints coefficients of pol in decreasing degree order */
@@ -141,10 +142,10 @@ static inline void USOLVEmpz_poly_print_maple(mpz_t *upol, unsigned long int deg
   int  i;
   for(i=deg;i>=1;i--){
     gmp_printf("(%Zd)", upol[i]);
-    fprintf(stdout,"*x^%d+",i);
+    fprintf(VERBSTREAM,"*x^%d+",i);
   }
   gmp_printf("(%Zd)", upol[0]);
-  fprintf(stdout, ";\n");
+  fprintf(VERBSTREAM, ";\n");
 }
 
 /* From the polynomial upol, of degree deg, and b>=0, computes (inplace)

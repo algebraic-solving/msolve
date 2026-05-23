@@ -19,6 +19,7 @@
  * Mohab Safey El Din */
 
 #include "data.h"
+#include "../msolve/streams.h"
 
 /* That's also enough if AVX512 is avaialable on the system */
 #if defined HAVE_AVX2
@@ -1109,7 +1110,7 @@ static int exact_application_sparse_reduced_echelon_form_ff_8(
                 npiv  = mat->tr[i]  = reduce_dense_row_by_known_pivots_sparse_ff_8(
                         drl, mat, bs, pivs, sc, i, mh, bi, 0, st->fc);
                 if (!npiv) {
-                    fprintf(stderr, "Unlucky prime detected, row reduced to zero.");
+                    fprintf(ERRSTREAM, "Unlucky prime detected, row reduced to zero.");
                     flag = 0;
                 }
 
@@ -1427,7 +1428,7 @@ static void exact_sparse_reduced_echelon_form_ff_8(
         }
         mat->np = 0;
         if (st->info_level > 0) {
-            fprintf(stderr, "Zero reduction while applying tracer, bad prime.\n");
+            fprintf(ERRSTREAM, "Zero reduction while applying tracer, bad prime.\n");
         }
         return;
     }
@@ -2129,8 +2130,8 @@ static void probabilistic_sparse_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -2161,8 +2162,8 @@ static int exact_application_sparse_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 
     return ret;
@@ -2194,8 +2195,8 @@ static void exact_trace_sparse_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -2225,8 +2226,8 @@ static void exact_sparse_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -2249,7 +2250,7 @@ static void exact_sparse_dense_linear_algebra_ff_8(
     /* generate updated dense D part via reduction of CD with AB */
     cf8_t **dm;
     dm  = sparse_AB_CD_linear_algebra_ff_8(mat, bs, st);
-    if (mat->np > 0) {      
+    if (mat->np > 0) {
         dm  = exact_dense_linear_algebra_ff_8(dm, mat, st);
         dm  = interreduce_dense_matrix_ff_8(dm, ncr, st->fc);
     }
@@ -2275,8 +2276,8 @@ static void exact_sparse_dense_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -2299,7 +2300,7 @@ static void probabilistic_sparse_dense_linear_algebra_ff_8_2(
     /* generate updated dense D part via reduction of CD with AB */
     cf8_t **dm;
     dm  = sparse_AB_CD_linear_algebra_ff_8(mat, bs, st);
-    if (mat->np > 0) {      
+    if (mat->np > 0) {
         dm  = probabilistic_dense_linear_algebra_ff_8(dm, mat, st);
         dm  = interreduce_dense_matrix_ff_8(dm, mat->ncr, st->fc);
     }
@@ -2325,8 +2326,8 @@ static void probabilistic_sparse_dense_linear_algebra_ff_8_2(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -2373,8 +2374,8 @@ static void probabilistic_sparse_dense_linear_algebra_ff_8(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%9d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -2392,7 +2393,7 @@ static void interreduce_matrix_rows_ff_8(
 
     /* adjust displaying timings for statistic printout */
     if (st->info_level > 1) {
-        printf("                          ");
+        fprintf(VERBSTREAM, "                          ");
     }
 
     /* for interreduction steps like the final basis reduction we
@@ -2457,7 +2458,7 @@ static void interreduce_matrix_rows_ff_8(
     if (free_basis != 0) {
         /* free now all polynomials in the basis and reset bs->ld to 0. */
         free_basis_elements(bs);
-    }    
+    }
     free(mat->rr);
     mat->rr = NULL;
     st->np = mat->np = nrows;

@@ -20,6 +20,7 @@
 
 
 #include "io.h"
+#include "../msolve/streams.h"
 
 /* See exponent vector description in data.h for more information. */
 static inline void set_exponent_vector(
@@ -474,7 +475,7 @@ void return_zero(
             (unsigned long)1 * sizeof(int32_t));
     cf[0]   =   0;
     } else {
-        fprintf(stderr, "We only support finite fields.\n");
+        fprintf(ERRSTREAM, "We only support finite fields.\n");
     }
 }
 
@@ -513,7 +514,7 @@ static int64_t export_data(
     nelts = lml;
 
     if (nelts > (int64_t)(pow(2, 31))) {
-        printf("Basis has more than 2^31 elements, cannot store it.\n");
+        fprintf(ERRSTREAM, "Basis has more than 2^31 elements, cannot store it.\n");
         return 0;
     }
 
@@ -661,60 +662,60 @@ int validate_input_data(
 {
     /* biggest prime msovle can handle */
     if (*field_charp > 4294967291) {
-        fprintf(stderr, "Field characteristic not valid.\n");
+        fprintf(ERRSTREAM, "Field characteristic not valid.\n");
         return 0;
     }
     if (*nr_varsp < 0) {
-        fprintf(stderr, "Number of variables not valid.\n");
+        fprintf(ERRSTREAM, "Number of variables not valid.\n");
         return 0;
     }
     if (*nr_gensp < 1) {
-        fprintf(stderr, "Number of generators not valid.\n");
+        fprintf(ERRSTREAM, "Number of generators not valid.\n");
         return 0;
     }
     if (*nr_nfp < 0 || *nr_nfp >= *nr_gensp) {
-        fprintf(stderr, "Number of normal forms not valid.\n");
+        fprintf(ERRSTREAM, "Number of normal forms not valid.\n");
         return 0;
     }
     if (*mon_orderp < 0) {
-        fprintf(stderr, "Fixes monomial order to DRL.\n");
+        fprintf(ERRSTREAM, "Fixes monomial order to DRL.\n");
         *mon_orderp =   0;
     }
     if (*elim_block_lenp < 0) {
-        fprintf(stderr, "Fixes elim block order length to 0.\n");
+        fprintf(ERRSTREAM, "Fixes elim block order length to 0.\n");
         *elim_block_lenp =   0;
     }
     if (*ht_sizep < 0) {
-        fprintf(stderr, "Fixes initial hash table size to 2^17.\n");
+        fprintf(ERRSTREAM, "Fixes initial hash table size to 2^17.\n");
         *ht_sizep   =   17;
     }
     if (*nr_threadsp < 0) {
-        fprintf(stderr, "Fixes number of threads to 1.\n");
+        fprintf(ERRSTREAM, "Fixes number of threads to 1.\n");
         *nr_threadsp    =   1;
     }
     if (*max_nr_pairsp < 0) {
-        fprintf(stderr, "Fixes maximal number of spairs chosen to all possible.\n");
+        fprintf(ERRSTREAM, "Fixes maximal number of spairs chosen to all possible.\n");
         *max_nr_pairsp  =   0;
     }
     if (*la_optionp != 1 && *la_optionp != 2 &&
             *la_optionp != 42 && *la_optionp != 44) {
-        fprintf(stderr, "Fixes linear algebra option to exact sparse.\n");
+        fprintf(ERRSTREAM, "Fixes linear algebra option to exact sparse.\n");
         *la_optionp =   2;
     }
     if (*use_signaturesp < 0 || *use_signaturesp > 3) {
-        fprintf(stderr, "Usage of signature not valid, disabled.\n");
+        fprintf(ERRSTREAM, "Usage of signature not valid, disabled.\n");
         *use_signaturesp = 0;
     }
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
-        fprintf(stderr, "Fixes reduction of GB to 0 (false).\n");
+        fprintf(ERRSTREAM, "Fixes reduction of GB to 0 (false).\n");
         *reduce_gbp =   0;
     }
     if(*truncate_liftingp < 0){
-        fprintf(stderr, "Removes truncation of lifted Groebner bases\n");
+        fprintf(ERRSTREAM, "Removes truncation of lifted Groebner bases\n");
         *truncate_liftingp = 0;
     }
     if (*info_levelp < 0 || *info_levelp > 2) {
-        fprintf(stderr, "Fixes info level to no output.\n");
+        fprintf(ERRSTREAM, "Fixes info level to no output.\n");
         *info_levelp    =   0;
     }
     const int ngens     =   *nr_gensp;
@@ -795,7 +796,7 @@ int32_t check_and_set_meta_data(
             || lens == NULL
             || cfs == NULL
             || exps == NULL) {
-      fprintf(stderr, "Problem with meta data [%d, %d, %d]\n",
+      fprintf(ERRSTREAM, "Problem with meta data [%d, %d, %d]\n",
               (lens==NULL),(cfs==NULL),(exps==NULL));
       return 1;
     }
@@ -830,7 +831,7 @@ int32_t check_and_set_meta_data(
     /* elimination block order? If so, store the blocks length */
     st->nev = elim_block_len >= 0 ? elim_block_len : 0;
     if (st->nev >= st->nvars) {
-        fprintf(stderr,"error: Too large elimination block.\n");
+        fprintf(ERRSTREAM,"error: Too large elimination block.\n");
         exit(1);
     }
     /* set hash table size */

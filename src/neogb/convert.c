@@ -198,8 +198,8 @@ static void convert_hashes_to_columns_sat(
     st->convert_ctime +=  ct1 - ct0;
     st->convert_rtime +=  rt1 - rt0;
     if (st->info_level > 1) {
-        printf(" %7d x %-7d %8.2f%%", mat->nr + sat->ld, mat->nc, density);
-        fflush(stdout);
+        fprintf(VERBSTREAM, " %7d x %-7d %8.2f%%", mat->nr + sat->ld, mat->nc, density);
+        fflush(VERBSTREAM);
     }
     st->hcm = hcm;
 }
@@ -289,8 +289,8 @@ static void sba_convert_hashes_to_columns(
     st->convert_ctime +=  ct1 - ct0;
     st->convert_rtime +=  rt1 - rt0;
     if (st->info_level > 1) {
-        printf("%4d    %7d x %-7d %8.2f%%", smat->cd, smat->cld, smat->nc, density);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%4d    %7d x %-7d %8.2f%%", smat->cd, smat->cld, smat->nc, density);
+        fflush(VERBSTREAM);
     }
     *hcmp = hcm;
 }
@@ -326,8 +326,8 @@ static void convert_hashes_to_columns(
      * exactly one column of the matrix */
     hcm = realloc(hcm, (uint64_t)(esld-1) * sizeof(hi_t));
     if (hcm == NULL) {
-        fprintf(stderr, "Allocating memory for hash-column lookup table failed,\n");
-        fprintf(stderr, "segmentation fault will follow.\n");
+        fprintf(ERRSTREAM, "Allocating memory for hash-column lookup table failed,\n");
+        fprintf(ERRSTREAM, "segmentation fault will follow.\n");
     }
     for (k = 0, j = 0, i = 1; i < esld; ++i) {
         hi  = hds[i].idx;
@@ -422,8 +422,8 @@ static void convert_hashes_to_columns(
     st->convert_ctime +=  ct1 - ct0;
     st->convert_rtime +=  rt1 - rt0;
     if (st->info_level > 1) {
-        printf(" %7d x %-7d %8.2f%%", mat->nr, mat->nc, density);
-        fflush(stdout);
+        fprintf(VERBSTREAM, " %7d x %-7d %8.2f%%", mat->nr, mat->nc, density);
+        fflush(VERBSTREAM);
     }
     if ((int64_t)mat->nr * mat->nc > st->mat_max_nrows * st->mat_max_ncols) {
         st->mat_max_nrows = mat->nr;

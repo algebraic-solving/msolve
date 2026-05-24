@@ -331,6 +331,7 @@ typedef struct{
   char *bin_file;
   char *out_file;
   char *bin_out_file;
+  char *verb_file;
 } files_gb;
 
 /* data structure for tracing algorithms */

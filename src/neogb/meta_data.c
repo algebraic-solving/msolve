@@ -20,6 +20,8 @@
 
 
 #include "meta_data.h"
+#include "../msolve/streams.h"
+
 md_t *copy_meta_data(
 		     const md_t * const gmd,
 		     const int32_t prime
@@ -87,15 +89,15 @@ void print_tracer_statistics(
 {
     if (st->trace_level == APPLY_TRACER) {
         /* if(st->info_level > 1){ */
-        /*     fprintf(stderr, "Learning phase %.2f Gops/sec\n", */
+        /*     fprintf(ERRSTREAM, "Learning phase %.2f Gops/sec\n", */
         /*             (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(realtime()-rt)); */
         /* } */
         if(st->info_level > 2){
-            fprintf(stderr, "------------------------------------------\n");
-            fprintf(stderr, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
-            fprintf(stderr, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
-            fprintf(stderr, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
-            fprintf(stderr, "------------------------------------------\n");
+            fprintf(ERRSTREAM, "------------------------------------------\n");
+            fprintf(ERRSTREAM, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
+            fprintf(ERRSTREAM, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
+            fprintf(ERRSTREAM, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
+            fprintf(ERRSTREAM, "------------------------------------------\n");
         }
     }
 }
@@ -198,7 +200,7 @@ void print_sat_nf_round_timings(
         )
 {
     if (st->info_level > 1) {
-        printf("%15.2f | %-13.2f\n",
+        fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",
                 realtime() - rrt, cputime() - crt);
     }
 }
@@ -211,7 +213,7 @@ void print_sat_round_timings(
         )
 {
     if (st->info_level > 1) {
-        printf("%10.2f | %-13.2f\n",
+        fprintf(VERBSTREAM, "%10.2f | %-13.2f\n",
                 realtime() - rrt, cputime() - crt);
     }
 }
@@ -224,7 +226,7 @@ void print_round_timings(
         )
 {
     if (st->info_level > 1) {
-        printf("%13.2f | %-13.2f\n",
+        fprintf(VERBSTREAM, "%13.2f | %-13.2f\n",
                 realtime() - rrt, cputime() - crt);
     }
 }
@@ -235,7 +237,7 @@ void print_round_information_footer(
         )
 {
     if (st->info_level > 1) {
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------------------------\n");
     }
 }
@@ -248,8 +250,8 @@ static void print_current_trace_meta_data(
     len_t deg = md->tr->td[rd].deg;
 
     if (md->info_level > 1) {
-        printf("%9d  %6d  ", rd+1, deg);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%9d  %6d  ", rd+1, deg);
+        fflush(VERBSTREAM);
     }
 }
 

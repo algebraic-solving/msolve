@@ -21,12 +21,14 @@
 
 #include "data.h"
 
+#include "../msolve/streams.h"
+
 #ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
 
 /* select_all_pairs() is unused at the moment */
-#if 0 
+#if 0
 static void select_all_spairs(
         mat_t *mat,
         const bs_t * const bs,
@@ -62,10 +64,10 @@ static void select_all_spairs(
     /* now do maximal selection if it applies */
 
     nps = psl->ld;
-    
+
     if (st->info_level > 1) {
-        printf("%3d  %6d %7d", 0, nps, psl->ld);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%3d  %6d %7d", 0, nps, psl->ld);
+        fflush(VERBSTREAM);
     }
     /* statistics */
     st->num_pairsred  +=  nps;
@@ -119,7 +121,7 @@ static void select_all_spairs(
          * lcm we add exactly one row to mat->rr */
         rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
-        if (tht != NULL) { 
+        if (tht != NULL) {
            rrows[nrr][BINDEX]  = prev;
             if (tht->eld == tht->esz-1) {
                 enlarge_hash_table(tht);
@@ -128,7 +130,7 @@ static void select_all_spairs(
         }
 
         /* mark lcm column as lead term column */
-        sht->hd[rrows[nrr++][OFFSET]].idx = 2; 
+        sht->hd[rrows[nrr++][OFFSET]].idx = 2;
         /* still we have to increase the number of rows */
         mat->nr++;
         for (k = 1; k < load; ++k) {
@@ -227,7 +229,7 @@ static int32_t select_spairs_by_minimal_degree(
 
     /* compute a truncated GB? Check maximal degree. */
     if (md->max_gb_degree < mdeg) {
-        return 1; 
+        return 1;
     }
 
     /* select pairs of this degree respecting maximal selection size mnsel */
@@ -260,7 +262,7 @@ static int32_t select_spairs_by_minimal_degree(
     /* printf("npd %d\n", npd); */
     /* sort_r(ps, (unsigned long)npd, sizeof(spair_t), spair_cmp, bht); */
     /* now do maximal selection if it applies */
-    
+
     /* if we stopped due to maximal selection size we still get the following
      * pairs of the same lcm in this matrix */
     if (npd > md->mnsel) {
@@ -273,8 +275,8 @@ static int32_t select_spairs_by_minimal_degree(
         nps = npd;
     }
     if (md->info_level > 1) {
-        printf("%3d  %6d %7d", mdeg, nps, psl->ld);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%3d  %6d %7d", mdeg, nps, psl->ld);
+        fflush(VERBSTREAM);
     }
     /* statistics */
     md->num_pairsred  +=  nps;
@@ -324,7 +326,7 @@ static int32_t select_spairs_by_minimal_degree(
          * lcm we add exactly one row to mat->rr */
         rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
         /* track trace information ? */
-        if (md->trace_level == LEARN_TRACER) { 
+        if (md->trace_level == LEARN_TRACER) {
            rrows[nrr][BINDEX]  = prev;
             if (bs->ht->eld == bs->ht->esz-1) {
                 enlarge_hash_table(bs->ht);
@@ -337,7 +339,7 @@ static int32_t select_spairs_by_minimal_degree(
         }
 
         /* mark lcm column as lead term column */
-        sht->hd[rrows[nrr++][OFFSET]].idx = 2; 
+        sht->hd[rrows[nrr++][OFFSET]].idx = 2;
         /* still we have to increase the number of rows */
         mat->nr++;
         for (k = 1; k < load; ++k) {
@@ -587,8 +589,8 @@ static void symbolic_preprocessing(
         mat->sz *=  2;
         mat->rr =   realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
         if (mat->rr == NULL) {
-            fprintf(stderr, "Allocating memory for matrix failed,\n");
-            fprintf(stderr, "segmentation fault will follow.\n");
+            fprintf(ERRSTREAM, "Allocating memory for matrix failed,\n");
+            fprintf(ERRSTREAM, "segmentation fault will follow.\n");
         }
     }
     for (; i < oesld; ++i) {
@@ -603,8 +605,8 @@ static void symbolic_preprocessing(
             mat->sz *=  2;
             mat->rr  =  realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
             if (mat->rr == NULL) {
-                fprintf(stderr, "Allocating memory for matrix failed,\n");
-                fprintf(stderr, "segmentation fault will follow.\n");
+                fprintf(ERRSTREAM, "Allocating memory for matrix failed,\n");
+                fprintf(ERRSTREAM, "segmentation fault will follow.\n");
             }
         }
         sht->hd[i].idx = 1;

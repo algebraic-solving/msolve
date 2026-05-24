@@ -25,6 +25,7 @@
 **/
 
 #include <gmp.h>
+#include "../msolve/streams.h"
 
 /* #define ROT(u,v,t)                                            \ */
 /*   do { mpz _t = *u; *u = *v; *v = *t; *t = _t; } while (0); */
@@ -67,7 +68,7 @@ _mpq_reconstruct_mpz_2(mpz_t n, mpz_t d,
     /* if (fmpz_cmpabs(n, N) <= 0) */
     /* { */
     /*     fmpz_one(d); */
-    /*     fprintf(stderr, "ici?\n"); */
+    /*     fprintf(ERRSTREAM, "ici?\n"); */
     /*     return 1; */
     /* } */
 
@@ -159,7 +160,7 @@ int mpq_reconstruct_mpz(mpq_t *res, mpz_t a, const mpz_t m)
   }
   else{
     while(mpz_cmp_ui(a, 0) < 0){
-      //      mpz_fprint(stderr, a); fprintf(stderr, "\n");
+      //      mpz_fprint(ERRSTREAM, a); fprintf(ERRSTREAM, "\n");
       mpz_add(a, a, m);
     }
     int b = _mpq_reconstruct_mpz(mpq_numref(*res),

@@ -20,7 +20,7 @@
 
 
 #include "f4.h"
-
+#include "../msolve/streams.h"
 
 static void final_remove_redundant_elements(
         bs_t *bs,
@@ -177,8 +177,8 @@ static void intermediate_reduce_basis(
 
     /* generate hash <-> column mapping */
     if (st->info_level > 1) {
-        printf("reduce intermediate basis ");
-        fflush(stdout);
+        fprintf(VERBSTREAM, "reduce intermediate basis ");
+        fflush(VERBSTREAM);
     }
     convert_hashes_to_columns(mat, st, sht);
     mat->nc = mat->ncl + mat->ncr;
@@ -241,11 +241,11 @@ static void intermediate_reduce_basis(
     st->reduce_gb_ctime = ct1 - ct0;
     st->reduce_gb_rtime = rt1 - rt0;
     if (st->info_level > 1) {
-        printf("%13.2f sec\n", rt1-rt0);
+        fprintf(VERBSTREAM, "%13.2f sec\n", rt1-rt0);
     }
 
     if (st->info_level > 1) {
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------------------\n");
     }
 }
@@ -291,8 +291,8 @@ static void reduce_basis(
 
     /* generate hash <-> column mapping */
     if (md->info_level > 1) {
-        printf("reduce final basis ");
-        fflush(stdout);
+        fprintf(VERBSTREAM, "reduce final basis ");
+        fflush(VERBSTREAM);
     }
     convert_hashes_to_columns(mat, md, sht);
     mat->nc = mat->ncl + mat->ncr;
@@ -335,8 +335,8 @@ start:
 
     md->in_final_reduction_step = 0;
 
-    print_round_timings(stdout, md, rt, ct);
-    print_round_information_footer(stdout, md);
+    print_round_timings(VERBSTREAM, md, rt, ct);
+    print_round_information_footer(VERBSTREAM, md);
 }
 
 static int32_t initialize_f4(
@@ -433,7 +433,7 @@ static int32_t compute_new_elements(
     if (md->trace_level == APPLY_TRACER) {
         if (mat->np != md->tr->td[md->trace_rd].nlm) {
             if (md->info_level > 0) {
-                fprintf(stderr, "Wrong number of new elements, bad prime.");
+                fprintf(ERRSTREAM, "Wrong number of new elements, bad prime.");
             }
             *errp = 1;
             return 1;
@@ -454,7 +454,7 @@ static int32_t compute_new_elements(
         for (i = 0; i < md->np; ++i) {
             if (bs->hm[bs->ld+i][OFFSET] != md->tr->td[md->trace_rd].nlms[i]) {
                 if (md->info_level > 0) {
-                fprintf(stderr, "Wrong leading term for new element %u/%u, bad prime.",
+                fprintf(ERRSTREAM, "Wrong leading term for new element %u/%u, bad prime.",
                         i, mat->np);
                 }
                 *errp = 2;
@@ -602,8 +602,8 @@ static void reduce_final_basis(
 
         /* generate hash <-> column mapping */
         if (md->info_level > 1) {
-            printf("reduce final basis ");
-            fflush(stdout);
+            fprintf(VERBSTREAM, "reduce final basis ");
+            fflush(VERBSTREAM);
         }
         convert_hashes_to_columns(mat, md, sht);
         mat->nc = mat->ncl + mat->ncr;
@@ -629,8 +629,8 @@ static void reduce_final_basis(
         md->in_final_reduction_step = 0;
 
         /* timings */
-        print_round_timings(stdout, md, rt, ct);
-        print_round_information_footer(stdout, md);
+        print_round_timings(VERBSTREAM, md, rt, ct);
+        print_round_information_footer(VERBSTREAM, md);
     }
 }
 
@@ -691,7 +691,7 @@ bs_t *core_f4(
 
     /* let's start the f4 rounds, we are done when no more spairs
        are left in the pairset or if we found a constant in the basis. */
-    print_round_information_header(stdout, md);
+    print_round_information_header(VERBSTREAM, md);
 
     /* reset error */
     *errp = 0;
@@ -710,12 +710,12 @@ bs_t *core_f4(
             done = update(bs, md);
         }
 
-        print_round_timings(stdout, md, rrt, crt);
+        print_round_timings(VERBSTREAM, md, rrt, crt);
     }
     if (*errp > 0) {
         free_basis_and_only_local_hash_table_data(&bs);
     } else {
-        print_round_information_footer(stdout, md);
+        print_round_information_footer(VERBSTREAM, md);
 
         /* remove possible redudant elements */
         process_redundant_elements(bs, md);
@@ -726,7 +726,7 @@ bs_t *core_f4(
         md->f4_rtime = realtime() - rt;
         md->f4_ctime = cputime() - ct;
 
-        get_and_print_final_statistics(stdout, md, bs);
+        get_and_print_final_statistics(VERBSTREAM, md, bs);
 
         finalize_f4(gmd, gbs, &bs, &md, &mat, *errp);
     }
@@ -817,7 +817,7 @@ int64_t export_f4(
         return 1;
     }
     if (success == 0) {
-        fprintf(stderr,"Bad input data, stopped computation.\n");
+        fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
         exit(1);
     }
 
@@ -825,7 +825,7 @@ int64_t export_f4(
     bs = core_f4(bs, md, &err, field_char);
 
     if (err) {
-        fprintf(stderr,"Problem with F4, stopped computation.\n");
+        fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
         exit(1);
     }
 
@@ -838,7 +838,7 @@ int64_t export_f4(
     md->f4_ctime = ct1 - ct0;
     md->f4_rtime = rt1 - rt0;
 
-    get_and_print_final_statistics(stderr, md, bs);
+    get_and_print_final_statistics(ERRSTREAM, md, bs);
 
     /* free and clean up */
     free_shared_hash_data(bht);

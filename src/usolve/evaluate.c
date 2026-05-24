@@ -18,6 +18,8 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include "../msolve/streams.h"
+
 /* val / 2^(deg) is up(1/2) */
 static inline void mpz_upoly_eval_onehalf(mpz_t *up, unsigned long int deg,
                                              mpz_t *val){
@@ -95,7 +97,7 @@ static inline int sgn_mpz_poly_eval_at_point_naive(mpz_t *upoly, unsigned long i
 
 /*
   Evaluates upol at c/2^k using a Horner scheme
-  In the end, one has 
+  In the end, one has
   val/2(k*deg)=up(c / 2^k) */
 void mpz_poly_eval_2exp_naive(mpz_t *upol,
                               long int deg,
@@ -124,7 +126,7 @@ void mpz_poly_eval_2exp_naive(mpz_t *upol,
 
 /*
   Evaluates upol at c/2^k using a Horner scheme
-  In the end, one has 
+  In the end, one has
   val/2(k*deg)=up(c / 2^k) */
 void mpz_poly_eval_2exp_naive2(mpz_t *upol,
                               long int deg,
@@ -174,10 +176,10 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
   mpz_init(s);
 
   if(mpz_sgn(a) != mpz_sgn(b) && mpz_sgn(a) != 0 && mpz_sgn(b) != 0){
-    fprintf(stderr, "Entries of mpz_poly_eval_interval are incorrect\n");
-    fprintf(stderr, "a and b should have same sign");
-    mpz_out_str(stderr, 10, a);
-    mpz_out_str(stderr, 10, b);
+    fprintf(ERRSTREAM, "Entries of mpz_poly_eval_interval are incorrect\n");
+    fprintf(ERRSTREAM, "a and b should have same sign");
+    mpz_out_str(ERRSTREAM, 10, a);
+    mpz_out_str(ERRSTREAM, 10, b);
     mpz_clear(s);
     exit(1);
   }
@@ -205,7 +207,7 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
       }
 
       if(mpz_cmp(val_do, val_up) > 0){
-        fprintf(stderr, "BUG ici (den_do > den_up)\n");
+        fprintf(ERRSTREAM, "BUG ici (den_do > den_up)\n");
         exit(1);
       }
 
@@ -237,9 +239,9 @@ int mpz_poly_eval_interval(mpz_t *up, const long int deg, const long k,
       }
 
       if(mpz_cmp(val_do, val_up) > 0){
-        fprintf(stderr, "BUG ici2 (val_do > val_up)\n");
-        fprintf(stderr, "=> sign of val_do = %d\n", mpz_sgn(val_do));
-        fprintf(stderr, "=> sign of val_up = %d\n", mpz_sgn(val_up));
+        fprintf(ERRSTREAM, "BUG ici2 (val_do > val_up)\n");
+        fprintf(ERRSTREAM, "=> sign of val_do = %d\n", mpz_sgn(val_do));
+        fprintf(ERRSTREAM, "=> sign of val_up = %d\n", mpz_sgn(val_up));
         exit(1);
       }
     }
@@ -356,9 +358,9 @@ int lazy_mpz_poly_eval_interval(mpz_t *up, const long int deg,
     }
 
     if(mpz_cmp(fdo, fup) > 0){
-      fprintf(stderr, "BUG in preprocess eval (fdo > fup)\n");
-      mpz_out_str(stderr, 10, fdo); fprintf(stderr, "\n");
-      mpz_out_str(stderr, 10, fup); fprintf(stderr, "\n");
+      fprintf(ERRSTREAM, "BUG in preprocess eval (fdo > fup)\n");
+      mpz_out_str(ERRSTREAM, 10, fdo); fprintf(ERRSTREAM, "\n");
+      mpz_out_str(ERRSTREAM, 10, fup); fprintf(ERRSTREAM, "\n");
       exit(1);
     }
 
@@ -392,17 +394,17 @@ int lazy_mpz_poly_eval_interval(mpz_t *up, const long int deg,
 
 
     if(mpz_cmp(fdo, fup) > 0){
-      fprintf(stderr, "BUG in preprocess2 eval (fdo > fup)\n");
-      mpz_out_str(stderr, 10, xdo[j*b]); fprintf(stderr, "\n");
-      mpz_out_str(stderr, 10, xup[j*b]); fprintf(stderr, "\n");
-      fprintf(stderr, "cmp = %d\n", mpz_cmp(xdo[j*b], xup[j*b]));
+      fprintf(ERRSTREAM, "BUG in preprocess2 eval (fdo > fup)\n");
+      mpz_out_str(ERRSTREAM, 10, xdo[j*b]); fprintf(ERRSTREAM, "\n");
+      mpz_out_str(ERRSTREAM, 10, xup[j*b]); fprintf(ERRSTREAM, "\n");
+      fprintf(ERRSTREAM, "cmp = %d\n", mpz_cmp(xdo[j*b], xup[j*b]));
       exit(1);
     }
 
     if(mpz_cmp(val_do, val_up) > 0){
-      fprintf(stderr, "BUG in eval (val_do > val_up)\n");
-      mpz_out_str(stderr, 10, val_do); fprintf(stderr, "\n");
-      mpz_out_str(stderr, 10, val_up); fprintf(stderr, "\n");
+      fprintf(ERRSTREAM, "BUG in eval (val_do > val_up)\n");
+      mpz_out_str(ERRSTREAM, 10, val_do); fprintf(ERRSTREAM, "\n");
+      mpz_out_str(ERRSTREAM, 10, val_up); fprintf(ERRSTREAM, "\n");
       exit(1);
     }
   }
@@ -431,16 +433,16 @@ int lazy_mpz_poly_eval_interval(mpz_t *up, const long int deg,
     }
 
     if(mpz_cmp(fdo, fup) > 0){
-      fprintf(stderr, "BUG in preprocess3 init eval (fdo > fup)\n");
+      fprintf(ERRSTREAM, "BUG in preprocess3 init eval (fdo > fup)\n");
       exit(1);
     }
 
     if(mpz_cmp(val_do, val_up) > 0){
-      fprintf(stderr, "BUG in eval (val_do > val_up)\n");
+      fprintf(ERRSTREAM, "BUG in eval (val_do > val_up)\n");
       exit(1);
     }
     if(mpz_cmp(fdo, fup) > 0){
-      fprintf(stderr, "BUG in preprocess3 init0 eval (fdo > fup)\n");
+      fprintf(ERRSTREAM, "BUG in preprocess3 init0 eval (fdo > fup)\n");
       exit(1);
     }
 

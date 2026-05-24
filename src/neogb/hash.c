@@ -20,6 +20,7 @@
 
 
 #include "hash.h"
+#include "../msolve/streams.h"
 
 /* we have three different hash tables:
  * 1. one hash table for elements in the basis (bht)
@@ -108,16 +109,16 @@ ht_t *initialize_basis_hash_table(
     ht->hd  = (hd_t *)calloc(ht->esz, sizeof(hd_t));
     ht->ev  = (exp_t **)malloc(ht->esz * sizeof(exp_t *));
     if (ht->ev == NULL) {
-        fprintf(stderr, "Computation needs too much memory on this machine,\n");
-        fprintf(stderr, "could not initialize exponent vector for hash table,\n");
-        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
+        fprintf(ERRSTREAM, "Computation needs too much memory on this machine,\n");
+        fprintf(ERRSTREAM, "could not initialize exponent vector for hash table,\n");
+        fprintf(ERRSTREAM, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
             (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
-        fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
-        fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
-        fprintf(stderr, "segmentation fault will follow.\n");
+        fprintf(ERRSTREAM, "Exponent storage needs too much memory on this machine,\n");
+        fprintf(ERRSTREAM, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
+        fprintf(ERRSTREAM, "segmentation fault will follow.\n");
     }
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {
@@ -157,16 +158,16 @@ ht_t *copy_hash_table(
     memcpy(ht->hd, bht->hd, (unsigned long)ht->esz * sizeof(hd_t));
     ht->ev  = (exp_t **)malloc(ht->esz * sizeof(exp_t *));
     if (ht->ev == NULL) {
-        fprintf(stderr, "Computation needs too much memory on this machine,\n");
-        fprintf(stderr, "could not initialize exponent vector for hash table,\n");
-        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
+        fprintf(ERRSTREAM, "Computation needs too much memory on this machine,\n");
+        fprintf(ERRSTREAM, "could not initialize exponent vector for hash table,\n");
+        fprintf(ERRSTREAM, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
             (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
-        fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
-        fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
-        fprintf(stderr, "segmentation fault will follow.\n");
+        fprintf(ERRSTREAM, "Exponent storage needs too much memory on this machine,\n");
+        fprintf(ERRSTREAM, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
+        fprintf(ERRSTREAM, "segmentation fault will follow.\n");
     }
     memcpy(tmp, bht->ev[0], (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
     ht->eld = bht->eld;
@@ -185,7 +186,7 @@ ht_t *initialize_secondary_hash_table(
 {
     hl_t j;
 
-    ht_t *ht  = (ht_t *)malloc(sizeof(ht_t)); 
+    ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
     ht->nv    = bht->nv;
     ht->evl   = bht->evl;
     ht->ebl   = bht->ebl;
@@ -209,16 +210,16 @@ ht_t *initialize_secondary_hash_table(
     ht->hd  = (hd_t *)calloc(ht->esz, sizeof(hd_t));
     ht->ev  = (exp_t **)malloc(ht->esz * sizeof(exp_t *));
     if (ht->ev == NULL) {
-        fprintf(stderr, "Computation needs too much memory on this machine,\n");
-        fprintf(stderr, "could not initialize exponent vector for hash table,\n");
-        fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
+        fprintf(ERRSTREAM, "Computation needs too much memory on this machine,\n");
+        fprintf(ERRSTREAM, "could not initialize exponent vector for hash table,\n");
+        fprintf(ERRSTREAM, "esz = %lu, segmentation fault will follow.\n", (unsigned long)ht->esz);
     }
     exp_t *tmp  = (exp_t *)malloc(
             (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
     if (tmp == NULL) {
-        fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
-        fprintf(stderr, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
-        fprintf(stderr, "segmentation fault will follow.\n");
+        fprintf(ERRSTREAM, "Exponent storage needs too much memory on this machine,\n");
+        fprintf(ERRSTREAM, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
+        fprintf(ERRSTREAM, "segmentation fault will follow.\n");
     }
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {
@@ -327,16 +328,16 @@ static void enlarge_hash_table(
     memset(ht->hd+eld, 0, (esz-eld) * sizeof(hd_t));
     ht->ev    = realloc(ht->ev, esz * sizeof(exp_t *));
     if (ht->ev == NULL) {
-        fprintf(stderr, "Enlarging hash table failed for esz = %lu,\n", (unsigned long)esz);
-        fprintf(stderr, "segmentation fault will follow.\n");
+        fprintf(ERRSTREAM, "Enlarging hash table failed for esz = %lu,\n", (unsigned long)esz);
+        fprintf(ERRSTREAM, "segmentation fault will follow.\n");
     }
     /* note: memory is allocated as one big block, so reallocating
      *       memory from ev[0] is enough    */
     ht->ev[0] = realloc(ht->ev[0],
             esz * (unsigned long)ht->evl * sizeof(exp_t));
     if (ht->ev[0] == NULL) {
-        fprintf(stderr, "Enlarging exponent vector for hash table failed\n");
-        fprintf(stderr, "for esz = %lu, segmentation fault will follow.\n", (unsigned long)esz);
+        fprintf(ERRSTREAM, "Enlarging exponent vector for hash table failed\n");
+        fprintf(ERRSTREAM, "for esz = %lu, segmentation fault will follow.\n", (unsigned long)esz);
     }
     /* due to realloc we have to reset ALL ev entries,
      * memory might have been moved */
@@ -354,8 +355,8 @@ static void enlarge_hash_table(
         const hl_t hsz  = ht->hsz;
         ht->hmap  = realloc(ht->hmap, hsz * sizeof(hi_t));
         if (ht->hmap == NULL) {
-            fprintf(stderr, "Enlarging hash table failed for hsz = %lu,\n", (unsigned long)hsz);
-            fprintf(stderr, "segmentation fault will follow.\n");
+            fprintf(ERRSTREAM, "Enlarging hash table failed for hsz = %lu,\n", (unsigned long)hsz);
+            fprintf(ERRSTREAM, "segmentation fault will follow.\n");
         }
         memset(ht->hmap, 0, hsz * sizeof(hi_t));
         const hi_t mod =  (hi_t )(hsz-1);
@@ -377,12 +378,12 @@ static void enlarge_hash_table(
         }
     } else {
         if (ht->hsz == (hl_t)pow(2,32)) {
-          printf("Exponent space is now 2^32 elements wide, we cannot\n");
-          printf("enlarge the hash table any further, thus fill in gets\n");
-          printf("over 50%% and performance of hashing may get worse.\n");
+          fprintf(ERRSTREAM, "Exponent space is now 2^32 elements wide, we cannot\n");
+          fprintf(ERRSTREAM, "enlarge the hash table any further, thus fill in gets\n");
+          fprintf(ERRSTREAM, "over 50%% and performance of hashing may get worse.\n");
         } else {
-          printf("Hash table is full, we can no longer enlarge\n");
-          printf("Segmentation fault will follow.\n");
+          fprintf(ERRSTREAM, "Hash table is full, we can no longer enlarge\n");
+          fprintf(ERRSTREAM, "Segmentation fault will follow.\n");
           free(ht->hmap);
           ht->hmap  = NULL;
         }
@@ -409,7 +410,7 @@ static inline sdm_t generate_short_divmask(
       ctr++;
     }
   }
- 
+
   return res;
 }
 
@@ -892,18 +893,18 @@ static inline void reinitialize_hash_table(
         ht->hd  = realloc(ht->hd, esz * sizeof(hd_t));
         ht->ev  = realloc(ht->ev, esz * sizeof(exp_t *));
         if (ht->ev == NULL) {
-            fprintf(stderr, "Computation needs too much memory on this machine,\n");
-            fprintf(stderr, "could not reinitialize exponent vector for hash table,\n");
-            fprintf(stderr, "esz = %lu, segmentation fault will follow.\n", (unsigned long)esz);
+            fprintf(ERRSTREAM, "Computation needs too much memory on this machine,\n");
+            fprintf(ERRSTREAM, "could not reinitialize exponent vector for hash table,\n");
+            fprintf(ERRSTREAM, "esz = %lu, segmentation fault will follow.\n", (unsigned long)esz);
         }
         /* note: memory is allocated as one big block, so reallocating
          *       memory from evl[0] is enough    */
         ht->ev[0]  = realloc(ht->ev[0],
                 esz * (unsigned long)evl * sizeof(exp_t));
         if (ht->ev[0] == NULL) {
-            fprintf(stderr, "Exponent storage needs too much memory on this machine,\n");
-            fprintf(stderr, "reinitialization failed, esz = %lu\n", (unsigned long)esz);
-            fprintf(stderr, "segmentation fault will follow.\n");
+            fprintf(ERRSTREAM, "Exponent storage needs too much memory on this machine,\n");
+            fprintf(ERRSTREAM, "reinitialization failed, esz = %lu\n", (unsigned long)esz);
+            fprintf(ERRSTREAM, "segmentation fault will follow.\n");
         }
         /* due to realloc we have to reset ALL evl entries, memory might be moved */
         for (i = 1; i < esz; ++i) {
@@ -1076,7 +1077,7 @@ static inline void insert_in_basis_hash_table_pivots(
 
     /* const hd_t * const hds    = sht->hd; */
     exp_t * const * const evs = sht->ev;
-    
+
     exp_t *evt  = (exp_t *)malloc((unsigned long)evl * sizeof(exp_t));
     for (l = OFFSET; l < len; ++l) {
         memcpy(evt, evs[hcm[row[l]]],
@@ -1125,7 +1126,7 @@ static inline void insert_multiplied_poly_in_hash_table(
 
     exp_t * const *ev1      = ht1->ev;
     /* const hd_t * const hd1  = ht1->hd; */
-    
+
     exp_t **ev2     = ht2->ev;
 
     l = OFFSET;
@@ -1254,16 +1255,16 @@ static void reset_hash_table(
 
     ht->ev  = calloc(esz, sizeof(exp_t *));
     if (ht->ev == NULL) {
-        fprintf(stderr, "Computation needs too much memory on this machine,\n");
-        fprintf(stderr, "cannot reset ht->ev, esz = %lu\n", (unsigned long)esz);
-        fprintf(stderr, "segmentation fault will follow.\n");
+        fprintf(ERRSTREAM, "Computation needs too much memory on this machine,\n");
+        fprintf(ERRSTREAM, "cannot reset ht->ev, esz = %lu\n", (unsigned long)esz);
+        fprintf(ERRSTREAM, "segmentation fault will follow.\n");
     }
     exp_t *tmp  = (exp_t *)malloc(
             (unsigned long)evl * esz * sizeof(exp_t));
     if (tmp == NULL) {
-        fprintf(stderr, "Computation needs too much memory on this machine,\n");
-        fprintf(stderr, "resetting table failed, esz = %lu\n", (unsigned long)esz);
-        fprintf(stderr, "segmentation fault will follow.\n");
+        fprintf(ERRSTREAM, "Computation needs too much memory on this machine,\n");
+        fprintf(ERRSTREAM, "resetting table failed, esz = %lu\n", (unsigned long)esz);
+        fprintf(ERRSTREAM, "segmentation fault will follow.\n");
     }
     for (k = 0; k < esz; ++k) {
         ht->ev[k]  = tmp + k*evl;

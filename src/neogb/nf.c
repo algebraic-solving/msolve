@@ -20,6 +20,7 @@
 
 
 #include "nf.h"
+#include "../msolve/streams.h"
 /* 31-bit implementation only at the moment */
 void get_normal_form_matrix(
         const bs_t * const tbr,
@@ -95,8 +96,8 @@ bs_t *core_nf(
      * so we do not need the rows anymore */
     clear_matrix(mat);
 
-    print_round_timings(stdout, md, rt, ct);
-    print_round_information_footer(stdout, md);
+    print_round_timings(VERBSTREAM, md, rt, ct);
+    print_round_information_footer(VERBSTREAM, md);
 
     /* free and clean up */
     free(md->hcm);
@@ -164,7 +165,7 @@ int64_t export_nf(
         return 1;
     }
     if (success == 0) {
-        fprintf(stderr,"Bad input data, stopped computation.\n");
+        fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
         exit(1);
     }
     if (bs_is_gb == 1) {
@@ -178,7 +179,7 @@ int64_t export_nf(
         bs = core_gba(bs, md, &err, md->fc);
 
         if (err) {
-            fprintf(stderr,"Problem with F4, stopped computation.\n");
+            fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
             exit(1);
         }
     }
@@ -197,7 +198,7 @@ int64_t export_nf(
     tbr = core_nf(tbr, md, mul, bs, &err);
 
     if (err) {
-        fprintf(stderr,"Problem with normalform, stopped computation.\n");
+        fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
         exit(1);
     }
 
@@ -208,7 +209,7 @@ int64_t export_nf(
     md->nf_ctime = cputime() - ct;
     md->nf_rtime = realtime() - rt;
 
-    get_and_print_final_statistics(stderr, md, tbr);
+    get_and_print_final_statistics(ERRSTREAM, md, tbr);
 
     /* free and clean up */
     free_shared_hash_data(bht);

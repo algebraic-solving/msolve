@@ -25,6 +25,7 @@
 #include <flint/nmod_poly.h>
 #include <flint/nmod_poly_factor.h>
 #include <flint/ulong_extras.h>
+#include "../msolve/streams.h"
 
 
 static inline void free_sp_mat_fglm(sp_matfglm_t *mat){
@@ -44,22 +45,22 @@ static inline fglm_data_t *allocate_fglm_data(szmat_t nrows, szmat_t ncols, szma
   szmat_t block_size = nvars; //block size in data->res
 
   if(posix_memalign((void **)&data->vecinit, 32, ncols*sizeof(CF_t))){
-    fprintf(stderr, "posix_memalign failed\n");
+    fprintf(ERRSTREAM, "posix_memalign failed\n");
     exit(1);
   }
 
   if(posix_memalign((void **)&data->res, 32, 2 * block_size * ncols * sizeof(CF_t))){
-    fprintf(stderr, "posix_memalign failed\n");
+    fprintf(ERRSTREAM, "posix_memalign failed\n");
     exit(1);
   }
 
   if(posix_memalign((void **)&data->vecmult, 32, nrows*sizeof(CF_t))){
-    fprintf(stderr, "posix_memalign failed\n");
+    fprintf(ERRSTREAM, "posix_memalign failed\n");
     exit(1);
   }
 
   if(posix_memalign((void **)&data->vvec, 32, ncols*sizeof(CF_t))){
-    fprintf(stderr, "posix_memalign failed\n");
+    fprintf(ERRSTREAM, "posix_memalign failed\n");
     exit(1);
   }
   data->pts = calloc(ncols * 2, sizeof(mp_limb_t));
@@ -148,7 +149,7 @@ static inline void display_fglm_colon_matrix(FILE *file, sp_matfglmcol_t *matrix
 static inline param_t *allocate_fglm_param(mp_limb_t prime, long nvars){
   param_t *param = malloc(sizeof(param_t));
   if(param==NULL){
-    fprintf(stderr, "Pb when calling malloc to allocate param_t\n");
+    fprintf(ERRSTREAM, "Pb when calling malloc to allocate param_t\n");
     exit(1);
     return param;
   }

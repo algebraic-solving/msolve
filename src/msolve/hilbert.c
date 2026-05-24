@@ -21,6 +21,7 @@
 #include "../fglm/data_fglm.c"
 #include "../fglm/libfglm.h"
 #include "../neogb/meta_data.h"
+#include "streams.h"
 #define REDUCTION_ALLINONE 1
 
 void print_fglm_header(
@@ -244,7 +245,7 @@ static inline int32_t *monomial_basis(long length, long nvars,
   int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
-  fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+  fprintf(ERRSTREAM, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
   int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
@@ -252,14 +253,14 @@ static inline int32_t *monomial_basis(long length, long nvars,
                                                basis, new_basis,
                                                length, bexp_lm);
 #ifdef DEBUGHILBERT
-  //  display_monomials_from_array(stderr, new_length, new_basis, gens);
-  fprintf(stderr, "%ld new elements.\n", new_length);
+  //  display_monomials_from_array(ERRSTREAM, new_length, new_basis, gens);
+  fprintf(ERRSTREAM, "%ld new elements.\n", new_length);
 #endif
   while(new_length>0){
     int32_t *basis2 = realloc(basis,
                               ((*dquot) + new_length) * nvars * sizeof(int32_t));
     if(basis2==NULL){
-      fprintf(stderr, "Issue with realloc\n");
+      fprintf(ERRSTREAM, "Issue with realloc\n");
       exit(1);
     }
 
@@ -274,16 +275,16 @@ static inline int32_t *monomial_basis(long length, long nvars,
     (*dquot) += new_length;
 
 #ifdef DEBUGHILBERT
-    fprintf(stderr, "Update indices\n");
-    for(long i = 0; i < nvars; i++) fprintf(stderr, "%ld ", ind[i]);
-    fprintf(stderr, "\n");
-    fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+    fprintf(ERRSTREAM, "Update indices\n");
+    for(long i = 0; i < nvars; i++) fprintf(ERRSTREAM, "%ld ", ind[i]);
+    fprintf(ERRSTREAM, "\n");
+    fprintf(ERRSTREAM, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
     int32_t *new_basis2 = realloc(new_basis,
                                  sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
     if(new_basis2==NULL){
-      fprintf(stderr, "Issue with realloc\n");
+      fprintf(ERRSTREAM, "Issue with realloc\n");
       exit(1);
     }
     new_basis=new_basis2;
@@ -291,7 +292,7 @@ static inline int32_t *monomial_basis(long length, long nvars,
                                          basis, new_basis,
                                          length, bexp_lm);
 #ifdef DEBUGHILBERT
-    fprintf(stderr, "%ld new elements.\n", new_length);
+    fprintf(ERRSTREAM, "%ld new elements.\n", new_length);
 #endif
   }
 
@@ -314,7 +315,7 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   (*dquot) = 0;
 
   if(is_divisible_lexp(nvars, length, (basis), bexp_lm)){
-    fprintf(stderr, "Stop\n");
+    fprintf(ERRSTREAM, "Stop\n");
     free(basis);
     return NULL;
   }
@@ -324,7 +325,7 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
   int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
-  fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+  fprintf(ERRSTREAM, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
 
@@ -333,14 +334,14 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
                                             basis, new_basis,
                                             length, bexp_lm);
 #ifdef DEBUGHILBERT
-  display_monomials_from_array(stderr, new_length, new_basis, gens);
-  fprintf(stderr, "%ld new elements.\n", new_length);
+  display_monomials_from_array(ERRSTREAM, new_length, new_basis, gens);
+  fprintf(ERRSTREAM, "%ld new elements.\n", new_length);
 #endif
   long deg = 1;
   while(new_length>0 && deg <= maxdeg){
     int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t));
     if(basis2==NULL){
-      fprintf(stderr, "Issue with realloc\n");
+      fprintf(ERRSTREAM, "Issue with realloc\n");
       exit(1);
     }
 
@@ -355,16 +356,16 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
     (*dquot) += new_length;
 
 #ifdef DEBUGHILBERT
-    fprintf(stderr, "Update indices\n");
-    for(long i = 0; i < nvars; i++) fprintf(stderr, "%ld ", ind[i]);
-    fprintf(stderr, "\n");
-    fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+    fprintf(ERRSTREAM, "Update indices\n");
+    for(long i = 0; i < nvars; i++) fprintf(ERRSTREAM, "%ld ", ind[i]);
+    fprintf(ERRSTREAM, "\n");
+    fprintf(ERRSTREAM, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
     int32_t *new_basis2 = realloc(new_basis,
                                  sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
     if(new_basis==NULL){
-      fprintf(stderr, "Issue with realloc\n");
+      fprintf(ERRSTREAM, "Issue with realloc\n");
       exit(1);
     }
     new_basis=new_basis2;
@@ -372,7 +373,7 @@ static inline int32_t *monomial_basis_colon(long length, long nvars,
                                          basis, new_basis,
                                          length, bexp_lm);
 #ifdef DEBUGHILBERT
-    fprintf(stderr, "%ld new elements.\n", new_length);
+    fprintf(ERRSTREAM, "%ld new elements.\n", new_length);
 #endif
     deg++;
   }
@@ -395,7 +396,7 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
   (*dquot) = 0;
 
   if(is_divisible_lexp(nvars, length, (basis), bexp_lm)){
-    fprintf(stderr, "Stop\n");
+    fprintf(ERRSTREAM, "Stop\n");
     free(basis);
     return NULL;
   }
@@ -405,7 +406,7 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
   int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
-  fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+  fprintf(ERRSTREAM, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
   int32_t *new_basis = malloc(sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
@@ -413,14 +414,14 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
                                             basis, new_basis,
                                             length, bexp_lm);
 #ifdef DEBUGHILBERT
-  display_monomials_from_array(stderr, new_length, new_basis, gens);
-  fprintf(stderr, "%ld new elements.\n", new_length);
+  display_monomials_from_array(ERRSTREAM, new_length, new_basis, gens);
+  fprintf(ERRSTREAM, "%ld new elements.\n", new_length);
 #endif
   long deg = 1;
   while(new_length>0 && deg <= maxdeg){
     int32_t *basis2 = realloc(basis, ((*dquot) + new_length) * nvars * sizeof(int32_t));
     if(basis2==NULL){
-      fprintf(stderr, "Issue with realloc\n");
+      fprintf(ERRSTREAM, "Issue with realloc\n");
       exit(1);
     }
 
@@ -435,16 +436,16 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
     (*dquot) += new_length;
 
 #ifdef DEBUGHILBERT
-    fprintf(stderr, "Update indices\n");
-    for(long i = 0; i < nvars; i++) fprintf(stderr, "%ld ", ind[i]);
-    fprintf(stderr, "\n");
-    fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+    fprintf(ERRSTREAM, "Update indices\n");
+    for(long i = 0; i < nvars; i++) fprintf(ERRSTREAM, "%ld ", ind[i]);
+    fprintf(ERRSTREAM, "\n");
+    fprintf(ERRSTREAM, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
     int32_t *new_basis2 = realloc(new_basis,
                                  sizeof(int32_t) * nvars * (sum(ind, nvars) + nvars));
     if(new_basis==NULL){
-      fprintf(stderr, "Issue with realloc\n");
+      fprintf(ERRSTREAM, "Issue with realloc\n");
       exit(1);
     }
     new_basis=new_basis2;
@@ -452,7 +453,7 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
                                          basis, new_basis,
                                          length, bexp_lm);
 #ifdef DEBUGHILBERT
-    fprintf(stderr, "%ld new elements.\n", new_length);
+    fprintf(ERRSTREAM, "%ld new elements.\n", new_length);
 #endif
     deg++;
   }
@@ -473,7 +474,7 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
     }
   }
   if (new_dquot == 0) {
-    fprintf(stderr, "Vector space is too small\n");
+    fprintf(ERRSTREAM, "Vector space is too small\n");
     exit(1);
   }
   *dquot= new_dquot;
@@ -683,21 +684,21 @@ static inline void copy_poly_in_matrix_old(data_gens_ff_t *gens,
   }
   else{
     long i;
-    fprintf(stderr, "\n");
-    fprintf(stderr, "\n");
-    display_monomial_full(stderr, gens->nvars, NULL, 0, (*bexp) + (start+1)*gens->nvars);
-    fprintf(stderr, ", ");
-    display_monomial_full(stderr, gens->nvars, NULL, 0, lmb + ((end-start-2))*gens->nvars);
-    fprintf(stderr, ", ");
-    display_monomial_full(stderr, gens->nvars, NULL, 0, lmb + ((end-start-1))*gens->nvars);
-    fprintf(stderr, ", ");
-    display_monomial_full(stderr, gens->nvars, NULL, 0, lmb + ((end-start-3))*gens->nvars);
-    fprintf(stderr, "\n");
-    fprintf(stderr, "\n");
+    fprintf(ERRSTREAM, "\n");
+    fprintf(ERRSTREAM, "\n");
+    display_monomial_full(ERRSTREAM, gens->nvars, NULL, 0, (*bexp) + (start+1)*gens->nvars);
+    fprintf(ERRSTREAM, ", ");
+    display_monomial_full(ERRSTREAM, gens->nvars, NULL, 0, lmb + ((end-start-2))*gens->nvars);
+    fprintf(ERRSTREAM, ", ");
+    display_monomial_full(ERRSTREAM, gens->nvars, NULL, 0, lmb + ((end-start-1))*gens->nvars);
+    fprintf(ERRSTREAM, ", ");
+    display_monomial_full(ERRSTREAM, gens->nvars, NULL, 0, lmb + ((end-start-3))*gens->nvars);
+    fprintf(ERRSTREAM, "\n");
+    fprintf(ERRSTREAM, "\n");
     for(i=(matrix->ncols)-1; i >= 0; i--){
-      display_monomial_full(stderr, gens->nvars, NULL, 0, (*bexp) + (start+1)*gens->nvars);fprintf(stderr, ", ");
-      display_monomial_full(stderr, gens->nvars, NULL, 0, lmb + (i*gens->nvars));
-      fprintf(stderr, "\n");
+      display_monomial_full(ERRSTREAM, gens->nvars, NULL, 0, (*bexp) + (start+1)*gens->nvars);fprintf(ERRSTREAM, ", ");
+      display_monomial_full(ERRSTREAM, gens->nvars, NULL, 0, lmb + (i*gens->nvars));
+      fprintf(ERRSTREAM, "\n");
       if(is_equal_exponent((*bexp) + (start+1)*gens->nvars,
                            lmb+(i*gens->nvars),
                            gens->nvars))
@@ -710,9 +711,9 @@ static inline void copy_poly_in_matrix_old(data_gens_ff_t *gens,
       }
     }
     else{
-      fprintf(stderr, "Some coefficients are null\n");
-      fprintf(stderr, "i + 1 = %ld\n", i + 1);
-      fprintf(stderr, "end - start - 1 = %ld\n", end - start - 1);
+      fprintf(ERRSTREAM, "Some coefficients are null\n");
+      fprintf(ERRSTREAM, "i + 1 = %ld\n", i + 1);
+      fprintf(ERRSTREAM, "end - start - 1 = %ld\n", end - start - 1);
       exit(1);
     }
   }
@@ -736,15 +737,15 @@ static inline void copy_poly_in_matrix(sp_matfglm_t* matrix,
   long end = start + pos;//(*blen)[pos];
 
 #if DEBUGBUILDMATRIX > 1
-  fprintf(stderr, "\nstart = %ld, end = %ld\n", start, end);
+  fprintf(ERRSTREAM, "\nstart = %ld, end = %ld\n", start, end);
   for(j = start; j < end; j++){
-    //    display_term(stderr, j, gens, blen, bcf, bexp);
+    //    display_term(ERRSTREAM, j, gens, blen, bcf, bexp);
     if(j < end - 1){
     //    if(j < (*blen)[pos] - 1){
-      fprintf(stderr, "+");
+      fprintf(ERRSTREAM, "+");
     }
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
 
   long N = nrows * (matrix->ncols) - (start + 1);
@@ -789,15 +790,15 @@ copy_poly_in_matrixcol(sp_matfglmcol_t* matrix, long nrows,
   long end = start + pos;//(*blen)[pos];
 
 #if DEBUGBUILDMATRIX > 0
-  fprintf(stderr, "\nstart = %ld, end = %ld\n", start, end);
+  fprintf(ERRSTREAM, "\nstart = %ld, end = %ld\n", start, end);
   for(j = start; j < end; j++){
-    //    display_term(stderr, j, gens, blen, bcf, bexp);
+    //    display_term(ERRSTREAM, j, gens, blen, bcf, bexp);
     if(j < end - 1){
     //    if(j < (*blen)[pos] - 1){
-      fprintf(stderr, "+");
+      fprintf(ERRSTREAM, "+");
     }
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   long N = nrows * (matrix->ncols) - (start + 1);
 
@@ -839,15 +840,15 @@ copy_poly_in_matrixcol_no_zero(sp_matfglmcol_t* matrix, long nrows,
 
 #if DEBUGBUILDMATRIX > 0
   int32_t j;
-  fprintf(stderr, "\nstart = %ld, end = %ld\n", start, end);
+  fprintf(ERRSTREAM, "\nstart = %ld, end = %ld\n", start, end);
   for(j = start; j < end; j++){
-    //    display_term(stderr, j, gens, blen, bcf, bexp);
+    //    display_term(ERRSTREAM, j, gens, blen, bcf, bexp);
     if(j < end - 1){
     //    if(j < (*blen)[pos] - 1){
-      fprintf(stderr, "+");
+      fprintf(ERRSTREAM, "+");
     }
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   long i;
   long N = nrows * matrix->ncols ;
@@ -1316,7 +1317,7 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
   int32_t *ind = calloc(nvars, sizeof(int32_t));
 
 #ifdef DEBUGHILBERT
-  fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+  fprintf(ERRSTREAM, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
   uint64_t len_newbs = nvars * (sum(ind, nvars) + nvars);
 
@@ -1327,15 +1328,15 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
 
   deg++;
 #ifdef DEBUGHILBERT
-  //  display_monomials_from_array(stderr, new_length, new_basis, gens);
-  fprintf(stderr, "%ld new elements.\n", new_length);
+  //  display_monomials_from_array(ERRSTREAM, new_length, new_basis, gens);
+  fprintf(ERRSTREAM, "%ld new elements.\n", new_length);
 #endif
 
   while(new_length>0 && deg <= maxdeg){
     int32_t *basis2 = realloc(basis,
                               ((*dquot) + new_length) * (nvars) * sizeof(int32_t));
     if(basis2==NULL){
-      fprintf(stderr, "Issue with realloc\n");
+      fprintf(ERRSTREAM, "Issue with realloc\n");
       exit(1);
     }
 
@@ -1353,10 +1354,10 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
     (*dquot) += new_length;
 
 #ifdef DEBUGHILBERT
-    fprintf(stderr, "Update indices\n");
-    for(long i = 0; i < nvars; i++) fprintf(stderr, "%ld ", ind[i]);
-    fprintf(stderr, "\n");
-    fprintf(stderr, "new = %ld \n", sum(ind, nvars) + nvars);
+    fprintf(ERRSTREAM, "Update indices\n");
+    for(long i = 0; i < nvars; i++) fprintf(ERRSTREAM, "%ld ", ind[i]);
+    fprintf(ERRSTREAM, "\n");
+    fprintf(ERRSTREAM, "new = %ld \n", sum(ind, nvars) + nvars);
 #endif
 
     len_newbs = nvars * (sum(ind, nvars) + nvars);
@@ -1364,7 +1365,7 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
     int32_t *new_basis2 = realloc(new_basis,
                                   sizeof(int32_t) * len_newbs);
     if(new_basis==NULL){
-      fprintf(stderr, "Issue with realloc\n");
+      fprintf(ERRSTREAM, "Issue with realloc\n");
       exit(1);
     }
     new_basis=new_basis2;
@@ -1375,7 +1376,7 @@ static inline int32_t *monomial_basis_enlarged(long length, long nvars,
     deg++;
 
 #ifdef DEBUGHILBERT
-    fprintf(stderr, "%ld new elements.\n", new_length);
+    fprintf(ERRSTREAM, "%ld new elements.\n", new_length);
 #endif
   }
 
@@ -1410,12 +1411,12 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
   long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn);
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the staircase) which are divisible by x_n = %ld\n", len_xn);
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the staircase) which are divisible by x_n = %ld\n", len_xn);
   for(long i=0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", div_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
 
   /* lengths of the polys which we need to build the matrix */
@@ -1436,11 +1437,11 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
   }
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
+  fprintf(ERRSTREAM, "Length of polynomials whose leading terms are divisible by x_n\n");
   for(long i = 0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", len_gb_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
@@ -1450,7 +1451,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
   long len2 = dquot - len_xn;
 
   if(posix_memalign((void **)&(matrix->dense_mat), 32, sizeof(CF_t)*len1)){
-    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
     exit(1);
   }
   else{
@@ -1459,7 +1460,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
     }
   }
   if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
@@ -1468,7 +1469,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
     }
   }
   if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
     exit(1);
   }
   else{
@@ -1477,7 +1478,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
     }
   }
   if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len_xn)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -1486,7 +1487,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
     }
   }
   if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len_xn)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -1504,11 +1505,11 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
-    display_monomial_full(stderr, nv, NULL, 0, exp);
+    display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
 #endif
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => remains in monomial basis\n");
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
       /* mult by xn stays in the basis */
       matrix->triv_idx[l_triv] = i;
@@ -1519,7 +1520,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
     else{
       /* we get now outside the basis */
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => does NOT remain in monomial basis\n");
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis\n");
 #endif
       matrix->dense_idx[l_dens] = i;
       l_dens++;
@@ -1530,7 +1531,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
         nrows++;
         count++;
         if(len_xn < count && i < dquot){
-          fprintf(stderr, "One should not arrive here (build_matrix)\n");
+          fprintf(ERRSTREAM, "One should not arrive here (build_matrix)\n");
           free(matrix->dense_mat);
           free(matrix->dense_idx);
           free(matrix->triv_idx);
@@ -1544,10 +1545,10 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
         }
       }
       else{
-        fprintf(stderr, "\nStaircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
-        display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(ERRSTREAM, "\nStaircase is not generic\n");
+        fprintf(ERRSTREAM, "Multiplication by ");
+        display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+        fprintf(ERRSTREAM, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -1635,21 +1636,21 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 				   &len_not_xn,maxdeg+1);
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the Gb) "
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
 	  "and with bounded degree: %ld\n", len_xn);
   for(long i=0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", div_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_xn[i]);
   }
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the Gb) "
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the Gb) "
 	  "which are not divisible by x_n "
 	  "and with bounded degree: %ld\n", len_not_xn);
   for(long i=0; i < len_not_xn; i++){
-    fprintf(stderr, "%d, ", div_not_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_not_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   long count_lm = 0;
   /* list of monomials in the staircase that leave the staircase after
@@ -1666,20 +1667,20 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	int32_t *exp = lmb + (i * nv);
 	if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX>0
-	  display_monomial_full(stderr, nv, NULL, 0, exp);
-	  fprintf(stderr, " => remains in monomial basis\n");
+	  display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+	  fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
 	}
 	else{
 	  /* we get now outside the basis */
 #if DEBUGBUILDMATRIX > 0
-	  display_monomial_full(stderr, nv, NULL, 0, exp);
-	  fprintf(stderr, " => does NOT remain in monomial basis");
+	  display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+	  fprintf(ERRSTREAM, " => does NOT remain in monomial basis");
 #endif
 	  if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count_lm])*nv, nv)){
 	    count_lm++;
 #if DEBUGBUILDMATRIX > 0
-	    fprintf(stderr, " => lands on a leading monomial\n");
+	    fprintf(ERRSTREAM, " => lands on a leading monomial\n");
 #endif
 	  }
 	  else{
@@ -1689,7 +1690,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 		extra_nf[count_not_lm]=i;
 		count_not_lm++;
 #if DEBUGBUILDMATRIX > 0
-		fprintf(stderr, " => lands on a MULTIPLE of a leading monomial\n");
+		fprintf(ERRSTREAM, " => lands on a MULTIPLE of a leading monomial\n");
 #endif
 		is_divisible = 1;
 		break;
@@ -1697,7 +1698,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	    }
 	    if (!is_divisible) {
 #if DEBUGBUILDMATRIX > 0
-	      fprintf(stderr, " => lands on 0\n");
+	      fprintf(ERRSTREAM, " => lands on 0\n");
 #endif
 	      zeronf[count_zero]=i;
 	      count_zero++;
@@ -1761,16 +1762,16 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
   /* printf ("polynomials to be reduced\n"); */
-  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
+  /* print_msolve_polynomials_ff(VERBSTREAM, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
   int32_t err = 0;
   tbr = core_nf(tbr, st, mul, bs, &err);
   if (err) {
-    fprintf(stderr,"Problem with normalform, stopped computation.\n");
+    fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
     exit(1);
   }
   /* printf ("reductions\n"); */
-  /* print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht, */
+  /* print_msolve_polynomials_ff(VERBSTREAM, tobereduced, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
 #endif
   printf ("Number of zero normal forms: %ld\n",count_zero);
@@ -1791,11 +1792,11 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
 
 #if DEBUGBUILDMATRIX > 0
-  fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
+  fprintf(ERRSTREAM, "Length of polynomials whose leading terms are divisible by x_n\n");
   for(long i = 0; i < len_xn-1; i++){
-    fprintf(stderr, "%u, ", len_gb_xn[i]);
+    fprintf(ERRSTREAM, "%u, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "%u\n", len_gb_xn[len_xn-1]);
+  fprintf(ERRSTREAM, "%u\n", len_gb_xn[len_xn-1]);
 #endif
   sp_matfglmcol_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglmcol_t));
   matrix->charac = fc;
@@ -1806,7 +1807,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   long len2 = dquot - (len_xn + count_not_lm + count_zero);
 
   if(posix_memalign((void **)&(matrix->dense_mat), 32, sizeof(CF_t)*len1)){
-    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
     exit(1);
   }
   else{
@@ -1815,7 +1816,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
@@ -1824,7 +1825,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
     exit(1);
   }
   else{
@@ -1833,7 +1834,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   if(posix_memalign((void **)&matrix->zero_idx, 32, sizeof(CF_t)*count_zero)){
-    fprintf(stderr, "Problem when allocating matrix->zero_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->zero_idx\n");
     exit(1);
   }
   else{
@@ -1843,7 +1844,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   }
   if(posix_memalign((void **)&matrix->dense_idx, 32,
 		    sizeof(CF_t)*(len_xn + count_not_lm))){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -1852,7 +1853,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*(len_xn + count_not_lm))){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -1870,11 +1871,11 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   for(long i = 0; i < dquot; i++){
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
-    /* display_monomial_full(stderr, nv, NULL, 0, exp); */
+    /* display_monomial_full(ERRSTREAM, nv, NULL, 0, exp); */
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      display_monomial_full(stderr, nv, NULL, 0, exp);
-      fprintf(stderr, " => remains in monomial basis\n");
+      display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
       /* mult by xn stays in the basis */
       matrix->triv_idx[l_triv] = i;
@@ -1885,12 +1886,12 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     else{
       /* we get now outside the basis */
 #if DEBUGBUILDMATRIX > 0
-      display_monomial_full(stderr, nv, NULL, 0, exp);
-      fprintf(stderr, " => does NOT remain in monomial basis");
+      display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis");
 #endif
       if (i == zeronf[l_zero]){
 #if DEBUGBUILDMATRIX > 0
-	fprintf(stderr, " => lands on 0\n");
+	fprintf(ERRSTREAM, " => lands on 0\n");
 	printf ("zero row #%ld in row #%ld\n",l_zero,i);
 #endif
 	matrix->zero_idx[l_zero] = i;
@@ -1901,7 +1902,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	l_dens++;
 	if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
 #if DEBUGBUILDMATRIX > 0
-	  fprintf(stderr, " => lands on a leading monomial\n");
+	  fprintf(ERRSTREAM, " => lands on a leading monomial\n");
 #endif
 	  copy_poly_in_matrixcol(matrix, nrows, bcf, bexp, blen,
 				 start_cf_gb_xn[count], len_gb_xn[count], lmb,
@@ -1909,7 +1910,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  nrows++;
 	  count++;
 	  if(len_xn < count && i < dquot){
-	    fprintf(stderr, "One should not arrive here (build_matrix)\n");
+	    fprintf(ERRSTREAM, "One should not arrive here (build_matrix)\n");
 	    free(lens);
 	    free(exps);
 	    free(cfs);
@@ -1930,7 +1931,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	}
 	else if (i == extra_nf[count_nf]){
 #if DEBUGBUILDMATRIX > 0
-	  fprintf(stderr, " => lands on a MULTIPLE of a leading monomial\n");
+	  fprintf(ERRSTREAM, " => lands on a MULTIPLE of a leading monomial\n");
 #endif
 #if REDUCTION_ALLINONE
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
@@ -1945,15 +1946,15 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	    tbr->lmps[k]  = k; /* fix input element in tbr */
 	  }
 	  /* printf ("mononomial to be reduced\n"); */
-	  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
+	  /* print_msolve_polynomials_ff(VERBSTREAM, 0, tbr->lml, tbr, bht, */
 	  /* 		      st, gens->vnames, 0); */
 	  success = core_nf(&tbr, &bht, &st, mul, bs);
 	  if (!success) {
-	    fprintf(stderr,"Problem with normalform, stopped computation.\n");
+	    fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
 	    exit(1);
 	  }
 	  /* printf ("reduction\n"); */
-	  /* print_msolve_polynomials_ff(stdout, 1, tbr->lml, tbr, bht, */
+	  /* print_msolve_polynomials_ff(VERBSTREAM, 1, tbr->lml, tbr, bht, */
 	  /* 		      st, gens->vnames, 0); */
 	  copy_extrapoly_in_matrixcol(matrix, nrows, lmb,
 				      1,
@@ -1994,15 +1995,15 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
   /* printf ("shifts of phi to be reduced\n"); */
-  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
+  /* print_msolve_polynomials_ff(VERBSTREAM, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
   int success = core_nf(&tbr, &bht, &st, mul, bs);
   if (!success) {
-    fprintf(stderr,"Problem with normalform, stopped computation.\n");
+    fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
     exit(1);
   }
   /* printf ("reductions\n"); */
-  /* print_msolve_polynomials_ff(stdout, 2*nv-2, tbr->lml, tbr, bht, */
+  /* print_msolve_polynomials_ff(VERBSTREAM, 2*nv-2, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
   for (long i = 0; i < 2*nv - 2; i++) {
     copy_extrapoly_in_vector(leftvectorsparam[i], dquot, lmb,
@@ -2085,21 +2086,21 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 				   &len_not_xn,maxdeg+1);
 
 #if DEBUGBUILDMATRIX > 0
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the Gb) "
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the Gb) "
 	  "which are divisible by x_n "
 	  "and with bounded degree: %ld\n", len_xn);
   for(long i=0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", div_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_xn[i]);
   }
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the Gb) "
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the Gb) "
 	  "which are not divisible by x_n "
 	  "and with bounded degree: %ld\n", len_not_xn);
   for(long i=0; i < len_not_xn; i++){
-    fprintf(stderr, "%d, ", div_not_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_not_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   long count_lm = 0;
   /* list of monomials in the staircase that leave the staircase after
@@ -2116,20 +2117,20 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 	int32_t *exp = lmb + (i * nv);
 	if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-	  display_monomial_full(stderr, nv, NULL, 0, exp);
-	  fprintf(stderr, " => remains in monomial basis\n");
+	  display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+	  fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
 	}
 	else{
 	  /* we get now outside the basis */
 #if DEBUGBUILDMATRIX > 0
-	  display_monomial_full(stderr, nv, NULL, 0, exp);
-	  fprintf(stderr, " => does NOT remain in monomial basis");
+	  display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+	  fprintf(ERRSTREAM, " => does NOT remain in monomial basis");
 #endif
 	  if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count_lm])*nv, nv)){
 	    count_lm++;
 #if DEBUGBUILDMATRIX > 0
-	    fprintf(stderr, " => lands on a leading monomial\n");
+	    fprintf(ERRSTREAM, " => lands on a leading monomial\n");
 #endif
 	  }
 	  else{
@@ -2138,7 +2139,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 		extra_nf[count_not_lm]=i;
 		count_not_lm++;
 #if DEBUGBUILDMATRIX > 0
-		fprintf(stderr, " => lands on a MULTIPLE of a leading monomial\n");
+		fprintf(ERRSTREAM, " => lands on a MULTIPLE of a leading monomial\n");
 #endif
 		/* is_divisible = 1; */
 		break;
@@ -2146,7 +2147,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 	    }
 /* 	    if (!is_divisible) { */
 /* #if DEBUGBUILDMATRIX > 0 */
-/* 	      fprintf(stderr, " => land on 0\n"); */
+/* 	      fprintf(ERRSTREAM, " => land on 0\n"); */
 /* #endif */
 /* 	      zeronf[count_zero]=i; */
 /* 	      count_zero++; */
@@ -2208,16 +2209,16 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
     tbr->lmps[k]  = k; /* fix input element in tbr */
   }
   /* printf ("polynomials to be reduced\n"); */
-  /* print_msolve_polynomials_ff(stdout, 0, tbr->lml, tbr, bht, */
+  /* print_msolve_polynomials_ff(VERBSTREAM, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
   int32_t err = 0;
   tbr = core_nf(tbr, st, mul, bs, &err);
   if (err) {
-    fprintf(stderr,"Problem with normalform, stopped computation.\n");
+    fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
     exit(1);
   }
   /* printf ("reductions\n"); */
-  /* print_msolve_polynomials_ff(stdout, tobereduced, tbr->lml, tbr, bht, */
+  /* print_msolve_polynomials_ff(VERBSTREAM, tobereduced, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
   /* printf ("Number of zero normal forms: %ld\n",count_zero); */
   /* lengths of the polys which we need to build the matrix */
@@ -2237,11 +2238,11 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   }
 
 #if DEBUGBUILDMATRIX > 0
-  fprintf(stderr, "Length of polynomials whose leading terms are divisible by x_n\n");
+  fprintf(ERRSTREAM, "Length of polynomials whose leading terms are divisible by x_n\n");
   for(long i = 0; i < len_xn-1; i++){
-    fprintf(stderr, "%u, ", len_gb_xn[i]);
+    fprintf(ERRSTREAM, "%u, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "%u\n", len_gb_xn[len_xn-1]);
+  fprintf(ERRSTREAM, "%u\n", len_gb_xn[len_xn-1]);
 #endif
   sp_matfglmcol_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglmcol_t));
   matrix->charac = fc;
@@ -2252,7 +2253,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   long len2 = dquot - (len_xn + count_not_lm /* + count_zero*/);
 
   if(posix_memalign((void **)&(matrix->dense_mat), 32, sizeof(CF_t)*len1)){
-    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
     exit(1);
   }
   else{
@@ -2261,7 +2262,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
@@ -2270,7 +2271,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
     exit(1);
   }
   else{
@@ -2279,7 +2280,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   /* if(posix_memalign((void **)&matrix->zero_idx, 32, sizeof(CF_t)*count_zero)){ */
-  /*   fprintf(stderr, "Problem when allocating matrix->zero_idx\n"); */
+  /*   fprintf(ERRSTREAM, "Problem when allocating matrix->zero_idx\n"); */
   /*   exit(1); */
   /* } */
   /* else{ */
@@ -2289,7 +2290,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   /* } */
   if(posix_memalign((void **)&matrix->dense_idx, 32,
 		    sizeof(CF_t)*(len_xn + count_not_lm))){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -2298,7 +2299,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
     }
   }
   if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*(len_xn + count_not_lm))){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -2328,11 +2329,11 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   for(long i = 0; i < dquot; i++){
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
-    /* display_monomial_full(stderr, nv, NULL, 0, exp); */
+    /* display_monomial_full(ERRSTREAM, nv, NULL, 0, exp); */
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      display_monomial_full(stderr, nv, NULL, 0, exp);
-      fprintf(stderr, " => remains in monomial basis\n");
+      display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
       /* mult by xn stays in the basis */
       matrix->triv_idx[l_triv] = i;
@@ -2343,12 +2344,12 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
     else{
       /* we get now outside the basis */
 #if DEBUGBUILDMATRIX > 0
-      display_monomial_full(stderr, nv, NULL, 0, exp);
-      fprintf(stderr, " => does NOT remain in monomial basis");
+      display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis");
 #endif
 /*       if (i == zeronf[l_zero]){ */
 /* #if DEBUGBUILDMATRIX > 0 */
-/* 	fprintf(stderr, " => land on 0\n"); */
+/* 	fprintf(ERRSTREAM, " => land on 0\n"); */
 /* 	printf ("zero row #%ld in row #%ld\n",l_zero,i); */
 /* #endif */
 /* 	matrix->zero_idx[l_zero] = i; */
@@ -2359,7 +2360,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 	l_dens++;
 	if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
 #if DEBUGBUILDMATRIX > 0
-	  fprintf(stderr, " => lands on a leading monomial\n");
+	  fprintf(ERRSTREAM, " => lands on a leading monomial\n");
 #endif
 	  copy_poly_in_matrixcol_no_zero(matrix, nrows, bcf, bexp, blen,
 					 start_cf_gb_xn[count],
@@ -2367,7 +2368,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 	  nrows++;
 	  count++;
 	  if(len_xn < count && i < dquot){
-	    fprintf(stderr, "One should not arrive here (build_matrix)\n");
+	    fprintf(ERRSTREAM, "One should not arrive here (build_matrix)\n");
 	    free(lens);
 	    free(exps);
 	    free(cfs);
@@ -2388,7 +2389,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
 	}
 	else if (i == extra_nf[count_nf]){
 #if DEBUGBUILDMATRIX > 0
-	  fprintf(stderr, " => lands on a MULTIPLE of a leading monomial\n");
+	  fprintf(ERRSTREAM, " => lands on a MULTIPLE of a leading monomial\n");
 #endif
 	  copy_extrapoly_in_matrixcol_no_zero(matrix, nrows, lmb,
 					      tobereduced + count_nf,
@@ -2464,12 +2465,12 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
   long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn);
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the staircase) which are divisible by x_n = %ld\n", len_xn);
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the staircase) which are divisible by x_n = %ld\n", len_xn);
   for(long i=0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", div_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
 
 
@@ -2493,11 +2494,11 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
   }
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "Length ofpolynomials whose leading terms is divisible by x_n\n");
+  fprintf(ERRSTREAM, "Length ofpolynomials whose leading terms is divisible by x_n\n");
   for(long i = 0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", len_gb_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
@@ -2507,7 +2508,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
   long len2 = dquot - len_xn;
 
   if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
-    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
     exit(1);
   }
   else{
@@ -2516,7 +2517,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
     }
   }
   if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
@@ -2525,7 +2526,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
     }
   }
   if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
     exit(1);
   }
   else{
@@ -2534,7 +2535,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
     }
   }
   if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len_xn)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -2543,7 +2544,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
     }
   }
   if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len_xn)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -2561,12 +2562,12 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
-    display_monomial_full(stderr, nv, NULL, 0, exp);
-    //    fprintf(stderr, "\n");
+    display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+    //    fprintf(ERRSTREAM, "\n");
 #endif
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => remains in monomial basis\n");
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
 
       matrix->triv_idx[l_triv] = i;
@@ -2577,7 +2578,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
     else{
 
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => does NOT remain in monomial basis\n");
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis\n");
 #endif
       matrix->dense_idx[l_dens] = i;
       l_dens++;
@@ -2588,7 +2589,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
         nrows++;
         count++;
         if(len_xn < count && i < dquot){
-          fprintf(stderr, "One should not arrive here (build_matrix)\n");
+          fprintf(ERRSTREAM, "One should not arrive here (build_matrix)\n");
           free(matrix->dense_mat);
           free(matrix->dense_idx);
           free(matrix->triv_idx);
@@ -2603,10 +2604,10 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
         }
       }
       else{
-        fprintf(stderr, "Staircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
-        display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(ERRSTREAM, "Staircase is not generic\n");
+        fprintf(ERRSTREAM, "Multiplication by ");
+        display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+        fprintf(ERRSTREAM, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -2663,12 +2664,12 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
   long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the staircase) which are divisible by x_n = %ld\n", len_xn);
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the staircase) which are divisible by x_n = %ld\n", len_xn);
   for(long i=0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", div_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
 
   int32_t *len_gb_xn = malloc(sizeof(int32_t) * len_xn);
@@ -2689,11 +2690,11 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
   }
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "Length ofpolynomials whose leading terms is divisible by x_n\n");
+  fprintf(ERRSTREAM, "Length ofpolynomials whose leading terms is divisible by x_n\n");
   for(long i = 0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", len_gb_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
@@ -2703,7 +2704,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
   long len2 = dquot - len_xn;
 
   if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
-    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
     exit(1);
   }
   else{
@@ -2712,7 +2713,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
     }
   }
   if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
@@ -2721,7 +2722,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
     }
   }
   if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
     exit(1);
   }
   else{
@@ -2730,7 +2731,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
     }
   }
   if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len_xn)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -2739,7 +2740,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
     }
   }
   if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len_xn)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -2757,12 +2758,12 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
-    display_monomial_full(stderr, nv, NULL, 0, exp);
-    //    fprintf(stderr, "\n");
+    display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+    //    fprintf(ERRSTREAM, "\n");
 #endif
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => remains in monomial basis\n");
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
 
       matrix->triv_idx[l_triv] = i;
@@ -2773,7 +2774,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
     else{
 
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => does NOT remain in monomial basis\n");
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis\n");
 #endif
       matrix->dense_idx[l_dens] = i;
       l_dens++;
@@ -2785,7 +2786,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
         nrows++;
         count++;
         if(len_xn < count && i < dquot){
-          fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
+          fprintf(ERRSTREAM, "One should not arrive here (build_matrix with trace)\n");
           free(matrix->dense_mat);
           free(matrix->dense_idx);
           free(matrix->triv_idx);
@@ -2800,10 +2801,10 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
         }
       }
       else{
-	fprintf(stdout, "Staircase is not generic\n");
-	fprintf(stdout, "Multiplication by ");
-	display_monomial_full(stdout, nv, NULL, 0, exp);
-	fprintf(stdout, " gets outside the staircase\n");
+	fprintf(VERBSTREAM, "Staircase is not generic\n");
+	fprintf(VERBSTREAM, "Multiplication by ");
+	display_monomial_full(VERBSTREAM, nv, NULL, 0, exp);
+	fprintf(VERBSTREAM, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -2868,13 +2869,13 @@ static inline void compute_modular_matrix(sp_matfglm_t *matrix,
     matrix->dst[i] = trace_det->dst[i];
   }
 #ifdef DEBUGLIFTMAT
-  fprintf(stderr, "\nModular matrix (prime = %u)\n", prime);
+  fprintf(ERRSTREAM, "\nModular matrix (prime = %u)\n", prime);
   for(int i = 0; i < matrix->nrows; i++){
     int nc = i*matrix->ncols;
     for(int j = 0; j < matrix->ncols; j++){
-      fprintf(stderr, "%u, ", matrix->dense_mat[nc+j]);
+      fprintf(ERRSTREAM, "%u, ", matrix->dense_mat[nc+j]);
     }
-    fprintf(stderr, "\n");
+    fprintf(ERRSTREAM, "\n");
   }
 #endif
 }
@@ -2951,11 +2952,11 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
-    display_monomial_full(stderr, nv, NULL, 0, exp);
+    display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
 #endif
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => remains in monomial basis\n");
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
 
       matrix->triv_idx[l_triv] = i;
@@ -2966,7 +2967,7 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
     else{
 
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => does NOT remain in monomial basis\n");
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis\n");
 #endif
       matrix->dense_idx[l_dens] = i;
       l_dens++;
@@ -2978,7 +2979,7 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
         nrows++;
         count++;
         if(len_xn < count && i < dquot){
-          fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
+          fprintf(ERRSTREAM, "One should not arrive here (build_matrix with trace)\n");
           free(matrix->dense_mat);
           free(matrix->dense_idx);
           free(matrix->triv_idx);
@@ -2993,10 +2994,10 @@ static inline void build_matrixn_from_bs_trace_application(sp_matfglm_t *matrix,
         }
       }
       else{
-        fprintf(stderr, "Staircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
-        display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(ERRSTREAM, "Staircase is not generic\n");
+        fprintf(ERRSTREAM, "Multiplication by ");
+        display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+        fprintf(ERRSTREAM, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -3072,7 +3073,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
     int32_t err = 0;
     tbr = core_nf(tbr, md, mul, bs, &err);
     if (err) {
-      fprintf(stderr,"Problem with normalform, stopped computation.\n");
+      fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
       exit(1);
     }
     free(mul);
@@ -3125,11 +3126,11 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
-    display_monomial_full(stderr, nv, NULL, 0, exp);
+    display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
 #endif
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => remains in monomial basis\n");
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
 
       matrix->triv_idx[l_triv] = i;
@@ -3140,7 +3141,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
     else{
 
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => does NOT remain in monomial basis\n");
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis\n");
 #endif
       matrix->dense_idx[l_dens] = i;
       l_dens++;
@@ -3152,7 +3153,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         nrows++;
         count++;
         if(len_xn < count && i < dquot){
-          fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
+          fprintf(ERRSTREAM, "One should not arrive here (build_matrix with trace)\n");
           free(matrix->dense_mat);
           free(matrix->dense_idx);
           free(matrix->triv_idx);
@@ -3174,14 +3175,14 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
       }
       else if (i == extra_nf[count_nf]){
 #if DEBUGBUILDMATRIX > 0
-	fprintf(stderr, " => lands on a MULTIPLE of a leading monomial\n");
+	fprintf(ERRSTREAM, " => lands on a MULTIPLE of a leading monomial\n");
 #endif
 	copy_nf_in_matrix_from_bs(matrix, nrows, count_nf, lmb,
 				  tbr, ht, evi, st, nv);
 	nrows++;
 	count_nf++;
 	if (count_not_lm < count_nf && i < dquot) {
-          fprintf(stderr, "One should not arrive here (build_matrix with trace)\n");
+          fprintf(ERRSTREAM, "One should not arrive here (build_matrix with trace)\n");
           free(matrix->dense_mat);
           free(matrix->dense_idx);
           free(matrix->triv_idx);
@@ -3202,10 +3203,10 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
         }
       }
       else{ /* should not arrive here */
-        fprintf(stderr, "Staircase is not generic\n");
-        fprintf(stderr, "Multiplication by ");
-        display_monomial_full(stderr, nv, NULL, 0, exp);
-        fprintf(stderr, " gets outside the staircase\n");
+        fprintf(ERRSTREAM, "Staircase is not generic\n");
+        fprintf(ERRSTREAM, "Multiplication by ");
+        display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+        fprintf(ERRSTREAM, " gets outside the staircase\n");
         free(matrix->dense_mat);
         free(matrix->dense_idx);
         free(matrix->triv_idx);
@@ -3243,7 +3244,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
   }
   free(evi);
   /* if(st->info_level){ */
-  /*   fprintf(stderr, "[%lu, %lu], Free / Dense = %.2f%%\n", */
+  /*   fprintf(ERRSTREAM, "[%lu, %lu], Free / Dense = %.2f%%\n", */
   /*           len0, len_xn, */
   /*           100*((double)len_xn / (double)len0)); */
   /* } */
@@ -3269,12 +3270,12 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
 
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the staircase) which are divisible by x_n = %ld\n", len_xn);
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the staircase) which are divisible by x_n = %ld\n", len_xn);
   for(long i=0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", div_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
 
   *blen_gb_xn = malloc(sizeof(int32_t) * len_xn);
@@ -3298,11 +3299,11 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   }
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "Length of polynomials whose leading terms is divisible by x_n\n");
+  fprintf(ERRSTREAM, "Length of polynomials whose leading terms is divisible by x_n\n");
   for(long i = 0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", len_gb_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   sp_matfglm_t *matrix ALIGNED32 = calloc(1, sizeof(sp_matfglm_t));
   matrix->charac = fc;
@@ -3312,7 +3313,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   long len2 = dquot - len_xn;
 
   if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
-    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
     exit(1);
   }
   else{
@@ -3321,7 +3322,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
     }
   }
   if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
@@ -3330,7 +3331,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
     }
   }
   if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
     exit(1);
   }
   else{
@@ -3339,7 +3340,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
     }
   }
   if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len_xn)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -3348,7 +3349,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
     }
   }
   if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len_xn)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -3366,12 +3367,12 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
-    display_monomial_full(stderr, nv, NULL, 0, exp);
-    //    fprintf(stderr, "\n");
+    display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+    //    fprintf(ERRSTREAM, "\n");
 #endif
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => remains in monomial basis\n");
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
 
       matrix->triv_idx[l_triv] = i;
@@ -3381,7 +3382,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
     }
     else{
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => does NOT remain in monomial basis\n");
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis\n");
 #endif
       int boo = 0;
       if(count < len_xn){
@@ -3399,17 +3400,17 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
 
         if(len_xn < count && i < dquot){
           if(info_level){
-            fprintf(stdout, "Staircase is not generic (1 => explain better)\n");
+            fprintf(VERBSTREAM, "Staircase is not generic (1 => explain better)\n");
           }
           return NULL;
         }
       }
       else{
         if(info_level){
-          fprintf(stdout, "Staircase is not generic\n");
-          fprintf(stdout, "Multiplication by ");
-          display_monomial_full(stdout, nv, NULL, 0, exp);
-          fprintf(stdout, " gets outside the staircase\n");
+          fprintf(VERBSTREAM, "Staircase is not generic\n");
+          fprintf(VERBSTREAM, "Multiplication by ");
+          display_monomial_full(VERBSTREAM, nv, NULL, 0, exp);
+          fprintf(VERBSTREAM, " gets outside the staircase\n");
         }
         return NULL;
       }
@@ -3454,12 +3455,12 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "\n");
-  fprintf(stderr, "Number of monomials (in the Gröbner basis) which are divisible by x_n = %ld\n", len_xn);
+  fprintf(ERRSTREAM, "\n");
+  fprintf(ERRSTREAM, "Number of monomials (in the Gröbner basis) which are divisible by x_n = %ld\n", len_xn);
   for(long i=0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", div_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", div_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
   *blen_gb_xn = malloc(sizeof(int32_t) * len_xn);
   int32_t *len_gb_xn = *blen_gb_xn;
@@ -3482,11 +3483,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   }
 
 #if DEBUGBUILDMATRIX>0
-  fprintf(stderr, "Length of polynomials whose leading terms is divisible by x_n\n");
+  fprintf(ERRSTREAM, "Length of polynomials whose leading terms is divisible by x_n\n");
   for(long i = 0; i < len_xn; i++){
-    fprintf(stderr, "%d, ", len_gb_xn[i]);
+    fprintf(ERRSTREAM, "%d, ", len_gb_xn[i]);
   }
-  fprintf(stderr, "\n");
+  fprintf(ERRSTREAM, "\n");
 #endif
 
   long count_lm = 0;
@@ -3504,20 +3505,20 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     int32_t *exp = lmb + (i * nv);
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX>0
-      display_monomial_full(stderr, nv, NULL, 0, exp);
-      fprintf(stderr, " => remains in monomial basis\n");
+      display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
     }
     else{
       /* we get now outside the basis */
 #if DEBUGBUILDMATRIX > 0
-      display_monomial_full(stderr, nv, NULL, 0, exp);
-      fprintf(stderr, " => does NOT remain in monomial basis");
+      display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis");
 #endif
       if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count_lm])*nv, nv)){
 	count_lm++;
 #if DEBUGBUILDMATRIX > 0
-	fprintf(stderr, " => lands on a leading monomial\n");
+	fprintf(ERRSTREAM, " => lands on a leading monomial\n");
 #endif
       }
       else{
@@ -3527,7 +3528,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	    extra_nf[count_not_lm]=i;
 	    count_not_lm++;
 #if DEBUGBUILDMATRIX > 0
-	    fprintf(stderr, " => lands on a MULTIPLE of a leading monomial\n");
+	    fprintf(ERRSTREAM, " => lands on a MULTIPLE of a leading monomial\n");
 #endif
 	    is_divisible = 1;
 	    break;
@@ -3535,7 +3536,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	}
 	if (!is_divisible) {
 #if DEBUGBUILDMATRIX > 0
-	  fprintf(stderr, " => BUG\n");
+	  fprintf(ERRSTREAM, " => BUG\n");
 #endif
 	}
       }
@@ -3568,8 +3569,8 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 
   if (count_not_lm > threshold) {
     if(info_level){
-      fprintf(stdout, "Staircase is not generic\n");
-      fprintf(stdout, "and too many normal forms need to be computed\n");
+      fprintf(VERBSTREAM, "Staircase is not generic\n");
+      fprintf(VERBSTREAM, "and too many normal forms need to be computed\n");
     }
     return NULL;
   }
@@ -3620,11 +3621,11 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
     int32_t err = 0;
     if (st->info_level > 1) {
-      fprintf (stdout, "normal forms\n");
+      fprintf (VERBSTREAM, "normal forms\n");
     }
     tbr = core_nf(tbr, md, mul, bs, &err);
     if (err) {
-      fprintf(stderr, "Problem with normalform, stopped computation.\n");
+      fprintf(ERRSTREAM, "Problem with normalform, stopped computation.\n");
       exit(1);
     }
     free(mul);
@@ -3639,7 +3640,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   long len2 = dquot - len0;
 
   if(posix_memalign((void **)&matrix->dense_mat, 32, sizeof(CF_t)*len1)){
-    fprintf(stderr, "Problem when allocating matrix->dense_mat\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_mat\n");
     exit(1);
   }
   else{
@@ -3648,7 +3649,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
   }
   if(posix_memalign((void **)&matrix->triv_idx, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_idx\n");
     exit(1);
   }
   else{
@@ -3657,7 +3658,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
   }
   if(posix_memalign((void **)&matrix->triv_pos, 32, sizeof(CF_t)*len2)){
-    fprintf(stderr, "Problem when allocating matrix->triv_pos\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->triv_pos\n");
     exit(1);
   }
   else{
@@ -3666,7 +3667,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
   }
   if(posix_memalign((void **)&matrix->dense_idx, 32, sizeof(CF_t)*len0)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -3675,7 +3676,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
   }
   if(posix_memalign((void **)&matrix->dst, 32, sizeof(CF_t)*len0)){
-    fprintf(stderr, "Problem when allocating matrix->dense_idx\n");
+    fprintf(ERRSTREAM, "Problem when allocating matrix->dense_idx\n");
     exit(1);
   }
   else{
@@ -3697,12 +3698,12 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     long pos = -1;
     int32_t *exp = lmb + (i * nv);
 #if DEBUGBUILDMATRIX > 0
-    display_monomial_full(stderr, nv, NULL, 0, exp);
-    //    fprintf(stderr, "\n");
+    display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+    //    fprintf(ERRSTREAM, "\n");
 #endif
     if(member_xxn(exp, lmb + (i * nv), dquot - i, &pos, nv)){
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => remains in monomial basis\n");
+      fprintf(ERRSTREAM, " => remains in monomial basis\n");
 #endif
 
       matrix->triv_idx[l_triv] = i;
@@ -3712,13 +3713,13 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
     }
     else{
 #if DEBUGBUILDMATRIX > 0
-      fprintf(stderr, " => does NOT remain in monomial basis\n");
+      fprintf(ERRSTREAM, " => does NOT remain in monomial basis\n");
 #endif
       matrix->dense_idx[l_dens] = i;
       l_dens++;
       if(is_equal_exponent_xxn(exp, bexp_lm+(div_xn[count])*nv, nv)){
 #if DEBUGBUILDMATRIX > 0
-	fprintf(stderr, " => lands on a leading monomial\n");
+	fprintf(ERRSTREAM, " => lands on a leading monomial\n");
 #endif
         copy_poly_in_matrix_from_bs(matrix, nrows, bs, ht, //bcf, bexp, blen,
                                     div_xn[count], len_gb_xn[count],
@@ -3733,7 +3734,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
         count++;
         if(len_xn < count && i < dquot){
 	  if (info_level){
-	    fprintf(stdout, "Staircase is not generic (1 => explain better)\n");
+	    fprintf(VERBSTREAM, "Staircase is not generic (1 => explain better)\n");
 	  }
 	  free(evi);
           return NULL;
@@ -3741,7 +3742,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       }
       else if (i == extra_nf[count_nf]){
 #if DEBUGBUILDMATRIX > 0
-	fprintf(stderr, " => lands on a MULTIPLE of a leading monomial\n");
+	fprintf(ERRSTREAM, " => lands on a MULTIPLE of a leading monomial\n");
 #endif
 	copy_nf_in_matrix_from_bs(matrix, nrows, count_nf, lmb,
 				  tbr, ht, evi, st, nv);
@@ -3754,17 +3755,17 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 	count_nf++;
         if(count_not_lm < count_nf && i < dquot){
 	  if (info_level){
-	    fprintf(stdout, "Staircase is not generic (1 => explain better)\n");
+	    fprintf(VERBSTREAM, "Staircase is not generic (1 => explain better)\n");
 	  }
 	  free(evi);
           return NULL;
         }
       }
       else{ /* should not arrive here */
-	fprintf(stderr, "Staircase is not generic\n");
-	fprintf(stderr, "Multiplication by ");
-	display_monomial_full(stderr, nv, NULL, 0, exp);
-	fprintf(stderr, " gets outside the staircase\n");
+	fprintf(ERRSTREAM, "Staircase is not generic\n");
+	fprintf(ERRSTREAM, "Multiplication by ");
+	display_monomial_full(ERRSTREAM, nv, NULL, 0, exp);
+	fprintf(ERRSTREAM, " gets outside the staircase\n");
 	free(evi);
         return NULL;
       }
@@ -3790,9 +3791,9 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   if (st->info_level > 1){
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
-    fprintf (stdout,
+    fprintf (VERBSTREAM,
 	     "multiplication matrix                               ");
-    fprintf (stdout,"%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+    fprintf (VERBSTREAM,"%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
   free(evi);
   return matrix;

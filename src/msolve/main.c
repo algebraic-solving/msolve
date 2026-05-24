@@ -27,31 +27,32 @@
 #define LONG_OPT_LENGTH 15
 #define ARG_OPT_LENGTH 4
 
+
 static inline void display_option_help(char short_opt, char *long_opt,
 				       char *arg_opt, char* str) {
   int long_opt_non_empty= strcmp (long_opt, "");
 
   if (short_opt == 0) {
-    fprintf (stdout, "    ");
+    fprintf (OUTSTREAM, "    ");
   } else {
-    fprintf (stdout, "-%c", short_opt);
+    fprintf (OUTSTREAM, "-%c", short_opt);
     if (long_opt_non_empty) {
-      fprintf (stdout, ", ");
+      fprintf (OUTSTREAM, ", ");
     } else {
-      fprintf (stdout, "  ");
+      fprintf (OUTSTREAM, "  ");
     }
   }
 
   if (long_opt_non_empty) {
-    fprintf (stdout, "--");
+    fprintf (OUTSTREAM, "--");
   } else {
-    fprintf (stdout, "  ");
+    fprintf (OUTSTREAM, "  ");
   }
-  fprintf (stdout, "%-*s ",
+  fprintf (OUTSTREAM, "%-*s ",
 	   LONG_OPT_LENGTH, long_opt);
-  fprintf (stdout, "%-*s  ",
+  fprintf (OUTSTREAM, "%-*s  ",
 	   ARG_OPT_LENGTH, arg_opt);
-  fprintf (stdout, "%s", str);
+  fprintf (OUTSTREAM, "%s", str);
 }
 
 static inline void display_option_help_noopt(char* str) {
@@ -59,16 +60,16 @@ static inline void display_option_help_noopt(char* str) {
 }
 
 static inline void display_help(char *str){
-  fprintf(stdout, "\nmsolve library for polynomial system solving, version %s\n", VERSION);
-  fprintf(stdout, "implemented by J. Berthomieu, C. Eder, M. Safey El Din\n");
-  fprintf(stdout, "\n");
-  /* fprintf(stdout, "commit hash: %s\n\n", GIT_COMMIT_HASH); */
+  fprintf(OUTSTREAM, "\nmsolve library for polynomial system solving, version %s\n", VERSION);
+  fprintf(OUTSTREAM, "implemented by J. Berthomieu, C. Eder, M. Safey El Din\n");
+  fprintf(OUTSTREAM, "\n");
+  /* fprintf(OUTSTREAM, "commit hash: %s\n\n", GIT_COMMIT_HASH); */
 
-  fprintf(stdout, "Basic call:\n");
-  fprintf(stdout, "\t ./msolve -f [FILE1] -o [FILE2]\n\n");
-  fprintf(stdout, "FILE1 and FILE2 are respectively the input and output files\n\n");
+  fprintf(OUTSTREAM, "Basic call:\n");
+  fprintf(OUTSTREAM, "\t ./msolve -f [FILE1] -o [FILE2]\n\n");
+  fprintf(OUTSTREAM, "FILE1 and FILE2 are respectively the input and output files\n\n");
 
-  fprintf(stdout, "Standard options\n\n");
+  fprintf(OUTSTREAM, "Standard options\n\n");
   display_option_help('f', "file", "FILE", "File name (mandatory).\n\n");
   display_option_help('h', "help", "", "Prints this help.\n");
   display_option_help('o', "output-file", "FILE",  "Name of output file.\n");
@@ -82,23 +83,23 @@ static inline void display_help(char *str){
   display_option_help_noopt("2 - detailed output for each step of the\n");
   display_option_help_noopt("    algorithm, e.g. matrix sizes, #pairs, ...\n");
 
-  fprintf(stdout, "Input file format:\n");
-  fprintf(stdout, "\t - first line: variables separated by a comma\n");
-  fprintf(stdout, "\t                (no comma at end of line)\n");
-  fprintf(stdout, "\t - second line: characteristic of the field\n");
-  fprintf(stdout, "\t - next lines provide the polynomials (one per line),\n");
-  fprintf(stdout, "\t   separated by a comma\n");
-  fprintf(stdout, "\t   (no comma after the last polynomial)\n\n");
-  fprintf(stdout, "Output file format: \n");
-  fprintf(stdout, "When there is no solution in an algebraic closure of the base field\n[-1]:\n");
-  fprintf(stdout, "Where there are infinitely many solutions in \nan algebraic closure of the base field: \n[1, nvars, -1,[]]:\n");
-  fprintf(stdout,"Else:\n");
-  fprintf(stdout,"Over prime fields: a rational parametrization of the solutions\n");
-  fprintf(stdout,"When input coefficients are rational numbers: \nreal solutions to the input system (see the -P flag to recover a parametrization of the solutions)\n");
-  fprintf(stdout, "See the msolve tutorial for more details (https://msolve.lip6.fr)\n");
+  fprintf(OUTSTREAM, "Input file format:\n");
+  fprintf(OUTSTREAM, "\t - first line: variables separated by a comma\n");
+  fprintf(OUTSTREAM, "\t                (no comma at end of line)\n");
+  fprintf(OUTSTREAM, "\t - second line: characteristic of the field\n");
+  fprintf(OUTSTREAM, "\t - next lines provide the polynomials (one per line),\n");
+  fprintf(OUTSTREAM, "\t   separated by a comma\n");
+  fprintf(OUTSTREAM, "\t   (no comma after the last polynomial)\n\n");
+  fprintf(OUTSTREAM, "Output file format: \n");
+  fprintf(OUTSTREAM, "When there is no solution in an algebraic closure of the base field\n[-1]:\n");
+  fprintf(OUTSTREAM, "Where there are infinitely many solutions in \nan algebraic closure of the base field: \n[1, nvars, -1,[]]:\n");
+  fprintf(OUTSTREAM,"Else:\n");
+  fprintf(OUTSTREAM,"Over prime fields: a rational parametrization of the solutions\n");
+  fprintf(OUTSTREAM,"When input coefficients are rational numbers: \nreal solutions to the input system (see the -P flag to recover a parametrization of the solutions)\n");
+  fprintf(OUTSTREAM, "See the msolve tutorial for more details (https://msolve.lip6.fr)\n");
 
 
-  fprintf(stdout, "\nAdvanced options:\n\n");
+  fprintf(OUTSTREAM, "\nAdvanced options:\n\n");
   display_option_help('F', "", "FILE", "File name encoding parametrizations in binary format.\n\n");
   display_option_help('g', "groebner-basis", "GB", "Prints reduced Groebner bases of input system for\n");
   display_option_help_noopt("first prime characteristic w.r.t. grevlex ordering.\n");
@@ -279,7 +280,7 @@ static void getoptions(
       display_help(argv[0]);
       exit(0);
     case 'V':
-      fprintf(stdout, "%s\n", VERSION);
+      fprintf(OUTSTREAM, "%s\n", VERSION);
       exit(0);
     case 'e':
       *elim_block_len = strtol(optarg, NULL, 10);
@@ -419,12 +420,12 @@ static void getoptions(
     }
   }
   if(fflag){
-    fprintf(stderr,"No given file\n");
+    fprintf(ERRSTREAM,"No given file\n");
     display_help(argv[0]);
     exit(1);
   }
   if(errflag){
-    fprintf(stderr, "Invalid usage\n");
+    fprintf(ERRSTREAM, "Invalid usage\n");
     display_help(argv[0]);
     exit(1);
   }
@@ -478,7 +479,8 @@ int main(int argc, char **argv){
     files->bin_out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
                &elim_block_len, &la_option, &use_signatures, &update_ht,
-               &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling, &unstable_staircase, &saturate, &colon,
+               &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling,
+               &unstable_staircase, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
                &precision, &refine, &isolate, &generate_pbm,
 	       &seed, &info_level, files);
@@ -492,8 +494,8 @@ int main(int argc, char **argv){
     }
     srand(true_seed);
     if (info_level) {
-      fprintf (stdout,"Initial seed for pseudo-random number generator ");
-      fprintf (stdout,"is %u\n",true_seed);
+      fprintf (VERBSTREAM,"Initial seed for pseudo-random number generator ");
+      fprintf (VERBSTREAM,"is %u\n",true_seed);
     }
 
     FILE *fh = NULL;
@@ -506,7 +508,7 @@ int main(int argc, char **argv){
     }
 
     if (fh == NULL && bfh == NULL) {
-      fprintf(stderr, "Input file not found.\n");
+      fprintf(ERRSTREAM, "Input file not found.\n");
       exit(1);
     }
     if(fh!=NULL){
@@ -522,7 +524,7 @@ int main(int argc, char **argv){
     if(files->out_file != NULL){
       FILE *ofile = fopen(files->out_file, "w");
       if(ofile == NULL){
-        fprintf(stderr, "Cannot open output file\n");
+        fprintf(ERRSTREAM, "Cannot open output file\n");
         exit(1);
       }
       fclose(ofile);
@@ -538,7 +540,7 @@ int main(int argc, char **argv){
 
     get_data_from_file(files->in_file, &nr_vars, &field_char, &nr_gens, gens);
 #ifdef IODEBUG
-    display_gens(stdout, gens);
+    display_gens(VERBSTREAM, gens);
 #endif
 
     gens->rand_linear           = 0;
@@ -547,8 +549,8 @@ int main(int argc, char **argv){
 
     if(0 < field_char && field_char < pow(2, 15) && la_option > 2){
         if(info_level){
-            fprintf(stderr, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
-            fprintf(stderr, "\t linear algebra option set to 2\n");
+            fprintf(ERRSTREAM, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
+            fprintf(ERRSTREAM, "\t linear algebra option set to 2\n");
         }
         la_option = 2;
     }
@@ -565,11 +567,14 @@ int main(int argc, char **argv){
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
                           initial_hts, max_pairs, elim_block_len, update_ht,
-                          generate_pbm, reduce_gb, print_gb, truncate_lifting, get_param,
-                          genericity_handling, unstable_staircase, saturate, colon, normal_form,
+                          generate_pbm, reduce_gb, print_gb, truncate_lifting,
+                          get_param,
+                          genericity_handling, unstable_staircase, saturate,
+                          colon, normal_form,
                           normal_form_matrix, is_gb, lift_matrix, precision,
                           files, gens,
-            &param, mpz_paramp, &nb_real_roots, &real_roots, &real_pts);
+                          &param, mpz_paramp, &nb_real_roots, &real_roots,
+                          &real_pts);
 
     /* free parametrization */
     if(param != NULL && gens->field_char){
@@ -591,11 +596,11 @@ int main(int argc, char **argv){
     if (info_level > 0) {
         double st1 = cputime();
         double rt1 = realtime();
-        fprintf(stdout, "\n\n-------------------------------------------------\
+        fprintf(VERBSTREAM, "\n\n-------------------------------------------------\
 -----------------------------------\n");
-        fprintf(stdout, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
+        fprintf(VERBSTREAM, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
                 rt1-rt0, st1-st0);
-        fprintf(stdout, "-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------\n");
     }
     free_data_gens(gens);

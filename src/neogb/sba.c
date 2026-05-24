@@ -20,6 +20,7 @@
 
 
 #include "sba.h"
+#include "../msolve/streams.h"
 
 static inline crit_t *initialize_signature_criteria(
         const md_t * const st
@@ -401,7 +402,7 @@ static inline void add_row_with_signature(
     smat->cr[cld]           = (hm_t *)malloc(
             (len + SM_OFFSET) * sizeof(hm_t));
     /* copy polynomial data, take a look at the difference between
-     * the meta data stored in hm arrays from bs and the 
+     * the meta data stored in hm arrays from bs and the
      * meta data stored in signature-based smat rows. */
     memcpy(smat->cr[cld]+SM_PRE,bs->hm[pos]+PRELOOP,
             (len + OFFSET - PRELOOP) * sizeof(hm_t));
@@ -680,9 +681,9 @@ int core_sba_schreyer(
             initial_input_cmp_sig, ht);
 
     if (st->info_level > 1) {
-        printf("\n deg           mat          density \
+        fprintf(VERBSTREAM, "\n deg           mat          density \
           new data              time(rd)\n");
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------\n");
     }
     st->current_rd  =   0;
@@ -721,8 +722,8 @@ int core_sba_schreyer(
         smat->cd++;
 
         if (st->info_level > 1) {
-            printf("%7d new %7d zero", smat->nlm, smat->nz);
-            fflush(stdout);
+            fprintf(VERBSTREAM, "%7d new %7d zero", smat->nlm, smat->nz);
+            fflush(VERBSTREAM);
         }
 
         /* if we found a constant we are done, if we have added no new elements
@@ -732,14 +733,14 @@ int core_sba_schreyer(
         }
         rrt1 = realtime();
         if (st->info_level > 1) {
-            printf("%13.2f sec\n", rrt1-rrt0);
+            fprintf(VERBSTREAM, "%13.2f sec\n", rrt1-rrt0);
         }
     }
     /* Note: We cannot free all signature related data at this point, maybe
      * we terminated too early and need to further compute in higher degrees. */
 
     if (st->info_level > 1) {
-        printf("-------------------------------------------------\
+        fprintf(VERBSTREAM, "-------------------------------------------------\
 ----------------------------\n");
     }
     /* fully reduce elements in basis. */
@@ -758,9 +759,9 @@ int core_sba_schreyer(
     free_signature_criteria(&rew, st);
     free(hcm);
 
-    printf("size of basis     %7u\n", bs->ld);
-    printf("#syzygy criteria  %7ld\n", (long)st->num_syz_crit);
-    printf("#rewrite criteria %7ld\n", (long)st->num_rew_crit);
+    fprintf(VERBSTREAM, "size of basis     %7u\n", bs->ld);
+    fprintf(VERBSTREAM, "#syzygy criteria  %7ld\n", (long)st->num_syz_crit);
+    fprintf(VERBSTREAM, "#rewrite criteria %7ld\n", (long)st->num_rew_crit);
 
     return 1;
 }

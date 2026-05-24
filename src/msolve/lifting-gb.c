@@ -19,6 +19,7 @@
  * Mohab Safey El Din */
 
 #include<flint/fmpz.h>
+#include "streams.h"
 
 #define NBCHECK 2
 #ifndef MIN
@@ -230,7 +231,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                             modgbs->alloc * sizeof(mp_limb_t));
 
   if(newprimes == NULL){
-    fprintf(stderr, "Problem when reallocating modgbs (primes)\n");
+    fprintf(ERRSTREAM, "Problem when reallocating modgbs (primes)\n");
     exit(1);
   }
   modgbs->primes = newprimes;
@@ -241,7 +242,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   mp_limb_t *ncf_64 = (mp_limb_t *)realloc(modgbs->cf_64,
                                          modgbs->alloc * sizeof(mp_limb_t));
   if(ncf_64 == NULL){
-    fprintf(stderr, "Problem when reallocating modgbs (cfs)\n");
+    fprintf(ERRSTREAM, "Problem when reallocating modgbs (cfs)\n");
     exit(1);
   }
   modgbs->cf_64 = ncf_64;
@@ -253,7 +254,7 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
       uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->cf_32[j],
                                                  modgbs->alloc * sizeof(uint32_t));
       if(newcfs_pol == NULL){
-        fprintf(stderr, "Problem when reallocating modgbs (cfs_pol)\n");
+        fprintf(ERRSTREAM, "Problem when reallocating modgbs (cfs_pol)\n");
       }
       modgbs->modpolys[i]->cf_32[j] = newcfs_pol;
       for(uint32_t k = oldalloc; k < modgbs->alloc; k++){
@@ -605,7 +606,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
                               const int32_t fc,
                               int32_t start, const long elim){
   if(modgbs->nprimes >= modgbs->alloc-1){
-    fprintf(stderr, "Not enough space in modgbs\n");
+    fprintf(ERRSTREAM, "Not enough space in modgbs\n");
     exit(1);
   }
   modgbs->primes[modgbs->nprimes] = fc;
@@ -623,7 +624,7 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
   for(i = start; i < modgbs->ld; i++){
     idx = bs->lmps[i];
     if (bs->hm[idx] == NULL) {
-      fprintf(stderr, " poly is 0\n");
+      fprintf(ERRSTREAM, " poly is 0\n");
       exit(1);
     } else {
       /* hm  = bs->hm[idx]+OFFSET; */
@@ -714,7 +715,7 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     st->f4_qq_round = 1;
     bs = core_gba(bs_qq, st, &err, fc);
     if (err) {
-      fprintf(stderr,"Problem with F4, stopped computation.\n");
+      fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
       exit(1);
     }
 
@@ -724,11 +725,11 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     ht_t *bht = bs->ht;
 
     if(info_level > 2){
-        fprintf(stdout, "------------------------------------------\n");
-        fprintf(stdout, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
-        fprintf(stdout, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
-        fprintf(stdout, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
-        fprintf(stdout, "------------------------------------------\n");
+        fprintf(VERBSTREAM, "------------------------------------------\n");
+        fprintf(VERBSTREAM, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
+        fprintf(VERBSTREAM, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
+        fprintf(VERBSTREAM, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
+        fprintf(VERBSTREAM, "------------------------------------------\n");
     }
 
     /* Leading monomials from Grobner basis */
@@ -774,7 +775,7 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     int is_empty = 0;
     if(bs->lml == 1){
         if(info_level){
-            fprintf(stdout, "Grobner basis has a single element\n");
+            fprintf(VERBSTREAM, "Grobner basis has a single element\n");
         }
         is_empty = 1;
         for(int i = 0; i < bht->nv; i++){
@@ -1311,7 +1312,7 @@ restart:
     primeinit = fc;
   }
   if(info_level){
-      fprintf(stdout, "Initial prime = %d\n", msd->lp->p[0]);
+      fprintf(VERBSTREAM, "Initial prime = %d\n", msd->lp->p[0]);
   }
 
   int success = 1;
@@ -1365,7 +1366,7 @@ restart:
     gb_modpoly_realloc((*modgbsp), 1, dlift->S);
 
 #ifdef DEBUGGBLIFT
-    display_gbmodpoly_cf_32(stderr, (*modgbsp));
+    display_gbmodpoly_cf_32(ERRSTREAM, (*modgbsp));
 #endif
 
     if(!dlinit){
@@ -1379,18 +1380,18 @@ restart:
     }
 
     if(info_level){
-      fprintf(stdout,"\n---------- COMPUTATIONAL DATA -----------\n");
+      fprintf(VERBSTREAM,"\n---------- COMPUTATIONAL DATA -----------\n");
       int s= 0;
       for(int i = 0; i < dlift->nsteps; i++){
-        fprintf(stdout, "[%d]", dlift->steps[i]);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "[%d]", dlift->steps[i]);
+        fflush(VERBSTREAM);
         s+=dlift->steps[i];
       }
-      fprintf(stdout, "\n");
-      fprintf(stdout,
+      fprintf(VERBSTREAM, "\n");
+      fprintf(VERBSTREAM,
 	      "#polynomials to lift %14lu\n",
 	      (unsigned long) s);
-      fprintf(stdout, "-----------------------------------------\n");
+      fprintf(VERBSTREAM, "-----------------------------------------\n");
     }
 
     if(is_empty || success == 0 || fc) {
@@ -1405,7 +1406,7 @@ restart:
       free_rrec_data(recdata1);
       free_rrec_data(recdata2);
 
-      fprintf(stdout, "Something went wrong in the learning phase, msolve restarts.");
+      fprintf(VERBSTREAM, "Something went wrong in the learning phase, msolve restarts.");
       /* return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); */
       goto restart;
     }
@@ -1418,7 +1419,7 @@ restart:
     learn = 0;
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
     if(info_level){
-        fprintf(stdout, "New prime = %d\n", prime);
+        fprintf(VERBSTREAM, "New prime = %d\n", prime);
     }
     while(apply){
 
@@ -1470,38 +1471,38 @@ restart:
       nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */
       if(nprimes == 1){
         if(info_level>2){
-          fprintf(stdout, "------------------------------------------\n");
-          fprintf(stdout, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
-          fprintf(stdout, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
-          fprintf(stdout, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
-          fprintf(stdout, "------------------------------------------\n");
+          fprintf(VERBSTREAM, "------------------------------------------\n");
+          fprintf(VERBSTREAM, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
+          fprintf(VERBSTREAM, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
+          fprintf(VERBSTREAM, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
+          fprintf(VERBSTREAM, "------------------------------------------\n");
         }
         /* if(info_level>1){ */
-        /*   fprintf(stderr, "Application phase %.2f Gops/sec\n", */
+        /*   fprintf(ERRSTREAM, "Application phase %.2f Gops/sec\n", */
         /*           (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4)); */
-        /*   fprintf(stderr, "Elapsed time: %.2f\n", stf4); */
+        /*   fprintf(ERRSTREAM, "Elapsed time: %.2f\n", stf4); */
         /* } */
 	  if(info_level){
-	    fprintf(stdout,
+	    fprintf(VERBSTREAM,
 		    "\n---------------- TIMINGS ----------------\n");
-	    fprintf(stdout,
+	    fprintf(VERBSTREAM,
 		    "multi-mod overall(elapsed) %9.2f sec\n",
 		    stf4);
 	    if (info_level > 1){
-	      fprintf(stdout,
+	      fprintf(VERBSTREAM,
 		      "learning phase             %9.2f Gops/sec\n",
 		      (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(st->learning_rtime));
-	      fprintf(stdout,
+	      fprintf(VERBSTREAM,
 		      "application phase          %9.2f Gops/sec\n",
 		      (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
 	    }
-	    fprintf(stdout,
+	    fprintf(VERBSTREAM,
 		    "-----------------------------------------\n");
         }
       if (info_level) {
-	      fprintf(stdout,
+	      fprintf(VERBSTREAM,
 		      "\nmulti-modular steps\n");
-	      fprintf(stdout, "-------------------------------------------------\
+	      fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------------------------\n");
         }
       }
@@ -1510,7 +1511,7 @@ restart:
         if(msd->bad_primes[i] == 1){
             bad = 1;
             if(info_level > 1){
-                fprintf(stdout, "[!]");
+                fprintf(VERBSTREAM, "[!]");
             }
             nbadprimes++;
             msd->bad_primes[i] = 0;
@@ -1518,7 +1519,7 @@ restart:
         if(msd->bad_primes[i] == 2){
             bad = 1;
             if(info_level > 1){
-                fprintf(stdout, "[!!]");
+                fprintf(VERBSTREAM, "[!!]");
             }
             /* nbadprimes = nprimes; */
             nbadprimes++;
@@ -1528,8 +1529,8 @@ restart:
 
       if(nbadprimes >= nprimes){
         if(info_level){
-          fprintf(stdout, "\nToo many bad primes, computation will restart\n");
-          fprintf(stdout, "-------------------------------------------------\
+          fprintf(VERBSTREAM, "\nToo many bad primes, computation will restart\n");
+          fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------------------------\n");
         }
         if(dlinit){
@@ -1556,14 +1557,14 @@ restart:
       if(st_wit > 2*dlift->rr * stf4){
         dlift->rr = 2*dlift->rr;
         if(info_level){
-          fprintf(stdout, "(->%d)", dlift->rr);
-	        fflush(stdout);
+          fprintf(VERBSTREAM, "(->%d)", dlift->rr);
+	        fflush(VERBSTREAM);
         }
       }
       if(info_level){
         if(!(nprimes & (nprimes - 1))){
-          fprintf(stdout, "{%d}", nprimes);
-	      fflush(stdout);
+          fprintf(VERBSTREAM, "{%d}", nprimes);
+	      fflush(VERBSTREAM);
         }
       }
       apply = 0;
@@ -1578,8 +1579,8 @@ restart:
       }
       if(dlift->lstart != lstart){
         if(info_level){
-          fprintf(stdout, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), (*modgbsp)->ld)/(*modgbsp)->ld);
-	      fflush(stdout);
+          fprintf(VERBSTREAM, "<%.2f%%>", 100* (float)MIN((dlift->lstart + 1), (*modgbsp)->ld)/(*modgbsp)->ld);
+	      fflush(VERBSTREAM);
         }
         lstart = dlift->lstart;
       }
@@ -1587,21 +1588,21 @@ restart:
       /* but then duplicated datas and others should be free-ed */
     }
     if (info_level){
-      fprintf(stdout, " \n-------------------------------------------------\
+      fprintf(VERBSTREAM, " \n-------------------------------------------------\
 -----------------------------------------------------\n");
     }
   }
   if(info_level){
     long nbits = max_bit_size_gb((*modgbsp));
-    fprintf(stdout,"\n\n---------- COMPUTATIONAL DATA -----------\n");
-    fprintf(stdout, "Max coeff. bitsize %16lu\n", (unsigned long) nbits);
-    fprintf(stdout, "#primes            %16lu\n", (unsigned long) nprimes);
-    fprintf(stdout, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
-    fprintf(stdout, "-----------------------------------------\n");
-    fprintf(stdout, "\n---------------- TIMINGS ----------------\n");
-    fprintf(stdout, "CRT     (elapsed)         %10.2f sec\n", st_crt);
-    fprintf(stdout, "ratrecon(elapsed)         %10.2f sec\n", st_rrec);
-    fprintf(stdout, "-----------------------------------------\n");
+    fprintf(VERBSTREAM,"\n\n---------- COMPUTATIONAL DATA -----------\n");
+    fprintf(VERBSTREAM, "Max coeff. bitsize %16lu\n", (unsigned long) nbits);
+    fprintf(VERBSTREAM, "#primes            %16lu\n", (unsigned long) nprimes);
+    fprintf(VERBSTREAM, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
+    fprintf(VERBSTREAM, "-----------------------------------------\n");
+    fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
+    fprintf(VERBSTREAM, "CRT     (elapsed)         %10.2f sec\n", st_crt);
+    fprintf(VERBSTREAM, "ratrecon(elapsed)         %10.2f sec\n", st_rrec);
+    fprintf(VERBSTREAM, "-----------------------------------------\n");
   }
 
   if(dlinit){
@@ -1769,7 +1770,7 @@ gb_modpoly_t *groebner_qq(
       return NULL;
   }
   if (success == 0) {
-      fprintf(stderr,"Bad input data, stopped computation.\n");
+      fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
       exit(1);
   }
 
@@ -1779,7 +1780,7 @@ gb_modpoly_t *groebner_qq(
   gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
   modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, print_gb);
   if (err) {
-      fprintf(stderr,"Problem with groebner_qq, stopped computation (%d).\n", err);
+      fprintf(ERRSTREAM,"Problem with groebner_qq, stopped computation (%d).\n", err);
       exit(1);
   }
 
@@ -1789,7 +1790,7 @@ gb_modpoly_t *groebner_qq(
   md->f4_ctime = ct1 - ct0;
   md->f4_rtime = rt1 - rt0;
 
-  get_and_print_final_statistics(stdout, md, bs);
+  get_and_print_final_statistics(VERBSTREAM, md, bs);
 
   /* free and clean up */
   free_mstrace(msd, md);
@@ -1817,7 +1818,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
   if (flags->files->out_file != NULL) {
     ofile = fopen(flags->files->out_file, "w+");
   } else {
-    ofile = stdout;
+    ofile = OUTSTREAM;
   }
   if (flags->print_gb == 1) {
     fprintf(ofile, "#Leading ideal data\n");
@@ -1857,7 +1858,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
       fclose(ofile);
     }
     else{
-      display_gbmodpoly_cf_qq(stdout, (*modgbsp), gens);
+      display_gbmodpoly_cf_qq(OUTSTREAM, (*modgbsp), gens);
     }
   }
   if(flags->print_gb == 1){
@@ -1867,7 +1868,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
       fclose(ofile);
     }
     else{
-      display_lm_gbmodpoly_cf_qq(stdout, (*modgbsp), gens);
+      display_lm_gbmodpoly_cf_qq(OUTSTREAM, (*modgbsp), gens);
     }
   }
   gb_modpoly_clear((*modgbsp));
@@ -1936,7 +1937,7 @@ int64_t export_groebner_qq(
         return 1;
     }
     if (success == 0) {
-        fprintf(stderr, "Bad input data, stopped computation.\n");
+        fprintf(ERRSTREAM, "Bad input data, stopped computation.\n");
         exit(1);
     }
 
@@ -1948,7 +1949,7 @@ int64_t export_groebner_qq(
     core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
             2/* if set to 1, only the LM of the Gbs are correct */);
     if (err) {
-        fprintf(stderr, "Problem with groebner_qq, stopped computation.\n");
+        fprintf(ERRSTREAM, "Problem with groebner_qq, stopped computation.\n");
         exit(1);
     }
 
@@ -1958,7 +1959,7 @@ int64_t export_groebner_qq(
     md->f4_ctime = ct1 - ct0;
     md->f4_rtime = rt1 - rt0;
 
-    get_and_print_final_statistics(stdout, md, bs);
+    get_and_print_final_statistics(VERBSTREAM, md, bs);
 
     int64_t nterms  = export_results_from_groebner_qq(bld, blen, bexp,
             bcf, mallocp, elim_block_len, (*modgbsp));

@@ -37,6 +37,7 @@
 #include "flint/fmpz_poly.h"
 
 #include "../msolve/msolve-data.h"
+#include "../msolve/streams.h"
 
 #define THRESHOLDSHIFT 256
 #define POWER_HACK 1
@@ -292,7 +293,7 @@ static void is_zero_root(mpz_t *upol, mpz_t c, long k,
     }
 
     if(i >= 2){
-      fprintf(stderr, "error: the polynomial is not square-free\n");
+      fprintf(ERRSTREAM, "error: the polynomial is not square-free\n");
       exit(1);
     }
 
@@ -404,7 +405,7 @@ static long int manage_root_at_one_half(mpz_t *upol,
 
     flags->cur_deg = (*deg);
     if(sh == 0){
-      fprintf(stderr, "Input polynomial is not square-free\n");
+      fprintf(ERRSTREAM, "Input polynomial is not square-free\n");
       exit(1);
     }
 
@@ -464,19 +465,19 @@ static long nb_0_case_in_bisection_rec(const mpz_t c, const long k,
     }
 
     if(flags->verbose >= 1){
-      fprintf(stdout,"+");
-      if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+      fprintf(VERBSTREAM,"+");
+      if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
     }
   }
   if(flags->verbose >= 1){
-    fprintf(stdout,"!");
+    fprintf(VERBSTREAM,"!");
   }
   mpz_clear(tmp);
   return k;
 }
 
 
-static long nb_1_case_in_bisection_rec(mpz_t c, const long k, 
+static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                                        mpz_t tmp,
                                        interval *roots, unsigned long int *nbr,
                                        usolve_flags *flags, const int is_half_root,
@@ -491,8 +492,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
         (*nbr) ++;
 
         if(flags->verbose >= 1){
-          fprintf(stdout,"+");
-          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+          fprintf(VERBSTREAM,"+");
+          if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots == 1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -505,8 +506,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
         (*nbr)++;
 
         if(flags->verbose >= 1){
-          fprintf(stdout,"+");
-          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+          fprintf(VERBSTREAM,"+");
+          if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
         }
       }
       else{
@@ -518,8 +519,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr)++;
         if(flags->verbose >= 1){
-          fprintf(stdout,"+");
-          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+          fprintf(VERBSTREAM,"+");
+          if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots==1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -531,8 +532,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                      flags->bound_pos, flags->bound_neg, flags->sign);
           (*nbr)++;
           if(flags->verbose >= 1){
-            fprintf(stdout,"+");
-            if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+            fprintf(VERBSTREAM,"+");
+            if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
           }
         }
         else{
@@ -542,8 +543,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                      flags->bound_pos, flags->bound_neg, flags->sign);
           (*nbr) ++;
           if(flags->verbose>=1){
-            fprintf(stdout,"+");
-            if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+            fprintf(VERBSTREAM,"+");
+            if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
           }
           if(flags->hasrealroots == 1 && (*nbr)>0){
             mpz_clear(tmp);
@@ -558,8 +559,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr)++;
         if(flags->verbose>=1){
-          fprintf(stdout,"+");
-          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+          fprintf(VERBSTREAM,"+");
+          if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots==1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -573,8 +574,8 @@ static long nb_1_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr)++;
         if(flags->verbose >= 1){
-          fprintf(stdout,"+");
-          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+          fprintf(VERBSTREAM,"+");
+          if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots == 1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -604,8 +605,8 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
       (*nbr)++;
 
       if(flags->verbose>=1){
-        fprintf(stdout,"+");
-        if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+        fprintf(VERBSTREAM,"+");
+        if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
       }
       if(flags->hasrealroots==1 && (*nbr)>0){
         mpz_clear(tmp);
@@ -618,8 +619,8 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr)++;
         if(flags->verbose >= 1){
-          fprintf(stdout,"+");
-          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+          fprintf(VERBSTREAM,"+");
+          if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots==1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -631,8 +632,8 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr) ++;
         if(flags->verbose >= 1){
-          fprintf(stdout,"+");
-          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+          fprintf(VERBSTREAM,"+");
+          if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots == 1 && (*nbr) > 0){
           mpz_clear(tmp);
@@ -647,8 +648,8 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
                    flags->bound_pos, flags->bound_neg, flags->sign);
         (*nbr) ++;
         if(flags->verbose>=1){
-          fprintf(stdout,"+");
-          if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+          fprintf(VERBSTREAM,"+");
+          if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
         }
         if(flags->hasrealroots==1 && (*nbr)>0){
           mpz_clear(tmp);
@@ -658,7 +659,7 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
       /* if(flags->debug==1){ */
       /*   long bo=mpz_sgn(upoly[0]); */
       /*   long to=mpz_poly_sign_at_one(upol, (*deg), flags->Values); */
-      /*   fprintf(stderr,"[d:%ld, %ld, %ld]",bo,shalf,to); */
+      /*   fprintf(ERRSTREAM,"[d:%ld, %ld, %ld]",bo,shalf,to); */
       /* } */
       mpz_clear(tmp);
       return k;
@@ -680,7 +681,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
   int branch_right = 1;
 
   if(flags->verbose>=1){
-    fprintf(stdout,"-");
+    fprintf(VERBSTREAM,"-");
   }
   mpz_mul_2exp(tmp, tmp, 1);
   USOLVEmpz_poly_rescale_normalize_2exp_th(upol, -1,
@@ -691,7 +692,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
                          flags, tmp_half);
   }
   else{
-    if(flags->verbose >= 1) fprintf(stdout, "!");
+    if(flags->verbose >= 1) fprintf(VERBSTREAM, "!");
     oldk = k + 1;
   }
 
@@ -707,8 +708,8 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
                flags->sign);
     (*nbr)++;
     if(flags->verbose>=1){
-      fprintf(stdout,"+");
-      if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+      fprintf(VERBSTREAM,"+");
+      if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
     }
     if(flags->hasrealroots == 1 && (*nbr)>0){
       mpz_clear(tmp);
@@ -723,7 +724,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
 
   e_time =  realtime();
   if(flags->verbose>=1){
-    fprintf(stdout,"*");
+    fprintf(VERBSTREAM,"*");
   }
   if(flags->classical_algo==1){
     taylorshift1_naive(upol, *deg);
@@ -747,7 +748,7 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
   else{
     oldk = k + 1;
     nb = mpz_poly_sgn_variations_coeffs_is_zero(upol, (*deg));
-    if(flags->verbose >= 1) fprintf(stdout, "!");
+    if(flags->verbose >= 1) fprintf(VERBSTREAM, "!");
     if(nb == 0) oldk = -1;
   }
 
@@ -775,7 +776,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
                           usolve_flags *flags,
                           mpz_t tmp_half){
 
-  /* display_roots_system(stderr, roots, *nbr); */
+  /* display_roots_system(ERRSTREAM, roots, *nbr); */
   long nb;
   long shalf;
   long bsgn = 0;
@@ -786,14 +787,14 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
   (flags->node_looked)++;
 
   if(flags->verbose == 4){
-    fprintf(stdout,"[");
-    mpz_out_str(stdout, 10, c);
-    fprintf(stdout,",%lu]", k);
+    fprintf(VERBSTREAM,"[");
+    mpz_out_str(VERBSTREAM, 10, c);
+    fprintf(VERBSTREAM,",%lu]", k);
   }
   if(flags->verbose >= 5){
-    fprintf(stdout,"[");
-    mpz_out_str(stdout, 10, c);
-    fprintf(stdout,",%lu][bs=%lu]", k,
+    fprintf(VERBSTREAM,"[");
+    mpz_out_str(VERBSTREAM, 10, c);
+    fprintf(VERBSTREAM,",%lu][bs=%lu]", k,
             mpz_poly_max_bsize_coeffs(upol, *deg));
   }
 
@@ -836,8 +837,8 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
       (*nbr)++;
 
       if(flags->verbose>=1){
-        fprintf(stdout,"+");
-        if((*nbr) % 100 == 0) fprintf(stdout, "[%lu]",(*nbr));
+        fprintf(VERBSTREAM,"+");
+        if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
       }
 
       if(flags->hasrealroots==1 && (*nbr)>0){
@@ -847,7 +848,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
     }
 
     if(flags->verbose>=1){
-      fprintf(stdout,"!");
+      fprintf(VERBSTREAM,"!");
     }
     mpz_clear(tmp);
     return -1;
@@ -855,7 +856,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
 
 
   if(flags->verbose>=2){
-    fprintf(stdout,"c");
+    fprintf(VERBSTREAM,"c");
   }
 
   e_time = realtime();
@@ -868,7 +869,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
   flags->time_desc += (realtime()-e_time);
 
   if(flags->verbose>=3){
-    fprintf(stdout,"[nb=%lu]",nb);
+    fprintf(VERBSTREAM,"[nb=%lu]",nb);
   }
 
   if (bsgn == -1){
@@ -1065,13 +1066,13 @@ static inline void free_heap_flags(usolve_flags *flags,
 
 static void display_stats(usolve_flags *flags){
 
-  fprintf(stdout,"\n");
-  fprintf(stdout,"Number of nodes : %lu\n", flags->node_looked);
-  fprintf(stdout,"Number of shifts : %lu\n", flags->transl);
-  fprintf(stdout,"Number of half splits : %lu\n", flags->half_done);
-  fprintf(stdout,"Time in Descartes (elapsed): %.2f sec\n", flags->time_desc);
-  fprintf(stdout,"Time in Taylor shifts (elapsed): %.2f sec\n", flags->time_shift);
-  fprintf(stdout,"\n");
+  fprintf(VERBSTREAM,"\n");
+  fprintf(VERBSTREAM,"Number of nodes : %lu\n", flags->node_looked);
+  fprintf(VERBSTREAM,"Number of shifts : %lu\n", flags->transl);
+  fprintf(VERBSTREAM,"Number of half splits : %lu\n", flags->half_done);
+  fprintf(VERBSTREAM,"Time in Descartes (elapsed): %.2f sec\n", flags->time_desc);
+  fprintf(VERBSTREAM,"Time in Taylor shifts (elapsed): %.2f sec\n", flags->time_shift);
+  fprintf(VERBSTREAM,"\n");
 
 }
 
@@ -1110,7 +1111,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
 
   if(mpz_sgn(upol0[0]) == 0 && mpz_sgn(upol0[1])==0){
 
-    fprintf(stderr,
+    fprintf(ERRSTREAM,
             "0 is a multiple root ; the input polynomial must be square-free\n");
 
     free(pos_roots);
@@ -1146,7 +1147,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     flags->bound_pos = bound_roots(upol, deg);
 
     if(flags->verbose>=1){
-      fprintf(stdout, "Bound for positive roots: %ld\n\n", flags->bound_pos);
+      fprintf(VERBSTREAM, "Bound for positive roots: %ld\n\n", flags->bound_pos);
     }
 
     USOLVEmpz_poly_rescale_normalize_2exp_th(upol,
@@ -1203,7 +1204,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
                                              flags->nthreads);
 
     if(flags->verbose>=1){
-      fprintf(stdout, "\nBound for negative roots: %ld\n\n", flags->bound_neg);
+      fprintf(VERBSTREAM, "\nBound for negative roots: %ld\n\n", flags->bound_neg);
     }
 
     mpz_set_ui(e, 0);
@@ -1270,7 +1271,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   flags->cur_deg = deg;
   flags->prec_isole = precision;
   if(info_level){
-    fprintf(stdout, "Real root isolation starts at precision %d\n",
+    fprintf(VERBSTREAM, "Real root isolation starts at precision %d\n",
             precision);
   }
   if (info_level > 0) {
@@ -1283,11 +1284,11 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   }
   flags->nthreads = nthrds;
   if(flags->verbose>=1 || flags->print_stats == 1){
-    fprintf(stdout, "Degree = %ld \t Max bit size = %lu Min bit size = %lu \n",
+    fprintf(VERBSTREAM, "Degree = %ld \t Max bit size = %lu Min bit size = %lu \n",
             flags->cur_deg,
             mpz_poly_max_bsize_coeffs(upoly, deg),
             mpz_poly_min_bsize_coeffs(upoly, deg));
-    fprintf(stdout, "nthreads = %d\n", flags->nthreads);
+    fprintf(VERBSTREAM, "nthreads = %d\n", flags->nthreads);
   }
   double e_time = realtime ( );
 
@@ -1303,16 +1304,16 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
     }
   }
 
-  /* display_root(stderr, roots); */
+  /* display_root(ERRSTREAM, roots); */
 
   e_time = realtime ( ) - e_time;
 
   if(flags->verbose>=1){
-    fprintf(stdout, "\n");
+    fprintf(VERBSTREAM, "\n");
   }
 
   if((flags->verbose>=1) || (flags->print_stats>=1)){
-    fprintf(stdout,"Time for isolation (elapsed): %.2f sec\n", e_time);
+    fprintf(VERBSTREAM,"Time for isolation (elapsed): %.2f sec\n", e_time);
   }
 
   double refine_time = realtime();
@@ -1343,8 +1344,8 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   }
 
   if((flags->verbose>=1) || (flags->print_stats>=1)){
-    fprintf(stdout,"Time for isolation (elapsed): %.2f sec\n", e_time);
-    fprintf(stdout,"Time for refinement (elapsed): %.2f sec\n", refine_time);
+    fprintf(VERBSTREAM,"Time for isolation (elapsed): %.2f sec\n", e_time);
+    fprintf(VERBSTREAM,"Time for refinement (elapsed): %.2f sec\n", refine_time);
   }
 
   free(flags);

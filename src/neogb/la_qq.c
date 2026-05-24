@@ -19,6 +19,7 @@
  * Mohab Safey El Din */
 
 #include "data.h"
+#include "../msolve/streams.h"
 
 static inline mpz_t *remove_content_of_sparse_matrix_row_qq(
         mpz_t *row,
@@ -762,8 +763,8 @@ static void exact_sparse_linear_algebra_ab_first_qq(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 static void exact_sparse_linear_algebra_qq(
@@ -792,8 +793,8 @@ static void exact_sparse_linear_algebra_qq(
 
     st->num_zerored += (mat->nrl - mat->np);
     if (st->info_level > 1) {
-        printf("%7d new %7d zero", mat->np, mat->nrl - mat->np);
-        fflush(stdout);
+        fprintf(VERBSTREAM, "%7d new %7d zero", mat->np, mat->nrl - mat->np);
+        fflush(VERBSTREAM);
     }
 }
 
@@ -811,7 +812,7 @@ static void interreduce_matrix_rows_qq(
 
     /* adjust displaying timings for statistic printout */
     if (st->info_level > 1) {
-        printf("                        ");
+        fprintf(VERBSTREAM, "                        ");
     }
     mat->tr = realloc(mat->tr, (unsigned long)ncols * sizeof(hm_t *));
 

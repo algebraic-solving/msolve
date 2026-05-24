@@ -18,6 +18,8 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include "streams.h"
+
 static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
 {
     len_t i, j, k;
@@ -345,7 +347,7 @@ static void print_ff_nf_data(
             fclose(ofile);
         }
         else{
-            print_msolve_polynomials_ff(stdout, from, to, bs, ht,
+            print_msolve_polynomials_ff(OUTSTREAM, from, to, bs, ht,
                     st, gens->vnames, 2-print_gb, 1);
         }
     }
@@ -368,7 +370,7 @@ static void print_ff_basis_data(
             fclose(ofile);
         }
         else{
-            print_msolve_polynomials_ff(stdout, 0, bs->lml, bs, ht,
+            print_msolve_polynomials_ff(OUTSTREAM, 0, bs->lml, bs, ht,
                     st, gens->vnames, 2-print_gb, 0);
         }
     }
@@ -534,7 +536,7 @@ static void get_variables(FILE *fh, char * line, int max_line_size,
   if (fgets(line, max_line_size, fh) != NULL) {
     tmp = line;
   } else {
-    fprintf(stderr,"Bad file format (variable names).\n");
+    fprintf(ERRSTREAM,"Bad file format (variable names).\n");
     /* free(vnames);
      * free(line); */
     fclose(fh);
@@ -556,7 +558,7 @@ static void get_characteristic(FILE *fh, char * line, int max_line_size,
     if(tmp_mod >= 0){
       *field_char = (int32_t) tmp_mod;
       if(tmp_mod > 2147483647){
-        fprintf(stderr, "Warning: characteristic must be 0 or < 2^31\n");
+        fprintf(ERRSTREAM, "Warning: characteristic must be 0 or < 2^31\n");
         free(vnames);
         free(line);
         fclose(fh);
@@ -564,7 +566,7 @@ static void get_characteristic(FILE *fh, char * line, int max_line_size,
       }
     }
     else{
-      fprintf(stderr, "Bad file format (characteristic)\n");
+      fprintf(ERRSTREAM, "Bad file format (characteristic)\n");
       free(vnames);
       free(line);
       fclose(fh);
@@ -677,7 +679,7 @@ static inline void get_term(const char *line, char **prev_pos,
       * if minus is nearer */
     if (term_diff_add > term_diff_minus) {
       if( term_diff_minus >= *term_size){
-        fprintf(stderr, "Too large input integers, exit...\n");
+        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
         exit(1);
       }
       memcpy(*term, start_pos, term_diff_minus);
@@ -687,7 +689,7 @@ static inline void get_term(const char *line, char **prev_pos,
     /** if plus is nearer */
     } else {
       if(term_diff_add >= *term_size){
-        fprintf(stderr, "Too large input integers, exit...\n");
+        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
         exit(1);
       }
       memcpy(*term, start_pos, term_diff_add);
@@ -699,7 +701,7 @@ static inline void get_term(const char *line, char **prev_pos,
     if (curr_pos_add != NULL) {
       size_t term_diff_add   = (size_t)(curr_pos_add - start_pos);
       if(term_diff_add >= *term_size){
-        fprintf(stderr, "Too large input integers, exit...\n");
+        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
         exit(1);
       }
       memcpy(*term, start_pos, term_diff_add);
@@ -710,7 +712,7 @@ static inline void get_term(const char *line, char **prev_pos,
     if (curr_pos_minus != NULL) {
       size_t term_diff_minus = (size_t)(curr_pos_minus - start_pos);
       if(term_diff_minus >= *term_size){
-        fprintf(stderr, "Too large input integers, exit...\n");
+        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
         exit(1);
       }
       memcpy(*term, start_pos, term_diff_minus);
@@ -722,7 +724,7 @@ static inline void get_term(const char *line, char **prev_pos,
       size_t prev_idx  = (size_t)(start_pos - line);
       size_t term_diff = strlen(line) + 1 - prev_idx;
       if(term_diff >= *term_size){
-        fprintf(stderr, "Too large input integers, exit...\n");
+        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
         exit(1);
       }
       memcpy(*term, start_pos, term_diff);
@@ -804,7 +806,7 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
 }
 
 static void beginning_strterm_to_mpz(char *str, mpz_t *num, mpz_t *den){
-  /* fprintf(stderr, "TERM = %s\n", str); */
+  /* fprintf(ERRSTREAM, "TERM = %s\n", str); */
   mpq_t tmp;
   mpq_init(tmp);
   mpz_set_ui(*num, 1);
@@ -923,7 +925,7 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, nelts_t all_nterms,
         }
         if(get_coefficient_ff_and_term_from_line(line, gens->lens[i], gens->field_char,
                     gens, pos)){
-            fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
+            fprintf(ERRSTREAM, "Error when reading file (exit but things need to be free-ed)\n");
             free(line);
             fclose(fh);
             exit(1);
@@ -970,7 +972,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, nelts_t all_nterms,
         }
         if(get_coefficient_mpz_and_term_from_line(line, gens->lens[i], gens->field_char,
                     gens, pos)){
-            fprintf(stderr, "Error when reading file (exit but things need to be free-ed)\n");
+            fprintf(ERRSTREAM, "Error when reading file (exit but things need to be free-ed)\n");
             free(line);
             fclose(fh);
             exit(1);
@@ -998,7 +1000,7 @@ static int duplicate_vnames(char **vnames, int32_t nvars) {
   for (i = 1; i < nvars; ++i) {
     for (j = 0; j < i; ++j) {
       if (strcmp(vnames[i], vnames[j]) == 0) {
-        fprintf(stderr, "Duplicate variable name %s in input file.\n", vnames[i]);
+        fprintf(ERRSTREAM, "Duplicate variable name %s in input file.\n", vnames[i]);
         return 1;
       }
     }
@@ -1013,11 +1015,11 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
                                       int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
   if (*nr_vars == -1)
-    fprintf(stderr,"Bad file format (first line).\n");
+    fprintf(ERRSTREAM,"Bad file format (first line).\n");
 
   *nr_gens = get_ngenerators(fn);
   if (*nr_gens == -1)
-    fprintf(stderr,"Bad file format (generators).\n");
+    fprintf(ERRSTREAM,"Bad file format (generators).\n");
 
   const int max_line_size  = 1073741824;
   char *line  = (char *)malloc((nelts_t)max_line_size * sizeof(char));
@@ -1147,7 +1149,7 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
 
 static inline void get_poly_bin(FILE *file, mpz_upoly_t pol){
   if(!fscanf(file, "%d\n", &pol->alloc)){
-    fprintf(stderr, "Issue when reading binary file (alloc = %d)\n", pol->alloc);
+    fprintf(ERRSTREAM, "Issue when reading binary file (alloc = %d)\n", pol->alloc);
     exit(1);
   }
 
@@ -1157,7 +1159,7 @@ static inline void get_poly_bin(FILE *file, mpz_upoly_t pol){
   for(int32_t i = 0; i < pol->length; i++){
     mpz_init(pol->coeffs[i]);
     if(!mpz_inp_raw(pol->coeffs[i], file)){
-      fprintf(stderr, "An error occurred when reading file (i=%d)\n", i);
+      fprintf(ERRSTREAM, "An error occurred when reading file (i=%d)\n", i);
       exit(1);
     }
   }
@@ -1165,7 +1167,7 @@ static inline void get_poly_bin(FILE *file, mpz_upoly_t pol){
 
 static inline void get_poly(FILE *file, mpz_upoly_t pol){
   if(!fscanf(file, "%d\n", &pol->alloc)){
-    fprintf(stderr, "Issue when reading binary file (alloc = %d)\n", pol->alloc);
+    fprintf(ERRSTREAM, "Issue when reading binary file (alloc = %d)\n", pol->alloc);
     exit(1);
   }
 
@@ -1174,7 +1176,7 @@ static inline void get_poly(FILE *file, mpz_upoly_t pol){
   for(int32_t i = 0; i < pol->length; i++){
     mpz_init(pol->coeffs[i]);
     if(!mpz_inp_str(pol->coeffs[i], file, 10)){
-      fprintf(stderr, "An error occurred when reading file (i=%d)\n", i);
+      fprintf(ERRSTREAM, "An error occurred when reading file (i=%d)\n", i);
       exit(1);
     }
   }
@@ -1187,7 +1189,7 @@ static inline void get_single_param_from_file_bin(FILE *file, mpz_param_t param)
   get_poly_bin(file, param->denom);
 
   if(!fscanf(file, "%d\n", &param->nvars)){
-    fprintf(stderr, "Issue when reading binary file (nvars)\n");
+    fprintf(ERRSTREAM, "Issue when reading binary file (nvars)\n");
     exit(1);
   }
 
@@ -1202,7 +1204,7 @@ static inline void get_single_param_from_file_bin(FILE *file, mpz_param_t param)
 
     mpz_init(param->cfs[i]);
     if(!mpz_inp_raw(param->cfs[i], file)){
-      fprintf(stderr, "An error occurred when reading file (lcm coord i=%d)\n", i);
+      fprintf(ERRSTREAM, "An error occurred when reading file (lcm coord i=%d)\n", i);
       exit(1);
     }
 
@@ -1215,7 +1217,7 @@ static inline void get_single_param_from_file(FILE *file, mpz_param_t param){
 
   get_poly(file, param->denom);
   if(!fscanf(file, "%d\n", &param->nvars)){
-    fprintf(stderr, "Issue when reading binary file (nvars)\n");
+    fprintf(ERRSTREAM, "Issue when reading binary file (nvars)\n");
     exit(1);
   }
 
@@ -1231,7 +1233,7 @@ static inline void get_single_param_from_file(FILE *file, mpz_param_t param){
     mpz_init(param->cfs[i]);
 
     if(!mpz_inp_str(param->cfs[i], file, 10)){
-      fprintf(stderr, "An error occurred when reading file (i=%d)\n", i);
+      fprintf(ERRSTREAM, "An error occurred when reading file (i=%d)\n", i);
       exit(1);
     }
 
@@ -1243,7 +1245,7 @@ static inline void get_params_from_file_bin(char *fn, mpz_param_array_t lparam){
   FILE *file = fopen(fn,"r");
   int32_t nb = 0;
   if(!fscanf(file, "%d\n", &nb)){
-    fprintf(stderr, "Issue when reading binary file (nb = %d)\n", nb);
+    fprintf(ERRSTREAM, "Issue when reading binary file (nb = %d)\n", nb);
     exit(1);
   }
   lparam->nb = nb;
@@ -1259,7 +1261,7 @@ static inline void get_params_from_file(char *fn, mpz_param_array_t lparam){
   FILE *file = fopen(fn,"r");
   int32_t nb = 0;
   if(!fscanf(file, "%d\n", &nb)){
-    fprintf(stderr, "Issue when reading binary file (nb = %d)\n", nb);
+    fprintf(ERRSTREAM, "Issue when reading binary file (nb = %d)\n", nb);
     exit(1);
   }
   lparam->nb = nb;

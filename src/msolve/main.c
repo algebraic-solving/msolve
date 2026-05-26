@@ -522,7 +522,7 @@ int main(int argc, char **argv){
 
     /* clear out_file if given */
     if(files->out_file != NULL){
-      FILE *ofile = fopen(files->out_file, "w");
+      FILE *ofile = fopen(files->out_file, "wb");
       if(ofile == NULL){
         fprintf(ERRSTREAM, "Cannot open output file\n");
         exit(1);

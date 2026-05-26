@@ -16,6 +16,7 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest
+          - macos-26-intel
     steps:
       - uses: actions/checkout@v6
       - name: "Install dependencies"

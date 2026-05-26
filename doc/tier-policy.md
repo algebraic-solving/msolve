@@ -25,7 +25,7 @@ This policy defines the requirements for accepting a proposed target at a given 
 - i686 Linux
 - x86_64 FreeBSD
 - ARM64 FreeBSD
-- PPC64 Linux
+- PPC64le Linux
 - RISCV64 Linux
 
 ### Tier 3

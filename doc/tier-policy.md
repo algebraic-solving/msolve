@@ -26,7 +26,7 @@ This policy defines the requirements for accepting a proposed target at a given 
 - x86_64 FreeBSD
 - ARM64 FreeBSD
 - PPC64 Linux
-- RISC64 Linux
+- RISCV64 Linux
 
 ### Tier 3
 - ARM64 Windows

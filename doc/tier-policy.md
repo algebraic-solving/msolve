@@ -5,7 +5,7 @@
 msolve provides three tiers of target support:
 
 - msolve provides no guarantees about tier 3 targets; they exist in the codebase, but may or may not build.
-- msolve's continuous integration checks that tier 2 targets will always build, but they may or may not pass tests.
+- msolve expects that tier 2 targets will always build, but they may or may not pass tests.
 - msolve's continuous integration checks that tier 1 targets will always build and pass tests.
 
 Adding a new tier 3 target imposes minimal requirements; we focus primarily on avoiding disruption to other ongoing msolve development.

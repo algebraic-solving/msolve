@@ -22,11 +22,14 @@ This policy defines the requirements for accepting a proposed target at a given 
 - ARM64 macOS
 
 ### Tier 2
+- ARM64 Linux
+- ARMv6 Linux
+- ARMv7 Linux
 - i686 Linux
-- x86_64 FreeBSD
-- ARM64 FreeBSD
 - PPC64le Linux
 - RISCV64 Linux
+- x86_64 FreeBSD
+- ARM64 FreeBSD
 
 ### Tier 3
 - ARM64 Windows

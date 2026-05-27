@@ -148,7 +148,7 @@ static inline void REDUCE(uint64_t *acc64, uint64_t *acc4x64,
 /* stores in tmp the entries of B column-wise */
 /* tmp = [ B[0][0], B[1][0], ..., B[n][0],
            B[0][1], ..., B[n][1], ... ] */
-static __inline__ void specialize_tmp(uint32_t *tmp,
+static inline void specialize_tmp(uint32_t *tmp,
                                       uint32_t ** B,
                                       const long l, const long n){
   for(long i = 0; i < l; i++){
@@ -157,7 +157,7 @@ static __inline__ void specialize_tmp(uint32_t *tmp,
   }
 }
 
-static __inline__ void make_zero(uint32_t ** D,
+static inline void make_zero(uint32_t ** D,
                                 long m, long n){
   for(long i = 0; i < m; i++){
     for(long j = 0; j < n; j++){

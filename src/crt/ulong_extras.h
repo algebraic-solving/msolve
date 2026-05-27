@@ -18,7 +18,7 @@
 #ifdef ULONG_EXTRAS_INLINES_C
 #define ULONG_EXTRAS_INLINE FLINT_DLL
 #else
-#define ULONG_EXTRAS_INLINE static __inline__
+#define ULONG_EXTRAS_INLINE static inline
 #endif
 
 #include <gmp.h>
@@ -32,13 +32,13 @@
 
 #define UWORD_HALF (UWORD_MAX / 2 + 1)
 
-static __inline__
+static inline
 double n_precompute_inverse(ulong n)
 {
    return (double) 1 / (double) n;
 }
 
-static __inline__
+static inline
 ulong n_preinvert_limb(ulong n)
 {
    ulong norm, ninv;
@@ -53,7 +53,7 @@ ulong n_preinvert_limb(ulong n)
 /*                       ulong n, ulong ninv); */
 #include "ulong_extras/ll_mod_preinv.c"
 
-static __inline__ 
+static inline 
 ulong n_mulmod2_preinv(ulong a, ulong b, ulong n, ulong ninv)
 {
     ulong p1, p2;
@@ -64,7 +64,7 @@ ulong n_mulmod2_preinv(ulong a, ulong b, ulong n, ulong ninv)
     return n_ll_mod_preinv(p1, p2, n, ninv);
 }
 
-static __inline__ 
+static inline 
 ulong n_mulmod2(ulong a, ulong b, ulong n)
 {
     ulong p1, p2, ninv;
@@ -76,7 +76,7 @@ ulong n_mulmod2(ulong a, ulong b, ulong n)
     return n_ll_mod_preinv(p1, p2, n, ninv);
 }
 
-static __inline__ 
+static inline 
 ulong n_addmod(ulong x, ulong y, ulong n)
 {
     /* FLINT_ASSERT(x < n); */
@@ -86,7 +86,7 @@ ulong n_addmod(ulong x, ulong y, ulong n)
     return (n - y > x ? x + y : x + y - n);
 }
 
-static __inline__
+static inline
 ulong n_submod(ulong x, ulong y, ulong n)
 {
     /* FLINT_ASSERT(x < n); */
@@ -96,7 +96,7 @@ ulong n_submod(ulong x, ulong y, ulong n)
 }
 
 
-static __inline__
+static inline
 ulong n_negmod(ulong x, ulong n)
 {
     /* FLINT_ASSERT(x < n); */
@@ -106,10 +106,10 @@ ulong n_negmod(ulong x, ulong n)
 }
 
 
-/* static __inline__ ulong n_gcdinv(ulong * a, ulong x, ulong y); */
+/* static inline ulong n_gcdinv(ulong * a, ulong x, ulong y); */
 #include "ulong_extras/gcdinv.c"
 
-static __inline__
+static inline
 ulong n_invmod(ulong x, ulong y)
 {
    ulong r, g;

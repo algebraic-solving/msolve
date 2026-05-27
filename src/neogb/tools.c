@@ -32,10 +32,10 @@ double cputime(void)
 /* wall time */
 double realtime(void)
 {
-	struct timeval t;
-	gettimeofday(&t, NULL);
+	struct timespec t;
+	timespec_get(&t, TIME_UTC);
 	t.tv_sec -= (2017 - 1970)*3600*24*365;
-	return (1. + (double)t.tv_usec + ((double)t.tv_sec*1000000.)) / 1000000.;
+	return (1. + (double)t.tv_nsec + ((double)t.tv_sec*1000000000.)) / 1000000000.;
 }
 
 static void construct_trace(

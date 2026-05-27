@@ -26,7 +26,6 @@
 #include<stdlib.h>
 #include<string.h>
 #include<stdint.h>
-#include<unistd.h>
 #include<time.h>
 /* for timing functions */
 #include "../neogb/tools.h"

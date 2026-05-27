@@ -20,7 +20,6 @@
 
 #include<stdio.h>
 #include<stdlib.h>
-#include <unistd.h>
 #include<gmp.h>
 #include<math.h>
 #include<time.h>

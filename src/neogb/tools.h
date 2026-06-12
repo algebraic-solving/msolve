@@ -22,7 +22,6 @@
 #define GB_TOOLS_H
 
 #include <time.h>
-#include <sys/time.h>
 #include "data.h"
 
 /* cpu time */

@@ -20,6 +20,21 @@
 
 #include "tools.h"
 
+/* timespec_get (C11) is not available on older Android and macOS targets.
+   For those targets, we fall back to gettimeofday. */
+#if defined(__ANDROID__) && defined(__ANDROID_API__) && __ANDROID_API__ < 29
+#define HAVE_TIMESPEC_GET 0
+#elif defined(__APPLE__) && defined(__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__) && \
+    __ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__ < 101500
+#define HAVE_TIMESPEC_GET 0
+#else
+#define HAVE_TIMESPEC_GET 1
+#endif
+
+#if !HAVE_TIMESPEC_GET
+#include <sys/time.h>
+#endif
+
 /* cpu time */
 double cputime(void)
 {
@@ -32,10 +47,17 @@ double cputime(void)
 /* wall time */
 double realtime(void)
 {
+#if !HAVE_TIMESPEC_GET
+	struct timeval t;
+	gettimeofday(&t, NULL);
+	t.tv_sec -= (2017 - 1970)*3600*24*365;
+	return (1. + (double)t.tv_usec + ((double)t.tv_sec*1000000.)) / 1000000.;
+#else
 	struct timespec t;
 	timespec_get(&t, TIME_UTC);
 	t.tv_sec -= (2017 - 1970)*3600*24*365;
 	return (1. + (double)t.tv_nsec + ((double)t.tv_sec*1000000000.)) / 1000000000.;
+#endif
 }
 
 static void construct_trace(

@@ -186,7 +186,9 @@ static int is_kernel_trivial(
 
     /* fill random value array */
     for (i = 0; i < ncr; ++i) {
-        mul[i]  = (int64_t)rand() & fc;
+        do {
+            mull[j] = (int64_t)rand() & fc;
+        } while (mull[j] == 0);
     }
     for (i = 0; i < sat->ld; ++i) {
         memset(dr, 0, (uint64_t)dim * sizeof(int64_t));
@@ -2382,7 +2384,9 @@ static void probabilistic_sparse_reduced_echelon_form_ff_32(
 
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
-                    mull[j] = (int64_t)rand() & mask;
+                    do {
+                        mull[j] = (int64_t)rand() & mask;
+                    } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination
                  * of the rows of the block */
@@ -3599,7 +3603,9 @@ static cf32_t **probabilistic_dense_linear_algebra_ff_32(
 
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
-                    mull[j] = (int64_t)rand() & mask;
+                    do {
+                        mull[j] = (int64_t)rand() & mask;
+                    } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination
                  * of the rows of the block */
@@ -3731,7 +3737,9 @@ static cf32_t **probabilistic_sparse_dense_echelon_form_ff_32(
 
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
-                    mull[j] = (int64_t)rand() % fc;
+                    do {
+                        mull[j] = (int64_t)rand() & fc;
+                    } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination
                  * of the rows of the block */

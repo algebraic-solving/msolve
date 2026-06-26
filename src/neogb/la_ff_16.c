@@ -778,7 +778,9 @@ static void probabilistic_sparse_reduced_echelon_form_ff_16(
 
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
-                    mull[j] = (int64_t)rand() % fc;
+                    do {
+                        mull[j] = (int64_t)rand() & fc;
+                    } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination
                  * of the rows of the block */
@@ -1675,7 +1677,9 @@ static cf16_t **probabilistic_dense_linear_algebra_ff_16(
 
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
-                    mull[j] = (int64_t)rand() % fc;
+                    do {
+                        mull[j] = (int64_t)rand() & fc;
+                    } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination
                  * of the rows of the block */
@@ -1807,7 +1811,9 @@ static cf16_t **probabilistic_sparse_dense_echelon_form_ff_16(
 
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
-                    mull[j] = (int64_t)rand() % fc;
+                    do {
+                        mull[j] = (int64_t)rand() & fc;
+                    } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination
                  * of the rows of the block */

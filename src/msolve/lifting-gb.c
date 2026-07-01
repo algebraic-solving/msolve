@@ -1099,7 +1099,7 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
             }
           }
           dl->check2[k]++;
-          if(dl->check2[k] == NBCHECK){
+          if(dl->check2[k] >= NBCHECK){
             dl->S = k+1;
             dl->lstart = dl->S;
             for(uint32_t j = 0; j < modgbs->modpolys[k]->len; j++){
@@ -1192,16 +1192,14 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
       }
     }
   }
-  int stop = 0;
-  for(int32_t i = 0; i < modgbs->ld-1; i++){
-    if(dl->check2[i] != NBCHECK){
+  int stop = 1;
+  for(int32_t i = 0; i < modgbs->ld; i++){
+    if(dl->check2[i] < NBCHECK){
+      stop = 0;
       break;
     }
-    else{
-      stop++;
-    }
   }
-  if(stop == modgbs->ld-1){
+  if(stop){
     return;
   }
   *st_rrec += realtime()-st;

@@ -178,6 +178,9 @@ AC_CONFIG_LINKS([
  input_files/groebner-g2.ms:input_files/groebner-g2.ms
  output_files/groebner-g2.g2.res:output_files/groebner-g2.g2.res
  test/diff/diff_groebner-g2.sh:test/diff/diff_groebner-g2.sh
+ input_files/sum-squares-system.ms:input_files/sum-squares-system.ms
+ output_files/sum-squares-system.g2.res:output_files/sum-squares-system.g2.res
+ test/diff/diff_sum-squares-system.sh:test/diff/diff_sum-squares-system.sh
  input_files/henrion5-qq.ms:input_files/henrion5-qq.ms
  output_files/henrion5-qq.P2.d0.res:output_files/henrion5-qq.P2.d0.res
  output_files/henrion5-qq.g2.res:output_files/henrion5-qq.g2.res

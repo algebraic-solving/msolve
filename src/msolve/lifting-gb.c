@@ -1028,7 +1028,9 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         }
         else{
           mpz_set_ui(dl->gden, 1);
-          dl->check2[k] = 0;
+          for(int32_t i = k; i < modgbs->ld; i++){
+            dl->check2[i] = 0;
+          }
           mpz_clear(rnum);
           mpz_clear(rden);
           return k;
@@ -1041,7 +1043,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         mpz_set_ui(polys[k]->cf_qq[2*l+1], 1);
       }
       mpz_mul(polys[k]->lm, polys[k]->lm, dl->tmp);
-      dl->check2[k] = 1;
+      dl->check2[k] += 1;
     }
     if(dl->check1[k] < 1 && polys[k]->len > 0){
       mpz_clear(rnum);
@@ -1049,7 +1051,7 @@ static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
       return k;
     }
     if(polys[k]->len == 0){
-        dl->check2[k] = 1;
+        dl->check2[k] += 1;
     }
   }
   mpz_clear(rnum);
@@ -1097,7 +1099,7 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
             }
           }
           dl->check2[k]++;
-          if(dl->check2[k] == NBCHECK){
+          if(dl->check2[k] >= NBCHECK){
             dl->S = k+1;
             dl->lstart = dl->S;
             for(uint32_t j = 0; j < modgbs->modpolys[k]->len; j++){
@@ -1190,7 +1192,14 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
       }
     }
   }
-  if(dl->check2[modgbs->ld-1] == NBCHECK){
+  int stop = 1;
+  for(int32_t i = 0; i < modgbs->ld; i++){
+    if(dl->check2[i] < NBCHECK){
+      stop = 0;
+      break;
+    }
+  }
+  if(stop){
     return;
   }
   *st_rrec += realtime()-st;

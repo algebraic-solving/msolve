@@ -1633,7 +1633,7 @@ uint64_t export_results_from_groebner_qq(
         void *(*mallocp) (size_t),
         const int32_t elim_block_len,
         const int32_t print_gb, /* if this is 1, only leading monomials are exported */
-        gb_modpoly_t gb,
+        gb_modpoly_t gb
         )
 {
     int64_t nelts = gb->ld;
@@ -1980,7 +1980,7 @@ int64_t export_groebner_qq(
     get_and_print_final_statistics(VERBSTREAM, md, bs);
 
     int64_t nterms  = export_results_from_groebner_qq(bld, blen, bexp,
-            bcf, mallocp, elim_block_len, (*modgbsp));
+                                                      bcf, mallocp, elim_block_len, print_gb, (*modgbsp));
 
     /* free and clean up */
     free_mstrace(msd, md);

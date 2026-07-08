@@ -224,6 +224,7 @@ int64_t export_groebner_qq(
         const int32_t max_nr_pairs,
         const int32_t reset_ht,
         const int32_t la_option,
+        const int32_t print_gb,
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t truncate_lifting,

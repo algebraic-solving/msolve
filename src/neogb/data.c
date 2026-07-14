@@ -21,97 +21,97 @@
 
 #include "data.h"
 
-/* function pointers */
-/* bs_t *(*initialize_basis)(
+/* functions */
+/* bs_t *initialize_basis(
  *         const int32_t ngens
  *         ); */
-void (*normalize_initial_basis)(
+void normalize_initial_basis(
         bs_t *bs,
         const uint32_t fc
-        ) = dispatch_normalize_initial_basis;
+        );
 
-int (*initial_input_cmp)(
+int initial_input_cmp(
         const void *a,
         const void *b,
         void *ht
-        ) = dispatch_initial_input_cmp;
+        );
 
-int (*initial_gens_cmp)(
+int initial_gens_cmp(
         const void *a,
         const void *b,
         void *ht
-        ) = dispatch_initial_gens_cmp;
+        );
 
-int (*monomial_cmp)(
+int monomial_cmp(
         const hi_t a,
         const hi_t b,
         const ht_t *ht
-        ) = dispatch_monomial_cmp;
+        );
 
-int (*spair_cmp)(
+int spair_cmp(
         const void *a,
         const void *b,
         void *htp
-        ) = dispatch_spair_cmp;
+        );
 
-int (*hcm_cmp)(
+int hcm_cmp(
         const void *a,
         const void *b,
         void *htp
-        ) = dispatch_hcm_cmp;
+        );
 
 /* linear algebra routines */
-void (*sba_linear_algebra)(
+void sba_linear_algebra(
         smat_t *smat,
         crit_t *syz,
         md_t *st,
         const ht_t * const ht
-        ) = dispatch_sba_linear_algebra;
+        );
 
-void (*exact_linear_algebra)(
+void exact_linear_algebra(
         mat_t *mat,
         const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
-        ) = dispatch_exact_linear_algebra;
+        );
 
-void (*linear_algebra)(
+void linear_algebra(
         mat_t *mat,
         const bs_t * const tbr,
         const bs_t * const bs,
         md_t *st
-        ) = dispatch_linear_algebra;
+        );
 
-int (*application_linear_algebra)(
+int application_linear_algebra(
         mat_t *mat,
         const bs_t * const bs,
         md_t *st
-        ) = dispatch_application_linear_algebra;
+        );
 
-void (*trace_linear_algebra)(
+void trace_linear_algebra(
         trace_t *trace,
         mat_t *mat,
         const bs_t * const bs,
         md_t *st
-        ) = dispatch_trace_linear_algebra;
+        );
 
-void (* interreduce_matrix_rows)(
+void interreduce_matrix_rows(
         mat_t *mat,
         bs_t *bs,
         md_t *st,
         int free_basis
-        ) = dispatch_interreduce_matrix_rows;
+        );
 
-cf32_t *(*reduce_dense_row_by_old_pivots_ff_32)(
+cf32_t *reduce_dense_row_by_old_pivots_ff_32(
         int64_t *dr,
         mat_t *mat,
         const bs_t * const bs,
         hm_t * const * const pivs,
         const hi_t dpiv,
         const uint32_t fc
-        ) = dispatch_reduce_dense_row_by_old_pivots_ff_32;
+        );
 
-hm_t *(*sba_reduce_dense_row_by_known_pivots_sparse_ff_32)(
+hm_t *sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
         int64_t *dr,
         smat_t *smat,
         hm_t *const *pivs,
@@ -120,9 +120,9 @@ hm_t *(*sba_reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const len_t si,     /* signature index of row reduced */
         const len_t ri,     /* index of row in matrix */
         md_t *st
-        ) = dispatch_sba_reduce_dense_row_by_known_pivots_sparse_ff_32;
+        );
 
-hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
+hm_t *reduce_dense_row_by_known_pivots_sparse_ff_32(
         int64_t *dr,
         mat_t *mat,
         const bs_t * const bs,
@@ -133,9 +133,9 @@ hm_t *(*reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const len_t bi,     /* basis index of generating element */
         const len_t tr,     /* trace data? */
         md_t *st
-        ) = dispatch_reduce_dense_row_by_known_pivots_sparse_ff_32;
+        );
 
-hm_t *(*trace_reduce_dense_row_by_known_pivots_sparse_ff_32)(
+hm_t *trace_reduce_dense_row_by_known_pivots_sparse_ff_32(
         rba_t *rba,
         int64_t *dr,
         mat_t *mat,
@@ -146,9 +146,9 @@ hm_t *(*trace_reduce_dense_row_by_known_pivots_sparse_ff_32)(
         const len_t mh,
         const len_t bi,
         md_t *st
-        ) = dispatch_trace_reduce_dense_row_by_known_pivots_sparse_ff_32;
+        );
 
-cf32_t *(*reduce_dense_row_by_all_pivots_ff_32)(
+cf32_t *reduce_dense_row_by_all_pivots_ff_32(
         int64_t *dr,
         mat_t *mat,
         const bs_t * const bs,
@@ -156,13 +156,13 @@ cf32_t *(*reduce_dense_row_by_all_pivots_ff_32)(
         hm_t *const *pivs,
         cf32_t *const *dpivs,
         const uint32_t fc
-        ) = dispatch_reduce_dense_row_by_all_pivots_ff_32;
+        );
 
 
-cf32_t *(*reduce_dense_row_by_dense_new_pivots_ff_32)(
+cf32_t *reduce_dense_row_by_dense_new_pivots_ff_32(
         int64_t *dr,
         len_t *pc,
         cf32_t * const * const pivs,
         const len_t ncr,
         const uint32_t fc
-        ) = dispatch_reduce_dense_row_by_dense_new_pivots_ff_32;
+        );

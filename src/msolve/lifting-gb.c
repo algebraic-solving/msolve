@@ -1632,6 +1632,7 @@ uint64_t export_results_from_groebner_qq(
         void **bcf,     /* coefficients of basis elements */
         void *(*mallocp) (size_t),
         const int32_t elim_block_len,
+        const int32_t print_gb, /* if this is 1, only leading monomials are exported */
         gb_modpoly_t gb
         )
 {
@@ -1650,11 +1651,13 @@ uint64_t export_results_from_groebner_qq(
 
     for(int32_t i = 0; i < nelts; i++){
         int32_t nlen = 0;
-        int32_t len = gb->modpolys[i]->len;
+        if (print_gb == 2) {
+            int32_t len = gb->modpolys[i]->len;
 
-        for(int32_t j = len-1; j >= 0; j--){
-            if(mpz_cmp_ui(gb->modpolys[i]->cf_qq[2*j], 0) != 0){
-                nlen++;
+            for(int32_t j = len-1; j >= 0; j--){
+                if (mpz_cmp_ui(gb->modpolys[i]->cf_qq[2 * j], 0) != 0) {
+                    nlen++;
+                }
             }
         }
         nlen++; /* to take into account the lm */
@@ -1675,20 +1678,23 @@ uint64_t export_results_from_groebner_qq(
 
     hm_t *hm = NULL;
     ht_t *ht = gb->bht;
-    const len_t ebl = ht->ebl;
-    const len_t evl = ht->evl;
-    int *evi = (int *)malloc((unsigned long)(ht->nv + 1) * sizeof(int));
-    if (ebl == 0) {
-      for (len_t i = 1; i <= evl; ++i) {
-        evi[i-1]    =   i;
-      }
-    } else {
-      for (len_t i = 1; i < ebl; ++i) {
-        evi[i-1]    =   i;
-      }
-      for (len_t i = ebl+1; i < evl; ++i) {
-        evi[i-2]    =   i;
-      }
+    int *evi = NULL;
+    if (print_gb == 2) {
+        const len_t ebl = ht->ebl;
+        const len_t evl = ht->evl;
+        evi = (int *)malloc((unsigned long)(ht->nv + 1) * sizeof(int));
+        if (ebl == 0) {
+            for (len_t i = 1; i <= evl; ++i) {
+                evi[i-1]    =   i;
+            }
+        } else {
+            for (len_t i = 1; i < ebl; ++i) {
+                evi[i-1]    =   i;
+            }
+            for (len_t i = ebl + 1; i < evl; ++i) {
+                evi[i - 2] = i;
+            }
+        }
     }
 
     int64_t term = 0;
@@ -1701,14 +1707,16 @@ uint64_t export_results_from_groebner_qq(
         mpz_set(cf_qq[term], gb->modpolys[p]->lm);
 
         term++;
-        for(int32_t i = l-1; i >= 0; i--) {
-            if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0) {
-                for(int32_t n = 0 ; n < nve; n++){
-                    exp[term * nve + n] = ht->ev[hm[l-i]][evi[n]];
-                }
-                mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[2*i]);
+        if (print_gb == 2) {
+            for(int32_t i = l-1; i >= 0; i--) {
+                if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0) {
+                  for (int32_t n = 0; n < nve; n++) {
+                    exp[term * nve + n] = ht->ev[hm[l - i]][evi[n]];
+                  }
+                  mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[2 * i]);
 
-                term++;
+                  term++;
+                }
             }
         }
     }
@@ -1914,6 +1922,7 @@ int64_t export_groebner_qq(
         const int32_t max_nr_pairs,
         const int32_t reset_ht,
         const int32_t la_option,
+        const int32_t print_gb,
         const int32_t reduce_gb,
         const int32_t pbm_file,
         const int32_t truncate_lifting,
@@ -1956,7 +1965,7 @@ int64_t export_groebner_qq(
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
     modgbsp =
     core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
-            2/* if set to 1, only the LM of the Gbs are correct */);
+                     print_gb);
     if (err) {
         fprintf(ERRSTREAM, "Problem with groebner_qq, stopped computation.\n");
         exit(1);
@@ -1971,7 +1980,7 @@ int64_t export_groebner_qq(
     get_and_print_final_statistics(VERBSTREAM, md, bs);
 
     int64_t nterms  = export_results_from_groebner_qq(bld, blen, bexp,
-            bcf, mallocp, elim_block_len, (*modgbsp));
+                                                      bcf, mallocp, elim_block_len, print_gb, (*modgbsp));
 
     /* free and clean up */
     free_mstrace(msd, md);

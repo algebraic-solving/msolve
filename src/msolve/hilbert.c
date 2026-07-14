@@ -38,17 +38,17 @@ void print_fglm_header(
 }
 
 
-static void (*copy_poly_in_matrix_from_bs)(sp_matfglm_t* matrix,
-                                           long nrows,
-                                           bs_t *bs,
-                                           ht_t *ht,
-                                           long idx, long len,
-                                           long start, long pos,
-                                           int32_t *lmb,
-                                           const int nv,
-                                           const long fc);
+static inline void copy_poly_in_matrix_from_bs(sp_matfglm_t* matrix,
+                                               long nrows,
+                                               bs_t *bs,
+                                               ht_t *ht,
+                                               long idx, long len,
+                                               long start, long pos,
+                                               int32_t *lmb,
+                                               const int nv,
+                                               const long fc);
 
-static void (*copy_nf_in_matrix_from_bs)(sp_matfglm_t* matrix,
+static inline void copy_nf_in_matrix_from_bs(sp_matfglm_t* matrix,
 					 long nrows,
 					 long pos,
 					 int32_t *lmb,
@@ -1279,6 +1279,45 @@ static inline void copy_nf_in_matrix_from_bs_32(sp_matfglm_t* matrix,
       }
       i++;
     }
+  }
+}
+
+static inline void copy_poly_in_matrix_from_bs(sp_matfglm_t* matrix,
+                                               long nrows,
+                                               bs_t *bs,
+                                               ht_t *ht,
+                                               long idx, long len,
+                                               long start, long pos,
+                                               int32_t *lmb,
+                                               const int nv,
+                                               const long fc) {
+  if (bs->cf_8 != NULL) {
+    copy_poly_in_matrix_from_bs_8(matrix, nrows, bs, ht, idx, len, start, pos,
+                                  lmb, nv, fc);
+  } else if (bs->cf_16 != NULL) {
+    copy_poly_in_matrix_from_bs_16(matrix, nrows, bs, ht, idx, len, start, pos,
+                                   lmb, nv, fc);
+  } else {
+    copy_poly_in_matrix_from_bs_32(matrix, nrows, bs, ht, idx, len, start, pos,
+                                   lmb, nv, fc);
+  }
+}
+
+static inline void copy_nf_in_matrix_from_bs(sp_matfglm_t* matrix,
+					 long nrows,
+					 long pos,
+					 int32_t *lmb,
+					 const bs_t * const tbr,
+					 const ht_t * const bht,
+					 int32_t * evi,
+					 const md_t *st,
+					 const int nv) {
+  if (tbr->cf_8 != NULL) {
+    copy_nf_in_matrix_from_bs_8(matrix, nrows, pos, lmb, tbr, bht, evi, st, nv);
+  } else if (tbr->cf_16 != NULL) {
+    copy_nf_in_matrix_from_bs_16(matrix, nrows, pos, lmb, tbr, bht, evi, st, nv);
+  } else {
+    copy_nf_in_matrix_from_bs_32(matrix, nrows, pos, lmb, tbr, bht, evi, st, nv);
   }
 }
 

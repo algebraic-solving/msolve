@@ -20,12 +20,12 @@
 
 #include "streams.h"
 
-void (*set_linear_poly)(nvars_t nlins, uint32_t *lineqs, nvars_t *linvars,
-                        ht_t *bht, int32_t *bexp_lm, bs_t *bs);
+static inline void set_linear_poly(nvars_t nlins, uint32_t *lineqs, nvars_t *linvars,
+                                   ht_t *bht, int32_t *bexp_lm, bs_t *bs);
 
-void (*check_and_set_linear_poly)(nvars_t *nlins_ptr, nvars_t *linvars,
-                                  uint32_t **lineqs_ptr, ht_t *bht,
-                                  int32_t *bexp_lm, bs_t *bs);
+static inline void check_and_set_linear_poly(nvars_t *nlins_ptr, nvars_t *linvars,
+                                             uint32_t **lineqs_ptr, ht_t *bht,
+                                             int32_t *bexp_lm, bs_t *bs);
 
 static inline void set_linear_poly_8(nvars_t nlins, uint32_t *lineqs,
                                      nvars_t *linvars, ht_t *bht,
@@ -423,6 +423,32 @@ static inline void check_and_set_linear_poly_32(nvars_t *nlins_ptr,
     }
   }
   lineqs_ptr[0] = lineqs;
+}
+
+static inline void set_linear_poly(nvars_t nlins, uint32_t *lineqs, nvars_t *linvars,
+                                   ht_t *bht, int32_t *bexp_lm, bs_t *bs) {
+  if (bs->cf_8 != NULL) {
+    set_linear_poly_8(nlins, lineqs, linvars, bht, bexp_lm, bs);
+  } else if (bs->cf_16 != NULL) {
+    set_linear_poly_16(nlins, lineqs, linvars, bht, bexp_lm, bs);
+  } else {
+    set_linear_poly_32(nlins, lineqs, linvars, bht, bexp_lm, bs);
+  }
+}
+
+static inline void check_and_set_linear_poly(nvars_t *nlins_ptr, nvars_t *linvars,
+                                             uint32_t **lineqs_ptr, ht_t *bht,
+                                             int32_t *bexp_lm, bs_t *bs) {
+  if (bs->cf_8 != NULL) {
+    check_and_set_linear_poly_8(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm,
+                                bs);
+  } else if (bs->cf_16 != NULL) {
+    check_and_set_linear_poly_16(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm,
+                                 bs);
+  } else {
+    check_and_set_linear_poly_32(nlins_ptr, linvars, lineqs_ptr, bht, bexp_lm,
+                                 bs);
+  }
 }
 
 static inline void compute_modular_linear_forms(int nlins, nvars_t sz,

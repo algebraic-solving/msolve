@@ -47,11 +47,13 @@ x1+x2+x3+x4,
 ```
 Polynomials may be multiline, thus `,` as a separator.
 
-Coefficients can be rational, using `/`, e.g. `-2/3*x2*y1^2+...`.
+Coefficients can be rational, using `/`, e.g. `-2/3*x2*y1^2+...`
+(leading rational form only: `1/2*x`, not `x/2`).
 
-In each polynomial, a single occurrence of each monomial is expected; the
-behaviour of msolve's parser is undefined if some monomial is repeated, as in
-`x1+x2+x3+x4-x1`.
+In each polynomial, a single occurrence of each monomial is expected.
+Parentheses, post-monomial division (`x/2`), a leading `*`, repeated
+monomials, and (over a prime field) coefficients that do not fit in a
+machine word are rejected with a nonzero exit code.
 
 # Basic usage
 
@@ -99,6 +101,10 @@ Using the `-g 2` flag as follows
 ```
 will return the reduced Groebner basis for the graded reverse 
 lexicographic ordering.
+Over a prime field this is exact. Over the rationals, coefficients are
+lifted to Q when possible; if lifting is skipped (in particular when the
+basis is `{1}`, or when only leading monomials are requested with `-g 1`)
+the header prints the first modular prime rather than characteristic 0.
 
 `msolve` also allows you to perform Groebner bases computations using 
 **one-block elimination monomial order**

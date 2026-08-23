@@ -101,8 +101,12 @@ static inline void display_help(char *str){
 
   fprintf(OUTSTREAM, "\nAdvanced options:\n\n");
   display_option_help('F', "", "FILE", "File name encoding parametrizations in binary format.\n\n");
-  display_option_help('g', "groebner-basis", "GB", "Prints reduced Groebner bases of input system for\n");
-  display_option_help_noopt("first prime characteristic w.r.t. grevlex ordering.\n");
+  display_option_help('g', "groebner-basis", "GB", "Prints reduced Groebner bases w.r.t. grevlex ordering.\n");
+  display_option_help_noopt("Over a prime field the basis is exact for that field.\n");
+  display_option_help_noopt("Over Q, -g 2 lifts coefficients to Q when possible.\n");
+  display_option_help_noopt("If lifting is skipped (empty basis, or -g 1 leading\n");
+  display_option_help_noopt("monomials only) the printed characteristic is the first\n");
+  display_option_help_noopt("modular prime, not 0, and a '#lifted to Q: no' line is added.\n");
   display_option_help_noopt("One element per line is printed, commata separated.\n");
   display_option_help_noopt("0 - Nothing is printed. (default)\n");
   display_option_help_noopt("1 - Leading ideal is printed.\n");

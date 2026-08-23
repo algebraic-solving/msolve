@@ -22,29 +22,75 @@
 
 #include "streams.h"
 
-static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
+#include <errno.h>
+#include <limits.h>
+
+/* Reject syntax the rest of the parser cannot represent, rather than
+ * silently computing a different system (parens, x/2, *x, ...). */
+static int check_polynomial_syntax(const char *line)
+{
+    const char *p;
+    if (line == NULL) {
+        return 1;
+    }
+    for (p = line; *p != '\0'; ++p) {
+        if (*p == '(' || *p == ')') {
+            fprintf(ERRSTREAM,
+                    "Error when parsing polynomial: parentheses are not supported "
+                    "(write expanded monomial sums, e.g. x-4 not x-(3+1)).\n");
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static inline int store_exponent(const char *term, data_gens_ff_t *gens, int32_t pos)
 {
     len_t i, j, k;
 
     len_t op = 0;
+    len_t index = 0;
+    int res = 0;
+    mpz_t tmp_z;
+    mpq_t tmp_q;
     char *var = NULL;
     char *ev  = NULL;
+    char *end = NULL;
+
+    if (gens->field_char > 0) {
+        mpz_init(tmp_z);
+    } else {
+        mpq_init(tmp_q);
+    }
+
     for (i = 0; i < strlen(term)+1; ++i) {
         if (term[i] == '*' || i == strlen(term)) {
             j = op;
             while (j < i && term[j] != '^') {
                 ++j;
             }
-            if (term[j-1] == ',') {
-                --j;
-            }
-            while(term[op] == ' ' || term[op] == '+' || term[op] == '-') {
+            while (term[op] == ' ' || term[op] == '+' || term[op] == '-') {
                 ++op;
+            }
+            if (op >= j) {
+                fprintf(ERRSTREAM,
+                        "Error when parsing term %s (missing operand for *)\n",
+                        term);
+                res = 1;
+                break;
             }
             var = realloc(var, sizeof(char)*(j-op+1));
             memcpy(var, term+op, j-op);
             var[j-op] = '\0';
-            if (term[j] == '^') {
+            int has_exponent = (j < i && term[j] == '^');
+            if (has_exponent) {
+                if (j + 1 >= i) {
+                    fprintf(ERRSTREAM,
+                            "Error when parsing term %s (missing exponent)\n",
+                            term);
+                    res = 1;
+                    break;
+                }
                 ev = realloc(ev, (sizeof(char)*(i-j)));
                 ev = memcpy(ev, term+(j+1), i-j-1);
                 ev[i-j-1] = '\0';
@@ -53,17 +99,118 @@ static inline void store_exponent(const char *term, data_gens_ff_t *gens, int32_
                 ev[0] = '1';
                 ev[1] ='\0';
             }
+            int is_var = 0;
             for (k = 0; k < gens->nvars; ++k) {
                 if (strcmp(gens->vnames[k], var) == 0) {
-                    ((gens->exps) + pos)[k] = strtol(ev, NULL, 10);
+                    is_var = 1;
+                    if (((gens->exps) + pos)[k] != 0) {
+                        fprintf(ERRSTREAM,
+                                "Error when parsing term %s (variable appears multiple times)\n",
+                                term);
+                        res = 1;
+                        break;
+                    }
+                    errno = 0;
+                    long val = strtol(ev, &end, 10);
+                    if (ev == end || (end != NULL && *end != '\0')) {
+                        fprintf(ERRSTREAM,
+                                "Error when parsing term %s (invalid exponent)\n",
+                                term);
+                        res = 1;
+                        break;
+                    }
+                    if (errno == ERANGE || val > INT_MAX) {
+                        fprintf(ERRSTREAM,
+                                "Error when parsing term %s (exponent out of range)\n",
+                                term);
+                        res = 1;
+                        break;
+                    }
+                    if (val <= 0) {
+                        fprintf(ERRSTREAM,
+                                "Error when parsing term %s (exponent must be positive)\n",
+                                term);
+                        res = 1;
+                        break;
+                    }
+                    ((gens->exps) + pos)[k] = (int32_t)val;
                     break;
                 }
             }
+            if (res == 1) {
+                break;
+            }
+            if (is_var == 0) {
+                if (has_exponent) {
+                    fprintf(ERRSTREAM,
+                            "Error when parsing term %s (coefficient cannot have an exponent)\n",
+                            term);
+                    res = 1;
+                    break;
+                }
+                if (index > 0) {
+                    fprintf(ERRSTREAM,
+                            "Error when parsing term %s (multiple coefficients are not allowed)\n",
+                            term);
+                    res = 1;
+                    break;
+                }
+                if (strchr(var, '/') != NULL && gens->field_char > 0) {
+                    fprintf(ERRSTREAM,
+                            "Error when parsing term %s "
+                            "(division is only allowed in a leading rational coefficient "
+                            "over Q, e.g. 1/2*x, not x/2)\n",
+                            term);
+                    res = 1;
+                    break;
+                }
+                if (gens->field_char > 0) {
+                    if (mpz_set_str(tmp_z, var, 10) != 0) {
+                        if (strchr(var, '/') != NULL) {
+                            fprintf(ERRSTREAM,
+                                    "Error when parsing term %s "
+                                    "(division is only allowed in a leading rational "
+                                    "coefficient over Q, e.g. 1/2*x, not x/2)\n",
+                                    term);
+                        } else {
+                            fprintf(ERRSTREAM,
+                                    "Error when parsing term %s (invalid coefficient for finite field)\n",
+                                    term);
+                        }
+                        res = 1;
+                        break;
+                    }
+                } else {
+                    if (mpq_set_str(tmp_q, var, 10) != 0) {
+                        if (strchr(var, '/') != NULL) {
+                            fprintf(ERRSTREAM,
+                                    "Error when parsing term %s "
+                                    "(division is only allowed in a leading rational "
+                                    "coefficient, e.g. 1/2*x, not x/2)\n",
+                                    term);
+                        } else {
+                            fprintf(ERRSTREAM,
+                                    "Error when parsing term %s (invalid coefficient)\n",
+                                    term);
+                        }
+                        res = 1;
+                        break;
+                    }
+                }
+            }
             op = i+1;
+            index++;
         }
     }
+
     free(var);
     free(ev);
+    if (gens->field_char > 0) {
+        mpz_clear(tmp_z);
+    } else {
+        mpq_clear(tmp_q);
+    }
+    return res;
 }
 
 
@@ -647,6 +794,10 @@ static void get_nterms_and_all_nterms(FILE *fh,
             i--;
             continue;
         }
+        if (check_polynomial_syntax(line)) {
+            free(line);
+            exit(1);
+        }
         *nterms  = get_number_of_terms(line);
         gens->lens[i] = *nterms;
         *all_nterms += *nterms;
@@ -737,6 +888,36 @@ static inline void get_term(const char *line, char **prev_pos,
 }
 
 
+/* Coefficients that do not fit in long are rejected (strtol would clamp). */
+static int parse_ff_coeff_from_term(const char *term, int32_t field_char,
+                                    int64_t *out)
+{
+  errno = 0;
+  long val = strtol(term, NULL, 10);
+  if (errno == ERANGE) {
+    fprintf(ERRSTREAM,
+            "Error when parsing term %s (coefficient does not fit in a machine word; "
+            "reduce modulo %d before input).\n",
+            term, field_char);
+    return 1;
+  }
+  if (val == 0) {
+    switch (term[0]) {
+        case '0':
+          val = 0;
+          break;
+        case '-':
+          val = -1;
+          break;
+        default:
+          val = 1;
+          break;
+    }
+  }
+  *out = val;
+  return 0;
+}
+
 /*assumes that coeffs in file fit in word size */
 static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
                                           int32_t field_char,
@@ -749,21 +930,12 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
   prev_pos = line;
   get_term(line, &prev_pos, &term, &term_size);
   if(term != NULL){
-    int32_t iv_tmp  = (int32_t)strtol(term, NULL, 10);
-    if (iv_tmp == 0) {
-      switch (term[0]) {
-          case '0':
-            iv_tmp = 0;
-            break;
-          case '-':
-            iv_tmp = -1;
-            break;
-          default:
-            iv_tmp = 1;
-            break;
-      }
+    int64_t iv64 = 0;
+    if (parse_ff_coeff_from_term(term, field_char, &iv64)) {
+      free(term);
+      return 1;
     }
-    iv_tmp %= field_char;
+    int32_t iv_tmp = (int32_t)(iv64 % field_char);
     if (iv_tmp == 0) {
       fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %d).\n", term, field_char);
       free(term);
@@ -773,19 +945,18 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
       iv_tmp  +=  field_char; //MS change int -> long int
     }
     gens->cfs[pos]  = (int32_t)iv_tmp;
-    store_exponent(term, gens, pos*gens->nvars);
+    if (store_exponent(term, gens, pos*gens->nvars)) {
+      free(term);
+      return 1;
+    }
     for(int j = 1; j < nterms; j++){
       get_term(line, &prev_pos, &term, &term_size);
       if (term != NULL) {
-        cf_tmp  = (int64_t)strtol(term, NULL, 10);
-
-        if (cf_tmp == 0) {
-          if (term[0] == '-') {
-            cf_tmp = -1;
-          } else {
-            cf_tmp = 1;
-          }
+        if (parse_ff_coeff_from_term(term, field_char, &cf_tmp)) {
+          free(term);
+          return 1;
         }
+
         cf_tmp %= field_char;
         if (cf_tmp == 0) {
           fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %d).\n", term, field_char);
@@ -796,7 +967,10 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
           cf_tmp  += field_char;
         }
         gens->cfs[pos+j] = (int32_t)cf_tmp;
-        store_exponent(term, gens, (pos+j)*gens->nvars);
+        if (store_exponent(term, gens, (pos+j)*gens->nvars)) {
+          free(term);
+          return 1;
+        }
       }
       //      store_exponent(term, basis, ht);
     }
@@ -884,11 +1058,17 @@ static int get_coefficient_mpz_and_term_from_line(char *line, int32_t nterms,
   if(term != NULL){
 
     beginning_strterm_to_mpz(term, gens->mpz_cfs[pos], gens->mpz_cfs[pos+1]);
-    store_exponent(term, gens, pos/2*gens->nvars);
+    if (store_exponent(term, gens, pos/2*gens->nvars)) {
+      free(term);
+      return 1;
+    }
     for(int j = 2; j < 2*nterms; j+=2){
       get_term(line, &prev_pos, &term, &term_size);
       inner_strterm_to_mpz(term, gens->mpz_cfs[pos+j], gens->mpz_cfs[pos+j+1]);
-      store_exponent(term, gens, ((pos+j)/2)*gens->nvars);
+      if (store_exponent(term, gens, ((pos+j)/2)*gens->nvars)) {
+        free(term);
+        return 1;
+      }
     }
     free(term);
     return 0;

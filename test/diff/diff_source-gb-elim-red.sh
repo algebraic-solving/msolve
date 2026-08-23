@@ -5,7 +5,7 @@ if [ $? -gt 0 ]; then
     print_exit 5
 fi
 
-diff test/diff/$file.5.res output_files/$file.g2.e1.res
+diff_gb_output test/diff/$file.5.res output_files/$file.g2.e1.res
 if [ $? -gt 0 ]; then
     print_exit 6
 fi
@@ -19,7 +19,7 @@ if [ $? -gt 0 ]; then
     print_exit 7
 fi
 
-diff test/diff/$file.7.res output_files/$file.g2.e2.res
+diff_gb_output test/diff/$file.7.res output_files/$file.g2.e2.res
 if [ $? -gt 0 ]; then
     print_exit 8
 fi
@@ -33,7 +33,7 @@ if [ $? -gt 0 ]; then
     print_exit 25
 fi
 
-diff test/diff/$file.25.res output_files/$file.g2.e1.res
+diff_gb_output test/diff/$file.25.res output_files/$file.g2.e1.res
 if [ $? -gt 0 ]; then
     print_exit 26
 fi
@@ -47,7 +47,7 @@ if [ $? -gt 0 ]; then
     print_exit 27
 fi
 
-diff test/diff/$file.27.res output_files/$file.g2.e2.res
+diff_gb_output test/diff/$file.27.res output_files/$file.g2.e2.res
 if [ $? -gt 0 ]; then
     print_exit 28
 fi
@@ -61,7 +61,7 @@ if [ $? -gt 0 ]; then
     print_exit 45
 fi
 
-diff test/diff/$file.45.res output_files/$file.g2.e1.res
+diff_gb_output test/diff/$file.45.res output_files/$file.g2.e1.res
 if [ $? -gt 0 ]; then
     print_exit 46
 fi
@@ -75,7 +75,7 @@ if [ $? -gt 0 ]; then
     print_exit 47
 fi
 
-diff test/diff/$file.47.res output_files/$file.g2.e2.res
+diff_gb_output test/diff/$file.47.res output_files/$file.g2.e2.res
 if [ $? -gt 0 ]; then
     print_exit 48
 fi
@@ -89,7 +89,7 @@ if [ $? -gt 0 ]; then
     print_exit 65
 fi
 
-diff test/diff/$file.65.res output_files/$file.g2.e1.res
+diff_gb_output test/diff/$file.65.res output_files/$file.g2.e1.res
 if [ $? -gt 0 ]; then
     print_exit 66
 fi
@@ -103,7 +103,7 @@ if [ $? -gt 0 ]; then
     print_exit 67
 fi
 
-diff test/diff/$file.67.res output_files/$file.g2.e2.res
+diff_gb_output test/diff/$file.67.res output_files/$file.g2.e2.res
 if [ $? -gt 0 ]; then
     print_exit 68
 fi

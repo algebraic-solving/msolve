@@ -63,6 +63,21 @@ print_exit() {
     exit "$excode"
 }
 
+# Unlifted char-0 Groebner output prints the first modular prime, which
+# depends on --random-seed. Normalize that one header line before diff,
+# but only when the "#lifted to Q:" marker is present so prime-field
+# output is compared as-is.
+diff_gb_output() {
+    local got=$1
+    local expected=$2
+    if grep -q '^#lifted to Q:' "$got"; then
+        sed -E 's/^#field characteristic: [1-9][0-9]*$/#field characteristic: <unlifted prime>/' "$got" \
+            | diff - "$expected"
+    else
+        diff "$got" "$expected"
+    fi
+}
+
 # each diff_example.sh is built by running msolve on $file.ms
 # with options -L 0 -l 2 -t 1
 # if the execution fails, print_exit 1

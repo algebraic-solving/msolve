@@ -65,6 +65,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_quadratic-nonradical-qq.sh \
 			  test/diff/diff_radical-shape-31.sh \
 			  test/diff/diff_radical-shape-qq.sh \
+			  test/diff/diff_reject-malformed.sh \
 			  test/diff/diff_realroot1.sh \
 			  test/diff/diff_realroot-extraction-exact-root.sh \
 			  test/diff/diff_reals-dim0-chgvar.sh \

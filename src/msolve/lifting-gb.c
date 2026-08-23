@@ -57,6 +57,7 @@ typedef struct {
                     flint) */
   uint32_t ld; /* number of polynomials */
   int nv; /* number of variables */
+  int lifted; /* 1 if coefficients were reconstructed over Q */
   int32_t *ldm; /* lead monomials */
   ht_t *bht; /* hash table */
   hm_t **hm; /* hashed monomials representing exponents */
@@ -179,6 +180,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->cf_64 = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
   modgbs->ld = ld;
   modgbs->nv = nv;
+  modgbs->lifted = 0;
   modgbs->modpolys = (modpolys_t *)malloc(sizeof(modpolys_t) * ld);
 
   modgbs->ldm = (int32_t *)calloc(nv*ld, sizeof(int32_t));
@@ -1621,6 +1623,7 @@ restart:
   free_rrec_data(recdata1);
   free_rrec_data(recdata2);
 
+  (*modgbsp)->lifted = 1;
   return modgbsp;
 }
 
@@ -1850,7 +1853,16 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
     }
   }
   fprintf(ofile, "#---\n");
-  fprintf(ofile, "#field characteristic: 0\n");
+  if ((*modgbsp)->lifted) {
+    fprintf(ofile, "#field characteristic: 0\n");
+  } else {
+    uint32_t p = 0;
+    if ((*modgbsp)->nprimes > 0) {
+      p = (uint32_t)(*modgbsp)->primes[0];
+    }
+    fprintf(ofile, "#field characteristic: %u\n", p);
+    fprintf(ofile, "#lifted to Q:          no (first modular prime only)\n");
+  }
   fprintf(ofile, "#variable order:       ");
   for (int i = gens->elim; i < gens->nvars-1; ++i) {
     fprintf(ofile, "%s, ", gens->vnames[i]);

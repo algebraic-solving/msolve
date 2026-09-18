@@ -327,5 +327,9 @@ AC_CONFIG_LINKS([
  output_files/univariate-cubic-close-roots.p128.res:output_files/univariate-cubic-close-roots.p128.res
  output_files/univariate-cubic-close-roots.p1024.res:output_files/univariate-cubic-close-roots.p1024.res
  test/diff/diff_univariate-cubic-close-roots.sh:test/diff/diff_univariate-cubic-close-roots.sh
+ input_files/univariate-sgn.ms:input_files/univariate-sgn.ms
+ output_files/univariate-sgn.p128.res:output_files/univariate-sgn.p128.res
+ output_files/univariate-sgn.p1024.res:output_files/univariate-sgn.p1024.res
+ test/diff/diff_univariate-sgn.sh:test/diff/diff_univariate-sgn.sh
 ])
 AC_OUTPUT

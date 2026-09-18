@@ -3215,6 +3215,10 @@ void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, 
         int64_t *b, const int info_level){
     if (mpz_sgn(rt->numer) >= 0) {
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
+      if(mpz_sgn(tab[0]) == 0){
+        rt->isexact = 1;
+        return;
+      }
       if(mpz_sgn(tab[0]) != rt->sign_left){
           fprintf(ERRSTREAM, "BUG in get_values_at_bounds (called from refine_root_elim)\n");
           exit(1);

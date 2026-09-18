@@ -201,6 +201,10 @@ AC_CONFIG_LINKS([
  output_files/issue-230-squared.P1.d0.p128.res:output_files/issue-230-squared.P1.d0.p128.res
  output_files/issue-230-squared.P1.d0.p1024.res:output_files/issue-230-squared.P1.d0.p1024.res
  test/diff/diff_issue-230-squared.sh:test/diff/diff_issue-230-squared.sh
+ input_files/issue-310-bivariate.ms:input_files/issue-310-bivariate.ms
+ output_files/issue-310-bivariate.p128.res:output_files/issue-310-bivariate.p128.res
+ output_files/issue-310-bivariate.p1024.res:output_files/issue-310-bivariate.p1024.res
+ test/diff/diff_issue-310-bivariate.sh:test/diff/diff_issue-310-bivariate.sh
  input_files/kat6-31.ms:input_files/kat6-31.ms
  output_files/kat6-31.P2.d0.res:output_files/kat6-31.P2.d0.res
  test/diff/diff_kat6-31.sh:test/diff/diff_kat6-31.sh
@@ -315,9 +319,17 @@ AC_CONFIG_LINKS([
  input_files/test-lifting2.ms:input_files/test-lifting2.ms
  output_files/test-lifting2.P2.d0.res:output_files/test-lifting2.P2.d0.res
  test/diff/diff_test-lifting2.sh:test/diff/diff_test-lifting2.sh
+ input_files/univariate-assign-left.ms:input_files/univariate-assign-left.ms
+ output_files/univariate-assign-left.p128.res:output_files/univariate-assign-left.p128.res
+ output_files/univariate-assign-left.p1024.res:output_files/univariate-assign-left.p1024.res
+ test/diff/diff_univariate-assign-left.sh:test/diff/diff_univariate-assign-left.sh
  input_files/univariate-cubic-close-roots.ms:input_files/univariate-cubic-close-roots.ms
  output_files/univariate-cubic-close-roots.p128.res:output_files/univariate-cubic-close-roots.p128.res
  output_files/univariate-cubic-close-roots.p1024.res:output_files/univariate-cubic-close-roots.p1024.res
  test/diff/diff_univariate-cubic-close-roots.sh:test/diff/diff_univariate-cubic-close-roots.sh
+ input_files/univariate-sgn.ms:input_files/univariate-sgn.ms
+ output_files/univariate-sgn.p128.res:output_files/univariate-sgn.p128.res
+ output_files/univariate-sgn.p1024.res:output_files/univariate-sgn.p1024.res
+ test/diff/diff_univariate-sgn.sh:test/diff/diff_univariate-sgn.sh
 ])
 AC_OUTPUT

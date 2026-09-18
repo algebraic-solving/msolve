@@ -145,7 +145,8 @@ static void assign_sign_left(interval *roots,
     (roots+i)->sign_left = s;
     s=-s;
   }
-  for(unsigned long int i = nbneg; i < nbpos; i++){
+  unsigned long int nb = nbneg + nbpos;
+  for(unsigned long int i = nbneg; i < nb; i++){
     (roots+i)->sign_left = s;
     s=-s;
   }

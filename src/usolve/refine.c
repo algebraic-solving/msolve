@@ -20,7 +20,6 @@
 
 #ifndef USOLVE
 #define USOLVE
-#include <stdio.h>
 #endif
 
 /* based on Quadratic interval refinement for real roots */

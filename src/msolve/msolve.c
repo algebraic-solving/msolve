@@ -3215,11 +3215,6 @@ void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, 
         int64_t *b, const int info_level){
     if (mpz_sgn(rt->numer) >= 0) {
       get_values_at_bounds(param->elim->coeffs, ns, rt, tab);
-      fprintf(stderr, "done2\n");
-      fprintf(stderr, "[%d, %d]\n", mpz_sgn(tab[0]), rt->sign_left);
-
-      mpz_out_str(stderr,10,rt->numer);
-      fprintf(stderr, " / 2^%ld\n", rt->k);
       if(mpz_sgn(tab[0]) == 0){
         rt->isexact = 1;
         return;
@@ -3228,7 +3223,6 @@ void refine_root_elim(mpz_param_t param, mpz_t *polelim, long ns, interval *rt, 
           fprintf(ERRSTREAM, "BUG in get_values_at_bounds (called from refine_root_elim)\n");
           exit(1);
       }
-      fprintf(stderr, "ON ARRIVE ICI?\n");
       refine_QIR_positive_root(polelim, &ns, rt, tab, 2 * (rt->k), info_level);
     } else {
       /* root is negative */

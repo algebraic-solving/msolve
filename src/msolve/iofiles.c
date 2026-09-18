@@ -507,7 +507,7 @@ static inline nelts_t get_number_of_terms(const char *line)
   const char add_splicer        = '+';
   const char minus_splicer      = '-';
   const char whitespace_splicer = ' ';
-  char *tmp = NULL;
+  const char *tmp = NULL;
   nelts_t nterms  = 1;
   /** remove useless whitespaces at the beginning */
   int i = 0;

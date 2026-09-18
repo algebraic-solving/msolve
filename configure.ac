@@ -201,6 +201,10 @@ AC_CONFIG_LINKS([
  output_files/issue-230-squared.P1.d0.p128.res:output_files/issue-230-squared.P1.d0.p128.res
  output_files/issue-230-squared.P1.d0.p1024.res:output_files/issue-230-squared.P1.d0.p1024.res
  test/diff/diff_issue-230-squared.sh:test/diff/diff_issue-230-squared.sh
+ input_files/issue-310-bivariate.ms:input_files/issue-310-bivariate.ms
+ output_files/issue-310-bivariate.p128.res:output_files/issue-310-bivariate.p128.res
+ output_files/issue-310-bivariate.p1024.res:output_files/issue-310-bivariate.p1024.res
+ test/diff/diff_issue-310-bivariate.sh:test/diff/diff_issue-310-bivariate.sh
  input_files/kat6-31.ms:input_files/kat6-31.ms
  output_files/kat6-31.P2.d0.res:output_files/kat6-31.P2.d0.res
  test/diff/diff_kat6-31.sh:test/diff/diff_kat6-31.sh

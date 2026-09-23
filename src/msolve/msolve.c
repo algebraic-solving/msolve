@@ -5578,7 +5578,7 @@ void msolve_julia(
 
     /* clean up data storage, but do not free data handled by julia */
 
-    free(gens);
+    free_data_gens(gens);
     gens  = NULL;
 
     *rp_var_namesp = rp_var_names;

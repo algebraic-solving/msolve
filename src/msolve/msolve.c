@@ -5595,10 +5595,12 @@ void msolve_julia(
     *rp_var_namesp = rp_var_names;
 
     /* free parametrization */
-    if(param != NULL && gens->field_char){
+    if(param != NULL && field_char){
         free_fglm_param(param);
     }
     mpz_param_clear(mpz_param);
+
+    free(files);
 
     *n_real_sols = nb_real_roots;
 

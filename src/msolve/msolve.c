@@ -337,10 +337,16 @@ data_gens_ff_t *allocate_data_gens() {
 }
 
 void free_data_gens(data_gens_ff_t *gens) {
-  for (long i = 0; i < gens->nvars; i++) {
-    free(gens->vnames[i]);
+  /* gens->vnames may already be NULL if ownership of the variable names
+   * was transferred to the caller (see msolve_julia /
+   * export_julia_rational_parametrization_qq, which sets gens->vnames =
+   * NULL after handing the names off to Julia). */
+  if (gens->vnames != NULL) {
+    for (long i = 0; i < gens->nvars; i++) {
+      free(gens->vnames[i]);
+    }
+    free(gens->vnames);
   }
-  free(gens->vnames);
   if (gens->field_char == 0) {
     for (long i = 0; i < 2 * gens->nterms; i++) {
       mpz_clear(*(gens->mpz_cfs[i]));
@@ -5510,6 +5516,7 @@ void msolve_julia(
     }
     gens->nvars                 = nr_vars;
     gens->ngens                 = nr_gens;
+    gens->nterms                = nterms;
     gens->field_char            = field_char;
     gens->change_var_order      = -1;
     gens->linear_form_base_coef = 0;

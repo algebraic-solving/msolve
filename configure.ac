@@ -70,7 +70,17 @@ AC_TYPE_UINT8_T
 
 
 AX_COUNT_CPUS
-AX_EXT
+# Select SIMD code from the compiler target, not the build machine's CPU.
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#ifndef __AVX2__
+#error AVX2 is not enabled
+#endif
+]], [[]])], [AC_DEFINE([HAVE_AVX2], [1], [Enable AVX2 code])])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#ifndef __AVX512F__
+#error AVX512F is not enabled
+#endif
+]], [[]])], [AC_DEFINE([HAVE_AVX512_F], [1], [Enable AVX512F code])])
 AX_GCC_BUILTIN([__builtin_constant_p])
 AX_GCC_BUILTIN([__builtin_clzll])
 AX_GCC_BUILTIN([__builtin_clzl])

@@ -157,7 +157,10 @@ ht_t *copy_hash_table(
     /* keep first entry empty for faster divisibility checks */
     ht->hd  = (hd_t *)calloc(ht->esz, sizeof(hd_t));
 
-    memcpy(ht->hd, bht->hd, (unsigned long)ht->esz * sizeof(hd_t));
+    /* only the first eld entries are in use: copying the whole allocated
+     * size would touch (and thus make resident) memory which is never
+     * read before being overwritten by an insertion */
+    memcpy(ht->hd, bht->hd, (unsigned long)bht->eld * sizeof(hd_t));
     ht->ev  = (exp_t **)malloc(ht->esz * sizeof(exp_t *));
     if (ht->ev == NULL) {
         fprintf(ERRSTREAM, "Computation needs too much memory on this machine,\n");
@@ -171,7 +174,7 @@ ht_t *copy_hash_table(
         fprintf(ERRSTREAM, "initialization failed, esz = %lu,\n", (unsigned long)ht->esz);
         fprintf(ERRSTREAM, "segmentation fault will follow.\n");
     }
-    memcpy(tmp, bht->ev[0], (unsigned long)ht->evl * ht->esz * sizeof(exp_t));
+    memcpy(tmp, bht->ev[0], (unsigned long)ht->evl * bht->eld * sizeof(exp_t));
     ht->eld = bht->eld;
     const hl_t esz  = ht->esz;
     for (j = 0; j < esz; ++j) {

@@ -415,6 +415,44 @@ static int32_t initialize_f4(
     return done;
 }
 
+/* frees the mat->np new rows of mat->tr and their coefficient arrays
+ * (used when they are not moved to the basis) */
+static void free_new_matrix_rows(
+    mat_t *mat,
+    const md_t * const md
+    )
+{
+    len_t i;
+    if (mat->tr == NULL) {
+        return;
+    }
+    for (i = 0; i < mat->np; ++i) {
+        hm_t *row = mat->tr[i];
+        if (row == NULL) {
+            continue;
+        }
+        switch (md->ff_bits) {
+            case 8:
+                free(mat->cf_8[row[COEFFS]]);
+                mat->cf_8[row[COEFFS]] = NULL;
+                break;
+            case 16:
+                free(mat->cf_16[row[COEFFS]]);
+                mat->cf_16[row[COEFFS]] = NULL;
+                break;
+            case 32:
+                free(mat->cf_32[row[COEFFS]]);
+                mat->cf_32[row[COEFFS]] = NULL;
+                break;
+            default:
+                break;
+        }
+        free(row);
+        mat->tr[i] = NULL;
+    }
+    mat->np = 0;
+}
+
 static int32_t compute_new_elements(
     mat_t *mat,
     bs_t *bs,
@@ -437,6 +475,10 @@ static int32_t compute_new_elements(
             if (md->info_level > 0) {
                 fprintf(ERRSTREAM, "Wrong number of new elements, bad prime.");
             }
+            /* new rows (and their coefficient arrays) are owned by the
+             * matrix at this point, release them before bailing out */
+            free_new_matrix_rows(mat, md);
+            clear_matrix(mat);
             *errp = 1;
             return 1;
         }
@@ -615,6 +657,20 @@ static void reduce_final_basis(
 
         exact_linear_algebra(mat, bs, bs, md);
 
+        /* The known pivots used as reducers are multiples of basis
+         * elements: their coefficients belong to the basis, but the rows
+         * themselves were allocated by symbolic preprocessing. In this
+         * step, the linear algebra keeps them in its pivot array at the
+         * column of their lead term and does not free them (it only frees
+         * them when detecting a bad prime, in which case mat->np = 0).
+         * Release them here, otherwise they leak at each call. */
+        if (md->ff_bits != 0 && mat->np > 0) {
+            for (i = 0; i < mat->nru; ++i) {
+                free(mat->rr[i]);
+                mat->rr[i] = NULL;
+            }
+        }
+
         free_basis_elements(bs);
 
         convert_sparse_matrix_rows_to_basis_elements(
@@ -716,6 +772,9 @@ bs_t *core_f4(
     }
     if (*errp > 0) {
         free_basis_and_only_local_hash_table_data(&bs);
+        /* also release the local meta data (symbolic hash table, pair
+         * set, ...) and the matrix: finalize_f4 is not called here */
+        free_local_data(&mat, &md);
     } else {
         print_round_information_footer(VERBSTREAM, md);
 

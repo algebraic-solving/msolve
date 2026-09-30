@@ -78,6 +78,17 @@ AX_GCC_BUILTIN([__builtin_clzl])
 # Checks for library functions.
 AC_CHECK_FUNCS([floor getdelim gettimeofday memmove memset malloc realloc pow sqrt strchr strstr strtol])
 
+# Configure version numbers
+m4_define([version_split], m4_split(AC_PACKAGE_VERSION, [[.]]))
+m4_define([version_major], m4_argn(1, version_split))
+m4_define([version_minor], m4_argn(2, version_split))
+m4_define([version_patch], m4_argn(3, version_split))
+
+AC_SUBST([MSOLVE_VERSION_MAJOR],[version_major])
+AC_SUBST([MSOLVE_VERSION_MINOR],[version_minor])
+AC_SUBST([MSOLVE_VERSION_PATCH],[version_patch])
+
+
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
  Makefile
@@ -86,6 +97,7 @@ AC_CONFIG_FILES([
  src/neogb/Makefile
  src/usolve/Makefile
  src/msolve/Makefile
+ src/msolve/msolve-version.h
 ])
 AC_CONFIG_LINKS([
  input_files/line_endings/in1_dos.ms:input_files/line_endings/in1_dos.ms

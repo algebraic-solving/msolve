@@ -53,3 +53,4 @@ line_endings_support
 neogb_io
 msolve-*.tar.gz
 msolve-*/
+src/msolve/msolve-version.h

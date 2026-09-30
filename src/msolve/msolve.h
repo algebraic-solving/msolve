@@ -22,6 +22,7 @@
 #define MSOLVE_MSOLVE_H
 
 #include "msolve-data.h"
+#include "msolve-version.h"
 
 #ifdef __cplusplus
 extern "C" {

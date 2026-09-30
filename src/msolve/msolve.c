@@ -337,10 +337,16 @@ data_gens_ff_t *allocate_data_gens() {
 }
 
 void free_data_gens(data_gens_ff_t *gens) {
-  for (long i = 0; i < gens->nvars; i++) {
-    free(gens->vnames[i]);
+  /* gens->vnames may already be NULL if ownership of the variable names
+   * was transferred to the caller (see msolve_julia /
+   * export_julia_rational_parametrization_qq, which sets gens->vnames =
+   * NULL after handing the names off to Julia). */
+  if (gens->vnames != NULL) {
+    for (long i = 0; i < gens->nvars; i++) {
+      free(gens->vnames[i]);
+    }
+    free(gens->vnames);
   }
-  free(gens->vnames);
   if (gens->field_char == 0) {
     for (long i = 0; i < 2 * gens->nterms; i++) {
       mpz_clear(*(gens->mpz_cfs[i]));
@@ -5373,6 +5379,11 @@ void export_julia_rational_parametrization_qq(
     }
   }
 
+  /* transfer ownership of the linear form coefficients (if any) to the
+   * caller regardless of which branch below is taken, so they are not
+   * orphaned when no parametrization is returned */
+  *cfs_linear_form = (void *)cf_lf;
+
   if ((param->dim > 0) || (param->dim == 0 && param->dquot == 0)) {
     *lens = NULL;
     *cfs = NULL;
@@ -5417,7 +5428,6 @@ void export_julia_rational_parametrization_qq(
     }
     *lens = len;
     *cfs = (void *)cf;
-    *cfs_linear_form = (void *)cf_lf;
 
     /* if there are no real solutions return the parametrization at least */
     if (nb_real_roots <= 0) {
@@ -5510,6 +5520,7 @@ void msolve_julia(
     }
     gens->nvars                 = nr_vars;
     gens->ngens                 = nr_gens;
+    gens->nterms                = nterms;
     gens->field_char            = field_char;
     gens->change_var_order      = -1;
     gens->linear_form_base_coef = 0;
@@ -5578,16 +5589,18 @@ void msolve_julia(
 
     /* clean up data storage, but do not free data handled by julia */
 
-    free(gens);
+    free_data_gens(gens);
     gens  = NULL;
 
     *rp_var_namesp = rp_var_names;
 
     /* free parametrization */
-    if(param != NULL && gens->field_char){
+    if(param != NULL && field_char){
         free_fglm_param(param);
     }
     mpz_param_clear(mpz_param);
+
+    free(files);
 
     *n_real_sols = nb_real_roots;
 
@@ -5619,16 +5632,15 @@ void msolve_julia(
  * free what they are pointing to, julia's garbage collector then
  * takes care of everything leftover. */
 void free_msolve_julia_result_data(void (*freep)(void *), int32_t **res_len,
-                                   void **res_cf, void **sols_num,
+                                   void **res_cf, void **cfs_linear_form,
+                                   void **sols_num,
                                    int32_t **sols_den, const int64_t res_ld,
+                                   const int64_t nr_vars,
+                                   const int64_t nr_sol_vars,
                                    const int64_t nr_sols,
                                    const int64_t field_char) {
 
   int32_t *lens = *res_len;
-
-  (*freep)(lens);
-  lens = NULL;
-  *res_len = lens;
 
   if (field_char > 0) {
     int32_t *numerators = *(int32_t **)sols_num;
@@ -5643,19 +5655,52 @@ void free_msolve_julia_result_data(void (*freep)(void *), int32_t **res_len,
     (*freep)(denominators);
     denominators = NULL;
     *sols_den = denominators;
-    /* mpz_t **numerators  = (mpz_t **)sols_num;
-     * for (i = 0; i < nr_sols; ++i) {
-     *     (*freep)((*numerators)[i]);
-     * }
-     * (*freep)(*numerators);
-     * *numerators = NULL;
-     * mpz_t **cfs = (mpz_t **)res_cf;
-     * for (i = 0; i < len; ++i) {
-     *     (*freep)((*cfs)[i]);
-     * }
-     * (*freep)(*cfs);
-     * *cfs  = NULL; */
+
+    /* rational parametrization coefficients: nelts = sum(lens[0..res_ld-1]),
+     * lens itself is freed below once we no longer need it here */
+    if (lens != NULL && res_ld > 0) {
+      int64_t cf_len = 0;
+      for (int64_t i = 0; i < res_ld; ++i) {
+        cf_len += (int64_t)lens[i];
+      }
+      mpz_t *cfs = (mpz_t *)(*res_cf);
+      if (cfs != NULL) {
+        for (int64_t i = 0; i < cf_len; ++i) {
+          mpz_clear(cfs[i]);
+        }
+        (*freep)(cfs);
+      }
+
+      /* linear form coefficients, if a linear form was added; sized by
+       * gens->nvars, i.e. nr_vars as passed in (see
+       * export_julia_rational_parametrization_qq) */
+      mpz_t *cf_lf = (mpz_t *)(*cfs_linear_form);
+      if (cf_lf != NULL) {
+        for (int64_t i = 0; i < nr_vars; ++i) {
+          mpz_clear(cf_lf[i]);
+        }
+        (*freep)(cf_lf);
+      }
+
+      /* real solution numerators: real_point_t entries carry nr_sol_vars
+       * coordinates each (the original problem's variable count, NOT
+       * gens->nvars/nr_vars, which also counts the extra variable added
+       * for genericity handling and is not part of the reported solution
+       * coordinates) */
+      mpz_t *numerators = (mpz_t *)(*sols_num);
+      if (numerators != NULL) {
+        const int64_t len = 2 * nr_sols * nr_sol_vars;
+        for (int64_t i = 0; i < len; ++i) {
+          mpz_clear(numerators[i]);
+        }
+        (*freep)(numerators);
+      }
+    }
   }
+  (*freep)(lens);
+  lens = NULL;
+  *res_len = lens;
   *sols_num = NULL;
   *res_cf = NULL;
+  *cfs_linear_form = NULL;
 }

@@ -196,9 +196,20 @@ void free_msolve_julia_result_data(
         void (*freep) (void *),
         int32_t **res_len,
         void **res_cf,
+        void **cfs_linear_form,
         void **sols_num,
         int32_t **sols_den,
         const int64_t res_ld,
+        const int64_t nr_vars,     /* gens->nvars, includes any variable
+                                    * added for genericity handling; used
+                                    * to size cfs_linear_form */
+        const int64_t nr_sol_vars, /* number of variables of the original
+                                    * input system (i.e. NOT including any
+                                    * variable added for genericity
+                                    * handling); used to size sols_num and
+                                    * sols_den, which only carry
+                                    * coordinates for the original
+                                    * variables */
         const int64_t nr_sols,
         const int64_t field_char
         );

@@ -485,14 +485,14 @@ int main(int argc, char **argv){
                &precision, &refine, &isolate, &generate_pbm,
 	       &seed, &info_level, files);
 
-    /* srand initialization */
+    /* pseudo-random number generator initialization */
     uint32_t true_seed;
     if (seed < 0) {
       true_seed = time(0);
     } else {
       true_seed = (uint32_t) seed;
     }
-    srand(true_seed);
+    msolve_srand(true_seed);
     if (info_level) {
       fprintf (VERBSTREAM,"Initial seed for pseudo-random number generator ");
       fprintf (VERBSTREAM,"is %u\n",true_seed);

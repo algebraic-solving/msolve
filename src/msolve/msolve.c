@@ -735,9 +735,9 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
   if (gens->field_char > 0) {
     int j = 0;
     for (i = len_old; i < len_new; i++, j++) {
-      int32_t rdval = ((int8_t)(rand()) % gens->field_char);
+      int32_t rdval = ((int8_t)(msolve_rand()) % gens->field_char);
       while (rdval == 0) {
-        rdval = ((int8_t)(rand()) % gens->field_char);
+        rdval = ((int8_t)(msolve_rand()) % gens->field_char);
       }
       gens->random_linear_form[j] = rdval;
       gens->cfs[i] = rdval;
@@ -745,9 +745,9 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
   } else {
     int j = 0;
     for (i = len_old; i < len_new; i++, j++) {
-      int32_t rdval = rand();
+      int32_t rdval = msolve_rand();
       while (rdval == 0) {
-        rdval = rand();
+        rdval = msolve_rand();
       }
       gens->random_linear_form[j] = rdval;
       mpz_set_si(*(gens->mpz_cfs[2*i]), rdval);
@@ -1855,9 +1855,12 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
     for(nvars_t i = 0; i < st->nprimes; i++){
       bad_primes[i] = 0;
     }
+    const uint32_t rng_base = msolve_rand_u32();
+    const msolve_rng_t rng_saved = *msolve_rng_current();
 #pragma omp parallel for num_threads(nthrds)  \
     private(i) schedule(static)
     for (i = 0; i < st->nprimes; ++i){
+      msolve_srand(msolve_rng_derive_seed(rng_base, i));
       if (trace_det->mat_lifted < 2 || trace_det->lin_lifted < 2) {
         bs[i] = core_gba(bs_qq, st, &error, lp->p[i]);
         *stf4 = realtime()-rt;
@@ -1945,6 +1948,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             free_basis_and_only_local_hash_table_data(&(bs[i]));
         }
     }
+  *msolve_rng_current() = rng_saved;
   st->nthrds = nthrds;
 }
 
@@ -2248,9 +2252,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   uint32_t lprime = 1303905299;
   /* choose next_prime of some random number between 1<<30 and 1303905301 */
   /* (roughly, there are ~ 10**7 such primes) */
-  prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
+  prime = next_prime(msolve_rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   while (gens->field_char == 0 && (is_lucky_prime_ui(prime, bs_qq) || is_member(prime, (*binit_primes)))) {
-    prime = next_prime(rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
+    prime = next_prime(msolve_rand() % (1303905301 - (1 << 30) + 1) + (1 << 30));
   }
   primeinit = prime;
   lp->p[0] = primeinit;
@@ -4802,9 +4806,9 @@ restart:
             trace_t *trace  = initialize_trace(bs_qq, st);
 
             uint32_t prime = next_prime(1<<30);
-            prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+            prime = next_prime(msolve_rand() % (1303905301 - (1<<30) + 1) + (1<<30));
             while(is_lucky_prime_ui(prime, bs_qq)){
-                prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+                prime = next_prime(msolve_rand() % (1303905301 - (1<<30) + 1) + (1<<30));
             }
 
             uint32_t primeinit = prime;
@@ -4986,9 +4990,9 @@ restart:
             st->tr = trace;
 
             uint32_t prime = next_prime(1<<30);
-            prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+            prime = next_prime(msolve_rand() % (1303905301 - (1<<30) + 1) + (1<<30));
             while(is_lucky_prime_ui(prime, bs_qq)){
-                prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+                prime = next_prime(msolve_rand() % (1303905301 - (1<<30) + 1) + (1<<30));
             }
 
             uint32_t primeinit = prime;

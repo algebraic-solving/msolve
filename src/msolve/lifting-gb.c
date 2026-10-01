@@ -1309,9 +1309,9 @@ restart:
   uint32_t primeinit = 0;
   uint32_t lprime = 1303905299;
 
-  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  prime = next_prime(msolve_rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   while(fc == 0 && is_lucky_prime_ui(prime, bs)){
-    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+    prime = next_prime(msolve_rand() % (1303905301 - (1<<30) + 1) + (1<<30));
   }
 
   primeinit = prime;
@@ -1426,7 +1426,7 @@ restart:
 
 
     learn = 0;
-    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+    prime = next_prime(msolve_rand() % (1303905301 - (1<<30) + 1) + (1<<30));
     if(info_level){
         fprintf(VERBSTREAM, "New prime = %d\n", prime);
     }

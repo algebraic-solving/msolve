@@ -928,7 +928,7 @@ static void probabilistic_sparse_reduced_echelon_form_ff_8(
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
                     do {
-                        mull[j] = (int64_t)rand() & fc;
+                        mull[j] = (int64_t)rand() % fc;
                     } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination
@@ -1807,7 +1807,7 @@ static cf8_t **probabilistic_dense_linear_algebra_ff_8(
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
                     do {
-                        mull[j] = (int64_t)rand() & fc;
+                        mull[j] = (int64_t)rand() % fc;
                     } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination
@@ -1941,7 +1941,7 @@ static cf8_t **probabilistic_sparse_dense_echelon_form_ff_8(
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
                     do {
-                        mull[j] = (int64_t)rand() & fc;
+                        mull[j] = (int64_t)rand() % fc;
                     } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination

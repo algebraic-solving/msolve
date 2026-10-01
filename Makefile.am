@@ -16,6 +16,7 @@ check_PROGRAMS		= neogb_io \
 checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_bug-68.sh \
 			  test/diff/diff_bug-empty-tracer.sh \
+			  test/diff/diff_bug-prob-sparse-dense-la.sh \
 			  test/diff/diff_cp-d3-n4-p2.sh \
 			  test/diff/diff_cyclic5-16.sh \
 			  test/diff/diff_cyclic5-31.sh \

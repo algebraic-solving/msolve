@@ -3586,7 +3586,7 @@ static cf32_t **probabilistic_dense_linear_algebra_ff_32(
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, k, l) shared(nps, tbr) \
     schedule(dynamic)
-    for (i = 0; i < ntr; ++i) {
+    for (i = 0; i < nb; ++i) {
         int64_t *drl  = dr + (omp_get_thread_num() * (uint64_t)ncr);
         int64_t *mull = mul + (omp_get_thread_num() * (uint64_t)rpb);
         const int32_t nbl   = (int32_t) (ntr > (i+1)*rpb ? (i+1)*rpb : ntr);

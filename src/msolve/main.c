@@ -149,6 +149,12 @@ static inline void display_help(char *str){
   display_option_help_noopt("between 1 and #variables-1, and gives the number of\n");
   display_option_help_noopt("eliminated variables. The basis with the first block of\n");
   display_option_help_noopt("ELIM variables eliminated is then computed.\n");
+  display_option_help_noopt("Over the rationals, only the elements of the basis\n");
+  display_option_help_noopt("which do not involve the eliminated variables are\n");
+  display_option_help_noopt("returned by default (see --elim-full-basis).\n");
+  display_option_help(0, "elim-full-basis", "", "Over the rationals, combined with -e, return the\n");
+  display_option_help_noopt("full Groebner basis w.r.t. the elimination order\n");
+  display_option_help_noopt("instead of the basis of the elimination ideal only.\n");
   display_option_help('l', "linear-algebra", "LIN", "Linear algebra variant to be applied:\n");
   display_option_help_noopt(" 1 - exact sparse / dense\n");
   display_option_help_noopt(" 2 - exact sparse (default)\n");
@@ -242,6 +248,7 @@ static void getoptions(
         int32_t *nthreads,
         int32_t *max_pairs,
         int32_t *elim_block_len,
+        int32_t *elim_full_basis,
         int32_t *linear_algebra,
         int32_t *use_signatures,
         int32_t *update_ht,
@@ -287,12 +294,14 @@ static void getoptions(
     HENSEL_PRECISION_OPTION,
     HENSEL_COST_SCALE_OPTION,
     HENSEL_MEMORY_OPTION,
+    ELIM_FULL_BASIS_OPTION,
     /* Below is the template for the next long option with
      * no equivalent short option */
     /* NEXT_OPTION */
   };
   struct option long_options[] = {
     {"elimination", required_argument, NULL, 'e'},
+    {"elim-full-basis", no_argument, NULL, ELIM_FULL_BASIS_OPTION},
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
     {"help", no_argument, NULL, 'h'},
@@ -496,6 +505,9 @@ static void getoptions(
     case RANDOM_SEED_OPTION:
       *seed = strtoll(optarg, NULL, 10);
       break;
+    case ELIM_FULL_BASIS_OPTION:
+      *elim_full_basis = 1;
+      break;
     /* Below is the template for the next long option with
      * no equivalent short option */
     /* case NEXT_OPTION: */
@@ -594,6 +606,7 @@ int main(int argc, char **argv){
     int32_t initial_hts           = 17;
     int32_t max_pairs             = 0;
     int32_t elim_block_len        = 0;
+    int32_t elim_full_basis       = 0;
     int32_t update_ht             = 0;
     int32_t generate_pbm          = 0;
     int32_t reduce_gb             = 1;
@@ -623,7 +636,7 @@ int main(int argc, char **argv){
     files->in_file = NULL;
     files->out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
-               &elim_block_len, &la_option, &use_signatures, &update_ht,
+               &elim_block_len, &elim_full_basis, &la_option, &use_signatures, &update_ht,
                &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling,
                &unstable_staircase, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
@@ -677,7 +690,10 @@ int main(int argc, char **argv){
 
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));
-    gens->elim = elim_block_len;
+    /* over QQ, the eliminated variables are dropped from the output
+     * unless the full basis is requested */
+    gens->elim_full_basis = elim_full_basis;
+    gens->elim = elim_full_basis ? 0 : elim_block_len;
     /* the parametrization of the whole solution set is not built from
      * its components when it is not printed */
     gens->split_global = get_param > 0;

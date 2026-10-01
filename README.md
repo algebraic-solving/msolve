@@ -109,6 +109,9 @@ thanks to the `-e` flag. The following command
 ```
 will perform the Groebner basis computation eliminating the first variable. 
 More generally, using `-e k` will eliminate the first `k` variables. 
+Over the rationals, only the basis of the elimination ideal is returned
+by default; add the `--elim-full-basis` flag to get the full Groebner
+basis w.r.t. the elimination order.
 
 Groebner bases (options `-g 1` and `-g 2`) can also be computed over the 
 binary extension fields GF(16) and GF(256), the 2nd line of the input file 

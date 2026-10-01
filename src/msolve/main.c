@@ -100,7 +100,6 @@ static inline void display_help(char *str){
 
 
   fprintf(OUTSTREAM, "\nAdvanced options:\n\n");
-  display_option_help('F', "", "FILE", "File name encoding parametrizations in binary format.\n\n");
   display_option_help('g', "groebner-basis", "GB", "Prints reduced Groebner bases of input system for\n");
   display_option_help_noopt("first prime characteristic w.r.t. grevlex ordering.\n");
   display_option_help_noopt("One element per line is printed, commata separated.\n");
@@ -136,10 +135,6 @@ static inline void display_help(char *str){
   display_option_help_noopt("between 1 and #variables-1, and gives the number of\n");
   display_option_help_noopt("eliminated variables. The basis with the first block of\n");
   display_option_help_noopt("ELIM variables eliminated is then computed.\n");
-  display_option_help('I', "isolate", "ISOL", "Isolates the real roots (provided some univariate data)\n");
-  display_option_help_noopt("without re-computing a Gröbner basis\n");
-  display_option_help_noopt("0 - no (default).\n");
-  display_option_help_noopt("1 - yes.\n");
   display_option_help('l', "linear-algebra", "LIN", "Linear algebra variant to be applied:\n");
   display_option_help_noopt(" 1 - exact sparse / dense\n");
   display_option_help_noopt(" 2 - exact sparse (default)\n");
@@ -176,8 +171,6 @@ static inline void display_help(char *str){
   display_option_help('r', "reduce-gb", "RED", "Reduce Groebner basis.\n");
   display_option_help_noopt("0 - no.\n");
   display_option_help_noopt("1 - yes (default).\n");
-  /* display_option_help('R', "", "REF", "Refinement fo real roots.\n"); */
-  /* display_option_help_noopt("(not implemented yet).\n"); */
   display_option_help('s', "", "HTS", "Initial hash table size given\n");
   display_option_help_noopt("as power of two.\n");
   display_option_help_noopt("17 (default).\n");
@@ -217,19 +210,15 @@ static void getoptions(
         int32_t *lift_matrix,
         int32_t *get_param,
         int32_t *precision,
-        int32_t *refine,
-        int32_t *isolate,
         int32_t *generate_pbm_files,
 	int64_t *seed,
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
   char *filename = NULL;
-  char *bin_filename = NULL;
   char *out_fname = NULL;
-  char *bin_out_fname = NULL;
   opterr = 1;
-  char short_options[] = "c:Cd:e:f:F:g:hiI:l:L:m:M:n:N:o:O:p:P:q:r:R:s:St:u:v:V";
+  char short_options[] = "c:Cd:e:f:g:hil:L:m:M:n:N:o:p:P:q:r:s:St:u:v:V";
 
   /* For long options that have no equivalent short option, use a
      non-character as a pseudo short option, starting with CHAR_MAX + 1.
@@ -245,7 +234,6 @@ static void getoptions(
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
     {"help", no_argument, NULL, 'h'},
-    {"isolate", required_argument, NULL, 'I'},
     {"linear-algebra", required_argument, NULL, 'l'},
     {"lifting-mulmat", required_argument, NULL, 'L'},
     {"normal-form", required_argument, NULL, 'n'},
@@ -309,14 +297,8 @@ static void getoptions(
           *use_signatures = 0;
       }
       break;
-    case 'R':
-      *refine = 1;
-      break;
     case 'i':
       *is_gb = 1;
-      break;
-    case 'I':
-      *isolate = strtol(optarg, NULL, 10);
       break;
     case 's':
       *initial_hts = strtol(optarg, NULL, 10);
@@ -349,15 +331,8 @@ static void getoptions(
       fflag = 0;
       filename = optarg;
       break;
-    case 'F':
-      fflag = 0;
-      bin_filename = optarg;
-      break;
     case 'o':
       out_fname = optarg;
-      break;
-    case 'O':
-      bin_out_fname = optarg;
       break;
     case 'P':
       *get_param = strtol(optarg, NULL, 10);
@@ -430,9 +405,7 @@ static void getoptions(
     exit(1);
   }
   files->in_file = filename;
-  files->bin_file = bin_filename;
   files->out_file = out_fname;
-  files->bin_out_file = bin_out_fname;
 }
 
 
@@ -467,22 +440,18 @@ int main(int argc, char **argv){
     int32_t lift_matrix           = 0;
     int32_t get_param             = 0;
     int32_t precision             = 64;
-    int32_t refine                = 0; /* not used at the moment */
-    int32_t isolate               = 0; /* not used at the moment */
     int64_t seed                  = -1;
 
     files_gb *files = malloc(sizeof(files_gb));
     if(files == NULL) exit(1);
     files->in_file = NULL;
-    files->bin_file = NULL;
     files->out_file = NULL;
-    files->bin_out_file = NULL;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
                &elim_block_len, &la_option, &use_signatures, &update_ht,
                &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling,
                &unstable_staircase, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
-               &precision, &refine, &isolate, &generate_pbm,
+               &precision, &generate_pbm,
 	       &seed, &info_level, files);
 
     /* srand initialization */
@@ -498,27 +467,12 @@ int main(int argc, char **argv){
       fprintf (VERBSTREAM,"is %u\n",true_seed);
     }
 
-    FILE *fh = NULL;
-    FILE *bfh = NULL;
-    if (files->in_file) {
-      fh = fopen(files->in_file, "r");
-    }
-    if (files->bin_file) {
-      bfh = fopen(files->bin_file, "r");
-    }
-
-    if (fh == NULL && bfh == NULL) {
+    FILE *fh = fopen(files->in_file, "r");
+    if (fh == NULL) {
       fprintf(ERRSTREAM, "Input file not found.\n");
       exit(1);
     }
-    if(fh!=NULL){
-      fclose(fh);
-    }
-    if(bfh != NULL){
-      fclose(bfh);
-    }
-    fh =  NULL;
-    bfh =  NULL;
+    fclose(fh);
 
     /* clear out_file if given */
     if(files->out_file != NULL){

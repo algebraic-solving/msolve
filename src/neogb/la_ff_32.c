@@ -3716,7 +3716,7 @@ static cf32_t **probabilistic_sparse_dense_echelon_form_ff_32(
     int64_t *dr   = (int64_t *)malloc(
         (uint64_t)ncols * st->nthrds * sizeof(int64_t));
     int64_t *mul  = (int64_t *)malloc(
-        (uint64_t)ncols * st->nthrds * sizeof(int64_t));
+        (uint64_t)rpb * st->nthrds * sizeof(int64_t));
 
     /* reduction process to get all possible pivots, no interreduction here */
 #pragma omp parallel for num_threads(st->nthrds) \

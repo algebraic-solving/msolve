@@ -168,6 +168,10 @@ AC_CONFIG_LINKS([
  output_files/elim-qq.g2.e1.res:output_files/elim-qq.g2.e1.res
  output_files/elim-qq.g2.e2.res:output_files/elim-qq.g2.e2.res
  test/diff/diff_elim-qq.sh:test/diff/diff_elim-qq.sh
+ input_files/elim-full-qq.ms:input_files/elim-full-qq.ms
+ output_files/elim-full-qq.g2.e1.res:output_files/elim-full-qq.g2.e1.res
+ output_files/elim-full-qq.g2.e2.res:output_files/elim-full-qq.g2.e2.res
+ test/diff/diff_elim-full-qq.sh:test/diff/diff_elim-full-qq.sh
  input_files/empty-elim-qq.ms:input_files/empty-elim-qq.ms
  output_files/empty-elim-qq.g2.e1.res:output_files/empty-elim-qq.g2.e1.res
  output_files/empty-elim-qq.g2.e2.res:output_files/empty-elim-qq.g2.e2.res

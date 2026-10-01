@@ -56,6 +56,28 @@ fi
 # Checks for header files.
 AC_CHECK_HEADERS([inttypes.h stdint.h])
 
+# The parallel linear algebra needs C11 atomics.
+AC_CACHE_CHECK([for C11 atomics], [msolve_cv_c11_atomics],
+    [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#ifdef __STDC_NO_ATOMICS__
+#error no C11 atomics
+#endif
+#include <stdatomic.h>
+#include <stddef.h>
+]], [[
+int x = 0;
+_Atomic(int *) p;
+int *expected = NULL;
+atomic_init(&p, NULL);
+return !atomic_compare_exchange_strong_explicit(&p, &expected, &x,
+        memory_order_release, memory_order_relaxed);
+]])],
+        [msolve_cv_c11_atomics=yes],
+        [msolve_cv_c11_atomics=no])])
+if test "x$msolve_cv_c11_atomics" != xyes; then
+    AC_MSG_ERROR([C11 atomics (<stdatomic.h>) are required, try a C11 compiler or a newer -std= option.])
+fi
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
 AC_TYPE_INT16_T

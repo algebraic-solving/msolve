@@ -1096,7 +1096,7 @@ hm_t *reduce_dense_row_by_known_pivots_sparse_ff_32(
         int64_t *dr,
         mat_t *mat,
         const bs_t * const bs,
-        hm_t *const *pivs,
+        _Atomic(hm_t *) *pivs,
         const hi_t dpiv,
         const hm_t tmp_pos,
         const len_t mh,
@@ -1118,7 +1118,7 @@ hm_t *trace_reduce_dense_row_by_known_pivots_sparse_ff_32(
         int64_t *dr,
         mat_t *mat,
         const bs_t * const bs,
-        hm_t *const *pivs,
+        _Atomic(hm_t *) *pivs,
         const hi_t dpiv,
         const hm_t tmp_pos,
         const len_t mh,
@@ -1140,7 +1140,7 @@ cf32_t *reduce_dense_row_by_all_pivots_ff_32(
         const bs_t * const bs,
         len_t *pc,
         hm_t *const *pivs,
-        cf32_t *const *dpivs,
+        _Atomic(cf32_t *) *dpivs,
         const uint32_t fc
         )
 {
@@ -1153,7 +1153,7 @@ cf32_t *reduce_dense_row_by_all_pivots_ff_32(
 cf32_t *reduce_dense_row_by_dense_new_pivots_ff_32(
         int64_t *dr,
         len_t *pc,
-        cf32_t * const * const pivs,
+        _Atomic(cf32_t *) * const pivs,
         const len_t ncr,
         const uint32_t fc
         )

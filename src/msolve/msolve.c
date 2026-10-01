@@ -4567,6 +4567,39 @@ restart:
         fprintf(ERRSTREAM, "be done automatically if you run msolve with option\n");
         fprintf(ERRSTREAM, "\"-c2\" which is the default.\n");
 	  }
+          if (b == 4) {
+            /* Probabilistic linear algebra yields a
+               Groebner basis of a positive-dimensional ideal
+               or of a 0-dimensional ideal of wrong degree,
+               restart with the same linear form */
+            free(bld);
+            bld = NULL;
+            free(blen);
+            blen  = NULL;
+            free(bexp);
+            bexp  = NULL;
+            free(bcf);
+            bcf = NULL;
+            free(param);
+            param = NULL;
+            if (info_level > 0) {
+              fprintf(VERBSTREAM, "\nWrong dimension or degree\n");
+              fprintf(VERBSTREAM, "Restarting with the same linear form\n");
+            }
+            goto restart;
+          }
+          free(bld);
+          free(blen);
+          free(bexp);
+          free(bcf);
+          if (init_primes != NULL) {
+            free_lucky_primes(&init_primes);
+          }
+          /* no parametrization has been written if the computation failed */
+          if (b > 0) {
+            (*mpz_paramp)->dim  = -1;
+          }
+          return !(b == 0);
         }
 	else {
           /* normal_form is 1 */

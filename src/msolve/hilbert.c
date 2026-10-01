@@ -749,6 +749,13 @@ static inline void copy_poly_in_matrix(sp_matfglm_t* matrix,
   fprintf(ERRSTREAM, "\n");
 #endif
 
+  /* pos is the length of the polynomial; if pos < 2, it is a monomial:
+   * it has no tail, hence the corresponding row stays zero
+   * (dense_mat is zero-initialized) */
+  if(pos < 2){
+    return;
+  }
+
   long N = nrows * (matrix->ncols) - (start + 1);
 
   if((end-start) == matrix->ncols + 1){
@@ -801,6 +808,13 @@ copy_poly_in_matrixcol(sp_matfglmcol_t* matrix, long nrows,
   }
   fprintf(ERRSTREAM, "\n");
 #endif
+  /* pos is the length of the polynomial; if pos < 2, it is a monomial:
+   * it has no tail, hence the corresponding row stays zero
+   * (dense_mat is zero-initialized) */
+  if(pos < 2){
+    return;
+  }
+
   long N = nrows * (matrix->ncols) - (start + 1);
 
   if((end-start) == matrix->ncols + 1){

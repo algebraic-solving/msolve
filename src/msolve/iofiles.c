@@ -24,6 +24,7 @@
 #include "streams.h"
 
 #include <errno.h>
+#include <limits.h>
 
 static inline int store_exponent(const char *term, data_gens_ff_t *gens, int64_t pos)
 {
@@ -54,7 +55,11 @@ static inline int store_exponent(const char *term, data_gens_ff_t *gens, int64_t
                 ++op;
             }
             if (op >= j) {
-                fprintf(stderr, "Error when parsing term %s (missing operand for *)\n", term);
+                if (index == 0 && term[op] == '\0') {
+                    fprintf(stderr, "Error when parsing term %s (empty term)\n", term);
+                } else {
+                    fprintf(stderr, "Error when parsing term %s (missing operand)\n", term);
+                }
                 res = 1;
                 break;
             }
@@ -85,8 +90,9 @@ static inline int store_exponent(const char *term, data_gens_ff_t *gens, int64_t
                         res = 1;
                         break;
                     }
+                    errno = 0;
                     long val = strtol(ev, &end, 10);
-                    if (ev == end) {
+                    if (ev == end || *end != '\0') {
                         fprintf(stderr, "Error when parsing term %s (invalid exponent)\n", term);
                         res = 1;
                         break;
@@ -109,28 +115,28 @@ static inline int store_exponent(const char *term, data_gens_ff_t *gens, int64_t
                 break;
             }
             if (is_var == 0) {
+                if (gens->field_char > 0) {
+                    if (mpz_set_str(tmp_z, var, 10) != 0) {
+                        fprintf(stderr, "Error when parsing term %s (unknown variable or invalid coefficient for finite field: %s)\n", term, var);
+                        res = 1;
+                        break;
+                    }
+                } else {
+                    if (mpq_set_str(tmp_q, var, 10) != 0) {
+                        fprintf(stderr, "Error when parsing term %s (unknown variable or invalid coefficient: %s)\n", term, var);
+                        res = 1;
+                        break;
+                    }
+                }
                 if (has_exponent) {
                     fprintf(stderr, "Error when parsing term %s (coefficient cannot have an exponent)\n", term);
                     res = 1;
                     break;
                 }
                 if (index > 0) {
-                    fprintf(stderr, "Error when parsing term %s (multiple coefficients are not allowed)\n", term);
+                    fprintf(stderr, "Error when parsing term %s (coefficient must be the first factor)\n", term);
                     res = 1;
                     break;
-                }
-                if (gens->field_char > 0) {
-                    if (mpz_set_str(tmp_z, var, 10) != 0) {
-                        fprintf(stderr, "Error when parsing term %s (invalid coefficient for finite field)\n", term);
-                        res = 1;
-                        break;
-                    }
-                } else {
-                    if (mpq_set_str(tmp_q, var, 10) != 0) {
-                        fprintf(stderr, "Error when parsing term %s (invalid coefficient)\n", term);
-                        res = 1;
-                        break;
-                    }
                 }
             }
             op = i+1;

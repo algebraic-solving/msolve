@@ -178,6 +178,10 @@ AC_CONFIG_LINKS([
  output_files/elim-31.g2.e1.res:output_files/elim-31.g2.e1.res
  output_files/elim-31.g2.e2.res:output_files/elim-31.g2.e2.res
  test/diff/diff_elim-31.sh:test/diff/diff_elim-31.sh
+ input_files/elim-full-qq.ms:input_files/elim-full-qq.ms
+ output_files/elim-full-qq.g2.e1.res:output_files/elim-full-qq.g2.e1.res
+ output_files/elim-full-qq.g2.e2.res:output_files/elim-full-qq.g2.e2.res
+ test/diff/diff_elim-full-qq.sh:test/diff/diff_elim-full-qq.sh
  input_files/elim-qq.ms:input_files/elim-qq.ms
  output_files/elim-qq.g2.e1.res:output_files/elim-qq.g2.e1.res
  output_files/elim-qq.g2.e2.res:output_files/elim-qq.g2.e2.res

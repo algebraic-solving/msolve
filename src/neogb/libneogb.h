@@ -36,5 +36,6 @@
 #include "sort_r.h"
 #include "tools.h"
 #include "update.h"
+#include "rng.h"
 
 #endif

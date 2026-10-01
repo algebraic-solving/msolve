@@ -29,6 +29,7 @@
 #include<time.h>
 /* for timing functions */
 #include "../neogb/tools.h"
+#include "../neogb/rng.h"
 #include "../msolve/streams.h"
 
 #ifdef _OPENMP
@@ -581,8 +582,8 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
     Rmat[i] = 0;
   }
   for(szmat_t i = 0; i < matxn->ncols; i++){
-    Rmat[i] = (CF_t)rand() % prime;
-    Rmat[i] += (CF_t)rand() % prime;
+    Rmat[i] = (CF_t)msolve_rand() % prime;
+    Rmat[i] += (CF_t)msolve_rand() % prime;
   }
 
   /* allocates result matrix (matxn * Rmat) */
@@ -1113,7 +1114,7 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
         if(linvars[nvars - 2 - nc] == 0
            && squvars[nvars - 2 - nc] != 0){
 
-          uint64_t lambda= 1 + ((uint64_t) rand() % (prime-1));
+          uint64_t lambda= 1 + ((uint64_t) msolve_rand() % (prime-1));
           /* needed for verification */
 
           invert_table_polynomial (param, data, data_bms, block_size,
@@ -1220,7 +1221,7 @@ static int compute_parametrizations_colon(param_t *param,
         if(linvars[nvars - 2 - nc] == 0
            && squvars[nvars - 2 - nc] != 0){
 
-          uint64_t lambda= 1 + ((uint64_t) rand() % (prime-1));
+          uint64_t lambda= 1 + ((uint64_t) msolve_rand() % (prime-1));
           /* needed for verification */
 
           invert_table_polynomial (param, data, data_bms, block_size,
@@ -1286,9 +1287,9 @@ static inline long initialize_fglm_data(sp_matfglm_t *matrix,
     if(matrix->dense_mat[i]==0)
       nb++;
   }
-  data->vecinit[0] = 1 + ((CF_t) rand() % (prime-1)); /* random, nonzero */
+  data->vecinit[0] = 1 + ((CF_t) msolve_rand() % (prime-1)); /* random, nonzero */
   for(szmat_t i = 1; i < matrix->ncols; i++){
-    data->vecinit[i] = (CF_t)rand() % prime;
+    data->vecinit[i] = (CF_t)msolve_rand() % prime;
   }
   data->res[0] = data->vecinit[0];
   for(szmat_t i = 1; i < block_size; i++){
@@ -1308,8 +1309,8 @@ static inline long initialize_fglm_colon_data(sp_matfglmcol_t *matrix,
       nb++;
   }
   for(szmat_t i = 0; i < matrix->ncols; i++){
-    data->vecinit[i] = (CF_t)rand() % prime;
-    data->vecinit[i] += (CF_t)rand() % prime;
+    data->vecinit[i] = (CF_t)msolve_rand() % prime;
+    data->vecinit[i] += (CF_t)msolve_rand() % prime;
     /* data->vecinit[i] = (CF_t)(i+1) % prime; */
   }
   data->res[0] = data->vecinit[0];

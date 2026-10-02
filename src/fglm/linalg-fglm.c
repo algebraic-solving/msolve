@@ -26,7 +26,7 @@
 #include <flint/nmod.h>
 #endif
 
-#ifdef HAVE_AVX2
+#if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
 #include <immintrin.h>
 #endif
 

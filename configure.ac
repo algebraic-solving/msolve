@@ -70,17 +70,48 @@ AC_TYPE_UINT8_T
 
 
 AX_COUNT_CPUS
-# Select SIMD code from the compiler target, not the build machine's CPU.
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+# By default, select SIMD code from the compiler target rather than the build CPU.
+# Let packagers disable either implementation without changing their CFLAGS.
+AC_ARG_ENABLE([avx2],
+    [AS_HELP_STRING([--enable-avx2], [enable AVX2 code (default: compiler target)])],
+    [], [enable_avx2=auto])
+AS_CASE([$enable_avx2], [yes|no|auto], [],
+    [AC_MSG_ERROR([bad value $enable_avx2 for --enable-avx2])])
+AS_IF([test "x$enable_avx2" = xauto], [
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #ifndef __AVX2__
 #error AVX2 is not enabled
 #endif
-]], [[]])], [AC_DEFINE([HAVE_AVX2], [1], [Enable AVX2 code])])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+]], [[]])], [enable_avx2=yes], [enable_avx2=no])
+])
+AS_IF([test "x$enable_avx2" = xyes], [
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <immintrin.h>]], [[
+    __m256i value = _mm256_set1_epi64x(1);
+    return _mm256_extract_epi64(value, 0);
+  ]])], [AC_DEFINE([HAVE_AVX2], [1], [Enable AVX2 code])],
+      [AC_MSG_ERROR([AVX2 code requires a compiler target supporting AVX2 (for example, -mavx2 in CFLAGS)])])
+])
+
+AC_ARG_ENABLE([avx512f],
+    [AS_HELP_STRING([--enable-avx512f], [enable AVX-512 code (requires AVX-512F and AVX-512BW; default: compiler target)])],
+    [], [enable_avx512f=auto])
+AS_CASE([$enable_avx512f], [yes|no|auto], [],
+    [AC_MSG_ERROR([bad value $enable_avx512f for --enable-avx512f])])
+AS_IF([test "x$enable_avx512f" = xauto], [
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
 #ifndef __AVX512F__
 #error AVX512F is not enabled
 #endif
-]], [[]])], [AC_DEFINE([HAVE_AVX512_F], [1], [Enable AVX512F code])])
+]], [[]])], [enable_avx512f=yes], [enable_avx512f=no])
+])
+AS_IF([test "x$enable_avx512f" = xyes], [
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <immintrin.h>]], [[
+    __m512i value = _mm512_set1_epi16(1);
+    value = _mm512_mullo_epi16(value, value);
+    return _mm512_cvtsi512_si32(value);
+  ]])], [AC_DEFINE([HAVE_AVX512_F], [1], [Enable AVX512F code])],
+      [AC_MSG_ERROR([AVX-512 code requires a compiler target supporting AVX-512F and AVX-512BW (for example, -mavx512f -mavx512bw in CFLAGS)])])
+])
 AX_GCC_BUILTIN([__builtin_constant_p])
 AX_GCC_BUILTIN([__builtin_clzll])
 AX_GCC_BUILTIN([__builtin_clzl])

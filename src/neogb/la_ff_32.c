@@ -21,8 +21,7 @@
 #include "data.h"
 #include "../msolve/streams.h"
 
-/* That's also enough if AVX512 is available on the system */
-#if defined HAVE_AVX2
+#if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
 #include <immintrin.h>
 #elif defined __aarch64__
 #include <arm_neon.h>

@@ -108,6 +108,7 @@ AC_CONFIG_LINKS([
  input_files/line_endings/in2_unix.ms:input_files/line_endings/in2_unix.ms
  input_files/line_endings/in3_unix.ms:input_files/line_endings/in3_unix.ms
  input_files/line_endings/in4_unix.ms:input_files/line_endings/in4_unix.ms
+ test/diff/diff_line-endings.sh:test/diff/diff_line-endings.sh
  test/diff/diff_source.sh:test/diff/diff_source.sh
  test/diff/diff_source-gb-lm.sh:test/diff/diff_source-gb-lm.sh
  test/diff/diff_source-gb-red.sh:test/diff/diff_source-gb-red.sh

@@ -586,7 +586,7 @@ local elim, v, i, newsols, sol, interv, prec, newsol, boo;
     lprint("prec = ", prec):
     printf("{%d}",degree(elim));
     if interv[1]<>interv[2] then 
-    interv := RootFinding[RefineRoot](interv, elim);#, digits = iquo(prec,4));
+    interv := RootFinding[RefineRoot](interv, elim, digits = iquo(prec,4));
     end if;
     printf("[r]");
     newsol, boo := BuildSolution(param, interv, vars);
@@ -594,7 +594,7 @@ local elim, v, i, newsols, sol, interv, prec, newsol, boo;
     while boo = true and interv[2]<> interv[1] do 
       prec := 2*(abs(ilog2(abs(interv[2]-interv[1])))+256);
       printf("[r]");
-      interv := RootFinding[RefineRoot](interv, elim);
+      interv := RootFinding[RefineRoot](interv, elim, digits = iquo(prec,4));
       newsol, boo := BuildSolution(param, interv, vars);
     end do;
     newsols:=[op(newsols), newsol]:
@@ -781,7 +781,7 @@ pvars, n, gb, boo, interv, prec, newsol, val, vvar, new_lin_form;
       prec := 2*(abs(ilog2(abs(interv[2]-interv[1])))+256);
       lprint("prec", prec);
       printf("{%d}",degree(elim));
-      interv := RootFinding[RefineRoot](interv, elim):#, digits = iquo(prec,4));
+      interv := RootFinding[RefineRoot](interv, elim, digits = iquo(prec,4)):
       printf("[r]");
       newsol, boo := BuildSolution([elim, den, cfs, nums] , interv, vars);
       newsol:=[newsol]:
@@ -806,7 +806,7 @@ pvars, n, gb, boo, interv, prec, newsol, val, vvar, new_lin_form;
         end if;
       end do;
       if boo = true then 
-          newsols:=[op(newsols), newtsols[i]]:
+          newsols:=[op(newsols), newsol[1]]:
           newvals:=[op(newvals), newtvals[i]]:
       end if;
     end do;

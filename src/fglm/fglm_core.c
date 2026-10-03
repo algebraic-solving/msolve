@@ -196,7 +196,9 @@ static inline void mirror_poly_inplace(nmod_poly_t in){
 
   U is a Hankel matrix of size dim
 
-  returns 0 when U is not invertible else it returns 1.
+  returns 0 when U is not invertible else it returns 1, or 2 when Z1 and Z2
+  are the generators of the bordered matrix of size dim + 1 built from
+  (u_{2 dim - 1}, ..., u_0, c) with c = 1 or -1 (see solve_hankel).
  */
 static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
 
@@ -240,6 +242,8 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
     else{//V1(0) = 0
         fprintf(ERRSTREAM, "Warning: this part of the code has not been ");
         fprintf(ERRSTREAM, "tested intensively\n");
+        /* undo the mirroring performed above */
+        mirror_points(data_bms->BMS, data_bms->BMS->points->length);
         nmod_poly_one(data_bms->BMS->R0);
         nmod_poly_zero(data_bms->BMS->R1);
         nmod_poly_zero(data_bms->BMS->V0);
@@ -264,7 +268,9 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
             nmod_poly_scalar_mul_nmod(data_bms->Z1, data_bms->BMS->V1, inv);
 
 
-            nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim, 1);
+            /* rt has been used as scratch space by nmod_em_gcd_preinstantiated */
+            nmod_poly_zero(data_bms->BMS->rt);
+            nmod_poly_set_coeff_ui(data_bms->BMS->rt, 0, 1);
             for (long i = 0; i < 2*dim; i++){
                 nmod_poly_set_coeff_ui(data_bms->BMS->rt, i+1,
                                        data_bms->BMS->points->coeffs[i]);
@@ -283,7 +289,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
                            (data_bms->BMS->R1->mod).n);
             nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
             /* fprintf(ERRSTREAM, "Something should be checked\n"); */
-            return 1;
+            return 2;
         }
         else{
             fprintf(ERRSTREAM, "Warning: this part of the code has not been ");
@@ -314,7 +320,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
                                          (data_bms->BMS->R1->mod).n);
                 nmod_poly_scalar_mul_nmod(data_bms->Z1, data_bms->BMS->V1, inv);
 
-                nmod_poly_set_coeff_ui(data_bms->BMS->rt, 2*dim, 1);
+                nmod_poly_zero(data_bms->BMS->rt);
                 for (long i = 0; i < 2*dim; i++){
                     nmod_poly_set_coeff_ui(data_bms->BMS->rt, i+1,
                                            data_bms->BMS->points->coeffs[i]);
@@ -335,7 +341,7 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
                                (data_bms->BMS->R1->mod).n);
                 nmod_poly_scalar_mul_nmod(data_bms->Z2, data_bms->BMS->V1, inv);
                 /* fprintf(ERRSTREAM, "Something should be checked\n"); */
-                return 1;
+                return 2;
             }
             else{
                 fprintf(ERRSTREAM, "There should be a bug here (invert_hankel)\n");
@@ -350,17 +356,37 @@ static int invert_hankel_matrix(fglm_bms_data_t *data_bms, szmat_t dim){
 /*
  Z1 and Z2 must be arrays of length d + 1
  Mirroring them will give an array of length d + 1
+
+ When bordered is nonzero, Z1 and Z2 are the generators of the bordered
+ matrix Hb of size dim + 1 computed by invert_hankel_matrix. Rows 1..dim and
+ columns 0..dim-1 of Hb form J H J (J being the reversal matrix), hence with
+ w = J y, Hb (w, 0) = (alpha, J v) for some alpha, so that
+   (w, 0) = Hb^{-1} (0, J v) + alpha Hb^{-1} e_0
+ where alpha is determined by the last entry being 0. The mirror of Z1 is
+ Hb^{-1} e_0 and its last entry Z1(0) is nonzero.
  */
 
 static inline void solve_hankel(fglm_bms_data_t *data_bms,
                                 szmat_t dim,
                                 szmat_t block_size,
                                 CF_t *res,
-                                int ncoord){
-  data_bms->V->length = dim;
+                                int ncoord,
+                                int bordered){
+  if(bordered){
+    /* right hand side (0, J v) */
+    dim++;
+    data_bms->V->length = dim;
+    data_bms->V->coeffs[0] = 0;
+    for(szmat_t i = 1; i < dim; i++){
+      data_bms->V->coeffs[i] = res[ncoord-1+(dim-1-i)*(block_size)];
+    }
+  }
+  else{
+    data_bms->V->length = dim;
 
-  for(szmat_t i = 0; i < dim; i++){
-    data_bms->V->coeffs[i] = res[ncoord-1+i*(block_size)];
+    for(szmat_t i = 0; i < dim; i++){
+      data_bms->V->coeffs[i] = res[ncoord-1+i*(block_size)];
+    }
   }
 
   #if DEBUGFGLM > 0
@@ -400,6 +426,17 @@ static inline void solve_hankel(fglm_bms_data_t *data_bms,
 
   nmod_poly_scalar_mul_nmod(data_bms->param, data_bms->param, inv);
 
+  if(bordered){
+    /* the mirror of (w, 0) is param + alpha Z1 with alpha = -param(0)/Z1(0),
+       y = J w is obtained by shifting it by one */
+    mp_limb_t alpha = nmod_mul(nmod_poly_get_coeff_ui(data_bms->param, 0),
+                               inv, data_bms->Z1->mod);
+    alpha = nmod_neg(alpha, data_bms->Z1->mod);
+    nmod_poly_scalar_mul_nmod(data_bms->A, data_bms->Z1, alpha);
+    nmod_poly_add(data_bms->param, data_bms->param, data_bms->A);
+    nmod_poly_shift_right(data_bms->B, data_bms->param, 1);
+    nmod_poly_reverse(data_bms->param, data_bms->B, dim - 1);
+  }
 }
 
 
@@ -887,7 +924,7 @@ static int compute_parametrizations(param_t *param,
 
       if(linvars[nvars - 2- nc] == 0){
         solve_hankel(data_bms, dim, block_size, data->res,
-                     nc + 2 - dec);
+                     nc + 2 - dec, b == 2);
 
         nmod_poly_neg(data_bms->param, data_bms->param);
         nmod_poly_reverse(param->coords[nvars-2-nc], data_bms->param, dim);

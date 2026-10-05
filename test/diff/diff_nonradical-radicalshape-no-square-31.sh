@@ -4,9 +4,12 @@ file=nonradical-radicalshape-no-square-31
 
 source test/diff/diff_source.sh
 
+# Without genericity handling (-c 0) the computation fails: msolve has to
+# exit with a nonzero status and write an empty output file.
+
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.3.res \
       -P 2 -l 2 -t 1 -c 0
-if [ $?  -gt 0 ]; then
+if [ $? -eq 0 ]; then
     print_exit 3
 fi
 
@@ -19,7 +22,7 @@ rm test/diff/$file.3.res
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.23.res \
       -P 2 -l 2 -t 2 -c 0
-if [ $?  -gt 0 ]; then
+if [ $? -eq 0 ]; then
     print_exit 23
 fi
 
@@ -32,7 +35,7 @@ rm test/diff/$file.23.res
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.43.res \
       -P 2 -l 44 -t 1 -c 0
-if [ $?  -gt 0 ]; then
+if [ $? -eq 0 ]; then
     print_exit 43
 fi
 
@@ -45,7 +48,7 @@ rm test/diff/$file.43.res
 
 $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.63.res \
       -P 2 -l 44 -t 2 -c 0
-if [ $?  -gt 0 ]; then
+if [ $? -eq 0 ]; then
     print_exit 63
 fi
 

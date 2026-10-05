@@ -187,7 +187,7 @@ static int is_kernel_trivial(
     /* fill random value array */
     for (i = 0; i < ncr; ++i) {
         do {
-            mull[j] = (int64_t)rand() & fc;
+            mull[j] = (int64_t)rand() % fc;
         } while (mull[j] == 0);
     }
     for (i = 0; i < sat->ld; ++i) {
@@ -3586,7 +3586,7 @@ static cf32_t **probabilistic_dense_linear_algebra_ff_32(
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, k, l) shared(nps, tbr) \
     schedule(dynamic)
-    for (i = 0; i < ntr; ++i) {
+    for (i = 0; i < nb; ++i) {
         int64_t *drl  = dr + (omp_get_thread_num() * (uint64_t)ncr);
         int64_t *mull = mul + (omp_get_thread_num() * (uint64_t)rpb);
         const int32_t nbl   = (int32_t) (ntr > (i+1)*rpb ? (i+1)*rpb : ntr);
@@ -3716,7 +3716,7 @@ static cf32_t **probabilistic_sparse_dense_echelon_form_ff_32(
     int64_t *dr   = (int64_t *)malloc(
         (uint64_t)ncols * st->nthrds * sizeof(int64_t));
     int64_t *mul  = (int64_t *)malloc(
-        (uint64_t)ncols * st->nthrds * sizeof(int64_t));
+        (uint64_t)rpb * st->nthrds * sizeof(int64_t));
 
     /* reduction process to get all possible pivots, no interreduction here */
 #pragma omp parallel for num_threads(st->nthrds) \
@@ -3738,7 +3738,7 @@ static cf32_t **probabilistic_sparse_dense_echelon_form_ff_32(
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
                     do {
-                        mull[j] = (int64_t)rand() & fc;
+                        mull[j] = (int64_t)rand() % fc;
                     } while (mull[j] == 0);
                 }
                 /* generate one dense row as random linear combination

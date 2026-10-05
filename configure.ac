@@ -108,6 +108,7 @@ AC_CONFIG_LINKS([
  input_files/line_endings/in2_unix.ms:input_files/line_endings/in2_unix.ms
  input_files/line_endings/in3_unix.ms:input_files/line_endings/in3_unix.ms
  input_files/line_endings/in4_unix.ms:input_files/line_endings/in4_unix.ms
+ test/diff/diff_line-endings.sh:test/diff/diff_line-endings.sh
  test/diff/diff_source.sh:test/diff/diff_source.sh
  test/diff/diff_source-gb-lm.sh:test/diff/diff_source-gb-lm.sh
  test/diff/diff_source-gb-red.sh:test/diff/diff_source-gb-red.sh
@@ -128,6 +129,7 @@ AC_CONFIG_LINKS([
  input_files/bug-empty-tracer.ms:input_files/bug-empty-tracer.ms
  output_files/bug-empty-tracer.g2.res:output_files/bug-empty-tracer.g2.res
  test/diff/diff_bug-empty-tracer.sh:test/diff/diff_bug-empty-tracer.sh
+ test/diff/diff_bug-prob-sparse-dense-la.sh:test/diff/diff_bug-prob-sparse-dense-la.sh
  input_files/choice-linear-form-qq.ms:input_files/choice-linear-form-qq.ms
  output_files/choice-linear-form-qq.P2.d0.res:output_files/choice-linear-form-qq.P2.d0.res
  output_files/choice-linear-form-qq.p128.res:output_files/choice-linear-form-qq.p128.res
@@ -190,6 +192,7 @@ AC_CONFIG_LINKS([
  input_files/groebner-g2.ms:input_files/groebner-g2.ms
  output_files/groebner-g2.g2.res:output_files/groebner-g2.g2.res
  test/diff/diff_groebner-g2.sh:test/diff/diff_groebner-g2.sh
+ test/diff/diff_hankel-degenerate-16.sh:test/diff/diff_hankel-degenerate-16.sh
  input_files/sum-squares-system.ms:input_files/sum-squares-system.ms
  output_files/sum-squares-system.g2.res:output_files/sum-squares-system.g2.res
  test/diff/diff_sum-squares-system.sh:test/diff/diff_sum-squares-system.sh

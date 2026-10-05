@@ -435,6 +435,64 @@ static void getoptions(
   files->bin_out_file = bin_out_fname;
 }
 
+/**
+ * Checks whether the first line of file fn ends with "\r\n" (DOS line ending)
+ *
+ * \return 1 if it does, 0 otherwise (including if fn cannot be read)
+ */
+static int has_crlf_line_ending(const char *fn) {
+  FILE *fh = fopen(fn, "rb");
+  if (fh == NULL) {
+    return 0;
+  }
+  int c, prev = EOF;
+  while ((c = fgetc(fh)) != EOF && c != '\n') {
+    prev = c;
+  }
+  fclose(fh);
+  return c == '\n' && prev == '\r';
+}
+
+/**
+ * Rewrites file fn in place, replacing each "\n" which is not already
+ * preceded by "\r" with "\r\n"
+ *
+ * \return 0 on success, 1 on failure
+ */
+static int convert_to_crlf_line_endings(const char *fn) {
+  FILE *fh = fopen(fn, "rb");
+  if (fh == NULL) {
+    return 1;
+  }
+  FILE *tmp = tmpfile();
+  if (tmp == NULL) {
+    fclose(fh);
+    return 1;
+  }
+  int c;
+  while ((c = fgetc(fh)) != EOF) {
+    fputc(c, tmp);
+  }
+  fclose(fh);
+  rewind(tmp);
+
+  fh = fopen(fn, "wb");
+  if (fh == NULL) {
+    fclose(tmp);
+    return 1;
+  }
+  int prev = EOF;
+  while ((c = fgetc(tmp)) != EOF) {
+    if (c == '\n' && prev != '\r') {
+      fputc('\r', fh);
+    }
+    fputc(c, fh);
+    prev = c;
+  }
+  fclose(tmp);
+  return fclose(fh) != 0;
+}
+
 
 int main(int argc, char **argv){
 
@@ -564,6 +622,11 @@ int main(int argc, char **argv){
     interval *real_roots    = NULL;
     real_point_t *real_pts  = NULL;
 
+    /* output files are written with "\n" line endings; if the input file
+     * uses "\r\n", the output file is converted afterwards to match it */
+    int crlf_output = files->in_file != NULL && files->out_file != NULL
+                      && has_crlf_line_ending(files->in_file);
+
     /* main msolve functionality */
     int ret = core_msolve(la_option, use_signatures, nr_threads, info_level,
                           initial_hts, max_pairs, elim_block_len, update_ht,
@@ -575,6 +638,10 @@ int main(int argc, char **argv){
                           files, gens,
                           &param, mpz_paramp, &nb_real_roots, &real_roots,
                           &real_pts);
+
+    if (crlf_output && convert_to_crlf_line_endings(files->out_file)) {
+        fprintf(ERRSTREAM, "Cannot convert line endings of output file\n");
+    }
 
     /* free parametrization */
     if(param != NULL && gens->field_char){

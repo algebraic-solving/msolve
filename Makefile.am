@@ -16,6 +16,7 @@ check_PROGRAMS		= neogb_io \
 checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_bug-68.sh \
 			  test/diff/diff_bug-empty-tracer.sh \
+			  test/diff/diff_bug-prob-sparse-dense-la.sh \
 			  test/diff/diff_cp-d3-n4-p2.sh \
 			  test/diff/diff_cyclic5-16.sh \
 			  test/diff/diff_cyclic5-31.sh \
@@ -33,6 +34,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_f4sat-is-saturated-check.sh \
 			  test/diff/diff_f4sat-zero-input.sh \
 			  test/diff/diff_groebner-g2.sh \
+			  test/diff/diff_hankel-degenerate-16.sh \
 			  test/diff/diff_sum-squares-system.sh \
 			  test/diff/diff_henrion5-qq.sh \
 			  test/diff/diff_input-overflow-a-16.sh \
@@ -43,6 +45,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_kat6-31.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_kat8-qq-truncate.sh \
+			  test/diff/diff_line-endings.sh \
 			  test/diff/diff_linear0-qq.sh \
 			  test/diff/diff_linear1-qq.sh \
 			  test/diff/diff_linear2-qq.sh \

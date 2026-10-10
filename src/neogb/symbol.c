@@ -23,10 +23,6 @@
 
 #include "../msolve/streams.h"
 
-#ifdef HAVE_AVX2
-#include <immintrin.h>
-#endif
-
 /* select_all_pairs() is unused at the moment */
 #if 0
 static void select_all_spairs(

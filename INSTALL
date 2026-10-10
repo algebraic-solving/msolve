@@ -30,6 +30,15 @@ via github releases)
 4. Run `make install` in order to globally install the library and the binary
    of msolve.
 
+Note on SIMD instructions
+=========================
+
+On x86-64, msolve contains AVX2 and AVX-512 variants of its linear algebra
+kernels and chooses the best one supported by the CPU at runtime. Thus the
+binaries run on any x86-64 CPU, independently of the CPU of the build machine.
+If msolve is only used on the machine it is built on, adding `-march=native` to
+CFLAGS lets the compiler optimize the remaining code for this CPU as well.
+
 Note to macOS users
 ===================
 

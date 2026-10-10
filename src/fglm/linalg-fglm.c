@@ -26,9 +26,7 @@
 #include <flint/nmod.h>
 #endif
 
-#ifdef HAVE_AVX2
-#include <immintrin.h>
-#endif
+#include "../msolve/cpu_features.h"
 
 // for dot product, simultaneous dot products, and matrix-vector products,
 // vectorized functions below accumulate 8 terms:
@@ -199,10 +197,10 @@ static inline void non_avx_matrix_vector_product(uint32_t* vec_res, const uint32
 /* vectorized (AVX2) matrix vector product */
 /*-----------------------------------------*/
 
-#ifdef HAVE_AVX2
+#ifdef HAVE_AVX2_KERNELS
 
 // avx2 horizontal sum
-static inline
+static inline TARGET_AVX2
 uint64_t _mm256_hsum(__m256i a)
 {
     __m256i a_hi = _mm256_shuffle_epi32(a, 14);  // 14 == 0b00001110
@@ -218,6 +216,7 @@ uint64_t _mm256_hsum(__m256i a)
 #endif
 }
 
+TARGET_AVX2
 uint32_t _nmod32_vec_dot_split_avx2(const uint32_t * vec1, const uint32_t * vec2, int64_t len,
                                     nmod_t mod, uint64_t pow2_precomp)
 {
@@ -310,6 +309,7 @@ uint32_t _nmod32_vec_dot_split_avx2(const uint32_t * vec1, const uint32_t * vec2
     return (uint32_t)res;
 }
 
+TARGET_AVX2
 void _nmod32_vec_dot2_split_avx2(uint32_t * res0, uint32_t * res1,
                                  const uint32_t * vec1, const uint32_t * vec2_0, const uint32_t * vec2_1,
                                  int64_t len, nmod_t mod, uint64_t pow2_precomp)
@@ -440,6 +440,7 @@ void _nmod32_vec_dot2_split_avx2(uint32_t * res0, uint32_t * res1,
     NMOD_RED(*res1, pow2_precomp * hsum_hi1 + hsum_lo1, mod);
 }
 
+TARGET_AVX2
 void _nmod32_vec_dot3_split_avx2(uint32_t * res, const uint32_t * vec1,
                                  const uint32_t * vec2_0, const uint32_t * vec2_1, const uint32_t * vec2_2,
                                  int64_t len, nmod_t mod, uint64_t pow2_precomp)
@@ -662,14 +663,15 @@ static inline void _avx2_matrix_vector_product(uint32_t * vec_res,
 /* vectorized (AVX512) matrix vector product */
 /*-------------------------------------------*/
 
-#ifdef HAVE_AVX512_F
+#ifdef HAVE_AVX512_KERNELS
 
 // avx512 horizontal sum
-FLINT_FORCE_INLINE uint64_t _mm512_hsum(__m512i a)
+FLINT_FORCE_INLINE TARGET_AVX512 uint64_t _mm512_hsum(__m512i a)
 {
     return _mm512_reduce_add_epi64(a);
 }
 
+TARGET_AVX512
 uint32_t _nmod32_vec_dot_split_avx512(const uint32_t * vec1, const uint32_t * vec2, int64_t len, nmod_t mod, uint64_t pow2_precomp)
 {
     const __m512i low_bits = _mm512_set1_epi64(__DOT_SPLIT_MASK);
@@ -772,6 +774,7 @@ uint32_t _nmod32_vec_dot_split_avx512(const uint32_t * vec1, const uint32_t * ve
     return (uint32_t)res;
 }
 
+TARGET_AVX512
 void _nmod32_vec_dot2_split_avx512(uint32_t * res0, uint32_t * res1,
                                    const uint32_t * vec1, const uint32_t * vec2_0, const uint32_t * vec2_1,
                                    int64_t len, nmod_t mod, uint64_t pow2_precomp)
@@ -915,6 +918,7 @@ void _nmod32_vec_dot2_split_avx512(uint32_t * res0, uint32_t * res1,
     NMOD_RED(*res1, pow2_precomp * hsum_hi1 + hsum_lo1, mod);
 }
 
+TARGET_AVX512
 void _nmod32_vec_dot3_split_avx512(uint32_t * res,
                                    const uint32_t * vec1, const uint32_t * vec2_0, const uint32_t * vec2_1, const uint32_t * vec2_2,
                                    int64_t len, nmod_t mod, uint64_t pow2_precomp)
@@ -1130,3 +1134,43 @@ static inline void _avx512_matrix_vector_product(uint32_t * vec_res,
 }
 
 #endif
+
+/*-----------------------------------------------------------*/
+/* matrix vector product, choosing the kernel at runtime     */
+/*-----------------------------------------------------------*/
+
+static inline void dense_matrix_vector_product(uint32_t * vec_res,
+                                               const uint32_t * mat,
+                                               const uint32_t * vec,
+                                               const uint32_t * dst,
+                                               const uint32_t ncols,
+                                               const uint32_t nrows,
+                                               const uint32_t prime,
+                                               md_t *st)
+{
+#if defined(HAVE_AVX2_KERNELS) || defined(HAVE_AVX512_KERNELS)
+    nmod_t mod;
+    uint64_t pow2_precomp;
+    nmod_init(&mod, (uint64_t)prime);
+    NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
+#else
+    (void)dst;
+    (void)st;
+#endif
+
+#ifdef HAVE_AVX512_KERNELS
+    if (cpu_has_avx512()) {
+        _avx512_matrix_vector_product(vec_res, mat, vec, dst,
+                                      ncols, nrows, mod, pow2_precomp, st);
+        return;
+    }
+#endif
+#ifdef HAVE_AVX2_KERNELS
+    if (cpu_has_avx2()) {
+        _avx2_matrix_vector_product(vec_res, mat, vec, dst,
+                                    ncols, nrows, mod, pow2_precomp, st);
+        return;
+    }
+#endif
+    non_avx_matrix_vector_product(vec_res, mat, vec, ncols, nrows, prime);
+}

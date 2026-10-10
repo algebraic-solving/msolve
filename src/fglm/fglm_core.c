@@ -460,26 +460,8 @@ static inline void sparse_mat_fglm_mult_vec(CF_t *res, sp_matfglm_t *mat,
   for(szmat_t i = 0; i < ntriv; i++){
     res[mat->triv_idx[i]] = vec[mat->triv_pos[i]];
   }
-#if defined(HAVE_AVX512_F)
-  nmod_t mod;
-  uint64_t pow2_precomp;
-  nmod_init(&mod, (uint64_t)prime);
-  NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
-
-  _avx512_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
-                              ncols, nrows, mod, pow2_precomp, st);
-#elif defined(HAVE_AVX2)
-  nmod_t mod;
-  uint64_t pow2_precomp;
-  nmod_init(&mod, (uint64_t)prime);
-  NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
-
-  _avx2_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
-                              ncols, nrows, mod, pow2_precomp, st);
-#else
-  non_avx_matrix_vector_product(vres, mat->dense_mat, vec,
-				ncols, nrows, prime);
-#endif
+  dense_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
+                              ncols, nrows, prime, st);
 
     for(szmat_t i = 0; i < nrows; i++){
       res[mat->dense_idx[i]] = vres[i];
@@ -515,26 +497,8 @@ static inline void sparse_mat_fglm_colon_mult_vec(CF_t *res, sp_matfglmcol_t *ma
   }
   /* printf ("zero\n"); */
   /* printf("ncols %u\n", ncols); */
-#if defined(HAVE_AVX512_F)
-  nmod_t mod;
-  uint64_t pow2_precomp;
-  nmod_init(&mod, (uint64_t)prime);
-  NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
-
-  _avx512_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
-                              ncols, nrows, mod, pow2_precomp, st);
-#elif defined(HAVE_AVX2)
-  nmod_t mod;
-  uint64_t pow2_precomp;
-  nmod_init(&mod, (uint64_t)prime);
-  NMOD_RED(pow2_precomp, (UINT64_C(1) << __DOT_SPLIT_BITS), mod);
-
-  _avx2_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
-                              ncols, nrows, mod, pow2_precomp, st);
-#else
-  non_avx_matrix_vector_product(vres, mat->dense_mat, vec,
-				ncols, nrows, prime);
-#endif
+  dense_matrix_vector_product(vres, mat->dense_mat, vec, mat->dst,
+                              ncols, nrows, prime, st);
   for(szmat_t i = 0; i < nrows; i++){
       res[mat->dense_idx[i]] = vres[i];
   }
@@ -640,17 +604,20 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
 
   szmat_t nb = 2 * matxn->ncols / BL;
   for(szmat_t i = 0; i < nb; i++){
-#ifdef HAVE_AVX2
-    sparse_matfglm_mul(res, matxn, Rmat,
-                       tres,
-                       BL,
-                       prime, preinv,
-                       RED_32,
-                       RED_64);
-#else
-    fprintf(ERRSTREAM, "Not implemented yet\n");
-    exit(1);
+#ifdef HAVE_AVX2_KERNELS
+    if (cpu_has_avx2()) {
+      sparse_matfglm_mul(res, matxn, Rmat,
+                         tres,
+                         BL,
+                         prime, preinv,
+                         RED_32,
+                         RED_64);
+    } else
 #endif
+    {
+      fprintf(ERRSTREAM, "Not implemented yet\n");
+      exit(1);
+    }
   }
   posix_memalign_free(Rmat);
   posix_memalign_free(res);

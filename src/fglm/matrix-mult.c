@@ -21,8 +21,9 @@
 //-1 sur 32 bits
 #define MONE32 ((uint32_t)0xFFFFFFFF)
 
-#ifdef HAVE_AVX2
-#include <immintrin.h>
+#include "../msolve/cpu_features.h"
+
+#ifdef HAVE_AVX2_KERNELS
 
 #define AVX2LOAD(A) _mm256_load_si256((__m256i*)(A))
 #define AVX2LOADU(A) _mm256_loadu_si256((__m256i*)(A))
@@ -112,8 +113,8 @@ static inline uint64_t ADDMODRED32(uint64_t a, uint64_t b,
 * }
 */
 
-#if HAVE_AVX2
-static inline void REDUCE(uint64_t *acc64, uint64_t *acc4x64,
+#ifdef HAVE_AVX2_KERNELS
+static inline TARGET_AVX2 void REDUCE(uint64_t *acc64, uint64_t *acc4x64,
                           __m256i acc_low, __m256i acc_high,
                           const uint32_t fc, const uint32_t preinv,
                           const uint32_t RED_32, const uint32_t RED_64){
@@ -167,7 +168,7 @@ static inline void make_zero(uint32_t ** D,
 
 }
 
-#ifdef HAVE_AVX2
+#ifdef HAVE_AVX2_KERNELS
 /*
   m = number of rows in A
   l = number of cols in A = number of rows in B
@@ -176,6 +177,7 @@ static inline void make_zero(uint32_t ** D,
   D = A*B
 
 */
+TARGET_AVX2
 void _mod_mat_addmul_transpose_op(uint32_t *D, 
                                   uint32_t *A, uint32_t *B,
                                   const uint32_t m, const uint32_t l,
@@ -267,7 +269,7 @@ void _mod_mat_addmul_transpose_op(uint32_t *D,
 #endif
 
 /* not yet implemented for non-AVX machine */
-#ifdef HAVE_AVX2
+#ifdef HAVE_AVX2_KERNELS
 static inline void sparse_matfglm_mul(CF_t *res, sp_matfglm_t *matxn, CF_t *R,
                                       CF_t *tres,
                                       const int nc,

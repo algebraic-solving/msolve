@@ -72,7 +72,7 @@ static inline mpz_t *remove_content_of_sparse_matrix_row_qq(
 static hm_t *reduce_dense_row_by_known_pivots_sparse_only_ab_qq(
         mpz_t *dr,
         mat_t *mat,
-        hm_t * const * const pivs,
+        _Atomic(hm_t *) * const pivs,
         const hi_t dpiv,    /* pivot of dense row at the beginning */
         const hm_t tmp_pos  /* position of new coeffs array in tmpcf */
         )
@@ -95,7 +95,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_only_ab_qq(
         if (mpz_sgn(dr[i]) == 0) {
             continue;
         }
-        if (pivs[i] == NULL) {
+        /* pairs with the release of the thread publishing the pivot */
+        dts   = atomic_load_explicit(&pivs[i], memory_order_acquire);
+        if (dts == NULL) {
             if (np == -1) {
                 row = (hm_t *)malloc(
                         (unsigned long)(ncols-i+OFFSET) * sizeof(hm_t));
@@ -110,7 +112,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_only_ab_qq(
             continue;
         }
         /* found reducer row, get multiplier */
-        dts = pivs[i];
         cfs = mat->cf_ab_qq[dts[COEFFS]];
         const len_t os  = dts[PRELOOP];
         const len_t len = dts[LENGTH];
@@ -167,7 +168,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_only_ab_qq(
 static hm_t *reduce_dense_row_by_known_pivots_sparse_ab_first_qq(
         mpz_t *dr,
         mat_t *mat,
-        hm_t * const * const pivs,
+        _Atomic(hm_t *) * const pivs,
         const hi_t dpiv,    /* pivot of dense row at the beginning */
         const hm_t tmp_pos  /* position of new coeffs array in tmpcf */
         )
@@ -191,7 +192,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ab_first_qq(
         if (mpz_sgn(dr[i]) == 0) {
             continue;
         }
-        if (pivs[i] == NULL) {
+        /* pairs with the release of the thread publishing the pivot */
+        dts   = atomic_load_explicit(&pivs[i], memory_order_acquire);
+        if (dts == NULL) {
             if (np == -1) {
                 row = (hm_t *)malloc(
                         (unsigned long)(ncols-i+OFFSET) * sizeof(hm_t));
@@ -206,7 +209,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ab_first_qq(
             continue;
         }
         /* found reducer row, get multiplier */
-        dts = pivs[i];
         if (i < ncl) {
             cfs   = mat->cf_ab_qq[dts[COEFFS]];
         } else {
@@ -259,7 +261,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_qq(
         mpz_t *dr,
         mat_t *mat,
         const bs_t * const bs,
-        hm_t * const * const pivs,
+        _Atomic(hm_t *) * const pivs,
         const hi_t dpiv,    /* pivot of dense row at the beginning */
         const hm_t tmp_pos  /* position of new coeffs array in tmpcf */
         )
@@ -283,7 +285,9 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_qq(
         if (mpz_sgn(dr[i]) == 0) {
             continue;
         }
-        if (pivs[i] == NULL) {
+        /* pairs with the release of the thread publishing the pivot */
+        dts   = atomic_load_explicit(&pivs[i], memory_order_acquire);
+        if (dts == NULL) {
             if (np == -1) {
                 row = (hm_t *)malloc(
                         (unsigned long)(ncols-i+OFFSET) * sizeof(hm_t));
@@ -298,7 +302,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_qq(
             continue;
         }
         /* found reducer row, get multiplier */
-        dts = pivs[i];
         if (i < ncl) {
             cfs   = bs->cf_qq[dts[COEFFS]];
         } else {
@@ -366,8 +369,7 @@ static void exact_sparse_reduced_echelon_form_ab_first_qq(
     hm_t cf_array_pos;
 
     /* we fill in all known lead terms in pivs */
-    hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
-    memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
+    _Atomic(hm_t *) *pivs = allocate_atomic_pivots(ncols, mat->rr, mat->nru);
 
     /* unkown pivot rows we have to reduce with the known pivots first */
     hm_t **upivs  = mat->tr;
@@ -377,21 +379,23 @@ static void exact_sparse_reduced_echelon_form_ab_first_qq(
         mpz_init(dr[i]);
     }
 
+    hm_t *piv = atomic_load_explicit(&pivs[nru-1], memory_order_relaxed);
     mat->cf_ab_qq[nru-1]  = (mpz_t *)malloc(
-            (unsigned long)pivs[nru-1][LENGTH] * sizeof(mpz_t));
-    for (i = 0 ; i < pivs[nru-1][LENGTH]; ++i) {
-        mpz_init_set(mat->cf_ab_qq[nru-1][i], bs->cf_qq[pivs[nru-1][COEFFS]][i]);
+            (unsigned long)piv[LENGTH] * sizeof(mpz_t));
+    for (i = 0 ; i < piv[LENGTH]; ++i) {
+        mpz_init_set(mat->cf_ab_qq[nru-1][i], bs->cf_qq[piv[COEFFS]][i]);
     }
-    pivs[nru-1][COEFFS]        = nru-1;
+    piv[COEFFS]        = nru-1;
     for (i = 0; i < nru-1; ++i) {
         k = nru-2-i;
         for (j = 0; j < ncols; ++j) {
             mpz_set_si(dr[j], 0);
         }
-        cfs = bs->cf_qq[pivs[k][COEFFS]];
-        const len_t os  = pivs[k][PRELOOP];
-        const len_t len = pivs[k][LENGTH];
-        const hm_t * const ds = pivs[k] + OFFSET;
+        piv = atomic_load_explicit(&pivs[k], memory_order_relaxed);
+        cfs = bs->cf_qq[piv[COEFFS]];
+        const len_t os  = piv[PRELOOP];
+        const len_t len = piv[LENGTH];
+        const hm_t * const ds = piv + OFFSET;
         sc  = ds[0];
         for (j = 0; j < os; ++j) {
             mpz_set(dr[ds[j]], cfs[j]);
@@ -402,14 +406,15 @@ static void exact_sparse_reduced_echelon_form_ab_first_qq(
             mpz_set(dr[ds[j+2]], cfs[j+2]);
             mpz_set(dr[ds[j+3]], cfs[j+3]);
         }
-        free(pivs[k]);
+        free(piv);
         cfs = NULL;;
-        pivs[k] = NULL;
-        pivs[k] =
+        atomic_store_explicit(&pivs[k], NULL, memory_order_relaxed);
+        piv =
             reduce_dense_row_by_known_pivots_sparse_only_ab_qq(
                     dr, mat, pivs, sc, k);
+        atomic_store_explicit(&pivs[k], piv, memory_order_relaxed);
         remove_content_of_sparse_matrix_row_qq(
-                mat->cf_ab_qq[pivs[k][COEFFS]], pivs[k][PRELOOP], pivs[k][LENGTH]);
+                mat->cf_ab_qq[piv[COEFFS]], piv[PRELOOP], piv[LENGTH]);
     }
 
     const len_t drlen = st->nthrds * ncols;
@@ -487,7 +492,10 @@ static void exact_sparse_reduced_echelon_form_ab_first_qq(
                 remove_content_of_sparse_matrix_row_qq(
                         mat->cf_qq[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH]);
             }
-            k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
+            hm_t *expected = NULL;
+            k   = atomic_compare_exchange_strong_explicit(
+                    &pivs[npiv[OFFSET]], &expected, npiv,
+                    memory_order_release, memory_order_relaxed);
             cfs = mat->cf_qq[npiv[COEFFS]];
         } while (k == 0);
         cfs = NULL;
@@ -495,13 +503,14 @@ static void exact_sparse_reduced_echelon_form_ab_first_qq(
 
     /* we do not need the old pivots anymore */
     for (i = 0; i < ncl; ++i) {
-        for (j = 0; j < pivs[i][LENGTH]; ++j) {
-            mpz_clear(mat->cf_ab_qq[pivs[i][COEFFS]][j]);
+        piv = atomic_load_explicit(&pivs[i], memory_order_relaxed);
+        for (j = 0; j < piv[LENGTH]; ++j) {
+            mpz_clear(mat->cf_ab_qq[piv[COEFFS]][j]);
         }
-        free(mat->cf_ab_qq[pivs[i][COEFFS]]);
-        mat->cf_ab_qq[pivs[i][COEFFS]] = NULL;
-        free(pivs[i]);
-        pivs[i] = NULL;
+        free(mat->cf_ab_qq[piv[COEFFS]]);
+        mat->cf_ab_qq[piv[COEFFS]] = NULL;
+        free(piv);
+        atomic_store_explicit(&pivs[i], NULL, memory_order_relaxed);
     }
 
     len_t npivs = 0; /* number of new pivots */
@@ -515,15 +524,16 @@ static void exact_sparse_reduced_echelon_form_ab_first_qq(
     /* interreduce new pivots */
     for (i = 0; i < ncr; ++i) {
         k = ncols-1-i;
-        if (pivs[k]) {
+        piv = atomic_load_explicit(&pivs[k], memory_order_relaxed);
+        if (piv) {
             for (j = 0; j < ncols; ++j) {
                 mpz_set_si(dr[j], 0);
             }
-            cfs = mat->cf_qq[pivs[k][COEFFS]];
-            cf_array_pos    = pivs[k][COEFFS];
-            const len_t os  = pivs[k][PRELOOP];
-            const len_t len = pivs[k][LENGTH];
-            const hm_t * const ds = pivs[k] + OFFSET;
+            cfs = mat->cf_qq[piv[COEFFS]];
+            cf_array_pos    = piv[COEFFS];
+            const len_t os  = piv[PRELOOP];
+            const len_t len = piv[LENGTH];
+            const hm_t * const ds = piv + OFFSET;
             sc  = ds[0];
             for (j = 0; j < os; ++j) {
                 mpz_swap(dr[ds[j]], cfs[j]);
@@ -539,12 +549,13 @@ static void exact_sparse_reduced_echelon_form_ab_first_qq(
                 mpz_swap(dr[ds[j+3]], cfs[j+3]);
                 mpz_clear(cfs[j+3]);
             }
-            free(pivs[k]);
+            free(piv);
             free(cfs);
-            pivs[k] = NULL;
-            pivs[k] = mat->tr[npivs] =
+            atomic_store_explicit(&pivs[k], NULL, memory_order_relaxed);
+            mat->tr[npivs] =
                 reduce_dense_row_by_known_pivots_sparse_qq(
                         dr, mat, bs, pivs, sc, cf_array_pos);
+            atomic_store_explicit(&pivs[k], mat->tr[npivs], memory_order_relaxed);
             remove_content_of_sparse_matrix_row_qq(
                     mat->cf_qq[mat->tr[npivs][COEFFS]],
                     mat->tr[npivs][PRELOOP],
@@ -579,8 +590,7 @@ static void exact_sparse_reduced_echelon_form_qq(
     const len_t ncl   = mat->ncl;
 
     /* we fill in all known lead terms in pivs */
-    hm_t **pivs   = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
-    memcpy(pivs, mat->rr, (unsigned long)mat->nru * sizeof(hm_t *));
+    _Atomic(hm_t *) *pivs = allocate_atomic_pivots(ncols, mat->rr, mat->nru);
 
     /* unkown pivot rows we have to reduce with the known pivots first */
     hm_t **upivs  = mat->tr;
@@ -661,7 +671,10 @@ static void exact_sparse_reduced_echelon_form_qq(
                 remove_content_of_sparse_matrix_row_qq(
                         mat->cf_qq[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH]);
             }
-            k   = __sync_bool_compare_and_swap(&pivs[npiv[OFFSET]], NULL, npiv);
+            hm_t *expected = NULL;
+            k   = atomic_compare_exchange_strong_explicit(
+                    &pivs[npiv[OFFSET]], &expected, npiv,
+                    memory_order_release, memory_order_relaxed);
             cfs = mat->cf_qq[npiv[COEFFS]];
         } while (k == 0);
         cfs = NULL;
@@ -669,8 +682,8 @@ static void exact_sparse_reduced_echelon_form_qq(
 
     /* we do not need the old pivots anymore */
     for (i = 0; i < ncl; ++i) {
-        free(pivs[i]);
-        pivs[i] = NULL;
+        free(atomic_load_explicit(&pivs[i], memory_order_relaxed));
+        atomic_store_explicit(&pivs[i], NULL, memory_order_relaxed);
     }
 
     len_t npivs = 0; /* number of new pivots */
@@ -686,15 +699,16 @@ static void exact_sparse_reduced_echelon_form_qq(
     hm_t cf_array_pos;
     for (i = 0; i < ncr; ++i) {
         k = ncols-1-i;
-        if (pivs[k]) {
+        hm_t *piv = atomic_load_explicit(&pivs[k], memory_order_relaxed);
+        if (piv) {
             for (j = 0; j < ncols; ++j) {
                 mpz_set_si(dr[j], 0);
             }
-            cfs = mat->cf_qq[pivs[k][COEFFS]];
-            cf_array_pos    = pivs[k][COEFFS];
-            const len_t os  = pivs[k][PRELOOP];
-            const len_t len = pivs[k][LENGTH];
-            const hm_t * const ds = pivs[k] + OFFSET;
+            cfs = mat->cf_qq[piv[COEFFS]];
+            cf_array_pos    = piv[COEFFS];
+            const len_t os  = piv[PRELOOP];
+            const len_t len = piv[LENGTH];
+            const hm_t * const ds = piv + OFFSET;
             sc  = ds[0];
             for (j = 0; j < os; ++j) {
                 mpz_swap(dr[ds[j]], cfs[j]);
@@ -710,12 +724,13 @@ static void exact_sparse_reduced_echelon_form_qq(
                 mpz_swap(dr[ds[j+3]], cfs[j+3]);
                 mpz_clear(cfs[j+3]);
             }
-            free(pivs[k]);
+            free(piv);
             free(cfs);
-            pivs[k] = NULL;
-            pivs[k] = mat->tr[npivs] =
+            atomic_store_explicit(&pivs[k], NULL, memory_order_relaxed);
+            mat->tr[npivs] =
                 reduce_dense_row_by_known_pivots_sparse_qq(
                         dr, mat, bs, pivs, sc, cf_array_pos);
+            atomic_store_explicit(&pivs[k], mat->tr[npivs], memory_order_relaxed);
             remove_content_of_sparse_matrix_row_qq(
                     mat->cf_qq[mat->tr[npivs][COEFFS]],
                     mat->tr[npivs][PRELOOP],
@@ -819,12 +834,13 @@ static void interreduce_matrix_rows_qq(
     mat->cf_qq  = realloc(mat->cf_qq,
             (unsigned long)ncols * sizeof(mpz_t *));
     memset(mat->cf_qq, 0, (unsigned long)ncols * sizeof(mpz_t *));
-    hm_t **pivs = (hm_t **)calloc((unsigned long)ncols, sizeof(hm_t *));
+    _Atomic(hm_t *) *pivs = allocate_atomic_pivots(ncols, NULL, 0);
     /* copy coefficient arrays from basis in matrix, maybe
      * several rows need the same coefficient arrays, but we
      * cannot share them here. */
     for (i = 0; i < nrows; ++i) {
-        pivs[mat->rr[i][OFFSET]]  = mat->rr[i];
+        atomic_store_explicit(&pivs[mat->rr[i][OFFSET]], mat->rr[i],
+                memory_order_relaxed);
     }
 
     mpz_t *dr = (mpz_t *)malloc((unsigned long)ncols * sizeof(mpz_t));
@@ -838,14 +854,15 @@ static void interreduce_matrix_rows_qq(
     k = nrows - 1;
     for (i = 0; i < ncols; ++i) {
         l = ncols-1-i;
-        if (pivs[l] != NULL) {
+        hm_t *piv = atomic_load_explicit(&pivs[l], memory_order_relaxed);
+        if (piv) {
             for (j = 0; j < ncols; ++j) {
                 mpz_set_si(dr[j], 0);
             }
-            cfs = bs->cf_qq[pivs[l][COEFFS]];
-            const len_t os  = pivs[l][PRELOOP];
-            const len_t len = pivs[l][LENGTH];
-            const hm_t * const ds = pivs[l] + OFFSET;
+            cfs = bs->cf_qq[piv[COEFFS]];
+            const len_t os  = piv[PRELOOP];
+            const len_t len = piv[LENGTH];
+            const hm_t * const ds = piv + OFFSET;
             sc  = ds[0];
             for (j = 0; j < os; ++j) {
                 mpz_swap(dr[ds[j]], cfs[j]);
@@ -856,11 +873,12 @@ static void interreduce_matrix_rows_qq(
                 mpz_swap(dr[ds[j+2]], cfs[j+2]);
                 mpz_swap(dr[ds[j+3]], cfs[j+3]);
             }
-            free(pivs[l]);
-            pivs[l] = NULL;
-            pivs[l] = mat->tr[k--] =
+            free(piv);
+            atomic_store_explicit(&pivs[l], NULL, memory_order_relaxed);
+            mat->tr[k] =
                 reduce_dense_row_by_known_pivots_sparse_qq(
                         dr, mat, bs, pivs, sc, l);
+            atomic_store_explicit(&pivs[l], mat->tr[k--], memory_order_relaxed);
         }
     }
     if (free_basis != 0) {

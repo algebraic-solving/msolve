@@ -692,6 +692,17 @@ static inline int32_t compute_num_gb(int32_t *bexp_lm, int32_t len, int nv, int 
   return len;
 }
 
+/* returns 1 if only the basis of the elimination ideal is lifted, i.e. the
+ * eliminated variables are dropped, else returns 0 */
+static inline int lift_elim_ideal_only(const md_t *st){
+  return st->nev > 0 && !st->elim_full_basis;
+}
+
+/* returns the number of variables of the lifted leading monomials */
+static inline int lifted_nvars(const md_t *st){
+  return lift_elim_ideal_only(st) ? st->nvars - st->nev : st->nvars;
+}
+
 static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            int32_t *mgb,
                                            int32_t *num_gb,
@@ -737,9 +748,11 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     leadmons[0] = bexp_lm;
 
     int32_t len = bs->lml;
-    num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv, st->nev);
+    const int nvl = lifted_nvars(st);
+    num_gb[0] = compute_num_gb(bexp_lm, len, bht->nv,
+                               lift_elim_ideal_only(st) ? st->nev : 0);
     int32_t *bexp_lm2 = NULL;
-    if(st->nev){
+    if(lift_elim_ideal_only(st)){
       bexp_lm2 = calloc(num_gb[0]*(bht->nv - st->nev), sizeof(int32_t));
       for(int32_t i = 0; i < num_gb[0]; i++){
         for(int j = 0; j < bht->nv - st->nev; j++){
@@ -762,13 +775,13 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     /************************************************/
 
-    int32_t *lens = array_of_lengths(leadmons[0], num_gb[0], bs, bht->nv - st->nev);
+    int32_t *lens = array_of_lengths(leadmons[0], num_gb[0], bs, nvl);
 
     if(truncate_lifting != 0 && truncate_lifting < num_gb[0]){
-      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, truncate_lifting, leadmons[0], st);
+      gb_modpoly_init(modgbs, 2, lens, bs, nvl, truncate_lifting, leadmons[0], st);
     }
     else{
-      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, num_gb[0], leadmons[0], st);
+      gb_modpoly_init(modgbs, 2, lens, bs, nvl, num_gb[0], leadmons[0], st);
     }
     free(lens);
     modpgbs_set(modgbs, bs, bht, fc, start, st->nev);
@@ -827,7 +840,16 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   int32_t error = 0;
   bs = core_gba(bs_qq, st, &error, lp->p[0]);
   *stf4 = realtime()-rt;
+  if (bs == NULL) {
+      bad_primes[0] = 1;
+      return;
+  }
   ht_t **bht = &(bs->ht);
+  if(bs->lml < modgbs->ld){
+      bad_primes[0] = 2;
+      free_basis_and_only_local_hash_table_data(&bs);
+      return;
+  }
   for(len_t i = 0; i < modgbs->ld; i++){
         if(modgbs->modpolys[i]->len < bs->hm[bs->lmps[i]][LENGTH]-1){
             bad_primes[0] = 2;
@@ -840,12 +862,8 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
             return;
         }
   }
-  if (bs == NULL) {
-      bad_primes[0] = 1;
-      return;
-  }
   int32_t lml = bs->lml;
-  if (st->nev > 0) {
+  if (lift_elim_ideal_only(st)) {
       int32_t j = 0;
       for (len_t i = 0; i < bs->lml; ++i) {
           if ((*bht)->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
@@ -864,7 +882,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
       return;
   }
 
-  if(st->nev){
+  if(lift_elim_ideal_only(st)){
     get_lm_from_bs_trace_elim(bs, bht[0], leadmons_current[0], num_gb[0]);
   }
   else{
@@ -872,7 +890,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   }
 
   if(!equal_staircase(leadmons_current[0], leadmons_ori[0],
-                      num_gb[0], num_gb[0], bht[0]->nv - st->nev)){
+                      num_gb[0], num_gb[0], lifted_nvars(st))){
     bad_primes[0] = 1;
   }
 
@@ -1381,7 +1399,7 @@ restart:
     if(!dlinit){
       int nb = 0;
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
-                                      bs->ht->nv - st->nev, &nb);
+                                      lifted_nvars(st), &nb);
       data_lift_init(dlift, (*modgbsp)->ld, ldeg, nb);
       choose_coef_to_lift((*modgbsp), dlift);
       free(ldeg);
@@ -1790,6 +1808,7 @@ gb_modpoly_t *groebner_qq(
       fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
       exit(1);
   }
+  md->elim_full_basis = gens->elim_full_basis;
 
   initialize_mstrace(msd, md, bs);
   int err = 0;
@@ -1856,7 +1875,15 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
     fprintf(ofile, "%s, ", gens->vnames[i]);
   }
   fprintf(ofile, "%s\n", gens->vnames[gens->nvars-1]);
-  fprintf(ofile, "#monomial order:       graded reverse lexicographical\n");
+  if (gens->elim_full_basis && flags->elim_block_len > 0) {
+    if (flags->elim_block_len == 1) {
+      fprintf(ofile, "#monomial order:       eliminating first variable, blocks: graded reverse lexicographical\n");
+    } else {
+      fprintf(ofile, "#monomial order:       eliminating first %d variables, blocks: graded reverse lexicographical\n", flags->elim_block_len);
+    }
+  } else {
+    fprintf(ofile, "#monomial order:       graded reverse lexicographical\n");
+  }
   if ((*modgbsp)->ld == 1) {
     fprintf(ofile, "#length of basis:      1 element\n");
   } else {

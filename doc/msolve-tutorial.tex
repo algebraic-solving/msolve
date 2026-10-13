@@ -631,8 +631,35 @@ The output is
 where we see that the first $6$ polynomials are only in $w,x,y,z$,
 which corresponds to the elimination of the variable $t$. When the input
 coefficients lie in the field of rational numbers (hence, characteristic $0$),
-the returned Gr\"obner basis is the one of the {\em elimination ideal}, i.e. they
-have partial degree $0$ in the variables to eliminate.
+the returned Gr\"obner basis is by default the one of the {\em elimination
+ideal}, i.e. only the polynomials which have partial degree $0$ in the variables
+to eliminate are returned. The full Gr\"obner basis with respect to the
+elimination order can be obtained by adding the \verb+--elim-full-basis+ flag.
+For instance, on the same system with rational coefficients,
+\begin{tcolorbox}
+  \begin{verbatim}
+    ./msolve -e 1 --elim-full-basis -g 2 -f in.ms -o out.ms
+  \end{verbatim}
+\end{tcolorbox}
+returns
+\begin{tcolorbox}
+  \begin{lstlisting}
+#Reduced Groebner basis data
+#---
+#field characteristic: 0
+#variable order:       t, w, x, y, z
+#monomial order:       eliminating first variable, blocks: graded reverse lexicographical
+#length of basis:      7 elements sorted by increasing leading monomials
+#---
+[w*y^3-x*z^3,
+x^4,
+w*x^3,
+w^2*x^2,
+w^3*x,
+w^4,
+t*z-1]:
+  \end{lstlisting}
+\end{tcolorbox}
 
 More generally, using \verb+-e k+ will eliminate the $k$ first
 variables. Thus,

@@ -19,9 +19,67 @@
  * Mohab Safey El Din */
 
 #include<flint/fmpz.h>
+#include<flint/fmpq.h>
 #include "streams.h"
 
+/* rational reconstruction of u mod m with bounds N, D through FLINT
+   (half-gcd based) instead of the quadratic Euclidean algorithm;
+   u is assumed to be reduced modulo m */
+static int flint_rrec(mpz_t n, mpz_t d, const mpz_t u, const mpz_t m,
+                      const mpz_t N, const mpz_t D){
+  fmpz_t fu, fm, fN, fD;
+  fmpq_t q;
+  fmpz_init(fu); fmpz_init(fm); fmpz_init(fN); fmpz_init(fD);
+  fmpq_init(q);
+  fmpz_set_mpz(fu, u);
+  fmpz_set_mpz(fm, m);
+  fmpz_set_mpz(fN, N);
+  fmpz_set_mpz(fD, D);
+  int b = fmpq_reconstruct_fmpz_2(q, fu, fm, fN, fD);
+  if(b){
+    fmpz_get_mpz(n, fmpq_numref(q));
+    fmpz_get_mpz(d, fmpq_denref(q));
+  }
+  fmpq_clear(q);
+  fmpz_clear(fu); fmpz_clear(fm); fmpz_clear(fN); fmpz_clear(fD);
+  return b;
+}
+
+/* FLINT requires 2ND < m */
+static int flint_rrec_bounds_ok(const mpz_t m, rrec_data_t rd){
+  mpz_mul(rd->tmp, rd->N, rd->D);
+  mpz_mul_2exp(rd->tmp, rd->tmp, 1);
+  return mpz_cmp(rd->tmp, m) < 0;
+}
+
+/* same as ratrecon, through FLINT when the bounds allow it */
+static int lift_ratrecon(mpz_t n, mpz_t d, mpz_t u, const mpz_t mod,
+                         rrec_data_t rd){
+  if(!flint_rrec_bounds_ok(mod, rd)){
+    return ratrecon(n, d, u, mod, rd);
+  }
+  mpz_mod(u, u, mod);
+  return flint_rrec(n, d, u, mod, rd->N, rd->D);
+}
+
+/* same as ratreconwden, through FLINT when the bounds allow it */
+static int lift_ratreconwden(mpz_t n, mpz_t d, mpz_t u, const mpz_t mod,
+                             const mpz_t gden, rrec_data_t rd){
+  if(!flint_rrec_bounds_ok(mod, rd)){
+    return ratreconwden(n, d, u, mod, gden, rd);
+  }
+  mpz_mod(u, u, mod);
+  mpz_mul(rd->r1, u, gden);
+  mpz_mod(rd->r1, rd->r1, mod);
+  return flint_rrec(n, d, rd->r1, mod, rd->N, rd->D);
+}
+
 #define NBCHECK 2
+/* number of bits of slack kept in rational reconstruction bounds */
+#define RR_MARGIN 16
+/* witnesses are reconstructed every rr primes, rr being the largest
+   power of 2 <= nprimes / RR_PERIOD_DIV */
+#define RR_PERIOD_DIV 128
 #ifndef MIN
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #endif
@@ -98,6 +156,16 @@ typedef struct{
   int *check1; /* tells whether lifted data are ok with one more prime */
   int *check2; /* tells whether lifted data are ok with two more primes */
   int32_t S;
+  int32_t *coef2; /* second witness coefficient */
+  mpz_t *crt2;
+  mpz_t *num2;
+  mpz_t *den2;
+  mpz_t *cden; /* lcm of the witness denominators */
+  mpz_t pgden; /* denominator guessed from the previous polynomial */
+  int32_t *coef3; /* third witness coefficient */
+  mpz_t *crt3;
+  mpz_t *num3;
+  mpz_t *den3;
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
@@ -111,6 +179,7 @@ static inline void data_lift_init(data_lift_t dl,
   dl->lstart = 0;
   dl->nsteps = nsteps;
   dl->S = 0;
+  mpz_init_set_ui(dl->pgden, 1);
   int32_t i;
 
   dl->steps = (int32_t *)calloc(nsteps, sizeof(int32_t));
@@ -141,6 +210,24 @@ static inline void data_lift_init(data_lift_t dl,
   dl->end = npol;
   dl->check1 = calloc(npol, sizeof(int));
   dl->check2 = calloc(npol, sizeof(int));
+  dl->coef2 = calloc(npol, sizeof(int32_t));
+  dl->crt2 = malloc(sizeof(mpz_t) * npol);
+  dl->num2 = malloc(sizeof(mpz_t) * npol);
+  dl->den2 = malloc(sizeof(mpz_t) * npol);
+  dl->cden = malloc(sizeof(mpz_t) * npol);
+  dl->coef3 = calloc(npol, sizeof(int32_t));
+  dl->crt3 = malloc(sizeof(mpz_t) * npol);
+  dl->num3 = malloc(sizeof(mpz_t) * npol);
+  dl->den3 = malloc(sizeof(mpz_t) * npol);
+  for(i = 0; i < npol; i++){
+    mpz_init(dl->crt2[i]);
+    mpz_init(dl->num2[i]);
+    mpz_init(dl->den2[i]);
+    mpz_init(dl->cden[i]);
+    mpz_init(dl->crt3[i]);
+    mpz_init(dl->num3[i]);
+    mpz_init(dl->den3[i]);
+  }
 
 }
 
@@ -165,8 +252,27 @@ static inline void data_lift_clear(data_lift_t dl){
 
   mpz_clear(dl->gden);
   mpz_clear(dl->tmp);
+  mpz_clear(dl->pgden);
   free(dl->check1);
   free(dl->check2);
+  for(int32_t i = 0; i < dl->npol; i++){
+    mpz_clear(dl->crt2[i]);
+    mpz_clear(dl->num2[i]);
+    mpz_clear(dl->den2[i]);
+    mpz_clear(dl->cden[i]);
+    mpz_clear(dl->crt3[i]);
+    mpz_clear(dl->num3[i]);
+    mpz_clear(dl->den3[i]);
+  }
+  free(dl->crt2);
+  free(dl->num2);
+  free(dl->den2);
+  free(dl->cden);
+  free(dl->coef2);
+  free(dl->crt3);
+  free(dl->num3);
+  free(dl->den3);
+  free(dl->coef3);
 
 }
 
@@ -903,20 +1009,33 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
 }
 
+/* three witness coefficients are chosen per polynomial: the last nonzero
+   one and the nonzero ones found scanning downwards from 2*len/3 and
+   len/2 */
 static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
   uint32_t ld = modgbs->ld;
   for(int32_t i = 0; i < ld; i++){
-    len_t d = 0;
     len_t len = modgbs->modpolys[i]->len;
-    while(d < len - 1 && len > 0){
+    len_t d = len - 1;
+    while(d > 0 && len > 0){
       if(MODCF(modgbs->modpolys[i], d, 0)){
         dlift->coef[i] = d;
         break;
       }
       else{
-        d++;
+        d--;
       }
     }
+    len_t d2 = 2 * len / 3;
+    while(d2 > 0 && !MODCF(modgbs->modpolys[i], d2, 0)){
+      d2--;
+    }
+    dlift->coef2[i] = d2;
+    len_t d3 = len / 2;
+    while(d3 > 0 && !MODCF(modgbs->modpolys[i], d3, 0)){
+      d3--;
+    }
+    dlift->coef3[i] = d3;
   }
 }
 
@@ -955,6 +1074,12 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
         uint64_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
         mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
                    c, newprime, prod_p, dl->tmp, 1);
+        c = MODCF(modgbs->modpolys[k], dl->coef2[k], modgbs->nprimes  - 1);
+        mpz_CRT_ui(dl->crt2[k], dl->crt2[k], mod_p,
+                   c, newprime, prod_p, dl->tmp, 1);
+        c = MODCF(modgbs->modpolys[k], dl->coef3[k], modgbs->nprimes  - 1);
+        mpz_CRT_ui(dl->crt3[k], dl->crt3[k], mod_p,
+                   c, newprime, prod_p, dl->tmp, 1);
       }
   }
   mpz_set(mod_p, prod_p);
@@ -962,7 +1087,9 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
 
 
 static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t mod_p){
-  mpz_fdiv_q_2exp(rd1->N, mod_p, 1);
+  /* keep RR_MARGIN bits of slack (N*D <= mod_p / 2^(1+RR_MARGIN)) so that
+     spurious reconstructions become unlikely */
+  mpz_fdiv_q_2exp(rd1->N, mod_p, 1 + RR_MARGIN);
 
   if(dl->lstart){
 
@@ -1042,7 +1169,10 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
 
   for(int32_t k = start; k < end; k++){
     if(dl->check1[k] > 1 && polys[k]->len > 0){
-      mpz_set_ui(dl->tmp, 1);
+      /* dl->tmp is the lcm of the denominators found so far, starting
+         from the witness ones; it is used as a guess for the next
+         coefficient, so that only the missing factor is reconstructed */
+      mpz_set(dl->tmp, dl->cden[k]);
       int ok = 1;
       for(int32_t l = 0; l < polys[k]->len; l++){
         rt = realtime();
@@ -1054,14 +1184,16 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         fmpz_get_mpz(zz, y);
         *st_crt += realtime() - rt;
         rt = realtime();
-        if(ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p, dl->den[k], rd1)){
-          mpz_swap(dens[l], rden);
-          mpz_lcm(dl->tmp, dl->tmp, dens[l]);
+        if(lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p, dl->tmp, rd1)){
+          mpz_mul(dens[l], rden, dl->tmp);
+          mpz_mul(dl->tmp, dl->tmp, rden);
           *st_rrec += realtime() - rt;
         }
         else{
           *st_rrec += realtime() - rt;
-          mpz_set_ui(dl->gden, 1);
+          /* the witnesses of this poly are still valid: their common
+             denominator remains the best guess for reconstructing them */
+          mpz_set(dl->gden, dl->cden[k]);
           for(int32_t i = k; i < modgbs->ld; i++){
             dl->check2[i] = 0;
           }
@@ -1073,7 +1205,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         ret = k;
         break;
       }
-      mpz_set(polys[k]->lm, dl->den[k]);
+      mpz_set(polys[k]->lm, dl->tmp);
       for(int32_t l = 0; l < polys[k]->len; l++){
         /* num * (lcm / den) rather than (num * lcm) / den: same value, but
          * the limb array of the (long-lived) result is not over-allocated
@@ -1081,7 +1213,6 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         mpz_divexact(dens[l], dl->tmp, dens[l]);
         mpz_mul(polys[k]->cf_qq[l], polys[k]->cf_qq[l], dens[l]);
       }
-      mpz_mul(polys[k]->lm, polys[k]->lm, dl->tmp);
       dl->check2[k] += 1;
     }
     if(dl->check1[k] < 1 && polys[k]->len > 0){
@@ -1142,7 +1273,6 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
             v = (v * ilc) % prime;
             if(v != MODCF(pol[0], c, np)){
               dl->check2[k] = 0;
-              mpz_set_ui(dl->gden, 1);
               return 0;
             }
           }
@@ -1179,6 +1309,14 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
         mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
         uint32_t coef = MODCF(modgbs->modpolys[k], dl->coef[k], modgbs->nprimes  - (thrds - i));
         int boo = verif_coef(dl->num[k], dl->den[k], prime, coef);
+        if(boo){
+          coef = MODCF(modgbs->modpolys[k], dl->coef2[k], modgbs->nprimes  - (thrds - i));
+          boo = verif_coef(dl->num2[k], dl->den2[k], prime, coef);
+        }
+        if(boo){
+          coef = MODCF(modgbs->modpolys[k], dl->coef3[k], modgbs->nprimes  - (thrds - i));
+          boo = verif_coef(dl->num3[k], dl->den3[k], prime, coef);
+        }
 
         if(!boo){
           for(int32_t kk = k; kk < dl->end; kk++){
@@ -1199,8 +1337,8 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
 static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
                                    rrec_data_t recdata1, rrec_data_t recdata2){
 
-  int b = ratreconwden(dl->num[i], dl->den[i],
-                       dl->crt[i], mod_p, dl->gden, recdata1);
+  int b = lift_ratreconwden(dl->num[i], dl->den[i],
+                            dl->crt[i], mod_p, dl->gden, recdata1);
   if(b){
     mpz_mul(dl->den[i], dl->den[i], dl->gden);
     mpz_gcd(dl->tmp, dl->den[i], dl->num[i]);
@@ -1212,13 +1350,61 @@ static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
   }
   else{
 
-    b = ratrecon(dl->num[i], dl->den[i],
-                 dl->crt[i], mod_p, recdata2);
+    b = lift_ratrecon(dl->num[i], dl->den[i],
+                      dl->crt[i], mod_p, recdata2);
     if(b){
       mpz_set(dl->gden, dl->den[i]);
     }
   }
   return b;
+}
+
+/* reconstructs the second witness using as a guess the lcm of the
+   denominator of the first one and of the one guessed from the previous
+   polynomial; cden[i] is set to the lcm of both witness denominators */
+static inline int reconstructcoeff2(data_lift_t dl, int32_t i, mpz_t mod_p,
+                                    rrec_data_t recdata1, rrec_data_t recdata2){
+  mpz_lcm(dl->cden[i], dl->den[i], dl->pgden);
+  if(!lift_ratreconwden(dl->num2[i], dl->den2[i],
+                        dl->crt2[i], mod_p, dl->cden[i], recdata1)){
+    /* same fallback as for the first witness: balanced bounds, no guess */
+    if(!lift_ratrecon(dl->num2[i], dl->den2[i], dl->crt2[i], mod_p, recdata2)){
+      return 0;
+    }
+    mpz_lcm(dl->cden[i], dl->den[i], dl->den2[i]);
+    mpz_set(dl->gden, dl->cden[i]);
+    return 1;
+  }
+  mpz_mul(dl->den2[i], dl->den2[i], dl->cden[i]);
+  mpz_gcd(dl->tmp, dl->den2[i], dl->num2[i]);
+  mpz_divexact(dl->num2[i], dl->num2[i], dl->tmp);
+  mpz_divexact(dl->den2[i], dl->den2[i], dl->tmp);
+  mpz_lcm(dl->cden[i], dl->den[i], dl->den2[i]);
+  mpz_set(dl->gden, dl->cden[i]);
+  return 1;
+}
+
+/* reconstructs the third witness using the lcm of the denominators of the
+   first two witnesses as a guess; cden[i] is updated accordingly */
+static inline int reconstructcoeff3(data_lift_t dl, int32_t i, mpz_t mod_p,
+                                    rrec_data_t recdata1, rrec_data_t recdata2){
+  if(!lift_ratreconwden(dl->num3[i], dl->den3[i],
+                        dl->crt3[i], mod_p, dl->cden[i], recdata1)){
+    /* same fallback as for the first witness: balanced bounds, no guess */
+    if(!lift_ratrecon(dl->num3[i], dl->den3[i], dl->crt3[i], mod_p, recdata2)){
+      return 0;
+    }
+    mpz_lcm(dl->cden[i], dl->cden[i], dl->den3[i]);
+    mpz_set(dl->gden, dl->cden[i]);
+    return 1;
+  }
+  mpz_mul(dl->den3[i], dl->den3[i], dl->cden[i]);
+  mpz_gcd(dl->tmp, dl->den3[i], dl->num3[i]);
+  mpz_divexact(dl->num3[i], dl->num3[i], dl->tmp);
+  mpz_divexact(dl->den3[i], dl->den3[i], dl->tmp);
+  mpz_lcm(dl->cden[i], dl->cden[i], dl->den3[i]);
+  mpz_set(dl->gden, dl->cden[i]);
+  return 1;
 }
 
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
@@ -1278,8 +1464,27 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
           dl->check1[i]++;
       }
       else{
+        /* guess the denominator from the previous polynomial (its lifted
+           denominator, or the one of its witnesses once they are
+           verified), so that a spurious reconstruction never becomes the
+           guess */
+        if(i > 0){
+          if(dl->check2[i-1] > 0 && modgbs->modpolys[i-1]->len > 0){
+            mpz_set(dl->gden, modgbs->modpolys[i-1]->lm);
+          }
+          else if(dl->check1[i-1] > 1 && modgbs->modpolys[i-1]->len > 0){
+            mpz_set(dl->gden, dl->cden[i-1]);
+          }
+        }
+        mpz_set(dl->pgden, dl->gden);
         int b = reconstructcoeff(dl, i, mod_p,
                                recdata1, recdata2);
+        if(b){
+          b = reconstructcoeff2(dl, i, mod_p, recdata1, recdata2);
+        }
+        if(b){
+          b = reconstructcoeff3(dl, i, mod_p, recdata1, recdata2);
+        }
         if(!b){
           dl->check1[i] = 0;
           break;
@@ -1636,8 +1841,14 @@ restart:
         ratrecon_gb((*modgbsp), dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
                     nthrds/* st->nthrds */, &st_crt, &st_rrec, &st_wit);
       }
-      if(st_wit > 2*dlift->rr * stf4){
-        dlift->rr = 2*dlift->rr;
+      /* the period depends only on the number of primes (not on timings)
+         so that the number of primes used is reproducible */
+      int32_t rr = 1;
+      while(2 * rr <= nprimes / RR_PERIOD_DIV){
+        rr *= 2;
+      }
+      if(rr != dlift->rr){
+        dlift->rr = rr;
         if(info_level){
           fprintf(VERBSTREAM, "(->%d)", dlift->rr);
 	        fflush(VERBSTREAM);

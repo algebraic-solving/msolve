@@ -1094,6 +1094,140 @@ static inline void param_images_crt_coeff(const param_images_t im,
   fmpz_get_mpz(pc->u, pc->y);
 }
 
+/* Witnesses of the eliminating polynomial reconstructed simultaneously:
+   its coefficients share a common denominator (the leading coefficient of
+   the primitive integer polynomial), which can be much larger than their
+   numerators. Reconstructing k coefficients u_1, .., u_k with a common
+   denominator d, i.e. finding a short vector (d, n_1, .., n_k) with
+   n_j = d u_j mod m by LLL, needs about bits(n) + bits(d) / k bits of
+   modulus instead of bits(n) + bits(d) for a single coefficient. The
+   denominator found is used as a guess for the eliminating polynomial.
+   As LLL is more expensive than rational reconstruction, it is tried at
+   a geometric schedule: each time the number of primes grows by
+   VEC_WIT_GROWTH percent. */
+#define VEC_WIT_K 4
+#define VEC_WIT_START 16
+#define VEC_WIT_GROWTH 5
+
+typedef struct{
+  int k;                    /* number of witnesses, 0 if disabled */
+  deg_t idx[VEC_WIT_K];     /* indices of the witness coefficients in elim */
+  int state;                /* 0: nothing, 1: candidate to be checked with
+                               the next prime, 2: candidate checked */
+  int32_t next;             /* number of primes of the next attempt */
+  mpz_t den;                /* common denominator */
+  mpz_t num[VEC_WIT_K];     /* numerators */
+} vec_wit_struct;
+
+typedef vec_wit_struct vec_wit_t[1];
+
+/* witnesses: the trace and det witnesses, then the first nonzero
+   coefficients of elim from degrees nsols/2 and nsols/4 upwards */
+static inline void vec_wit_init(vec_wit_t vw, const nmod_poly_t elim,
+                                const deg_t tridx, const deg_t detidx){
+  deg_t nsols = elim->length - 1;
+  mpz_init(vw->den);
+  for (int j = 0; j < VEC_WIT_K; j++) {
+    mpz_init(vw->num[j]);
+  }
+  vw->state = 0;
+  vw->next = VEC_WIT_START;
+  vw->k = 0;
+  if (nsols < 4 * VEC_WIT_K) {
+    return;
+  }
+  deg_t cand[VEC_WIT_K] = {tridx, detidx, nsols / 2, nsols / 4};
+  for (int j = 0; j < VEC_WIT_K; j++) {
+    deg_t i = cand[j];
+    int again = 1;
+    while (again && i < nsols) {
+      again = (elim->coeffs[i] == 0);
+      for (int l = 0; l < vw->k; l++) {
+        again = again || (vw->idx[l] == i);
+      }
+      if (again) {
+        i++;
+      }
+    }
+    if (i < nsols) {
+      vw->idx[vw->k] = i;
+      vw->k++;
+    }
+  }
+  if (vw->k < 2) {
+    vw->k = 0;
+  }
+}
+
+static inline void vec_wit_clear(vec_wit_t vw){
+  mpz_clear(vw->den);
+  for (int j = 0; j < VEC_WIT_K; j++) {
+    mpz_clear(vw->num[j]);
+  }
+}
+
+/* a candidate is accepted when the max-norm of (d, n_1, .., n_k) is at most
+   2^(k bits(m) / (k + 1) - RR_MARGIN), the analogue of the bounds with
+   RR_MARGIN bits of slack used for rational reconstruction */
+static inline void vec_wit_try(vec_wit_t vw, const param_images_t im,
+                               const mpz_t modulus){
+  const int k = vw->k;
+  param_crt_t pc;
+  param_crt_init(pc, im);
+  fmpz_mat_t B;
+  fmpz_mat_init(B, k + 1, k + 1);
+  fmpz_one(fmpz_mat_entry(B, 0, 0));
+  for (int j = 0; j < k; j++) {
+    param_images_crt_coeff(im, vw->idx[j], pc);
+    fmpz_set_mpz(fmpz_mat_entry(B, 0, j + 1), pc->u);
+    fmpz_set_mpz(fmpz_mat_entry(B, j + 1, j + 1), modulus);
+  }
+  param_crt_clear(pc);
+  fmpz_lll_t fl;
+  fmpz_lll_context_init_default(fl);
+  fmpz_lll(B, NULL, fl);
+
+  slong bits = (mpz_sizeinbase(modulus, 2) * k) / (k + 1) - RR_MARGIN;
+  int ok = !fmpz_is_zero(fmpz_mat_entry(B, 0, 0)) && bits > 0;
+  for (int j = 0; j <= k && ok; j++) {
+    ok = (fmpz_bits(fmpz_mat_entry(B, 0, j)) <= bits);
+  }
+  if (ok) {
+    int neg = fmpz_sgn(fmpz_mat_entry(B, 0, 0)) < 0;
+    fmpz_get_mpz(vw->den, fmpz_mat_entry(B, 0, 0));
+    for (int j = 0; j < k; j++) {
+      fmpz_get_mpz(vw->num[j], fmpz_mat_entry(B, 0, j + 1));
+    }
+    if (neg) {
+      mpz_neg(vw->den, vw->den);
+      for (int j = 0; j < k; j++) {
+        mpz_neg(vw->num[j], vw->num[j]);
+      }
+    }
+    vw->state = 1;
+  }
+  fmpz_mat_clear(B);
+}
+
+/* checks the candidate with the modular images of elim for a new prime */
+static inline void vec_wit_check(vec_wit_t vw, const nmod_poly_t elim,
+                                 const uint32_t prime){
+  uint64_t d = mpz_fdiv_ui(vw->den, prime);
+  if (d == 0) {
+    vw->state = 0;
+    return;
+  }
+  uint64_t dinv = mod_p_inverse_32(d, prime);
+  for (int j = 0; j < vw->k; j++) {
+    uint64_t c = mpz_fdiv_ui(vw->num[j], prime);
+    if ((c * dinv) % prime != elim->coeffs[vw->idx[j]]) {
+      vw->state = 0;
+      return;
+    }
+  }
+  vw->state = 2;
+}
+
 /**
 
    la sortie est recons / denominator
@@ -1402,7 +1536,7 @@ returns 0 if rational reconstruction failed
  **/
 
 static inline int rational_reconstruction_param(
-    mpz_param_t mpz_param, param_images_t images,
+    mpz_param_t mpz_param, param_images_t images, vec_wit_t vec_wit,
     param_t *nmod_param,
     nvars_t nlins, nvars_t *linvars, uint32_t *lineqs,
     trace_det_fglm_mat_t trace_det, sp_matfglm_t *mat, mpz_upoly_t numer,
@@ -1432,6 +1566,14 @@ static inline int rational_reconstruction_param(
       mulmat_reconstruct(trace_det, prod_crt);
   }
 
+  /* checks the candidate common denominator of the vector witnesses */
+  if (vec_wit->state == 1) {
+    vec_wit_check(vec_wit, nmod_param->elim, prime);
+    if (vec_wit->state == 2 && info_level) {
+      fprintf(VERBSTREAM, "[v]");
+    }
+  }
+
   /**    CRT PART            **/
   /* the images of the parametrization are only stored; CRT is applied when
      a rational reconstruction is attempted (see lift_parametrization) */
@@ -1444,6 +1586,16 @@ static inline int rational_reconstruction_param(
   *matrec = *matrec_checked;
 
   mpz_mul_ui(modulus, modulus, prime);
+
+  /* simultaneous reconstruction of the vector witnesses, while the
+     eliminating polynomial is not lifted and no single witness is known */
+  if (vec_wit->k && vec_wit->state == 0 && is_lifted[0] == 0
+      && trace_det->done_trace < 2 && trace_det->done_det < 2
+      && images->nprimes >= vec_wit->next) {
+    vec_wit_try(vec_wit, images, modulus);
+    vec_wit->next = MAX(images->nprimes + 1,
+                        images->nprimes + images->nprimes * VEC_WIT_GROWTH / 100);
+  }
 
   if (doit == 0) {
     return 0;
@@ -1483,7 +1635,12 @@ static inline int rational_reconstruction_param(
        }
   }
 
-  if (trace_det->done_trace > 1 || trace_det->done_det > 1) {
+  if (vec_wit->state == 2) {
+    mpz_lcm(guessed_den, guessed_den, vec_wit->den);
+  }
+
+  if (trace_det->done_trace > 1 || trace_det->done_det > 1
+      || vec_wit->state == 2) {
 
     mpz_t denominator;
     mpz_init_set_ui(denominator, 1);
@@ -2573,6 +2730,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   param_images_t images;
   param_images_init(images, *mpz_paramp);
   param_images_add(images, nmod_params[0], primeinit);
+  vec_wit_t vec_wit;
+  vec_wit_init(vec_wit, nmod_params[0]->elim, tridx, detidx);
 
   deg_t nsols = (*mpz_paramp)->nsols;
 
@@ -2761,6 +2920,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         if (rerun == 0) {
           mcheck = check_param_modular(*mpz_paramp, nmod_params[i], lp->p[i],
                                        is_lifted, check_lift, trace_det, info_level);
+          if (is_lifted[0] == 0) {
+            /* elim is wrong: the common denominator found by the vector
+               witnesses is discarded */
+            vec_wit->state = 0;
+          }
         }
         else{
             check_elim_poly(nmod_params[i]->elim, lp->p[i], numer->coeffs, denom->coeffs, check_lift);
@@ -2768,7 +2932,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         crr = realtime();
         if (mcheck == 1) {
           br = rational_reconstruction_param(
-              *mpz_paramp, images, nmod_params[i],
+              *mpz_paramp, images, vec_wit, nmod_params[i],
               bnlins[i], blinvars[i], lineqs_ptr[i],
               trace_det, bmatrix[i], numer,
               denom, check_lift, modulus, prod_crt, lp->p[i], &result, rnum, rden, recdata,
@@ -2797,6 +2961,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
               blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
               num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
               lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
+          vec_wit_clear(vec_wit);
           param_images_clear(images);
           free_msolve_trace_qq_secondary_data(trace_det, modulus,
                   prod_crt, result, test, rnum, rden, numer, denom, check_lift,
@@ -2867,6 +3032,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
               blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
               num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
               lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
+  vec_wit_clear(vec_wit);
   param_images_clear(images);
   free_msolve_trace_qq_secondary_data(trace_det, modulus,
                   prod_crt, result, test, rnum, rden, numer, denom, check_lift,

@@ -26,6 +26,8 @@
 #include "msolve-data.h"
 #include<flint/fmpz.h>
 #include<flint/fmpq.h>
+#include<flint/fmpz_mat.h>
+#include<flint/fmpz_lll.h>
 
 /* rational reconstruction of u mod m with bounds N, D through FLINT
    (half-gcd based) instead of the quadratic Euclidean algorithm;

@@ -2681,7 +2681,14 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     /* scrr measures time spent in ratrecon for modular images */
     double crr = 0, scrr = 0;
-    /* CRT + rational reconstruction */
+    /* CRT + rational reconstruction; reconstruction is attempted only
+     * once per iteration, after the last good prime has been used */
+    int32_t lastgood = -1;
+    for (len_t i = 0; i < st->nthrds; i++) {
+      if (bad_primes[i] == 0) {
+        lastgood = i;
+      }
+    }
     for (len_t i = 0; i < st->nthrds; i++) {
       if (bad_primes[i] == 0) {
         if (rerun == 0) {
@@ -2700,7 +2707,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
               denom, check_lift, modulus, prod_crt, lp->p[i], &result, rnum, rden, recdata,
               guessed_num, guessed_den, &maxrec, &matrec, &oldmatrec_checked,
               &matrec_checked, is_lifted,
-              &mat_lifted, &lin_lifted, doit, nbdoit, st->nthrds, info_level);
+              &mat_lifted, &lin_lifted, doit && (int32_t)i == lastgood, nbdoit,
+              st->nthrds, info_level);
 
           if (br == 1) {
             rerun = 0;
@@ -2731,13 +2739,21 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     strat += scrr;
 
-    double t = ((double)nbdoit) * ca1;
-    if ((t == 0) || (scrr >= 0.2 * t && br == 0)) {
-      nbdoit = 2 * nbdoit;
+    /* rational reconstruction is called every nbdoit iterations, i.e.
+     * about every rr primes, rr being the largest power of 2
+     * <= nprimes / RR_PERIOD_DIV; the period depends only on the number of
+     * primes (not on timings) so that the number of primes used is
+     * reproducible */
+    int32_t rr = 1;
+    while (2 * rr <= nprimes / RR_PERIOD_DIV) {
+      rr *= 2;
+    }
+    rr = MAX(1, rr / st->nthrds);
+    if (rr != nbdoit) {
+      nbdoit = rr;
       lpow2 = 2 * nprimes;
-      doit = 0;
       if (info_level) {
-        fprintf(VERBSTREAM, "\n<Step:%d/%.2f/%.2f>", nbdoit, scrr, t);
+        fprintf(VERBSTREAM, "\n<Step:%d>", nbdoit);
     	fflush(VERBSTREAM);
       }
     }

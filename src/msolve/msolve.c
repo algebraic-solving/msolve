@@ -1322,22 +1322,26 @@ static inline int lift_parametrization(mpz_param_t mpz_param,
 
     mpz_set(guessed_den, lc);
 
-    /* bounds tried in turn for each coordinate: D = m^(1/32), then balanced
-       bounds, then N = m^(1/16) */
-    mpz_t bN[3], bD[3];
+    /* bounds tried in turn for each coordinate: D = M^(1/32), then balanced
+       bounds, then N = M^(1/16), with M = modulus / 2^RR_MARGIN so that
+       RR_MARGIN bits of slack are kept */
+    mpz_t bN[3], bD[3], mm;
     for(int k = 0; k < 3; k++){
         mpz_init(bN[k]);
         mpz_init(bD[k]);
     }
-    mpz_root(bD[0], modulus, 32);
-    mpz_fdiv_q(bN[0], modulus, bD[0]);
+    mpz_init(mm);
+    mpz_fdiv_q_2exp(mm, modulus, RR_MARGIN);
+    mpz_root(bD[0], mm, 32);
+    mpz_fdiv_q(bN[0], mm, bD[0]);
     mpz_fdiv_q_2exp(bD[0], bD[0], 1);
-    mpz_sqrt(bD[1], modulus);
-    mpz_fdiv_q(bN[1], modulus, bD[1]);
+    mpz_sqrt(bD[1], mm);
+    mpz_fdiv_q(bN[1], mm, bD[1]);
     mpz_fdiv_q_2exp(bD[1], bD[1], 1);
-    mpz_root(bN[2], modulus, 16);
-    mpz_fdiv_q(bD[2], modulus, bN[2]);
+    mpz_root(bN[2], mm, 16);
+    mpz_fdiv_q(bD[2], mm, bN[2]);
     mpz_fdiv_q_2exp(bN[2], bN[2], 1);
+    mpz_clear(mm);
 
     for(int i = 0; i < nc; i++){
         if(is_lifted[i + 1]){
@@ -1421,15 +1425,21 @@ static inline int rational_reconstruction_param(
   /**     CRT DONE                             **/
 
   /** RATIONAL RECONSTRUCTIONS                 **/
-  mpz_sqrt(recdata->N, modulus);
-  mpz_fdiv_q(recdata->D, modulus, recdata->N);
+  /* keep RR_MARGIN bits of slack (2ND <= modulus / 2^RR_MARGIN) so that
+     spurious reconstructions become unlikely */
+  mpz_t mm;
+  mpz_init(mm);
+  mpz_fdiv_q_2exp(mm, modulus, RR_MARGIN);
+  mpz_sqrt(recdata->N, mm);
+  mpz_fdiv_q(recdata->D, mm, recdata->N);
   mpz_fdiv_q_2exp(recdata->D, recdata->D, 1);
-  mpz_root(recdata->D1, modulus, 4);
-  mpz_fdiv_q(recdata->N1, modulus, recdata->D1);
+  mpz_root(recdata->D1, mm, 4);
+  mpz_fdiv_q(recdata->N1, mm, recdata->D1);
   mpz_fdiv_q_2exp(recdata->D1, recdata->D1, 1);
-  mpz_root(recdata->D2, modulus, 16);
-  mpz_fdiv_q(recdata->N2, modulus, recdata->D2);
+  mpz_root(recdata->D2, mm, 16);
+  mpz_fdiv_q(recdata->N2, mm, recdata->D2);
   mpz_fdiv_q_2exp(recdata->D2, recdata->D2, 1);
+  mpz_clear(mm);
 
   mpz_set_ui(guessed_den, 1);
   mpz_set_ui(rnum, 0);

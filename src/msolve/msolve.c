@@ -1047,7 +1047,7 @@ static inline int new_rational_reconstruction_mpz_ptr_with_denom_param(
 
   //for (deg_t i = 0; i < len; i++) {
   for (deg_t i = len - 1; i >= 0; i--) {
-    b = ratreconwden(tmp_num[i], rden, pol[i], modulus, lcm,
+    b = lift_ratreconwden(tmp_num[i], rden, pol[i], modulus, lcm,
             rdata);
 
     if (b == 0) {
@@ -1099,7 +1099,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom_elim(
     int b = 0;
     for(deg_t i = len - 1; i >= 0; i--){
         if(check_lift[i] <= 1){
-            b = ratreconwden(tmp_num[i], rden, pol[i], modulus, lcm, rdata);
+            b = lift_ratreconwden(tmp_num[i], rden, pol[i], modulus, lcm, rdata);
             if(b == 0){
                 check_lift[i] = 0;
                 return 0;

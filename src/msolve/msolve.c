@@ -1101,22 +1101,44 @@ static inline void param_images_crt_coeff(const param_images_t im,
  **/
 #define RR 1
 
+/* rational reconstruction of u * lcm modulo modulus, trying in turn the
+   fixed bounds (bN[k], bD[k]) for k < nb, then the bounds set from the
+   guessed denominator lcm (D = sqrt(M / lcm), N = M / D); the fixed bounds
+   suit numerators much larger than denominators, the latter suit large
+   denominators */
+static inline int param_ratrecon_coeff(mpz_t num, mpz_t den, mpz_t u,
+                                       mpz_t modulus, mpz_t lcm,
+                                       rrec_data_t rd, mpz_t *bN, mpz_t *bD,
+                                       const int nb){
+  for (int k = 0; k < nb; k++) {
+    mpz_set(rd->N, bN[k]);
+    mpz_set(rd->D, bD[k]);
+    if (lift_ratreconwden(num, den, u, modulus, lcm, rd)) {
+      return 1;
+    }
+  }
+  set_recdata_guess(rd, modulus, lcm);
+  return lift_ratreconwden(num, den, u, modulus, lcm, rd);
+}
+
 
 static inline int new_rational_reconstruction_mpz_ptr_with_denom_param(
     mpz_t *recons, mpz_t denominator, const param_images_t im, int64_t start,
     param_crt_struct *pc, deg_t len, mpz_t modulus,
     deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden, mpz_t *tmp_num,
-    mpz_t *tmp_den, mpz_t lcm, mpz_t gnum, mpz_t guessed_den, rrec_data_t rdata) {
+    mpz_t *tmp_den, mpz_t lcm, mpz_t gnum, mpz_t guessed_den, rrec_data_t rdata,
+    mpz_t *bN, mpz_t *bD, const int nb) {
 
   mpz_set_ui(gnum, 1);
 
   int b = 0;
 
-  //for (deg_t i = 0; i < len; i++) {
+  /* lcm is the denominator accumulated so far, used as a guess for the
+     next coefficient */
   for (deg_t i = len - 1; i >= 0; i--) {
     param_images_crt_coeff(im, start + i, pc);
-    b = lift_ratreconwden(tmp_num[i], rden, pc->u, modulus, lcm,
-            rdata);
+    b = param_ratrecon_coeff(tmp_num[i], rden, pc->u, modulus, lcm,
+            rdata, bN, bD, nb);
 
     if (b == 0) {
       return 0;
@@ -1150,7 +1172,7 @@ static inline int rational_reconstruction_mpz_ptr_with_denom_elim(
     param_crt_struct *pc, deg_t len, mpz_t modulus,
     deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden, mpz_t *tmp_num,
     mpz_t *tmp_den, int16_t *check_lift, mpz_t lcm, mpz_t gnum,
-    mpz_t guessed_den, rrec_data_t rdata) {
+    mpz_t guessed_den, rrec_data_t rdata, mpz_t *bN, mpz_t *bD, const int nb) {
 
     mpz_set_ui(gnum, 1);
 
@@ -1169,7 +1191,8 @@ static inline int rational_reconstruction_mpz_ptr_with_denom_elim(
     for(deg_t i = len - 1; i >= 0; i--){
         if(check_lift[i] <= 1){
             param_images_crt_coeff(im, start + i, pc);
-            b = lift_ratreconwden(tmp_num[i], rden, pc->u, modulus, lcm, rdata);
+            b = param_ratrecon_coeff(tmp_num[i], rden, pc->u, modulus, lcm,
+                                     rdata, bN, bD, nb);
             if(b == 0){
                 check_lift[i] = 0;
                 return 0;
@@ -1209,12 +1232,12 @@ static inline int rational_reconstruction_upoly_with_denom_elim(
     mpz_t modulus, deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden,
     mpz_upoly_t tmp_num, mpz_upoly_t tmp_den, int16_t *check_lift,
     mpz_t lcm, mpz_t guessed_num,
-    mpz_t guessed_den, rrec_data_t rdata) {
+    mpz_t guessed_den, rrec_data_t rdata, mpz_t *bN, mpz_t *bD, const int nb) {
 
   return rational_reconstruction_mpz_ptr_with_denom_elim(
       recons->coeffs, denominator, im, start, pc, len, modulus, maxrec, coef,
       rnum, rden, tmp_num->coeffs, tmp_den->coeffs, check_lift, lcm, guessed_num,
-      guessed_den, rdata);
+      guessed_den, rdata, bN, bD, nb);
 }
 
 static inline int rational_reconstruction_upoly_with_denom_param(
@@ -1222,13 +1245,13 @@ static inline int rational_reconstruction_upoly_with_denom_param(
     int64_t start, param_crt_struct *pc, long len,
     mpz_t modulus, deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden,
     mpz_upoly_t tmp_num, mpz_upoly_t tmp_den, mpz_t lcm, mpz_t guessed_num,
-    mpz_t guessed_den, rrec_data_t rdata) {
+    mpz_t guessed_den, rrec_data_t rdata, mpz_t *bN, mpz_t *bD, const int nb) {
 
 
     return new_rational_reconstruction_mpz_ptr_with_denom_param(
       recons->coeffs, denominator, im, start, pc, len, modulus, maxrec, coef,
       rnum, rden, tmp_num->coeffs, tmp_den->coeffs, lcm, guessed_num,
-      guessed_den, rdata);
+      guessed_den, rdata, bN, bD, nb);
 
 }
 
@@ -1239,7 +1262,7 @@ static inline void lift_coordinate(mpz_param_t mpz_param,
         mpz_t modulus, mpz_t prod_crt, int32_t prime, mpq_t *coef, mpz_t rnum, mpz_t rden,
         rrec_data_t recdata, mpz_t guessed_num, mpz_t guessed_den, deg_t *maxrec,
         int *is_lifted, mpz_t denominator, mpz_t lcm, mpq_t c, const int idx,
-        const int info_level){
+        mpz_t *bN, mpz_t *bD, const int nb, const int info_level){
 
       if(mpz_sizeinbase(guessed_den, 2) <= mpz_sizeinbase(modulus, 2)){
           mpz_set(lcm, guessed_den);
@@ -1255,7 +1278,7 @@ static inline void lift_coordinate(mpz_param_t mpz_param,
             images->elen + idx * images->clen, pc,
             MIN((deg_t)nmod_param->coords[idx]->length, images->clen),
             modulus, maxrec, coef, rnum, rden,
-            numer, denom, lcm, guessed_num, guessed_den, recdata);
+            numer, denom, lcm, guessed_num, guessed_den, recdata, bN, bD, nb);
         if(b){
             is_lifted[idx + 1] = 1;
             mpz_set(mpq_denref(c), denominator);
@@ -1287,19 +1310,47 @@ static inline int lift_parametrization(mpz_param_t mpz_param,
     param_crt_t pc;
     param_crt_init(pc, images);
 
+    /* fixed bounds tried first, with M = modulus / 2^RR_MARGIN so that
+       RR_MARGIN bits of slack are kept: D = M^(1/16) for elim; D = M^(1/32),
+       balanced bounds, then N = M^(1/16) for the coordinates; the bounds
+       set from the guessed denominator are tried last */
+    mpz_t bN[4], bD[4], mm;
+    for(int k = 0; k < 4; k++){
+        mpz_init(bN[k]);
+        mpz_init(bD[k]);
+    }
+    mpz_init(mm);
+    mpz_fdiv_q_2exp(mm, modulus, RR_MARGIN);
+    /* elim */
+    mpz_root(bD[0], mm, 16);
+    mpz_fdiv_q(bN[0], mm, bD[0]);
+    mpz_fdiv_q_2exp(bD[0], bD[0], 1);
+    /* coordinates */
+    mpz_root(bD[1], mm, 32);
+    mpz_fdiv_q(bN[1], mm, bD[1]);
+    mpz_fdiv_q_2exp(bD[1], bD[1], 1);
+    mpz_sqrt(bD[2], mm);
+    mpz_fdiv_q(bN[2], mm, bD[2]);
+    mpz_fdiv_q_2exp(bD[2], bD[2], 1);
+    mpz_root(bN[3], mm, 16);
+    mpz_fdiv_q(bD[3], mm, bN[3]);
+    mpz_fdiv_q_2exp(bN[3], bN[3], 1);
+    mpz_clear(mm);
+
     int b = 0;
     if (is_lifted[0] == 0) {
 
-      mpz_swap(recdata->N, recdata->N2);
-      mpz_swap(recdata->D, recdata->D2);
-      mpz_swap(recdata->N1, recdata->N2);
-      mpz_swap(recdata->D1, recdata->D2);
       b = rational_reconstruction_upoly_with_denom_elim(
           mpz_param->elim, denominator, images, 0, pc,
           nmod_param->elim->length, modulus, maxrec, coef, rnum, rden, numer,
-          denom, check_lift, lcm, guessed_num, guessed_den, recdata);
+          denom, check_lift, lcm, guessed_num, guessed_den, recdata,
+          bN, bD, 1);
       if (b == 0) {
           is_lifted[0] = 0;
+          for(int k = 0; k < 4; k++){
+              mpz_clear(bN[k]);
+              mpz_clear(bD[k]);
+          }
           param_crt_clear(pc);
           return 0;
       }
@@ -1322,43 +1373,19 @@ static inline int lift_parametrization(mpz_param_t mpz_param,
 
     mpz_set(guessed_den, lc);
 
-    /* bounds tried in turn for each coordinate: D = M^(1/32), then balanced
-       bounds, then N = M^(1/16), with M = modulus / 2^RR_MARGIN so that
-       RR_MARGIN bits of slack are kept */
-    mpz_t bN[3], bD[3], mm;
-    for(int k = 0; k < 3; k++){
-        mpz_init(bN[k]);
-        mpz_init(bD[k]);
-    }
-    mpz_init(mm);
-    mpz_fdiv_q_2exp(mm, modulus, RR_MARGIN);
-    mpz_root(bD[0], mm, 32);
-    mpz_fdiv_q(bN[0], mm, bD[0]);
-    mpz_fdiv_q_2exp(bD[0], bD[0], 1);
-    mpz_sqrt(bD[1], mm);
-    mpz_fdiv_q(bN[1], mm, bD[1]);
-    mpz_fdiv_q_2exp(bD[1], bD[1], 1);
-    mpz_root(bN[2], mm, 16);
-    mpz_fdiv_q(bD[2], mm, bN[2]);
-    mpz_fdiv_q_2exp(bN[2], bN[2], 1);
-    mpz_clear(mm);
-
     for(int i = 0; i < nc; i++){
         if(is_lifted[i + 1]){
             continue;
         }
-        for(int k = 0; k < 3 && is_lifted[i + 1] == 0; k++){
-            mpz_set(recdata->N, bN[k]);
-            mpz_set(recdata->D, bD[k]);
-            lift_coordinate(mpz_param, images, pc,
-                    nmod_param, numer, denom, check_lift,
-                    modulus, prod_crt, prime, coef, rnum, rden,
-                    recdata, guessed_num, guessed_den, maxrec,
-                    is_lifted, denominator, lcm, c, i, info_level);
-        }
+        lift_coordinate(mpz_param, images, pc,
+                nmod_param, numer, denom, check_lift,
+                modulus, prod_crt, prime, coef, rnum, rden,
+                recdata, guessed_num, guessed_den, maxrec,
+                is_lifted, denominator, lcm, c, i, bN + 1, bD + 1, 3,
+                info_level);
     }
 
-    for(int k = 0; k < 3; k++){
+    for(int k = 0; k < 4; k++){
         mpz_clear(bN[k]);
         mpz_clear(bD[k]);
     }
@@ -1433,12 +1460,6 @@ static inline int rational_reconstruction_param(
   mpz_sqrt(recdata->N, mm);
   mpz_fdiv_q(recdata->D, mm, recdata->N);
   mpz_fdiv_q_2exp(recdata->D, recdata->D, 1);
-  mpz_root(recdata->D1, mm, 4);
-  mpz_fdiv_q(recdata->N1, mm, recdata->D1);
-  mpz_fdiv_q_2exp(recdata->D1, recdata->D1, 1);
-  mpz_root(recdata->D2, mm, 16);
-  mpz_fdiv_q(recdata->N2, mm, recdata->D2);
-  mpz_fdiv_q_2exp(recdata->D2, recdata->D2, 1);
   mpz_clear(mm);
 
   mpz_set_ui(guessed_den, 1);

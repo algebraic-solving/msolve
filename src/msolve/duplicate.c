@@ -72,7 +72,9 @@ static inline void duplicate_tracer(
             memcpy(btrace[i]->lm, btrace[0]->lm,
                     (unsigned long)btrace[0]->lml * sizeof(sdm_t));
 
-            /* array of trace data per F4 round */
+            /* array of trace data per F4 round
+             * (replaces the one allocated by initialize_trace) */
+            free(btrace[i]->td);
             btrace[i]->td  = calloc((unsigned long)btrace[0]->ltd, sizeof(td_t));
 
             for(len_t l = 0; l < btrace[0]->ltd; ++l){

@@ -19,9 +19,67 @@
  * Mohab Safey El Din */
 
 #include<flint/fmpz.h>
+#include<flint/fmpq.h>
 #include "streams.h"
 
+/* rational reconstruction of u mod m with bounds N, D through FLINT
+   (half-gcd based) instead of the quadratic Euclidean algorithm;
+   u is assumed to be reduced modulo m */
+static int flint_rrec(mpz_t n, mpz_t d, const mpz_t u, const mpz_t m,
+                      const mpz_t N, const mpz_t D){
+  fmpz_t fu, fm, fN, fD;
+  fmpq_t q;
+  fmpz_init(fu); fmpz_init(fm); fmpz_init(fN); fmpz_init(fD);
+  fmpq_init(q);
+  fmpz_set_mpz(fu, u);
+  fmpz_set_mpz(fm, m);
+  fmpz_set_mpz(fN, N);
+  fmpz_set_mpz(fD, D);
+  int b = fmpq_reconstruct_fmpz_2(q, fu, fm, fN, fD);
+  if(b){
+    fmpz_get_mpz(n, fmpq_numref(q));
+    fmpz_get_mpz(d, fmpq_denref(q));
+  }
+  fmpq_clear(q);
+  fmpz_clear(fu); fmpz_clear(fm); fmpz_clear(fN); fmpz_clear(fD);
+  return b;
+}
+
+/* FLINT requires 2ND < m */
+static int flint_rrec_bounds_ok(const mpz_t m, rrec_data_t rd){
+  mpz_mul(rd->tmp, rd->N, rd->D);
+  mpz_mul_2exp(rd->tmp, rd->tmp, 1);
+  return mpz_cmp(rd->tmp, m) < 0;
+}
+
+/* same as ratrecon, through FLINT when the bounds allow it */
+static int lift_ratrecon(mpz_t n, mpz_t d, mpz_t u, const mpz_t mod,
+                         rrec_data_t rd){
+  if(!flint_rrec_bounds_ok(mod, rd)){
+    return ratrecon(n, d, u, mod, rd);
+  }
+  mpz_mod(u, u, mod);
+  return flint_rrec(n, d, u, mod, rd->N, rd->D);
+}
+
+/* same as ratreconwden, through FLINT when the bounds allow it */
+static int lift_ratreconwden(mpz_t n, mpz_t d, mpz_t u, const mpz_t mod,
+                             const mpz_t gden, rrec_data_t rd){
+  if(!flint_rrec_bounds_ok(mod, rd)){
+    return ratreconwden(n, d, u, mod, gden, rd);
+  }
+  mpz_mod(u, u, mod);
+  mpz_mul(rd->r1, u, gden);
+  mpz_mod(rd->r1, rd->r1, mod);
+  return flint_rrec(n, d, rd->r1, mod, rd->N, rd->D);
+}
+
 #define NBCHECK 2
+/* number of bits of slack kept in rational reconstruction bounds */
+#define RR_MARGIN 16
+/* witnesses are reconstructed every rr primes, rr being the largest
+   power of 2 <= nprimes / RR_PERIOD_DIV */
+#define RR_PERIOD_DIV 128
 #ifndef MIN
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #endif
@@ -31,21 +89,25 @@
 
 typedef struct{
   uint32_t len; /* length of the encoded polynomial */
-  uint32_t **cf_32; /* array of arrays of coefficients
-                       * modulo several primes
-                       */
-  /* Warning: this is free-ed dynamically */
-  mpz_t *cf_zz; /* array which stores CRT lifting of
-                    the coefficients */
-  /* Warning: this is free-ed dynamically */
-  mpz_t *cf_qq; /* array which stores rational coefficients
-                  being lifted, numerators and denominators
-                  are given given as mpz_t
-               */
+  /* Coefficients modulo several primes, stored as one contiguous block of
+   * len * alloc entries in prime-major order: the coefficient of index j
+   * modulo the k-th prime is cf_32[k * len + j] (use MODCF below).
+   * Adding primes only grows the block at its end, and each new prime
+   * fills one contiguous row.
+   * Warning: this is free-ed dynamically (and set to NULL) as soon as the
+   * polynomial has been lifted and checked. */
+  uint32_t *cf_32;
+  /* len integer numerators of the lifted coefficients; they all share the
+   * common denominator lm (hence the polynomial is lm * LM + sum cf_qq[j]*m_j
+   * up to the order of the terms). */
+  mpz_t *cf_qq;
   mpz_t lm; /* stores the leading coefficient (hence all numerators of cf_qq should be divided by lm) */
 } modpolys_struct;
 
 typedef modpolys_struct modpolys_t[1];
+
+/* coefficient of index j of polynomial p modulo the k-th prime */
+#define MODCF(p, j, k) ((p)->cf_32[(size_t)(k) * (p)->len + (j)])
 
 typedef struct {
   uint32_t alloc; /* alloc -> max number of primes */
@@ -94,6 +156,16 @@ typedef struct{
   int *check1; /* tells whether lifted data are ok with one more prime */
   int *check2; /* tells whether lifted data are ok with two more primes */
   int32_t S;
+  int32_t *coef2; /* second witness coefficient */
+  mpz_t *crt2;
+  mpz_t *num2;
+  mpz_t *den2;
+  mpz_t *cden; /* lcm of the witness denominators */
+  mpz_t pgden; /* denominator guessed from the previous polynomial */
+  int32_t *coef3; /* third witness coefficient */
+  mpz_t *crt3;
+  mpz_t *num3;
+  mpz_t *den3;
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
@@ -107,6 +179,7 @@ static inline void data_lift_init(data_lift_t dl,
   dl->lstart = 0;
   dl->nsteps = nsteps;
   dl->S = 0;
+  mpz_init_set_ui(dl->pgden, 1);
   int32_t i;
 
   dl->steps = (int32_t *)calloc(nsteps, sizeof(int32_t));
@@ -137,6 +210,24 @@ static inline void data_lift_init(data_lift_t dl,
   dl->end = npol;
   dl->check1 = calloc(npol, sizeof(int));
   dl->check2 = calloc(npol, sizeof(int));
+  dl->coef2 = calloc(npol, sizeof(int32_t));
+  dl->crt2 = malloc(sizeof(mpz_t) * npol);
+  dl->num2 = malloc(sizeof(mpz_t) * npol);
+  dl->den2 = malloc(sizeof(mpz_t) * npol);
+  dl->cden = malloc(sizeof(mpz_t) * npol);
+  dl->coef3 = calloc(npol, sizeof(int32_t));
+  dl->crt3 = malloc(sizeof(mpz_t) * npol);
+  dl->num3 = malloc(sizeof(mpz_t) * npol);
+  dl->den3 = malloc(sizeof(mpz_t) * npol);
+  for(i = 0; i < npol; i++){
+    mpz_init(dl->crt2[i]);
+    mpz_init(dl->num2[i]);
+    mpz_init(dl->den2[i]);
+    mpz_init(dl->cden[i]);
+    mpz_init(dl->crt3[i]);
+    mpz_init(dl->num3[i]);
+    mpz_init(dl->den3[i]);
+  }
 
 }
 
@@ -161,8 +252,27 @@ static inline void data_lift_clear(data_lift_t dl){
 
   mpz_clear(dl->gden);
   mpz_clear(dl->tmp);
+  mpz_clear(dl->pgden);
   free(dl->check1);
   free(dl->check2);
+  for(int32_t i = 0; i < dl->npol; i++){
+    mpz_clear(dl->crt2[i]);
+    mpz_clear(dl->num2[i]);
+    mpz_clear(dl->den2[i]);
+    mpz_clear(dl->cden[i]);
+    mpz_clear(dl->crt3[i]);
+    mpz_clear(dl->num3[i]);
+    mpz_clear(dl->den3[i]);
+  }
+  free(dl->crt2);
+  free(dl->num2);
+  free(dl->den2);
+  free(dl->cden);
+  free(dl->coef2);
+  free(dl->crt3);
+  free(dl->num3);
+  free(dl->den3);
+  free(dl->coef3);
 
 }
 
@@ -204,14 +314,16 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   }
   for(uint32_t i = 0; i < ld; i++){
     modgbs->modpolys[i]->len = lens[i];
-    modgbs->modpolys[i]->cf_32 = (uint32_t **)malloc(sizeof(uint32_t *)*lens[i]);
-    modgbs->modpolys[i]->cf_zz = (mpz_t *)malloc(sizeof(mpz_t)*lens[i]);
-    modgbs->modpolys[i]->cf_qq = (mpz_t *)malloc(sizeof(mpz_t)*2*lens[i]);
-    for(uint32_t j = 0; j < lens[i]; j++){
-      modgbs->modpolys[i]->cf_32[j] = calloc(alloc, sizeof(uint32_t));
-      mpz_init(modgbs->modpolys[i]->cf_zz[j]);
+    if(lens[i] > 0){
+      modgbs->modpolys[i]->cf_32 = (uint32_t *)calloc((size_t)lens[i] * alloc,
+                                                      sizeof(uint32_t));
+      modgbs->modpolys[i]->cf_qq = (mpz_t *)malloc(sizeof(mpz_t)*lens[i]);
     }
-    for(uint32_t j = 0; j < 2 * lens[i]; j++){
+    else{
+      modgbs->modpolys[i]->cf_32 = NULL;
+      modgbs->modpolys[i]->cf_qq = NULL;
+    }
+    for(uint32_t j = 0; j < lens[i]; j++){
       mpz_init(modgbs->modpolys[i]->cf_qq[j]);
     }
     mpz_init(modgbs->modpolys[i]->lm);
@@ -220,9 +332,10 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
 }
 
 
+/* Makes room for newalloc more primes. Polynomials whose modular data have
+ * already been free-ed (cf_32 == NULL) are skipped. */
 static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
-                                      uint32_t newalloc,
-                                      int32_t start){
+                                      uint32_t newalloc){
 
   uint32_t oldalloc = modgbs->alloc;
   modgbs->alloc += newalloc;
@@ -249,18 +362,21 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   for(uint32_t i = oldalloc; i < modgbs->alloc; i++){
     modgbs->cf_64[i] = 0;
   }
-  for(uint32_t i = start; i < modgbs->ld; i++){
-    for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
-      uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->cf_32[j],
-                                                 modgbs->alloc * sizeof(uint32_t));
-      if(newcfs_pol == NULL){
-        fprintf(ERRSTREAM, "Problem when reallocating modgbs (cfs_pol)\n");
-      }
-      modgbs->modpolys[i]->cf_32[j] = newcfs_pol;
-      for(uint32_t k = oldalloc; k < modgbs->alloc; k++){
-        modgbs->modpolys[i]->cf_32[j][k] = 0;
-      }
+  for(uint32_t i = 0; i < modgbs->ld; i++){
+    const size_t len = modgbs->modpolys[i]->len;
+    if(modgbs->modpolys[i]->cf_32 == NULL || len == 0){
+      continue;
     }
+    uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->cf_32,
+                                               len * modgbs->alloc * sizeof(uint32_t));
+    if(newcfs_pol == NULL){
+      fprintf(ERRSTREAM, "Problem when reallocating modgbs (cfs_pol)\n");
+      exit(1);
+    }
+    /* prime-major storage: the new primes are appended at the end */
+    memset(newcfs_pol + len * oldalloc, 0,
+           len * (modgbs->alloc - oldalloc) * sizeof(uint32_t));
+    modgbs->modpolys[i]->cf_32 = newcfs_pol;
   }
 }
 
@@ -279,16 +395,20 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
   for(uint32_t i = 0; i < modgbs->ld; i++){
     uint32_t len = modgbs->modpolys[i]->len;
     fprintf(file, "[%d, ", len);
+    if(modgbs->modpolys[i]->cf_32 == NULL){
+      fprintf(file, "(lifted)],\n");
+      continue;
+    }
     for(uint32_t j = 0; j < len; j++){
       fprintf(file, "[");
       for(uint32_t k = 0; k < modgbs->alloc-1; k++){
-        fprintf(file, "%d, ", modgbs->modpolys[i]->cf_32[j][k]);
+        fprintf(file, "%d, ", MODCF(modgbs->modpolys[i], j, k));
       }
       if(j < len - 1){
-        fprintf(file, "%d], ", modgbs->modpolys[i]->cf_32[j][modgbs->alloc-1]);
+        fprintf(file, "%d], ", MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
       }
       else{
-        fprintf(file, "%d]\n", modgbs->modpolys[i]->cf_32[j][modgbs->alloc-1]);
+        fprintf(file, "%d]\n", MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
       }
     }
     fprintf(file, "],\n");
@@ -311,10 +431,11 @@ static inline void display_modpoly(FILE *file,
   }
   display_monomial_single(file, gens, pos, &modgbs->ldm);
 
-  len_t idx, i, k;
+  len_t i, k;
   hm_t *hm    = NULL;
-  idx = modgbs->lmps[pos];
-  hm  = modgbs->hm[idx]+OFFSET;
+  /* modgbs->hm[pos] is the copy of the monomials of the pos-th element
+   * (see gb_modpoly_init), hence it is indexed by pos, not by lmps[pos] */
+  hm  = modgbs->hm[pos]+OFFSET;
 
   ht_t *ht = modgbs->bht;
   const len_t nv  = ht->nv;
@@ -335,25 +456,24 @@ static inline void display_modpoly(FILE *file,
     }
   }
   len_t len = modgbs->modpolys[pos]->len + 1;
+  /* once lifted, all coefficients are integers (common denominator is
+   * stored in lm), cf_qq[i] is the coefficient of index i */
+  mpz_t *cf = modgbs->modpolys[pos]->cf_qq;
   for(i = modgbs->modpolys[pos]->len-1; i > 0 ; i--){
-    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0)>0){
+    if(mpz_cmp_ui(cf[i], 0)>0){
       fprintf(file, "+");
     }
     //coef is -1
-    if(mpz_cmp_si(modgbs->modpolys[pos]->cf_qq[2*i], -1) == 0 && mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) == 0){
+    if(mpz_cmp_si(cf[i], -1) == 0){
         fprintf(file, "-");
     }
     int star = 0;
     //coef is neither 1 nor -1
-    if((mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0) && (mpz_cmp_si(modgbs->modpolys[pos]->cf_qq[2*i], -1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0)){
-        mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i]);
-        if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i + 1], 1) != 0){
-            fprintf(file, "/");
-            mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[2*i + 1]);
-        }
+    if(mpz_cmp_ui(cf[i], 1) != 0 && mpz_cmp_si(cf[i], -1) != 0){
+        mpz_out_str(file, 10, cf[i]);
         fprintf(file, "*");
     }
-    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[2*i], 0) != 0){
+    if(mpz_cmp_ui(cf[i], 0) != 0){
       for (k = 0; k < nv; ++k) {
          if (ht->ev[hm[len-i-1]][evi[k]] == 1) {
             if(star == 1){
@@ -373,7 +493,7 @@ static inline void display_modpoly(FILE *file,
     }
     fflush(file);
   }
-  if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 0) > 0){
+  if(mpz_cmp_ui(cf[0], 0) > 0){
     fprintf(file, "+");
   }
   int deg = 0;
@@ -381,28 +501,20 @@ static inline void display_modpoly(FILE *file,
      deg += ht->ev[hm[len-1]][evi[k]];
   }
   if(deg == 0){
-    mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[0]);
-    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0){
-      fprintf(file, "/");
-      mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[1]);
-    }
+    mpz_out_str(file, 10, cf[0]);
   }
   else{
-    if(mpz_cmp_si(modgbs->modpolys[pos]->cf_qq[0], -1) == 0 && mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) == 0){
+    if(mpz_cmp_si(cf[0], -1) == 0){
         fprintf(file, "-");
     }
     int star = 0;
     //coef is neither 1 nor -1
-    if((mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0) && (mpz_cmp_si(modgbs->modpolys[pos]->cf_qq[0], -1) != 0 || mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0)){
-        mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[0]);
-        if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[1], 1) != 0){
-            fprintf(file, "/");
-            mpz_out_str(file, 10, modgbs->modpolys[pos]->cf_qq[1]);
-        }
+    if(mpz_cmp_ui(cf[0], 1) != 0 && mpz_cmp_si(cf[0], -1) != 0){
+        mpz_out_str(file, 10, cf[0]);
         fprintf(file, "*");
     }
     fflush(file);
-    if(mpz_cmp_ui(modgbs->modpolys[pos]->cf_qq[0], 0) != 0){
+    if(mpz_cmp_ui(cf[0], 0) != 0){
       for (k = 0; k < nv; ++k) {
          if (ht->ev[hm[len-1]][evi[k]] == 1) {
             if(star == 1){
@@ -461,45 +573,37 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
   fprintf(file, "]:\n");
 }
 
+/* frees everything but the hash table modgbs->bht */
 static inline void gb_modpoly_without_hash_table_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
+  modgbs->primes = NULL;
+  free(modgbs->cf_64);
+  modgbs->cf_64 = NULL;
   free(modgbs->ldm);
+  modgbs->ldm = NULL;
   for(uint32_t i = 0; i < modgbs->ld; i++){
+    /* cf_32 is NULL if already free-ed after lifting */
+    free(modgbs->modpolys[i]->cf_32);
+    modgbs->modpolys[i]->cf_32 = NULL;
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
-      free(modgbs->modpolys[i]->cf_32[j]);
-      mpz_clear(modgbs->modpolys[i]->cf_zz[j]);
-    }
-    for(uint32_t j = 0; j < 2 * modgbs->modpolys[i]->len; j++){
       mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
     }
     mpz_clear(modgbs->modpolys[i]->lm);
-    free(modgbs->modpolys[i]->cf_32);
-    free(modgbs->modpolys[i]->cf_zz);
     free(modgbs->modpolys[i]->cf_qq);
+    modgbs->modpolys[i]->cf_qq = NULL;
+    free(modgbs->hm[i]);
   }
   free(modgbs->lmps);
+  modgbs->lmps = NULL;
   free(modgbs->hm);
+  modgbs->hm = NULL;
   free(modgbs->modpolys);
+  modgbs->modpolys = NULL;
 }
 
 static inline void gb_modpoly_clear(gb_modpoly_t modgbs){
-  free(modgbs->primes);
-  free(modgbs->ldm);
-
-  for(uint32_t i = 0; i < modgbs->ld; i++){
-    for(uint32_t j = 0; j < 2 * modgbs->modpolys[i]->len; j++){
-      mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
-    }
-    mpz_clear(modgbs->modpolys[i]->lm);
-    free(modgbs->modpolys[i]->cf_qq);
-    free(modgbs->hm[i]);
-  }
-
-  free(modgbs->lmps);
-  free(modgbs->hm);
-  free(modgbs->cf_64);
+  gb_modpoly_without_hash_table_clear(modgbs);
   full_free_hash_table(&modgbs->bht);
-  free(modgbs->modpolys);
 }
 
 static inline int32_t degree(int32_t *mon, int nv){
@@ -630,10 +734,14 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       /* hm  = bs->hm[idx]+OFFSET; */
       len = bs->hm[idx][LENGTH];
     }
+    if(modgbs->modpolys[i]->cf_32 == NULL){
+      /* already lifted, modular data are no longer needed */
+      continue;
+    }
     int32_t bc = modgbs->modpolys[i]->len - 1;
+    const uint32_t * const cfs = bs->cf_32[bs->hm[idx][COEFFS]];
     for (j = 1; j < len; ++j) {
-      uint32_t c = bs->cf_32[bs->hm[idx][COEFFS]][j];
-      modgbs->modpolys[i]->cf_32[bc][modgbs->nprimes] = c;
+      MODCF(modgbs->modpolys[i], bc, modgbs->nprimes) = cfs[j];
       bc--;
    }
   }
@@ -734,6 +842,8 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     /* Leading monomials from Grobner basis */
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
+    /* may be non NULL if the computation has been restarted */
+    free(leadmons[0]);
     leadmons[0] = bexp_lm;
 
     int32_t len = bs->lml;
@@ -784,6 +894,9 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
             }
         }
         if(is_empty){
+            if(bexp_lm2 != NULL){
+              free(bexp_lm);
+            }
             free_basis_without_hash_table(&(bs));
             return is_empty;
         }
@@ -791,6 +904,10 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     /**************************************************/
 
+    if(bexp_lm2 != NULL){
+      /* leadmons[0] is bexp_lm2, bexp_lm is no longer needed */
+      free(bexp_lm);
+    }
     free_basis_without_hash_table(&(bs));
     return is_empty;
 }
@@ -827,6 +944,15 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   int32_t error = 0;
   bs = core_gba(bs_qq, st, &error, lp->p[0]);
   *stf4 = realtime()-rt;
+  /* core_gba returns NULL (and has already free-ed its data) when the
+   * prime has been detected as bad while applying the tracer */
+  if (bs == NULL || error) {
+      bad_primes[0] = 1;
+      if (bs != NULL) {
+          free_basis_and_only_local_hash_table_data(&bs);
+      }
+      return;
+  }
   ht_t **bht = &(bs->ht);
   for(len_t i = 0; i < modgbs->ld; i++){
         if(modgbs->modpolys[i]->len < bs->hm[bs->lmps[i]][LENGTH]-1){
@@ -839,10 +965,6 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
             free_basis_and_only_local_hash_table_data(&bs);
             return;
         }
-  }
-  if (bs == NULL) {
-      bad_primes[0] = 1;
-      return;
   }
   int32_t lml = bs->lml;
   if (st->nev > 0) {
@@ -887,20 +1009,33 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
 }
 
+/* three witness coefficients are chosen per polynomial: the last nonzero
+   one and the nonzero ones found scanning downwards from 2*len/3 and
+   len/2 */
 static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
   uint32_t ld = modgbs->ld;
   for(int32_t i = 0; i < ld; i++){
-    len_t d = 0;
     len_t len = modgbs->modpolys[i]->len;
-    while(d < len - 1 && len > 0){
-      if(modgbs->modpolys[i]->cf_32[d][0]){
+    len_t d = len - 1;
+    while(d > 0 && len > 0){
+      if(MODCF(modgbs->modpolys[i], d, 0)){
         dlift->coef[i] = d;
         break;
       }
       else{
-        d++;
+        d--;
       }
     }
+    len_t d2 = 2 * len / 3;
+    while(d2 > 0 && !MODCF(modgbs->modpolys[i], d2, 0)){
+      d2--;
+    }
+    dlift->coef2[i] = d2;
+    len_t d3 = len / 2;
+    while(d3 > 0 && !MODCF(modgbs->modpolys[i], d3, 0)){
+      d3--;
+    }
+    dlift->coef3[i] = d3;
   }
 }
 
@@ -915,7 +1050,7 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
   mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
       if(modgbs->modpolys[k]->len){
-        uint32_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
+        uint32_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
         mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
                    c, modgbs->primes[modgbs->nprimes - 1 ],
                    prod_p[0], dlift->tmp, 1);
@@ -936,8 +1071,14 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
   mpz_mul_ui(prod_p, mod_p, (uint32_t)newprime);
   for(int32_t k = dl->S; k < dl->end; k++){
       if(modgbs->modpolys[k]->len){
-        uint64_t c = modgbs->modpolys[k]->cf_32[coef[k]][modgbs->nprimes  - 1 ];
+        uint64_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
         mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
+                   c, newprime, prod_p, dl->tmp, 1);
+        c = MODCF(modgbs->modpolys[k], dl->coef2[k], modgbs->nprimes  - 1);
+        mpz_CRT_ui(dl->crt2[k], dl->crt2[k], mod_p,
+                   c, newprime, prod_p, dl->tmp, 1);
+        c = MODCF(modgbs->modpolys[k], dl->coef3[k], modgbs->nprimes  - 1);
+        mpz_CRT_ui(dl->crt3[k], dl->crt3[k], mod_p,
                    c, newprime, prod_p, dl->tmp, 1);
       }
   }
@@ -945,118 +1086,159 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
 }
 
 
-static inline void crt_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dlift,
-                                   int32_t start, int32_t end){
-  /* Data needed by multi CRT functions */
-  fmpz_comb_t comb;
-  fmpz_comb_temp_t comb_temp;
-
-  fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
-  fmpz_comb_temp_init(comb_temp, comb);
-  fmpz_t y;
-  fmpz_init(y);
-
-  modpolys_t *polys = modgbs->modpolys;
-
-  for(int32_t k = start; k < end; k++){
-    if(dlift->check1[k] >= 1){
-      for(int32_t l = 0; l < polys[k]->len; l++){
-        for(uint32_t i = 0; i < modgbs->nprimes-1; i++){
-          modgbs->cf_64[i] = polys[k]->cf_32[l][i];
-        }
-        fmpz_multi_CRT_ui(y, modgbs->cf_64,
-                          comb, comb_temp, 1);
-        fmpz_get_mpz(polys[k]->cf_zz[l], y);
-      }
-    }
-  }
-
-  fmpz_clear(y);
-  fmpz_comb_temp_clear(comb_temp);
-  fmpz_comb_clear(comb);
-
+/* balanced bounds, used when no denominator is guessed; RR_MARGIN bits of
+   slack are kept (N*D <= mod_p / 2^(1+RR_MARGIN)) so that spurious
+   reconstructions become unlikely */
+static inline void set_recdata(rrec_data_t rd, mpz_t mod_p){
+  mpz_fdiv_q_2exp(rd->N, mod_p, 1 + RR_MARGIN);
+  mpz_sqrt(rd->N, rd->N);
+  mpz_set(rd->D, rd->N);
 }
 
-
-static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t mod_p){
-  mpz_fdiv_q_2exp(rd1->N, mod_p, 1);
-
-  if(dl->lstart){
-
-    mpz_set(rd2->N, rd1->N);
-
-    mpz_sqrt(rd2->N, rd2->N);
-    mpz_set(rd2->D, rd2->N);
-
-    mpz_root(rd1->D, rd1->N, 3);
-    mpz_fdiv_q(rd1->N, rd1->N, rd1->D);
-
+/* bounds used to reconstruct u * gden, where gden is a guessed denominator:
+   the numerator is then expected to be about gden times the remaining
+   denominator, so that with M = mod_p / 2^(1+RR_MARGIN), the bounds are
+   D = sqrt(M / gden) and N = M / D */
+static inline void set_recdata_guess(rrec_data_t rd, const mpz_t mod_p,
+                                     const mpz_t gden){
+  mpz_fdiv_q_2exp(rd->N, mod_p, 1 + RR_MARGIN);
+  mpz_fdiv_q(rd->D, rd->N, gden);
+  mpz_sqrt(rd->D, rd->D);
+  if(mpz_sgn(rd->D) == 0){
+    mpz_set_ui(rd->D, 1);
   }
-  else{
-    mpz_sqrt(rd1->N, rd1->N);
-    mpz_set(rd1->D, rd1->N);
-
-    mpz_set(rd2->N, rd1->N);
-    mpz_set(rd2->D, rd1->D);
-
-  }
+  mpz_fdiv_q(rd->N, rd->N, rd->D);
 }
 
 /*
-  returns the index of the poly if some of its coeff could not be lifted
-  else returns -1
- */
-static inline int ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
-                                       int32_t start, int32_t end,
-                                       mpz_t mod_p, rrec_data_t rd1, rrec_data_t rd2){
+  For the polynomials of index in [start, end) whose witness coefficient has
+  been lifted and checked (check1 > 1), lifts all coefficients by CRT
+  followed by rational reconstruction, and stores the integer numerators in
+  cf_qq and the common denominator in lm.
 
-  mpz_t rnum, rden;
-  mpz_init(rnum);
-  mpz_init(rden);
+  The CRT images are only temporaries: each coefficient is lifted with
+  multi-CRT into a single scratch integer which is immediately rationally
+  reconstructed, so that no array of CRT images is kept alive in memory.
+  Denominators are also kept in a scratch array, the size of the longest
+  polynomial handled here.
+
+  returns the index of the poly if some of its coeff could not be lifted
+  else returns end
+ */
+static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
+                                           int32_t start, int32_t end,
+                                           mpz_t mod_p, rrec_data_t rd1, rrec_data_t rd2,
+                                           double *st_crt, double *st_rrec){
 
   modpolys_t *polys = modgbs->modpolys;
-  set_recdata(dl, rd1, rd2, mod_p);
+
+  /* scratch data */
+  uint32_t maxlen = 0;
+  for(int32_t k = start; k < end; k++){
+    if(dl->check1[k] > 1 && polys[k]->len > maxlen){
+      maxlen = polys[k]->len;
+    }
+  }
+  mpz_t rden, zz;
+  mpz_init(rden);
+  mpz_init(zz);
+  mpz_t *dens = NULL;
+  if(maxlen > 0){
+    dens = (mpz_t *)malloc(sizeof(mpz_t) * maxlen);
+    for(uint32_t l = 0; l < maxlen; l++){
+      mpz_init(dens[l]);
+    }
+  }
+
+  /* Data needed by multi CRT functions */
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t comb_temp;
+  fmpz_t y;
+  if(maxlen > 0){
+    fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
+    fmpz_comb_temp_init(comb_temp, comb);
+    fmpz_init(y);
+  }
+
+  set_recdata(rd2, mod_p);
+
+  int32_t ret = end;
+  double rt;
 
   for(int32_t k = start; k < end; k++){
     if(dl->check1[k] > 1 && polys[k]->len > 0){
-      mpz_set_ui(dl->tmp, 1);
+      /* dl->tmp is the lcm of the denominators found so far, starting
+         from the witness ones; it is used as a guess for the next
+         coefficient, so that only the missing factor is reconstructed */
+      mpz_set(dl->tmp, dl->cden[k]);
+      set_recdata_guess(rd1, mod_p, dl->tmp);
+      int ok = 1;
       for(int32_t l = 0; l < polys[k]->len; l++){
-        if(ratreconwden(rnum, rden, polys[k]->cf_zz[l], mod_p, dl->den[k], rd1)){
-          mpz_set(polys[k]->cf_qq[2*l], rnum);
-          mpz_set(polys[k]->cf_qq[2*l + 1], rden);
-          mpz_lcm(dl->tmp, dl->tmp, rden);
+        rt = realtime();
+        for(uint32_t i = 0; i < modgbs->nprimes-1; i++){
+          modgbs->cf_64[i] = MODCF(polys[k], l, i);
+        }
+        fmpz_multi_CRT_ui(y, modgbs->cf_64,
+                          comb, comb_temp, 1);
+        fmpz_get_mpz(zz, y);
+        *st_crt += realtime() - rt;
+        rt = realtime();
+        if(lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p, dl->tmp, rd1)){
+          mpz_mul(dens[l], rden, dl->tmp);
+          if(mpz_cmp_ui(rden, 1)){
+            mpz_mul(dl->tmp, dl->tmp, rden);
+            set_recdata_guess(rd1, mod_p, dl->tmp);
+          }
+          *st_rrec += realtime() - rt;
         }
         else{
-          mpz_set_ui(dl->gden, 1);
+          *st_rrec += realtime() - rt;
+          /* the witnesses of this poly are still valid: their common
+             denominator remains the best guess for reconstructing them */
+          mpz_set(dl->gden, dl->cden[k]);
           for(int32_t i = k; i < modgbs->ld; i++){
             dl->check2[i] = 0;
           }
-          mpz_clear(rnum);
-          mpz_clear(rden);
-          return k;
+          ok = 0;
+          break;
         }
       }
-      mpz_set(polys[k]->lm, dl->den[k]);
-      for(int32_t l = 0; l < polys[k]->len; l++){
-        mpz_mul(polys[k]->cf_qq[2*l], polys[k]->cf_qq[2*l], dl->tmp);
-        mpz_divexact(polys[k]->cf_qq[2*l], polys[k]->cf_qq[2*l], polys[k]->cf_qq[2*l+1]);
-        mpz_set_ui(polys[k]->cf_qq[2*l+1], 1);
+      if(!ok){
+        ret = k;
+        break;
       }
-      mpz_mul(polys[k]->lm, polys[k]->lm, dl->tmp);
+      mpz_set(polys[k]->lm, dl->tmp);
+      for(int32_t l = 0; l < polys[k]->len; l++){
+        /* num * (lcm / den) rather than (num * lcm) / den: same value, but
+         * the limb array of the (long-lived) result is not over-allocated
+         * by the size of lcm (mpz_divexact does not shrink its output) */
+        mpz_divexact(dens[l], dl->tmp, dens[l]);
+        mpz_mul(polys[k]->cf_qq[l], polys[k]->cf_qq[l], dens[l]);
+      }
       dl->check2[k] += 1;
     }
     if(dl->check1[k] < 1 && polys[k]->len > 0){
-      mpz_clear(rnum);
-      mpz_clear(rden);
-      return k;
+      ret = k;
+      break;
     }
     if(polys[k]->len == 0){
         dl->check2[k] += 1;
     }
   }
-  mpz_clear(rnum);
+
+  if(maxlen > 0){
+    fmpz_clear(y);
+    fmpz_comb_temp_clear(comb_temp);
+    fmpz_comb_clear(comb);
+    for(uint32_t l = 0; l < maxlen; l++){
+      mpz_clear(dens[l]);
+    }
+    free(dens);
+  }
+  mpz_clear(zz);
   mpz_clear(rden);
-  return end;
+
+  return ret;
 }
 
 
@@ -1075,46 +1257,41 @@ static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef
 
 static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
                                      int thrds){
-  int b = 1;
-  mpz_t den;
-  mpz_init(den);
   for(int32_t k = 0; k < modgbs->ld; k++){
     if(dl->check1[k]>=1 && dl->check2[k]>0 && dl->check2[k] < NBCHECK ){
-      if(modgbs->modpolys[k]->len == 0){
+      modpolys_t *pol = modgbs->modpolys + k;
+      if(pol[0]->len == 0){
         dl->check2[k]++;
       }
       else{
         for(int i = 0; i < thrds; i++){
-          mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
-          for(int32_t c = 0; c < modgbs->modpolys[k]->len; c++){
-            mpz_mul(den, modgbs->modpolys[k]->lm, modgbs->modpolys[k]->cf_qq[2*c+1]);
-            uint32_t coef = modgbs->modpolys[k]->cf_32[c][modgbs->nprimes   - (thrds - i) ];
-            int b = verif_coef(modgbs->modpolys[k]->cf_qq[2*c], den, prime, coef);
-            if(!b){
+          const uint32_t np = modgbs->nprimes - (thrds - i);
+          const mp_limb_t prime = modgbs->primes[np];
+          /* all coefficients share the denominator lm */
+          uint64_t ilc = mpz_fdiv_ui(pol[0]->lm, prime);
+          ilc = mod_p_inverse_32(ilc, prime);
+          for(int32_t c = 0; c < pol[0]->len; c++){
+            uint64_t v = mpz_fdiv_ui(pol[0]->cf_qq[c], prime);
+            v = (v * ilc) % prime;
+            if(v != MODCF(pol[0], c, np)){
               dl->check2[k] = 0;
-              mpz_set_ui(dl->gden, 1);
-              b = 0;
-              mpz_clear(den);
-              return b;
+              return 0;
             }
           }
           dl->check2[k]++;
           if(dl->check2[k] >= NBCHECK){
             dl->S = k+1;
             dl->lstart = dl->S;
-            for(uint32_t j = 0; j < modgbs->modpolys[k]->len; j++){
-              free(modgbs->modpolys[k]->cf_32[j]);
-              mpz_clear(modgbs->modpolys[k]->cf_zz[j]);
-            }
-            free(modgbs->modpolys[k]->cf_32);
-            free(modgbs->modpolys[k]->cf_zz);
+            /* modular images are no longer needed */
+            free(pol[0]->cf_32);
+            pol[0]->cf_32 = NULL;
+            break;
           }
         }
       }
     }
   }
-  mpz_clear(den);
-  return b;
+  return 1;
 }
 
 static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t dl,
@@ -1132,8 +1309,16 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
       for(int i = 0; i < thrds; i++){
 
         mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
-        uint32_t coef = modgbs->modpolys[k]->cf_32[dl->coef[k]][modgbs->nprimes  - (thrds - i) ];
+        uint32_t coef = MODCF(modgbs->modpolys[k], dl->coef[k], modgbs->nprimes  - (thrds - i));
         int boo = verif_coef(dl->num[k], dl->den[k], prime, coef);
+        if(boo){
+          coef = MODCF(modgbs->modpolys[k], dl->coef2[k], modgbs->nprimes  - (thrds - i));
+          boo = verif_coef(dl->num2[k], dl->den2[k], prime, coef);
+        }
+        if(boo){
+          coef = MODCF(modgbs->modpolys[k], dl->coef3[k], modgbs->nprimes  - (thrds - i));
+          boo = verif_coef(dl->num3[k], dl->den3[k], prime, coef);
+        }
 
         if(!boo){
           for(int32_t kk = k; kk < dl->end; kk++){
@@ -1154,8 +1339,9 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
 static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
                                    rrec_data_t recdata1, rrec_data_t recdata2){
 
-  int b = ratreconwden(dl->num[i], dl->den[i],
-                       dl->crt[i], mod_p, dl->gden, recdata1);
+  set_recdata_guess(recdata1, mod_p, dl->gden);
+  int b = lift_ratreconwden(dl->num[i], dl->den[i],
+                            dl->crt[i], mod_p, dl->gden, recdata1);
   if(b){
     mpz_mul(dl->den[i], dl->den[i], dl->gden);
     mpz_gcd(dl->tmp, dl->den[i], dl->num[i]);
@@ -1167,13 +1353,63 @@ static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
   }
   else{
 
-    b = ratrecon(dl->num[i], dl->den[i],
-                 dl->crt[i], mod_p, recdata2);
+    b = lift_ratrecon(dl->num[i], dl->den[i],
+                      dl->crt[i], mod_p, recdata2);
     if(b){
       mpz_set(dl->gden, dl->den[i]);
     }
   }
   return b;
+}
+
+/* reconstructs the second witness using as a guess the lcm of the
+   denominator of the first one and of the one guessed from the previous
+   polynomial; cden[i] is set to the lcm of both witness denominators */
+static inline int reconstructcoeff2(data_lift_t dl, int32_t i, mpz_t mod_p,
+                                    rrec_data_t recdata1, rrec_data_t recdata2){
+  mpz_lcm(dl->cden[i], dl->den[i], dl->pgden);
+  set_recdata_guess(recdata1, mod_p, dl->cden[i]);
+  if(!lift_ratreconwden(dl->num2[i], dl->den2[i],
+                        dl->crt2[i], mod_p, dl->cden[i], recdata1)){
+    /* same fallback as for the first witness: balanced bounds, no guess */
+    if(!lift_ratrecon(dl->num2[i], dl->den2[i], dl->crt2[i], mod_p, recdata2)){
+      return 0;
+    }
+    mpz_lcm(dl->cden[i], dl->den[i], dl->den2[i]);
+    mpz_set(dl->gden, dl->cden[i]);
+    return 1;
+  }
+  mpz_mul(dl->den2[i], dl->den2[i], dl->cden[i]);
+  mpz_gcd(dl->tmp, dl->den2[i], dl->num2[i]);
+  mpz_divexact(dl->num2[i], dl->num2[i], dl->tmp);
+  mpz_divexact(dl->den2[i], dl->den2[i], dl->tmp);
+  mpz_lcm(dl->cden[i], dl->den[i], dl->den2[i]);
+  mpz_set(dl->gden, dl->cden[i]);
+  return 1;
+}
+
+/* reconstructs the third witness using the lcm of the denominators of the
+   first two witnesses as a guess; cden[i] is updated accordingly */
+static inline int reconstructcoeff3(data_lift_t dl, int32_t i, mpz_t mod_p,
+                                    rrec_data_t recdata1, rrec_data_t recdata2){
+  set_recdata_guess(recdata1, mod_p, dl->cden[i]);
+  if(!lift_ratreconwden(dl->num3[i], dl->den3[i],
+                        dl->crt3[i], mod_p, dl->cden[i], recdata1)){
+    /* same fallback as for the first witness: balanced bounds, no guess */
+    if(!lift_ratrecon(dl->num3[i], dl->den3[i], dl->crt3[i], mod_p, recdata2)){
+      return 0;
+    }
+    mpz_lcm(dl->cden[i], dl->cden[i], dl->den3[i]);
+    mpz_set(dl->gden, dl->cden[i]);
+    return 1;
+  }
+  mpz_mul(dl->den3[i], dl->den3[i], dl->cden[i]);
+  mpz_gcd(dl->tmp, dl->den3[i], dl->num3[i]);
+  mpz_divexact(dl->num3[i], dl->num3[i], dl->tmp);
+  mpz_divexact(dl->den3[i], dl->den3[i], dl->tmp);
+  mpz_lcm(dl->cden[i], dl->cden[i], dl->den3[i]);
+  mpz_set(dl->gden, dl->cden[i]);
+  return 1;
 }
 
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
@@ -1204,11 +1440,9 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   }
   *st_rrec += realtime()-st;
   if(dl->lstart != dl->start){
-    crt_lift_modgbs(modgbs, dl, dl->lstart, dl->start);
-    *st_crt += realtime() - st;
-    st = realtime();
-    dl->start = ratrecon_lift_modgbs(modgbs, dl, dl->lstart, dl->start, mod_p, recdata1, recdata2);
-    *st_rrec += realtime()-st;
+    dl->start = crt_ratrecon_lift_modgbs(modgbs, dl, dl->lstart, dl->start,
+                                         mod_p, recdata1, recdata2,
+                                         st_crt, st_rrec);
   }
   dl->lstart = dl->start;
 
@@ -1226,7 +1460,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
     mpz_set_ui(dl->gden, 1);
   }
 
-  set_recdata(dl, recdata1, recdata2, mod_p);
+  set_recdata(recdata2, mod_p);
 
   st = realtime();
   if(modgbs->nprimes % dl->rr == 0){
@@ -1235,8 +1469,27 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
           dl->check1[i]++;
       }
       else{
+        /* guess the denominator from the previous polynomial (its lifted
+           denominator, or the one of its witnesses once they are
+           verified), so that a spurious reconstruction never becomes the
+           guess */
+        if(i > 0){
+          if(dl->check2[i-1] > 0 && modgbs->modpolys[i-1]->len > 0){
+            mpz_set(dl->gden, modgbs->modpolys[i-1]->lm);
+          }
+          else if(dl->check1[i-1] > 1 && modgbs->modpolys[i-1]->len > 0){
+            mpz_set(dl->gden, dl->cden[i-1]);
+          }
+        }
+        mpz_set(dl->pgden, dl->gden);
         int b = reconstructcoeff(dl, i, mod_p,
                                recdata1, recdata2);
+        if(b){
+          b = reconstructcoeff2(dl, i, mod_p, recdata1, recdata2);
+        }
+        if(b){
+          b = reconstructcoeff3(dl, i, mod_p, recdata1, recdata2);
+        }
         if(!b){
           dl->check1[i] = 0;
           break;
@@ -1256,8 +1509,7 @@ long max_bit_size_gb(gb_modpoly_t modgbs){
   long nb = 0;
   for(uint32_t i = 0; i < modgbs->ld; i++){
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
-      nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->cf_qq[2*j], 2));
-      nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->cf_qq[2*j + 1], 2));
+      nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->cf_qq[j], 2));
     }
     nb = MAX(nb, mpz_sizeinbase(modgbs->modpolys[i]->lm, 2));
   }
@@ -1275,6 +1527,28 @@ long max_bit_size_gb(gb_modpoly_t modgbs){
 
   - returns -4 if there are too many bad primes
 */
+
+/* Frees the data which are (re)built by a learning phase, so that a new
+ * learning phase can start from scratch after a failed attempt. */
+static void reset_learning_data(mstrace_t msd, md_t *st){
+  for(int i = 0; i < st->nthrds; i++){
+    free(msd->leadmons_current[i]);
+    msd->leadmons_current[i] = NULL;
+    if(i > 0){
+      free(msd->leadmons_ori[i]);
+      msd->leadmons_ori[i] = NULL;
+      if(msd->btrace[i] != NULL){
+        free_trace(&(msd->btrace[i]));
+      }
+    }
+  }
+  /* the tracer learnt with the previous prime must not be applied when
+   * learning again */
+  if(st->tr != NULL){
+    free_trace(&(st->tr));
+  }
+  st->trace_level = NO_TRACER;
+}
 
 gb_modpoly_t *core_groebner_qq(
         gb_modpoly_t *modgbsp,
@@ -1372,7 +1646,7 @@ restart:
 
     apply = 1;
 
-    gb_modpoly_realloc((*modgbsp), 1, dlift->S);
+    gb_modpoly_realloc((*modgbsp), 1);
 
 #ifdef DEBUGGBLIFT
     display_gbmodpoly_cf_32(ERRSTREAM, (*modgbsp));
@@ -1411,6 +1685,7 @@ restart:
       }
 
       gb_modpoly_without_hash_table_clear((*modgbsp));
+      reset_learning_data(msd, st);
 
       free_rrec_data(recdata1);
       free_rrec_data(recdata2);
@@ -1463,7 +1738,14 @@ restart:
       prime = msd->lp->p[nthrds /* st->nthrds */ - 1];
 
       if((*modgbsp)->alloc <= nprimes + 2){
-        gb_modpoly_realloc((*modgbsp), 16*st->nthrds, dlift->S);
+        /* Room for the images modulo the next primes. The multi-modular
+         * computation is mono-threaded (one prime per step), so this must
+         * not scale with st->nthrds. The increment is kept small (at most
+         * ~1/16 of the current number of primes, but at least 4) since the
+         * unused slots are allocated for every term of the basis which is
+         * not lifted yet, i.e. for most of the basis at the end of the
+         * computation, when memory consumption peaks. */
+        gb_modpoly_realloc((*modgbsp), MAX(4, (uint32_t)nprimes / 16));
       }
 
       gb_modular_trace_application((*modgbsp), msd->mgb,
@@ -1547,6 +1829,7 @@ restart:
         }
 
         gb_modpoly_without_hash_table_clear((*modgbsp));
+        reset_learning_data(msd, st);
         free_rrec_data(recdata1);
         free_rrec_data(recdata2);
         /* reset info_level to previous setting */
@@ -1563,8 +1846,14 @@ restart:
         ratrecon_gb((*modgbsp), dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
                     nthrds/* st->nthrds */, &st_crt, &st_rrec, &st_wit);
       }
-      if(st_wit > 2*dlift->rr * stf4){
-        dlift->rr = 2*dlift->rr;
+      /* the period depends only on the number of primes (not on timings)
+         so that the number of primes used is reproducible */
+      int32_t rr = 1;
+      while(2 * rr <= nprimes / RR_PERIOD_DIV){
+        rr *= 2;
+      }
+      if(rr != dlift->rr){
+        dlift->rr = rr;
         if(info_level){
           fprintf(VERBSTREAM, "(->%d)", dlift->rr);
 	        fflush(VERBSTREAM);
@@ -1655,7 +1944,7 @@ uint64_t export_results_from_groebner_qq(
             int32_t len = gb->modpolys[i]->len;
 
             for(int32_t j = len-1; j >= 0; j--){
-                if (mpz_cmp_ui(gb->modpolys[i]->cf_qq[2 * j], 0) != 0) {
+                if (mpz_cmp_ui(gb->modpolys[i]->cf_qq[j], 0) != 0) {
                     nlen++;
                 }
             }
@@ -1709,11 +1998,11 @@ uint64_t export_results_from_groebner_qq(
         term++;
         if (print_gb == 2) {
             for(int32_t i = l-1; i >= 0; i--) {
-                if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[2*i], 0) != 0) {
+                if(mpz_cmp_ui(gb->modpolys[p]->cf_qq[i], 0) != 0) {
                   for (int32_t n = 0; n < nve; n++) {
                     exp[term * nve + n] = ht->ev[hm[l - i]][evi[n]];
                   }
-                  mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[2 * i]);
+                  mpz_set(cf_qq[term], gb->modpolys[p]->cf_qq[i]);
 
                   term++;
                 }

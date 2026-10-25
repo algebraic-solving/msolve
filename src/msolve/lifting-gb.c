@@ -1086,30 +1086,28 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
 }
 
 
-static inline void set_recdata(data_lift_t dl, rrec_data_t rd1, rrec_data_t rd2, mpz_t mod_p){
-  /* keep RR_MARGIN bits of slack (N*D <= mod_p / 2^(1+RR_MARGIN)) so that
-     spurious reconstructions become unlikely */
-  mpz_fdiv_q_2exp(rd1->N, mod_p, 1 + RR_MARGIN);
+/* balanced bounds, used when no denominator is guessed; RR_MARGIN bits of
+   slack are kept (N*D <= mod_p / 2^(1+RR_MARGIN)) so that spurious
+   reconstructions become unlikely */
+static inline void set_recdata(rrec_data_t rd, mpz_t mod_p){
+  mpz_fdiv_q_2exp(rd->N, mod_p, 1 + RR_MARGIN);
+  mpz_sqrt(rd->N, rd->N);
+  mpz_set(rd->D, rd->N);
+}
 
-  if(dl->lstart){
-
-    mpz_set(rd2->N, rd1->N);
-
-    mpz_sqrt(rd2->N, rd2->N);
-    mpz_set(rd2->D, rd2->N);
-
-    mpz_root(rd1->D, rd1->N, 3);
-    mpz_fdiv_q(rd1->N, rd1->N, rd1->D);
-
+/* bounds used to reconstruct u * gden, where gden is a guessed denominator:
+   the numerator is then expected to be about gden times the remaining
+   denominator, so that with M = mod_p / 2^(1+RR_MARGIN), the bounds are
+   D = sqrt(M / gden) and N = M / D */
+static inline void set_recdata_guess(rrec_data_t rd, const mpz_t mod_p,
+                                     const mpz_t gden){
+  mpz_fdiv_q_2exp(rd->N, mod_p, 1 + RR_MARGIN);
+  mpz_fdiv_q(rd->D, rd->N, gden);
+  mpz_sqrt(rd->D, rd->D);
+  if(mpz_sgn(rd->D) == 0){
+    mpz_set_ui(rd->D, 1);
   }
-  else{
-    mpz_sqrt(rd1->N, rd1->N);
-    mpz_set(rd1->D, rd1->N);
-
-    mpz_set(rd2->N, rd1->N);
-    mpz_set(rd2->D, rd1->D);
-
-  }
+  mpz_fdiv_q(rd->N, rd->N, rd->D);
 }
 
 /*
@@ -1162,7 +1160,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
     fmpz_init(y);
   }
 
-  set_recdata(dl, rd1, rd2, mod_p);
+  set_recdata(rd2, mod_p);
 
   int32_t ret = end;
   double rt;
@@ -1173,6 +1171,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
          from the witness ones; it is used as a guess for the next
          coefficient, so that only the missing factor is reconstructed */
       mpz_set(dl->tmp, dl->cden[k]);
+      set_recdata_guess(rd1, mod_p, dl->tmp);
       int ok = 1;
       for(int32_t l = 0; l < polys[k]->len; l++){
         rt = realtime();
@@ -1186,7 +1185,10 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         rt = realtime();
         if(lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p, dl->tmp, rd1)){
           mpz_mul(dens[l], rden, dl->tmp);
-          mpz_mul(dl->tmp, dl->tmp, rden);
+          if(mpz_cmp_ui(rden, 1)){
+            mpz_mul(dl->tmp, dl->tmp, rden);
+            set_recdata_guess(rd1, mod_p, dl->tmp);
+          }
           *st_rrec += realtime() - rt;
         }
         else{
@@ -1337,6 +1339,7 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
 static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
                                    rrec_data_t recdata1, rrec_data_t recdata2){
 
+  set_recdata_guess(recdata1, mod_p, dl->gden);
   int b = lift_ratreconwden(dl->num[i], dl->den[i],
                             dl->crt[i], mod_p, dl->gden, recdata1);
   if(b){
@@ -1365,6 +1368,7 @@ static inline int reconstructcoeff(data_lift_t dl, int32_t i, mpz_t mod_p,
 static inline int reconstructcoeff2(data_lift_t dl, int32_t i, mpz_t mod_p,
                                     rrec_data_t recdata1, rrec_data_t recdata2){
   mpz_lcm(dl->cden[i], dl->den[i], dl->pgden);
+  set_recdata_guess(recdata1, mod_p, dl->cden[i]);
   if(!lift_ratreconwden(dl->num2[i], dl->den2[i],
                         dl->crt2[i], mod_p, dl->cden[i], recdata1)){
     /* same fallback as for the first witness: balanced bounds, no guess */
@@ -1388,6 +1392,7 @@ static inline int reconstructcoeff2(data_lift_t dl, int32_t i, mpz_t mod_p,
    first two witnesses as a guess; cden[i] is updated accordingly */
 static inline int reconstructcoeff3(data_lift_t dl, int32_t i, mpz_t mod_p,
                                     rrec_data_t recdata1, rrec_data_t recdata2){
+  set_recdata_guess(recdata1, mod_p, dl->cden[i]);
   if(!lift_ratreconwden(dl->num3[i], dl->den3[i],
                         dl->crt3[i], mod_p, dl->cden[i], recdata1)){
     /* same fallback as for the first witness: balanced bounds, no guess */
@@ -1455,7 +1460,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
     mpz_set_ui(dl->gden, 1);
   }
 
-  set_recdata(dl, recdata1, recdata2, mod_p);
+  set_recdata(recdata2, mod_p);
 
   st = realtime();
   if(modgbs->nprimes % dl->rr == 0){

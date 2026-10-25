@@ -79,175 +79,6 @@ static int lift_ratreconwden(mpz_t n, mpz_t d, mpz_t u, const mpz_t mod,
   return flint_rrec(n, d, rd->r1, mod, rd->N, rd->D);
 }
 
-/* Initialization of sparse fglm matrix for crt */
-static inline void crt_mpz_matfglm_initset(crt_mpz_matfglm_t crt_mat,
-                                           sp_matfglm_t *mod_mat){
-  crt_mat->ncols = mod_mat->ncols;
-  crt_mat->nrows = mod_mat->nrows;
-  uint64_t sz = crt_mat->nrows * crt_mat->ncols;
-  crt_mat->dense_mat = (mpz_t *)malloc(sz * sizeof(mpz_t));
-  for (uint64_t i = 0; i < sz; i++){
-    mpz_init_set_ui(crt_mat->dense_mat[i], mod_mat->dense_mat[i]);
-  }
-  long diff = crt_mat->ncols - crt_mat->nrows;
-  crt_mat->triv_idx = malloc(diff * sizeof(uint32_t));
-  crt_mat->triv_pos = malloc(diff * sizeof(uint32_t));
-  crt_mat->dense_idx = malloc(crt_mat->nrows * sizeof(uint32_t));
-  crt_mat->dst = malloc(crt_mat->nrows * sizeof(uint32_t));
-
-  for (long i = 0; i < diff; i++){
-    crt_mat->triv_idx[i] = mod_mat->triv_idx[i];
-    crt_mat->triv_pos[i] = mod_mat->triv_pos[i];
-  }
-  for (long i = 0; i < crt_mat->nrows; i++){
-    crt_mat->dense_idx[i] = mod_mat->dense_idx[i];
-    crt_mat->dst[i] = mod_mat->dst[i];
-  }
-}
-
-static inline void crt_mpz_matfglm_clear(crt_mpz_matfglm_t crt_mat){
-  uint64_t sz = crt_mat->nrows * crt_mat->ncols;
-
-  for (uint64_t i = 0; i < sz; i++){
-    mpz_clear(crt_mat->dense_mat[i]);
-  }
-  free(crt_mat->dense_mat);
-
-  free(crt_mat->triv_idx);
-  free(crt_mat->triv_pos);
-  free(crt_mat->dense_idx);
-  free(crt_mat->dst);
-}
-
-/* Initialization of sparse mpz fglm matrix  */
-static inline void mpz_matfglm_initset(mpz_matfglm_t mpz_mat,
-                                       sp_matfglm_t *mod_mat) {
-  mpz_mat->ncols = mod_mat->ncols;
-  mpz_mat->nrows = mod_mat->nrows;
-  mpz_mat->dense_mat = malloc(mpz_mat->ncols * mpz_mat->nrows * sizeof(mpz_t));
-  uint64_t sz = mpz_mat->nrows * mpz_mat->ncols;
-  for (uint64_t i = 0; i < sz; i++) {
-    mpz_init(mpz_mat->dense_mat[i]);
-  }
-  mpz_mat->denoms = malloc(mpz_mat->nrows * sizeof(mpz_t));
-  for (uint64_t i = 0; i < mpz_mat->nrows; i++) {
-    mpz_init(mpz_mat->denoms[i]);
-  }
-  long diff = mpz_mat->ncols - mpz_mat->nrows;
-  mpz_mat->triv_idx = calloc(diff, sizeof(uint32_t));
-  mpz_mat->triv_pos = calloc(diff, sizeof(uint32_t));
-  mpz_mat->dense_idx = calloc(mpz_mat->nrows, sizeof(uint32_t));
-  mpz_mat->dst = calloc(mpz_mat->nrows, sizeof(uint32_t));
-
-  for (long i = 0; i < diff; i++) {
-    mpz_mat->triv_idx[i] = mod_mat->triv_idx[i];
-    mpz_mat->triv_pos[i] = mod_mat->triv_pos[i];
-  }
-  for (long i = 0; i < mpz_mat->nrows; i++) {
-    mpz_mat->dense_idx[i] = mod_mat->dense_idx[i];
-    mpz_mat->dst[i] = mod_mat->dst[i];
-  }
-}
-
-static inline void mpz_matfglm_clear(mpz_matfglm_t mpz_mat) {
-
-  uint64_t sz = mpz_mat->nrows * mpz_mat->ncols;
-  for (uint64_t i = 0; i < sz; i++) {
-    mpz_clear(mpz_mat->dense_mat[i]);
-  }
-  free(mpz_mat->dense_mat);
-  for (uint64_t i = 0; i < mpz_mat->nrows; i++) {
-    mpz_clear(mpz_mat->denoms[i]);
-  }
-  free(mpz_mat->denoms);
-
-  free(mpz_mat->triv_idx);
-  free(mpz_mat->triv_pos);
-  free(mpz_mat->dense_idx);
-  free(mpz_mat->dst);
-}
-
-/* Initialization of sparse fglm matrix for rational reconstruction */
-static inline void mpq_matfglm_initset(mpq_matfglm_t mpq_mat,
-                                       sp_matfglm_t *mod_mat) {
-  mpq_mat->ncols = mod_mat->ncols;
-  mpq_mat->nrows = mod_mat->nrows;
-  mpq_mat->dense_mat =
-      malloc(2 * mpq_mat->ncols * mpq_mat->nrows * sizeof(mpz_t));
-  mpq_mat->denoms = malloc(mpq_mat->nrows * sizeof(mpz_t));
-  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
-    mpz_init(mpq_mat->denoms[i]);
-  }
-  uint64_t nc = 2 * mpq_mat->ncols;
-
-  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
-    uint64_t c = 2 * i * mpq_mat->ncols;
-    for (uint32_t j = 0; j < nc; j++) {
-      mpz_init(mpq_mat->dense_mat[c + j]);
-      j++;
-      mpz_init(mpq_mat->dense_mat[c + j]);
-    }
-  }
-  long diff = mpq_mat->ncols - mpq_mat->nrows;
-  mpq_mat->triv_idx = calloc(diff, sizeof(uint32_t));
-  mpq_mat->triv_pos = calloc(diff, sizeof(uint32_t));
-  mpq_mat->dense_idx = calloc(mpq_mat->nrows, sizeof(uint32_t));
-  mpq_mat->dst = calloc(mpq_mat->nrows, sizeof(uint32_t));
-
-  for (long i = 0; i < diff; i++) {
-    mpq_mat->triv_idx[i] = mod_mat->triv_idx[i];
-    mpq_mat->triv_pos[i] = mod_mat->triv_pos[i];
-  }
-  for (long i = 0; i < mpq_mat->nrows; i++) {
-    mpq_mat->dense_idx[i] = mod_mat->dense_idx[i];
-    mpq_mat->dst[i] = mod_mat->dst[i];
-  }
-}
-
-static inline void mpq_matfglm_clear(mpq_matfglm_t mpq_mat) {
-  /* entries of mpq_mat->denoms are cleared previously when building mpz_mat */
-  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
-    mpz_clear(mpq_mat->denoms[i]);
-  }
-  free(mpq_mat->denoms);
-
-  uint64_t nc = 2 * mpq_mat->ncols;
-  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
-    uint64_t c = 2 * i * mpq_mat->ncols;
-    for (uint32_t j = 0; j < nc; j++) {
-      mpz_clear(mpq_mat->dense_mat[c + j]);
-    }
-  }
-  free(mpq_mat->dense_mat);
-
-  free(mpq_mat->triv_idx);
-  free(mpq_mat->triv_pos);
-  free(mpq_mat->dense_idx);
-  free(mpq_mat->dst);
-}
-
-static inline void mpq_matfglm_partial_clear(mpq_matfglm_t mpq_mat) {
-  /* entries of mpq_mat->denoms are cleared previously when building mpz_mat */
-  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
-    mpz_clear(mpq_mat->denoms[i]);
-  }
-  free(mpq_mat->denoms);
-
-  uint64_t nc = mpq_mat->ncols;
-  for (uint32_t i = 0; i < mpq_mat->nrows; i++) {
-    uint64_t c = 2 * i * mpq_mat->ncols;
-    for (uint32_t j = 0; j < nc; j++) {
-      mpz_clear(mpq_mat->dense_mat[c + 2 * j]);
-    }
-  }
-  free(mpq_mat->dense_mat);
-
-  free(mpq_mat->triv_idx);
-  free(mpq_mat->triv_pos);
-  free(mpq_mat->dense_idx);
-  free(mpq_mat->dst);
-}
-
 static inline void copy_modular_matrix(trace_det_fglm_mat_t trace_det,
         sp_matfglm_t **mod_mat, uint32_t newalloc, mp_limb_t prime){
     deg_t nrows = (*mod_mat)->nrows;
@@ -503,16 +334,6 @@ static inline void crt_lift_trace_det(trace_det_fglm_mat_t trace_det,
   }
 }
 
-static inline void crt_lift_mat(crt_mpz_matfglm_t mat, sp_matfglm_t *mod_mat,
-                                mpz_t modulus, mpz_t prod_crt,
-                                const int32_t prime, mpz_t tmp,
-                                const int32_t nrows, const int nthrds) {
-  /*assumes prod_crt = modulus * prime */
-  const uint64_t sz = mat->nrows * mat->ncols;
-  crt_lift_dense_rows(mat->dense_mat, mod_mat->dense_mat, nrows * mat->ncols,
-                      sz, modulus, prod_crt, prime, tmp, nthrds);
-}
-
 static inline void build_linear_forms(mpz_t *mpz_linear_forms,
                                       mpz_t *mpq_linear_forms, uint32_t sz,
                                       int nlins) {
@@ -551,33 +372,6 @@ static inline void build_linear_forms(mpz_t *mpz_linear_forms,
   mpz_clear(lcm);
 }
 
-
-static inline int old_rat_recon_trace_det(trace_det_fglm_mat_t trace_det,
-                                      rrec_data_t recdata, mpz_t modulus,
-                                      mpz_t rnum, mpz_t rden, mpz_t gden){
-  if(trace_det->done_trace < 2){
-    int b = ratrecon(rnum, rden, trace_det->trace_crt, modulus, recdata);
-    if(b == 1){
-      mpz_set(trace_det->trace_num, rnum);
-      mpz_set(trace_det->trace_den, rden);
-    }
-    else
-    {
-      return 0;
-    }
-  }
-  if(trace_det->done_det < 2){
-    int b = ratrecon(rnum, rden, trace_det->det_crt, modulus, recdata);
-    if(b == 1){
-      mpz_set(trace_det->det_num, rnum);
-      mpz_set(trace_det->det_den, rden);
-    }
-    else{
-      return 0;
-    }
-  }
-  return 1;
-}
 
 static inline int rat_recon_array(mpz_t *res, mpz_t *crt, int32_t sz,
                                   mpz_t modulus, rrec_data_t rdata) {
@@ -800,26 +594,6 @@ static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det,
   return 0;
 }
 
-static inline int check_linear_forms(trace_det_fglm_mat_t trace_det,
-        uint32_t *modular_linear_forms,
-        int32_t prime){
-    int32_t nlins = trace_det->nlins;
-    int32_t nv = trace_det ->nv;
-    nvars_t sz = nv + 1;
-    for(int32_t i = 0; i < nlins; i++){
-        nvars_t n = i *sz;
-        nvars_t n2 = i * (sz + 1);
-        for(int32_t j = 0; j < sz; j++){
-            int b = check_lifted_coeff(trace_det->mpz_linear_forms[n2 + j],
-                    trace_det->mpz_linear_forms[n2+sz],
-                    modular_linear_forms[n],
-                    prime);
-            if(!b) return 0;
-        }
-    }
-    return 1;
-}
-
 static inline void check_matrix(trace_det_fglm_mat_t trace_det,
         sp_matfglm_t *mod_mat,
         int32_t prime){
@@ -904,7 +678,7 @@ static inline void mulmat_reconstruct(trace_det_fglm_mat_t trace_det,
         }
     }
 
-    for(int32_t i = 0; i < nrows; i++){
+    for(int32_t i = 0; i < ncols; i++){
         mpz_clear(rowdenoms[i]);
     }
     free(rowdenoms);
@@ -919,117 +693,6 @@ static inline void mulmat_reconstruct(trace_det_fglm_mat_t trace_det,
     if(boo){
         trace_det->mat_lifted = 1;
     }
-}
-
-static inline void
-rat_recon_matfglm(mpq_matfglm_t mpq_mat, crt_mpz_matfglm_t crt_mat,
-                  mpz_t modulus, rrec_data_t rdata,
-                  mpz_t rnum, mpz_t rden, mpz_t *guessed_den, deg_t *matrec, int *mat_lifted) {
-  const uint32_t nrows = crt_mat->nrows;
-  const uint32_t ncols = crt_mat->ncols;
-
-  mpz_t lcm, coef;
-  mpz_init(lcm);
-  mpz_init(coef);
-  mpz_t gden;
-  mpz_init(gden);
-  if((0==1) && (*matrec)>1){
-      mpz_set(gden, *guessed_den);
-  }
-  else{
-      mpz_set_ui(gden, 1);
-  }
-  for (uint32_t i = *matrec; i < nrows; i++) {
-    uint64_t c = i * ncols;
-    mpz_set_ui(lcm, 1);
-
-    for (uint32_t j = 0; j < ncols; j++) {
-      int b = 0;
-      mpz_mul(coef, crt_mat->dense_mat[c + j], lcm);
-      mpz_mod(coef, coef, modulus);
-//      b = ratrecon(rnum, rden, coef, modulus, rdata);
-      b = ratreconwden(rnum, rden, coef, modulus, gden, rdata);
-      if (b == 1) {
-        mpz_set(mpq_mat->dense_mat[2 * c + 2 * j], rnum);
-        mpz_set(mpq_mat->dense_mat[2 * c + 2 * j + 1], rden);
-        mpz_mul(mpq_mat->dense_mat[2 * c + 2 * j + 1],
-                mpq_mat->dense_mat[2 * c + 2 * j + 1], lcm);
-        mpz_mul(mpq_mat->dense_mat[2 * c + 2 * j + 1],
-                mpq_mat->dense_mat[2 * c + 2 * j + 1], gden);
-        mpz_lcm(lcm, lcm, rden);
-      } else {
-          mpz_clear(gden);
-        mpz_clear(lcm);
-        mpz_clear(coef);
-        return ;
-      }
-    }
-    mpz_set_ui(mpq_mat->denoms[i], 1);
-    for (uint32_t j = 0; j < ncols; j++) {
-      mpz_lcm(mpq_mat->denoms[i], mpq_mat->denoms[i],
-              mpq_mat->dense_mat[2 * c + 2 * j + 1]);
-    }
-
-    for(uint32_t j = 0; j < ncols; j++){
-        mpz_mul(mpq_mat->dense_mat[2 * c+ 2 * j], mpq_mat->dense_mat[2 * c+ 2 * j],
-                mpq_mat->denoms[i]);
-        mpz_divexact(mpq_mat->dense_mat[2 * c + 2 * j], mpq_mat->dense_mat[2 * c + 2 * j],
-                mpq_mat->dense_mat[2 * c + 2 * j + 1]);
-    }
-    (*matrec)++;
-  }
-  mpz_clear(coef);
-  mpz_clear(lcm);
-  mpz_clear(gden);
-
-  *mat_lifted = 1;
-}
-
-
-static inline void check_matrix_and_linear_forms(mpq_matfglm_t mpq_mat, sp_matfglm_t *mod_mat,
-        mpz_t *mpz_lin, uint32_t *mod_lin, const int nlins, const nvars_t nv,
-        int *mat_lifted, int* lin_lifted, deg_t *oldmatrec_checked, deg_t *matrec_checked, const uint32_t prime){
-    *oldmatrec_checked = *matrec_checked;
-    /* checks lifted linear forms */
-    nvars_t sz = nv + 1;
-    uint32_t cand;
-    if(*lin_lifted < 2){
-    for(int i = 0; i < nlins; i++){
-        nvars_t n = i * sz;
-        nvars_t n2 = i * (sz + 1);
-        uint64_t inv = mpz_fdiv_ui(mpz_lin[n2 + sz], prime);
-        inv = mod_p_inverse_32(inv, prime);
-        for(nvars_t j = 0; j < sz; j++){
-            cand = (((uint64_t)mpz_fdiv_ui(mpz_lin[n2+j], prime)) * inv) % prime;
-            if(cand != mod_lin[n + j]){
-                *lin_lifted = 0;
-                *matrec_checked = 0;
-                return;
-            }
-        }
-    }
-    *lin_lifted = 2;
-    }
-
-    /*checks multiplication matrix */
-    mod_mat->charac = prime;
-
-    for(int32_t i = (*oldmatrec_checked); i < mpq_mat->nrows; i++){
-      uint64_t lc = mpz_fdiv_ui(mpq_mat->denoms[i], prime);
-      lc = mod_p_inverse_32(lc, prime);
-      uint32_t nc = i*mpq_mat->ncols;
-      for(uint32_t j = 0 ; j < mpq_mat->ncols; j++){
-        uint32_t mod = mpz_fdiv_ui(mpq_mat->dense_mat[2*(nc+j)], prime);
-        if(mod_mat->dense_mat[nc+j] != ( ((uint64_t)mod) * lc )% prime){
-            *mat_lifted = 0;
-            *matrec_checked = MAX(0, i);
-            return;
-        }
-      }
-      *matrec_checked = i + 1;
-    }
-    *mat_lifted = 2;
-
 }
 
 void initialize_rrec_data(rrec_data_t recdata) {

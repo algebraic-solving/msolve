@@ -1445,30 +1445,34 @@ static inline int lift_parametrization(mpz_param_t mpz_param,
     param_crt_init(pc, images);
 
     /* fixed bounds tried first, with M = modulus / 2^RR_MARGIN so that
-       RR_MARGIN bits of slack are kept: D = M^(1/16) for elim; D = M^(1/32),
+       RR_MARGIN bits of slack are kept: D = M^(1/64), then D = M^(1/16) for
+       elim; D = M^(1/32),
        balanced bounds, then N = M^(1/16) for the coordinates; the bounds
        set from the guessed denominator are tried last */
-    mpz_t bN[4], bD[4], mm;
-    for(int k = 0; k < 4; k++){
+    mpz_t bN[5], bD[5], mm;
+    for(int k = 0; k < 5; k++){
         mpz_init(bN[k]);
         mpz_init(bD[k]);
     }
     mpz_init(mm);
     mpz_fdiv_q_2exp(mm, modulus, RR_MARGIN);
     /* elim */
-    mpz_root(bD[0], mm, 16);
+    mpz_root(bD[0], mm, 64);
     mpz_fdiv_q(bN[0], mm, bD[0]);
     mpz_fdiv_q_2exp(bD[0], bD[0], 1);
-    /* coordinates */
-    mpz_root(bD[1], mm, 32);
+    mpz_root(bD[1], mm, 16);
     mpz_fdiv_q(bN[1], mm, bD[1]);
     mpz_fdiv_q_2exp(bD[1], bD[1], 1);
-    mpz_sqrt(bD[2], mm);
+    /* coordinates */
+    mpz_root(bD[2], mm, 32);
     mpz_fdiv_q(bN[2], mm, bD[2]);
     mpz_fdiv_q_2exp(bD[2], bD[2], 1);
-    mpz_root(bN[3], mm, 16);
-    mpz_fdiv_q(bD[3], mm, bN[3]);
-    mpz_fdiv_q_2exp(bN[3], bN[3], 1);
+    mpz_sqrt(bD[3], mm);
+    mpz_fdiv_q(bN[3], mm, bD[3]);
+    mpz_fdiv_q_2exp(bD[3], bD[3], 1);
+    mpz_root(bN[4], mm, 16);
+    mpz_fdiv_q(bD[4], mm, bN[4]);
+    mpz_fdiv_q_2exp(bN[4], bN[4], 1);
     mpz_clear(mm);
 
     int b = 0;
@@ -1478,10 +1482,10 @@ static inline int lift_parametrization(mpz_param_t mpz_param,
           mpz_param->elim, denominator, images, 0, pc,
           nmod_param->elim->length, modulus, maxrec, coef, rnum, rden, numer,
           denom, check_lift, lcm, guessed_num, guessed_den, recdata,
-          bN, bD, 1);
+          bN, bD, 2);
       if (b == 0) {
           is_lifted[0] = 0;
-          for(int k = 0; k < 4; k++){
+          for(int k = 0; k < 5; k++){
               mpz_clear(bN[k]);
               mpz_clear(bD[k]);
           }
@@ -1515,11 +1519,11 @@ static inline int lift_parametrization(mpz_param_t mpz_param,
                 nmod_param, numer, denom, check_lift,
                 modulus, prod_crt, prime, coef, rnum, rden,
                 recdata, guessed_num, guessed_den, maxrec,
-                is_lifted, denominator, lcm, c, i, bN + 1, bD + 1, 3,
+                is_lifted, denominator, lcm, c, i, bN + 2, bD + 2, 3,
                 info_level);
     }
 
-    for(int k = 0; k < 4; k++){
+    for(int k = 0; k < 5; k++){
         mpz_clear(bN[k]);
         mpz_clear(bD[k]);
     }

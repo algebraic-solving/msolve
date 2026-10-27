@@ -70,7 +70,53 @@ AC_TYPE_UINT8_T
 
 
 AX_COUNT_CPUS
-AX_EXT
+
+# AVX2 and AVX-512 kernels are compiled whenever the compiler supports them
+# and are selected at runtime depending on the CPU msolve runs on, see
+# src/msolve/cpu_features.h. Thus the binaries do not depend on the CPU of
+# the build machine.
+case $host_cpu in
+  x86_64*|amd64*)
+    AC_CACHE_CHECK([whether $CC can build AVX2 kernels],
+      [msolve_cv_avx2_kernels],
+      [AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <immintrin.h>
+__attribute__((target("avx2")))
+static long long f(long long x)
+{
+    __m256i v = _mm256_set1_epi64x(x);
+    v = _mm256_add_epi64(_mm256_mul_epu32(v, v), _mm256_cmpgt_epi64(v, v));
+    return _mm256_extract_epi64(v, 0);
+}]], [[return __builtin_cpu_supports("avx2") ? (int)f(3) : 0;]])],
+        [msolve_cv_avx2_kernels=yes],
+        [msolve_cv_avx2_kernels=no])])
+    if test "x$msolve_cv_avx2_kernels" = xyes; then
+      AC_DEFINE([HAVE_AVX2_KERNELS], [1],
+        [Define to 1 if AVX2 kernels are built (selected at runtime).])
+    fi
+
+    AC_CACHE_CHECK([whether $CC can build AVX-512 kernels],
+      [msolve_cv_avx512_kernels],
+      [AC_LINK_IFELSE([AC_LANG_PROGRAM([[
+#include <immintrin.h>
+__attribute__((target("avx512f,avx512bw")))
+static long long f(long long x)
+{
+    __m512i v = _mm512_set1_epi64(x);
+    __mmask8 m = _mm512_cmpgt_epi64_mask(v, _mm512_setzero_si512());
+    v = _mm512_mask_add_epi64(v, m, v, _mm512_mullo_epi16(v, v));
+    return _mm512_reduce_add_epi64(v);
+}]], [[return __builtin_cpu_supports("avx512f")
+            && __builtin_cpu_supports("avx512bw") ? (int)f(3) : 0;]])],
+        [msolve_cv_avx512_kernels=yes],
+        [msolve_cv_avx512_kernels=no])])
+    if test "x$msolve_cv_avx512_kernels" = xyes; then
+      AC_DEFINE([HAVE_AVX512_KERNELS], [1],
+        [Define to 1 if AVX-512 kernels are built (selected at runtime).])
+    fi
+    ;;
+esac
+
 AX_GCC_BUILTIN([__builtin_constant_p])
 AX_GCC_BUILTIN([__builtin_clzll])
 AX_GCC_BUILTIN([__builtin_clzl])

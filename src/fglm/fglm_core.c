@@ -1480,6 +1480,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                 nvars) == 0){
 
       fprintf(ERRSTREAM, "Matrix is not invertible (there should be a bug)\n");
+      free_fglm_param(param);
       return NULL;
 
     }
@@ -1526,6 +1527,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
         fprintf(ERRSTREAM, "Matrix is not invertible (there should be a bug)\n");
       }
       *success = 0;
+      free_fglm_param(param);
       return NULL;
     }
     if (right_param == 1) {

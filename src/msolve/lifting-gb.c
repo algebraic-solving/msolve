@@ -19,60 +19,7 @@
  * Mohab Safey El Din */
 
 #include<flint/fmpz.h>
-#include<flint/fmpq.h>
 #include "streams.h"
-
-/* rational reconstruction of u mod m with bounds N, D through FLINT
-   (half-gcd based) instead of the quadratic Euclidean algorithm;
-   u is assumed to be reduced modulo m */
-static int flint_rrec(mpz_t n, mpz_t d, const mpz_t u, const mpz_t m,
-                      const mpz_t N, const mpz_t D){
-  fmpz_t fu, fm, fN, fD;
-  fmpq_t q;
-  fmpz_init(fu); fmpz_init(fm); fmpz_init(fN); fmpz_init(fD);
-  fmpq_init(q);
-  fmpz_set_mpz(fu, u);
-  fmpz_set_mpz(fm, m);
-  fmpz_set_mpz(fN, N);
-  fmpz_set_mpz(fD, D);
-  int b = fmpq_reconstruct_fmpz_2(q, fu, fm, fN, fD);
-  if(b){
-    fmpz_get_mpz(n, fmpq_numref(q));
-    fmpz_get_mpz(d, fmpq_denref(q));
-  }
-  fmpq_clear(q);
-  fmpz_clear(fu); fmpz_clear(fm); fmpz_clear(fN); fmpz_clear(fD);
-  return b;
-}
-
-/* FLINT requires 2ND < m */
-static int flint_rrec_bounds_ok(const mpz_t m, rrec_data_t rd){
-  mpz_mul(rd->tmp, rd->N, rd->D);
-  mpz_mul_2exp(rd->tmp, rd->tmp, 1);
-  return mpz_cmp(rd->tmp, m) < 0;
-}
-
-/* same as ratrecon, through FLINT when the bounds allow it */
-static int lift_ratrecon(mpz_t n, mpz_t d, mpz_t u, const mpz_t mod,
-                         rrec_data_t rd){
-  if(!flint_rrec_bounds_ok(mod, rd)){
-    return ratrecon(n, d, u, mod, rd);
-  }
-  mpz_mod(u, u, mod);
-  return flint_rrec(n, d, u, mod, rd->N, rd->D);
-}
-
-/* same as ratreconwden, through FLINT when the bounds allow it */
-static int lift_ratreconwden(mpz_t n, mpz_t d, mpz_t u, const mpz_t mod,
-                             const mpz_t gden, rrec_data_t rd){
-  if(!flint_rrec_bounds_ok(mod, rd)){
-    return ratreconwden(n, d, u, mod, gden, rd);
-  }
-  mpz_mod(u, u, mod);
-  mpz_mul(rd->r1, u, gden);
-  mpz_mod(rd->r1, rd->r1, mod);
-  return flint_rrec(n, d, rd->r1, mod, rd->N, rd->D);
-}
 
 #define NBCHECK 2
 /* number of bits of slack kept in rational reconstruction bounds */

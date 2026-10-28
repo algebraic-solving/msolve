@@ -585,7 +585,6 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
      * the end */
     gens->vnames =
         realloc(gens->vnames, (unsigned long)gens->nvars * sizeof(char *));
-    gens->vnames[gens->nvars - 1] = (char *)malloc(2 * sizeof(char));
     gens->vnames[gens->nvars - 1] = extra_var;
     int32_t *old_exps = gens->exps;
     gens->exps =
@@ -610,6 +609,7 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
     } else {
       gens->mpz_cfs = realloc(gens->mpz_cfs,
                               (unsigned long)2 * len_new * (sizeof(mpz_t *)));
+      gens->nterms += nvars_new;
       for (i = 2 * len_old; i < 2 * len_new; i += 2) {
         gens->mpz_cfs[i] = (mpz_t *)malloc(sizeof(mpz_t));
         mpz_init(*(gens->mpz_cfs[i]));
@@ -686,7 +686,6 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
      * the end */
     gens->vnames =
         realloc(gens->vnames, (unsigned long)gens->nvars * sizeof(char *));
-    gens->vnames[gens->nvars - 1] = (char *)malloc(2 * sizeof(char));
     gens->vnames[gens->nvars - 1] = extra_var;
     int32_t *old_exps = gens->exps;
     gens->exps =
@@ -711,6 +710,7 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
     } else {
       gens->mpz_cfs = realloc(gens->mpz_cfs,
                               (unsigned long)2 * len_new * (sizeof(mpz_t *)));
+      gens->nterms += nvars_new;
       for (i = 2 * len_old; i < 2 * len_new; i += 2) {
         gens->mpz_cfs[i] = (mpz_t *)malloc(sizeof(mpz_t));
         mpz_init(*(gens->mpz_cfs[i]));
@@ -1958,6 +1958,7 @@ static int32_t *initial_modular_step(
                 if(md->info_level > 1){
                     fprintf (VERBSTREAM,"------------------------------------------------------------------------------------------------------\n");
                 }
+                free(lmb);
                 free_basis_without_hash_table(&(bs));
                 free(bs);
                 return NULL;
@@ -1976,6 +1977,7 @@ static int32_t *initial_modular_step(
                 *success = 0;
                 *dim = 0;
                 *dquot_ori = dquot;
+                free(lmb);
                 free_basis_without_hash_table(&(bs));
                 free(bs);
                 return NULL;
@@ -1987,6 +1989,11 @@ static int32_t *initial_modular_step(
                 md->fglm_rtime = realtime();
                 param_t **test_nmod_param =
                     (param_t **)malloc(sizeof(param_t *));
+                /* the second call allocates its own fglm data */
+                free_fglm_data(*bdata_fglm);
+                *bdata_fglm = NULL;
+                free_fglm_bms_data(*bdata_bms);
+                *bdata_bms = NULL;
                 *test_nmod_param =
                     nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
                                                  *bsz, *nlins_ptr, linvars,
@@ -2270,7 +2277,12 @@ static void free_msolve_trace_qq_initial_data(int *invalid_gens, md_t *st, prime
             free_fglm_param(nmod_params[i]);
         }
         free(leadmons_ori[i]);
-        //free(leadmons_current[i]);
+        free(leadmons_current[i]);
+        free(lineqs_ptr[i]);
+        if (i > 0) {
+            free(blinvars[i]);
+            free(bsquvars[i]);
+        }
       if (bs[i] != NULL) {
         free_basis(&(bs[i]));
         free(bs[i]);
@@ -2427,6 +2439,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           prime_start, nr_primes, pbm_file, 0 /*truncate_lifting */,
           info_level)) {
     free(st);
+    free(invalid_gens);
     return -3;
   }
 
@@ -2440,7 +2453,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* read in ideal, move coefficients to integers */
   import_input_data(bs_qq, st, 0, st->ngens_input, lens, exps, cfs,
                     invalid_gens);
-  //free(invalid_gens);
+  free(invalid_gens);
   invalid_gens = NULL;
 
   print_initial_statistics(VERBSTREAM, st);
@@ -2534,15 +2547,15 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* data for linear forms */
   nvars_t nlins = 0; /*number of linear forms*/
   nvars_t *bnlins = (nvars_t *)calloc(st->nthrds, sizeof(nvars_t));
-  nvars_t **blinvars = (nvars_t **)malloc(
-      st->nthrds * sizeof(nvars_t *)); /*indicates which variables are linear*/
+  nvars_t **blinvars = (nvars_t **)calloc(
+      st->nthrds, sizeof(nvars_t *)); /*indicates which variables are linear*/
   nvars_t *linvars = calloc(bs_qq->ht->nv, sizeof(nvars_t));
   blinvars[0] = linvars;
   uint32_t **lineqs_ptr =
-      malloc(st->nthrds * sizeof(uint32_t *)); /*coeffs of linear forms*/
+      calloc(st->nthrds, sizeof(uint32_t *)); /*coeffs of linear forms*/
 
   /*data for squared variables*/
-  nvars_t **bsquvars = (nvars_t **)malloc(st->nthrds * sizeof(nvars_t *));
+  nvars_t **bsquvars = (nvars_t **)calloc(st->nthrds, sizeof(nvars_t *));
   nvars_t *squvars = calloc(nr_vars - 1, sizeof(nvars_t));
   bsquvars[0] = squvars;
 

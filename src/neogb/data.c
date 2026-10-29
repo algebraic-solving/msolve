@@ -19,7 +19,37 @@
  * Mohab Safey El Din */
 
 
+#include <stdatomic.h>
+
 #include "data.h"
+
+/* Pivot rows are stored in arrays indexed by their leading column. During
+ * the parallel linear algebra several threads add new pivots to the same
+ * array, so these arrays are atomic: a thread publishes a fully reduced
+ * and normalized row with a compare and swap (release), and readers load
+ * the entries with acquire semantics, so a published row and its
+ * coefficients are completely visible to them. Outside of parallel regions
+ * relaxed accesses are sufficient.
+ *
+ * Allocates such an array with n entries, the first nrows of them are
+ * initialized with rows, all others with NULL. */
+static inline _Atomic(hm_t *) *allocate_atomic_pivots(
+        const len_t n,
+        hm_t * const * const rows,
+        const len_t nrows
+        )
+{
+    len_t i;
+    _Atomic(hm_t *) *pivs = (_Atomic(hm_t *) *)malloc(
+            (uint64_t)n * sizeof(_Atomic(hm_t *)));
+    for (i = 0; i < nrows; ++i) {
+        atomic_init(&pivs[i], rows[i]);
+    }
+    for (; i < n; ++i) {
+        atomic_init(&pivs[i], NULL);
+    }
+    return pivs;
+}
 
 /* functions */
 /* bs_t *initialize_basis(
@@ -126,7 +156,7 @@ hm_t *reduce_dense_row_by_known_pivots_sparse_ff_32(
         int64_t *dr,
         mat_t *mat,
         const bs_t * const bs,
-        hm_t *const *pivs,
+        _Atomic(hm_t *) *pivs,
         const hi_t dpiv,
         const hm_t tmp_pos,
         const len_t mh,     /* multiplier hash for tracing */
@@ -140,7 +170,7 @@ hm_t *trace_reduce_dense_row_by_known_pivots_sparse_ff_32(
         int64_t *dr,
         mat_t *mat,
         const bs_t * const bs,
-        hm_t *const *pivs,
+        _Atomic(hm_t *) *pivs,
         const hi_t dpiv,
         const hm_t tmp_pos,
         const len_t mh,
@@ -154,7 +184,7 @@ cf32_t *reduce_dense_row_by_all_pivots_ff_32(
         const bs_t * const bs,
         len_t *pc,
         hm_t *const *pivs,
-        cf32_t *const *dpivs,
+        _Atomic(cf32_t *) *dpivs,
         const uint32_t fc
         );
 
@@ -162,7 +192,7 @@ cf32_t *reduce_dense_row_by_all_pivots_ff_32(
 cf32_t *reduce_dense_row_by_dense_new_pivots_ff_32(
         int64_t *dr,
         len_t *pc,
-        cf32_t * const * const pivs,
+        _Atomic(cf32_t *) * const pivs,
         const len_t ncr,
         const uint32_t fc
         );

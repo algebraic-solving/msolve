@@ -170,6 +170,11 @@ static inline int store_exponent(const char *term, data_gens_ff_t *gens, int64_t
                         break;
                     }
                 }
+                if (gens->field_char > 0 ? mpz_sgn(tmp_z) == 0 : mpq_sgn(tmp_q) == 0) {
+                    fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0)\n", term);
+                    res = 1;
+                    break;
+                }
                 if (has_exponent) {
                     fprintf(stderr, "Error when parsing term %s (coefficient cannot have an exponent)\n", term);
                     res = 1;
@@ -930,9 +935,13 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
         return 1;
       }
     } else {
-    /* coefficients for characteristics >= 2^31 are 64 bit integers */
-    iv_tmp  = gens->cfs_64 != NULL
-        ? (int64_t)strtoll(term, NULL, 10) : (int32_t)strtol(term, NULL, 10);
+    errno = 0;
+    iv_tmp  = (int64_t)strtoll(term, NULL, 10);
+    if (errno == ERANGE) {
+      fprintf(stderr, "Error when parsing term %s (coefficient out of range)\n", term);
+      free(term);
+      return 1;
+    }
     if (iv_tmp == 0) {
       switch (term[0]) {
           case '0':
@@ -976,7 +985,13 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
             return 1;
           }
         } else {
+        errno = 0;
         cf_tmp  = (int64_t)strtoll(term, NULL, 10);
+        if (errno == ERANGE) {
+          fprintf(stderr, "Error when parsing term %s (coefficient out of range)\n", term);
+          free(term);
+          return 1;
+        }
 
         if (cf_tmp == 0) {
           if (term[0] == '-') {

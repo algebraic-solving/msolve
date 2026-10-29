@@ -147,18 +147,17 @@ jobs:
       - name: make distcheck with fixed seed
         run: |
                if [ "$RUNNER_OS" == "Linux" ] || [ "$RUNNER_OS" == "Windows" ]; then
-                    make distcheck DISTCHECK_CONFIGURE_FLAGS="SEED=1617753600"
+                    SEED=1617753600 make distcheck
                elif [ "$RUNNER_OS" == "macOS" ]; then
-                    make distcheck LDFLAGS="-L$(brew --prefix)/lib/" \
-                    CFLAGS="-g -O2 -I$(brew --prefix)/include/" \
-                    DISTCHECK_CONFIGURE_FLAGS="SEED=1617753600"
+                    SEED=1617753600 make distcheck LDFLAGS="-L$(brew --prefix)/lib/" \
+                    CFLAGS="-g -O2 -I$(brew --prefix)/include/"
                else
                     echo "$RUNNER_OS not supported"
                     exit 1
                fi
       - name: show test-suite.log if test failed
         if: failure()
-        run: cat test-suite.log || true
+        run: cat msolve-*/_build/sub/test-suite.log || true
 
 
   flintdev-assert-ntl:

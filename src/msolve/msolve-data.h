@@ -54,6 +54,13 @@ typedef int64_t bits_t;
 
 
 
+/* states of the search for a separating element, see data_gens_ff_t */
+#define SEP_NONE 0
+#define SEP_FAILED 1
+#define SEP_VAR 2
+#define SEP_FORM 3
+#define SEP_APPLIED 4
+
 typedef struct{
   nvars_t nvars;
   nvars_t elim;
@@ -73,6 +80,16 @@ typedef struct{
   /* set to 1 if a linear form is chosen randomly */
   int32_t rand_linear;
   int32_t *random_linear_form;
+  /* separating element found from the multiplication matrices modulo
+   * a prime, see separating.c: SEP_NONE (not searched yet), SEP_FAILED,
+   * SEP_VAR (variable sep_var), SEP_FORM (linear form with coefficients
+   * sep_form) or SEP_APPLIED */
+  int32_t sep_status;
+  int32_t sep_var;
+  int32_t *sep_form;
+  /* number of distinct solutions modulo the prime of the search: degree of
+   * the squarefree part of the minimal polynomial of a random linear form */
+  int32_t sep_nsols;
   char **vnames;
   int32_t *lens;
   int32_t *exps;

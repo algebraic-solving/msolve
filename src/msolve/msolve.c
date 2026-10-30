@@ -55,6 +55,7 @@ void free_rrec_data(rrec_data_t recdata);
 #include "linear.c"
 #include "lifting.c"
 #include "lifting-gb.c"
+#include "separating.c"
 #include "streams.h"
 
 #ifndef MAX
@@ -190,7 +191,12 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
       fprintf(file, "/%d", sum);
     }
   } else {
-    if (gens->linear_form_base_coef > 0) {
+    if (gens->linear_form_base_coef > 0 && gens->sep_form != NULL) {
+      for (int i = 0; i < param->nvars - 1; ++i) {
+        fprintf(file, "%d,", gens->sep_form[i]);
+      }
+      fprintf(file, "%d", (int32_t)(1));
+    } else if (gens->linear_form_base_coef > 0) {
       const int32_t bcf = gens->linear_form_base_coef;
       for (int i = 0; i < param->nvars - 1; ++i) {
         fprintf(file, "%d,", (int32_t)(pow(i + 1, bcf - 1)));
@@ -268,6 +274,10 @@ data_gens_ff_t *allocate_data_gens() {
   gens->mpz_cfs = NULL;
   gens->cfs_64 = NULL;
   gens->random_linear_form = NULL;
+  gens->sep_status = SEP_NONE;
+  gens->sep_var = -1;
+  gens->sep_form = NULL;
+  gens->sep_nsols = 0;
 
   gens->elim = 0;
   return gens;
@@ -296,6 +306,7 @@ void free_data_gens(data_gens_ff_t *gens) {
   free(gens->cfs_64);
   free(gens->exps);
   free(gens->random_linear_form);
+  free(gens->sep_form);
   free(gens);
 }
 
@@ -483,6 +494,62 @@ static int change_variable_order_in_input_system(data_gens_ff_t *gens,
   return 1;
 }
 
+/* The added linear form is the last generator; its terms are the
+ * variables x_0, ..., x_{nvars-2} and then the extra variable, in this
+ * order. compact_linear_form removes the terms with zero coefficient,
+ * expand_linear_form restores all the terms (their coefficients are then
+ * overwritten by the caller). The arrays keep their full size, and for
+ * QQ the removed mpz_t are kept after the last term. */
+static void compact_linear_form(data_gens_ff_t *gens) {
+  const int32_t nvars = gens->nvars;
+  int64_t len_old = 0;
+  for (int32_t i = 0; i < gens->ngens - 1; ++i) {
+    len_old += gens->lens[i];
+  }
+  int64_t w = len_old;
+  for (int32_t t = 0; t < nvars; ++t) {
+    const int64_t s = len_old + t;
+    const int keep = (t == nvars - 1) ||
+      (gens->field_char > 0 ? gens->cfs[s] != 0
+       : mpz_sgn(*(gens->mpz_cfs[2 * s])) != 0);
+    if (!keep) {
+      continue;
+    }
+    if (w != s) {
+      memcpy(gens->exps + w * nvars, gens->exps + s * nvars,
+             (unsigned long)nvars * sizeof(int32_t));
+      if (gens->field_char > 0) {
+        gens->cfs[w] = gens->cfs[s];
+      } else {
+        for (int32_t k = 0; k < 2; ++k) {
+          mpz_t *tmp = gens->mpz_cfs[2 * w + k];
+          gens->mpz_cfs[2 * w + k] = gens->mpz_cfs[2 * s + k];
+          gens->mpz_cfs[2 * s + k] = tmp;
+        }
+      }
+    }
+    w++;
+  }
+  gens->lens[gens->ngens - 1] = (int32_t)(w - len_old);
+}
+
+static void expand_linear_form(data_gens_ff_t *gens) {
+  const int32_t nvars = gens->nvars;
+  if (gens->linear_form_base_coef == 0 || gens->lens[gens->ngens - 1] == nvars) {
+    return;
+  }
+  int64_t len_old = 0;
+  for (int32_t i = 0; i < gens->ngens - 1; ++i) {
+    len_old += gens->lens[i];
+  }
+  memset(gens->exps + len_old * nvars, 0,
+         (unsigned long)nvars * nvars * sizeof(int32_t));
+  for (int32_t t = 0; t < nvars; ++t) {
+    gens->exps[(len_old + t) * nvars + t] = 1;
+  }
+  gens->lens[gens->ngens - 1] = nvars;
+}
+
 /* Used if staircase is not generic enough, after
  * we tried to change variable order.
  *
@@ -494,6 +561,9 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
   int32_t k;
   int32_t nvars_old, nvars_new;
   int64_t len_old = 0, len_new;
+  free(gens->sep_form);
+  gens->sep_form = NULL;
+  expand_linear_form(gens);
   if (gens->linear_form_base_coef == 0) {
     nvars_old = gens->nvars;
     nvars_new = nvars_old + 1;
@@ -593,6 +663,9 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
   int64_t i, j;
   int32_t nvars_old, nvars_new;
   int64_t len_old = 0, len_new;
+  free(gens->sep_form);
+  gens->sep_form = NULL;
+  expand_linear_form(gens);
 
   if (gens->linear_form_base_coef == 0) {
     nvars_old = gens->nvars;
@@ -694,6 +767,73 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
   }
   gens->rand_linear = 1;
   return 1;
+}
+
+/* Applies the separating element found by find_separating_element:
+ * moves the separating variable to the last position, or adds the
+ * separating linear form with a new variable as add_linear_form_to_input_system
+ * does. Returns 1 if the input system was changed, 0 otherwise. */
+static int apply_separating_element(data_gens_ff_t *gens,
+                                    int32_t info_level) {
+  if (gens->sep_status == SEP_VAR) {
+    const int32_t nvars = gens->nvars;
+    const int32_t v = gens->sep_var;
+    char *tmp_char = gens->vnames[nvars - 1];
+    gens->vnames[nvars - 1] = gens->vnames[v];
+    gens->vnames[v] = tmp_char;
+    int64_t len = 0;
+    for (int32_t i = 0; i < gens->ngens; ++i) {
+      for (int32_t j = 0; j < gens->lens[i]; ++j) {
+        int32_t *e = gens->exps + len + (int64_t)j * nvars;
+        int32_t tmp = e[nvars - 1];
+        e[nvars - 1] = e[v];
+        e[v] = tmp;
+      }
+      len += (int64_t)gens->lens[i] * nvars;
+    }
+    /* same state as after the corresponding change of variable order */
+    gens->change_var_order = v;
+    gens->sep_status = SEP_APPLIED;
+    if (info_level > 0) {
+      fprintf(VERBSTREAM, "\nMoving separating variable %s to the last position\n",
+              gens->vnames[nvars - 1]);
+    }
+    return 1;
+  }
+  if (gens->sep_status == SEP_FORM) {
+    int32_t *c = gens->sep_form;
+    gens->sep_form = NULL;
+    if (add_linear_form_to_input_system(gens, 0) == 0) {
+      free(c);
+      return 0;
+    }
+    /* overwrite the coefficients k^0 of the linear form */
+    const int32_t nvars_old = gens->nvars - 1;
+    int64_t len_old = 0;
+    for (int32_t i = 0; i < gens->ngens - 1; ++i) {
+      len_old += gens->lens[i];
+    }
+    for (int32_t k = 0; k < nvars_old; ++k) {
+      if (gens->field_char > 0) {
+        gens->cfs[len_old + k] = c[k] % gens->field_char;
+      } else {
+        mpz_set_si(*(gens->mpz_cfs[2 * (len_old + k)]), c[k]);
+      }
+    }
+    compact_linear_form(gens);
+    gens->sep_form = c;
+    gens->sep_status = SEP_APPLIED;
+    if (info_level > 0) {
+      fprintf(VERBSTREAM, "\nAdding a separating linear form with an extra variable ");
+      fprintf(VERBSTREAM, "(lowest w.r.t. monomial order)\n[coefficients");
+      for (int32_t k = 0; k < nvars_old; ++k) {
+        fprintf(VERBSTREAM, " %d", c[k]);
+      }
+      fprintf(VERBSTREAM, "]\n");
+    }
+    return 1;
+  }
+  return 0;
 }
 
 static inline void nmod_param_out_str(FILE *file, const long dquot,
@@ -1981,6 +2121,30 @@ static int32_t *initial_modular_step(
                 }
                 free(test_nmod_param);
             }
+            if (*success == 0 && gens->field_char == 0
+                && gens->sep_status == SEP_NONE
+                && gens->change_var_order == -1
+                && gens->linear_form_base_coef == 0) {
+                const char *env = getenv("MSOLVE_SEPELEM");
+                gens->sep_status = SEP_FAILED;
+                if (env == NULL || strcmp(env, "0") != 0) {
+                    int32_t *c = calloc(bs->ht->nv, sizeof(int32_t));
+                    int32_t v = -1;
+                    int found = find_separating_element(bs, lmb, dquot, fc,
+                                                        &v, c, &(gens->sep_nsols),
+                                                        md->info_level);
+                    if (found == 1) {
+                        gens->sep_var = v;
+                        gens->sep_status = SEP_VAR;
+                        free(c);
+                    } else if (found == 2) {
+                        gens->sep_form = c;
+                        gens->sep_status = SEP_FORM;
+                    } else {
+                        free(c);
+                    }
+                }
+            }
         }
         *dim = 0;
         *dquot_ori = dquot;
@@ -2573,6 +2737,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
         lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
     return 3;
+  }
+  if (gens->sep_status == SEP_APPLIED && gens->sep_nsols > 0
+      && *minpolydeg_ptr == -1) {
+    /* degree of the squarefree part of the minimal polynomial of a random
+       linear form, from the search for a separating element */
+    *minpolydeg_ptr = gens->sep_nsols;
   }
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
     if (nmod_params[0]->degsqfrelimpol != *minpolydeg_ptr
@@ -5517,6 +5687,9 @@ restart:
                 free(param);
                 param = NULL;
                 if (genericity_handling > 0) {
+                    if (apply_separating_element(gens, info_level)) {
+                        goto restart;
+                    }
                     if (change_variable_order_in_input_system(gens, info_level)) {
                         goto restart;
                     }

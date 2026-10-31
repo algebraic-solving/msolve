@@ -189,6 +189,10 @@ AC_CONFIG_LINKS([
  input_files/f4sat-zero-input.ms:input_files/f4sat-zero-input.ms
  output_files/f4sat-zero-input.res:output_files/f4sat-zero-input.res
  test/diff/diff_f4sat-zero-input.sh:test/diff/diff_f4sat-zero-input.sh
+ input_files/fekete-valdes-n5-qq.ms:input_files/fekete-valdes-n5-qq.ms
+ output_files/fekete-valdes-n5-qq.P1.d0.p128.res:output_files/fekete-valdes-n5-qq.P1.d0.p128.res
+ output_files/fekete-valdes-n5-qq.P1.d0.p1024.res:output_files/fekete-valdes-n5-qq.P1.d0.p1024.res
+ test/diff/diff_fekete-valdes-n5-qq.sh:test/diff/diff_fekete-valdes-n5-qq.sh
  input_files/groebner-g2.ms:input_files/groebner-g2.ms
  output_files/groebner-g2.g2.res:output_files/groebner-g2.g2.res
  test/diff/diff_groebner-g2.sh:test/diff/diff_groebner-g2.sh

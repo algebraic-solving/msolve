@@ -55,6 +55,7 @@ void free_rrec_data(rrec_data_t recdata);
 #include "lifting.c"
 #include "lifting-gb.c"
 #include "separating.c"
+#include "splitting.c"
 #include "streams.h"
 
 #ifndef MAX
@@ -3223,6 +3224,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* measures time spent in rational reconstruction */
   double strat = 0;
 
+  /* splitting of the solutions along equalities of coordinates, see
+     splitting.c: the components are then lifted separately */
+  split_data_t sp;
+  int split = split_start(&sp, nmod_params[0], info_level);
+  int nmismatch = 0;
+
   while (rerun == 1 || mcheck == 1) {
     /* controls call to rational reconstruction */
     doit = ((prdone % nbdoit) == 0);
@@ -3352,6 +3359,44 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         normalize_nmod_param(nmod_params[i]);
       }
     }
+    if (split) {
+      double crr = realtime();
+      for (len_t i = 0; i < st->nthrds; i++) {
+        if (bad_primes[i] == 0 && split_add_image(&sp, nmod_params[i])) {
+          nprimes++;
+          continue;
+        }
+        if (bad_primes[i] == 0) {
+          nmismatch++;
+        }
+        nbadprimes++;
+        if (info_level) {
+          fprintf(VERBSTREAM, "<bp: %d>", lp->p[i]);
+        }
+      }
+      split_reconstruct(&sp);
+      if (sp.ndone == sp.ngroups) {
+        split_recombine(*mpz_paramp, &sp);
+        rerun = 0;
+        mcheck = 0;
+      }
+      strat += realtime() - crr;
+      if (info_level && (LOG2(nprimes) > clog || sp.ndone == sp.ngroups)) {
+        fprintf(VERBSTREAM, "{%d: %ld/%ld}", nprimes, sp.ndone, sp.ngroups);
+        fflush(VERBSTREAM);
+        clog = LOG2(nprimes);
+      }
+      if (rerun && nmismatch >= SPLIT_MAX_MISMATCH) {
+        /* the components differ from one prime to the other */
+        if (info_level) {
+          fprintf(VERBSTREAM, "\ncomponents differ modulo %d primes, "
+                  "usual lifting\n", nmismatch);
+        }
+        split_data_clear(&sp);
+        split = 0;
+      }
+      continue;
+    }
     /* scrr measures time spent in ratrecon for modular images */
     double crr = 0, scrr = 0;
     /* CRT + rational reconstruction; reconstruction is attempted only
@@ -3415,6 +3460,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                   guessed_num, guessed_den, is_lifted, recdata);
           sep_dense_clear(&sd);
           free(dmat);
+          if (split) {
+            split_data_clear(&sp);
+          }
           return -4;
         }
       }
@@ -3488,6 +3536,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                   guessed_num, guessed_den, is_lifted, recdata);
   sep_dense_clear(&sd);
   free(dmat);
+  if (split) {
+    split_data_clear(&sp);
+  }
   return 0;
 }
 

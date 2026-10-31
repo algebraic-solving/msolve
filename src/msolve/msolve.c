@@ -4679,6 +4679,8 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
       if (gens->linear_form_base_coef > 0) {
         for (long i = 0; i < nb; ++i) {
           pts[i]->nvars--;
+          mpz_clear(pts[i]->coords[pts[i]->nvars]->val_up);
+          mpz_clear(pts[i]->coords[pts[i]->nvars]->val_do);
         }
       }
       /* If we changed the variable order for genericity reasons we have

@@ -406,8 +406,10 @@ static void split_set_mpz_upoly(mpz_upoly_t out, const fmpz_poly_t in) {
   out->length = len;
 }
 
-/* the parametrization of the whole solution set, from the groups */
-static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp) {
+/* the parametrization of the solutions of groups lo..hi-1, with its
+ * denominator elim' */
+static void split_param_range(mpz_param_t mpz_param, const split_data_t *sp,
+                              long lo, long hi) {
   const long nc = sp->nc;
   fmpq_poly_t E;
   fmpq_poly_init(E);
@@ -415,7 +417,7 @@ static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp) {
   for (long v = 0; v < nc; v++) {
     fmpq_poly_init(S + v);
   }
-  split_combine(E, S, sp, 0, sp->ngroups);
+  split_combine(E, S, sp, lo, hi);
 
   /* integer primitive eliminating polynomial lambda E, with lambda > 0 */
   fmpz_poly_t num;
@@ -430,6 +432,8 @@ static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp) {
   fmpq_init(lambda);
   fmpq_set_fmpz_frac(lambda, fmpq_poly_denref(E), ct);
   fmpq_neg(lambda, lambda);
+  fmpz_poly_derivative(num, num);
+  split_set_mpz_upoly(mpz_param->denom, num);
 
   /* R_v = -lambda sum_g B_v H_g = coords[v] / cfs[v] */
   for (long v = 0; v < nc; v++) {
@@ -444,4 +448,44 @@ static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp) {
   fmpz_clear(ct);
   fmpz_poly_clear(num);
   fmpq_poly_clear(E);
+}
+
+/* the parametrization of the whole solution set, from the groups */
+static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp) {
+  split_param_range(mpz_param, sp, 0, sp->ngroups);
+}
+
+static void split_params_clear(mpz_param_array_struct *params) {
+  for (long i = 0; i < params->nb; i++) {
+    mpz_param_clear(params->params[i]);
+  }
+  free(params->params);
+  params->params = NULL;
+  params->nb = 0;
+}
+
+/* the parametrizations of the groups, one by one */
+static void split_set_params(mpz_param_array_struct *params,
+                             const split_data_t *sp) {
+  const long nc = sp->nc;
+  split_params_clear(params);
+  params->nb = sp->ngroups;
+  params->params = malloc(sp->ngroups * sizeof(mpz_param_t));
+  for (long i = 0; i < sp->ngroups; i++) {
+    mpz_param_struct *P = params->params[i];
+    mpz_param_init(P);
+    P->nvars = nc + 1;
+    P->nsols = sp->groups[i].deg;
+    P->dquot = sp->groups[i].deg;
+    P->dim = 0;
+    P->coords = malloc(nc * sizeof(mpz_upoly_t));
+    P->cfs = malloc(nc * sizeof(mpz_t));
+    for (long v = 0; v < nc; v++) {
+      P->coords[v]->coeffs = NULL;
+      P->coords[v]->alloc = 0;
+      P->coords[v]->length = 0;
+      mpz_init(P->cfs[v]);
+    }
+    split_param_range(P, sp, i, i + 1);
+  }
 }

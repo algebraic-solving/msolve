@@ -541,6 +541,91 @@ static int sep_dense_param(param_t *param, const sep_mulmat_t *mm,
   return bad;
 }
 
+/* Degrees of the minimal polynomials of linear forms, for the search
+ * below. In general, the dense matrix of the form is built, and the degree
+ * comes from a Wiedemann sequence: O(dquot^3) per form. For a radical
+ * ideal, a random form separates the solutions, and its parametrization
+ * x_v = X_v(t) mod Q (see sep_dense_param) is computed once: the degree
+ * for sum c[v] x_v is then the one of the minimal polynomial of
+ * a = sum c[v] X_v in F_p[t]/(Q), from the sequence l(a^k), k < 2 dquot,
+ * with O(dquot) products modulo Q. Both are the number of values of the
+ * form at the solutions, up to an unlucky choice of the projections. */
+typedef struct {
+  const sep_mulmat_t *mm;
+  mp_limb_t *mat, *u, *r, *x, *y, *seq, *C, *B, *T;
+  param_t *par;          /* NULL: dense matrices */
+  nmod_poly_t Qinv;      /* inverse of the reverse of Q, for mulmod_preinv */
+  mp_limb_t *l;          /* random projection */
+} sep_degree_t;
+
+static long sep_degree(sep_degree_t *sd, const int32_t *c) {
+  const sep_mulmat_t *mm = sd->mm;
+  const long D = mm->D;
+  const nmod_t mod = mm->mod;
+  if (sd->par == NULL) {
+    sep_form_matrix(sd->mat, c, mm);
+    return sep_minpoly_degree(sd->mat, D, sd->u, sd->r, mod, sd->x, sd->y,
+                              sd->seq, sd->C, sd->B, sd->T);
+  }
+  const param_t *par = sd->par;
+  const long d = nmod_poly_degree(par->elim);
+  nmod_poly_t a, pw;
+  nmod_poly_init(a, mod.n);
+  nmod_poly_init(pw, mod.n);
+  for (int32_t v = 0; v < mm->nv; v++) {
+    if (c[v] != 0) {
+      /* X_v = -coords[v] */
+      nmod_poly_scalar_mul_nmod(pw, par->coords[v],
+                                nmod_neg((mp_limb_t)c[v] % mod.n, mod));
+      nmod_poly_add(a, a, pw);
+    }
+  }
+  nmod_poly_one(pw);
+  for (long k = 0; k < 2 * d; k++) {
+    sd->seq[k] = _nmod_vec_dot(sd->l, pw->coeffs, pw->length, mod,
+                               _nmod_vec_dot_params(pw->length, mod));
+    if (k < 2 * d - 1) {
+      nmod_poly_mulmod_preinv(pw, pw, a, par->elim, sd->Qinv);
+    }
+  }
+  nmod_berlekamp_massey_t BM;
+  nmod_berlekamp_massey_init(BM, mod.n);
+  nmod_berlekamp_massey_add_points(BM, sd->seq, 2 * d);
+  nmod_berlekamp_massey_reduce(BM);
+  const long deg = nmod_poly_degree(nmod_berlekamp_massey_V_poly(BM));
+  nmod_berlekamp_massey_clear(BM);
+  nmod_poly_clear(a);
+  nmod_poly_clear(pw);
+  return deg;
+}
+
+/* switches sd to the parametrization of the random form c, which
+ * separates the solutions of a radical ideal; keeps the dense matrices if
+ * it fails */
+static void sep_degree_set_param(sep_degree_t *sd, const int32_t *c) {
+  const sep_mulmat_t *mm = sd->mm;
+  const long D = mm->D;
+  param_t *par = allocate_fglm_param(mm->mod.n, mm->nv + 1);
+  if (sep_dense_param(par, mm, c, D, D)) {
+    free_fglm_param(par);
+    return;
+  }
+  sd->par = par;
+  nmod_poly_t rev;
+  nmod_poly_init(rev, mm->mod.n);
+  nmod_poly_init(sd->Qinv, mm->mod.n);
+  nmod_poly_reverse(rev, par->elim, par->elim->length);
+  nmod_poly_inv_series(sd->Qinv, rev, par->elim->length);
+  nmod_poly_clear(rev);
+  sd->l = malloc(D * sizeof(mp_limb_t));
+  /* own generator: do not perturb rand() */
+  uint64_t state = 0x6A09E667F3BCC909ULL ^ mm->mod.n;
+  for (long i = 0; i < D; i++) {
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    sd->l[i] = (state >> 33) % mm->mod.n;
+  }
+}
+
 /* returns 0 if nothing was found, 1 if variable *sep_var is separating,
  * 2 if the linear form sep_form (nv coefficients) is separating */
 static int find_separating_element(bs_t *bs, int32_t *lmb, long D,
@@ -617,13 +702,16 @@ static int find_separating_element(bs_t *bs, int32_t *lmb, long D,
       fprintf(VERBSTREAM, "random linear form: minimal polynomial of degree %ld, "
               "squarefree part of degree %d (dimension %ld)\n", dgen, *nsols, D);
     }
+    sep_degree_t sd = {&mm, mat, u, r, x, y, seq, C, B, T, NULL, {{0}}, NULL};
+    if (dgen == D && *nsols == D) {
+      sep_degree_set_param(&sd, c);
+    }
     long *degv = calloc(nv, sizeof(long));
     if (dgen > 0) {
       for (int32_t v = 0; v < nv && ret == 0; v++) {
         memset(c, 0, nv * sizeof(int32_t));
         c[v] = 1;
-        sep_form_matrix(mat, c, &mm);
-        deg = sep_minpoly_degree(mat, D, u, r, mod, x, y, seq, C, B, T);
+        deg = sep_degree(&sd, c);
         degv[v] = deg;
         if (info_level > 1) {
           fprintf(VERBSTREAM, "  variable %d: degree %ld\n", v + 1, deg);
@@ -658,8 +746,7 @@ static int find_separating_element(bs_t *bs, int32_t *lmb, long D,
           /* number of values of (form, x_v): degree of form + rnd x_v */
           state = state * 6364136223846793005ULL + 1442695040888963407ULL;
           c[v] = 1 + (int32_t)((state >> 33) % (fc - 1));
-          sep_form_matrix(mat, c, &mm);
-          const long tgt = sep_minpoly_degree(mat, D, u, r, mod, x, y, seq, C, B, T);
+          const long tgt = sep_degree(&sd, c);
           ntested++;
           /* smallest coefficient reaching tgt; there are at most
            * dquot (dquot - 1) / 2 coefficients that do not, but stop at
@@ -669,8 +756,7 @@ static int find_separating_element(bs_t *bs, int32_t *lmb, long D,
           long dbest = dcur;
           for (int32_t cv = 1; cv <= D && tgt > dcur; cv++) {
             c[v] = cv;
-            sep_form_matrix(mat, c, &mm);
-            deg = sep_minpoly_degree(mat, D, u, r, mod, x, y, seq, C, B, T);
+            deg = sep_degree(&sd, c);
             ntested++;
             if (deg > dbest) {
               best = cv;
@@ -707,6 +793,11 @@ static int find_separating_element(bs_t *bs, int32_t *lmb, long D,
                   ntested);
         }
       }
+    }
+    if (sd.par != NULL) {
+      free_fglm_param(sd.par);
+      nmod_poly_clear(sd.Qinv);
+      free(sd.l);
     }
     free(degv);
     free(c);

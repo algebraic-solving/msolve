@@ -60,6 +60,32 @@ typedef int64_t bits_t;
 #define SEP_APPLIED 4
 
 typedef struct{
+  deg_t length;
+  deg_t alloc;
+  mpz_t *coeffs;
+} mpz_upoly_struct;
+
+typedef mpz_upoly_struct mpz_upoly_t[1];
+
+typedef struct{
+  nvars_t nvars;
+  deg_t nsols;
+  len_t dquot;
+  deg_t dim;
+  mpz_upoly_t elim;
+  mpz_upoly_t denom;
+  mpz_upoly_t *coords;
+  mpz_t *cfs;
+} mpz_param_struct;
+typedef mpz_param_struct mpz_param_t[1];
+
+typedef struct{
+  len_t nb;
+  mpz_param_t *params;
+} mpz_param_array_struct;
+typedef mpz_param_array_struct mpz_param_array_t[1];
+
+typedef struct{
   nvars_t nvars;
   nvars_t elim;
   int32_t ngens;
@@ -92,6 +118,11 @@ typedef struct{
   /* number of distinct solutions modulo the prime of the search: degree of
    * the squarefree part of the minimal polynomial of a random linear form */
   int32_t sep_nsols;
+  /* parametrizations of the components of the solution set lifted
+   * separately (see splitting.c), and whether the parametrization of the
+   * whole solution set is built from them */
+  mpz_param_array_struct split_params;
+  int32_t split_global;
   char **vnames;
   int32_t *lens;
   int32_t *exps;
@@ -214,31 +245,6 @@ typedef struct{
 typedef rrec_data_struct_t rrec_data_t[1];
 
 
-typedef struct{
-  deg_t length;
-  deg_t alloc;
-  mpz_t *coeffs;
-} mpz_upoly_struct;
-
-typedef mpz_upoly_struct mpz_upoly_t[1];
-
-typedef struct{
-  nvars_t nvars;
-  deg_t nsols;
-  len_t dquot;
-  deg_t dim;
-  mpz_upoly_t elim;
-  mpz_upoly_t denom;
-  mpz_upoly_t *coords;
-  mpz_t *cfs;
-} mpz_param_struct;
-typedef mpz_param_struct mpz_param_t[1];
-
-typedef struct{
-  len_t nb;
-  mpz_param_t *params;
-} mpz_param_array_struct;
-typedef mpz_param_array_struct mpz_param_array_t[1];
 
 typedef struct{
   uint32_t ncols; /* dimension of quotient */

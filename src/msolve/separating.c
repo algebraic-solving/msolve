@@ -27,8 +27,9 @@
  * computed with a Wiedemann sequence and Berlekamp-Massey. The target is
  * the degree dgen of the minimal polynomial of a random linear form
  * (dquot for a radical ideal): a linear form reaching it separates the
- * solutions. A variable reaching dgen is separating. If there is none,
- * a linear form sum c_i x_i is built greedily, taking the
+ * solutions, and has at each of them the largest nilpotency index, which
+ * sep_dense_param needs. A variable reaching dgen is separating. If there
+ * is none, a linear form sum c_i x_i is built greedily, taking the
  * variables by decreasing degree of their minimal polynomials, and the
  * smallest variable first for equal degrees. For a radical ideal, this
  * degree is the number of values taken on the solutions. The first
@@ -404,6 +405,142 @@ static void sep_form_matrix(mp_limb_t *mat, const int32_t *c,
   }
 }
 
+/* Parametrization of the radical of the ideal w.r.t. the separating
+ * linear form t = -sum c[v] x_v, without FGLM (t is the extra variable A
+ * of the linear form A + sum c[v] x_v added to the system). With M the
+ * dense matrix of the multiplication by t, u a random row vector and
+ * w_j = u M^j, the minimal polynomial P of M is the one of
+ * s_j = w_j[1] (j < 2 dquot), and the eliminating polynomial is its
+ * squarefree part Q. With s_j^(v) = w_j . NF(x_v) (j < dquot) and N_v the
+ * polynomial part of P(T) sum_j s_j^(v) T^(-j-1), one has
+ * x_v = N_v / N_1 mod Q: at a root of Q of multiplicity m in P, the
+ * coefficients of 1 / (T - t(z))^m in the generating series give
+ * N_v / N_1 = x_v(z), as soon as (t - t(z))^(m-1) kills the maximal ideal
+ * of the local algebra at z, i.e. P has the degree of the minimal
+ * polynomial of a generic linear form. param has nv + 1 variables, the
+ * last one being t; as with FGLM, its coordinates are the opposites of
+ * the x_v and its denominator is 1.
+ * Returns 0 on success, 1 if the prime is bad, that is, if P and Q do not
+ * have degrees degelim and degsqfr. */
+static int sep_dense_param(param_t *param, const sep_mulmat_t *mm,
+                           const int32_t *c, long degelim, long degsqfr) {
+  const long D = mm->D;
+  const int32_t nv = mm->nv;
+  const nmod_t mod = mm->mod;
+  const long len = 2 * D;
+  const long *target = mm->target;
+
+  /* mt[i * D + k]: coefficient of the k-th staircase monomial in
+   * NF(t lmb[i]), i.e. M transposed, so that w M is computed with
+   * contiguous dot products */
+  mp_limb_t *mt = calloc((size_t)D * D, sizeof(mp_limb_t));
+  for (long i = 0; i < D; i++) {
+    for (int32_t v = 0; v < nv; v++) {
+      if (c[v] == 0) {
+        continue;
+      }
+      const mp_limb_t cv = nmod_neg((mp_limb_t)c[v] % mod.n, mod);
+      const long t = target[i * nv + v];
+      if (t >= 0) {
+        mt[i * D + t] = nmod_add(mt[i * D + t], cv, mod);
+      } else {
+        _nmod_vec_scalar_addmul_nmod(mt + i * D, mm->nf[-t - 1], D, cv, mod);
+      }
+    }
+  }
+  /* own generator: do not perturb rand() */
+  uint64_t state = 0x2545F4914F6CDD1DULL ^ mod.n;
+  mp_limb_t *w = malloc(D * sizeof(mp_limb_t));
+  mp_limb_t *w2 = malloc(D * sizeof(mp_limb_t));
+  for (long i = 0; i < D; i++) {
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    w[i] = (state >> 33) % mod.n;
+  }
+  mp_limb_t *seq = malloc(len * sizeof(mp_limb_t));
+  mp_limb_t *seqx = malloc((size_t)nv * D * sizeof(mp_limb_t));
+  const long idx0 = mm->idx0;
+  dot_params_t params = _nmod_vec_dot_params(D, mod);
+  for (long j = 0; j < len; j++) {
+    seq[j] = w[idx0];
+    if (j < D) {
+      for (int32_t v = 0; v < nv; v++) {
+        const long t = target[idx0 * nv + v];
+        seqx[v * D + j] = t >= 0 ? w[t]
+          : _nmod_vec_dot(w, mm->nf[-t - 1], D, mod, params);
+      }
+    }
+    if (j == len - 1) {
+      break;
+    }
+    for (long i = 0; i < D; i++) {
+      w2[i] = _nmod_vec_dot(mt + i * D, w, D, mod, params);
+    }
+    mp_limb_t *tmp = w;
+    w = w2;
+    w2 = tmp;
+  }
+  free(mt);
+  free(w);
+  free(w2);
+
+  int bad = 1;
+  nmod_berlekamp_massey_t BM;
+  nmod_berlekamp_massey_init(BM, mod.n);
+  nmod_berlekamp_massey_add_points(BM, seq, len);
+  nmod_berlekamp_massey_reduce(BM);
+  nmod_poly_t P, Q, N, inv;
+  nmod_poly_init(P, mod.n);
+  nmod_poly_init(Q, mod.n);
+  nmod_poly_init(N, mod.n);
+  nmod_poly_init(inv, mod.n);
+  nmod_poly_make_monic(P, nmod_berlekamp_massey_V_poly(BM));
+  const long d = nmod_poly_degree(P);
+  /* squarefree part, d < mod.n */
+  nmod_poly_derivative(N, P);
+  nmod_poly_gcd(inv, P, N);
+  nmod_poly_div(Q, P, inv);
+  mp_limb_t *rev = malloc(D * sizeof(mp_limb_t));
+  if (d == degelim && nmod_poly_degree(Q) == degsqfr) {
+    fglm_param_set_prime(param, mod.n);
+    bad = 0;
+    /* N(T) = sum_{m < d} (sum_{j < d - m} p_{m + 1 + j} s_j) T^m */
+    for (int32_t v = -1; v < nv && !bad; v++) {
+      const mp_limb_t *s = v < 0 ? seq : seqx + v * D;
+      nmod_poly_fit_length(N, d);
+      for (long m = 0; m < d; m++) {
+        for (long j = 0; j < d - m; j++) {
+          rev[j] = P->coeffs[m + 1 + j];
+        }
+        N->coeffs[m] = _nmod_vec_dot(rev, s, d - m, mod, params);
+      }
+      _nmod_poly_set_length(N, d);
+      _nmod_poly_normalise(N);
+      nmod_poly_rem(N, N, Q);
+      if (v < 0) {
+        bad = !nmod_poly_invmod(inv, N, Q);
+      } else {
+        nmod_poly_mulmod(param->coords[v], N, inv, Q);
+        nmod_poly_neg(param->coords[v], param->coords[v]);
+      }
+    }
+    if (!bad) {
+      nmod_poly_set(param->elim, Q);
+      nmod_poly_one(param->denom);
+      param->degelimpol = d;
+      param->degsqfrelimpol = degsqfr;
+    }
+  }
+  free(rev);
+  nmod_poly_clear(P);
+  nmod_poly_clear(Q);
+  nmod_poly_clear(N);
+  nmod_poly_clear(inv);
+  nmod_berlekamp_massey_clear(BM);
+  free(seq);
+  free(seqx);
+  return bad;
+}
+
 /* returns 0 if nothing was found, 1 if variable *sep_var is separating,
  * 2 if the linear form sep_form (nv coefficients) is separating */
 static int find_separating_element(bs_t *bs, int32_t *lmb, long D,
@@ -448,7 +585,8 @@ static int find_separating_element(bs_t *bs, int32_t *lmb, long D,
 
     /* the minimal polynomial of a dense random form gives the degree to
      * reach: dquot for a radical ideal; a form reaching it separates the
-     * solutions */
+     * solutions and has the generic nilpotency index at each of them (see
+     * sep_dense_param) */
     for (int32_t v = 0; v < nv; v++) {
       state = state * 6364136223846793005ULL + 1442695040888963407ULL;
       c[v] = 1 + (int32_t)((state >> 33) % (fc - 1));

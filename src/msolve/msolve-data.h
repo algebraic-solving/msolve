@@ -87,6 +87,10 @@ typedef struct{
   int32_t sep_status;
   int32_t sep_var;
   int32_t *sep_form;
+  /* nonzero terms of all F4 matrices modulo the first prime, with the
+   * separating linear form and for the original system */
+  int64_t sep_matnterms;
+  int64_t sep_matnterms_ori;
   /* number of distinct solutions modulo the prime of the search: degree of
    * the squarefree part of the minimal polynomial of a random linear form */
   int32_t sep_nsols;

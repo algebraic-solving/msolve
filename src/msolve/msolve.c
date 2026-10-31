@@ -277,6 +277,8 @@ data_gens_ff_t *allocate_data_gens() {
   gens->sep_status = SEP_NONE;
   gens->sep_var = -1;
   gens->sep_form = NULL;
+  gens->sep_matnterms = 0;
+  gens->sep_matnterms_ori = 0;
   gens->sep_nsols = 0;
 
   gens->elim = 0;
@@ -2133,6 +2135,7 @@ static int32_t *initial_modular_step(
                     int found = find_separating_element(bs, lmb, dquot, fc,
                                                         &v, c, &(gens->sep_nsols),
                                                         md->info_level);
+                    gens->sep_matnterms_ori = md->mat_nterms;
                     if (found == 1) {
                         gens->sep_var = v;
                         gens->sep_status = SEP_VAR;
@@ -2145,6 +2148,9 @@ static int32_t *initial_modular_step(
                     }
                 }
             }
+        }
+        if (gens->sep_status == SEP_APPLIED) {
+            gens->sep_matnterms = md->mat_nterms;
         }
         *dim = 0;
         *dquot_ori = dquot;
@@ -2310,6 +2316,197 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
   st->nthrds = nthrds;
 }
 
+/* threshold for the multi-modular steps on the original system */
+#define SEP_DENSE_RATIO 1.2
+
+/* Multi-modular steps when a separating linear form t was added with an
+ * extra variable: when the F4 matrices for the system with t are much
+ * larger than those for the original system, the tracer is run on the
+ * original system and the parametrization is computed from the
+ * multiplication matrix by t (see sep_dense_param), without the extra
+ * variable. */
+typedef struct {
+  bs_t *bs_qq;      /* original system */
+  md_t *st;         /* its tracer */
+  int32_t num_gb;   /* number of elements of its Groebner bases */
+  int32_t *lm;      /* their leading monomials */
+  int32_t *lmb;     /* their staircase */
+  long dquot;
+  long degelim;     /* degrees of the minimal polynomial of the form */
+  long degsqfr;     /* and of its squarefree part */
+  const int32_t *form;
+} sep_dense_t;
+
+static void sep_dense_clear(sep_dense_t *sd) {
+  if (sd->bs_qq != NULL) {
+    free_basis(&(sd->bs_qq));
+    free(sd->bs_qq);
+  }
+  if (sd->st != NULL) {
+    free_trace(&(sd->st->tr));
+    free(sd->st);
+  }
+  free(sd->lm);
+  free(sd->lmb);
+  sd->bs_qq = NULL;
+  sd->st = NULL;
+  sd->lm = NULL;
+  sd->lmb = NULL;
+}
+
+/* Learns the tracer of the original system (gens without its last
+ * generator, the linear form, and its last variable) modulo prime, and
+ * checks that the parametrization computed from its Groebner basis is
+ * param, computed with the extra variable. Returns the number of terms of
+ * the Groebner basis of the original system, or 0 if it cannot be used. */
+static int64_t sep_dense_init(sep_dense_t *sd, data_gens_ff_t *gens,
+                              param_t *param, uint32_t prime,
+                              int32_t ht_size, int32_t nr_threads,
+                              int32_t max_nr_pairs, int32_t reset_ht,
+                              int32_t la_option, int32_t use_signatures,
+                              int32_t pbm_file) {
+  sd->bs_qq = NULL;
+  sd->st = NULL;
+  sd->lm = NULL;
+  sd->lmb = NULL;
+  sd->form = gens->sep_form;
+
+  int32_t nr_vars = gens->nvars - 1;
+  int32_t nr_gens = gens->ngens - 1;
+  const int32_t nva = gens->nvars;
+  int64_t len = 0;
+  for (int32_t i = 0; i < nr_gens; ++i) {
+    len += gens->lens[i];
+  }
+  int32_t *exps = malloc((unsigned long)len * nr_vars * sizeof(int32_t));
+  for (int64_t j = 0; j < len; ++j) {
+    if (gens->exps[j * nva + nr_vars] != 0) {
+      free(exps);
+      return 0;
+    }
+    memcpy(exps + j * nr_vars, gens->exps + j * nva,
+           (unsigned long)nr_vars * sizeof(int32_t));
+  }
+
+  uint32_t field_char = 0;
+  int32_t mon_order = 0, elim_block_len = 0, nr_nf = 0, reduce_gb = 1;
+  int32_t truncate_lifting = 0, info_level = 0;
+  int *invalid_gens = NULL;
+  md_t *st = allocate_meta_data();
+  sd->st = st;
+  if (validate_input_data(&invalid_gens, gens->mpz_cfs, gens->lens,
+                          &field_char, &mon_order, &elim_block_len, &nr_vars,
+                          &nr_gens, &nr_nf, &ht_size, &nr_threads,
+                          &max_nr_pairs, &reset_ht, &la_option,
+                          &use_signatures, &reduce_gb, &truncate_lifting,
+                          &info_level) == -1
+      || check_and_set_meta_data_trace(st, gens->lens, exps, gens->mpz_cfs,
+                                       invalid_gens, field_char, mon_order,
+                                       elim_block_len, nr_vars, nr_gens,
+                                       nr_nf, ht_size, nr_threads,
+                                       max_nr_pairs, reset_ht, la_option,
+                                       use_signatures, reduce_gb,
+                                       (uint32_t)1 << 30, nr_threads,
+                                       pbm_file, 0, info_level)) {
+    free(invalid_gens);
+    free(exps);
+    free(st);
+    sd->st = NULL;
+    return 0;
+  }
+  sd->bs_qq = initialize_basis(st, NULL);
+  import_input_data(sd->bs_qq, st, 0, st->ngens_input, gens->lens, exps,
+                    gens->mpz_cfs, invalid_gens);
+  free(invalid_gens);
+  free(exps);
+  calculate_divmask(sd->bs_qq->ht);
+  sort_r(sd->bs_qq->hm, (unsigned long)sd->bs_qq->ld, sizeof(hm_t *),
+         initial_input_cmp, sd->bs_qq->ht);
+  remove_content_of_initial_basis(sd->bs_qq);
+
+  /* learning */
+  st->print_gb = 0;
+  st->f4_qq_round = 1;
+  int32_t error = 0;
+  bs_t *bs = core_gba(sd->bs_qq, st, &error, prime);
+  if (bs == NULL || error > 0) {
+    free(bs);
+    sep_dense_clear(sd);
+    return 0;
+  }
+  int64_t nterms = 0;
+  for (len_t i = 0; i < bs->lml; ++i) {
+    nterms += bs->hm[bs->lmps[i]][LENGTH];
+  }
+  sd->num_gb = bs->lml;
+  sd->lm = get_lm_from_bs(bs, bs->ht);
+  sd->dquot = 0;
+  if (has_dimension_zero(bs->lml, nr_vars, sd->lm)) {
+    sd->lmb = monomial_basis(bs->lml, nr_vars, sd->lm, &(sd->dquot));
+  }
+  sd->degelim = param->degelimpol;
+  sd->degsqfr = param->degsqfrelimpol;
+  int ok = sd->lmb != NULL && sd->degsqfr == param->elim->length - 1;
+  if (ok) {
+    sep_mulmat_t mm;
+    ok = sep_mulmat_init(&mm, bs, sd->lmb, sd->dquot, prime);
+    if (ok) {
+      param_t *par = allocate_fglm_param(prime, gens->nvars);
+      ok = sep_dense_param(par, &mm, sd->form, sd->degelim, sd->degsqfr) == 0
+        && nmod_poly_equal(par->elim, param->elim);
+      for (int32_t v = 0; ok && v < nr_vars; ++v) {
+        ok = nmod_poly_equal(par->coords[v], param->coords[v]);
+      }
+      free_fglm_param(par);
+      sep_mulmat_clear(&mm);
+    }
+  }
+  free_basis_without_hash_table(&bs);
+  if (!ok) {
+    sep_dense_clear(sd);
+    return 0;
+  }
+  return nterms;
+}
+
+static void sep_dense_modular_steps(sep_dense_t *sd, param_t **nmod_params,
+                                    const primes_t *lp, uint32_t *bad_primes,
+                                    const len_t nprimes, double *stf4) {
+  md_t *st = sd->st;
+  st->info_level = 0;
+  st->f4_qq_round = 2;
+  const int nthrds = st->nthrds;
+  const int32_t nv = st->nvars;
+  st->nthrds = 1;
+  double rt = realtime();
+  len_t i;
+#pragma omp parallel for num_threads(nthrds) private(i) schedule(static)
+  for (i = 0; i < nprimes; ++i) {
+    bad_primes[i] = 1;
+    int32_t error = 0;
+    bs_t *bs = core_gba(sd->bs_qq, st, &error, lp->p[i]);
+    *stf4 = realtime() - rt;
+    if (bs == NULL || error > 0) {
+      free(bs);
+      continue;
+    }
+    if (bs->lml == sd->num_gb) {
+      int32_t *lm = malloc((unsigned long)sd->num_gb * nv * sizeof(int32_t));
+      get_lm_from_bs_trace(bs, bs->ht, lm);
+      if (memcmp(lm, sd->lm, (unsigned long)sd->num_gb * nv * sizeof(int32_t)) == 0) {
+        sep_mulmat_t mm;
+        if (sep_mulmat_init(&mm, bs, sd->lmb, sd->dquot, lp->p[i])) {
+          bad_primes[i] = sep_dense_param(nmod_params[i], &mm, sd->form,
+                                          sd->degelim, sd->degsqfr);
+          sep_mulmat_clear(&mm);
+        }
+      }
+      free(lm);
+    }
+    free_basis_and_only_local_hash_table_data(&bs);
+  }
+  st->nthrds = nthrds;
+}
 
 /* returns 1 if the parametrization can be split, otherwise returns 0*/
 int is_splittable(param_t **nmod_params, const int fc){
@@ -2830,6 +3027,60 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
+  /* separating linear form with an extra variable: if the F4 matrices
+     with the extra variable have more than SEP_DENSE_RATIO times more terms
+     than for the original system (in the run which found the linear form),
+     the multi-modular steps use the original system. These counts do not
+     depend on the machine, so neither does the choice; the output does not
+     depend on it either. */
+  sep_dense_t sd;
+  sd.bs_qq = NULL;
+  sd.st = NULL;
+  sd.lm = NULL;
+  sd.lmb = NULL;
+  int dense = 0;
+  sp_matfglm_t *dmat = NULL;
+  if (gens->sep_status == SEP_APPLIED && gens->sep_form != NULL
+      && gens->linear_form_base_coef > 0 && lift_matrix == 0) {
+    const char *env = getenv("MSOLVE_SEPDENSE");
+    const int force = env != NULL && strcmp(env, "2") == 0;
+    const int larger = gens->sep_matnterms
+      > SEP_DENSE_RATIO * gens->sep_matnterms_ori;
+    if (info_level) {
+      fprintf(VERBSTREAM, "\nF4 matrices with the linear form: %ld terms; "
+              "without: %ld terms\n", (long)gens->sep_matnterms,
+              (long)gens->sep_matnterms_ori);
+    }
+    if ((env == NULL || strcmp(env, "0") != 0)
+        && (force || larger)) {
+      double rt = realtime();
+      /* learns the tracer of the original system and checks the
+         parametrization from the multiplication matrix at primeinit */
+      dense = sep_dense_init(&sd, gens, nmod_params[0], primeinit,
+                             ht_size, nr_threads, max_nr_pairs,
+                             reset_ht, la_option, use_signatures,
+                             pbm_file) > 0;
+      if (info_level) {
+        if (dense) {
+          fprintf(VERBSTREAM, "Multi-modular steps on the original system, "
+                  "parametrizations from the multiplication matrix (%.2f sec)\n",
+                  realtime() - rt);
+        } else {
+          fprintf(VERBSTREAM, "Parametrizations from the multiplication matrix "
+                  "not applicable (%.2f sec)\n", realtime() - rt);
+        }
+      }
+      if (!dense) {
+        sep_dense_clear(&sd);
+      } else {
+        /* no witness coefficients of the multiplication matrix */
+        dmat = calloc(1, sizeof(sp_matfglm_t));
+        dmat->ncols = *dquot_ptr;
+        dmat->nrows = 0;
+      }
+    }
+  }
+
   *to_split_ptr = is_splittable(nmod_params, lp->p[0]);
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
@@ -2863,8 +3114,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
   trace_det_initset(trace_det, nmod_params[0]->elim->coeffs[tridx],
                     nmod_params[0]->elim->coeffs[detidx], tridx, detidx,
-                    bmatrix, lift_matrix, nlins, nv, lineqs_ptr, 4*st->nthrds,
+                    dense ? &dmat : bmatrix, lift_matrix, nlins, nv,
+                    lineqs_ptr, 4*st->nthrds,
                     lp->p[0]);
+  if (dense) {
+    /* no multiplication matrix to lift */
+    trace_det->mat_lifted = 2;
+  }
   /********************************************************************/
 
   mpz_t modulus;
@@ -2980,6 +3236,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     double ca0 = realtime();
     double stf4 = 0;
+    if (dense) {
+      sep_dense_modular_steps(&sd, nmod_params, lp, bad_primes, st->nprimes,
+                              &stf4);
+    } else
     secondary_modular_steps(bmatrix,
 			    bdiv_xn,
 			    blen_gb_xn,
@@ -3087,7 +3347,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           br = rational_reconstruction_param(
               *mpz_paramp, images, vec_wit, nmod_params[i],
               bnlins[i], blinvars[i], lineqs_ptr[i],
-              trace_det, bmatrix[i], numer,
+              trace_det, dense ? dmat : bmatrix[i], numer,
               denom, check_lift, modulus, prod_crt, lp->p[i], rnum, rden, recdata,
               guessed_num, guessed_den, &maxrec, &matrec, &oldmatrec_checked,
               &matrec_checked, is_lifted,
@@ -3119,6 +3379,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           free_msolve_trace_qq_secondary_data(trace_det, modulus,
                   prod_crt, result, test, rnum, rden, numer, denom, check_lift,
                   guessed_num, guessed_den, is_lifted, recdata);
+          sep_dense_clear(&sd);
+          free(dmat);
           return -4;
         }
       }
@@ -3194,6 +3456,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free_msolve_trace_qq_secondary_data(trace_det, modulus,
                   prod_crt, result, test, rnum, rden, numer, denom, check_lift,
                   guessed_num, guessed_den, is_lifted, recdata);
+  sep_dense_clear(&sd);
+  free(dmat);
   return 0;
 }
 

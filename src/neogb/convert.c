@@ -412,6 +412,8 @@ static void convert_hashes_to_columns(
      * added elements have all their terms sorted correctly w.r.t. the given
      * monomial order. */
 
+    st->mat_nterms  +=  nterms;
+
     /* compute density of matrix */
     nterms  *=  100; /* for percentage */
     double density = (double)nterms / (double)mnr / (double)ld;

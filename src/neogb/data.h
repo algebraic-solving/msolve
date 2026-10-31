@@ -402,6 +402,7 @@ struct md_t
     uint64_t max_sht_size;
     uint64_t max_uht_size;
     int64_t nterms_basis;
+    int64_t mat_nterms; /* nonzero terms of all F4 matrices */
     int32_t size_basis;
     int32_t ff_bits;
     int32_t nf;

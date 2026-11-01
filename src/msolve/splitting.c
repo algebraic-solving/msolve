@@ -391,8 +391,10 @@ static void split_combine(fmpq_poly_t P, fmpq_poly_struct *S,
   fmpq_poly_clear(tmp);
 }
 
-static void split_set_mpz_upoly(mpz_upoly_t out, const fmpz_poly_t in) {
-  const long len = fmpz_poly_length(in);
+/* out = in, padded with zeros to at least minlen coefficients */
+static void split_set_mpz_upoly(mpz_upoly_t out, const fmpz_poly_t in,
+                                const long minlen) {
+  const long len = MAX(fmpz_poly_length(in), minlen);
   if (out->alloc < len) {
     out->coeffs = realloc(out->coeffs, len * sizeof(mpz_t));
     for (long i = out->alloc; i < len; i++) {
@@ -401,7 +403,11 @@ static void split_set_mpz_upoly(mpz_upoly_t out, const fmpz_poly_t in) {
     out->alloc = len;
   }
   for (long i = 0; i < len; i++) {
-    fmpz_get_mpz(out->coeffs[i], in->coeffs + i);
+    if (i < fmpz_poly_length(in)) {
+      fmpz_get_mpz(out->coeffs[i], in->coeffs + i);
+    } else {
+      mpz_set_ui(out->coeffs[i], 0);
+    }
   }
   out->length = len;
 }
@@ -427,19 +433,21 @@ static void split_param_range(mpz_param_t mpz_param, const split_data_t *sp,
   fmpz_init(ct);
   fmpz_poly_content(ct, num);
   fmpz_poly_scalar_divexact_fmpz(num, num, ct);
-  split_set_mpz_upoly(mpz_param->elim, num);
+  split_set_mpz_upoly(mpz_param->elim, num, 0);
+  const long deg = fmpz_poly_degree(num);
   fmpq_t lambda;
   fmpq_init(lambda);
   fmpq_set_fmpz_frac(lambda, fmpq_poly_denref(E), ct);
   fmpq_neg(lambda, lambda);
   fmpz_poly_derivative(num, num);
-  split_set_mpz_upoly(mpz_param->denom, num);
+  split_set_mpz_upoly(mpz_param->denom, num, 0);
 
   /* R_v = -lambda sum_g B_v H_g = coords[v] / cfs[v] */
   for (long v = 0; v < nc; v++) {
     fmpq_poly_scalar_mul_fmpq(S + v, S + v, lambda);
     fmpq_poly_get_numerator(num, S + v);
-    split_set_mpz_upoly(mpz_param->coords[v], num);
+    /* as in the usual output, coords[v] has deg(elim) coefficients */
+    split_set_mpz_upoly(mpz_param->coords[v], num, deg);
     fmpz_get_mpz(mpz_param->cfs[v], fmpq_poly_denref(S + v));
     fmpq_poly_clear(S + v);
   }

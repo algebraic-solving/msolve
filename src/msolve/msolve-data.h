@@ -125,6 +125,16 @@ typedef struct{
    * whole solution set is built from them */
   mpz_param_array_struct split_params;
   int32_t split_global;
+  /* search for a separating element on the Groebner basis when the last
+   * variable is not separating (1, default) or not (0); route of the
+   * multi-modular steps with a separating linear form (see
+   * SEP_DENSE_RATIO in msolve.c): 0 chosen, 1 never through the
+   * multiplication matrix of the original system, 2 always; splitting of
+   * the solutions along equalities of coordinates (see splitting.c): 0
+   * chosen, 1 never, 2 whenever there are several components */
+  int32_t sep_search;
+  int32_t sep_dense;
+  int32_t split_mode;
   char **vnames;
   int32_t *lens;
   int32_t *exps;

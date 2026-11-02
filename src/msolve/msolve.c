@@ -284,6 +284,9 @@ data_gens_ff_t *allocate_data_gens() {
   gens->split_params.nb = 0;
   gens->split_params.params = NULL;
   gens->split_global = 1;
+  gens->sep_search = 1;
+  gens->sep_dense = 0;
+  gens->split_mode = 0;
 
   gens->elim = 0;
   return gens;
@@ -2132,9 +2135,8 @@ static int32_t *initial_modular_step(
                 && gens->sep_status == SEP_NONE
                 && gens->change_var_order == -1
                 && gens->linear_form_base_coef == 0) {
-                const char *env = getenv("MSOLVE_SEPELEM");
                 gens->sep_status = SEP_FAILED;
-                if (env == NULL || strcmp(env, "0") != 0) {
+                if (gens->sep_search) {
                     int32_t *c = calloc(bs->ht->nv, sizeof(int32_t));
                     int32_t v = -1;
                     int found = find_separating_element(bs, lmb, dquot, fc,
@@ -3047,8 +3049,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   sp_matfglm_t *dmat = NULL;
   if (gens->sep_status == SEP_APPLIED && gens->sep_form != NULL
       && gens->linear_form_base_coef > 0 && lift_matrix == 0) {
-    const char *env = getenv("MSOLVE_SEPDENSE");
-    const int force = env != NULL && strcmp(env, "2") == 0;
+    const int force = gens->sep_dense == 2;
     const int larger = gens->sep_matnterms
       > SEP_DENSE_RATIO * gens->sep_matnterms_ori;
     if (info_level) {
@@ -3056,8 +3057,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
               "without: %ld terms\n", (long)gens->sep_matnterms,
               (long)gens->sep_matnterms_ori);
     }
-    if ((env == NULL || strcmp(env, "0") != 0)
-        && (force || larger)) {
+    if (gens->sep_dense != 1 && (force || larger)) {
       double rt = realtime();
       /* learns the tracer of the original system and checks the
          parametrization from the multiplication matrix at primeinit */
@@ -3198,7 +3198,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
      splitting.c: the components are then lifted separately */
   split_data_t sp;
   split_params_clear(&(gens->split_params));
-  int split = split_start(&sp, nmod_params[0], info_level);
+  int split = split_start(&sp, nmod_params[0], gens->split_mode, info_level);
   int nmismatch = 0;
 
   while (rerun == 1 || mcheck == 1) {

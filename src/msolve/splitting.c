@@ -45,8 +45,9 @@
 #include <flint/fmpz_poly.h>
 #include <flint/fmpz_vec.h>
 
-/* MSOLVE_SPLIT=0 disables the splitting. It is used when the largest group
- * has at most 1 / SPLIT_MIN_RATIO of the solutions: otherwise, the lifting
+/* The splitting is used, unless disabled by --split 1, when the largest
+ * group has at most 1 / SPLIT_MIN_RATIO of the solutions, or whenever there
+ * are several groups with --split 2: otherwise, the lifting
  * of the largest group costs about as much as the usual lifting, which has
  * better reconstruction bounds. It is abandoned when the groups differ
  * modulo SPLIT_MAX_MISMATCH primes. */
@@ -317,11 +318,10 @@ static void split_reconstruct(split_data_t *sp) {
 
 /* splits the solutions from the parametrization at the first prime and
  * adds its image; returns 0 (sp is then cleared) if the splitting is not
- * used */
+ * used; mode is that of --split (0 chosen, 1 never, 2 always) */
 static int split_start(split_data_t *sp, const param_t *param,
-                       const int info_level) {
-  const char *env = getenv("MSOLVE_SPLIT");
-  if (env != NULL && strcmp(env, "0") == 0) {
+                       const int mode, const int info_level) {
+  if (mode == 1) {
     return 0;
   }
   double rt = realtime();
@@ -334,7 +334,7 @@ static int split_start(split_data_t *sp, const param_t *param,
     maxdeg = MAX(maxdeg, sp->groups[i].deg);
   }
   const long nsols = nmod_poly_degree(param->elim);
-  const int used = SPLIT_MIN_RATIO * maxdeg <= nsols;
+  const int used = mode == 2 || SPLIT_MIN_RATIO * maxdeg <= nsols;
   if (info_level) {
     fprintf(VERBSTREAM, "\nSplitting along equalities of coordinates: "
             "%ld components, largest of degree %ld out of %ld%s (%.2f sec)\n",

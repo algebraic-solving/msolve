@@ -1158,6 +1158,67 @@ will display in the \verb+out.ms+ file the following content.
 
 \end{itemize}
 
+\subsection{Separating elements and splitting of the solutions}\label{sec:separating}
+
+The rational parametrization computed by \msolve expresses the coordinates
+of the solutions as rational functions of the last variable, which must
+therefore take distinct values at distinct solutions: it must be
+\emph{separating}. The following flags control what \msolve does over the
+rationals when it is not, and how the solutions may be split into
+components lifted separately. By default, all these choices are made
+automatically, from the data of the computation only (not from timings),
+so that they do not depend on the machine; the flags are intended for
+experiments.
+
+\begin{itemize}
+\item The flag \verb+--separating-element <int>+ controls the search for a
+  separating element. When the last variable is not separating, \msolve
+  searches, with \verb+1+, for a separating variable or linear form from
+  the Gr\"obner basis already computed: candidates are tested by power
+  projections modulo a prime, by increasing size of their coefficients.
+  A separating variable is then put last; a separating linear form is
+  added to the system with a new variable. This avoids the new
+  Gr\"obner basis computations of the changes of the order of the
+  variables of option \verb+-c+, which are used with \verb+0+, or when the
+  search fails. The parametrization returned depends on the separating
+  element, hence on this choice, but the solutions do not. The search is
+  not used when the staircase is rejected as not generic enough (see
+  option \verb+-d+).
+
+  \hfill \verb+Default value:1+
+
+\item The flag \verb+--dense-route <int>+ applies when a separating linear
+  form is added with a new variable. Adding it often makes the F4
+  matrices much larger. With \verb+0+, if the F4 matrices with the new
+  variable have more than $1.2$ times the terms of those of the original
+  system, the multi-modular computations use the original system, and the
+  parametrization is computed from its multiplication matrix by the
+  linear form; \verb+1+ always uses the system with the new variable,
+  \verb+2+ always uses the original system when it applies. The result
+  does not depend on this choice.
+
+  \hfill \verb+Default value:0+
+
+\item The flag \verb+--split <int>+ controls the splitting of the solutions
+  along equalities of coordinates: the solutions are grouped by the pairs
+  of their coordinates which are equal, which is read from the
+  parametrization modulo a prime. Each group is lifted separately over the
+  rationals, which needs fewer primes when the groups are small, and the
+  parametrization of all the solutions is rebuilt from them; the real
+  solutions are isolated group by group. With \verb+0+, the splitting is
+  used when the largest group has at most a quarter of the solutions;
+  with \verb+1+, it is never used; with \verb+2+, it is used whenever there
+  are several groups. Forcing it may slow down the computation: the
+  lifting of a large group costs about as much as that of all the
+  solutions, with worse bounds for the rational reconstruction (e.g. on
+  \texttt{eco12}, 2 groups of degrees 2 and 1022, about twice slower). The
+  parametrization and the real solutions do not depend on this choice;
+  only the isolating intervals of the real solutions may differ in their
+  last bits, since they are computed group by group.
+
+  \hfill \verb+Default value:0+
+\end{itemize}
+
 \section{Julia interface to \msolve}
 The Julia interface to \msolve is part of the official Julia package
 \texttt{Oscar.jl}. You can install the package via the following

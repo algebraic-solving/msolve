@@ -3231,13 +3231,14 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int split = split_start(&sp, nmod_params[0], gens->split_mode, info_level);
   int nmismatch = 0;
 
-  /* p-adic lifting (see hensel.c): hensel_T primes, one first, then
-   * batches of one prime per thread, until the parametrization is
-   * checked */
+  /* p-adic lifting (see hensel.c): batches of hensel_T primes, one per
+   * thread, the first one made of the first prime and of the images of
+   * the first multi-modular step, until the parametrization is checked */
   hensel_data_t hd;
   hensel_data_init(&hd);
   hensel_state_t hst;
-  long hensel_T = gens->lifting != 1 && gens->ngens >= gens->nvars;
+  long hensel_T = gens->lifting != 1 && gens->ngens >= gens->nvars
+    ? st->nthrds : 0;
   int hensel_chosen = 0;
   /* the splitting along equalities of coordinates is preferred when it
    * applies */
@@ -3394,7 +3395,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           : 2.0 * D * bmatrix[0]->nrows * bmatrix[0]->ncols;
         hensel_set_memref(&hst, MAX(st->max_mat_nterms,
                                     dense ? sd.st->max_mat_nterms : 0),
-                          *dquot_ptr);
+                          *dquot_ptr, st->nthrds);
         hensel_choose(&hst, *dquot_ptr, log2((double)lp->p[0]), f4ops,
                       (double)f4md->mat_nterms, fglmops, info_level);
         hensel_chosen = 1;

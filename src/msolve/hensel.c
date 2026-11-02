@@ -1451,7 +1451,10 @@ typedef struct {
   long nmem;                      /* largest precision of one prime within
                                      the memory limit */
   double memref;                  /* estimate of the memory of the usual
-                                     computation, in bytes */
+                                     computation with one thread, in
+                                     bytes */
+  double memf4;                   /* its part for the F4 data */
+  int nthr;                       /* threads, one prime each */
   /* residues of g and the B_v modulo M, packed in one block of
    * resL limbs each, which grows as a whole (each residue stored apart
    * would grow at each batch, which fragments the heap) */
@@ -1507,6 +1510,8 @@ static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
   st->vbits = 0;
   st->nmem = HENSEL_NMAX;
   st->memref = 0;
+  st->memf4 = 0;
+  st->nthr = 1;
   st->lastb = 0;
   st->pchk = n_nextprime(UWORD(1) << 29, 1);
   hs->skip = 0;
@@ -1789,7 +1794,9 @@ static double hensel_nf_estimate(const hensel_state_t *st) {
  * coefficient of b bits takes 1.2 b / 8 + HENSEL_MEM_COEF bytes (fmpz,
  * mpz and malloc headers; sot1, D = 92: 132 MB at p^12 for 49 MB counted
  * before). The limit is given by --hensel-memory in megabytes, by default
- * st->memref (see hensel_set_memref) plus HENSEL_MEM_CRT times the size
+ * st->memref (see hensel_set_memref), whose F4 part is counted once per
+ * thread when all is set, since the usual computation holds the F4 data
+ * of one prime per thread, plus HENSEL_MEM_CRT times the size
  * of the residues of the parametrization at the estimated number of
  * bits, which the usual lifting would also hold (chandra 11: 267 MB, 103
  * MB of residues), at least HENSEL_MEM_MIN megabytes. The estimate is
@@ -1798,18 +1805,22 @@ static double hensel_nf_estimate(const hensel_state_t *st) {
  * grows with the batches. It is not taken from the machine, so that the
  * computation does not depend on it: higher precisions save few primes
  * (katsura 13: 686 s at p^43, 684 s at p^87; eco 13: 86 s at p^44, 88 s
- * at p^87, 79 s at p^160) */
+ * at p^87, 79 s at p^160). The limit for all the primes of a batch (all
+ * set) is shared among them; that for one prime alone (all not set) does
+ * not depend on the number of threads, so that neither does the choice of
+ * the lifting (see hensel_choose) */
 #define HENSEL_MEM_MIN 32
 #define HENSEL_MEM_CRT 2
 #define HENSEL_MEM_COEF 48
 static double hensel_nf_mem(const hensel_state_t *st, const long D,
-                            const double bnow) {
+                            const double bnow, const int all) {
   if (st->memuser > 0) {
-    return st->memuser;
+    return all ? st->memuser : st->memuser / st->nthr;
   }
   const double est = hensel_nf_estimate(st);
   const double B = est >= 0 ? MIN(est, 2 * bnow) : bnow;
-  const double mem = st->memref + HENSEL_MEM_CRT * (double)D * st->hs.nv * B / 8;
+  const double mem = st->memref + (all ? (st->nthr - 1) * st->memf4 : 0)
+    + HENSEL_MEM_CRT * (double)D * st->hs.nv * B / 8;
   return MAX(mem, HENSEL_MEM_MIN * 1048576.0);
 }
 
@@ -1826,11 +1837,11 @@ static long hensel_nf_nmem_skip(const hensel_state_t *st, const long D,
 
 static long hensel_nf_nmem(const hensel_state_t *st, const long D,
                            const double bnow, const int info_level) {
-  const double mem = hensel_nf_mem(st, D, bnow);
+  const double mem = hensel_nf_mem(st, D, bnow, 1);
   const long nmem = hensel_nf_nmem_skip(st, D, mem, st->hs.skip);
   if (info_level && nmem != st->nmem) {
     fprintf(VERBSTREAM, "memory limit %.0f MB: precision at most p^%ld per "
-            "prime\n", mem / 1048576.0, nmem);
+            "batch of primes\n", mem / 1048576.0, nmem);
   }
   return nmem;
 }
@@ -1849,7 +1860,7 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
                           const double fglmops, const int info_level) {
   hensel_sys_t *hs = &st->hs;
   st->lp = lp;
-  const double mem = hensel_nf_mem(st, D, 0);
+  const double mem = hensel_nf_mem(st, D, 0, 0);
   const double kappa = st->kappa;
   const double modops = f4ops + fglmops;
   hs->cmod = kappa * (HENSEL_KAPPA_F4 * f4ops + HENSEL_KAPPA_F4TERM * f4terms
@@ -1897,11 +1908,14 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
  * per term of the largest matrix, and the coefficients preallocated by
  * the usual lifting, 28 D^2 bytes (see initialize_mpz_param in msolve.c),
  * not by this one. The peak of the usual computation is 0.9 to 2.3 times
- * this estimate on katsura 10 and 13, eco 12 and 13 and coplanarity */
+ * this estimate on katsura 10 and 13, eco 12 and 13 and coplanarity, with
+ * one thread; nthr threads hold the F4 data of nthr primes */
 #define HENSEL_MEM_TERM 8
 static void hensel_set_memref(hensel_state_t *st, const int64_t nterms,
-                              const long D) {
-  st->memref = HENSEL_MEM_TERM * (double)nterms + 28.0 * D * D;
+                              const long D, const int nthr) {
+  st->memf4 = HENSEL_MEM_TERM * (double)nterms;
+  st->memref = st->memf4 + 28.0 * D * D;
+  st->nthr = MAX(1, nthr);
 }
 
 /* target precision of the T primes of the current batch, at precision

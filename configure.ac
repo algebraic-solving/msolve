@@ -149,7 +149,9 @@ AC_CONFIG_LINKS([
  output_files/cyclic5-qq.g2.res:output_files/cyclic5-qq.g2.res
  output_files/cyclic5-qq.g2.e1.res:output_files/cyclic5-qq.g2.e1.res
  output_files/cyclic5-qq.g2.e2.res:output_files/cyclic5-qq.g2.e2.res
+ output_files/cyclic5-qq.P2.d4.sep0.res:output_files/cyclic5-qq.P2.d4.sep0.res
  test/diff/diff_cyclic5-qq.sh:test/diff/diff_cyclic5-qq.sh
+ test/diff/diff_cyclic5-qq-options.sh:test/diff/diff_cyclic5-qq-options.sh
  input_files/eco10-31.ms:input_files/eco10-31.ms
  output_files/eco10-31.P2.d0.res:output_files/eco10-31.P2.d0.res
  test/diff/diff_eco10-31.sh:test/diff/diff_eco10-31.sh

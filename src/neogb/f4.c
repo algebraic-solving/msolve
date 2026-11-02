@@ -370,6 +370,7 @@ static int32_t initialize_f4(
     md->fc  = fc;
     md->hcm = (hi_t *)malloc(sizeof(hi_t));
     md->mat_nterms = 0;
+    md->max_mat_nterms = 0;
 
     if (gmd->fc != fc) {
         if (gmd->f4_qq_round != 2) {
@@ -759,6 +760,23 @@ static void finalize_f4(
     if ((*lmdp)->trace_level != APPLY_TRACER) {
         gmd->min_deg_in_first_deg_fall = (*lmdp)->min_deg_in_first_deg_fall;
         gmd->mat_nterms = (*lmdp)->mat_nterms;
+    }
+    gmd->max_mat_nterms = gmd->max_mat_nterms > (*lmdp)->max_mat_nterms ?
+        gmd->max_mat_nterms : (*lmdp)->max_mat_nterms;
+    /* operation counts of the run, added to those of the caller (runs at
+     * several primes can share gmd): of the learning run to trace_nr_*,
+     * of a run applying the trace to tracer_nr_* */
+    if ((*lmdp)->trace_level == LEARN_TRACER) {
+        gmd->trace_nr_mult += (*lmdp)->application_nr_mult;
+        gmd->trace_nr_add += (*lmdp)->application_nr_add;
+        gmd->trace_nr_red += (*lmdp)->application_nr_red;
+    } else if ((*lmdp)->trace_level == APPLY_TRACER) {
+#pragma omp atomic
+        gmd->tracer_nr_mult += (*lmdp)->application_nr_mult;
+#pragma omp atomic
+        gmd->tracer_nr_add += (*lmdp)->application_nr_add;
+#pragma omp atomic
+        gmd->tracer_nr_red += (*lmdp)->application_nr_red;
     }
     free_local_data(matp, lmdp);
 }

@@ -1,0 +1,2124 @@
+/* This file is part of msolve.
+ *
+ * msolve is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * msolve is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with msolve.  If not, see <https://www.gnu.org/licenses/>
+ *
+ * Authors:
+ * Jérémy Berthomieu
+ * Christian Eder
+ * Mohab Safey El Din */
+
+/* Parametrization of the solution set by p-adic lifting.
+
+   For a square system with simple solutions, the parametrization modulo a
+   prime p, x_v = X_v(t) mod w(t), is lifted to p^N by Newton's iteration
+   (the variable t is the last one):
+     dX    = J^-1 F(X)
+     Delta = t - X_t + dX_t
+     w    <- w + (w' Delta mod w)
+     X_v  <- X_v - dX_v + (X_v' Delta mod w)
+     J^-1 <- J^-1 (2 I - J(X) J^-1)
+   all in (Z/p^2N)[t]/(w), at one prime per thread. The parametrization,
+   described by w and B_v = X_v w' mod w as in splitting.c, is recombined
+   by CRT over the primes and reconstructed over Q, step by step as the
+   precision grows, then checked by evaluating the system at it modulo a
+   prime that was not used.
+
+   A cost model, fed by the first modular runs, chooses N and decides
+   whether this lifting is used instead of the multi-modular one (option
+   --lifting of msolve). The options --hensel-precision, --hensel-cost-scale
+   and --hensel-memory (fields hensel_* of data_gens_ff_t) fix N, scale the
+   cost of the modular runs and fix the memory limit. */
+
+#include <flint/fmpz_mod.h>
+#include <flint/fmpz_mod_poly.h>
+#include <flint/fmpz_poly_mat.h>
+#include <flint/fmpz_mat.h>
+#include <flint/fmpz_lll.h>
+
+#define HENSEL_RRMARGIN 20        /* bits kept by rational reconstruction */
+
+typedef struct {
+  long nt;
+  fmpz *c;
+  long *e;                        /* nt * nv exponents */
+  long *mon;                      /* index of each term in the monomials */
+} hensel_poly_t;
+
+/* the monomials of the equations and of their derivatives, closed under
+ * m -> m / x_var[m] = pred[m]: each one is evaluated with one product;
+ * ord[w] lists those needed by the equations (w = 0) or by the Jacobian
+ * (w = 1), by increasing degree; nlive[w] values of them are held at once
+ * by hensel_eval_set */
+typedef struct {
+  long nmon, alloc;
+  long *e;                        /* nmon * nv exponents */
+  long *deg, *pred, *var;
+  long nord[2], nlive[2];
+  long *ord[2];
+} hensel_mon_t;
+
+typedef struct {
+  long nv, nall;
+  hensel_poly_t *all;             /* nall >= nv equations with integer
+                                     coefficients, for the checks */
+  hensel_poly_t *sys;             /* nv combinations of them, for Newton */
+  hensel_poly_t *jac;             /* jac[i * nv + j] = d sys[i] / d x_j */
+  long *maxe;                     /* largest exponent of each variable */
+  hensel_mon_t mt;
+  long N;                         /* precision p^N */
+  long skip;                      /* last steps without update of J^-1 */
+  int nauto;                      /* N chosen by the cost model */
+  double cnewton, cmod;           /* model costs of one prime (bit ops) */
+  double gain;                    /* precision per cost relative to the
+                                     modular runs alone */
+} hensel_sys_t;
+
+typedef struct {
+  mp_limb_t p;
+  nmod_poly_t w;                  /* monic eliminating polynomial mod p */
+  nmod_poly_struct *X;            /* x_v = X_v(t) mod w, X_{nv-1} = t */
+  /* images at the current precision */
+  fmpz_t q;                       /* p^prec */
+  long ng;                        /* 1 once they are formed, -1 before */
+  long *gdeg;
+  fmpz_poly_struct *g;            /* monic g = w, coefficients in [0, q) */
+  fmpz_poly_struct *B;            /* nv - 1 polynomials B_v = X_v g' mod g */
+  double tnewton;
+  double tinv, tf, tmv, tj, tmm, tup; /* parts of Newton's iteration */
+  /* lifting, kept between the steps */
+  void *nfL;                      /* hensel_lift_t, NULL if not started */
+  fmpz_mod_ctx_struct nfctx[1];
+  long prec;                      /* current precision p^prec */
+  int nfok;                       /* J is invertible modulo (w, p) */
+} hensel_prime_t;
+
+typedef struct {
+  long nprimes, alloc;
+  hensel_prime_t *pr;
+} hensel_data_t;
+
+/* lifting modulo q: w, its inverse for mulmod_preinv, X and J^-1 */
+typedef struct {
+  fmpz_mod_poly_t f, finv;
+  fmpz_mod_poly_struct *X;
+  fmpz_mod_poly_struct *Jinv;
+  long jprec;                     /* J^-1 is known modulo p^jprec */
+  /* timings: F(X), J^-1 F(X) with the corrections, J(X), the two
+   * products of the update of J^-1, the update of X and w */
+  double tf, tmv, tj, tmm, tup;
+} hensel_lift_t;
+
+static void hensel_poly_clear(hensel_poly_t *P) {
+  _fmpz_vec_clear(P->c, P->nt);
+  free(P->e);
+  free(P->mon);
+}
+
+/* index of the monomial e in the open-addressing table h of size hsz
+ * (a power of 2), inserted if absent */
+static long hensel_mon_find(hensel_mon_t *mt, long *h, const long hsz,
+                            const long *e, const long nv) {
+  uint64_t k = 0;
+  for (long i = 0; i < nv; i++) {
+    k = (k ^ (uint64_t)e[i]) * 0x100000001b3ULL;
+  }
+  for (uint64_t j = k & (hsz - 1);; j = (j + 1) & (hsz - 1)) {
+    if (h[j] < 0) {
+      if (mt->nmon == mt->alloc) {
+        mt->alloc *= 2;
+        mt->e = realloc(mt->e, mt->alloc * nv * sizeof(long));
+      }
+      memcpy(mt->e + mt->nmon * nv, e, nv * sizeof(long));
+      h[j] = mt->nmon++;
+      return h[j];
+    }
+    if (memcmp(mt->e + h[j] * nv, e, nv * sizeof(long)) == 0) {
+      return h[j];
+    }
+  }
+}
+
+static int hensel_mon_lookup(const hensel_mon_t *mt, const long *h,
+                             const long hsz, const long *e, const long nv) {
+  uint64_t k = 0;
+  for (long i = 0; i < nv; i++) {
+    k = (k ^ (uint64_t)e[i]) * 0x100000001b3ULL;
+  }
+  for (uint64_t j = k & (hsz - 1); h[j] >= 0; j = (j + 1) & (hsz - 1)) {
+    if (memcmp(mt->e + h[j] * nv, e, nv * sizeof(long)) == 0) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static void hensel_mon_init(hensel_sys_t *hs) {
+  const long nv = hs->nv;
+  hensel_mon_t *mt = &hs->mt;
+  long nterms = 0, maxdeg = 0;
+  for (long i = 0; i < nv; i++) {
+    nterms += hs->sys[i].nt;
+    for (long m = 0; m < hs->sys[i].nt; m++) {
+      long d = 0;
+      for (long k = 0; k < nv; k++) {
+        d += hs->sys[i].e[m * nv + k];
+      }
+      maxdeg = MAX(maxdeg, d);
+    }
+  }
+  for (long i = 0; i < nv * nv; i++) {
+    nterms += hs->jac[i].nt;
+  }
+  /* at most maxdeg monomials are added for each term */
+  long hsz = 16;
+  while (hsz < 2 * nterms * (maxdeg + 1)) {
+    hsz *= 2;
+  }
+  long *h = malloc(hsz * sizeof(long));
+  for (long j = 0; j < hsz; j++) {
+    h[j] = -1;
+  }
+  mt->nmon = 0;
+  mt->alloc = 64;
+  mt->e = malloc(mt->alloc * nv * sizeof(long));
+  for (long w = 0; w < 2; w++) {
+    const long np = w == 0 ? nv : nv * nv;
+    hensel_poly_t *Q = w == 0 ? hs->sys : hs->jac;
+    for (long i = 0; i < np; i++) {
+      hensel_poly_t *P = Q + i;
+      P->mon = malloc(MAX(P->nt, 1) * sizeof(long));
+      for (long m = 0; m < P->nt; m++) {
+        P->mon[m] = hensel_mon_find(mt, h, hsz, P->e + m * nv, nv);
+      }
+    }
+  }
+  /* predecessors, preferably among the monomials already there */
+  long *e = malloc(nv * sizeof(long));
+  mt->pred = NULL;
+  mt->var = NULL;
+  long palloc = 0;
+  for (long done = 0; done < mt->nmon; done++) {
+    if (palloc < mt->alloc) {
+      palloc = mt->alloc;
+      mt->pred = realloc(mt->pred, palloc * sizeof(long));
+      mt->var = realloc(mt->var, palloc * sizeof(long));
+    }
+    memcpy(e, mt->e + done * nv, nv * sizeof(long));
+    long kbest = -1;
+    for (long k = 0; k < nv && kbest < 0; k++) {
+      if (e[k] > 0) {
+        e[k]--;
+        if (hensel_mon_lookup(mt, h, hsz, e, nv)) {
+          kbest = k;
+        }
+        e[k]++;
+      }
+    }
+    for (long k = 0; k < nv && kbest < 0; k++) {
+      if (e[k] > 0) {
+        kbest = k;
+      }
+    }
+    mt->var[done] = kbest;
+    mt->pred[done] = -1;
+    if (kbest >= 0) {
+      e[kbest]--;
+      mt->pred[done] = hensel_mon_find(mt, h, hsz, e, nv);
+    }
+  }
+  free(e);
+  free(h);
+  mt->deg = malloc(mt->nmon * sizeof(long));
+  for (long m = 0; m < mt->nmon; m++) {
+    mt->deg[m] = 0;
+    for (long k = 0; k < nv; k++) {
+      mt->deg[m] += mt->e[m * nv + k];
+    }
+  }
+  /* the monomials needed by each set, with their predecessors, by
+   * increasing degree */
+  long maxd = 0;
+  for (long m = 0; m < mt->nmon; m++) {
+    maxd = MAX(maxd, mt->deg[m]);
+  }
+  char *need = malloc(mt->nmon);
+  for (long w = 0; w < 2; w++) {
+    memset(need, 0, mt->nmon);
+    const long np = w == 0 ? nv : nv * nv;
+    const hensel_poly_t *Q = w == 0 ? hs->sys : hs->jac;
+    for (long i = 0; i < np; i++) {
+      for (long m = 0; m < Q[i].nt; m++) {
+        need[Q[i].mon[m]] = 1;
+      }
+    }
+    for (long d = maxd; d > 0; d--) {
+      for (long m = 0; m < mt->nmon; m++) {
+        if (need[m] && mt->deg[m] == d) {
+          need[mt->pred[m]] = 1;
+        }
+      }
+    }
+    mt->ord[w] = malloc(mt->nmon * sizeof(long));
+    mt->nord[w] = 0;
+    for (long d = 0; d <= maxd; d++) {
+      for (long m = 0; m < mt->nmon; m++) {
+        if (need[m] && mt->deg[m] == d) {
+          mt->ord[w][mt->nord[w]++] = m;
+        }
+      }
+    }
+    /* values held by hensel_eval_set: each one until its last successor
+     * is computed */
+    long *nsucc = calloc(mt->nmon, sizeof(long));
+    for (long j = 0; j < mt->nord[w]; j++) {
+      const long m = mt->ord[w][j];
+      if (mt->pred[m] >= 0) {
+        nsucc[mt->pred[m]]++;
+      }
+    }
+    long live = 0;
+    mt->nlive[w] = 0;
+    for (long j = 0; j < mt->nord[w]; j++) {
+      const long m = mt->ord[w][j];
+      live++;
+      mt->nlive[w] = MAX(mt->nlive[w], live);
+      if (mt->pred[m] >= 0 && --nsucc[mt->pred[m]] == 0) {
+        live--;
+      }
+      if (nsucc[m] == 0) {
+        live--;
+      }
+    }
+    free(nsucc);
+  }
+  free(need);
+}
+
+static void hensel_mon_clear(hensel_mon_t *mt) {
+  free(mt->e);
+  free(mt->deg);
+  free(mt->pred);
+  free(mt->var);
+  free(mt->ord[0]);
+  free(mt->ord[1]);
+}
+
+/* sorts the terms of P by exponents and adds those with the same
+ * monomial, removing the zero ones */
+static long hensel_merge_nv;
+static int hensel_merge_cmp(const void *a, const void *b) {
+  const long *ea = *(long *const *)a, *eb = *(long *const *)b;
+  for (long k = 0; k < hensel_merge_nv; k++) {
+    if (ea[k] != eb[k]) {
+      return ea[k] < eb[k] ? -1 : 1;
+    }
+  }
+  return 0;
+}
+
+static void hensel_poly_merge(hensel_poly_t *P, const long nv) {
+  long **idx = malloc(MAX(P->nt, 1) * sizeof(long *));
+  for (long m = 0; m < P->nt; m++) {
+    idx[m] = P->e + m * nv;
+  }
+  hensel_merge_nv = nv;
+  qsort(idx, P->nt, sizeof(long *), hensel_merge_cmp);
+  fmpz *c = _fmpz_vec_init(MAX(P->nt, 1));
+  long *e = malloc(MAX(P->nt, 1) * nv * sizeof(long));
+  long n = 0;
+  for (long m = 0; m < P->nt; m++) {
+    const long t = (idx[m] - P->e) / nv;
+    if (n > 0 && memcmp(e + (n - 1) * nv, idx[m], nv * sizeof(long)) == 0) {
+      fmpz_add(c + n - 1, c + n - 1, P->c + t);
+    } else {
+      if (n > 0 && fmpz_is_zero(c + n - 1)) {
+        n--;
+      }
+      fmpz_set(c + n, P->c + t);
+      memcpy(e + n * nv, idx[m], nv * sizeof(long));
+      n++;
+    }
+  }
+  if (n > 0 && fmpz_is_zero(c + n - 1)) {
+    n--;
+  }
+  _fmpz_vec_clear(P->c, P->nt);
+  free(P->e);
+  free(idx);
+  P->c = c;
+  P->e = e;
+  P->nt = n;
+}
+
+/* the system of gens with integer coefficients; if there are more
+ * equations than variables, Newton's iteration uses the nv combinations
+ * F_i + sum_j r_ij F_j (j >= nv) with random r_ij, whose Jacobian is
+ * invertible at the simple solutions of F for generic r_ij; returns 0 if
+ * there are fewer equations than variables */
+static int hensel_sys_init(hensel_sys_t *hs, const data_gens_ff_t *gens) {
+  const long nv = gens->nvars, nall = gens->ngens;
+  if (nall < nv || gens->field_char != 0) {
+    return 0;
+  }
+  hs->nv = nv;
+  hs->nall = nall;
+  hs->all = malloc(nall * sizeof(hensel_poly_t));
+  hs->sys = malloc(nv * sizeof(hensel_poly_t));
+  hs->jac = malloc(nv * nv * sizeof(hensel_poly_t));
+  hs->maxe = calloc(nv, sizeof(long));
+  fmpz_t l, num, den;
+  fmpz_init(l);
+  fmpz_init(num);
+  fmpz_init(den);
+  long pos = 0;
+  for (long i = 0; i < nall; i++) {
+    hensel_poly_t *P = hs->all + i;
+    P->mon = NULL;
+    P->nt = gens->lens[i];
+    P->c = _fmpz_vec_init(P->nt);
+    P->e = malloc(P->nt * nv * sizeof(long));
+    /* l = lcm of the denominators */
+    fmpz_one(l);
+    for (long m = 0; m < P->nt; m++) {
+      fmpz_set_mpz(den, *(gens->mpz_cfs[2 * (pos + m) + 1]));
+      fmpz_lcm(l, l, den);
+    }
+    for (long m = 0; m < P->nt; m++) {
+      fmpz_set_mpz(num, *(gens->mpz_cfs[2 * (pos + m)]));
+      fmpz_set_mpz(den, *(gens->mpz_cfs[2 * (pos + m) + 1]));
+      fmpz_divexact(den, l, den);
+      fmpz_mul(P->c + m, num, den);
+      for (long k = 0; k < nv; k++) {
+        P->e[m * nv + k] = gens->exps[(pos + m) * nv + k];
+        hs->maxe[k] = MAX(hs->maxe[k], P->e[m * nv + k]);
+      }
+    }
+    pos += P->nt;
+  }
+  /* the combinations, with a fixed generator so that the random numbers
+   * of msolve are not consumed */
+  uint64_t seed = 0x9e3779b97f4a7c15ULL;
+  for (long i = 0; i < nv; i++) {
+    hensel_poly_t *P = hs->sys + i;
+    P->mon = NULL;
+    P->nt = hs->all[i].nt;
+    for (long j = nv; j < nall; j++) {
+      P->nt += hs->all[j].nt;
+    }
+    P->c = _fmpz_vec_init(P->nt);
+    P->e = malloc(P->nt * nv * sizeof(long));
+    long m = 0;
+    for (long j = i; j < nall; j = (j == i ? nv : j + 1)) {
+      const hensel_poly_t *A = hs->all + j;
+      ulong r = 1;
+      if (j != i) {
+        seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
+        r = 1 + (seed >> 54);
+      }
+      for (long l = 0; l < A->nt; l++, m++) {
+        fmpz_mul_ui(P->c + m, A->c + l, r);
+        memcpy(P->e + m * nv, A->e + l * nv, nv * sizeof(long));
+      }
+    }
+    /* the equations share monomials (cp_d_3_n_7_p_2: 24987 terms for 330
+     * monomials, phuoc1: 88202 terms of about 2000 bits for 2147) */
+    if (nall > nv) {
+      hensel_poly_merge(P, nv);
+    }
+  }
+  for (long i = 0; i < nv; i++) {
+    const hensel_poly_t *S = hs->sys + i;
+    for (long j = 0; j < nv; j++) {
+      hensel_poly_t *P = hs->jac + i * nv + j;
+      P->mon = NULL;
+      long cnt = 0;
+      for (long m = 0; m < S->nt; m++) {
+        cnt += S->e[m * nv + j] != 0;
+      }
+      P->nt = cnt;
+      P->c = _fmpz_vec_init(cnt);
+      P->e = malloc(MAX(cnt, 1) * nv * sizeof(long));
+      cnt = 0;
+      for (long m = 0; m < S->nt; m++) {
+        if (S->e[m * nv + j] == 0) {
+          continue;
+        }
+        fmpz_mul_ui(P->c + cnt, S->c + m, S->e[m * nv + j]);
+        for (long k = 0; k < nv; k++) {
+          P->e[cnt * nv + k] = S->e[m * nv + k] - (k == j);
+        }
+        cnt++;
+      }
+    }
+  }
+  fmpz_clear(l);
+  fmpz_clear(num);
+  fmpz_clear(den);
+  hensel_mon_init(hs);
+  return 1;
+}
+
+static void hensel_sys_clear(hensel_sys_t *hs) {
+  for (long i = 0; i < hs->nv; i++) {
+    hensel_poly_clear(hs->sys + i);
+  }
+  for (long i = 0; i < hs->nall; i++) {
+    hensel_poly_clear(hs->all + i);
+  }
+  free(hs->all);
+  hensel_mon_clear(&hs->mt);
+  for (long i = 0; i < hs->nv * hs->nv; i++) {
+    hensel_poly_clear(hs->jac + i);
+  }
+  free(hs->sys);
+  free(hs->jac);
+  free(hs->maxe);
+}
+
+static void hensel_data_init(hensel_data_t *hd) {
+  hd->nprimes = 0;
+  hd->alloc = 0;
+  hd->pr = NULL;
+}
+
+/* adds the normalized parametrization modulo a prime (see
+ * normalize_nmod_param): x_v = -coords[v] / denom mod elim */
+static void hensel_add_param(hensel_data_t *hd, const param_t *param) {
+  if (hd->nprimes == hd->alloc) {
+    hd->alloc = MAX(8, 2 * hd->alloc);
+    hd->pr = realloc(hd->pr, hd->alloc * sizeof(hensel_prime_t));
+  }
+  hensel_prime_t *P = hd->pr + hd->nprimes;
+  memset(P, 0, sizeof(hensel_prime_t));
+  const mp_limb_t p = param->charac;
+  const long nv = param->nvars;
+  P->p = p;
+  P->ng = -1;
+  nmod_poly_init(P->w, p);
+  nmod_poly_make_monic(P->w, param->elim);
+  P->X = malloc(nv * sizeof(nmod_poly_struct));
+  nmod_poly_t inv;
+  nmod_poly_init(inv, p);
+  nmod_poly_invmod(inv, param->denom, P->w);
+  nmod_poly_neg(inv, inv);
+  for (long v = 0; v < nv - 1; v++) {
+    nmod_poly_init(P->X + v, p);
+    nmod_poly_mulmod(P->X + v, param->coords[v], inv, P->w);
+  }
+  nmod_poly_init(P->X + nv - 1, p);
+  nmod_poly_set_coeff_ui(P->X + nv - 1, 1, 1);
+  nmod_poly_clear(inv);
+  hd->nprimes++;
+}
+
+static void hensel_data_clear(hensel_data_t *hd, const long nv) {
+  for (long j = 0; j < hd->nprimes; j++) {
+    hensel_prime_t *P = hd->pr + j;
+    nmod_poly_clear(P->w);
+    for (long v = 0; v < nv; v++) {
+      nmod_poly_clear(P->X + v);
+    }
+    free(P->X);
+    if (P->ng > 0) {
+      for (long r = 0; r < P->ng; r++) {
+        fmpz_poly_clear(P->g + r);
+        for (long v = 0; v < nv - 1; v++) {
+          fmpz_poly_clear(P->B + r * (nv - 1) + v);
+        }
+      }
+      free(P->g);
+      free(P->B);
+      free(P->gdeg);
+      fmpz_clear(P->q);
+    }
+  }
+  free(hd->pr);
+  hensel_data_init(hd);
+}
+
+/* ------------------------------------------------------------------ */
+/* Newton's iteration                                                  */
+
+static void hensel_set_finv(hensel_lift_t *L, const fmpz_mod_ctx_t ctx) {
+  fmpz_mod_poly_t r;
+  fmpz_mod_poly_init(r, ctx);
+  fmpz_mod_poly_reverse(r, L->f, L->f->length, ctx);
+  fmpz_mod_poly_inv_series(L->finv, r, L->f->length, ctx);
+  fmpz_mod_poly_clear(r, ctx);
+}
+
+#define HENSEL_MULMOD(r, a, b, L, ctx) \
+  fmpz_mod_poly_mulmod_preinv(r, a, b, (L)->f, (L)->finv, ctx)
+
+/* res[i] = Q_i(X) mod f for the equations (w = 0) or the entries of the
+ * Jacobian (w = 1), from the values of their monomials, computed by
+ * increasing degree; the terms of each monomial are added to the res[i]
+ * once its value is known, and the value is freed once its successors are
+ * computed, so that about two degrees of them are held at once (sot1: 12328
+ * monomials in J, at most mt->nlive[1] values) */
+static void hensel_eval_set(fmpz_mod_poly_struct *res, const hensel_sys_t *hs,
+                            const int w, const hensel_lift_t *L,
+                            const fmpz_mod_ctx_t ctx) {
+  const hensel_mon_t *mt = &hs->mt;
+  const long nv = hs->nv, np = w == 0 ? nv : nv * nv;
+  const hensel_poly_t *Q = w == 0 ? hs->sys : hs->jac;
+  /* the terms of each monomial: equation and coefficient */
+  long *start = calloc(mt->nmon + 1, sizeof(long));
+  for (long i = 0; i < np; i++) {
+    for (long t = 0; t < Q[i].nt; t++) {
+      start[Q[i].mon[t] + 1]++;
+    }
+  }
+  for (long m = 0; m < mt->nmon; m++) {
+    start[m + 1] += start[m];
+  }
+  long *teq = malloc(start[mt->nmon] * sizeof(long));
+  const fmpz **tcf = malloc(start[mt->nmon] * sizeof(fmpz *));
+  long *pos = malloc(mt->nmon * sizeof(long));
+  memcpy(pos, start, mt->nmon * sizeof(long));
+  for (long i = 0; i < np; i++) {
+    for (long t = 0; t < Q[i].nt; t++) {
+      const long k = pos[Q[i].mon[t]]++;
+      teq[k] = i;
+      tcf[k] = Q[i].c + t;
+    }
+  }
+  long *nsucc = pos;
+  memset(nsucc, 0, mt->nmon * sizeof(long));
+  for (long j = 0; j < mt->nord[w]; j++) {
+    const long m = mt->ord[w][j];
+    if (mt->pred[m] >= 0) {
+      nsucc[mt->pred[m]]++;
+    }
+  }
+  /* the terms are added with their integer coefficients, which are small,
+   * and the sums are reduced once: reduced modulo q, a negative
+   * coefficient would have the size of q */
+  const slong dl = fmpz_mod_poly_degree(L->f, ctx);
+  for (long i = 0; i < np; i++) {
+    fmpz_mod_poly_fit_length(res + i, dl, ctx);
+    _fmpz_vec_zero(res[i].coeffs, dl);
+  }
+  fmpz_mod_poly_struct *val = malloc(mt->nmon * sizeof(fmpz_mod_poly_struct));
+  for (long j = 0; j < mt->nord[w]; j++) {
+    const long m = mt->ord[w][j], pm = mt->pred[m];
+    fmpz_mod_poly_init(val + m, ctx);
+    if (pm < 0) {
+      fmpz_mod_poly_one(val + m, ctx);
+    } else if (mt->deg[m] == 1) {
+      fmpz_mod_poly_set(val + m, L->X + mt->var[m], ctx);
+    } else {
+      HENSEL_MULMOD(val + m, val + pm, L->X + mt->var[m], L, ctx);
+    }
+    if (pm >= 0 && --nsucc[pm] == 0) {
+      fmpz_mod_poly_clear(val + pm, ctx);
+    }
+    for (long k = start[m]; k < start[m + 1]; k++) {
+      _fmpz_vec_scalar_addmul_fmpz(res[teq[k]].coeffs, val[m].coeffs,
+                                   val[m].length, tcf[k]);
+    }
+    if (nsucc[m] == 0) {
+      fmpz_mod_poly_clear(val + m, ctx);
+    }
+  }
+  for (long i = 0; i < np; i++) {
+    _fmpz_vec_scalar_mod_fmpz(res[i].coeffs, res[i].coeffs, dl,
+                              fmpz_mod_ctx_modulus(ctx));
+    _fmpz_mod_poly_set_length(res + i, dl);
+    _fmpz_mod_poly_normalise(res + i);
+  }
+  free(val);
+  free(nsucc);
+  free(tcf);
+  free(teq);
+  free(start);
+}
+
+/* C = A B for nv x nv matrices over (Z/q)[t]/(f): product over Z[t], then
+ * reduction */
+static void hensel_matmul(fmpz_mod_poly_struct *C,
+                          const fmpz_mod_poly_struct *A,
+                          const fmpz_mod_poly_struct *B, const long nv,
+                          const hensel_lift_t *L, const fmpz_mod_ctx_t ctx) {
+  fmpz_poly_mat_t Az, Bz, Cz;
+  fmpz_poly_mat_init(Az, nv, nv);
+  fmpz_poly_mat_init(Bz, nv, nv);
+  fmpz_poly_mat_init(Cz, nv, nv);
+  for (long i = 0; i < nv; i++) {
+    for (long j = 0; j < nv; j++) {
+      fmpz_mod_poly_get_fmpz_poly(fmpz_poly_mat_entry(Az, i, j),
+                                  A + i * nv + j, ctx);
+      fmpz_mod_poly_get_fmpz_poly(fmpz_poly_mat_entry(Bz, i, j),
+                                  B + i * nv + j, ctx);
+    }
+  }
+  fmpz_poly_mat_mul(Cz, Az, Bz);
+  fmpz_mod_poly_t r;
+  fmpz_mod_poly_init(r, ctx);
+  for (long i = 0; i < nv; i++) {
+    for (long j = 0; j < nv; j++) {
+      fmpz_mod_poly_set_fmpz_poly(r, fmpz_poly_mat_entry(Cz, i, j), ctx);
+      fmpz_mod_poly_rem(C + i * nv + j, r, L->f, ctx);
+    }
+  }
+  fmpz_mod_poly_clear(r, ctx);
+  fmpz_poly_mat_clear(Az);
+  fmpz_poly_mat_clear(Bz);
+  fmpz_poly_mat_clear(Cz);
+}
+
+/* B = A^-1 modulo (f, p) by Gauss-Jordan elimination with invertible
+ * pivots; returns 0 if J is not invertible */
+static int hensel_inv_mod_p(nmod_poly_struct *B, nmod_poly_struct *A,
+                            const nmod_poly_t f, const long nv) {
+  const mp_limb_t p = f->mod.n;
+  int ok = 1;
+  nmod_poly_t g, iv, tmp, fac;
+  nmod_poly_init(g, p);
+  nmod_poly_init(iv, p);
+  nmod_poly_init(tmp, p);
+  nmod_poly_init(fac, p);
+  for (long i = 0; i < nv; i++) {
+    for (long j = 0; j < nv; j++) {
+      if (i == j) {
+        nmod_poly_one(B + i * nv + j);
+      } else {
+        nmod_poly_zero(B + i * nv + j);
+      }
+    }
+  }
+  for (long k = 0; k < nv && ok; k++) {
+    long piv = -1;
+    for (long i = k; i < nv && piv < 0; i++) {
+      if (nmod_poly_is_zero(A + i * nv + k)) {
+        continue;
+      }
+      nmod_poly_gcd(g, A + i * nv + k, f);
+      if (nmod_poly_degree(g) == 0) {
+        piv = i;
+      }
+    }
+    if (piv < 0) {
+      ok = 0;
+      break;
+    }
+    if (piv != k) {
+      for (long j = 0; j < nv; j++) {
+        nmod_poly_swap(A + k * nv + j, A + piv * nv + j);
+        nmod_poly_swap(B + k * nv + j, B + piv * nv + j);
+      }
+    }
+    nmod_poly_invmod(iv, A + k * nv + k, f);
+    for (long j = 0; j < nv; j++) {
+      nmod_poly_mulmod(A + k * nv + j, A + k * nv + j, iv, f);
+      nmod_poly_mulmod(B + k * nv + j, B + k * nv + j, iv, f);
+    }
+    for (long i = 0; i < nv; i++) {
+      if (i == k || nmod_poly_is_zero(A + i * nv + k)) {
+        continue;
+      }
+      nmod_poly_set(fac, A + i * nv + k);
+      for (long j = 0; j < nv; j++) {
+        nmod_poly_mulmod(tmp, fac, A + k * nv + j, f);
+        nmod_poly_sub(A + i * nv + j, A + i * nv + j, tmp);
+        nmod_poly_mulmod(tmp, fac, B + k * nv + j, f);
+        nmod_poly_sub(B + i * nv + j, B + i * nv + j, tmp);
+      }
+    }
+  }
+  nmod_poly_clear(g);
+  nmod_poly_clear(iv);
+  nmod_poly_clear(tmp);
+  nmod_poly_clear(fac);
+  return ok;
+}
+
+/* r = A v modulo (f, q) for an nv x nv matrix A and a vector v of
+ * polynomials of degree less than deg f: the sums are formed over Z[t] and
+ * reduced once; r has coefficients in [0, q) */
+static void hensel_matvec(fmpz_poly_struct *r, const fmpz_poly_struct *A,
+                          const fmpz_poly_struct *v, const long nv,
+                          const hensel_lift_t *L, const fmpz_mod_ctx_t ctx) {
+  fmpz_poly_t acc, pr;
+  fmpz_poly_init(acc);
+  fmpz_poly_init(pr);
+  fmpz_mod_poly_t t, qq, rr;
+  fmpz_mod_poly_init(t, ctx);
+  fmpz_mod_poly_init(qq, ctx);
+  fmpz_mod_poly_init(rr, ctx);
+  for (long i = 0; i < nv; i++) {
+    fmpz_poly_zero(acc);
+    for (long j = 0; j < nv; j++) {
+      if (!fmpz_poly_is_zero(A + i * nv + j) && !fmpz_poly_is_zero(v + j)) {
+        fmpz_poly_mul(pr, A + i * nv + j, v + j);
+        fmpz_poly_add(acc, acc, pr);
+      }
+    }
+    fmpz_mod_poly_set_fmpz_poly(t, acc, ctx);
+    if (t->length >= L->f->length) {
+      fmpz_mod_poly_divrem_newton_n_preinv(qq, rr, t, L->f, L->finv, ctx);
+      fmpz_mod_poly_get_fmpz_poly(r + i, rr, ctx);
+    } else {
+      fmpz_mod_poly_get_fmpz_poly(r + i, t, ctx);
+    }
+  }
+  fmpz_poly_clear(acc);
+  fmpz_poly_clear(pr);
+  fmpz_mod_poly_clear(t, ctx);
+  fmpz_mod_poly_clear(qq, ctx);
+  fmpz_mod_poly_clear(rr, ctx);
+}
+
+/* dX = J(X)^-1 F(X) modulo p^n, where F(X) = 0 modulo p^o, o < n <= 2o,
+ * so that dX = p^o y with J y = F(X) / p^o modulo p^(n - o); J^-1 is
+ * known modulo p^jprec: if this is not enough, y is refined by
+ * corrections y += p^e J^-1 s, s = (s - J y_e) / p^jprec, each one at a
+ * precision lower by jprec, with J(X) evaluated modulo p^(n - o) */
+static void hensel_solve(fmpz_mod_poly_struct *dX,
+                         const fmpz_mod_poly_struct *Fv,
+                         hensel_lift_t *L, const hensel_sys_t *hs,
+                         const long o, const long n,
+                         const fmpz_mod_ctx_t ctx) {
+  const long nv = hs->nv, h = n - o, jp = L->jprec;
+  double rt = realtime();
+  fmpz_t pr, pe, qm;
+  fmpz_init(pr);
+  fmpz_init(pe);
+  fmpz_init(qm);
+  /* p, from the modulus p^n */
+  fmpz_root(pr, fmpz_mod_ctx_modulus(ctx), n);
+  fmpz_poly_t fz, tz;
+  fmpz_poly_init(fz);
+  fmpz_poly_init(tz);
+  fmpz_mod_poly_get_fmpz_poly(fz, L->f, ctx);
+  fmpz_poly_struct *Jinvz = malloc(nv * nv * sizeof(fmpz_poly_struct));
+  for (long i = 0; i < nv * nv; i++) {
+    fmpz_poly_init(Jinvz + i);
+    fmpz_mod_poly_get_fmpz_poly(Jinvz + i, L->Jinv + i, ctx);
+  }
+  /* s = F(X) / p^o */
+  fmpz_pow_ui(pe, pr, o);
+  fmpz_poly_struct *s = malloc(nv * sizeof(fmpz_poly_struct));
+  for (long i = 0; i < nv; i++) {
+    fmpz_poly_init(s + i);
+    fmpz_mod_poly_get_fmpz_poly(s + i, Fv + i, ctx);
+    fmpz_poly_scalar_fdiv_fmpz(s + i, s + i, pe);
+    fmpz_mod_poly_zero(dX + i, ctx);
+  }
+  /* J(X) modulo p^h, only if corrections are needed */
+  fmpz_poly_struct *Jz = NULL;
+  if (jp < h) {
+    fmpz_mod_ctx_t ch;
+    fmpz_pow_ui(qm, pr, h);
+    fmpz_mod_ctx_init(ch, qm);
+    hensel_lift_t Lh[1];
+    fmpz_mod_poly_init(Lh->f, ch);
+    fmpz_mod_poly_init(Lh->finv, ch);
+    fmpz_mod_poly_set_fmpz_poly(Lh->f, fz, ch);
+    hensel_set_finv(Lh, ch);
+    Lh->X = malloc(nv * sizeof(fmpz_mod_poly_struct));
+    for (long k = 0; k < nv; k++) {
+      fmpz_mod_poly_init(Lh->X + k, ch);
+      fmpz_mod_poly_get_fmpz_poly(tz, L->X + k, ctx);
+      fmpz_mod_poly_set_fmpz_poly(Lh->X + k, tz, ch);
+    }
+    fmpz_mod_poly_struct *Je = malloc(nv * nv * sizeof(fmpz_mod_poly_struct));
+    for (long i = 0; i < nv * nv; i++) {
+      fmpz_mod_poly_init(Je + i, ch);
+    }
+    hensel_eval_set(Je, hs, 1, Lh, ch);
+    Jz = malloc(nv * nv * sizeof(fmpz_poly_struct));
+    for (long i = 0; i < nv * nv; i++) {
+      fmpz_poly_init(Jz + i);
+      fmpz_mod_poly_get_fmpz_poly(Jz + i, Je + i, ch);
+      fmpz_mod_poly_clear(Je + i, ch);
+    }
+    free(Je);
+    for (long k = 0; k < nv; k++) {
+      fmpz_mod_poly_clear(Lh->X + k, ch);
+    }
+    free(Lh->X);
+    fmpz_mod_poly_clear(Lh->f, ch);
+    fmpz_mod_poly_clear(Lh->finv, ch);
+    fmpz_mod_ctx_clear(ch);
+  }
+  L->tj += realtime() - rt;
+  rt = realtime();
+  fmpz_mod_poly_t b;
+  fmpz_mod_poly_init(b, ctx);
+  fmpz_poly_struct *yz = malloc(nv * sizeof(fmpz_poly_struct));
+  fmpz_poly_struct *tv = malloc(nv * sizeof(fmpz_poly_struct));
+  fmpz_poly_struct *Am = malloc(nv * nv * sizeof(fmpz_poly_struct));
+  fmpz_poly_struct *Bm = malloc(nv * nv * sizeof(fmpz_poly_struct));
+  for (long i = 0; i < nv * nv; i++) {
+    fmpz_poly_init(Am + i);
+    fmpz_poly_init(Bm + i);
+  }
+  for (long i = 0; i < nv; i++) {
+    fmpz_poly_init(yz + i);
+    fmpz_poly_init(tv + i);
+  }
+  /* y_e is added to dX with the factor p^(o + e) */
+  for (long e = 0; e < h; e += jp) {
+    const long m = h - e;
+    fmpz_mod_ctx_t cm;
+    fmpz_pow_ui(qm, pr, m);
+    fmpz_mod_ctx_init(cm, qm);
+    hensel_lift_t Lm[1];
+    fmpz_mod_poly_init(Lm->f, cm);
+    fmpz_mod_poly_init(Lm->finv, cm);
+    fmpz_mod_poly_set_fmpz_poly(Lm->f, fz, cm);
+    hensel_set_finv(Lm, cm);
+    /* J^-1 and J reduced to the current precision */
+    for (long i = 0; i < nv * nv; i++) {
+      if (jp > m) {
+        fmpz_poly_scalar_mod_fmpz(Am + i, Jinvz + i, qm);
+      } else {
+        fmpz_poly_set(Am + i, Jinvz + i);
+      }
+      if (Jz != NULL && e + jp < h) {
+        fmpz_poly_scalar_mod_fmpz(Bm + i, Jz + i, qm);
+      }
+    }
+    hensel_matvec(yz, Am, s, nv, Lm, cm);
+    fmpz_pow_ui(pe, pr, o + e);
+    for (long i = 0; i < nv; i++) {
+      fmpz_poly_scalar_mul_fmpz(tz, yz + i, pe);
+      fmpz_mod_poly_set_fmpz_poly(b, tz, ctx);
+      fmpz_mod_poly_add(dX + i, dX + i, b, ctx);
+    }
+    if (e + jp < h) {
+      /* s = (s - J y) / p^jprec */
+      hensel_matvec(tv, Bm, yz, nv, Lm, cm);
+      fmpz_pow_ui(pe, pr, jp);
+      for (long i = 0; i < nv; i++) {
+        fmpz_poly_sub(s + i, s + i, tv + i);
+        fmpz_poly_scalar_mod_fmpz(s + i, s + i, qm);
+        fmpz_poly_scalar_fdiv_fmpz(s + i, s + i, pe);
+      }
+    }
+    fmpz_mod_poly_clear(Lm->f, cm);
+    fmpz_mod_poly_clear(Lm->finv, cm);
+    fmpz_mod_ctx_clear(cm);
+  }
+  for (long i = 0; i < nv; i++) {
+    fmpz_poly_clear(yz + i);
+    fmpz_poly_clear(tv + i);
+  }
+  free(yz);
+  free(tv);
+  for (long i = 0; i < nv * nv; i++) {
+    fmpz_poly_clear(Am + i);
+    fmpz_poly_clear(Bm + i);
+  }
+  free(Am);
+  free(Bm);
+  fmpz_mod_poly_clear(b, ctx);
+  for (long i = 0; i < nv; i++) {
+    fmpz_poly_clear(s + i);
+  }
+  free(s);
+  for (long i = 0; i < nv * nv; i++) {
+    fmpz_poly_clear(Jinvz + i);
+    if (Jz != NULL) {
+      fmpz_poly_clear(Jz + i);
+    }
+  }
+  free(Jinvz);
+  free(Jz);
+  fmpz_poly_clear(fz);
+  fmpz_poly_clear(tz);
+  fmpz_clear(pe);
+  fmpz_clear(qm);
+  fmpz_clear(pr);
+  L->tmv += realtime() - rt;
+}
+
+/* one Newton step from the precision p^o to p^n, o < n <= 2o, the context
+ * has the modulus p^n; J^-1 is updated when upd is set */
+static void hensel_step(hensel_lift_t *L, const hensel_sys_t *hs,
+                        const int upd, const long o, const long n,
+                        const fmpz_mod_ctx_t ctx) {
+  const long nv = hs->nv;
+  fmpz_mod_poly_t tmp, Delta, fd;
+  fmpz_mod_poly_init(tmp, ctx);
+  fmpz_mod_poly_init(Delta, ctx);
+  fmpz_mod_poly_init(fd, ctx);
+  hensel_set_finv(L, ctx);
+  fmpz_mod_poly_struct *Fv = malloc(nv * sizeof(fmpz_mod_poly_struct));
+  fmpz_mod_poly_struct *dX = malloc(nv * sizeof(fmpz_mod_poly_struct));
+  for (long i = 0; i < nv; i++) {
+    fmpz_mod_poly_init(Fv + i, ctx);
+    fmpz_mod_poly_init(dX + i, ctx);
+  }
+  double rt = realtime();
+  hensel_eval_set(Fv, hs, 0, L, ctx);
+  L->tf += realtime() - rt;
+  hensel_solve(dX, Fv, L, hs, o, n, ctx);
+  rt = realtime();
+  /* Delta = t - X_t + dX_t, where t - X_t vanishes only modulo the
+   * previous precision */
+  fmpz_mod_poly_zero(Delta, ctx);
+  fmpz_mod_poly_set_coeff_ui(Delta, 1, 1, ctx);
+  fmpz_mod_poly_sub(Delta, Delta, L->X + nv - 1, ctx);
+  fmpz_mod_poly_add(Delta, Delta, dX + nv - 1, ctx);
+  for (long i = 0; i < nv; i++) {
+    fmpz_mod_poly_derivative(fd, L->X + i, ctx);
+    HENSEL_MULMOD(tmp, fd, Delta, L, ctx);
+    fmpz_mod_poly_sub(L->X + i, L->X + i, dX + i, ctx);
+    fmpz_mod_poly_add(L->X + i, L->X + i, tmp, ctx);
+  }
+  fmpz_mod_poly_derivative(fd, L->f, ctx);
+  HENSEL_MULMOD(tmp, fd, Delta, L, ctx);
+  fmpz_mod_poly_add(L->f, L->f, tmp, ctx);
+  hensel_set_finv(L, ctx);
+  L->tup += realtime() - rt;
+  if (upd) {
+    rt = realtime();
+    fmpz_mod_poly_struct *J = malloc(nv * nv * sizeof(fmpz_mod_poly_struct));
+    fmpz_mod_poly_struct *T = malloc(nv * nv * sizeof(fmpz_mod_poly_struct));
+    for (long i = 0; i < nv * nv; i++) {
+      fmpz_mod_poly_init(J + i, ctx);
+      fmpz_mod_poly_init(T + i, ctx);
+    }
+    hensel_eval_set(J, hs, 1, L, ctx);
+    L->tj += realtime() - rt;
+    rt = realtime();
+    hensel_matmul(T, J, L->Jinv, nv, L, ctx);
+    fmpz_t c;
+    fmpz_init(c);
+    for (long i = 0; i < nv * nv; i++) {
+      fmpz_mod_poly_neg(T + i, T + i, ctx);
+    }
+    for (long i = 0; i < nv; i++) {
+      fmpz_mod_poly_get_coeff_fmpz(c, T + i * nv + i, 0, ctx);
+      fmpz_mod_add_ui(c, c, 2, ctx);
+      fmpz_mod_poly_set_coeff_fmpz(T + i * nv + i, 0, c, ctx);
+    }
+    fmpz_clear(c);
+    hensel_matmul(J, L->Jinv, T, nv, L, ctx);
+    L->tmm += realtime() - rt;
+    L->jprec = MIN(2 * L->jprec, n);
+    for (long i = 0; i < nv * nv; i++) {
+      fmpz_mod_poly_swap(L->Jinv + i, J + i, ctx);
+      fmpz_mod_poly_clear(J + i, ctx);
+      fmpz_mod_poly_clear(T + i, ctx);
+    }
+    free(J);
+    free(T);
+  }
+  for (long i = 0; i < nv; i++) {
+    fmpz_mod_poly_clear(Fv + i, ctx);
+    fmpz_mod_poly_clear(dX + i, ctx);
+  }
+  free(Fv);
+  free(dX);
+  fmpz_mod_poly_clear(tmp, ctx);
+  fmpz_mod_poly_clear(Delta, ctx);
+  fmpz_mod_poly_clear(fd, ctx);
+}
+
+/* ------------------------------------------------------------------ */
+/* reconstruction                                                      */
+
+/* residues of the coefficients of g and of the B_v (n = dg nv of them)
+ * modulo M Q, Q the product of the moduli q_j of the T primes pr, formed
+ * coefficient by coefficient from their residues res modulo M and from
+ * the images at the primes, so that no vector modulo M Q is stored */
+typedef struct {
+  const ulong *res;       /* modulo M, packed, L limbs each; unused if M = 1 */
+  slong L;
+  const hensel_prime_t *pr;
+  long T, dg, nv;
+  fmpz *Mj;               /* M q_0 .. q_(j-1) */
+  fmpz *inv;              /* its inverse modulo q_j */
+  fmpz_t MQ;
+} hensel_crt_t;
+
+/* M is not kept: the products Mj start from it */
+static void hensel_crt_init(hensel_crt_t *C, const fmpz_t M,
+                            const hensel_prime_t *pr, const long T,
+                            const long dg, const long nv) {
+  C->res = NULL;
+  C->L = 0;
+  C->pr = pr;
+  C->T = T;
+  C->dg = dg;
+  C->nv = nv;
+  C->Mj = _fmpz_vec_init(T);
+  C->inv = _fmpz_vec_init(T);
+  fmpz_init_set(C->MQ, M);
+  for (long j = 0; j < T; j++) {
+    fmpz_set(C->Mj + j, C->MQ);
+    if (!fmpz_is_one(C->MQ)) {
+      fmpz_invmod(C->inv + j, C->MQ, pr[j].q);
+    }
+    fmpz_mul(C->MQ, C->MQ, pr[j].q);
+  }
+}
+
+static void hensel_crt_clear(hensel_crt_t *C) {
+  _fmpz_vec_clear(C->Mj, C->T);
+  _fmpz_vec_clear(C->inv, C->T);
+  fmpz_clear(C->MQ);
+}
+
+/* the image of the coefficient i at the prime P */
+static const fmpz *hensel_crt_image(const hensel_prime_t *P, const long i,
+                                    const long dg) {
+  const fmpz_poly_struct *f = i < dg ? P->g : P->B + (i - dg) / dg;
+  const long k = i < dg ? i : (i - dg) % dg;
+  return k < f->length ? f->coeffs + k : NULL;
+}
+
+/* x = the residue of the coefficient i modulo M Q, from x = its residue
+ * modulo M (ignored if M = 1); t is a temporary */
+static void hensel_crt_update(fmpz_t x, const hensel_crt_t *C, const long i,
+                              fmpz_t t) {
+  for (long j = 0; j < C->T; j++) {
+    const fmpz *b = hensel_crt_image(C->pr + j, i, C->dg);
+    if (fmpz_is_one(C->Mj + j)) {
+      if (b != NULL) {
+        fmpz_set(x, b);
+      } else {
+        fmpz_zero(x);
+      }
+      continue;
+    }
+    /* x += M_j ((b - x) / M_j mod q_j) */
+    if (b != NULL) {
+      fmpz_sub(t, b, x);
+    } else {
+      fmpz_neg(t, x);
+    }
+    fmpz_mul(t, t, C->inv + j);
+    fmpz_mod(t, t, C->pr[j].q);
+    fmpz_addmul(x, t, C->Mj + j);
+  }
+}
+
+static void hensel_crt_get(fmpz_t x, const hensel_crt_t *C, const long i,
+                           fmpz_t t) {
+  if (C->T == 0 || !fmpz_is_one(C->Mj)) {
+    fmpz_set_ui_array(x, C->res + i * C->L, C->L);
+  }
+  hensel_crt_update(x, C, i, t);
+}
+
+/* evaluates the system at x_v = B_v / g' mod g (x_t = t) modulo p;
+ * returns 1 if it vanishes, 0 if not, -1 if p divides a denominator */
+static int hensel_check(const fmpq *rec, const long dg, const hensel_sys_t *hs,
+                        const mp_limb_t p) {
+  const long nv = hs->nv;
+  nmod_t mod;
+  nmod_init(&mod, p);
+  nmod_poly_t g, gd, ig, tmp, acc, val;
+  nmod_poly_init(g, p);
+  nmod_poly_init(gd, p);
+  nmod_poly_init(ig, p);
+  nmod_poly_init(tmp, p);
+  nmod_poly_init(acc, p);
+  nmod_poly_init(val, p);
+  nmod_poly_struct *X = malloc(nv * sizeof(nmod_poly_struct));
+  for (long v = 0; v < nv; v++) {
+    nmod_poly_init(X + v, p);
+  }
+  int ok = 1;
+  /* g, then the B_v */
+  for (long i = 0; i < dg * nv && ok == 1; i++) {
+    const mp_limb_t den = fmpz_fdiv_ui(fmpq_denref(rec + i), p);
+    if (den == 0) {
+      ok = -1;
+      break;
+    }
+    const mp_limb_t u = nmod_mul(fmpz_fdiv_ui(fmpq_numref(rec + i), p),
+                                 nmod_inv(den, mod), mod);
+    if (i < dg) {
+      nmod_poly_set_coeff_ui(g, i, u);
+    } else {
+      nmod_poly_set_coeff_ui(X + (i - dg) / dg, (i - dg) % dg, u);
+    }
+  }
+  if (ok == 1) {
+    nmod_poly_set_coeff_ui(g, dg, 1);
+    nmod_poly_derivative(gd, g);
+    nmod_poly_gcdinv(tmp, ig, gd, g);
+    if (nmod_poly_degree(tmp) != 0) {
+      ok = -1;
+    }
+  }
+  if (ok == 1) {
+    for (long v = 0; v < nv - 1; v++) {
+      nmod_poly_mulmod(X + v, X + v, ig, g);
+    }
+    nmod_poly_zero(X + nv - 1);
+    nmod_poly_set_coeff_ui(X + nv - 1, 1, 1);
+    nmod_poly_rem(X + nv - 1, X + nv - 1, g);
+    for (long i = 0; i < hs->nall && ok == 1; i++) {
+      const hensel_poly_t *P = hs->all + i;
+      nmod_poly_zero(val);
+      for (long m = 0; m < P->nt; m++) {
+        nmod_poly_one(acc);
+        for (long k = 0; k < nv; k++) {
+          for (long e = 0; e < P->e[m * nv + k]; e++) {
+            nmod_poly_mulmod(acc, acc, X + k, g);
+          }
+        }
+        nmod_poly_scalar_mul_nmod(acc, acc, fmpz_fdiv_ui(P->c + m, p));
+        nmod_poly_add(val, val, acc);
+      }
+      if (!nmod_poly_is_zero(val)) {
+        ok = 0;
+      }
+    }
+  }
+  for (long v = 0; v < nv; v++) {
+    nmod_poly_clear(X + v);
+  }
+  free(X);
+  nmod_poly_clear(g);
+  nmod_poly_clear(gd);
+  nmod_poly_clear(ig);
+  nmod_poly_clear(tmp);
+  nmod_poly_clear(acc);
+  nmod_poly_clear(val);
+  return ok;
+}
+
+/* reconstruction of a = c d modulo M with the bounds of
+ * hensel_reconstruct: M^(1/64), then M^(1/16), then balanced */
+static int hensel_rr(fmpq_t r, const fmpz_t a, const fmpz_t M,
+                     const slong *eb, fmpz_t Nb, fmpz_t Db) {
+  for (int t = 0; t < 3; t++) {
+    if (eb[t] < 0) {
+      return fmpq_reconstruct_fmpz(r, a, M);
+    }
+    /* 2 N D < M / 2^HENSEL_RRMARGIN: a random residue is accepted with
+     * probability about 2^-HENSEL_RRMARGIN */
+    fmpz_one(Db);
+    fmpz_mul_2exp(Db, Db, eb[t]);
+    fmpz_fdiv_q(Nb, M, Db);
+    fmpz_fdiv_q_2exp(Nb, Nb, 2 + HENSEL_RRMARGIN);
+    if (fmpq_reconstruct_fmpz_2(r, a, M, Nb, Db)) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+/* reconstructs the block blk (g, then the B_v) from the highest degree,
+ * with the running denominator d; returns the number of coefficients
+ * reconstructed before the first failure */
+static long hensel_rec_block(fmpq *rec, const hensel_crt_t *C, const long blk,
+                             fmpz_t d, const slong *eb, fmpz *tmp) {
+  const long dg = C->dg;
+  const fmpz *M = C->MQ;
+  fmpz *a = tmp, *c = tmp + 1, *t = tmp + 2, *Nb = tmp + 3, *Db = tmp + 4;
+  fmpq_t r;
+  fmpq_init(r);
+  long k = 0;
+  for (; k < dg; k++) {
+    const long i = blk * dg + dg - 1 - k;
+    hensel_crt_get(c, C, i, t);
+    fmpz_mul(a, d, c);
+    fmpz_mod(a, a, M);
+    if (!hensel_rr(r, a, M, eb, Nb, Db)) {
+      break;
+    }
+    fmpz_mul(fmpq_denref(rec + i), fmpq_denref(r), d);
+    fmpz_set(fmpq_numref(rec + i), fmpq_numref(r));
+    fmpq_canonicalise(rec + i);
+    fmpz_mul(d, d, fmpq_denref(r));
+  }
+  fmpq_clear(r);
+  return k;
+}
+
+/* rational reconstruction of the n = dg nv coefficients of g and of the
+ * B_v modulo M = C->MQ, from the highest degrees down, with a running
+ * common denominator d: d c is reconstructed with a denominator bound
+ * M^(1/64), then M^(1/16), then a balanced one. d starts from d0 for g (1
+ * if d0 is NULL). Each B_v starts from the denominator of g, then from 1
+ * if it fails: the B_v often share the denominator of g (random2_9_9:
+ * 39000 bits, which a start from 1 has to reconstruct again with each
+ * B_v, 81000 bits instead of 52000), but not always (katsura 13: 27800
+ * bits from the denominator of g instead of 20500). nrec receives the
+ * number of coefficients of g reconstructed before the first failure.
+ * Returns 1 if all succeed */
+static int hensel_reconstruct(fmpq *rec, const hensel_crt_t *C,
+                              const fmpz *d0, long *nrec) {
+  const slong b = fmpz_bits(C->MQ);
+  const slong eb[3] = {b / 64, b / 16, -1};
+  fmpz *tmp = _fmpz_vec_init(5);
+  fmpz_t d, dG;
+  fmpz_init(d);
+  fmpz_init(dG);
+  if (d0 != NULL) {
+    fmpz_set(d, d0);
+  } else {
+    fmpz_one(d);
+  }
+  const long k = hensel_rec_block(rec, C, 0, d, eb, tmp);
+  if (nrec != NULL) {
+    *nrec = k;
+  }
+  int ok = k == C->dg;
+  fmpz_set(dG, d);
+  for (long blk = 1; blk < C->nv && ok; blk++) {
+    fmpz_set(d, dG);
+    ok = hensel_rec_block(rec, C, blk, d, eb, tmp) == C->dg;
+    if (!ok && !fmpz_is_one(dG)) {
+      fmpz_one(d);
+      ok = hensel_rec_block(rec, C, blk, d, eb, tmp) == C->dg;
+    }
+  }
+  fmpz_clear(d);
+  fmpz_clear(dG);
+  _fmpz_vec_clear(tmp, 5);
+  return ok;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* cost model                                                          */
+
+/* The costs are counted in bit operations of the products of two
+   polynomials of degree less than D with b1- and b2-bit coefficients,
+   done by Kronecker substitution and an FFT product of L bits:
+   L log2(L) with L = D (b1 + b2 + log2 D). A product modulo w with its
+   preinverse costs three of them. */
+static double hensel_mul_cost(const long D, const double b1, const double b2) {
+  const double L = D * (b1 + b2 + log2((double)D));
+  return L * log2(L);
+}
+
+static double hensel_mm_cost(const long D, const double b) {
+  return 3 * hensel_mul_cost(D, b, b);
+}
+
+/* number of products of the evaluation of F (w = 0) or of J (w = 1) */
+static long hensel_nprod(const hensel_sys_t *hs, const int w) {
+  long c = 0;
+  for (long j = 0; j < hs->mt.nord[w]; j++) {
+    c += hs->mt.deg[hs->mt.ord[w][j]] >= 2;
+  }
+  return c;
+}
+
+/* number of terms of F (w = 0) or of J (w = 1) */
+static long hensel_nterms(const hensel_sys_t *hs, const int w) {
+  const long np = w == 0 ? hs->nv : hs->nv * hs->nv;
+  const hensel_poly_t *Q = w == 0 ? hs->sys : hs->jac;
+  long c = 0;
+  for (long i = 0; i < np; i++) {
+    c += Q[i].nt;
+  }
+  return c;
+}
+
+/* cost of the terms of an evaluation of F or J (see hensel_eval_set): D
+ * coefficients of b bits multiplied by a small integer and added, for
+ * each term, about 5.5 ns + 0.008 ns per bit for a coefficient (measured
+ * for D = 32 to 2048 and 60 to 3900 bits, in units of 5e-11 s, see
+ * hensel_choose); this matters on dense systems (cp_d_3_n_7_p_2: 24987
+ * terms for 330 monomials in F, 63498 terms in J) */
+#define HENSEL_TERM_C0 110.0
+#define HENSEL_TERM_C1 0.16
+static double hensel_term_cost(const hensel_sys_t *hs, const int w,
+                               const long D, const double b) {
+  return (double)hensel_nterms(hs, w) * D
+    * (HENSEL_TERM_C0 + HENSEL_TERM_C1 * b);
+}
+
+/* model cost of one Newton step from p^o to p^n, with J^-1 known modulo
+ * p^jp and updated if upd, following hensel_step and hensel_solve; lp =
+ * log2(p) */
+static double hensel_model_step(const hensel_sys_t *hs, const long D,
+                                const double lp, const long o, const long n,
+                                const long jp, const int upd) {
+  const double nv = hs->nv;
+  const double nF = hensel_nprod(hs, 0), nJ = hensel_nprod(hs, 1);
+  const long h = n - o;
+  const double b = n * lp;
+  /* F(X) and the two preinverses of w */
+  double c = nF * hensel_mm_cost(D, b) + 2 * hensel_mm_cost(D, b)
+    + hensel_term_cost(hs, 0, D, b);
+  if (jp < h) {
+    c += nJ * hensel_mm_cost(D, h * lp) + hensel_term_cost(hs, 1, D, h * lp);
+  }
+  for (long e = 0; e < h; e += jp) {
+    const double bm = (h - e) * lp, ba = MIN(jp, h - e) * lp;
+    c += hensel_mm_cost(D, bm) + nv * nv * hensel_mul_cost(D, ba, bm)
+      + 2 * nv * hensel_mul_cost(D, bm, bm);
+    if (e + jp < h) {
+      c += nv * nv * hensel_mul_cost(D, bm, bm)
+        + 2 * nv * hensel_mul_cost(D, bm, bm);
+    }
+  }
+  /* update of X and w */
+  c += (nv + 1) * hensel_mm_cost(D, b);
+  if (upd) {
+    c += nJ * hensel_mm_cost(D, b) + hensel_term_cost(hs, 1, D, b)
+      + 2 * (nv * nv * nv + 2 * nv * nv) * hensel_mul_cost(D, b, b);
+  }
+  return c;
+}
+
+/* whether J^-1 is updated in the step from p^o to p^n: while it is
+ * current and the precision does not exceed jcap */
+static int hensel_upd(const long jp, const long o, const long n,
+                      const long jcap) {
+  return jp >= o && n <= jcap;
+}
+
+/* model cost of the lifting of one prime from p^o (J^-1 known modulo
+ * p^jp) to p^N by doublings, the last one possibly shorter */
+static double hensel_model_from(const hensel_sys_t *hs, const long D,
+                                const double lp, long o, long jp,
+                                const long N, const long jcap) {
+  double c = 0;
+  while (o < N) {
+    const long n = MIN(2 * o, N);
+    const int upd = hensel_upd(jp, o, n, jcap);
+    c += hensel_model_step(hs, D, lp, o, n, jp, upd);
+    if (upd) {
+      jp = MIN(2 * jp, n);
+    }
+    o = n;
+  }
+  return c;
+}
+
+/* model cost of the lifting of one prime to p^N with J^-1 updated up to
+ * the precision N / 2^skip, including J mod p, its inverse by Gauss-Jordan
+ * elimination and B_v = X_v w' mod w */
+static double hensel_model(const hensel_sys_t *hs, const long D,
+                           const double lp, const long N, const long skip) {
+  const double nv = hs->nv, nJ = hensel_nprod(hs, 1);
+  return (nJ + nv * nv * nv) * hensel_mm_cost(D, lp)
+    + hensel_term_cost(hs, 1, D, lp)
+    + hensel_model_from(hs, D, lp, 1, 1, N, N >> skip)
+    + nv * hensel_mm_cost(D, N * lp);
+}
+
+/* costs of a modular run in units of the model, a bit operation of the
+ * products of Newton's iteration, about 5e-11 s (measured 4.3e-11 to
+ * 6.7e-11 s for the products modulo w for D = 32 to 4096 and 60 to 3900
+ * bits): a multiply-add counted in F4, 5.1e-10 s, a term of the F4
+ * matrices, 6.4e-9 s, and a multiply-add of the products by the dense
+ * rows of the multiplication matrix in FGLM, 8e-11 s (fitted on the
+ * modular runs of 26 systems, within 25% for most, 40% slower on eco and
+ * henrion); --hensel-cost-scale multiplies them */
+#define HENSEL_KAPPA_F4 10.0
+#define HENSEL_KAPPA_F4TERM 128.0
+#define HENSEL_KAPPA_FGLM 1.6
+
+
+/* the lifting state across the batches of primes */
+#define HENSEL_MAX_MISMATCH 3
+#define HENSEL_NHIST 256
+#define HENSEL_NMAX 1024          /* largest precision p^N */
+#define HENSEL_ATTEMPT_GROWTH 10  /* see hensel_state_step */
+#define HENSEL_MIN_GAIN 1.2       /* below, the usual lifting is used */
+
+typedef struct {
+  hensel_sys_t hs;
+  long ng;                        /* 1 once started, -1 before */
+  split_data_t sp;                /* one group, see splitting.c */
+  fmpz *M;                        /* modulus of the CRT */
+  long *need;                     /* primes used when it was checked */
+  long nused, nmismatch;
+  mp_limb_t pchk;                 /* prime of the checks */
+  /* bits of the modulus and fraction of the coefficients of g
+   * reconstructed at each attempt, and the estimated number of bits */
+  long nh;
+  double hb[HENSEL_NHIST], hf[HENSEL_NHIST];
+  double best;
+  double lp;                      /* log2 of the primes */
+  fmpz_t vden;                    /* denominator of g from the vector
+                                     witnesses, 0 if none */
+  long nmem;                      /* largest precision of one prime within
+                                     the memory limit */
+  double memref;                  /* estimate of the memory of the usual
+                                     computation, in bytes */
+  /* residues of g and the B_v modulo M, packed in one block of
+   * resL limbs each, which grows as a whole (each residue stored apart
+   * would grow at each batch, which fragments the heap) */
+  ulong *res;
+  slong resL;
+  double lastb;                   /* bits at the last attempt */
+  double vbits;                   /* bits of the last attempt of LLL */
+  double kappa;                   /* factor on the cost of a modular run */
+  double memuser;                 /* memory limit in bytes, 0 if computed */
+} hensel_state_t;
+
+/* returns 0 if there are fewer equations than variables; the options
+ * hensel_* of gens are read (see main.c) */
+static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
+                             const int info_level) {
+  if (!hensel_sys_init(&st->hs, gens)) {
+    return 0;
+  }
+  hensel_sys_t *hs = &st->hs;
+  const long N = gens->hensel_prec;
+  st->kappa = gens->hensel_cost_scale > 0 ? gens->hensel_cost_scale : 1.0;
+  st->memuser = gens->hensel_memory > 0 ? gens->hensel_memory * 1048576.0
+    : 0;
+  /* N <= 0: chosen by the cost model after the first modular runs */
+  hs->nauto = N <= 0;
+  hs->N = N > 0 ? N : 8;
+  hs->cnewton = hs->cmod = 0;
+  if (info_level) {
+    long nt[2] = {0, 0};
+    for (long i = 0; i < hs->nv; i++) {
+      nt[0] += hs->sys[i].nt;
+    }
+    for (long i = 0; i < hs->nv * hs->nv; i++) {
+      nt[1] += hs->jac[i].nt;
+    }
+    fprintf(VERBSTREAM, "\nNewton's iteration: %ld equations in %ld "
+            "variables; %ld terms with %ld monomials for F, %ld terms with "
+            "%ld monomials for its Jacobian (at most %ld and %ld values held)"
+            "\n", hs->nall, hs->nv, nt[0], hs->mt.nord[0], nt[1],
+            hs->mt.nord[1], hs->mt.nlive[0], hs->mt.nlive[1]);
+  }
+  st->ng = -1;
+  st->M = NULL;
+  st->need = NULL;
+  st->nused = 0;
+  st->nmismatch = 0;
+  st->nh = 0;
+  st->best = -1;
+  st->lp = 30;
+  fmpz_init(st->vden);
+  st->res = NULL;
+  st->resL = 0;
+  st->vbits = 0;
+  st->nmem = HENSEL_NMAX;
+  st->memref = 0;
+  st->lastb = 0;
+  st->pchk = n_nextprime(UWORD(1) << 29, 1);
+  hs->skip = 0;
+  return 1;
+}
+
+/* clears the state; the groups in st->sp are cleared if clear_groups */
+static void hensel_state_clear(hensel_state_t *st, const int clear_groups) {
+  fmpz_clear(st->vden);
+  free(st->res);
+  if (st->ng > 0) {
+    _fmpz_vec_clear(st->M, st->ng);
+    free(st->need);
+    if (clear_groups) {
+      split_data_clear(&st->sp);
+    }
+  }
+  hensel_sys_clear(&st->hs);
+}
+
+/* the group of the parametrization, from the images at the first prime */
+static void hensel_state_start(hensel_state_t *st, const hensel_prime_t *P) {
+  const long ng = P->ng, nv = st->hs.nv;
+  st->ng = ng;
+  st->M = _fmpz_vec_init(ng);
+  st->need = calloc(ng, sizeof(long));
+  split_data_t *sp = &st->sp;
+  sp->nc = nv - 1;
+  sp->nwords = (sp->nc * (sp->nc - 1) / 2 + 63) / 64;
+  sp->ngroups = ng;
+  sp->groups = malloc(ng * sizeof(split_group_t));
+  fmpz_init(sp->modulus);
+  sp->nprimes = 0;
+  sp->ndone = 0;
+  for (long r = 0; r < ng; r++) {
+    split_group_t *G = sp->groups + r;
+    G->deg = P->gdeg[r];
+    G->sig = calloc(MAX(sp->nwords, 1), sizeof(uint64_t));
+    G->n = G->deg * nv;
+    G->crt = _fmpz_vec_init(G->n);
+    G->rec = _fmpq_vec_init(G->n);
+    G->state = 0;
+    fmpz_one(st->M + r);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* lifting of the parametrization, step by step                         */
+
+/* starts the lifting of P: data modulo p and J^-1 modulo (w, p) */
+static void hensel_nf_start(hensel_prime_t *P, const hensel_sys_t *hs) {
+  const long nv = hs->nv;
+  const mp_limb_t p = P->p;
+  fmpz_t q;
+  fmpz_init_set_ui(q, p);
+  fmpz_mod_ctx_init(P->nfctx, q);
+  fmpz_clear(q);
+  fmpz_mod_ctx_struct *ctx = P->nfctx;
+  hensel_lift_t *L = malloc(sizeof(hensel_lift_t));
+  P->nfL = L;
+  L->tf = L->tmv = L->tj = L->tmm = L->tup = 0;
+  L->jprec = 1;
+  P->prec = 1;
+  P->tnewton = 0;
+  double rt = realtime();
+  fmpz_mod_poly_init(L->f, ctx);
+  fmpz_mod_poly_init(L->finv, ctx);
+  fmpz_mod_poly_set_nmod_poly(L->f, P->w);
+  L->X = malloc(nv * sizeof(fmpz_mod_poly_struct));
+  L->Jinv = malloc(nv * nv * sizeof(fmpz_mod_poly_struct));
+  for (long i = 0; i < nv; i++) {
+    fmpz_mod_poly_init(L->X + i, ctx);
+    fmpz_mod_poly_set_nmod_poly(L->X + i, P->X + i);
+  }
+  hensel_set_finv(L, ctx);
+  nmod_poly_struct *A = malloc(nv * nv * sizeof(nmod_poly_struct));
+  nmod_poly_struct *B = malloc(nv * nv * sizeof(nmod_poly_struct));
+  fmpz_mod_poly_struct *e = malloc(nv * nv * sizeof(fmpz_mod_poly_struct));
+  for (long i = 0; i < nv * nv; i++) {
+    fmpz_mod_poly_init(e + i, ctx);
+  }
+  hensel_eval_set(e, hs, 1, L, ctx);
+  fmpz_poly_t ez;
+  fmpz_poly_init(ez);
+  for (long i = 0; i < nv * nv; i++) {
+    nmod_poly_init(A + i, p);
+    nmod_poly_init(B + i, p);
+    fmpz_mod_poly_get_fmpz_poly(ez, e + i, ctx);
+    fmpz_poly_get_nmod_poly(A + i, ez);
+    fmpz_mod_poly_clear(e + i, ctx);
+  }
+  free(e);
+  fmpz_poly_clear(ez);
+  double ri = realtime();
+  P->nfok = hensel_inv_mod_p(B, A, P->w, nv);
+  P->tinv = realtime() - ri;
+  for (long i = 0; i < nv * nv; i++) {
+    fmpz_mod_poly_init(L->Jinv + i, ctx);
+    fmpz_mod_poly_set_nmod_poly(L->Jinv + i, B + i);
+    nmod_poly_clear(A + i);
+    nmod_poly_clear(B + i);
+  }
+  free(A);
+  free(B);
+  P->tnewton += realtime() - rt;
+}
+
+/* one step towards p^target; J^-1 is updated up to the precision jcap */
+static void hensel_nf_step(hensel_prime_t *P, const hensel_sys_t *hs,
+                           const long target, const long jcap) {
+  hensel_lift_t *L = P->nfL;
+  const long o = P->prec, n = MIN(2 * o, target);
+  double rt = realtime();
+  fmpz_t q;
+  fmpz_init_set_ui(q, P->p);
+  fmpz_pow_ui(q, q, n);
+  fmpz_mod_ctx_set_modulus(P->nfctx, q);
+  fmpz_clear(q);
+  hensel_step(L, hs, hensel_upd(L->jprec, o, n, jcap), o, n, P->nfctx);
+  P->prec = n;
+  P->tnewton += realtime() - rt;
+  P->tf = L->tf;
+  P->tmv = L->tmv;
+  P->tj = L->tj;
+  P->tmm = L->tmm;
+  P->tup = L->tup;
+}
+
+/* the images of the parametrization at the current precision, as one
+ * group: g = w and B_v = X_v w' mod w modulo q = p^prec */
+static void hensel_nf_images(hensel_prime_t *P, const hensel_sys_t *hs) {
+  const long nv = hs->nv;
+  hensel_lift_t *L = P->nfL;
+  fmpz_mod_ctx_struct *ctx = P->nfctx;
+  if (P->ng < 0) {
+    P->ng = 1;
+    P->gdeg = calloc(1, sizeof(long));
+    P->g = malloc(sizeof(fmpz_poly_struct));
+    fmpz_poly_init(P->g);
+    P->B = malloc((nv - 1) * sizeof(fmpz_poly_struct));
+    for (long v = 0; v < nv - 1; v++) {
+      fmpz_poly_init(P->B + v);
+    }
+    fmpz_init(P->q);
+  }
+  fmpz_set(P->q, fmpz_mod_ctx_modulus(ctx));
+  P->gdeg[0] = fmpz_mod_poly_degree(L->f, ctx);
+  fmpz_mod_poly_get_fmpz_poly(P->g, L->f, ctx);
+  fmpz_mod_poly_t wd, xr;
+  fmpz_mod_poly_init(wd, ctx);
+  fmpz_mod_poly_init(xr, ctx);
+  fmpz_mod_poly_derivative(wd, L->f, ctx);
+  for (long v = 0; v < nv - 1; v++) {
+    HENSEL_MULMOD(xr, L->X + v, wd, L, ctx);
+    fmpz_mod_poly_get_fmpz_poly(P->B + v, xr, ctx);
+  }
+  fmpz_mod_poly_clear(wd, ctx);
+  fmpz_mod_poly_clear(xr, ctx);
+}
+
+static void hensel_nf_clear(hensel_prime_t *P, const hensel_sys_t *hs) {
+  hensel_lift_t *L = P->nfL;
+  if (L == NULL) {
+    return;
+  }
+  fmpz_mod_ctx_struct *ctx = P->nfctx;
+  for (long i = 0; i < hs->nv; i++) {
+    fmpz_mod_poly_clear(L->X + i, ctx);
+  }
+  for (long i = 0; i < hs->nv * hs->nv; i++) {
+    fmpz_mod_poly_clear(L->Jinv + i, ctx);
+  }
+  free(L->X);
+  free(L->Jinv);
+  fmpz_mod_poly_clear(L->f, ctx);
+  fmpz_mod_poly_clear(L->finv, ctx);
+  fmpz_mod_ctx_clear(ctx);
+  free(L);
+  P->nfL = NULL;
+}
+
+/* vector witnesses (see vec_wit_try in msolve.c): the coefficients of
+ * the monic g share a common denominator d; k of them, u_1, .., u_k
+ * modulo M, give the short vector (d, n_1, .., n_k), n_j = d u_j mod M,
+ * found by LLL with about bits(n) + bits(d) / k bits instead of bits(n) +
+ * bits(d). The candidate is accepted under the same bound as in msolve,
+ * then used as the initial denominator of the reconstruction of g, which
+ * fails if it is wrong. Returns 1 if a candidate is found */
+#define HENSEL_VW_K 4
+static int hensel_vecwit(fmpz_t d, const hensel_crt_t *C) {
+  const long dg = C->dg;
+  const fmpz *M = C->MQ;
+  long idx[HENSEL_VW_K], k = 0;
+  fmpz *c;
+  fmpz_t t;
+  const long cand[HENSEL_VW_K] = {dg - 1, dg / 2, dg / 4, dg / 16};
+  if (dg < 4 * HENSEL_VW_K) {
+    return 0;
+  }
+  c = _fmpz_vec_init(HENSEL_VW_K);
+  fmpz_init(t);
+  for (long j = 0; j < HENSEL_VW_K; j++) {
+    long i = cand[j];
+    int again = 1;
+    while (again && i < dg) {
+      hensel_crt_get(c + k, C, i, t);
+      again = fmpz_is_zero(c + k);
+      for (long l = 0; l < k; l++) {
+        again = again || idx[l] == i;
+      }
+      i += again;
+    }
+    if (i < dg) {
+      idx[k++] = i;
+    }
+  }
+  fmpz_clear(t);
+  if (k < 2) {
+    _fmpz_vec_clear(c, HENSEL_VW_K);
+    return 0;
+  }
+  fmpz_mat_t B;
+  fmpz_mat_init(B, k + 1, k + 1);
+  fmpz_one(fmpz_mat_entry(B, 0, 0));
+  for (long j = 0; j < k; j++) {
+    fmpz_set(fmpz_mat_entry(B, 0, j + 1), c + j);
+    fmpz_set(fmpz_mat_entry(B, j + 1, j + 1), M);
+  }
+  fmpz_lll_t fl;
+  fmpz_lll_context_init_default(fl);
+  fmpz_lll(B, NULL, fl);
+  const slong bits = (fmpz_bits(M) * k) / (k + 1) - HENSEL_RRMARGIN;
+  int ok = !fmpz_is_zero(fmpz_mat_entry(B, 0, 0)) && bits > 0;
+  for (long j = 0; j <= k && ok; j++) {
+    ok = fmpz_bits(fmpz_mat_entry(B, 0, j)) <= bits;
+  }
+  if (ok) {
+    fmpz_abs(d, fmpz_mat_entry(B, 0, 0));
+  }
+  fmpz_mat_clear(B);
+  _fmpz_vec_clear(c, HENSEL_VW_K);
+  return ok;
+}
+
+/* estimate of the number of bits needed, from the attempts: the bits
+ * needed by the coefficients of g, from the highest degree down, increase
+ * up to a peak near the middle; the fraction f(b) reconstructed with b
+ * bits is extrapolated linearly from the last two attempts to f = 1/2,
+ * or a bit further when it is already reached. Once g is reconstructed,
+ * the B_v need a few percent more bits (4% on coplanarity): 4% and two
+ * digits are added. -1 if unknown */
+static double hensel_nf_estimate(const hensel_state_t *st) {
+  const long nh = st->nh;
+  if (nh >= 1 && st->hf[nh - 1] >= 1) {
+    return 1.04 * st->hb[nh - 1] + 2 * st->lp;
+  }
+  if (nh < 2) {
+    return -1;
+  }
+  const double b1 = st->hb[nh - 1], f1 = st->hf[nh - 1];
+  long j = nh - 2;
+  while (j >= 0 && st->hf[j] >= f1) {
+    j--;
+  }
+  if (j < 0 || f1 <= 0) {
+    return -1;
+  }
+  const double b0 = st->hb[j], f0 = st->hf[j];
+  const double fpk = f1 < 0.5 ? 0.5 : MIN(1.0, f1 + 0.1);
+  return b1 + (fpk - f1) * (b1 - b0) / (f1 - f0);
+}
+
+/* largest precision of one prime within the memory limit, with J^-1
+ * updated up to the precision N / 2^skip: the lifting holds at full
+ * precision the values of the monomials of F (mt.nlive[0], see
+ * hensel_eval_set) and about 2 nv^2 + 4 nv polynomials of degree D (X,
+ * F(X), dX, J^-1 F(X) and the corrections), and at most at half precision
+ * (or at full precision without skip) those of J, J itself, J^-1 and the
+ * operands and products of hensel_matmul (about 8 nv^2 polynomials); a
+ * coefficient of b bits takes 1.2 b / 8 + HENSEL_MEM_COEF bytes (fmpz,
+ * mpz and malloc headers; sot1, D = 92: 132 MB at p^12 for 49 MB counted
+ * before). The limit is given by --hensel-memory in megabytes, by default
+ * st->memref (see hensel_set_memref) plus HENSEL_MEM_CRT times the size
+ * of the residues of the parametrization at the estimated number of
+ * bits, which the usual lifting would also hold (chandra 11: 267 MB, 103
+ * MB of residues), at least HENSEL_MEM_MIN megabytes. The estimate is
+ * bounded by twice the bits bnow of the modulus, since the first ones are
+ * often too high (katsura 13: 165000 bits for 20600), so that the limit
+ * grows with the batches. It is not taken from the machine, so that the
+ * computation does not depend on it: higher precisions save few primes
+ * (katsura 13: 686 s at p^43, 684 s at p^87; eco 13: 86 s at p^44, 88 s
+ * at p^87, 79 s at p^160) */
+#define HENSEL_MEM_MIN 32
+#define HENSEL_MEM_CRT 2
+#define HENSEL_MEM_COEF 48
+static double hensel_nf_mem(const hensel_state_t *st, const long D,
+                            const double bnow) {
+  if (st->memuser > 0) {
+    return st->memuser;
+  }
+  const double est = hensel_nf_estimate(st);
+  const double B = est >= 0 ? MIN(est, 2 * bnow) : bnow;
+  const double mem = st->memref + HENSEL_MEM_CRT * (double)D * st->hs.nv * B / 8;
+  return MAX(mem, HENSEL_MEM_MIN * 1048576.0);
+}
+
+static long hensel_nf_nmem_skip(const hensel_state_t *st, const long D,
+                                const double mem, const long skip) {
+  const hensel_sys_t *hs = &st->hs;
+  const double nv = hs->nv;
+  const double npf = hs->mt.nlive[0] + 2 * nv * nv + 4 * nv;
+  const double npj = (hs->mt.nlive[1] + 8 * nv * nv) / (skip > 0 ? 2 : 1);
+  const double per = MAX(npf, npj) * D;
+  const double N = (mem / per - HENSEL_MEM_COEF) * 8 / (1.2 * st->lp);
+  return MAX(2, (long)N);
+}
+
+static long hensel_nf_nmem(const hensel_state_t *st, const long D,
+                           const double bnow, const int info_level) {
+  const double mem = hensel_nf_mem(st, D, bnow);
+  const long nmem = hensel_nf_nmem_skip(st, D, mem, st->hs.skip);
+  if (info_level && nmem != st->nmem) {
+    fprintf(VERBSTREAM, "memory limit %.0f MB: precision at most p^%ld per "
+            "prime\n", mem / 1048576.0, nmem);
+  }
+  return nmem;
+}
+
+/* chooses N (a power of 2) and skip maximizing the precision per cost of
+ * a prime, N / (cost of a modular run + cost of the lifting), where a
+ * modular run costs the f4ops and fglmops operations and the f4terms
+ * terms of the F4 matrices weighted as above; N and skip given by the
+ * user are kept. The gain, which decides whether the lifting is used, is
+ * the best precision per cost with N at most the precision allowed by the
+ * memory limit at the start (see hensel_nf_nmem), which grows with the
+ * estimated number of bits: the run aims at N (random2_10_10: 319 primes
+ * at about p^12, the limit at the start, 117 at p^32) */
+static void hensel_choose(hensel_state_t *st, const long D, const double lp,
+                          const double f4ops, const double f4terms,
+                          const double fglmops, const int info_level) {
+  hensel_sys_t *hs = &st->hs;
+  st->lp = lp;
+  const double mem = hensel_nf_mem(st, D, 0);
+  const double kappa = st->kappa;
+  const double modops = f4ops + fglmops;
+  hs->cmod = kappa * (HENSEL_KAPPA_F4 * f4ops + HENSEL_KAPPA_F4TERM * f4terms
+                       + HENSEL_KAPPA_FGLM * fglmops);
+  double best = -1, bestc = -1;
+  long bN = hs->N, bs = hs->skip, bNc = hs->N;
+  for (long N0 = 2; N0 <= 1024; N0 *= 2) {
+    if (!hs->nauto && N0 != hs->N) {
+      continue;
+    }
+    for (long sk = 0; (1L << sk) <= N0; sk++) {
+      const double c = hensel_model(hs, D, lp, N0, sk);
+      const double eff = N0 / (hs->cmod + c);
+      if (eff > best) {
+        best = eff;
+        bN = N0;
+        bs = sk;
+        hs->cnewton = c;
+      }
+      const long Nc = hs->nauto
+        ? MIN(N0, hensel_nf_nmem_skip(st, D, mem, sk)) : N0;
+      const double effc = Nc / (hs->cmod + hensel_model(hs, D, lp, Nc, sk));
+      if (effc > bestc) {
+        bestc = effc;
+        bNc = Nc;
+      }
+    }
+  }
+  hs->N = bN;
+  hs->skip = bs;
+  hs->gain = bestc * hs->cmod;
+  if (info_level) {
+    fprintf(VERBSTREAM, "\ncost model: modular run %.3g operations (F4 "
+            "%.3g with %.3g matrix terms, FGLM %.3g; %.3g weighted), "
+            "lifting to p^%ld with skip %ld %.3g; precision per cost %.3g "
+            "times that of the modular runs, %.3g at p^%ld within the "
+            "memory limit at the start\n", modops, f4ops, f4terms, fglmops,
+            hs->cmod, hs->N, hs->skip, hs->cnewton, best * hs->cmod,
+            hs->gain, bNc);
+  }
+}
+
+/* estimate of the memory of the usual computation, the reference for the
+ * memory used by the lifting: the F4 data, about HENSEL_MEM_TERM bytes
+ * per term of the largest matrix, and the coefficients preallocated by
+ * the usual lifting, 28 D^2 bytes (see initialize_mpz_param in msolve.c),
+ * not by this one. The peak of the usual computation is 0.9 to 2.3 times
+ * this estimate on katsura 10 and 13, eco 12 and 13 and coplanarity */
+#define HENSEL_MEM_TERM 8
+static void hensel_set_memref(hensel_state_t *st, const int64_t nterms,
+                              const long D) {
+  st->memref = HENSEL_MEM_TERM * (double)nterms + 28.0 * D * D;
+}
+
+/* target precision of the T primes of the current batch, at precision
+ * prec, given the bits b_done of the primes already used: the remaining
+ * bits are split over as few batches as possible with at most hs->N
+ * (the most efficient precision of the cost model) per prime; returns
+ * prec if the batch should stop there */
+static long hensel_nf_target(const hensel_state_t *st, const long T,
+                             const long prec, const double b_done) {
+  const hensel_sys_t *hs = &st->hs;
+  const long Neff = MIN(hs->N, st->nmem / T);
+  const double B = hensel_nf_estimate(st);
+  if (B < 0) {
+    return MAX(prec, Neff);
+  }
+  long need = (long)ceil((B - b_done) / (T * st->lp)) + 1;
+  /* the estimate often grows at each attempt, before g is reconstructed
+   * (an extrapolation) and after (the B_v may need many more bits than g):
+   * steps to slightly higher precisions would each cost a full step of
+   * Newton's iteration, whose cost hardly depends on the gain of precision
+   * (sot1: p^16, 19, 23, 27, 32, 2.1 times the cost of the doublings;
+   * KLYZ12: p^33, 77, 120, 175, 246, 271, 297), so the precision is at
+   * least doubled; only the last step of the lifting may overshoot */
+  need = MAX(need, MIN(2 * prec, Neff));
+  if (need <= prec) {
+    /* estimate too low: a quarter more */
+    need = prec + MAX(1, prec / 4);
+  }
+  const long k = (need + Neff - 1) / Neff;
+  long target = (need + k - 1) / k;
+  target = MIN(target, MIN(HENSEL_NMAX, MAX(st->nmem / T, prec + 1)));
+  if (k > 1 && target <= prec) {
+    return prec;
+  }
+  return MAX(target, prec + 1);
+}
+
+/* lifts the batch hd step by step, trying the reconstruction after each
+ * step with the primes already used; returns 1 when the parametrization
+ * is reconstructed and checked, 0 if more primes are needed, -1 if the
+ * lifting fails */
+static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
+                             const int nthreads, const int info_level) {
+  hensel_sys_t *hs = &st->hs;
+  const long nv = hs->nv;
+  long T = hd->nprimes;
+  double rt = realtime();
+#pragma omp parallel for num_threads(nthreads) schedule(dynamic)
+  for (long j = 0; j < T; j++) {
+    hensel_nf_start(hd->pr + j, hs);
+  }
+  /* primes where J is singular are dropped */
+  long T2 = 0;
+  for (long j = 0; j < T; j++) {
+    if (hd->pr[j].nfok) {
+      if (T2 != j) {
+        hensel_prime_t tmp = hd->pr[T2];
+        hd->pr[T2] = hd->pr[j];
+        hd->pr[j] = tmp;
+      }
+      T2++;
+    } else {
+      st->nmismatch++;
+    }
+  }
+  T = T2;
+  if (T == 0) {
+    return st->nmismatch >= HENSEL_MAX_MISMATCH ? -1 : 0;
+  }
+  st->lp = log2((double)hd->pr[0].p);
+  if (st->ng < 0) {
+    hensel_nf_images(hd->pr, hs);
+    hensel_state_start(st, hd->pr);
+    st->nmem = hensel_nf_nmem(st, st->sp.groups->deg, 0, info_level);
+  }
+  split_group_t *G = st->sp.groups;
+  const long dg = G->deg, n = G->n;
+  hensel_crt_t C;
+  int done = 0, attempted = 0;
+  for (;;) {
+    const double b_done = fmpz_is_one(st->M) ? 0 : fmpz_bits(st->M);
+    const long prec = hd->pr[0].prec;
+    long target = hensel_nf_target(st, T, prec, b_done);
+    if (target <= prec) {
+      if (attempted) {
+        break;
+      }
+      target = prec + 1;
+    }
+    attempted = 1;
+    const long jcap = target >> hs->skip;
+#pragma omp parallel for num_threads(nthreads) schedule(dynamic)
+    for (long j = 0; j < T; j++) {
+      hensel_nf_step(hd->pr + j, hs, target, jcap);
+      hensel_nf_images(hd->pr + j, hs);
+    }
+    /* attempt with the primes used and the batch at this precision, when
+     * the modulus has grown by HENSEL_ATTEMPT_GROWTH percent since the
+     * last attempt, or at the end of the batch if it reaches the estimated
+     * number of bits: with many small batches, an attempt at the end of
+     * each one would make the cost of the attempts quadratic (335 attempts
+     * for 326 primes at p^8 on random2_9_9) */
+    const double bnow = b_done + T * hd->pr[0].prec * st->lp;
+    const long tnext = hensel_nf_target(st, T, hd->pr[0].prec, b_done);
+    const double est = hensel_nf_estimate(st);
+    if (bnow < (1 + HENSEL_ATTEMPT_GROWTH / 100.0) * st->lastb
+        && (tnext > hd->pr[0].prec || est < 0 || bnow < est)) {
+      continue;
+    }
+    st->lastb = bnow;
+    /* the residues modulo the primes used and the batch are formed by the
+     * reconstruction, which stops at the first failure */
+    hensel_crt_init(&C, st->M, hd->pr, T, dg, nv);
+    C.res = st->res;
+    C.L = st->resL;
+    const fmpz *M2 = C.MQ;
+    long nrec = 0, nrec2 = 0;
+    done = hensel_reconstruct(G->rec, &C, NULL, &nrec)
+      && hensel_check(G->rec, dg, hs, st->pchk) == 1;
+    /* vector witnesses, tried when the modulus has grown by 5% */
+    if (!done && fmpz_is_zero(st->vden) && nrec < dg
+        && fmpz_bits(M2) >= 1.05 * st->vbits) {
+      st->vbits = fmpz_bits(M2);
+      if (hensel_vecwit(st->vden, &C) && info_level) {
+        fprintf(VERBSTREAM, "vector witnesses: denominator of %ld bits\n",
+                (long)fmpz_bits(st->vden));
+      }
+    }
+    if (!done && !fmpz_is_zero(st->vden)) {
+      done = hensel_reconstruct(G->rec, &C, st->vden, &nrec2)
+        && hensel_check(G->rec, dg, hs, st->pchk) == 1;
+      if (!done && nrec2 < nrec) {
+        /* probably a wrong candidate */
+        fmpz_zero(st->vden);
+      }
+      nrec = MAX(nrec, nrec2);
+    }
+    if (!done) {
+      /* the partial reconstruction would stay scattered in the heap */
+      for (long i = 0; i < n; i++) {
+        fmpq_zero(G->rec + i);
+      }
+    }
+    if (st->nh < HENSEL_NHIST) {
+      st->hb[st->nh] = fmpz_bits(M2);
+      st->hf[st->nh] = (double)nrec / dg;
+      st->nh++;
+    }
+    /* the limit follows the estimated number of bits */
+    st->nmem = hensel_nf_nmem(st, dg, bnow, info_level);
+    if (info_level) {
+      fprintf(VERBSTREAM, "p^%ld at %ld primes, %ld bits with the %ld "
+              "primes used: %s (%ld of %ld coefficients of w); estimate "
+              "%.0f bits (%.2f sec)\n", hd->pr[0].prec, T,
+              (long)fmpz_bits(M2), st->nused, done ? "reconstructed"
+              : "not reconstructed", nrec, dg, hensel_nf_estimate(st),
+              realtime() - rt);
+      fflush(VERBSTREAM);
+    }
+    hensel_crt_clear(&C);
+    if (done) {
+      break;
+    }
+  }
+  if (info_level) {
+    for (long j = 0; j < T; j++) {
+      const hensel_prime_t *P = hd->pr + j;
+      fprintf(VERBSTREAM, "  p = %lu: p^%ld, Newton %.2f sec: J^-1 mod p "
+              "%.2f, F(X) %.2f, J^-1 F(X) %.2f, J(X) %.2f, products for "
+              "J^-1 %.2f, update of X and w %.2f\n", (unsigned long)P->p,
+              P->prec, P->tnewton, P->tinv, P->tf, P->tmv, P->tj, P->tmm,
+              P->tup);
+    }
+  }
+  /* the batch is used: the block of residues is enlarged, then they are
+   * updated from the last one, so that the residue i, read at i L, is
+   * written at i L' >= i L only after the residues above it */
+  hensel_crt_init(&C, st->M, hd->pr, T, dg, nv);
+  if (!done) {
+    const slong L = st->resL;
+    const slong L2 = (fmpz_bits(C.MQ) + FLINT_BITS - 1) / FLINT_BITS;
+    st->res = realloc(st->res, n * L2 * sizeof(ulong));
+    C.res = st->res;
+    C.L = L;
+    fmpz_t x, t;
+    fmpz_init(x);
+    fmpz_init(t);
+    for (long i = n - 1; i >= 0; i--) {
+      hensel_crt_get(x, &C, i, t);
+      fmpz_get_ui_array(st->res + i * L2, L2, x);
+    }
+    fmpz_clear(x);
+    fmpz_clear(t);
+    st->resL = L2;
+  }
+  fmpz_set(st->M, C.MQ);
+  hensel_crt_clear(&C);
+  if (done) {
+    /* the residues are no longer needed */
+    free(st->res);
+    st->res = NULL;
+    st->resL = 0;
+  }
+  st->nused += T;
+  st->sp.nprimes = st->nused;
+  if (done) {
+    G->state = 2;
+    st->need[0] = st->nused;
+    st->sp.ndone = 1;
+  }
+  for (long j = 0; j < hd->nprimes; j++) {
+    hensel_nf_clear(hd->pr + j, hs);
+  }
+  /* FLINT keeps the integers freed by the lifting in a cache of each
+   * thread, with up to 64 limbs (p^87 on katsura 13 needs 42): 600 MB
+   * which would stay scattered in the heap */
+#pragma omp parallel num_threads(nthreads)
+  _fmpz_cleanup_mpz_content();
+  return done;
+}

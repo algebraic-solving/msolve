@@ -18,6 +18,7 @@ EXTRA_DIST	=	  msolve-data.h \
 								lifting-gb.c \
 								separating.c \
 								splitting.c \
+								hensel.c \
 								iofiles.c \
 								msolve.c \
 								primes.c \

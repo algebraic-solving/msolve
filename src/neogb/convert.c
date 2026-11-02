@@ -474,6 +474,8 @@ static void convert_hashes_to_columns(
      * monomial order. */
 
     st->mat_nterms  +=  nterms;
+    st->max_mat_nterms = st->max_mat_nterms > nterms ?
+        st->max_mat_nterms : nterms;
 
     /* compute density of matrix */
     nterms  *=  100; /* for percentage */

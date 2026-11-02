@@ -456,6 +456,7 @@ struct md_t
     uint64_t max_uht_size;
     int64_t nterms_basis;
     int64_t mat_nterms; /* nonzero terms of all F4 matrices */
+    int64_t max_mat_nterms; /* nonzero terms of the largest F4 matrix */
     int32_t size_basis;
     int32_t ff_bits;
     int32_t nf;
@@ -481,6 +482,11 @@ struct md_t
     double application_nr_mult;
     double application_nr_add;
     uint64_t application_nr_red;
+    /* operations of the runs which applied a trace, added up by
+     * finalize_f4 (in thousands, as above) */
+    double tracer_nr_mult;
+    double tracer_nr_add;
+    uint64_t tracer_nr_red;
 
     int32_t print_gb;
     int32_t truncate_lifting;

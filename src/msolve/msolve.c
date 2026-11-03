@@ -3226,6 +3226,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
    * runs (tmm, of which tmmf4 for F4), of Newton's iteration of the p-adic
    * lifting and of the checks */
   double strat = 0, tmm = 0, tmmf4 = 0, tnewton = 0, tchk = 0;
+  /* number of primes of the modular runs */
+  long nmm = 0;
   /* the timings of one modular run are printed once; header is 1 once
    * the multi-modular steps are announced, 2 for the p-adic ones */
   int shown = 0, header = 0;
@@ -3347,6 +3349,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     double ca1 = realtime() - ca0;
     tmm += ca1;
     tmmf4 += stf4;
+    nmm += st->nthrds;
 
     if (!shown) {
       shown = 1;
@@ -3418,9 +3421,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         }
       }
       if (info_level && header != 2) {
-        fprintf(VERBSTREAM, "\np-adic lifting steps\n");
-        fprintf(VERBSTREAM, "-------------------------------------------------\
------------------------------------------------------\n");
+        hensel_print_legend();
         header = 2;
       }
       const int res = hensel_state_step(&hst, &hd, st->nthrds, &tnewton,
@@ -3633,24 +3634,32 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       + (dense ? sd.st->learning_rtime : 0);
     const double ttot = realtime() - rtstart;
     fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
-    fprintf(VERBSTREAM, "learning F4(elapsed)      %10.2f sec\n", tlearn);
-    fprintf(VERBSTREAM, "first FGLM, setup(elapsed)%10.2f sec\n",
-            tinit - tlearn);
-    fprintf(VERBSTREAM, "multi-mod F4(elapsed)     %10.2f sec\n", tmmf4);
-    fprintf(VERBSTREAM, "multi-mod FGLM(elapsed)   %10.2f sec\n",
-            tmm - tmmf4);
-    if (tnewton > 0) {
-      fprintf(VERBSTREAM, "p-adic Newton(elapsed)    %10.2f sec\n", tnewton);
+    /* the modular runs: number of primes x elapsed time of one run, the
+     * runs being made by st->nthrds threads at once */
+    const double nm = MAX(nmm, 1) / (double)st->nthrds;
+    char sthr[32] = "";
+    if (st->nthrds > 1) {
+      snprintf(sthr, sizeof(sthr), " / %d threads", (int)st->nthrds);
     }
-    fprintf(VERBSTREAM, "CRT and ratrecon(elapsed) %10.2f sec\n", strat);
+    fprintf(VERBSTREAM, "learning F4(elapsed)      %28.2f sec\n", tlearn);
+    fprintf(VERBSTREAM, "first FGLM, setup(elapsed)%28.2f sec\n",
+            tinit - tlearn);
+    fprintf(VERBSTREAM, "multi-mod F4(elapsed)     %6ld x %9.3f sec%s = "
+            "%7.2f sec\n", nmm, tmmf4 / nm, sthr, tmmf4);
+    fprintf(VERBSTREAM, "multi-mod FGLM(elapsed)   %6ld x %9.3f sec%s = "
+            "%7.2f sec\n", nmm, (tmm - tmmf4) / nm, sthr, tmm - tmmf4);
+    if (tnewton > 0) {
+      fprintf(VERBSTREAM, "p-adic Newton(elapsed)    %28.2f sec\n", tnewton);
+    }
+    fprintf(VERBSTREAM, "CRT and ratrecon(elapsed) %28.2f sec\n", strat);
     if (vec_wit->ntries > 0) {
-      fprintf(VERBSTREAM, "  incl. LLL, %4d calls   %10.2f sec\n",
+      fprintf(VERBSTREAM, "  incl. LLL, %4d calls   %28.2f sec\n",
               vec_wit->ntries, vec_wit->rtime);
     }
-    fprintf(VERBSTREAM, "checks(elapsed)           %10.2f sec\n", tchk);
-    fprintf(VERBSTREAM, "other(elapsed)            %10.2f sec\n",
+    fprintf(VERBSTREAM, "checks(elapsed)           %28.2f sec\n", tchk);
+    fprintf(VERBSTREAM, "other(elapsed)            %28.2f sec\n",
             ttot - tinit - tmm - tnewton - strat - tchk);
-    fprintf(VERBSTREAM, "total(elapsed)            %10.2f sec\n", ttot);
+    fprintf(VERBSTREAM, "total(elapsed)            %28.2f sec\n", ttot);
     fprintf(VERBSTREAM, "-----------------------------------------\n");
     fflush(VERBSTREAM);
   }

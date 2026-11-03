@@ -4687,8 +4687,14 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
   real_point_t **lpts = malloc(nc * sizeof(real_point_t *));
   long nb = 0;
   for (long i = 0; i < nc; i++) {
+    if (info_level && nc > 1) {
+      fprintf(VERBSTREAM, "\ncomponent %ld of %ld: degree %ld\n", i + 1, nc,
+              (long)params->params[i]->elim->length - 1);
+      fflush(VERBSTREAM);
+    }
     lpts[i] = isolate_real_roots_param(params->params[i], lnb + i, lroots + i,
-                                       precision, nr_threads, to_split, 0);
+                                       precision, nr_threads, to_split,
+                                       info_level);
     nb += lnb[i];
   }
   interval *roots = malloc(MAX(nb, 1) * sizeof(interval));
@@ -4723,8 +4729,8 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
   free(lnb);
   free(lroots);
   free(lpts);
-  if (info_level) {
-    fprintf(VERBSTREAM, "Real roots of the %ld components: %ld real roots "
+  if (info_level && nc > 1) {
+    fprintf(VERBSTREAM, "\nReal roots of the %ld components: %ld real roots "
             "(%.2f sec)\n", nc, nb, realtime() - rt);
   }
   *nb_real_roots_ptr = nb;

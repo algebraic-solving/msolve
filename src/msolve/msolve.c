@@ -2750,6 +2750,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     files_gb *files,
                     int round){
 
+  const double rtstart = realtime();
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
   uint32_t field_char = gens->field_char;
@@ -3221,8 +3222,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   rrec_data_t recdata;
   initialize_rrec_data(recdata);
 
-  /* measures time spent in rational reconstruction */
-  double strat = 0;
+  /* elapsed times of the CRT and rational reconstruction, of the modular
+   * runs (tmm, of which tmmf4 for F4), of Newton's iteration of the p-adic
+   * lifting and of the checks */
+  double strat = 0, tmm = 0, tmmf4 = 0, tnewton = 0, tchk = 0;
+  /* the timings of one modular run are printed once; header is 1 once
+   * the multi-modular steps are announced, 2 for the p-adic ones */
+  int shown = 0, header = 0;
 
   /* splitting of the solutions along equalities of coordinates, see
      splitting.c: the components are then lifted separately */
@@ -3255,6 +3261,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
+  /* the first prime: learning F4, FGLM and setup of the lifting */
+  const double tinit = realtime() - rtstart;
   while (rerun == 1 || mcheck == 1) {
     /* controls call to rational reconstruction */
     doit = ((prdone % nbdoit) == 0);
@@ -3337,8 +3345,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 			    gens, &stf4, nsols, bad_primes,
                 trace_det);
     double ca1 = realtime() - ca0;
+    tmm += ca1;
+    tmmf4 += stf4;
 
-    if (nprimes == 1) {
+    if (!shown) {
+      shown = 1;
       if(info_level){
 	    fprintf(VERBSTREAM,
 		    "\n---------------- TIMINGS ----------------\n");
@@ -3363,13 +3374,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 		    "-----------------------------------------\n");
         fflush(VERBSTREAM);
       }
-      if (info_level) {
-	  fprintf(VERBSTREAM,
-		  "\nmulti-modular steps\n");
-	  fprintf(VERBSTREAM, "-------------------------------------------------\
------------------------------------------------------\n");
-      }
-
     }
     for (int i = 0; i < st->nthrds; i++) {
       if (bad_primes[i] == 0) {
@@ -3413,7 +3417,14 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           continue;
         }
       }
-      const int res = hensel_state_step(&hst, &hd, st->nthrds, info_level);
+      if (info_level && header != 2) {
+        fprintf(VERBSTREAM, "\np-adic lifting steps\n");
+        fprintf(VERBSTREAM, "-------------------------------------------------\
+-----------------------------------------------------\n");
+        header = 2;
+      }
+      const int res = hensel_state_step(&hst, &hd, st->nthrds, &tnewton,
+                                        &strat, &tchk, info_level);
       hensel_data_clear(&hd, gens->nvars);
       if (res == 1) {
         /* the primes at which the parametrization was lifted */
@@ -3444,6 +3455,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         hensel_T = st->nthrds;
       }
       continue;
+    }
+    if (info_level && header != 1) {
+      fprintf(VERBSTREAM, "\nmulti-modular steps\n");
+      fprintf(VERBSTREAM, "-------------------------------------------------\
+-----------------------------------------------------\n");
+      header = 1;
     }
     if (split) {
       double crr = realtime();
@@ -3500,6 +3517,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     for (len_t i = 0; i < st->nthrds; i++) {
       if (bad_primes[i] == 0) {
+        double cch = realtime();
         if (rerun == 0) {
           mcheck = check_param_modular(*mpz_paramp, nmod_params[i], lp->p[i],
                                        is_lifted, check_lift, trace_det, info_level);
@@ -3512,6 +3530,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         else{
             check_elim_poly(nmod_params[i]->elim, lp->p[i], numer->coeffs, denom->coeffs, check_lift);
         }
+        tchk += realtime() - cch;
         crr = realtime();
         if (mcheck == 1) {
           br = rational_reconstruction_param(
@@ -3610,12 +3629,28 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(VERBSTREAM, "#primes            %16lu\n", (unsigned long) nprimes);
     fprintf(VERBSTREAM, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
     fprintf(VERBSTREAM, "-----------------------------------------\n");
+    const double tlearn = st->learning_rtime
+      + (dense ? sd.st->learning_rtime : 0);
+    const double ttot = realtime() - rtstart;
     fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
+    fprintf(VERBSTREAM, "learning F4(elapsed)      %10.2f sec\n", tlearn);
+    fprintf(VERBSTREAM, "first FGLM, setup(elapsed)%10.2f sec\n",
+            tinit - tlearn);
+    fprintf(VERBSTREAM, "multi-mod F4(elapsed)     %10.2f sec\n", tmmf4);
+    fprintf(VERBSTREAM, "multi-mod FGLM(elapsed)   %10.2f sec\n",
+            tmm - tmmf4);
+    if (tnewton > 0) {
+      fprintf(VERBSTREAM, "p-adic Newton(elapsed)    %10.2f sec\n", tnewton);
+    }
     fprintf(VERBSTREAM, "CRT and ratrecon(elapsed) %10.2f sec\n", strat);
     if (vec_wit->ntries > 0) {
       fprintf(VERBSTREAM, "  incl. LLL, %4d calls   %10.2f sec\n",
               vec_wit->ntries, vec_wit->rtime);
     }
+    fprintf(VERBSTREAM, "checks(elapsed)           %10.2f sec\n", tchk);
+    fprintf(VERBSTREAM, "other(elapsed)            %10.2f sec\n",
+            ttot - tinit - tmm - tnewton - strat - tchk);
+    fprintf(VERBSTREAM, "total(elapsed)            %10.2f sec\n", ttot);
     fprintf(VERBSTREAM, "-----------------------------------------\n");
     fflush(VERBSTREAM);
   }

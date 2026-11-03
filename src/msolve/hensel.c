@@ -1974,9 +1974,13 @@ static long hensel_nf_target(const hensel_state_t *st, const long T,
 /* lifts the batch hd step by step, trying the reconstruction after each
  * step with the primes already used; returns 1 when the parametrization
  * is reconstructed and checked, 0 if more primes are needed, -1 if the
- * lifting fails */
+ * lifting fails; the elapsed times of Newton's iteration, of the CRT and
+ * rational reconstruction and of the checks are added to tnewton, trec
+ * and tchk */
 static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
-                             const int nthreads, const int info_level) {
+                             const int nthreads, double *tnewton,
+                             double *trec, double *tchk,
+                             const int info_level) {
   hensel_sys_t *hs = &st->hs;
   const long nv = hs->nv;
   long T = hd->nprimes;
@@ -2001,6 +2005,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
   }
   T = T2;
   if (T == 0) {
+    *tnewton += realtime() - rt;
     return st->nmismatch >= HENSEL_MAX_MISMATCH ? -1 : 0;
   }
   st->lp = log2((double)hd->pr[0].p);
@@ -2009,6 +2014,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     hensel_state_start(st, hd->pr);
     st->nmem = hensel_nf_nmem(st, st->sp.groups->deg, 0, info_level);
   }
+  *tnewton += realtime() - rt;
   split_group_t *G = st->sp.groups;
   const long dg = G->deg, n = G->n;
   hensel_crt_t C;
@@ -2025,11 +2031,13 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     }
     attempted = 1;
     const long jcap = target >> hs->skip;
+    rt = realtime();
 #pragma omp parallel for num_threads(nthreads) schedule(dynamic)
     for (long j = 0; j < T; j++) {
       hensel_nf_step(hd->pr + j, hs, target, jcap);
       hensel_nf_images(hd->pr + j, hs);
     }
+    *tnewton += realtime() - rt;
     /* attempt with the primes used and the batch at this precision, when
      * the modulus has grown by HENSEL_ATTEMPT_GROWTH percent since the
      * last attempt, or at the end of the batch if it reaches the estimated
@@ -2046,13 +2054,21 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     st->lastb = bnow;
     /* the residues modulo the primes used and the batch are formed by the
      * reconstruction, which stops at the first failure */
+    double ar = 0, ac = 0;
+    rt = realtime();
     hensel_crt_init(&C, st->M, hd->pr, T, dg, nv);
     C.res = st->res;
     C.L = st->resL;
     const fmpz *M2 = C.MQ;
     long nrec = 0, nrec2 = 0;
-    done = hensel_reconstruct(G->rec, &C, NULL, &nrec)
-      && hensel_check(G->rec, dg, hs, st->pchk) == 1;
+    done = hensel_reconstruct(G->rec, &C, NULL, &nrec);
+    ar += realtime() - rt;
+    if (done) {
+      rt = realtime();
+      done = hensel_check(G->rec, dg, hs, st->pchk) == 1;
+      ac += realtime() - rt;
+    }
+    rt = realtime();
     /* vector witnesses, tried when the modulus has grown by 5% */
     if (!done && fmpz_is_zero(st->vden) && nrec < dg
         && fmpz_bits(M2) >= 1.05 * st->vbits) {
@@ -2063,8 +2079,14 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
       }
     }
     if (!done && !fmpz_is_zero(st->vden)) {
-      done = hensel_reconstruct(G->rec, &C, st->vden, &nrec2)
-        && hensel_check(G->rec, dg, hs, st->pchk) == 1;
+      done = hensel_reconstruct(G->rec, &C, st->vden, &nrec2);
+      ar += realtime() - rt;
+      if (done) {
+        rt = realtime();
+        done = hensel_check(G->rec, dg, hs, st->pchk) == 1;
+        ac += realtime() - rt;
+      }
+      rt = realtime();
       if (!done && nrec2 < nrec) {
         /* probably a wrong candidate */
         fmpz_zero(st->vden);
@@ -2084,16 +2106,20 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     }
     /* the limit follows the estimated number of bits */
     st->nmem = hensel_nf_nmem(st, dg, bnow, info_level);
+    const long bM2 = fmpz_bits(M2);
+    hensel_crt_clear(&C);
+    ar += realtime() - rt;
+    *trec += ar;
+    *tchk += ac;
     if (info_level) {
       fprintf(VERBSTREAM, "p^%ld at %ld primes, %ld bits with the %ld "
               "primes used: %s (%ld of %ld coefficients of w); estimate "
-              "%.0f bits (%.2f sec)\n", hd->pr[0].prec, T,
-              (long)fmpz_bits(M2), st->nused, done ? "reconstructed"
-              : "not reconstructed", nrec, dg, hensel_nf_estimate(st),
-              realtime() - rt);
+              "%.0f bits (CRT and ratrecon %.2f sec, check %.2f sec)\n",
+              hd->pr[0].prec, T, bM2, st->nused,
+              done ? "reconstructed" : "not reconstructed", nrec, dg,
+              hensel_nf_estimate(st), ar, ac);
       fflush(VERBSTREAM);
     }
-    hensel_crt_clear(&C);
     if (done) {
       break;
     }
@@ -2111,6 +2137,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
   /* the batch is used: the block of residues is enlarged, then they are
    * updated from the last one, so that the residue i, read at i L, is
    * written at i L' >= i L only after the residues above it */
+  rt = realtime();
   hensel_crt_init(&C, st->M, hd->pr, T, dg, nv);
   if (!done) {
     const slong L = st->resL;
@@ -2137,6 +2164,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     st->res = NULL;
     st->resL = 0;
   }
+  *trec += realtime() - rt;
   st->nused += T;
   st->sp.nprimes = st->nused;
   if (done) {

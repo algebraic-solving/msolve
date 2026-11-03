@@ -3267,7 +3267,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* the splitting along equalities of coordinates is preferred when it
    * applies */
   if (hensel_T > 0 && !split
-      && hensel_state_init(&hst, gens, nmod_params[0], info_level)) {
+      && hensel_state_init(&hst, gens, nmod_params[0])) {
     hensel_add_param(&hd, nmod_params[0]);
   } else {
     if (gens->lifting == 2 && !nonradical && info_level) {

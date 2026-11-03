@@ -72,7 +72,8 @@ typedef struct {
   long nv, nall;
   hensel_poly_t *all;             /* nall >= nv equations with integer
                                      coefficients, for the checks */
-  hensel_poly_t *sys;             /* nv combinations of them, for Newton */
+  hensel_poly_t *sys;             /* nv of them or nv combinations of
+                                     them, for Newton */
   hensel_poly_t *jac;             /* jac[i * nv + j] = d sys[i] / d x_j */
   long *maxe;                     /* largest exponent of each variable */
   hensel_mon_t mt;
@@ -361,11 +362,9 @@ static void hensel_poly_merge(hensel_poly_t *P, const long nv) {
   P->nt = n;
 }
 
-/* the system of gens with integer coefficients; if there are more
- * equations than variables, Newton's iteration uses the nv combinations
- * F_i + sum_j r_ij F_j (j >= nv) with random r_ij, whose Jacobian is
- * invertible at the simple solutions of F for generic r_ij; returns 0 if
- * there are fewer equations than variables */
+/* the system of gens with integer coefficients, the equations of
+ * Newton's iteration being set by hensel_sys_set; returns 0 if there are
+ * fewer equations than variables */
 static int hensel_sys_init(hensel_sys_t *hs, const data_gens_ff_t *gens) {
   const long nv = gens->nvars, nall = gens->ngens;
   if (nall < nv || gens->field_char != 0) {
@@ -406,12 +405,34 @@ static int hensel_sys_init(hensel_sys_t *hs, const data_gens_ff_t *gens) {
     }
     pos += P->nt;
   }
+  fmpz_clear(l);
+  fmpz_clear(num);
+  fmpz_clear(den);
+  return 1;
+}
+
+/* the equations of Newton's iteration, their Jacobian and their monomials:
+ * the equations sub[0], .., sub[nv - 1] of the system or, if sub is NULL,
+ * the nv combinations F_i + sum_j r_ij F_j (j >= nv) with random r_ij,
+ * whose Jacobian is invertible at the simple solutions of F for generic
+ * r_ij */
+static void hensel_sys_set(hensel_sys_t *hs, const long *sub) {
+  const long nv = hs->nv, nall = hs->nall;
   /* the combinations, with a fixed generator so that the random numbers
    * of msolve are not consumed */
   uint64_t seed = 0x9e3779b97f4a7c15ULL;
   for (long i = 0; i < nv; i++) {
     hensel_poly_t *P = hs->sys + i;
     P->mon = NULL;
+    if (sub != NULL) {
+      const hensel_poly_t *A = hs->all + sub[i];
+      P->nt = A->nt;
+      P->c = _fmpz_vec_init(P->nt);
+      P->e = malloc(P->nt * nv * sizeof(long));
+      _fmpz_vec_set(P->c, A->c, P->nt);
+      memcpy(P->e, A->e, P->nt * nv * sizeof(long));
+      continue;
+    }
     P->nt = hs->all[i].nt;
     for (long j = nv; j < nall; j++) {
       P->nt += hs->all[j].nt;
@@ -462,25 +483,169 @@ static int hensel_sys_init(hensel_sys_t *hs, const data_gens_ff_t *gens) {
       }
     }
   }
-  fmpz_clear(l);
-  fmpz_clear(num);
-  fmpz_clear(den);
   hensel_mon_init(hs);
-  return 1;
 }
 
-static void hensel_sys_clear(hensel_sys_t *hs) {
+/* clears what hensel_sys_set builds */
+static void hensel_sys_unset(hensel_sys_t *hs) {
   for (long i = 0; i < hs->nv; i++) {
     hensel_poly_clear(hs->sys + i);
   }
-  for (long i = 0; i < hs->nall; i++) {
-    hensel_poly_clear(hs->all + i);
-  }
-  free(hs->all);
   hensel_mon_clear(&hs->mt);
   for (long i = 0; i < hs->nv * hs->nv; i++) {
     hensel_poly_clear(hs->jac + i);
   }
+}
+
+/* the row of the Jacobian of A at x = X modulo (w, p), with pw[v][k] =
+ * X_v^k mod w */
+static void hensel_jac_row(nmod_poly_struct *row, const hensel_poly_t *A,
+                           nmod_poly_struct **pw, const nmod_poly_t w,
+                           const long nv) {
+  const mp_limb_t p = w->mod.n;
+  nmod_poly_t m;
+  nmod_poly_init(m, p);
+  long *sup = malloc(nv * sizeof(long));
+  for (long j = 0; j < nv; j++) {
+    nmod_poly_zero(row + j);
+  }
+  for (long t = 0; t < A->nt; t++) {
+    const long *e = A->e + t * nv;
+    long s = 0;
+    for (long v = 0; v < nv; v++) {
+      if (e[v] > 0) {
+        sup[s++] = v;
+      }
+    }
+    const mp_limb_t c = fmpz_fdiv_ui(A->c + t, p);
+    for (long a = 0; a < s; a++) {
+      const long j = sup[a];
+      nmod_poly_set(m, pw[j] + e[j] - 1);
+      for (long b = 0; b < s; b++) {
+        if (b != a) {
+          nmod_poly_mulmod(m, m, pw[sup[b]] + e[sup[b]], w);
+        }
+      }
+      nmod_poly_scalar_addmul_nmod(row + j, m,
+                                   n_mulmod2_preinv(c, e[j] % p, p,
+                                                    w->mod.ninv));
+    }
+  }
+  free(sup);
+  nmod_poly_clear(m);
+}
+
+/* the indices, in increasing order, of nv equations whose Jacobian is
+ * invertible modulo (w, p) at the parametrization P, chosen from the one
+ * with the fewest terms: an equation is kept if its row, reduced by those
+ * of the equations kept, has an entry invertible modulo w in a column
+ * without pivot, which becomes its pivot; NULL if there are not nv such
+ * equations */
+static long *hensel_select(const hensel_sys_t *hs, const hensel_prime_t *P) {
+  const long nv = hs->nv, nall = hs->nall;
+  const mp_limb_t p = P->p;
+  long *ord = malloc(nall * sizeof(long));
+  for (long i = 0; i < nall; i++) {
+    long k = i;
+    for (; k > 0 && hs->all[ord[k - 1]].nt > hs->all[i].nt; k--) {
+      ord[k] = ord[k - 1];
+    }
+    ord[k] = i;
+  }
+  nmod_poly_struct **pw = malloc(nv * sizeof(nmod_poly_struct *));
+  for (long v = 0; v < nv; v++) {
+    pw[v] = malloc((hs->maxe[v] + 1) * sizeof(nmod_poly_struct));
+    for (long k = 0; k <= hs->maxe[v]; k++) {
+      nmod_poly_init(pw[v] + k, p);
+      if (k == 0) {
+        nmod_poly_one(pw[v]);
+      } else {
+        nmod_poly_mulmod(pw[v] + k, pw[v] + k - 1, P->X + v, P->w);
+      }
+    }
+  }
+  /* the rows kept, reduced, with a pivot 1 in the column piv[k] */
+  nmod_poly_struct *R = malloc(nv * nv * sizeof(nmod_poly_struct));
+  for (long i = 0; i < nv * nv; i++) {
+    nmod_poly_init(R + i, p);
+  }
+  long *piv = malloc(nv * sizeof(long));
+  char *used = calloc(nv, 1);
+  long *sub = malloc(nv * sizeof(long));
+  nmod_poly_t g, tmp;
+  nmod_poly_init(g, p);
+  nmod_poly_init(tmp, p);
+  long nk = 0;
+  for (long i = 0; i < nall && nk < nv; i++) {
+    nmod_poly_struct *r = R + nk * nv;
+    hensel_jac_row(r, hs->all + ord[i], pw, P->w, nv);
+    for (long k = 0; k < nk; k++) {
+      nmod_poly_set(g, r + piv[k]);
+      if (nmod_poly_is_zero(g)) {
+        continue;
+      }
+      for (long j = 0; j < nv; j++) {
+        nmod_poly_mulmod(tmp, g, R + k * nv + j, P->w);
+        nmod_poly_sub(r + j, r + j, tmp);
+      }
+    }
+    long c = -1;
+    for (long j = 0; j < nv && c < 0; j++) {
+      if (used[j] || nmod_poly_is_zero(r + j)) {
+        continue;
+      }
+      nmod_poly_gcd(g, r + j, P->w);
+      if (nmod_poly_degree(g) == 0) {
+        c = j;
+      }
+    }
+    if (c < 0) {
+      continue;
+    }
+    nmod_poly_invmod(g, r + c, P->w);
+    for (long j = 0; j < nv; j++) {
+      nmod_poly_mulmod(r + j, r + j, g, P->w);
+    }
+    used[c] = 1;
+    piv[nk] = c;
+    sub[nk++] = ord[i];
+  }
+  nmod_poly_clear(g);
+  nmod_poly_clear(tmp);
+  for (long i = 0; i < nv * nv; i++) {
+    nmod_poly_clear(R + i);
+  }
+  free(R);
+  for (long v = 0; v < nv; v++) {
+    for (long k = 0; k <= hs->maxe[v]; k++) {
+      nmod_poly_clear(pw[v] + k);
+    }
+    free(pw[v]);
+  }
+  free(pw);
+  free(piv);
+  free(used);
+  free(ord);
+  if (nk < nv) {
+    free(sub);
+    return NULL;
+  }
+  for (long i = 1; i < nv; i++) {
+    for (long k = i; k > 0 && sub[k - 1] > sub[k]; k--) {
+      const long t = sub[k];
+      sub[k] = sub[k - 1];
+      sub[k - 1] = t;
+    }
+  }
+  return sub;
+}
+
+static void hensel_sys_clear(hensel_sys_t *hs) {
+  hensel_sys_unset(hs);
+  for (long i = 0; i < hs->nall; i++) {
+    hensel_poly_clear(hs->all + i);
+  }
+  free(hs->all);
   free(hs->sys);
   free(hs->jac);
   free(hs->maxe);
@@ -1485,13 +1650,33 @@ typedef struct {
 } hensel_state_t;
 
 /* returns 0 if there are fewer equations than variables; the options
- * hensel_* of gens are read (see main.c) */
+ * hensel_* of gens are read (see main.c) and param is the parametrization
+ * at the first prime. With more equations than variables, Newton's
+ * iteration uses a square subsystem of the sparsest equations whose
+ * Jacobian is invertible modulo (w, p) at param (see hensel_select), if
+ * there is one: its solutions contain those of the system, at which it is
+ * then invertible over Q, and it is lifted as the combinations of all the
+ * equations are, with fewer terms when the equations share few monomials
+ * (eco 12 times the ideal of a point: 89 terms instead of 5600) */
 static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
-                             const int info_level) {
+                             const param_t *param, const int info_level) {
   if (!hensel_sys_init(&st->hs, gens)) {
     return 0;
   }
   hensel_sys_t *hs = &st->hs;
+  long *sub = NULL;
+  double rt = realtime();
+  if (hs->nall > hs->nv) {
+    hensel_data_t hd;
+    hensel_data_init(&hd);
+    hensel_add_param(&hd, param);
+    sub = hensel_select(hs, hd.pr);
+    hensel_data_clear(&hd, hs->nv);
+  }
+  const int sparse = sub != NULL;
+  hensel_sys_set(hs, sub);
+  free(sub);
+  rt = realtime() - rt;
   const long N = gens->hensel_prec;
   st->kappa = gens->hensel_cost_scale > 0 ? gens->hensel_cost_scale : 1.0;
   st->memuser = gens->hensel_memory > 0 ? gens->hensel_memory * 1048576.0
@@ -1509,10 +1694,17 @@ static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
       nt[1] += hs->jac[i].nt;
     }
     fprintf(VERBSTREAM, "\nNewton's iteration: %ld equations in %ld "
-            "variables; %ld terms with %ld monomials for F, %ld terms with "
-            "%ld monomials for its Jacobian (at most %ld and %ld values held)"
-            "\n", hs->nall, hs->nv, nt[0], hs->mt.nord[0], nt[1],
-            hs->mt.nord[1], hs->mt.nlive[0], hs->mt.nlive[1]);
+            "variables", hs->nall, hs->nv);
+    if (hs->nall > hs->nv) {
+      fprintf(VERBSTREAM, ", %s (%.2f sec)", sparse
+              ? "square subsystem of them" : "combinations of all of them, "
+              "no square subsystem with an invertible Jacobian found",
+              rt);
+    }
+    fprintf(VERBSTREAM, "; %ld terms with %ld monomials for F, %ld terms "
+            "with %ld monomials for its Jacobian (at most %ld and %ld values "
+            "held)\n", nt[0], hs->mt.nord[0], nt[1], hs->mt.nord[1],
+            hs->mt.nlive[0], hs->mt.nlive[1]);
   }
   st->ng = -1;
   st->M = NULL;

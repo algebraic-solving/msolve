@@ -3276,8 +3276,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* p-adic lifting (see hensel.c): batches of hensel_T primes, one per
    * thread, the first one made of the first prime and of the images of
    * the first multi-modular step, until the parametrization is checked */
-  hensel_data_t hd;
+  hensel_data_t hd, hc;
   hensel_data_init(&hd);
+  /* the images computed beyond the batch: the first batch holds the first
+   * prime, which leaves one */
+  hensel_data_init(&hc);
   hensel_state_t hst;
   long hensel_T = gens->lifting != 1 && gens->ngens >= gens->nvars
     ? st->nthrds : 0;
@@ -3429,9 +3432,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       }
     }
     if (hensel_T > 0) {
-      for (len_t i = 0; i < st->nthrds && hd.nprimes < hensel_T; i++) {
+      for (len_t i = 0; i < st->nthrds; i++) {
         if (bad_primes[i] == 0) {
-          hensel_add_param(&hd, nmod_params[i]);
+          hensel_add_param(hd.nprimes < hensel_T ? &hd : &hc, nmod_params[i]);
         }
       }
       if (hd.nprimes < hensel_T) {
@@ -3457,6 +3460,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     "predicted\n", hst.hs.gain);
           }
           hensel_data_clear(&hd, gens->nvars);
+          hensel_data_clear(&hc, gens->nvars);
           hensel_state_clear(&hst, 0);
           hensel_T = 0;
           if (!prealloc) {
@@ -3469,9 +3473,20 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         hensel_print_legend();
         header = 2;
       }
-      const int res = hensel_state_step(&hst, &hd, st->nthrds, &tnewton,
-                                        &strat, &tchk, info_level);
-      hensel_data_clear(&hd, gens->nvars);
+      int res;
+      for (;;) {
+        res = hensel_state_step(&hst, &hd, st->nthrds, &tnewton, &strat,
+                                &tchk, info_level);
+        hensel_data_clear(&hd, gens->nvars);
+        /* with one thread, the image left by the first batch is the next
+         * one, without a modular run */
+        if (res != 0 || hc.nprimes < st->nthrds) {
+          break;
+        }
+        hd = hc;
+        hensel_data_init(&hc);
+      }
+      hensel_data_clear(&hc, gens->nvars);
       if (res == 1) {
         /* the primes at which the parametrization was lifted */
         nprimes = hst.nused;

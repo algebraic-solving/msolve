@@ -83,6 +83,8 @@ typedef struct {
   double cnewton, cmod;           /* model costs of one prime (bit ops) */
   double gain;                    /* precision per cost relative to the
                                      modular runs alone */
+  int square;                     /* sys is a subsystem of all */
+  double tsel;                    /* time of its choice (sec) */
 } hensel_sys_t;
 
 typedef struct {
@@ -1659,7 +1661,7 @@ typedef struct {
  * equations are, with fewer terms when the equations share few monomials
  * (eco 12 times the ideal of a point: 89 terms instead of 5600) */
 static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
-                             const param_t *param, const int info_level) {
+                             const param_t *param) {
   if (!hensel_sys_init(&st->hs, gens)) {
     return 0;
   }
@@ -1673,10 +1675,10 @@ static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
     sub = hensel_select(hs, hd.pr);
     hensel_data_clear(&hd, hs->nv);
   }
-  const int sparse = sub != NULL;
+  hs->square = sub != NULL;
   hensel_sys_set(hs, sub);
   free(sub);
-  rt = realtime() - rt;
+  hs->tsel = realtime() - rt;
   const long N = gens->hensel_prec;
   st->kappa = gens->hensel_cost_scale > 0 ? gens->hensel_cost_scale : 1.0;
   st->memuser = gens->hensel_memory > 0 ? gens->hensel_memory * 1048576.0
@@ -1685,27 +1687,6 @@ static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
   hs->nauto = N <= 0;
   hs->N = N > 0 ? N : 8;
   hs->cnewton = hs->cmod = 0;
-  if (info_level) {
-    long nt[2] = {0, 0};
-    for (long i = 0; i < hs->nv; i++) {
-      nt[0] += hs->sys[i].nt;
-    }
-    for (long i = 0; i < hs->nv * hs->nv; i++) {
-      nt[1] += hs->jac[i].nt;
-    }
-    fprintf(VERBSTREAM, "\nNewton's iteration: %ld equations in %ld "
-            "variables", hs->nall, hs->nv);
-    if (hs->nall > hs->nv) {
-      fprintf(VERBSTREAM, ", %s (%.2f sec)", sparse
-              ? "square subsystem of them" : "combinations of all of them, "
-              "no square subsystem with an invertible Jacobian found",
-              rt);
-    }
-    fprintf(VERBSTREAM, "; %ld terms with %ld monomials for F, %ld terms "
-            "with %ld monomials for its Jacobian (at most %ld and %ld values "
-            "held)\n", nt[0], hs->mt.nord[0], nt[1], hs->mt.nord[1],
-            hs->mt.nlive[0], hs->mt.nlive[1]);
-  }
   st->ng = -1;
   st->M = NULL;
   st->need = NULL;
@@ -2067,7 +2048,6 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
   st->lp = lp;
   const double mem = hensel_nf_mem(st, D, 0, 0);
   const double kappa = st->kappa;
-  const double modops = f4ops + fglmops;
   hs->cmod = kappa * (HENSEL_KAPPA_F4 * f4ops + HENSEL_KAPPA_F4TERM * f4terms
                        + HENSEL_KAPPA_FGLM * fglmops);
   double best = -1, bestc = -1;
@@ -2098,13 +2078,47 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
   hs->skip = bs;
   hs->gain = bestc * hs->cmod;
   if (info_level) {
-    fprintf(VERBSTREAM, "\ncost model: modular run %.3g operations (F4 "
-            "%.3g with %.3g matrix terms, FGLM %.3g; %.3g weighted), "
-            "lifting to p^%ld with skip %ld %.3g; precision per cost %.3g "
-            "times that of the modular runs, %.3g at p^%ld within the "
-            "memory limit at the start\n", modops, f4ops, f4terms, fglmops,
-            hs->cmod, hs->N, hs->skip, hs->cnewton, best * hs->cmod,
-            hs->gain, bNc);
+    /* the costs are in the unit of the model of Newton's iteration; the
+     * gain is the precision per cost of the lifting, relative to that of
+     * the modular runs (one digit per run) */
+    long nt[2] = {0, 0};
+    for (long i = 0; i < hs->nv; i++) {
+      nt[0] += hs->sys[i].nt;
+    }
+    for (long i = 0; i < hs->nv * hs->nv; i++) {
+      nt[1] += hs->jac[i].nt;
+    }
+    fprintf(VERBSTREAM, "\n-------------- COST MODEL ---------------\n");
+    fprintf(VERBSTREAM, "%-27s %10ld in %ld variables\n", "equations",
+            hs->nall, hs->nv);
+    if (hs->nall > hs->nv) {
+      fprintf(VERBSTREAM, "%-27s %s (%.2f sec)\n", "Newton's iteration on",
+              hs->square ? "a square subsystem of them" : "combinations of "
+              "all of them, no square subsystem with an invertible Jacobian "
+              "found", hs->tsel);
+    }
+    fprintf(VERBSTREAM, "%-27s %10ld terms, %ld monomials, at most %ld "
+            "values held\n", "F (Newton's iteration)", nt[0],
+            hs->mt.nord[0], hs->mt.nlive[0]);
+    fprintf(VERBSTREAM, "%-27s %10ld terms, %ld monomials, at most %ld "
+            "values held\n", "Jacobian of F", nt[1], hs->mt.nord[1],
+            hs->mt.nlive[1]);
+    fprintf(VERBSTREAM, "%-27s %10.3g operations, %.3g matrix terms\n",
+            "F4 of a modular run", f4ops, f4terms);
+    fprintf(VERBSTREAM, "%-27s %10.3g operations\n", "FGLM of a modular run",
+            fglmops);
+    fprintf(VERBSTREAM, "%-27s %10.3g\n", "cost of a modular run", hs->cmod);
+    fprintf(VERBSTREAM, "%-27s %10.3g to p^%ld", "cost of lifting one prime",
+            hs->cnewton, hs->N);
+    if (hs->skip > 0) {
+      fprintf(VERBSTREAM, ", last %ld step%s without update of J^-1",
+              hs->skip, hs->skip > 1 ? "s" : "");
+    }
+    fprintf(VERBSTREAM, "\n");
+    fprintf(VERBSTREAM, "%-27s %10.2f at p^%ld\n", "gain", best * hs->cmod,
+            hs->N);
+    fprintf(VERBSTREAM, "%-27s %10.2f at p^%ld (threshold %.2f)\n",
+            "gain within memory limit", hs->gain, bNc, HENSEL_MIN_GAIN);
   }
 }
 

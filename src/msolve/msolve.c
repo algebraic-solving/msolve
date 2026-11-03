@@ -3251,13 +3251,26 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   long hensel_T = gens->lifting != 1 && gens->ngens >= gens->nvars
     ? st->nthrds : 0;
   int hensel_chosen = 0;
+  /* Newton's iteration needs simple roots: the parametrization, of the
+   * radical, has degree the dimension of the quotient only when the ideal
+   * is radical */
+  const int nonradical = hensel_T > 0 && !split
+    && nmod_params[0]->elim->length - 1 < *dquot_ptr;
+  if (nonradical) {
+    if (info_level) {
+      fprintf(VERBSTREAM, "p-adic lifting not used: the ideal is not "
+              "radical (%ld solutions, quotient of dimension %ld)\n",
+              (long)(nmod_params[0]->elim->length - 1), *dquot_ptr);
+    }
+    hensel_T = 0;
+  }
   /* the splitting along equalities of coordinates is preferred when it
    * applies */
   if (hensel_T > 0 && !split
       && hensel_state_init(&hst, gens, info_level)) {
     hensel_add_param(&hd, nmod_params[0]);
   } else {
-    if (gens->lifting == 2 && info_level) {
+    if (gens->lifting == 2 && !nonradical && info_level) {
       fprintf(VERBSTREAM, "p-adic lifting not applicable, usual lifting\n");
     }
     hensel_T = 0;

@@ -869,29 +869,34 @@ static void hensel_solve(fmpz_mod_poly_struct *dX,
     fmpz_poly_init(yz + i);
     fmpz_poly_init(tv + i);
   }
-  /* y_e is added to dX with the factor p^(o + e) */
+  /* y_e = J^-1 s modulo p^a, a = min(jprec, h - e), is added to dX with
+   * the factor p^(o + e), as in Dixon's lifting: J^-1 is only known
+   * modulo p^jprec, so that s and y_e are truncated to a digits, and only
+   * J y_e is formed at the precision h - e of s */
   for (long e = 0; e < h; e += jp) {
-    const long m = h - e;
-    fmpz_mod_ctx_t cm;
-    fmpz_pow_ui(qm, pr, m);
-    fmpz_mod_ctx_init(cm, qm);
-    hensel_lift_t Lm[1];
-    fmpz_mod_poly_init(Lm->f, cm);
-    fmpz_mod_poly_init(Lm->finv, cm);
-    fmpz_mod_poly_set_fmpz_poly(Lm->f, fz, cm);
-    hensel_set_finv(Lm, cm);
-    /* J^-1 and J reduced to the current precision */
+    const long m = h - e, a = MIN(jp, m);
+    fmpz_mod_ctx_t ca;
+    fmpz_pow_ui(qm, pr, a);
+    fmpz_mod_ctx_init(ca, qm);
+    hensel_lift_t La[1];
+    fmpz_mod_poly_init(La->f, ca);
+    fmpz_mod_poly_init(La->finv, ca);
+    fmpz_mod_poly_set_fmpz_poly(La->f, fz, ca);
+    hensel_set_finv(La, ca);
     for (long i = 0; i < nv * nv; i++) {
-      if (jp > m) {
+      if (jp > a) {
         fmpz_poly_scalar_mod_fmpz(Am + i, Jinvz + i, qm);
       } else {
         fmpz_poly_set(Am + i, Jinvz + i);
       }
-      if (Jz != NULL && e + jp < h) {
-        fmpz_poly_scalar_mod_fmpz(Bm + i, Jz + i, qm);
-      }
     }
-    hensel_matvec(yz, Am, s, nv, Lm, cm);
+    for (long i = 0; i < nv; i++) {
+      fmpz_poly_scalar_mod_fmpz(tv + i, s + i, qm);
+    }
+    hensel_matvec(yz, Am, tv, nv, La, ca);
+    fmpz_mod_poly_clear(La->f, ca);
+    fmpz_mod_poly_clear(La->finv, ca);
+    fmpz_mod_ctx_clear(ca);
     fmpz_pow_ui(pe, pr, o + e);
     for (long i = 0; i < nv; i++) {
       fmpz_poly_scalar_mul_fmpz(tz, yz + i, pe);
@@ -899,7 +904,18 @@ static void hensel_solve(fmpz_mod_poly_struct *dX,
       fmpz_mod_poly_add(dX + i, dX + i, b, ctx);
     }
     if (e + jp < h) {
-      /* s = (s - J y) / p^jprec */
+      /* s = (s - J y_e) / p^jprec modulo p^(m - jprec) */
+      fmpz_mod_ctx_t cm;
+      fmpz_pow_ui(qm, pr, m);
+      fmpz_mod_ctx_init(cm, qm);
+      hensel_lift_t Lm[1];
+      fmpz_mod_poly_init(Lm->f, cm);
+      fmpz_mod_poly_init(Lm->finv, cm);
+      fmpz_mod_poly_set_fmpz_poly(Lm->f, fz, cm);
+      hensel_set_finv(Lm, cm);
+      for (long i = 0; i < nv * nv; i++) {
+        fmpz_poly_scalar_mod_fmpz(Bm + i, Jz + i, qm);
+      }
       hensel_matvec(tv, Bm, yz, nv, Lm, cm);
       fmpz_pow_ui(pe, pr, jp);
       for (long i = 0; i < nv; i++) {
@@ -907,10 +923,10 @@ static void hensel_solve(fmpz_mod_poly_struct *dX,
         fmpz_poly_scalar_mod_fmpz(s + i, s + i, qm);
         fmpz_poly_scalar_fdiv_fmpz(s + i, s + i, pe);
       }
+      fmpz_mod_poly_clear(Lm->f, cm);
+      fmpz_mod_poly_clear(Lm->finv, cm);
+      fmpz_mod_ctx_clear(cm);
     }
-    fmpz_mod_poly_clear(Lm->f, cm);
-    fmpz_mod_poly_clear(Lm->finv, cm);
-    fmpz_mod_ctx_clear(cm);
   }
   for (long i = 0; i < nv; i++) {
     fmpz_poly_clear(yz + i);
@@ -1357,12 +1373,14 @@ static double hensel_model_step(const hensel_sys_t *hs, const long D,
   if (jp < h) {
     c += nJ * hensel_mm_cost(D, h * lp) + hensel_term_cost(hs, 1, D, h * lp);
   }
+  /* the rounds of hensel_solve: y_e = J^-1 s modulo p^a, then J y_e
+   * modulo p^(h - e), with the preinverses and reductions of each one */
   for (long e = 0; e < h; e += jp) {
     const double bm = (h - e) * lp, ba = MIN(jp, h - e) * lp;
-    c += hensel_mm_cost(D, bm) + nv * nv * hensel_mul_cost(D, ba, bm)
-      + 2 * nv * hensel_mul_cost(D, bm, bm);
+    c += hensel_mm_cost(D, ba) + nv * nv * hensel_mul_cost(D, ba, ba)
+      + 2 * nv * hensel_mul_cost(D, ba, ba);
     if (e + jp < h) {
-      c += nv * nv * hensel_mul_cost(D, bm, bm)
+      c += hensel_mm_cost(D, bm) + nv * nv * hensel_mul_cost(D, bm, ba)
         + 2 * nv * hensel_mul_cost(D, bm, bm);
     }
   }

@@ -1854,14 +1854,9 @@ static long hensel_nf_nmem_skip(const hensel_state_t *st, const long D,
 }
 
 static long hensel_nf_nmem(const hensel_state_t *st, const long D,
-                           const double bnow, const int info_level) {
+                           const double bnow) {
   const double mem = hensel_nf_mem(st, D, bnow, 1);
-  const long nmem = hensel_nf_nmem_skip(st, D, mem, st->hs.skip);
-  if (info_level && nmem != st->nmem) {
-    fprintf(VERBSTREAM, "memory limit %.0f MB: precision at most p^%ld per "
-            "batch of primes\n", mem / 1048576.0, nmem);
-  }
-  return nmem;
+  return hensel_nf_nmem_skip(st, D, mem, st->hs.skip);
 }
 
 /* chooses N (a power of 2) and skip maximizing the precision per cost of
@@ -1971,6 +1966,44 @@ static long hensel_nf_target(const hensel_state_t *st, const long T,
   return MAX(target, prec + 1);
 }
 
+/* the legend of the lines printed by hensel_state_step, whose columns
+ * span HENSEL_LINE characters */
+#define HENSEL_LINE 79
+static void hensel_print_legend(void) {
+  fprintf(VERBSTREAM, "\nLegend for the p-adic lifting\n");
+  fprintf(VERBSTREAM, "--------------------------------------------------"
+          "------\n");
+  fprintf(VERBSTREAM, "prec      precision p^k of the primes of the batch\n");
+  fprintf(VERBSTREAM, "bits      bits of the modulus (primes used and "
+          "batch)\n");
+  fprintf(VERBSTREAM, "est       estimated number of bits needed\n");
+  fprintf(VERBSTREAM, "rec       coefficients of w reconstructed, out of its "
+          "degree\n");
+  fprintf(VERBSTREAM, "vw        bits of the denominator given by the vector "
+          "witnesses\n");
+  fprintf(VERBSTREAM, "maxprec   largest precision within the memory limit\n");
+  fprintf(VERBSTREAM, "mem       memory limit in MB\n");
+  fprintf(VERBSTREAM, "crt       time of the CRT and rational reconstruction "
+          "(sec)\n");
+  fprintf(VERBSTREAM, "chk       time of the check modulo another prime "
+          "(sec)\n");
+  fprintf(VERBSTREAM, "Newton    time of Newton's iteration at each prime "
+          "(sec), of which\n");
+  fprintf(VERBSTREAM, "          inv  J^-1 mod p          F    F(X)\n");
+  fprintf(VERBSTREAM, "          JF   J^-1 F(X)           J    J(X)\n");
+  fprintf(VERBSTREAM, "          pr   products for J^-1   up   update of X "
+          "and w\n");
+  fprintf(VERBSTREAM, "--------------------------------------------------"
+          "------\n");
+  fprintf(VERBSTREAM, "\n  prec      bits       est         rec      vw "
+          "maxprec     mem     crt     chk\n");
+  for (int i = 0; i < HENSEL_LINE; i++) {
+    fputc('-', VERBSTREAM);
+  }
+  fputc('\n', VERBSTREAM);
+  fflush(VERBSTREAM);
+}
+
 /* lifts the batch hd step by step, trying the reconstruction after each
  * step with the primes already used; returns 1 when the parametrization
  * is reconstructed and checked, 0 if more primes are needed, -1 if the
@@ -2008,11 +2041,30 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     *tnewton += realtime() - rt;
     return st->nmismatch >= HENSEL_MAX_MISMATCH ? -1 : 0;
   }
+  if (info_level) {
+    /* a line of the width of the header of the columns */
+    char line[HENSEL_LINE + 1];
+    int l;
+    if (T == 1) {
+      l = snprintf(line, sizeof(line), "---- prime %ld: p = %lu ",
+                   st->nused + 1, (unsigned long)hd->pr[0].p);
+    } else {
+      l = snprintf(line, sizeof(line), "---- primes %ld to %ld: p = %lu to "
+                   "%lu ", st->nused + 1, st->nused + T,
+                   (unsigned long)hd->pr[0].p, (unsigned long)hd->pr[T - 1].p);
+    }
+    for (l = MIN(l, HENSEL_LINE); l < HENSEL_LINE; l++) {
+      line[l] = '-';
+    }
+    line[HENSEL_LINE] = '\0';
+    fprintf(VERBSTREAM, "%s\n", line);
+    fflush(VERBSTREAM);
+  }
   st->lp = log2((double)hd->pr[0].p);
   if (st->ng < 0) {
     hensel_nf_images(hd->pr, hs);
     hensel_state_start(st, hd->pr);
-    st->nmem = hensel_nf_nmem(st, st->sp.groups->deg, 0, info_level);
+    st->nmem = hensel_nf_nmem(st, st->sp.groups->deg, 0);
   }
   *tnewton += realtime() - rt;
   split_group_t *G = st->sp.groups;
@@ -2073,10 +2125,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     if (!done && fmpz_is_zero(st->vden) && nrec < dg
         && fmpz_bits(M2) >= 1.05 * st->vbits) {
       st->vbits = fmpz_bits(M2);
-      if (hensel_vecwit(st->vden, &C) && info_level) {
-        fprintf(VERBSTREAM, "vector witnesses: denominator of %ld bits\n",
-                (long)fmpz_bits(st->vden));
-      }
+      hensel_vecwit(st->vden, &C);
     }
     if (!done && !fmpz_is_zero(st->vden)) {
       done = hensel_reconstruct(G->rec, &C, st->vden, &nrec2);
@@ -2105,19 +2154,32 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
       st->nh++;
     }
     /* the limit follows the estimated number of bits */
-    st->nmem = hensel_nf_nmem(st, dg, bnow, info_level);
+    st->nmem = hensel_nf_nmem(st, dg, bnow);
     const long bM2 = fmpz_bits(M2);
     hensel_crt_clear(&C);
     ar += realtime() - rt;
     *trec += ar;
     *tchk += ac;
     if (info_level) {
-      fprintf(VERBSTREAM, "p^%ld at %ld primes, %ld bits with the %ld "
-              "primes used: %s (%ld of %ld coefficients of w); estimate "
-              "%.0f bits (CRT and ratrecon %.2f sec, check %.2f sec)\n",
-              hd->pr[0].prec, T, bM2, st->nused,
-              done ? "reconstructed" : "not reconstructed", nrec, dg,
-              hensel_nf_estimate(st), ar, ac);
+      char sp[24], se[24], sr[48], sv[24], sm[24];
+      const double est = hensel_nf_estimate(st);
+      snprintf(sp, sizeof(sp), "p^%ld", hd->pr[0].prec);
+      if (est < 0) {
+        snprintf(se, sizeof(se), "-");
+      } else {
+        snprintf(se, sizeof(se), "%.0f", est);
+      }
+      snprintf(sr, sizeof(sr), "%ld/%ld", done ? dg : nrec, dg);
+      if (fmpz_is_zero(st->vden)) {
+        snprintf(sv, sizeof(sv), "-");
+      } else {
+        snprintf(sv, sizeof(sv), "%ld", (long)fmpz_bits(st->vden));
+      }
+      snprintf(sm, sizeof(sm), "p^%ld", st->nmem);
+      fprintf(VERBSTREAM, "%6s %9ld %9s %11s %7s %7s %7.0f %7.2f %7.2f%s\n",
+              sp, bM2, se, sr, sv, sm,
+              hensel_nf_mem(st, dg, bnow, 1) / 1048576.0, ar, ac,
+              done ? "  reconstructed" : "");
       fflush(VERBSTREAM);
     }
     if (done) {
@@ -2127,11 +2189,12 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
   if (info_level) {
     for (long j = 0; j < T; j++) {
       const hensel_prime_t *P = hd->pr + j;
-      fprintf(VERBSTREAM, "  p = %lu: p^%ld, Newton %.2f sec: J^-1 mod p "
-              "%.2f, F(X) %.2f, J^-1 F(X) %.2f, J(X) %.2f, products for "
-              "J^-1 %.2f, update of X and w %.2f\n", (unsigned long)P->p,
-              P->prec, P->tnewton, P->tinv, P->tf, P->tmv, P->tj, P->tmm,
-              P->tup);
+      if (T > 1) {
+        fprintf(VERBSTREAM, "p = %lu: ", (unsigned long)P->p);
+      }
+      fprintf(VERBSTREAM, "Newton p^%ld %.2f: inv %.2f, F %.2f, JF %.2f, "
+              "J %.2f, pr %.2f, up %.2f\n", P->prec, P->tnewton, P->tinv,
+              P->tf, P->tmv, P->tj, P->tmm, P->tup);
     }
   }
   /* the batch is used: the block of residues is enlarged, then they are

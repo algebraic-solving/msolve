@@ -59,12 +59,19 @@ typedef struct {
  * m -> m / x_var[m] = pred[m]: each one is evaluated with one product;
  * ord[w] lists those needed by the equations (w = 0) or by the Jacobian
  * (w = 1), by increasing degree; nlive[w] values of them are held at once
- * by hensel_eval_set */
+ * by hensel_eval_set. The nleaf[w] products of degree at least 2 without
+ * successor (eco 12: 56 of the 79 monomials of F, katsura 12: 77 of 90)
+ * are only added to the nred[w] polynomials of their tleaf[w] terms: if
+ * delay[w] is set, they are not reduced modulo w, and each of these
+ * polynomials is reduced once, which saves the reduction of nleaf[w] -
+ * nred[w] products (eco 12, J: 66 products for 95 polynomials) */
 typedef struct {
   long nmon, alloc;
   long *e;                        /* nmon * nv exponents */
   long *deg, *pred, *var;
   long nord[2], nlive[2];
+  long nleaf[2], nred[2], tleaf[2];
+  int delay[2];
   long *ord[2];
 } hensel_mon_t;
 
@@ -290,6 +297,21 @@ static void hensel_mon_init(hensel_sys_t *hs) {
         nsucc[mt->pred[m]]++;
       }
     }
+    mt->nleaf[w] = mt->nred[w] = mt->tleaf[w] = 0;
+    for (long j = 0; j < mt->nord[w]; j++) {
+      const long m = mt->ord[w][j];
+      mt->nleaf[w] += nsucc[m] == 0 && mt->deg[m] >= 2;
+    }
+    for (long i = 0; i < np; i++) {
+      long c = 0;
+      for (long m = 0; m < Q[i].nt; m++) {
+        const long k = Q[i].mon[m];
+        c += nsucc[k] == 0 && mt->deg[k] >= 2;
+      }
+      mt->tleaf[w] += c;
+      mt->nred[w] += c > 0;
+    }
+    mt->delay[w] = mt->nleaf[w] > mt->nred[w];
     long live = 0;
     mt->nlive[w] = 0;
     for (long j = 0; j < mt->nord[w]; j++) {
@@ -733,7 +755,9 @@ static void hensel_set_finv(hensel_lift_t *L, const fmpz_mod_ctx_t ctx) {
  * increasing degree; the terms of each monomial are added to the res[i]
  * once its value is known, and the value is freed once its successors are
  * computed, so that about two degrees of them are held at once (sot1: 12328
- * monomials in J, at most mt->nlive[1] values) */
+ * monomials in J, at most mt->nlive[1] values). If mt->delay[w] is set,
+ * the products without successor are not reduced modulo f: the res[i]
+ * then have degree up to 2 deg f - 2 and are reduced at the end */
 static void hensel_eval_set(fmpz_mod_poly_struct *res, const hensel_sys_t *hs,
                             const int w, const hensel_lift_t *L,
                             const fmpz_mod_ctx_t ctx) {
@@ -773,9 +797,12 @@ static void hensel_eval_set(fmpz_mod_poly_struct *res, const hensel_sys_t *hs,
    * and the sums are reduced once: reduced modulo q, a negative
    * coefficient would have the size of q */
   const slong dl = fmpz_mod_poly_degree(L->f, ctx);
+  const int delay = mt->delay[w];
+  const slong rl = delay ? 2 * dl - 1 : dl;
+  fmpz *pr = delay ? _fmpz_vec_init(rl) : NULL;
   for (long i = 0; i < np; i++) {
-    fmpz_mod_poly_fit_length(res + i, dl, ctx);
-    _fmpz_vec_zero(res[i].coeffs, dl);
+    fmpz_mod_poly_fit_length(res + i, rl, ctx);
+    _fmpz_vec_zero(res[i].coeffs, rl);
   }
   fmpz_mod_poly_struct *val = malloc(mt->nmon * sizeof(fmpz_mod_poly_struct));
   for (long j = 0; j < mt->nord[w]; j++) {
@@ -785,6 +812,24 @@ static void hensel_eval_set(fmpz_mod_poly_struct *res, const hensel_sys_t *hs,
       fmpz_mod_poly_one(val + m, ctx);
     } else if (mt->deg[m] == 1) {
       fmpz_mod_poly_set(val + m, L->X + mt->var[m], ctx);
+    } else if (delay && nsucc[m] == 0) {
+      const fmpz_mod_poly_struct *a = val + pm, *b = L->X + mt->var[m];
+      if (a->length > 0 && b->length > 0) {
+        const slong ln = a->length + b->length - 1;
+        if (a->length >= b->length) {
+          _fmpz_poly_mul(pr, a->coeffs, a->length, b->coeffs, b->length);
+        } else {
+          _fmpz_poly_mul(pr, b->coeffs, b->length, a->coeffs, a->length);
+        }
+        for (long k = start[m]; k < start[m + 1]; k++) {
+          _fmpz_vec_scalar_addmul_fmpz(res[teq[k]].coeffs, pr, ln, tcf[k]);
+        }
+      }
+      if (--nsucc[pm] == 0) {
+        fmpz_mod_poly_clear(val + pm, ctx);
+      }
+      fmpz_mod_poly_clear(val + m, ctx);
+      continue;
     } else {
       HENSEL_MULMOD(val + m, val + pm, L->X + mt->var[m], L, ctx);
     }
@@ -799,11 +844,24 @@ static void hensel_eval_set(fmpz_mod_poly_struct *res, const hensel_sys_t *hs,
       fmpz_mod_poly_clear(val + m, ctx);
     }
   }
+  fmpz_mod_poly_t qq, rr;
+  fmpz_mod_poly_init(qq, ctx);
+  fmpz_mod_poly_init(rr, ctx);
   for (long i = 0; i < np; i++) {
-    _fmpz_vec_scalar_mod_fmpz(res[i].coeffs, res[i].coeffs, dl,
+    _fmpz_vec_scalar_mod_fmpz(res[i].coeffs, res[i].coeffs, rl,
                               fmpz_mod_ctx_modulus(ctx));
-    _fmpz_mod_poly_set_length(res + i, dl);
+    _fmpz_mod_poly_set_length(res + i, rl);
     _fmpz_mod_poly_normalise(res + i);
+    if (res[i].length > dl) {
+      fmpz_mod_poly_divrem_newton_n_preinv(qq, rr, res + i, L->f, L->finv,
+                                           ctx);
+      fmpz_mod_poly_swap(res + i, rr, ctx);
+    }
+  }
+  fmpz_mod_poly_clear(qq, ctx);
+  fmpz_mod_poly_clear(rr, ctx);
+  if (delay) {
+    _fmpz_vec_clear(pr, rl);
   }
   free(val);
   free(nsucc);
@@ -1524,6 +1582,24 @@ static double hensel_term_cost(const hensel_sys_t *hs, const int w,
     * (HENSEL_TERM_C0 + HENSEL_TERM_C1 * b);
 }
 
+/* cost of an evaluation of F (w = 0) or of J (w = 1) at b bits (see
+ * hensel_eval_set): a product modulo w is a product and a reduction,
+ * which costs two products; if the products without successor are not
+ * reduced, their terms have 2 D coefficients of about 2 b bits, and nred
+ * polynomials are reduced */
+static double hensel_eval_cost(const hensel_sys_t *hs, const int w,
+                               const long D, const double b) {
+  const hensel_mon_t *mt = &hs->mt;
+  double c = hensel_nprod(hs, w) * hensel_mm_cost(D, b)
+    + hensel_term_cost(hs, w, D, b);
+  if (mt->delay[w]) {
+    const double red = hensel_mm_cost(D, b) - hensel_mul_cost(D, b, b);
+    c += (mt->nred[w] - mt->nleaf[w]) * red
+      + (double)mt->tleaf[w] * D * (HENSEL_TERM_C0 + 3 * HENSEL_TERM_C1 * b);
+  }
+  return c;
+}
+
 /* model cost of one Newton step from p^o to p^n, with J^-1 known modulo
  * p^jp and updated if upd, following hensel_step and hensel_solve; lp =
  * log2(p) */
@@ -1531,14 +1607,12 @@ static double hensel_model_step(const hensel_sys_t *hs, const long D,
                                 const double lp, const long o, const long n,
                                 const long jp, const int upd) {
   const double nv = hs->nv;
-  const double nF = hensel_nprod(hs, 0), nJ = hensel_nprod(hs, 1);
   const long h = n - o;
   const double b = n * lp;
   /* F(X) and the two preinverses of w */
-  double c = nF * hensel_mm_cost(D, b) + 2 * hensel_mm_cost(D, b)
-    + hensel_term_cost(hs, 0, D, b);
+  double c = hensel_eval_cost(hs, 0, D, b) + 2 * hensel_mm_cost(D, b);
   if (jp < h) {
-    c += nJ * hensel_mm_cost(D, h * lp) + hensel_term_cost(hs, 1, D, h * lp);
+    c += hensel_eval_cost(hs, 1, D, h * lp);
   }
   /* the rounds of hensel_solve: y_e = J^-1 s modulo p^a, then J y_e
    * modulo p^(h - e), with the preinverses and reductions of each one */
@@ -1554,7 +1628,7 @@ static double hensel_model_step(const hensel_sys_t *hs, const long D,
   /* update of X and w */
   c += (nv + 1) * hensel_mm_cost(D, b);
   if (upd) {
-    c += nJ * hensel_mm_cost(D, b) + hensel_term_cost(hs, 1, D, b)
+    c += hensel_eval_cost(hs, 1, D, b)
       + 2 * (nv * nv * nv + 2 * nv * nv) * hensel_mul_cost(D, b, b);
   }
   return c;
@@ -1590,9 +1664,8 @@ static double hensel_model_from(const hensel_sys_t *hs, const long D,
  * elimination and B_v = X_v w' mod w */
 static double hensel_model(const hensel_sys_t *hs, const long D,
                            const double lp, const long N, const long skip) {
-  const double nv = hs->nv, nJ = hensel_nprod(hs, 1);
-  return (nJ + nv * nv * nv) * hensel_mm_cost(D, lp)
-    + hensel_term_cost(hs, 1, D, lp)
+  const double nv = hs->nv;
+  return nv * nv * nv * hensel_mm_cost(D, lp) + hensel_eval_cost(hs, 1, D, lp)
     + hensel_model_from(hs, D, lp, 1, 1, N, N >> skip)
     + nv * hensel_mm_cost(D, N * lp);
 }
@@ -1981,7 +2054,10 @@ static double hensel_nf_estimate(const hensel_state_t *st) {
  * hensel_eval_set) and about 2 nv^2 + 4 nv polynomials of degree D (X,
  * F(X), dX, J^-1 F(X) and the corrections), and at most at half precision
  * (or at full precision without skip) those of J, J itself, J^-1 and the
- * operands and products of hensel_matmul (about 8 nv^2 polynomials); a
+ * operands and products of hensel_matmul (about 8 nv^2 polynomials); the
+ * polynomials of F(X) or of J(X) whose products are not reduced (see
+ * hensel_eval_set) have twice as many coefficients of twice as many bits,
+ * about 3 more polynomials each, and the product 4 more; a
  * coefficient of b bits takes 1.2 b / 8 + HENSEL_MEM_COEF bytes (fmpz,
  * mpz and malloc headers; sot1, D = 92: 132 MB at p^12 for 49 MB counted
  * before). The limit is given by --hensel-memory in megabytes, by default
@@ -2019,8 +2095,11 @@ static long hensel_nf_nmem_skip(const hensel_state_t *st, const long D,
                                 const double mem, const long skip) {
   const hensel_sys_t *hs = &st->hs;
   const double nv = hs->nv;
-  const double npf = hs->mt.nlive[0] + 2 * nv * nv + 4 * nv;
-  const double npj = (hs->mt.nlive[1] + 8 * nv * nv) / (skip > 0 ? 2 : 1);
+  const double npf = hs->mt.nlive[0] + 2 * nv * nv + 4 * nv
+    + (hs->mt.delay[0] ? 3 * nv + 4 : 0);
+  const double npj = (hs->mt.nlive[1] + 8 * nv * nv
+                      + (hs->mt.delay[1] ? 3 * nv * nv + 4 : 0))
+    / (skip > 0 ? 2 : 1);
   const double per = MAX(npf, npj) * D;
   const double N = (mem / per - HENSEL_MEM_COEF) * 8 / (1.2 * st->lp);
   return MAX(2, (long)N);
@@ -2097,12 +2176,14 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
               "all of them, no square subsystem with an invertible Jacobian "
               "found", hs->tsel);
     }
-    fprintf(VERBSTREAM, "%-27s %10ld terms, %ld monomials, at most %ld "
-            "values held\n", "F (Newton's iteration)", nt[0],
-            hs->mt.nord[0], hs->mt.nlive[0]);
-    fprintf(VERBSTREAM, "%-27s %10ld terms, %ld monomials, at most %ld "
-            "values held\n", "Jacobian of F", nt[1], hs->mt.nord[1],
-            hs->mt.nlive[1]);
+    for (int w = 0; w < 2; w++) {
+      fprintf(VERBSTREAM, "%-27s %10ld terms, %ld monomials, at most %ld "
+              "values held\n", w == 0 ? "F (Newton's iteration)"
+              : "Jacobian of F", nt[w], hs->mt.nord[w], hs->mt.nlive[w]);
+      fprintf(VERBSTREAM, "%-27s %10ld products without successor, %s "
+              "%ld sums\n", "", hs->mt.nleaf[w], hs->mt.delay[w]
+              ? "reduced in" : "each reduced, not in", hs->mt.nred[w]);
+    }
     fprintf(VERBSTREAM, "%-27s %10.3g operations, %.3g matrix terms\n",
             "F4 of a modular run", f4ops, f4terms);
     fprintf(VERBSTREAM, "%-27s %10.3g operations\n", "FGLM of a modular run",

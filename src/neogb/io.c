@@ -902,7 +902,7 @@ void linear_algebra(
                     probabilistic_sparse_dense_linear_algebra_ff_8(mat, tbr, bs, st);
                     return;
                 case 43:
-                    probabilistic_sparse_dense_linear_algebra_ff_8_2(mat, tbr, bs, st);
+                    probabilistic_sparse_dense_linear_algebra_2_ff_8(mat, tbr, bs, st);
                     return;
                 case 44:
                     probabilistic_sparse_linear_algebra_ff_8(mat, tbr, bs, st);
@@ -923,7 +923,7 @@ void linear_algebra(
                     probabilistic_sparse_dense_linear_algebra_ff_16(mat, tbr, bs, st);
                     return;
                 case 43:
-                    probabilistic_sparse_dense_linear_algebra_ff_16_2(mat, tbr, bs, st);
+                    probabilistic_sparse_dense_linear_algebra_2_ff_16(mat, tbr, bs, st);
                     return;
                 case 44:
                     probabilistic_sparse_linear_algebra_ff_16(mat, tbr, bs, st);
@@ -945,7 +945,7 @@ void linear_algebra(
                     probabilistic_sparse_dense_linear_algebra_ff_32(mat, tbr, bs, st);
                     return;
                 case 43:
-                    probabilistic_sparse_dense_linear_algebra_ff_32_2(mat, tbr, bs, st);
+                    probabilistic_sparse_dense_linear_algebra_2_ff_32(mat, tbr, bs, st);
                     return;
                 case 44:
                     probabilistic_sparse_linear_algebra_ff_32(mat, tbr, bs, st);

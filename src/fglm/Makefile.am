@@ -11,4 +11,5 @@ EXTRA_DIST	=		fglm.h \
 								data_fglm.c \
 								fglm_core.c \
 								matrix-mult.c \
-								linalg-fglm.c
+								linalg-fglm.c \
+								fglm_classic.c

@@ -108,6 +108,9 @@ thanks to the `-e` flag. The following command
 ```
 will perform the Groebner basis computation eliminating the first variable. 
 More generally, using `-e k` will eliminate the first `k` variables. 
+Over the rationals, only the basis of the elimination ideal is returned
+by default; add the `--elim-full-basis` flag to get the full Groebner
+basis w.r.t. the elimination order.
 
 # Solving over the real numbers
 

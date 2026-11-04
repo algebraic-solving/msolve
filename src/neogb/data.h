@@ -430,6 +430,9 @@ struct md_t
 
     int32_t print_gb;
     int32_t truncate_lifting;
+    /* over QQ with an elimination order: if nonzero, the full basis is
+     * lifted, otherwise only the basis of the elimination ideal */
+    int32_t elim_full_basis;
 
     /* for f4sat */
     uint32_t new_multipliers;

@@ -54,7 +54,12 @@ typedef int64_t bits_t;
 
 typedef struct{
   nvars_t nvars;
+  /* number of eliminated variables which are dropped from the output
+   * (characteristic 0 only) */
   nvars_t elim;
+  /* over QQ with an elimination order: if nonzero, the full basis is
+   * computed, otherwise only the basis of the elimination ideal */
+  int32_t elim_full_basis;
   int32_t ngens;
   int32_t nterms;
   int32_t field_char;

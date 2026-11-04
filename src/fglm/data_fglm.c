@@ -40,6 +40,35 @@ static inline void free_sp_mat_fglm(sp_matfglm_t *mat){
   }
 }
 
+static inline void free_sp_multimat_fglm(sp_multimatfglm_t *mat){
+    if(mat!=NULL){
+        posix_memalign_free(mat->dense_mat);
+        free(mat->rowsel);
+        free(mat->border);
+        free(mat->is_lm);
+        free(mat);
+    }
+}
+
+static inline void free_fglm_gb(fglm_gb_t *G){
+    if(G!=NULL) {
+        free(G->lens);
+        free(G->exps);
+        free(G->cfs);
+        free(G);
+    }
+}
+
+/* frees the arrays of lex (not lex itself) */
+static inline void free_fglm_lex_staircase(fglm_lex_staircase_t *lex){
+    if(lex!=NULL) {
+        free(lex->S);
+        free(lex->g_lm);
+        free(lex->g_ntail);
+        memset(lex, 0, sizeof(fglm_lex_staircase_t));
+    }
+}
+
 static inline fglm_data_t *allocate_fglm_data(szmat_t nrows, szmat_t ncols, szmat_t nvars){
   fglm_data_t * data = malloc(sizeof(fglm_data_t));
 

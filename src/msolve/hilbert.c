@@ -23,6 +23,8 @@
 #include "../neogb/meta_data.h"
 #include "msolve-data.h"
 #include "streams.h"
+#include "../neogb/sort_r.h"
+#include "../fglm/fglm_classic.c"
 #define REDUCTION_ALLINONE 1
 
 void print_fglm_header(
@@ -3941,3 +3943,257 @@ static inline int equal_staircase(int32_t *lmb, int32_t *lmb_ori,
 
 #undef REDUCTION_ALLINONE
 
+
+/* ------------------------------------------------------------------------
+ * Multiplication matrices for all the variables (FGLM).
+ *
+ * As build_matrixn_unstable_from_bs_trace, but for all variables:
+ * for each monomial x_i b_k outside the staircase,
+ *   - if it is a lm, the row is read in the Gb (copy_poly_in_matrix_from_bs)
+ *   - otherwise its nf is computed with core_nf
+ * Each monomial on the border is handled only once
+ * ------------------------------------------------------------------------ */
+
+/* raw comparison of monomials */
+static int mm_rawcmp(const int32_t *a, const int32_t *b, const int32_t nv){
+  for(int32_t i = 0; i < nv; i++)
+    if(a[i] != b[i]) return a[i] > b[i] ? 1 : -1;
+  return 0;
+}
+/* Comparison of monomials with DRL */
+static int mm_drlcmp(const int32_t *a, const int32_t *b, const int32_t nv){
+  int64_t da = 0, db = 0;
+  for(int32_t i = 0; i < nv; i++){
+      da += a[i]; db += b[i];
+  }
+  if(da != db) {
+      return da > db ? 1 : -1;
+  }
+  for(int32_t i = nv - 1; i >= 0; i--) {
+      if(a[i] != b[i]) {
+          return a[i] < b[i] ? 1 : -1;
+      }
+  }
+  return 0;
+}
+/* tris par sort_r : le contexte (monômes, nombre de variables) est passé en
+ * argument, sans variable globale (code réentrant) */
+typedef struct {
+  const int32_t *base;
+  int32_t nv;
+} mm_sort_ctx_t;
+static int mm_cmp_idx(const void *a, const void *b, void *arg){
+  const mm_sort_ctx_t *c = (const mm_sort_ctx_t *)arg;
+  return mm_rawcmp(c->base + (uint64_t)(*(const szmat_t *)a) * c->nv,
+                   c->base + (uint64_t)(*(const szmat_t *)b) * c->nv, c->nv);
+}
+static int mm_cmp_mon(const void *a, const void *b, void *arg){
+  return mm_drlcmp((const int32_t *)a, (const int32_t *)b, *(const int32_t *)arg);
+}
+/* recherche de e parmi base[idx[0..n)] (idx trié) ; retourne l'indice dans base */
+static long mm_find_idx(const int32_t *base, const szmat_t *idx, long n,
+                        const int32_t *e, const int32_t nv){
+  long lo = 0, hi = n - 1;
+  while(lo <= hi){
+    long mid = (lo + hi) / 2;
+    int c = mm_rawcmp(base + (uint64_t)idx[mid] * nv, e, nv);
+    if(c == 0) return idx[mid];
+    if(c < 0) lo = mid + 1; else hi = mid - 1;
+  }
+  return -1;
+}
+static long mm_find_mon(const int32_t *base, long n, const int32_t *e,
+                        const int32_t nv){
+  long lo = 0, hi = n - 1;
+  while(lo <= hi){
+    long mid = (lo + hi) / 2;
+    int c = mm_drlcmp(base + (uint64_t)mid * nv, e, nv);
+    if(c == 0) return mid;
+    if(c < 0) lo = mid + 1; else hi = mid - 1;
+  }
+  return -1;
+}
+static szmat_t *mm_sorted_index(const int32_t *base, szmat_t n, const int32_t nv){
+  szmat_t *idx = malloc((n + 1) * sizeof(szmat_t));
+  for(szmat_t i = 0; i < n; i++) idx[i] = i;
+  mm_sort_ctx_t ctx = { base, nv };
+  sort_r(idx, n, sizeof(szmat_t), mm_cmp_idx, &ctx);
+  return idx;
+}
+
+/* Fills M->dense_mat: */
+static void mm_fill_dense(sp_multimatfglm_t *M, const long *lm_of,
+                          int32_t nnf, int32_t *exps_nf, const szmat_t *row_nf,
+                          int32_t *lmb, bs_t *bs, ht_t *ht, md_t *st,
+                          const int nv, const long fc, const int info_level){
+  const szmat_t D = M->ncols;
+  const uint64_t nb = M->nnfs;
+  if(posix_memalign((void **)&M->dense_mat, 32,
+                    sizeof(CF_t) * ((uint64_t)nb * D + 1))){
+    fprintf(ERRSTREAM, "Problem when allocating dense_mat\n");
+    exit(1);
+  }
+  memset(M->dense_mat, 0, sizeof(CF_t) * ((uint64_t)nb * D + 1));
+  /* fake sp_matfglm_t to use msolve copy functions */
+  sp_matfglm_t view;
+  memset(&view, 0, sizeof(view));
+  view.charac = fc;
+  view.ncols = D;
+  view.dense_mat = M->dense_mat;
+
+  for(uint64_t r = 0; r < nb; r++){
+    if(!M->is_lm[r]) continue;
+    const long g = lm_of[r];
+    const long len = bs->hm[bs->lmps[g]][LENGTH];
+    if(len > 1){
+      copy_poly_in_matrix_from_bs(&view, (long)r, bs, ht, g, len, 0, len,
+                                  lmb, nv, fc);
+    }
+  }
+  if(nnf == 0) return;
+
+  const len_t ebl = ht->ebl;
+  const len_t evl = ht->evl;
+  int32_t *evi = (int32_t *)malloc((unsigned long)nv * sizeof(int32_t));
+  if (ebl == 0) {
+      for (long i = 1; i < evl; ++i) {
+          evi[i-1] = i;
+      }
+  } else {
+      for (long i = 1; i < ebl; ++i) {
+          evi[i-1] = i;
+      }
+      for (long i = ebl+1; i < evl; ++i) {
+          evi[i-2] = i;
+      }
+  }
+  int32_t *lens_nf = malloc(nnf * sizeof(int32_t));
+  int32_t *cfs_nf = malloc(nnf * sizeof(int32_t));
+  for(int32_t q = 0; q < nnf; q++){ lens_nf[q] = 1; cfs_nf[q] = 1; }
+
+  md_t *md = copy_meta_data(st, fc);
+  bs_t *tbr = initialize_basis(md, ht);
+  exp_t *mul = (exp_t *)calloc(bs->ht->evl, sizeof(exp_t));
+  import_input_data(tbr, md, 0, nnf, lens_nf, exps_nf, (void *)cfs_nf, NULL);
+  tbr->ld = tbr->lml = nnf;
+  for(long q = 0; q < nnf; ++q){
+    tbr->lmps[q] = q;
+  }
+  int32_t err = 0;
+  if(info_level > 1){
+    fprintf(VERBSTREAM, "normal forms (all variables)\n");
+  }
+  tbr = core_nf(tbr, md, mul, bs, &err);
+  if(err){
+    fprintf(ERRSTREAM, "Problem with normalform, stopped computation.\n");
+    exit(1);
+  }
+  for(int32_t q = 0; q < nnf; q++){
+    copy_nf_in_matrix_from_bs(&view, row_nf[q], q, lmb, tbr, ht, evi, st, nv);
+  }
+  free_basis_without_hash_table(&tbr);
+  free(mul);
+  free(md);
+  free(evi);
+  free(lens_nf);
+  free(cfs_nf);
+}
+
+static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
+                                                                long dquot,
+                                                                bs_t *bs,
+                                                                ht_t *ht,
+                                                                int32_t *bexp_lm,
+                                                                md_t *st,
+                                                                const int nv,
+                                                                const long fc,
+                                                                const int info_level){
+  double rt0 = realtime();
+  const szmat_t D = (szmat_t)dquot;
+  const long nlm = bs->lml;
+
+  szmat_t *bidx = mm_sorted_index(lmb, D, nv);
+  szmat_t *lidx = mm_sorted_index(bexp_lm, (szmat_t)nlm, nv);
+
+  sp_multimatfglm_t *M = calloc(1, sizeof(sp_multimatfglm_t));
+  M->charac = fc;
+  M->nvars = nv;
+  M->ncols = D;
+  M->rowsel = malloc((uint64_t)nv * D * sizeof(szmat_t));
+  M->one = 0; /* The monomial 1 is always in position 0 */
+
+  /* 1. monomials x_i b_k: in the staircase or on the border */
+  int32_t *cand = malloc((uint64_t)nv * D * nv * sizeof(int32_t));
+  int32_t *e = malloc(nv * sizeof(int32_t));
+  uint64_t ncand = 0;
+  for(int32_t i = 0; i < nv; i++){
+    for(szmat_t k = 0; k < D; k++){
+      memcpy(e, lmb + (uint64_t)k * nv, nv * sizeof(int32_t));
+      e[i]++;
+      long pos = mm_find_idx(lmb, bidx, D, e, nv);
+      if(pos >= 0){
+        M->rowsel[(uint64_t)i * D + k] = (szmat_t)pos;
+      } else {
+        M->rowsel[(uint64_t)i * D + k] = UINT32_MAX;
+        memcpy(cand + ncand++ * nv, e, nv * sizeof(int32_t));
+      }
+    }
+  }
+  /* border without duplicates */
+  int32_t nv32 = nv;
+  sort_r(cand, ncand, nv * sizeof(int32_t), mm_cmp_mon, &nv32);
+  uint64_t nb = 0;
+  for(uint64_t t = 0; t < ncand; t++){
+    if(nb == 0 || mm_rawcmp(cand + (nb - 1) * nv, cand + t * nv, nv)){
+      if(nb != t) memcpy(cand + nb * nv, cand + t * nv, nv * sizeof(int32_t));
+      nb++;
+    }
+  }
+  M->nnfs = (szmat_t)nb;
+  M->border = realloc(cand, (nb + 1) * nv * sizeof(int32_t));
+  for(int32_t i = 0; i < nv; i++){
+    for(szmat_t k = 0; k < D; k++){
+      szmat_t *s = M->rowsel + (uint64_t)i * D + k;
+      if(*s != UINT32_MAX) continue;
+      memcpy(e, lmb + (uint64_t)k * nv, nv * sizeof(int32_t));
+      e[i]++;
+      *s = D + (szmat_t)mm_find_mon(M->border, (long)nb, e, nv);
+    }
+  }
+  free(e);
+
+  /* is lm(g) or does the nf need to be computed */
+  M->is_lm = calloc(nb + 1, sizeof(char));
+  long *lm_of = malloc((nb + 1) * sizeof(long));
+  int32_t *exps_nf = malloc((nb + 1) * nv * sizeof(int32_t));
+  szmat_t *row_nf = malloc((nb + 1) * sizeof(szmat_t));
+  int32_t nnf = 0;
+  for(uint64_t r = 0; r < nb; r++){
+    lm_of[r] = mm_find_idx(bexp_lm, lidx, nlm, M->border + r * nv, nv);
+    if(lm_of[r] >= 0){
+      M->is_lm[r] = 1;
+      M->nlms++;
+    } else {
+      memcpy(exps_nf + (uint64_t)nnf * nv, M->border + r * nv, nv * sizeof(int32_t));
+      row_nf[nnf++] = (szmat_t)r;
+    }
+  }
+  free(bidx);
+  free(lidx);
+
+  /* common dense array */
+  mm_fill_dense(M, lm_of, nnf, exps_nf, row_nf, lmb, bs, ht, st, nv, fc,
+                info_level);
+
+  free(lm_of);
+  free(exps_nf);
+  free(row_nf);
+
+  if(info_level){
+    fprintf(VERBSTREAM,
+            "multiplication matrices: D = %u, %u border monomials "
+            "(%u leading monomials, %u normal forms), %.2f sec\n",
+            M->ncols, M->nnfs, M->nlms, M->nnfs - M->nlms, realtime() - rt0);
+  }
+  return M;
+}

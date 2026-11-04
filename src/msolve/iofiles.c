@@ -359,16 +359,20 @@ static void print_msolve_polynomials_ff(
         if (st->nev == 0) {
             fprintf(file, "#monomial order:       graded reverse lexicographical\n");
         } else {
+            fprintf(file, "#monomial order:       eliminating first ");
             if (st->nev == 1) {
-                fprintf(file, "#monomial order:       eliminating first variable, blocks: graded reverse lexicographical\n");
+                fprintf(file, "variable, ");
             } else {
-                fprintf(file, "#monomial order:       eliminating first %d variables, blocks: graded reverse lexicographical\n", st->nev);
+                fprintf(file, "%d variables, ", st->nev);
             }
+            fprintf(file, "blocks: graded reverse lexicographical\n");
         }
         if (bs->lml == 1) {
             fprintf(file, "#length of basis:      1 element\n");
         } else {
-            fprintf(file, "#length of basis:      %u elements sorted by increasing leading monomials\n", bs->lml);
+            fprintf(file, "#length of basis:      %u elements ",
+                    bs->lml);
+            fprintf(file, "sorted by increasing leading monomials\n");
         }
         fprintf(file, "#---\n");
     }
@@ -1331,4 +1335,50 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
   else{
     display_gens_mpz(fh, gens);
   }
+}
+
+/* Same display as print_msolve_polynomials_ff */
+static void print_fglm_gb(FILE *file,
+                          const fglm_gb_t *G,
+                          char **vnames,
+                          const int ord){
+  const int32_t nv = G->nvars;
+  fprintf(file, "#Reduced Groebner basis data (change of order by FGLM)\n");
+  fprintf(file, "#---\n");
+  fprintf(file, "#field characteristic: %u\n", G->charac);
+  fprintf(file, "#variable order:       ");
+  for (int32_t i = 0; i < nv-1; ++i) {
+      fprintf(file, "%s, ", vnames[i]);
+  }
+  fprintf(file, "%s\n", vnames[nv-1]);
+  fprintf(file, "#monomial order:       lexicographical\n");
+  if(G->ngens == 1) {
+      fprintf(file, "#length of basis:      1 element\n");
+  } else {
+      fprintf(file, "#length of basis:      %d elements ",
+              G->ngens);
+      fprintf(file, "sorted by increasing leading monomials\n");
+  }
+
+  fprintf(file, "#---\n");
+  fprintf(file, "[");
+  uint64_t pos = 0;
+  for(int32_t i = 0; i < G->ngens; i++){
+    for(int32_t j = 0; j < G->lens[i]; j++, pos++){
+      const int32_t *e = G->exps + pos * nv;
+      if(j) {
+          fprintf(file, "+");
+      }
+      fprintf(file, "%u", G->cfs[pos]);
+      for(int32_t k = 0; k < nv; k++) {
+          if(e[k]) {
+              fprintf(file, "*%s^%d", vnames[k], e[k]);
+          }
+      }
+    }
+    if (i < G->ngens - 1) {
+        fprintf(file, ",\n");
+    }
+  }
+  fprintf(file, "]:\n");
 }

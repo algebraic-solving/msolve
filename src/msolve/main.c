@@ -120,6 +120,10 @@ static inline void display_help(char *str){
   display_option_help_noopt("    system.\n");
   display_option_help_noopt("2 - output is the full reduced Groebner basis of\n");
   display_option_help_noopt("    the input system.\n");
+  display_option_help_noopt("3 - output is the reduced Groebner basis w.r.t.\n");
+  display_option_help_noopt("    the lexicographical ordering, by classical\n");
+  display_option_help_noopt("    FGLM (zero-dimensional ideals, prime fields\n");
+  display_option_help_noopt("    only).\n");
   display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
   display_option_help_noopt("blocks of variables, each block using the degree\n");
   display_option_help_noopt("reverse lexicographical monomial order. ELIM has\n");
@@ -508,8 +512,8 @@ static void getoptions(
       if (*print_gb < 0) {
           *print_gb = 0;
       }
-      if (*print_gb > 2) {
-          *print_gb = 2;
+      if (*print_gb > 3) {
+          *print_gb = 3;
       }
       break;
     case 'c':

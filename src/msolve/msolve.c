@@ -5779,8 +5779,13 @@ restart:
 	  int dim = - 2;
 	  long dquot = -1;
 
-      if(elim_block_len > 0 && print_gb == 0){
-          fprintf(ERRSTREAM, "Warning: elim order not available for rational parametrizations\n");
+      if(elim_block_len > 0){
+          fprintf(ERRSTREAM, "Warning: elim order not available for ");
+          if(print_gb == 0){
+              fprintf(ERRSTREAM, "rational parametrizations\n");
+          } else if(print_gb == 3){
+              fprintf(ERRSTREAM, "lexicographic Groebner basis\n");
+          }
           fprintf(ERRSTREAM, "Computing Groebner basis\n");
           print_gb=2;
       }

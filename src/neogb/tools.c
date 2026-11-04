@@ -60,6 +60,75 @@ double realtime(void)
 #endif
 }
 
+/* binary min heap of column indices */
+static inline void push_column_to_heap(
+        hm_t *heap,
+        len_t *nh,
+        const hm_t c
+        )
+{
+    len_t i = (*nh)++;
+    while (i > 0) {
+        const len_t p = (i-1) / 2;
+        if (heap[p] <= c) {
+            break;
+        }
+        heap[i] = heap[p];
+        i       = p;
+    }
+    heap[i] = c;
+}
+
+static inline hm_t pop_column_from_heap(
+        hm_t *heap,
+        len_t *nh
+        )
+{
+    const hm_t min  = heap[0];
+    const hm_t last = heap[--(*nh)];
+    const len_t n   = *nh;
+    len_t i = 0;
+    while (2*i+1 < n) {
+        len_t c = 2*i+1;
+        if (c+1 < n && heap[c+1] < heap[c]) {
+            c++;
+        }
+        if (heap[c] >= last) {
+            break;
+        }
+        heap[i] = heap[c];
+        i       = c;
+    }
+    heap[i] = last;
+    return min;
+}
+
+/* copies the rows into one consecutively allocated block in their
+ * given order, frees the original rows and lets rows point to the
+ * copies; the returned block has to be freed instead of the rows */
+static hm_t *copy_rows_to_block(
+        hm_t **rows,
+        const len_t nr
+        )
+{
+    len_t i;
+    uint64_t sz = 0;
+
+    for (i = 0; i < nr; ++i) {
+        sz += (uint64_t)rows[i][LENGTH] + OFFSET;
+    }
+    hm_t *block = (hm_t *)malloc(sz * sizeof(hm_t));
+    sz = 0;
+    for (i = 0; i < nr; ++i) {
+        const uint64_t len = (uint64_t)rows[i][LENGTH] + OFFSET;
+        memcpy(block + sz, rows[i], len * sizeof(hm_t));
+        free(rows[i]);
+        rows[i] = block + sz;
+        sz += len;
+    }
+    return block;
+}
+
 static void construct_trace(
         trace_t *trace,
         mat_t *mat

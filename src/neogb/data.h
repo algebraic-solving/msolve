@@ -517,15 +517,6 @@ extern void  interreduce_matrix_rows(
         int free_basis
         );
 
-extern cf32_t *reduce_dense_row_by_old_pivots_ff_32(
-        int64_t *dr,
-        mat_t *mat,
-        const bs_t * const bs,
-        hm_t * const * const pivs,
-        const hi_t dpiv,
-        const uint32_t fc
-        );
-
 extern hm_t *sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
         int64_t *dr,
         smat_t *smat,

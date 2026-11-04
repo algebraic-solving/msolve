@@ -67,7 +67,6 @@ checkdiff       = \
 			  test/diff/diff_lexgb-nonradical-31.sh \
 			  test/diff/diff_lexgb-nonshape-31.sh \
 			  test/diff/diff_lexgb-shape-31.sh \
-			  test/diff/diff_lexgb-unit-31.sh \
 			  test/diff/diff_lifting-single-point.sh \
 			  test/diff/diff_line-endings.sh \
 			  test/diff/diff_linear0-qq.sh \

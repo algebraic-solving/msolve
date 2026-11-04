@@ -8,4 +8,6 @@ source test/diff/diff_source-noarg.sh
 
 source test/diff/diff_source-gb-lm.sh
 
+source test/diff/diff_source-fglm.sh
+
 normal_exit

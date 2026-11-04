@@ -46,6 +46,23 @@
 #include <flint/fmpz_mat.h>
 #include <flint/fmpz_lll.h>
 
+/* the products of polynomial matrices by transforms (see hensel_ntt_mul)
+ * use the interface of fft_small of FLINT 3.2.0 and later; HENSEL_NTT 0,
+ * or older versions, keep the products of fmpz_poly_mul */
+#ifndef HENSEL_NTT
+#if __FLINT_RELEASE >= 30200 && defined(FLINT_HAVE_FFT_SMALL) \
+  && FLINT_HAVE_FFT_SMALL
+#define HENSEL_NTT 1
+#else
+#define HENSEL_NTT 0
+#endif
+#endif
+#if HENSEL_NTT
+#include <flint/fmpz.h>
+#include <flint/nmod.h>
+#include <flint/fft_small.h>
+#endif
+
 #define HENSEL_RRMARGIN 20        /* bits kept by rational reconstruction */
 
 typedef struct {
@@ -91,6 +108,12 @@ typedef struct {
   double gain;                    /* precision per cost relative to the
                                      modular runs alone */
   int square;                     /* sys is a subsystem of all */
+  int ntt;                        /* products of hensel_solve and
+                                     hensel_matmul by transforms (see
+                                     hensel_ntt_mul), chosen by
+                                     hensel_choose and hensel_nf_nmem */
+  int nvar;                       /* 2 if they may be used, else 1 */
+  long vN[2], vskip[2];           /* N and skip without (0) and with them */
   double tsel;                    /* time of its choice (sec) */
 } hensel_sys_t;
 
@@ -118,12 +141,323 @@ typedef struct {
   hensel_prime_t *pr;
 } hensel_data_t;
 
+#if HENSEL_NTT
+/* the products A B over Z[t] of the matrices of hensel_solve and
+ * hensel_matmul are formed from the transforms of their entries modulo np
+ * primes of 50 bits (those of fft_small, whose product exceeds the
+ * coefficients of A B), so that those of A are computed once for all the
+ * columns of B and for all the products by A (J^-1 is the same in all the
+ * steps without update, J in all the rounds of hensel_solve): a product
+ * of an nv x nv matrix by a vector costs nv transforms, nv^2 products of
+ * transforms and nv inverse transforms, instead of nv^2 products of
+ * polynomials (3 nv^2 transforms); katsura 12, D = 2046, 124 x 500 bits:
+ * 27 ms instead of 145 ms. The transforms have the length 2^L of the
+ * products, their coefficients are doubles in [-p/2, p/2], and those of A
+ * are multiplied by 2^-L, the factor of the inverse transform */
+#define HENSEL_NTT_MAXP 64        /* at most 64 primes, about 3190 bits */
+#define HENSEL_NTT_MIND 64        /* degree from which they are used */
+
+typedef struct {
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t ct;
+  ulong *cof;                     /* np x np limbs: P / p_k */
+  ulong *P;                       /* the product P of the primes */
+  ulong inv[HENSEL_NTT_MAXP];     /* (P / p_k)^-1 mod p_k */
+} hensel_ntt_crt_t;
+
+typedef struct {
+  long np, L;
+  ulong N, trunc;                 /* 2^L, and the length used, a multiple
+                                     of BLK_SZ */
+  ulong pr[HENSEL_NTT_MAXP];
+  sd_fft_ctx_struct Q[HENSEL_NTT_MAXP];
+  nmod_t mod[HENSEL_NTT_MAXP];
+  double scale[HENSEL_NTT_MAXP];  /* 2^-L mod p */
+  double lbits[HENSEL_NTT_MAXP];  /* log2 of the products of the primes */
+  hensel_ntt_crt_t *crt[HENSEL_NTT_MAXP + 1]; /* for the first np primes */
+  double *buf;                    /* N doubles */
+} hensel_ntt_t;
+
+/* transforms of the r x c entries of a matrix, modulo its np primes */
+typedef struct {
+  long r, c, np;
+  double *d;                      /* entry (i, j), prime k: d + ((i c + j)
+                                     np + k) trunc */
+} hensel_ntt_mat_t;
+
+static ulong hensel_ntt_next(ulong p) {
+  /* the primes of fft_small (next_fft_number in fft_small/mpn_mul.c) */
+  const ulong bits = n_nbits(p), l = n_trailing_zeros(p - 1);
+  const ulong q = p - (UWORD(2) << l);
+  if (n_nbits(q) == bits) {
+    return q;
+  }
+  if (l < 5) {
+    return (UWORD(1) << (bits - 2)) + 1;
+  }
+  return (UWORD(1) << bits) - (UWORD(1) << (l - 1)) + 1;
+}
+
+static void hensel_ntt_init(hensel_ntt_t *T) {
+  memset(T, 0, sizeof(hensel_ntt_t));
+}
+
+static void hensel_ntt_clear(hensel_ntt_t *T) {
+  for (long k = 0; k < T->np; k++) {
+    sd_fft_ctx_clear(T->Q + k);
+  }
+  for (long n = 0; n <= HENSEL_NTT_MAXP; n++) {
+    hensel_ntt_crt_t *C = T->crt[n];
+    if (C != NULL) {
+      fmpz_comb_temp_clear(C->ct);
+      fmpz_comb_clear(C->comb);
+      free(C->cof);
+      free(C->P);
+      free(C);
+    }
+  }
+  free(T->buf);
+  hensel_ntt_init(T);
+}
+
+/* the number of primes for coefficients of at most bits bits, 0 if more
+ * than HENSEL_NTT_MAXP, after the transforms of length the products of
+ * polynomials of length D are set up */
+static long hensel_ntt_fit(hensel_ntt_t *T, const long D, const double bits) {
+  const long L = FLINT_MAX(n_clog2(2 * D - 1), LG_BLK_SZ);
+  if (T->buf == NULL || T->L != L) {
+    for (long k = 0; k < T->np; k++) {
+      sd_fft_ctx_fit_depth(T->Q + k, L);
+      T->scale[k] = (double)nmod_inv(nmod_pow_ui(2, L, T->mod[k]),
+                                     T->mod[k]);
+    }
+    T->L = L;
+    T->N = UWORD(1) << L;
+    T->trunc = FLINT_MIN(T->N, (ulong)((2 * D - 1 + BLK_SZ - 1) / BLK_SZ)
+                         * BLK_SZ);
+    free(T->buf);
+    T->buf = aligned_alloc(64, T->N * sizeof(double));
+  }
+  long np = 0;
+  while (np < HENSEL_NTT_MAXP && (np == 0 || T->lbits[np - 1] <= bits + 1)) {
+    if (np == T->np) {
+      ulong p = np == 0 ? UWORD(0x0003f00000000001) : T->pr[np - 1];
+      do {
+        p = hensel_ntt_next(p);
+      } while (!n_is_prime(p) || n_trailing_zeros(p - 1) < 24);
+      T->pr[np] = p;
+      sd_fft_ctx_init_prime(T->Q + np, p);
+      sd_fft_ctx_fit_depth(T->Q + np, L);
+      nmod_init(T->mod + np, p);
+      T->scale[np] = (double)nmod_inv(nmod_pow_ui(2, L, T->mod[np]),
+                                      T->mod[np]);
+      T->lbits[np] = (np > 0 ? T->lbits[np - 1] : 0) + log2((double)p);
+      T->np++;
+    }
+    np++;
+  }
+  if (T->lbits[np - 1] <= bits + 1) {
+    return 0;
+  }
+  if (T->crt[np] == NULL) {
+    hensel_ntt_crt_t *C = malloc(sizeof(hensel_ntt_crt_t));
+    fmpz_comb_init(C->comb, T->pr, np);
+    fmpz_comb_temp_init(C->ct, C->comb);
+    C->P = calloc(np + 1, sizeof(ulong));
+    C->cof = calloc(np * np, sizeof(ulong));
+    C->P[0] = 1;
+    long pl = 1;
+    for (long k = 0; k < np; k++) {
+      C->P[pl] = mpn_mul_1(C->P, C->P, pl, T->pr[k]);
+      pl += C->P[pl] != 0;
+    }
+    for (long k = 0; k < np; k++) {
+      mpn_divrem_1(C->cof + k * np, 0, C->P, np, T->pr[k]);
+      C->inv[k] = nmod_inv(mpn_mod_1(C->cof + k * np, np, T->pr[k]),
+                           T->mod[k]);
+    }
+    T->crt[np] = C;
+  }
+  return np;
+}
+
+/* a b mod p in [-p/2, p/2] for doubles |a|, |b| < p, four at a time */
+FLINT_FORCE_INLINE vec4d hensel_ntt_mulmod(vec4d a, vec4d b, vec4d p,
+                                           vec4d pinv) {
+  const vec4d h = vec4d_mul(a, b), l = vec4d_fmsub(a, b, h);
+  const vec4d r = vec4d_add(vec4d_fnmadd(vec4d_round(vec4d_mul(h, pinv)),
+                                         p, h), l);
+  return vec4d_fnmadd(vec4d_round(vec4d_mul(r, pinv)), p, r);
+}
+
+FLINT_FORCE_INLINE vec4d hensel_ntt_red(vec4d r, vec4d p, vec4d pinv) {
+  return vec4d_fnmadd(vec4d_round(vec4d_mul(r, pinv)), p, r);
+}
+
+/* the transforms of a, modulo the first np primes, to out (np blocks of
+ * trunc doubles), multiplied by 2^-L if scale is set */
+static void hensel_ntt_fwd(double *out, const fmpz_poly_t a, const long np,
+                           const int scale, hensel_ntt_t *T) {
+  const long len = a->length;
+  const ulong N = T->N, trunc = T->trunc;
+  hensel_ntt_crt_t *C = T->crt[np];
+  ulong *res = malloc(np * sizeof(ulong));
+  for (long k = 0; k < np; k++) {
+    memset(out + k * trunc, 0, trunc * sizeof(double));
+  }
+  for (long c = 0; c < len; c++) {
+    if (fmpz_is_zero(a->coeffs + c)) {
+      continue;
+    }
+    fmpz_multi_mod_ui(res, a->coeffs + c, C->comb, C->ct);
+    for (long k = 0; k < np; k++) {
+      const double x = (double)res[k], p = T->Q[k].p;
+      out[k * trunc + c] = x > p / 2 ? x - p : x;
+    }
+  }
+  free(res);
+  for (long k = 0; k < np && len > 0; k++) {
+    double *d = T->buf;
+    memcpy(d, out + k * trunc, trunc * sizeof(double));
+    if (N > trunc) {
+      memset(d + trunc, 0, (N - trunc) * sizeof(double));
+    }
+    sd_fft_trunc(T->Q + k, d, T->L, (len + BLK_SZ - 1) / BLK_SZ * BLK_SZ,
+                 trunc);
+    const vec4d p = vec4d_set_d(T->Q[k].p), pinv = vec4d_set_d(T->Q[k].pinv);
+    const vec4d s = vec4d_set_d(T->scale[k]);
+    double *o = out + k * trunc;
+    for (ulong x = 0; x < trunc; x += 4) {
+      const vec4d v = vec4d_load_aligned(d + x);
+      vec4d_store_aligned(o + x, scale ? hensel_ntt_mulmod(v, s, p, pinv)
+                          : hensel_ntt_red(v, p, pinv));
+    }
+  }
+}
+
+/* the transforms of the r x c matrix A, for products by matrices with
+ * coefficients of at most bB bits and c rows; 0 if they would need more
+ * than HENSEL_NTT_MAXP primes */
+static int hensel_ntt_mat_set(hensel_ntt_mat_t *M, const fmpz_poly_struct *A,
+                              const long r, const long c, const double bB,
+                              const long D, hensel_ntt_t *T) {
+  long bA = 0;
+  for (long i = 0; i < r * c; i++) {
+    bA = FLINT_MAX(bA, FLINT_ABS(_fmpz_vec_max_bits(A[i].coeffs,
+                                                    A[i].length)));
+  }
+  const long np = hensel_ntt_fit(T, D, bA + bB + log2((double)c * D) + 1);
+  M->r = r;
+  M->c = c;
+  M->np = np;
+  M->d = NULL;
+  if (np == 0) {
+    return 0;
+  }
+  M->d = aligned_alloc(64, r * c * np * T->trunc * sizeof(double));
+  for (long i = 0; i < r * c; i++) {
+    hensel_ntt_fwd(M->d + i * np * T->trunc, A + i, np, 1, T);
+  }
+  return 1;
+}
+
+static void hensel_ntt_mat_clear(hensel_ntt_mat_t *M) {
+  free(M->d);
+  M->d = NULL;
+  M->np = 0;
+}
+
+/* x = the integer in [0, P) with the residues res modulo the np primes */
+static void hensel_ntt_crt(fmpz_t x, const ulong *res, const long np,
+                           const hensel_ntt_t *T, ulong *t) {
+  const hensel_ntt_crt_t *C = T->crt[np];
+  memset(t, 0, (np + 1) * sizeof(ulong));
+  for (long k = 0; k < np; k++) {
+    t[np] += mpn_addmul_1(t, C->cof + k * np, np,
+                          nmod_mul(res[k], C->inv[k], T->mod[k]));
+  }
+  /* t < np P */
+  while (t[np] != 0 || mpn_cmp(t, C->P, np) >= 0) {
+    t[np] -= mpn_sub_n(t, t, C->P, np);
+  }
+  long n = np;
+  while (n > 0 && t[n - 1] == 0) {
+    n--;
+  }
+  fmpz_set_ui_array(x, t, FLINT_MAX(n, 1));
+}
+
+/* C = A B over Z[t] for the transforms M of A (r x c) and B (c x n): the
+ * transforms of each column of B are multiplied by those of A and added */
+static void hensel_ntt_mul(fmpz_poly_struct *C, const hensel_ntt_mat_t *M,
+                           const fmpz_poly_struct *B, const long n,
+                           const long D, hensel_ntt_t *T) {
+  const long r = M->r, c = M->c, np = M->np;
+  const ulong trunc = T->trunc, zl = 2 * D - 1;
+  double *Bh = aligned_alloc(64, c * np * trunc * sizeof(double));
+  double *out = aligned_alloc(64, np * trunc * sizeof(double));
+  ulong *res = malloc(np * sizeof(ulong)), *t = malloc((np + 1)
+                                                         * sizeof(ulong));
+  for (long l = 0; l < n; l++) {
+    for (long j = 0; j < c; j++) {
+      hensel_ntt_fwd(Bh + j * np * trunc, B + j * n + l, np, 0, T);
+    }
+    for (long i = 0; i < r; i++) {
+      for (long k = 0; k < np; k++) {
+        const vec4d p = vec4d_set_d(T->Q[k].p);
+        const vec4d pinv = vec4d_set_d(T->Q[k].pinv);
+        double *acc = T->buf;
+        memset(acc, 0, T->N * sizeof(double));
+        for (long j = 0; j < c; j++) {
+          const double *a = M->d + ((i * c + j) * np + k) * trunc;
+          const double *b = Bh + (j * np + k) * trunc;
+          /* |acc| < 8 p / 2 < 2^53 before each reduction */
+          const int red = (j & 7) == 7 || j == c - 1;
+          for (ulong x = 0; x < trunc; x += 4) {
+            vec4d s = vec4d_add(vec4d_load_aligned(acc + x),
+                                hensel_ntt_mulmod(vec4d_load_aligned(a + x),
+                                                  vec4d_load_aligned(b + x),
+                                                  p, pinv));
+            vec4d_store_aligned(acc + x, red ? hensel_ntt_red(s, p, pinv) : s);
+          }
+        }
+        sd_ifft_trunc(T->Q + k, acc, T->L, trunc);
+        const double pk = T->Q[k].p, pki = T->Q[k].pinv;
+        for (ulong x = 0; x < zl; x++) {
+          double y = acc[x] - pk * rint(acc[x] * pki);
+          out[k * trunc + x] = y < 0 ? y + pk : y;
+        }
+      }
+      fmpz_poly_struct *R = C + i * n + l;
+      fmpz_poly_fit_length(R, zl);
+      for (ulong x = 0; x < zl; x++) {
+        for (long k = 0; k < np; k++) {
+          res[k] = (ulong)out[k * trunc + x];
+        }
+        hensel_ntt_crt(R->coeffs + x, res, np, T, t);
+      }
+      _fmpz_poly_set_length(R, zl);
+      _fmpz_poly_normalise(R);
+    }
+  }
+  free(t);
+  free(res);
+  free(out);
+  free(Bh);
+}
+#endif
+
 /* lifting modulo q: w, its inverse for mulmod_preinv, X and J^-1 */
 typedef struct {
   fmpz_mod_poly_t f, finv;
   fmpz_mod_poly_struct *X;
   fmpz_mod_poly_struct *Jinv;
   long jprec;                     /* J^-1 is known modulo p^jprec */
+#if HENSEL_NTT
+  hensel_ntt_t *ntt;
+  hensel_ntt_mat_t Jh;            /* transforms of J^-1, while it is not
+                                     updated (Jh.d NULL if not formed) */
+#endif
   /* timings: F(X), J^-1 F(X) with the corrections, J(X), the two
    * products of the update of J^-1, the update of X and w */
   double tf, tmv, tj, tmm, tup;
@@ -876,6 +1210,43 @@ static void hensel_matmul(fmpz_mod_poly_struct *C,
                           const fmpz_mod_poly_struct *A,
                           const fmpz_mod_poly_struct *B, const long nv,
                           const hensel_lift_t *L, const fmpz_mod_ctx_t ctx) {
+#if HENSEL_NTT
+  const long D = fmpz_mod_poly_degree(L->f, ctx);
+  if (L->ntt != NULL && D >= HENSEL_NTT_MIND) {
+    fmpz_poly_struct *Az = calloc(3 * nv * nv, sizeof(fmpz_poly_struct));
+    fmpz_poly_struct *Bz = Az + nv * nv, *Cz = Bz + nv * nv;
+    long bB = 0;
+    for (long i = 0; i < 3 * nv * nv; i++) {
+      fmpz_poly_init(Az + i);
+    }
+    for (long i = 0; i < nv * nv; i++) {
+      fmpz_mod_poly_get_fmpz_poly(Az + i, A + i, ctx);
+      fmpz_mod_poly_get_fmpz_poly(Bz + i, B + i, ctx);
+      bB = FLINT_MAX(bB, FLINT_ABS(_fmpz_vec_max_bits(Bz[i].coeffs,
+                                                      Bz[i].length)));
+    }
+    hensel_ntt_mat_t M;
+    const int ok = hensel_ntt_mat_set(&M, Az, nv, nv, bB, D, L->ntt);
+    if (ok) {
+      hensel_ntt_mul(Cz, &M, Bz, nv, D, L->ntt);
+      hensel_ntt_mat_clear(&M);
+      fmpz_mod_poly_t r;
+      fmpz_mod_poly_init(r, ctx);
+      for (long i = 0; i < nv * nv; i++) {
+        fmpz_mod_poly_set_fmpz_poly(r, Cz + i, ctx);
+        fmpz_mod_poly_rem(C + i, r, L->f, ctx);
+      }
+      fmpz_mod_poly_clear(r, ctx);
+    }
+    for (long i = 0; i < 3 * nv * nv; i++) {
+      fmpz_poly_clear(Az + i);
+    }
+    free(Az);
+    if (ok) {
+      return;
+    }
+  }
+#endif
   fmpz_poly_mat_t Az, Bz, Cz;
   fmpz_poly_mat_init(Az, nv, nv);
   fmpz_poly_mat_init(Bz, nv, nv);
@@ -972,6 +1343,20 @@ static int hensel_inv_mod_p(nmod_poly_struct *B, nmod_poly_struct *A,
 /* r = A v modulo (f, q) for an nv x nv matrix A and a vector v of
  * polynomials of degree less than deg f: the sums are formed over Z[t] and
  * reduced once; r has coefficients in [0, q) */
+/* r = acc mod (q, f), with coefficients in [0, q) */
+static void hensel_matvec_red(fmpz_poly_t r, const fmpz_poly_t acc,
+                              fmpz_mod_poly_t t, fmpz_mod_poly_t qq,
+                              fmpz_mod_poly_t rr, const hensel_lift_t *L,
+                              const fmpz_mod_ctx_t ctx) {
+  fmpz_mod_poly_set_fmpz_poly(t, acc, ctx);
+  if (t->length >= L->f->length) {
+    fmpz_mod_poly_divrem_newton_n_preinv(qq, rr, t, L->f, L->finv, ctx);
+    fmpz_mod_poly_get_fmpz_poly(r, rr, ctx);
+  } else {
+    fmpz_mod_poly_get_fmpz_poly(r, t, ctx);
+  }
+}
+
 static void hensel_matvec(fmpz_poly_struct *r, const fmpz_poly_struct *A,
                           const fmpz_poly_struct *v, const long nv,
                           const hensel_lift_t *L, const fmpz_mod_ctx_t ctx) {
@@ -990,13 +1375,7 @@ static void hensel_matvec(fmpz_poly_struct *r, const fmpz_poly_struct *A,
         fmpz_poly_add(acc, acc, pr);
       }
     }
-    fmpz_mod_poly_set_fmpz_poly(t, acc, ctx);
-    if (t->length >= L->f->length) {
-      fmpz_mod_poly_divrem_newton_n_preinv(qq, rr, t, L->f, L->finv, ctx);
-      fmpz_mod_poly_get_fmpz_poly(r + i, rr, ctx);
-    } else {
-      fmpz_mod_poly_get_fmpz_poly(r + i, t, ctx);
-    }
+    hensel_matvec_red(r + i, acc, t, qq, rr, L, ctx);
   }
   fmpz_poly_clear(acc);
   fmpz_poly_clear(pr);
@@ -1004,6 +1383,32 @@ static void hensel_matvec(fmpz_poly_struct *r, const fmpz_poly_struct *A,
   fmpz_mod_poly_clear(qq, ctx);
   fmpz_mod_poly_clear(rr, ctx);
 }
+
+#if HENSEL_NTT
+/* the same, A given by its transforms M */
+static void hensel_matvec_ntt(fmpz_poly_struct *r, const hensel_ntt_mat_t *M,
+                              const fmpz_poly_struct *v, const long nv,
+                              hensel_ntt_t *T, const hensel_lift_t *L,
+                              const fmpz_mod_ctx_t ctx) {
+  fmpz_poly_struct *acc = malloc(nv * sizeof(fmpz_poly_struct));
+  for (long i = 0; i < nv; i++) {
+    fmpz_poly_init(acc + i);
+  }
+  hensel_ntt_mul(acc, M, v, 1, fmpz_mod_poly_degree(L->f, ctx), T);
+  fmpz_mod_poly_t t, qq, rr;
+  fmpz_mod_poly_init(t, ctx);
+  fmpz_mod_poly_init(qq, ctx);
+  fmpz_mod_poly_init(rr, ctx);
+  for (long i = 0; i < nv; i++) {
+    hensel_matvec_red(r + i, acc + i, t, qq, rr, L, ctx);
+    fmpz_poly_clear(acc + i);
+  }
+  free(acc);
+  fmpz_mod_poly_clear(t, ctx);
+  fmpz_mod_poly_clear(qq, ctx);
+  fmpz_mod_poly_clear(rr, ctx);
+}
+#endif
 
 /* dX = J(X)^-1 F(X) modulo p^n, where F(X) = 0 modulo p^o, o < n <= 2o,
  * so that dX = p^o y with J y = F(X) / p^o modulo p^(n - o); J^-1 is
@@ -1080,6 +1485,26 @@ static void hensel_solve(fmpz_mod_poly_struct *dX,
   }
   L->tj += realtime() - rt;
   rt = realtime();
+#if HENSEL_NTT
+  /* the transforms of J^-1, formed at the first step with corrections and
+   * kept until it is updated, and those of J for the corrections: y_e and
+   * s have at most jprec digits */
+  const hensel_ntt_mat_t *Jh = NULL;
+  hensel_ntt_mat_t Jzh;
+  int useJ = 0;
+  const long D = fz->length - 1;
+  if (L->ntt != NULL && jp < h && D >= HENSEL_NTT_MIND) {
+    fmpz_pow_ui(pe, pr, jp);
+    const long bv = fmpz_bits(pe);
+    if (L->Jh.d == NULL) {
+      hensel_ntt_mat_set(&L->Jh, Jinvz, nv, nv, bv, D, L->ntt);
+    }
+    if (L->Jh.d != NULL) {
+      Jh = &L->Jh;
+    }
+    useJ = hensel_ntt_mat_set(&Jzh, Jz, nv, nv, bv, D, L->ntt);
+  }
+#endif
   fmpz_mod_poly_t b;
   fmpz_mod_poly_init(b, ctx);
   fmpz_poly_struct *yz = malloc(nv * sizeof(fmpz_poly_struct));
@@ -1108,17 +1533,25 @@ static void hensel_solve(fmpz_mod_poly_struct *dX,
     fmpz_mod_poly_init(La->finv, ca);
     fmpz_mod_poly_set_fmpz_poly(La->f, fz, ca);
     hensel_set_finv(La, ca);
-    for (long i = 0; i < nv * nv; i++) {
-      if (jp > a) {
-        fmpz_poly_scalar_mod_fmpz(Am + i, Jinvz + i, qm);
-      } else {
-        fmpz_poly_set(Am + i, Jinvz + i);
-      }
-    }
     for (long i = 0; i < nv; i++) {
       fmpz_poly_scalar_mod_fmpz(tv + i, s + i, qm);
     }
-    hensel_matvec(yz, Am, tv, nv, La, ca);
+#if HENSEL_NTT
+    if (Jh != NULL) {
+      /* J^-1 is not reduced modulo p^a: the result is */
+      hensel_matvec_ntt(yz, Jh, tv, nv, L->ntt, La, ca);
+    } else
+#endif
+    {
+      for (long i = 0; i < nv * nv; i++) {
+        if (jp > a) {
+          fmpz_poly_scalar_mod_fmpz(Am + i, Jinvz + i, qm);
+        } else {
+          fmpz_poly_set(Am + i, Jinvz + i);
+        }
+      }
+      hensel_matvec(yz, Am, tv, nv, La, ca);
+    }
     fmpz_mod_poly_clear(La->f, ca);
     fmpz_mod_poly_clear(La->finv, ca);
     fmpz_mod_ctx_clear(ca);
@@ -1138,10 +1571,17 @@ static void hensel_solve(fmpz_mod_poly_struct *dX,
       fmpz_mod_poly_init(Lm->finv, cm);
       fmpz_mod_poly_set_fmpz_poly(Lm->f, fz, cm);
       hensel_set_finv(Lm, cm);
-      for (long i = 0; i < nv * nv; i++) {
-        fmpz_poly_scalar_mod_fmpz(Bm + i, Jz + i, qm);
+#if HENSEL_NTT
+      if (useJ) {
+        hensel_matvec_ntt(tv, &Jzh, yz, nv, L->ntt, Lm, cm);
+      } else
+#endif
+      {
+        for (long i = 0; i < nv * nv; i++) {
+          fmpz_poly_scalar_mod_fmpz(Bm + i, Jz + i, qm);
+        }
+        hensel_matvec(tv, Bm, yz, nv, Lm, cm);
       }
-      hensel_matvec(tv, Bm, yz, nv, Lm, cm);
       fmpz_pow_ui(pe, pr, jp);
       for (long i = 0; i < nv; i++) {
         fmpz_poly_sub(s + i, s + i, tv + i);
@@ -1178,6 +1618,11 @@ static void hensel_solve(fmpz_mod_poly_struct *dX,
   }
   free(Jinvz);
   free(Jz);
+#if HENSEL_NTT
+  if (useJ) {
+    hensel_ntt_mat_clear(&Jzh);
+  }
+#endif
   fmpz_poly_clear(fz);
   fmpz_poly_clear(tz);
   fmpz_clear(pe);
@@ -1251,6 +1696,9 @@ static void hensel_step(hensel_lift_t *L, const hensel_sys_t *hs,
     hensel_matmul(J, L->Jinv, T, nv, L, ctx);
     L->tmm += realtime() - rt;
     L->jprec = MIN(2 * L->jprec, n);
+#if HENSEL_NTT
+    hensel_ntt_mat_clear(&L->Jh);
+#endif
     for (long i = 0; i < nv * nv; i++) {
       fmpz_mod_poly_swap(L->Jinv + i, J + i, ctx);
       fmpz_mod_poly_clear(J + i, ctx);
@@ -1600,12 +2048,72 @@ static double hensel_eval_cost(const hensel_sys_t *hs, const int w,
   return c;
 }
 
+/* model costs of the products by transforms (see hensel_ntt_mul),
+ * measured for nv = 12, D = 2046 and 31 to 1000 bits (2 to 42 primes):
+ * per coefficient and prime, its residue (about 9 ns); per element and
+ * level, a transform (0.15 ns); per element, a product added (0.86 ns);
+ * per coefficient, the CRT (11.7 ns np + 0.465 ns np^2, within 10% of the
+ * measures: 25 ns for 2 primes, 1.31 us for 42) */
+#define HENSEL_NTT_CCONV 180.0
+#define HENSEL_NTT_CFFT 3.0
+#define HENSEL_NTT_CPT 17.0
+#define HENSEL_NTT_CCRT1 234.0
+#define HENSEL_NTT_CCRT2 9.3
+
+/* the number of primes of the transforms for the products of an nv x nv
+ * matrix with coefficients of bA bits by one with coefficients of bB bits,
+ * 0 if they are not used */
+static long hensel_ntt_np(const hensel_sys_t *hs, const long D,
+                          const double bA, const double bB) {
+#if HENSEL_NTT
+  const long np = (long)ceil((bA + bB + log2((double)hs->nv * D) + 2) / 49.9);
+  return hs->ntt && D >= HENSEL_NTT_MIND && np <= HENSEL_NTT_MAXP ? np : 0;
+#else
+  (void)hs;
+  (void)D;
+  (void)bA;
+  (void)bB;
+  return 0;
+#endif
+}
+
+/* transform, inverse transform (with the CRT) and products added of the
+ * transforms of one entry, with np primes */
+static double hensel_ntt_cost(const long D, const long np, const int what) {
+  const double L = MAX(ceil(log2(2.0 * D - 1)), 8), N = pow(2, L);
+  if (what == 0) {
+    return np * (D * HENSEL_NTT_CCONV + N * L * HENSEL_NTT_CFFT);
+  }
+  if (what == 1) {
+    return np * N * L * HENSEL_NTT_CFFT
+      + (2.0 * D - 1) * np * (HENSEL_NTT_CCRT1 + HENSEL_NTT_CCRT2 * np);
+  }
+  return np * 2.0 * D * HENSEL_NTT_CPT;
+}
+
+/* the products of an nv x nv matrix by k vectors, with coefficients of bA
+ * and bB bits: nv^2 k products, or, by transforms if they are used with
+ * coefficients of bT bits for the matrix, the transforms of the vectors
+ * and the inverse ones of the products, those of the matrix if set */
+static double hensel_mv_cost(const hensel_sys_t *hs, const long D,
+                             const double bA, const double bB, const double bT,
+                             const double k, const int set) {
+  const double nv = hs->nv;
+  const long np = hensel_ntt_np(hs, D, bT, bB);
+  if (np == 0) {
+    return nv * nv * k * hensel_mul_cost(D, bA, bB);
+  }
+  return (set ? nv * nv * hensel_ntt_cost(D, np, 0) : 0)
+    + k * nv * (hensel_ntt_cost(D, np, 0) + hensel_ntt_cost(D, np, 1)
+                + nv * hensel_ntt_cost(D, np, 2));
+}
+
 /* model cost of one Newton step from p^o to p^n, with J^-1 known modulo
  * p^jp and updated if upd, following hensel_step and hensel_solve; lp =
- * log2(p) */
+ * log2(p); jt is set if the transforms of J^-1 are formed */
 static double hensel_model_step(const hensel_sys_t *hs, const long D,
                                 const double lp, const long o, const long n,
-                                const long jp, const int upd) {
+                                const long jp, const int upd, const int jt) {
   const double nv = hs->nv;
   const long h = n - o;
   const double b = n * lp;
@@ -1615,21 +2123,27 @@ static double hensel_model_step(const hensel_sys_t *hs, const long D,
     c += hensel_eval_cost(hs, 1, D, h * lp);
   }
   /* the rounds of hensel_solve: y_e = J^-1 s modulo p^a, then J y_e
-   * modulo p^(h - e), with the preinverses and reductions of each one */
+   * modulo p^(h - e), with the preinverses and reductions of each one; with
+   * corrections, the products may be formed by transforms, those of J^-1
+   * once for the steps without update, those of J once for the rounds */
+  const int corr = jp < h;
+  const double bj = jp * lp;
   for (long e = 0; e < h; e += jp) {
     const double bm = (h - e) * lp, ba = MIN(jp, h - e) * lp;
-    c += hensel_mm_cost(D, ba) + nv * nv * hensel_mul_cost(D, ba, ba)
-      + 2 * nv * hensel_mul_cost(D, ba, ba);
+    c += hensel_mm_cost(D, ba) + 2 * nv * hensel_mul_cost(D, ba, ba)
+      + (corr ? hensel_mv_cost(hs, D, ba, ba, bj, 1, e == 0 && !jt)
+         : nv * nv * hensel_mul_cost(D, ba, ba));
     if (e + jp < h) {
-      c += hensel_mm_cost(D, bm) + nv * nv * hensel_mul_cost(D, bm, ba)
-        + 2 * nv * hensel_mul_cost(D, bm, bm);
+      c += hensel_mm_cost(D, bm) + 2 * nv * hensel_mul_cost(D, bm, bm)
+        + hensel_mv_cost(hs, D, bm, ba, h * lp, 1, e == 0);
     }
   }
   /* update of X and w */
   c += (nv + 1) * hensel_mm_cost(D, b);
   if (upd) {
     c += hensel_eval_cost(hs, 1, D, b)
-      + 2 * (nv * nv * nv + 2 * nv * nv) * hensel_mul_cost(D, b, b);
+      + 2 * (hensel_mv_cost(hs, D, b, b, b, nv, 1)
+             + 2 * nv * nv * hensel_mul_cost(D, b, b));
   }
   return c;
 }
@@ -1647,10 +2161,12 @@ static double hensel_model_from(const hensel_sys_t *hs, const long D,
                                 const double lp, long o, long jp,
                                 const long N, const long jcap) {
   double c = 0;
+  int jt = 0;
   while (o < N) {
     const long n = MIN(2 * o, N);
     const int upd = hensel_upd(jp, o, n, jcap);
-    c += hensel_model_step(hs, D, lp, o, n, jp, upd);
+    c += hensel_model_step(hs, D, lp, o, n, jp, upd, jt);
+    jt = !upd && (jt || jp < n - o);
     if (upd) {
       jp = MIN(2 * jp, n);
     }
@@ -1749,6 +2265,7 @@ static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
     hensel_data_clear(&hd, hs->nv);
   }
   hs->square = sub != NULL;
+  hs->ntt = 0;
   hensel_sys_set(hs, sub);
   free(sub);
   hs->tsel = realtime() - rt;
@@ -1759,6 +2276,7 @@ static int hensel_state_init(hensel_state_t *st, const data_gens_ff_t *gens,
   /* N <= 0: chosen by the cost model after the first modular runs */
   hs->nauto = N <= 0;
   hs->N = N > 0 ? N : 8;
+  hs->nvar = 1;
   hs->cnewton = hs->cmod = 0;
   st->ng = -1;
   st->M = NULL;
@@ -1838,6 +2356,15 @@ static void hensel_nf_start(hensel_prime_t *P, const hensel_sys_t *hs) {
   P->nfL = L;
   L->tf = L->tmv = L->tj = L->tmm = L->tup = 0;
   L->jprec = 1;
+#if HENSEL_NTT
+  L->ntt = NULL;
+  if (hs->ntt) {
+    L->ntt = malloc(sizeof(hensel_ntt_t));
+    hensel_ntt_init(L->ntt);
+  }
+  L->Jh.d = NULL;
+  L->Jh.np = 0;
+#endif
   P->prec = 1;
   P->tnewton = 0;
   double rt = realtime();
@@ -1950,6 +2477,13 @@ static void hensel_nf_clear(hensel_prime_t *P, const hensel_sys_t *hs) {
   }
   free(L->X);
   free(L->Jinv);
+#if HENSEL_NTT
+  hensel_ntt_mat_clear(&L->Jh);
+  if (L->ntt != NULL) {
+    hensel_ntt_clear(L->ntt);
+    free(L->ntt);
+  }
+#endif
   fmpz_mod_poly_clear(L->f, ctx);
   fmpz_mod_poly_clear(L->finv, ctx);
   fmpz_mod_ctx_clear(ctx);
@@ -2057,7 +2591,12 @@ static double hensel_nf_estimate(const hensel_state_t *st) {
  * operands and products of hensel_matmul (about 8 nv^2 polynomials); the
  * polynomials of F(X) or of J(X) whose products are not reduced (see
  * hensel_eval_set) have twice as many coefficients of twice as many bits,
- * about 3 more polynomials each, and the product 4 more; a
+ * about 3 more polynomials each, and the product 4 more; the transforms
+ * of a matrix (see hensel_ntt_mul) take 16 D bytes per prime of about 50
+ * bits and entry, for the bits of its products plus about 25, without the
+ * headers of the coefficients: those of J and J^-1 in the steps without
+ * update, with (N/2 + N/2^skip) and 2 N/2^skip digits, and those of the
+ * products of the update, with twice the digits of J; a
  * coefficient of b bits takes 1.2 b / 8 + HENSEL_MEM_COEF bytes (fmpz,
  * mpz and malloc headers; sot1, D = 92: 132 MB at p^12 for 49 MB counted
  * before). The limit is given by --hensel-memory in megabytes, by default
@@ -2100,15 +2639,63 @@ static long hensel_nf_nmem_skip(const hensel_state_t *st, const long D,
   const double npj = (hs->mt.nlive[1] + 8 * nv * nv
                       + (hs->mt.delay[1] ? 3 * nv * nv + 4 : 0))
     / (skip > 0 ? 2 : 1);
-  const double per = MAX(npf, npj) * D;
-  const double N = (mem / per - HENSEL_MEM_COEF) * 8 / (1.2 * st->lp);
-  return MAX(2, (long)N);
+  /* bytes per coefficient of the transforms, per bit of p^N and constant */
+  const double tb = hensel_ntt_np(hs, D, 1, 1) > 0 ? 16 * nv * nv / 49.9 : 0;
+  const double tfn = skip > 0 ? tb * (0.5 + 3 * ldexp(1, -skip)) : 0;
+  const double tfc = skip > 0 ? tb * 2 * 25 : 0;
+  const double tjn = tb * 2 / (skip > 0 ? 2 : 1), tjc = tb * 25;
+  const double c = 1.2 / 8, lp = st->lp;
+  const double Nf = (mem / D - HENSEL_MEM_COEF * npf - tfc)
+    / (lp * (c * npf + tfn));
+  const double Nj = (mem / D - HENSEL_MEM_COEF * npj - tjc)
+    / (lp * (c * npj + tjn));
+  return MAX(2, (long)MIN(Nf, Nj));
 }
 
-static long hensel_nf_nmem(const hensel_state_t *st, const long D,
-                           const double bnow) {
+/* the largest precision for the T primes of a batch within the memory
+ * limit, with or without the products by transforms, whichever gives the
+ * better gain at this limit: hensel_choose decides with the limit for one
+ * prime before the lifting, which grows with the bits of the residues
+ * (random2_10_10: p^7 with them, p^12 without at the start, then p^128
+ * and p^32 at most, so that they save a third of the primes) */
+#define HENSEL_NTT_SWITCH 5
+static long hensel_nf_nmem(hensel_state_t *st, const long D,
+                           const double bnow, const long T,
+                           const int info_level) {
+  hensel_sys_t *hs = &st->hs;
   const double mem = hensel_nf_mem(st, D, bnow, 1);
-  return hensel_nf_nmem_skip(st, D, mem, st->hs.skip);
+  if (hs->nauto && hs->nvar == 2) {
+    const int old = hs->ntt;
+    double eff[2];
+    for (int v = 0; v < 2; v++) {
+      hs->ntt = v;
+      /* at the best precision up to the limit: a step to a precision just
+       * above a power of 2 costs about a full step (KLYZ13: 24.3 s for
+       * p^130, 18 s for p^128) */
+      const long Nv = MAX(2, MIN(hs->vN[v],
+                                 hensel_nf_nmem_skip(st, D, mem,
+                                                     hs->vskip[v]) / T));
+      eff[v] = 0;
+      for (long N0 = MAX(2, Nv / 2); N0 <= Nv; N0++) {
+        eff[v] = MAX(eff[v], N0 / (hs->cmod + hensel_model(hs, D, st->lp, N0,
+                                                           hs->vskip[v])));
+      }
+    }
+    /* the other one only if it gains HENSEL_NTT_SWITCH percent, since the
+     * limit also decreases with the estimate of the bits
+     * (cp_d_3_n_7_p_7: 217, 241, 212, 281 MB) */
+    const int bv = eff[!old] > (1 + HENSEL_NTT_SWITCH / 100.0) * eff[old]
+      ? !old : old;
+    hs->ntt = bv;
+    hs->N = hs->vN[bv];
+    hs->skip = hs->vskip[bv];
+    if (info_level && bv != old) {
+      fprintf(VERBSTREAM, "products by J and J^-1 %s from now on (memory "
+              "limit %.0f MB)\n", bv ? "by transforms" : "of polynomials",
+              mem / 1048576);
+    }
+  }
+  return hensel_nf_nmem_skip(st, D, mem, hs->skip);
 }
 
 /* chooses N (a power of 2) and skip maximizing the precision per cost of
@@ -2129,30 +2716,57 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
   const double kappa = st->kappa;
   hs->cmod = kappa * (HENSEL_KAPPA_F4 * f4ops + HENSEL_KAPPA_F4TERM * f4terms
                        + HENSEL_KAPPA_FGLM * fglmops);
-  double best = -1, bestc = -1;
+  /* with and without the products by transforms, which take memory and
+   * may lower the precision within the memory limit (eco 12: p^7 instead
+   * of p^12): the one with the best gain within the memory limit */
+  double best = -1, bestc = -1, cnewton = 0;
   long bN = hs->N, bs = hs->skip, bNc = hs->N;
-  for (long N0 = 2; N0 <= 1024; N0 *= 2) {
-    if (!hs->nauto && N0 != hs->N) {
-      continue;
+  int bntt = 0;
+  const long Nin = hs->N;
+  for (int ntt = 0; ntt < 2; ntt++) {
+    hs->ntt = ntt;
+    if (ntt && hensel_ntt_np(hs, D, 1, 1) == 0) {
+      break;
     }
-    for (long sk = 0; (1L << sk) <= N0; sk++) {
-      const double c = hensel_model(hs, D, lp, N0, sk);
-      const double eff = N0 / (hs->cmod + c);
-      if (eff > best) {
-        best = eff;
-        bN = N0;
-        bs = sk;
-        hs->cnewton = c;
+    double bt = -1, btc = -1, ct = 0;
+    long tN = Nin, ts = hs->skip, tNc = Nin;
+    for (long N0 = 2; N0 <= 1024; N0 *= 2) {
+      if (!hs->nauto && N0 != Nin) {
+        continue;
       }
-      const long Nc = hs->nauto
-        ? MIN(N0, hensel_nf_nmem_skip(st, D, mem, sk)) : N0;
-      const double effc = Nc / (hs->cmod + hensel_model(hs, D, lp, Nc, sk));
-      if (effc > bestc) {
-        bestc = effc;
-        bNc = Nc;
+      for (long sk = 0; (1L << sk) <= N0; sk++) {
+        const double c = hensel_model(hs, D, lp, N0, sk);
+        const double eff = N0 / (hs->cmod + c);
+        if (eff > bt) {
+          bt = eff;
+          tN = N0;
+          ts = sk;
+          ct = c;
+        }
+        const long Nc = hs->nauto
+          ? MIN(N0, hensel_nf_nmem_skip(st, D, mem, sk)) : N0;
+        const double effc = Nc / (hs->cmod + hensel_model(hs, D, lp, Nc, sk));
+        if (effc > btc) {
+          btc = effc;
+          tNc = Nc;
+        }
       }
+    }
+    hs->vN[ntt] = tN;
+    hs->vskip[ntt] = ts;
+    hs->nvar = ntt + 1;
+    if (btc > bestc) {
+      best = bt;
+      bestc = btc;
+      bN = tN;
+      bs = ts;
+      bNc = tNc;
+      cnewton = ct;
+      bntt = ntt;
     }
   }
+  hs->ntt = bntt;
+  hs->cnewton = cnewton;
   hs->N = bN;
   hs->skip = bs;
   hs->gain = bestc * hs->cmod;
@@ -2184,6 +2798,12 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
               "%ld sums\n", "", hs->mt.nleaf[w], hs->mt.delay[w]
               ? "reduced in" : "each reduced, not in", hs->mt.nred[w]);
     }
+#if HENSEL_NTT
+    fprintf(VERBSTREAM, "%-27s %s\n", "products by J and J^-1",
+            hs->ntt ? "by transforms" : D < HENSEL_NTT_MIND
+            ? "of polynomials (low degree)"
+            : "of polynomials (better within the memory limit)");
+#endif
     fprintf(VERBSTREAM, "%-27s %10.3g operations, %.3g matrix terms\n",
             "F4 of a modular run", f4ops, f4terms);
     fprintf(VERBSTREAM, "%-27s %10.3g operations\n", "FGLM of a modular run",
@@ -2351,7 +2971,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
   if (st->ng < 0) {
     hensel_nf_images(hd->pr, hs);
     hensel_state_start(st, hd->pr);
-    st->nmem = hensel_nf_nmem(st, st->sp.groups->deg, 0);
+    st->nmem = hensel_nf_nmem(st, st->sp.groups->deg, 0, T, info_level);
   }
   *tnewton += realtime() - rt;
   split_group_t *G = st->sp.groups;
@@ -2441,7 +3061,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
       st->nh++;
     }
     /* the limit follows the estimated number of bits */
-    st->nmem = hensel_nf_nmem(st, dg, bnow);
+    st->nmem = hensel_nf_nmem(st, dg, bnow, T, info_level);
     const long bM2 = fmpz_bits(M2);
     hensel_crt_clear(&C);
     ar += realtime() - rt;

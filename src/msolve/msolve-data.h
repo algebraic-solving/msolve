@@ -213,6 +213,63 @@ typedef struct{
   double nonfreepartdensity;
 } sp_matfglm_t;
 
+/**
+   Multiplication matrices for all the variables sharing one dense array
+
+   Let B = (b_0, ..., b_{D-1}) be the staircase (lmb, increasing DRL order), and
+   let N be the nnfs x D matrix whose row r is NF(m_r), where the m_r range
+   over the border monomials {x_i b_k}
+
+   The matrix T_i (whose row k contains the coordinates of NF(x_i b_k) in B)
+   is a row selection from the stacked matrix [Id_D ; N]:
+   rowsel[i*D + k] = s, where
+   s < D : trivial row, NF(x_i b_k) = b_s;
+   s >= D : dense row number s - D in dense_mat.
+   A given border monomial reached by several (i, k) pairs is stored only once.
+
+   is_lm[r] indicates whether m_r is a leading monomial of the basis (in which
+   case the row is read directly from the basis
+   or whether its normal form was computed by core_nf
+ **/
+typedef struct{
+  CF_t charac;
+  int32_t nvars;
+  szmat_t ncols;      // dimension of the quotient
+  szmat_t nnfs;       // number of rows in dense_mat
+  szmat_t nlms;       // number of which are read from the Gb
+  szmat_t one;        // index of 1 in the basis, should be 0
+  CF_t *dense_mat;    // nnfs * ncols, allocated with posix_memalign
+  szmat_t *rowsel;    // nvars * ncols
+  int32_t *border;    // nnfs * nvars monomials on the border
+  char *is_lm;        // nnfs
+  int nthreads;       // number of threads for FGLM, for the future over QQ
+} sp_multimatfglm_t;
+
+/* Reduced lex Gb by FGLM (monic polynomials)
+   in decreasing leading monomials */
+typedef struct{
+  CF_t charac;
+  int32_t nvars;
+  int32_t ngens;
+  int32_t *lens;      // ngens
+  int32_t *exps;      // (sum of lens) * nvars
+  CF_t *cfs;          // sum of lens
+} fglm_gb_t;
+
+/* Result of the greedy phase of FGLM (fglm_classic_learn): the staircase
+   S = (s_0 < ... < s_{D-1}) of the lex Gb and its leading monomials
+   g_0 < g_1 < ...; the tail of the j-th polynomial lives in
+   s_0, ..., s_{g_ntail[j]-1} (all the elements of S smaller than g_j) */
+typedef struct{
+  int32_t nvars;
+  szmat_t D;          // dimension of the quotient
+  int32_t *S;         // D * nvars
+  int32_t ngens;
+  int32_t *g_lm;      // ngens * nvars
+  szmat_t *g_ntail;   // ngens
+  uint64_t ncoeffs;   // sum of the g_ntail
+} fglm_lex_staircase_t;
+
 #ifndef ALIGNED32
 #define ALIGNED32 __attribute__((aligned(32)))
 #endif
@@ -221,8 +278,8 @@ typedef struct{
   CF_t *vecmult ALIGNED32; /* vector used to store the multiplication of the
                             * dense part of the multiplication matrix with a
                             * vector in Wiedemann */
-  CF_t *vvec ALIGNED32; /* stores the result of matrix vector product in Wiedeman */
-  CF_t *res ALIGNED32; /* array storing the term sequences needed after Wiedeman */
+  CF_t *vvec ALIGNED32; /* stores the result of matrix vector product in Wiedemann */
+  CF_t *res ALIGNED32; /* array storing the term sequences needed after Wiedemann */
   mp_limb_t *pts;
 } fglm_data_t;
 

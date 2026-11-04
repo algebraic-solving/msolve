@@ -2017,7 +2017,7 @@ static inline void print_groebner_basis(files_gb *files,
                                         const data_gens_ff_t *gens,
                                         const bs_t *const bs, md_t *md,
                                         const int32_t fc) {
-  if (md->print_gb) {
+  if (md->print_gb == 1 || md->print_gb == 2) {
     int32_t gfc = md->gfc;
     md->gfc = fc;
     output_timer_t ot;
@@ -2124,6 +2124,13 @@ static int32_t *initial_modular_step(
                                                                  md);
 
     if (empty_solution_set == 1) {
+        if (print_gb == 3) {
+            /* the reduced Gb is {1} for any order */
+            int32_t pgb = md->print_gb;
+            md->print_gb = 2;
+            print_groebner_basis(files, gens, bs, md, fc);
+            md->print_gb = pgb;
+        }
         free_basis_without_hash_table(&(bs));
         free(bs);
         return NULL;
@@ -2139,6 +2146,34 @@ static int32_t *initial_modular_step(
         /* if(md->info_level){ */
         /*     fprintf(ERRSTREAM, "Dimension of quotient: %ld\n", dquot); */
         /* } */
+        if(print_gb == 3){
+            /* LEX basis by classical FGLM */
+            sp_multimatfglm_t *mm =
+                build_multiplication_matrices_from_bs(lmb, dquot, bs, bs->ht,
+                                                      leadmons[0], md,
+                                                      bs->ht->nv, fc,
+                                                      md->info_level);
+            mm->nthreads = md->nthrds;   /* all threads are used */
+            double rt_fglm = realtime();
+            fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX);
+            if(md->info_level){
+                fprintf(VERBSTREAM, "FGLM (lex) %.2f sec\n", realtime() - rt_fglm);
+            }
+            if(lexgb == NULL){
+                fprintf(ERRSTREAM, "FGLM failed.\n");
+                *success = 0;
+            } else {
+                if(files->out_file != NULL){
+                    FILE *of = fopen(files->out_file, "ab");
+                    print_fglm_gb(of, lexgb, gens->vnames, FGLM_ORDER_LEX);
+                    fclose(of);
+                } else {
+                    print_fglm_gb(OUTSTREAM, lexgb, gens->vnames, FGLM_ORDER_LEX);
+                }
+            }
+            free_fglm_gb(lexgb);
+            free_sp_multimat_fglm(mm);
+        }
         if(print_gb==0){
             /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
             /* 					 blen_gb_xn, */
@@ -2268,6 +2303,10 @@ static int32_t *initial_modular_step(
         return lmb;
     }
     else{
+        if(print_gb == 3){
+            fprintf(ERRSTREAM, "The ideal is not zero-dimensional: "
+                    "no change of order performed.\n");
+        }
         *dim  = 1;
         *dquot_ori = -1;
         free_basis_without_hash_table(&(bs));
@@ -6431,6 +6470,10 @@ restart:
                 print_gb=2;
             }
 
+            if(print_gb == 3){
+              fprintf(ERRSTREAM, "Option -g 3 is only available over prime fields.\n");
+              return -1;
+            }
             if(print_gb){
 
               msflags_t flags;

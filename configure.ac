@@ -110,6 +110,7 @@ AC_CONFIG_LINKS([
  input_files/line_endings/in4_unix.ms:input_files/line_endings/in4_unix.ms
  test/diff/diff_line-endings.sh:test/diff/diff_line-endings.sh
  test/diff/diff_source.sh:test/diff/diff_source.sh
+ test/diff/diff_source-fglm.sh:test/diff/diff_source-fglm.sh
  test/diff/diff_source-gb-lm.sh:test/diff/diff_source-gb-lm.sh
  test/diff/diff_source-gb-red.sh:test/diff/diff_source-gb-red.sh
  test/diff/diff_source-gb-elim-red.sh:test/diff/diff_source-gb-elim-red.sh
@@ -259,6 +260,15 @@ AC_CONFIG_LINKS([
  input_files/kat8-qq-truncate.ms:input_files/kat8-qq-truncate.ms
  output_files/kat8-qq-truncate.res:output_files/kat8-qq-truncate.res
  test/diff/diff_kat8-qq-truncate.sh:test/diff/diff_kat8-qq-truncate.sh
+ input_files/lexgb-nonradical-31.ms:input_files/lexgb-nonradical-31.ms
+ output_files/lexgb-nonradical-31.g3.res:output_files/lexgb-nonradical-31.g3.res
+ test/diff/diff_lexgb-nonradical-31.sh:test/diff/diff_lexgb-nonradical-31.sh
+ input_files/lexgb-nonshape-31.ms:input_files/lexgb-nonshape-31.ms
+ output_files/lexgb-nonshape-31.g3.res:output_files/lexgb-nonshape-31.g3.res
+ test/diff/diff_lexgb-nonshape-31.sh:test/diff/diff_lexgb-nonshape-31.sh
+ input_files/lexgb-shape-31.ms:input_files/lexgb-shape-31.ms
+ output_files/lexgb-shape-31.g3.res:output_files/lexgb-shape-31.g3.res
+ test/diff/diff_lexgb-shape-31.sh:test/diff/diff_lexgb-shape-31.sh
  input_files/lifting-single-point.ms:input_files/lifting-single-point.ms
  output_files/lifting-single-point.p128.res:output_files/lifting-single-point.p128.res
  output_files/lifting-single-point.p1024.res:output_files/lifting-single-point.p1024.res
@@ -325,6 +335,7 @@ AC_CONFIG_LINKS([
  input_files/one-31.ms:input_files/one-31.ms
  output_files/one-31.res:output_files/one-31.res
  output_files/one-31.g1.res:output_files/one-31.g1.res
+ output_files/one-31.g3.res:output_files/one-31.g3.res
  test/diff/diff_one-31.sh:test/diff/diff_one-31.sh
  input_files/one-qq.ms:input_files/one-qq.ms
  output_files/one-qq.res:output_files/one-qq.res

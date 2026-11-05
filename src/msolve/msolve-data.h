@@ -243,6 +243,7 @@ typedef struct{
   int32_t *border;    // nnfs * nvars monomials on the border
   char *is_lm;        // nnfs
   int nthreads;       // number of threads for FGLM, for the future over QQ
+  char *have_row;     // nnfs: computed dense rows (NULL: all of them)
 } sp_multimatfglm_t;
 
 /* Reduced lex Gb by FGLM (monic polynomials)
@@ -288,6 +289,7 @@ typedef struct{
   int32_t nnf;        // number of normal forms computed by core_nf
   int32_t *exps_nf;   // nnf * nvars
   szmat_t *row_nf;    // nnf
+  char *have_row;     // nnfs: dense rows computed on the first prime
   fglm_lex_staircase_t lex;
   szmat_t *s_parent;  // D
   int32_t *s_var;     // D

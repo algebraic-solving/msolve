@@ -4021,6 +4021,12 @@ static szmat_t *mm_sorted_index(const int32_t *base, szmat_t n, const int32_t nv
   return idx;
 }
 
+static void mm_compute_nf_rows(sp_multimatfglm_t *M, int32_t nnf,
+                               int32_t *exps_nf, const szmat_t *row_nf,
+                               int32_t *lmb, bs_t *bs, ht_t *ht, md_t *st,
+                               const int nv, const long fc,
+                               const int info_level);
+
 /* Fills M->dense_mat: */
 static void mm_fill_dense(sp_multimatfglm_t *M, const long *lm_of,
                           int32_t nnf, int32_t *exps_nf, const szmat_t *row_nf,
@@ -4050,7 +4056,25 @@ static void mm_fill_dense(sp_multimatfglm_t *M, const long *lm_of,
                                   lmb, nv, fc);
     }
   }
-  if(nnf == 0) return;
+  if(nnf > 0){
+    mm_compute_nf_rows(M, nnf, exps_nf, row_nf, lmb, bs, ht, st, nv, fc,
+                       info_level);
+  }
+}
+
+/* Dense rows row_nf[0..nnf) of M: normal forms of the monomials exps_nf,
+ * computed at once by core_nf */
+static void mm_compute_nf_rows(sp_multimatfglm_t *M, int32_t nnf,
+                               int32_t *exps_nf, const szmat_t *row_nf,
+                               int32_t *lmb, bs_t *bs, ht_t *ht, md_t *st,
+                               const int nv, const long fc,
+                               const int info_level){
+  const szmat_t D = M->ncols;
+  sp_matfglm_t view;
+  memset(&view, 0, sizeof(view));
+  view.charac = fc;
+  view.ncols = D;
+  view.dense_mat = M->dense_mat;
 
   const len_t ebl = ht->ebl;
   const len_t evl = ht->evl;
@@ -4081,7 +4105,7 @@ static void mm_fill_dense(sp_multimatfglm_t *M, const long *lm_of,
   }
   int32_t err = 0;
   if(info_level > 1){
-    fprintf(VERBSTREAM, "normal forms (all variables)\n");
+    fprintf(VERBSTREAM, "normal forms (%d border monomials)\n", nnf);
   }
   tbr = core_nf(tbr, md, mul, bs, &err);
   if(err){
@@ -4099,6 +4123,59 @@ static void mm_fill_dense(sp_multimatfglm_t *M, const long *lm_of,
   free(cfs_nf);
 }
 
+/* Context for the dense rows computed on demand during FGLM */
+typedef struct {
+  int32_t *lmb;
+  bs_t *bs;
+  ht_t *ht;
+  md_t *st;
+  int nv;
+  long fc;
+} mm_rows_ctx_t;
+
+static int mm_fill_rows(void *vctx, sp_multimatfglm_t *M, const szmat_t *rows,
+                        szmat_t n){
+  mm_rows_ctx_t *c = (mm_rows_ctx_t *)vctx;
+  const int nv = c->nv;
+  int32_t *exps = malloc(((uint64_t)n + 1) * nv * sizeof(int32_t));
+  if(exps == NULL) return 0;
+  for(szmat_t q = 0; q < n; q++){
+    memcpy(exps + (uint64_t)q * nv, M->border + (uint64_t)rows[q] * nv,
+           nv * sizeof(int32_t));
+  }
+  mm_compute_nf_rows(M, (int32_t)n, exps, rows, c->lmb, c->bs, c->ht, c->st,
+                     nv, c->fc, 0);
+  for(szmat_t q = 0; q < n; q++) M->have_row[rows[q]] = 1;
+  free(exps);
+  return 1;
+}
+
+static void mm_rows_clear(fglmc_rows_t *rp){
+  if(rp != NULL){
+    free(rp->ctx);
+    rp->ctx = NULL;
+    rp->fill = NULL;
+  }
+}
+
+/* Over Q: after learning, only the normal forms computed on the first prime
+ * are kept in the trace (they are the only ones needed on the next primes) */
+static void mm_trace_keep_computed_rows(fglm_trace_t *tr,
+                                        const sp_multimatfglm_t *M){
+  if(M->have_row == NULL) return;
+  const int nv = tr->nvars;
+  int32_t q2 = 0;
+  for(int32_t q = 0; q < tr->nnf; q++){
+    if(!M->have_row[tr->row_nf[q]]) continue;
+    memmove(tr->exps_nf + (uint64_t)q2 * nv, tr->exps_nf + (uint64_t)q * nv,
+            nv * sizeof(int32_t));
+    tr->row_nf[q2++] = tr->row_nf[q];
+  }
+  tr->nnf = q2;
+  tr->have_row = malloc(tr->nnfs + 1);
+  memcpy(tr->have_row, M->have_row, tr->nnfs + 1);
+}
+
 static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
                                                                 long dquot,
                                                                 bs_t *bs,
@@ -4108,7 +4185,8 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
                                                                 const int nv,
                                                                 const long fc,
                                                                 const int info_level,
-                                                                fglm_trace_t *tr){
+                                                                fglm_trace_t *tr,
+                                                                fglmc_rows_t *rp){
   double rt0 = realtime();
   const szmat_t D = (szmat_t)dquot;
   const long nlm = bs->lml;
@@ -4182,9 +4260,41 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
   free(bidx);
   free(lidx);
 
-  /* common dense array */
-  mm_fill_dense(M, lm_of, nnf, exps_nf, row_nf, lmb, bs, ht, st, nv, fc,
+  /* common dense array; with rp, only the normal forms in the matrix of x_n
+   * are computed now, the other ones on demand during FGLM */
+  int32_t nnf_now = nnf;
+  int32_t *exps_now = exps_nf;
+  szmat_t *row_now = row_nf;
+  if(rp != NULL){
+    M->have_row = calloc(nb + 1, 1);
+    for(uint64_t r = 0; r < nb; r++) M->have_row[r] = M->is_lm[r];
+    char *in_n = calloc(nb + 1, 1);
+    for(szmat_t k = 0; k < D; k++){
+      const szmat_t sl = M->rowsel[(uint64_t)(nv - 1) * D + k];
+      if(sl >= D) in_n[sl - D] = 1;
+    }
+    exps_now = malloc(((uint64_t)nnf + 1) * nv * sizeof(int32_t));
+    row_now = malloc(((uint64_t)nnf + 1) * sizeof(szmat_t));
+    nnf_now = 0;
+    for(int32_t q = 0; q < nnf; q++){
+      if(!in_n[row_nf[q]]) continue;
+      memcpy(exps_now + (uint64_t)nnf_now * nv, exps_nf + (uint64_t)q * nv,
+             nv * sizeof(int32_t));
+      row_now[nnf_now++] = row_nf[q];
+      M->have_row[row_nf[q]] = 1;
+    }
+    free(in_n);
+    mm_rows_ctx_t *c = malloc(sizeof(mm_rows_ctx_t));
+    c->lmb = lmb; c->bs = bs; c->ht = ht; c->st = st; c->nv = nv; c->fc = fc;
+    rp->fill = mm_fill_rows;
+    rp->ctx = c;
+  }
+  mm_fill_dense(M, lm_of, nnf_now, exps_now, row_now, lmb, bs, ht, st, nv, fc,
                 info_level);
+  if(rp != NULL){
+    free(exps_now);
+    free(row_now);
+  }
 
   if(tr != NULL){
     /* structure of the border, kept for the next primes (over Q) */
@@ -4208,8 +4318,10 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
   if(info_level){
     fprintf(VERBSTREAM,
             "multiplication matrices: D = %u, %u border monomials "
-            "(%u leading monomials, %u normal forms), %.2f sec\n",
-            M->ncols, M->nnfs, M->nlms, M->nnfs - M->nlms, realtime() - rt0);
+            "(%u leading monomials, %u normal forms, %d computed now), "
+            "%.2f sec\n",
+            M->ncols, M->nnfs, M->nlms, M->nnfs - M->nlms, nnf_now,
+            realtime() - rt0);
   }
   return M;
 }
@@ -4236,6 +4348,10 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_trace(const fglm_tr
   memcpy(M->rowsel, tr->rowsel, (uint64_t)nv * D * sizeof(szmat_t));
   M->is_lm = malloc(tr->nnfs + 1);
   memcpy(M->is_lm, tr->is_lm, tr->nnfs + 1);
+  if(tr->have_row != NULL){
+    M->have_row = malloc(tr->nnfs + 1);
+    memcpy(M->have_row, tr->have_row, tr->nnfs + 1);
+  }
   mm_fill_dense(M, tr->lm_of, tr->nnf, tr->exps_nf, tr->row_nf, lmb, bs, ht,
                 st, nv, fc, 0);
   return M;

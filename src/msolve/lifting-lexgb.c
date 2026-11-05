@@ -265,15 +265,20 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     int32_t *lmb = monomial_basis(nlm0, nv, lm0, &dquot);
     fglm_trace_t tr;
     memset(&tr, 0, sizeof(tr));
+    fglmc_rows_t rp;
+    memset(&rp, 0, sizeof(rp));
     sp_multimatfglm_t *M =
         build_multiplication_matrices_from_bs(lmb, dquot, bsp, bsp->ht, lm0,
-                                              md, nv, p0, info_level, &tr);
+                                              md, nv, p0, info_level, &tr, &rp);
     double rt_fglm = realtime();
     /* p0 uses all the threads, each next prime only one */
     M->nthreads = md->nthrds;
     const int old_flint = fglmc_flint_threads_push(md->nthrds);
     CF_t *res = NULL;
-    int ok = fglm_classic_learn(M, FGLM_ORDER_LEX, &tr.lex, &tr, &res);
+    int ok = fglm_classic_learn(M, FGLM_ORDER_LEX, &tr.lex, &tr, &rp, &res);
+    /* the next primes only compute the rows computed on p0 */
+    mm_trace_keep_computed_rows(&tr, M);
+    mm_rows_clear(&rp);
     if(res == NULL) {
         res = malloc(sizeof(CF_t));
     }

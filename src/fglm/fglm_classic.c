@@ -65,9 +65,19 @@ static int fglmc_cmp(const int32_t *a, const int32_t *b, int32_t nv, int ord){
   return 0;
 }
 
-/* delayed accumulation on 64 bits */
+/* At -O2, GCC leaves the inner loops of fglmc_mulvec scalar (very cheap cost
+ * model); this cost model lets it vectorize them. */
+#if defined(__GNUC__) && !defined(__clang__)
+#define FGLMC_VECTORIZE __attribute__((optimize("vect-cost-model=dynamic")))
+#else
+#define FGLMC_VECTORIZE
+#endif
+
+/* delayed accumulation on 64 bits; if a dense row which is not computed
+ * (M->have_row) is needed, *missing is set to 1 (if missing != NULL) */
+FGLMC_VECTORIZE
 static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
-                         const CF_t *v, uint64_t *acc){
+                         const CF_t *v, uint64_t *acc, int *missing){
   const szmat_t D = M->ncols;
   const CF_t p = M->charac;
   const uint64_t pp = (uint64_t)p * p;
@@ -92,6 +102,13 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
             acc[s] = t - (Mred & -(t >> 63));
           }
         } else {
+          if(M->have_row != NULL && !M->have_row[s - D]){
+            if(missing != NULL){
+#pragma omp atomic write
+              *missing = 1;
+            }
+            continue;
+          }
           const CF_t *row = M->dense_mat + (uint64_t)(s - D) * D;
           for(szmat_t l = l0; l < l1; l++){
             uint64_t t = acc[l] + a * row[l];
@@ -113,6 +130,10 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
       uint64_t t = acc[s] + a;
       acc[s] = t - (Mred & -(t >> 63));
     } else {
+      if(M->have_row != NULL && !M->have_row[s - D]){
+        if(missing != NULL) *missing = 1;
+        continue;
+      }
       const CF_t *row = M->dense_mat + (uint64_t)(s - D) * D;
       for(szmat_t l = 0; l < D; l++){
         uint64_t t = acc[l] + a * row[l];
@@ -264,49 +285,33 @@ static void fglmc_lu_relation(fglmc_lu_t *E, const mp_limb_t *a, CF_t *c){
   }
 }
 
-static void fglmc_lu_reduce_block(fglmc_lu_t *E, nmod_mat_t B, nmod_mat_t C){
-  const slong K = B->r, r = E->r, D = E->D;
+/* Reduces the rows of B against the rows a..b-1 of E, B being already reduced
+ * against the rows 0..a-1: B -= C U[a..b), C (K x (b - a)) receiving the
+ * coefficients. */
+static void fglmc_lu_reduce_range(fglmc_lu_t *E, nmod_mat_t B, nmod_mat_t C,
+                                  const slong a, const slong b){
+  const slong K = B->r, n = b - a, D = E->D;
   const mp_limb_t p = E->p;
-  nmod_mat_init(C, K, r, p);
-  if(r == 0 || K == 0) return;
+  nmod_mat_init(C, K, n, p);
+  if(n == 0 || K == 0) return;
   nmod_mat_t Bt, Ct, P, Ptw, Uw;
-  nmod_mat_init(Bt, r, K, p);
-  nmod_mat_init(Ct, r, K, p);
-  for(slong j = 0; j < r; j++){
+  nmod_mat_init(Bt, n, K, p);
+  nmod_mat_init(Ct, n, K, p);
+  for(slong j = 0; j < n; j++){
     for(slong i = 0; i < K; i++){
-      nmod_mat_entry(Bt, j, i) = nmod_mat_entry(B, i, E->piv[j]);
+      nmod_mat_entry(Bt, j, i) = nmod_mat_entry(B, i, E->piv[a + j]);
     }
   }
-  nmod_mat_window_init(Ptw, E->Pt, 0, 0, r, r);
+  nmod_mat_window_init(Ptw, E->Pt, a, a, b, b);
   nmod_mat_solve_tril(Ct, Ptw, Bt, 1);
   nmod_mat_window_clear(Ptw);
   nmod_mat_transpose(C, Ct);
   nmod_mat_init(P, K, D, p);
-  nmod_mat_window_init(Uw, E->U, 0, 0, r, D);
+  nmod_mat_window_init(Uw, E->U, a, 0, b, D);
   nmod_mat_mul(P, C, Uw);
   nmod_mat_window_clear(Uw);
   nmod_mat_sub(B, B, P);
   nmod_mat_clear(P); nmod_mat_clear(Bt); nmod_mat_clear(Ct);
-}
-
-/* Row rank profile of B */
-static slong fglmc_first_dependent_row(const nmod_mat_t B){
-  const slong K = B->r, D = B->c;
-  nmod_mat_t T;
-  nmod_mat_init(T, D, K, B->mod.n);
-  nmod_mat_transpose(T, B);
-  slong rank = nmod_mat_rref(T);
-  slong j0 = 0, col = 0;
-  for(slong i = 0; i < rank; i++){
-    while(col < K && nmod_mat_entry(T, i, col) == 0) {
-      col++;
-    }
-    if(col != j0) break;   /* row j0 is not a pivot */
-    j0++;
-    col++;
-  }
-  nmod_mat_clear(T);
-  return j0;
 }
 
 /* Candidates */
@@ -363,7 +368,13 @@ static fglmc_cand_t fglmc_hpop(fglmc_heap_t *H){
  * For each of them, we deal with m x_n^k by block
  * Fills lex: the staircase S, the leading monomials g_lm and g_ntail
  * Returns 1 on success, 0 otherwise (in particular if ord is not lex). */
-#define FGLMC_KMAX 256   // max size of a block
+/* block sizes; can be set at compile time (-DFGLMC_KMAX=...) */
+#ifndef FGLMC_KMAX
+#define FGLMC_KMAX 1024  // max size of a block
+#endif
+#ifndef FGLMC_KSUB
+#define FGLMC_KSUB 64    // sub-blocks reduced together inside a block
+#endif
 #define FGLMC_VLEN 16    // vectors handled one by one
 
 /* m x_n^k is added to the staircase: S[t] = m x_n^k, then t++ */
@@ -425,9 +436,38 @@ static inline void fglmc_set_parent(szmat_t *parent, int32_t *var,
 
 /* If tr != NULL, the parents of the elements of the staircase and of the
  * leading monomials are recorded in tr (trace over Q). */
-static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
+/* Dense rows computed on demand (normal forms by core_nf, see hilbert.c):
+ * fill computes the dense rows rows[0..n) of M, returns 0 on failure. */
+typedef struct {
+  int (*fill)(void *ctx, sp_multimatfglm_t *M, const szmat_t *rows, szmat_t n);
+  void *ctx;
+} fglmc_rows_t;
+
+/* computes, if needed, the rows of the matrix of x_i used by the product
+ * with v. Returns 0 on failure. */
+static int fglmc_need_rows(const fglmc_rows_t *rp, sp_multimatfglm_t *M,
+                           const int32_t i, const CF_t *v){
+  if(rp == NULL || rp->fill == NULL || M->have_row == NULL) return 1;
+  const szmat_t D = M->ncols;
+  const szmat_t *sel = M->rowsel + (uint64_t)i * D;
+  szmat_t *rows = malloc((D + 1) * sizeof(szmat_t));
+  szmat_t n = 0;
+  for(szmat_t k = 0; k < D; k++){
+    if(v[k] && sel[k] >= D && !M->have_row[sel[k] - D]){
+      rows[n++] = sel[k] - D;
+    }
+  }
+  int ok = 1;
+  if(n > 0) ok = rp->fill(rp->ctx, M, rows, n);
+  free(rows);
+  return ok;
+}
+
+/* If rp != NULL, the dense rows which are not computed yet are computed on
+ * demand (only the rows of the matrix of x_n are needed beforehand). */
+static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
                               fglm_lex_staircase_t *lex, fglm_trace_t *tr,
-                              CF_t **coeffs_out){
+                              const fglmc_rows_t *rp, CF_t **coeffs_out){
   if(ord != FGLM_ORDER_LEX) return 0;
   const szmat_t D = Mt->ncols;
   const int32_t nv = Mt->nvars;
@@ -516,13 +556,18 @@ static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
               row[Mt->one] = 1;
           }
           else {
+              if(!fglmc_need_rows(rp, Mt, u.var,
+                                  Vs + (uint64_t)u.parent * D)){
+                  ok = 0;
+                  break;
+              }
               fglmc_mulvec(row, Mt, u.var,
                            Vs + (uint64_t)u.parent * D,
-                           acc);
+                           acc, NULL);
           }
         } else {
           fglmc_mulvec(row, Mt, xn, Vs + (uint64_t)(t - 1) * D,
-                       acc);
+                       acc, NULL);
         }
         for(szmat_t l = 0; l < D; l++){
             wl[l] = row[l];
@@ -560,7 +605,7 @@ static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
       }
       for(slong i = 0; i < K; i++){
           fglmc_mulvec(Vs + (uint64_t)(t + i) * D, Mt, xn,
-                       Vs + (uint64_t)(t + i - 1) * D, acc);
+                       Vs + (uint64_t)(t + i - 1) * D, acc, NULL);
       }
       nmod_mat_t B, C;
       nmod_mat_init(B, K, D, p);
@@ -570,51 +615,57 @@ static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
             nmod_mat_entry(B, i, l) = row[l];
         }
       }
+      /* the block is reduced against the rows of E (one product), then by
+       * sub-blocks of FGLMC_KSUB rows: each one against the rows inserted by
+       * the previous sub-blocks (one product), then row by row. The first
+       * row which reduces to zero ends the chain. */
       const slong r_old = E.r;
-      fglmc_lu_reduce_block(&E, B, C);          /* B -= C U, C : K x r_old */
-      slong j0 = fglmc_first_dependent_row(B);
-      if(t + j0 > D){
-          nmod_mat_clear(B);
-          nmod_mat_clear(C);
-          ok = 0;
-          break;
-      }
-      /* independent rows */
-      const slong nrows_dep = (j0 < K) ? j0 + 1 : j0;
-      for(slong i = 0; i < nrows_dep && ok; i++){
-          for(szmat_t l = 0; l < D; l++){
-              wl[l] = nmod_mat_entry(B, i, l);
-          }
-          for(slong j = 0; j < r_old; j++){
-              al[j] = nmod_mat_entry(C, i, j);
-          }
-          const int zero = fglmc_lu_reduce(&E, wl, r_old, al + r_old);
-          if(i < j0){
-              if(zero){
-                  ok = 0;
-                  break;
+      fglmc_lu_reduce_range(&E, B, C, 0, r_old);   /* C : K x r_old */
+      slong j0 = K;
+      for(slong i0 = 0; i0 < K && ok && j0 == K; i0 += FGLMC_KSUB){
+          const slong i1 = (i0 + FGLMC_KSUB < K) ? i0 + FGLMC_KSUB : K;
+          const slong rb = E.r;
+          nmod_mat_t Bs, Cs;
+          nmod_mat_window_init(Bs, B, i0, 0, i1, D);
+          fglmc_lu_reduce_range(&E, Bs, Cs, r_old, rb);
+          for(slong i = i0; i < i1; i++){
+              for(szmat_t l = 0; l < D; l++){
+                  wl[l] = nmod_mat_entry(B, i, l);
               }
-              fglmc_lu_insert(&E, wl, al);
-              if(tr != NULL){
-                  fglmc_set_parent(tr->s_parent + t, tr->s_var + t, &u,
-                                   k + i, t, xn);
+              for(slong j = 0; j < r_old; j++){
+                  al[j] = nmod_mat_entry(C, i, j);
               }
-              fglmc_new_stair(u.e, (int32_t)(k + i), nv, S, &t);
-          } else {
+              for(slong j = r_old; j < rb; j++){
+                  al[j] = nmod_mat_entry(Cs, i - i0, j - r_old);
+              }
+              const int zero = fglmc_lu_reduce(&E, wl, rb, al + rb);
               if(!zero){
-                  ok = 0;
-                  break;
-              }
-              if (!fglmc_push_relation(&E, al, lex, t, &coeffs, &cap_c)){
-                  ok = 0;
-                  break;
+                  if(t == D){
+                      ok = 0;
+                      break;
                   }
-              if(tr != NULL){
-                  fglmc_set_parent(tr->g_parent + lex->ngens,
-                                   tr->g_var + lex->ngens, &u, k + j0, t, xn);
+                  fglmc_lu_insert(&E, wl, al);
+                  if(tr != NULL){
+                      fglmc_set_parent(tr->s_parent + t, tr->s_var + t, &u,
+                                       k + i, t, xn);
+                  }
+                  fglmc_new_stair(u.e, (int32_t)(k + i), nv, S, &t);
+              } else {
+                  if(!fglmc_push_relation(&E, al, lex, t, &coeffs, &cap_c)){
+                      ok = 0;
+                      break;
+                  }
+                  if(tr != NULL){
+                      fglmc_set_parent(tr->g_parent + lex->ngens,
+                                       tr->g_var + lex->ngens, &u, k + i, t, xn);
+                  }
+                  fglmc_new_head(lex, u.e, (int32_t)(k + i), nv, t);
+                  j0 = i;
+                  break;
               }
-              fglmc_new_head(lex, u.e, (int32_t)(k + j0), nv, t);
           }
+          nmod_mat_clear(Cs);
+          nmod_mat_window_clear(Bs);
       }
       nmod_mat_clear(B);
       nmod_mat_clear(C);
@@ -679,7 +730,8 @@ done:
  * invertible and X[j][k] = 0 for k >= g_ntail[j].
  * coeffs (tr->lex.ncoeffs) receives, polynomial after polynomial, the
  * coefficients of s_0, ..., s_{g_ntail[j]-1}.
- * Returns 0 on success, 1 if V is singular, 2 if the support differs. */
+ * Returns 0 on success, 1 if V is singular, 2 if the support differs, 3 if
+ * a dense row not computed on the first prime is needed. */
 static int fglm_classic_apply(CF_t *coeffs, const sp_multimatfglm_t *Mt,
                               const fglm_trace_t *tr){
   const szmat_t D = Mt->ncols;
@@ -687,6 +739,7 @@ static int fglm_classic_apply(CF_t *coeffs, const sp_multimatfglm_t *Mt,
   const fglm_lex_staircase_t *lex = &tr->lex;
   const int32_t ng = lex->ngens;
   int ret = 0;
+  int missing = 0;
   CF_t *Vs = malloc((uint64_t)D * D * sizeof(CF_t));
   CF_t *w  = malloc(D * sizeof(CF_t));
   uint64_t *acc = malloc(D * sizeof(uint64_t));
@@ -702,7 +755,7 @@ static int fglm_classic_apply(CF_t *coeffs, const sp_multimatfglm_t *Mt,
           row[Mt->one] = 1;
       } else {
           fglmc_mulvec(row, Mt, tr->s_var[k],
-                       Vs + (uint64_t)tr->s_parent[k] * D, acc);
+                       Vs + (uint64_t)tr->s_parent[k] * D, acc, &missing);
       }
       for(szmat_t l = 0; l < D; l++){
           nmod_mat_entry(Vt, l, k) = row[l];
@@ -710,10 +763,14 @@ static int fglm_classic_apply(CF_t *coeffs, const sp_multimatfglm_t *Mt,
   }
   for(int32_t j = 0; j < ng; j++){
       fglmc_mulvec(w, Mt, tr->g_var[j], Vs + (uint64_t)tr->g_parent[j] * D,
-                   acc);
+                   acc, &missing);
       for(szmat_t l = 0; l < D; l++){
           nmod_mat_entry(Bt, l, j) = w[l] ? p - w[l] : 0;
       }
+  }
+  if(missing){
+      ret = 3;
+      goto done;
   }
   if(!nmod_mat_solve(Xt, Vt, Bt)){
       ret = 1;
@@ -780,13 +837,14 @@ static fglm_gb_t *fglm_gb_from_staircase(const fglm_lex_staircase_t *lex,
 
 /* FGLM over a prime field: the greedy phase (LU elimination) gives at once the
  * staircase, the leading monomials and the relations. */
-static fglm_gb_t *fglm_classic(const sp_multimatfglm_t *Mt, const int ord){
+static fglm_gb_t *fglm_classic(sp_multimatfglm_t *Mt, const int ord,
+                               const fglmc_rows_t *rp){
   fglm_lex_staircase_t lex;
   memset(&lex, 0, sizeof(lex));
   fglm_gb_t *G = NULL;
   CF_t *coeffs = NULL;
   const int old_thr = fglmc_flint_threads_push(Mt->nthreads);
-  if(fglm_classic_learn(Mt, ord, &lex, NULL, &coeffs)){
+  if(fglm_classic_learn(Mt, ord, &lex, NULL, rp, &coeffs)){
       G = fglm_gb_from_staircase(&lex, coeffs, Mt->charac);
   }
   free(coeffs);

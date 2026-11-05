@@ -1,55 +1,55 @@
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.1.res \
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.7.res \
       --random-seed $seed \
       -g 3 -L 0 -l 2 -t 1
 if [ $? -gt 0 ]; then
-    print_exit 1
+    print_exit 7
 fi
 
-diff test/diff/$file.1.res output_files/$file.g3.res
+diff test/diff/$file.7.res output_files/$file.g3.res
 if [ $? -gt 0 ]; then
-    print_exit 2
+    print_exit 8
 fi
 
-rm test/diff/$file.1.res
+rm test/diff/$file.7.res
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.21.res \
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.27.res \
       --random-seed $seed \
       -g 3 -L 0 -l 2 -t 2
 if [ $? -gt 0 ]; then
-    print_exit 21
+    print_exit 27
 fi
 
-diff test/diff/$file.21.res output_files/$file.g3.res
+diff test/diff/$file.27.res output_files/$file.g3.res
 if [ $? -gt 0 ]; then
-    print_exit 22
+    print_exit 28
 fi
 
-rm test/diff/$file.21.res
+rm test/diff/$file.27.res
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.41.res \
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.47.res \
       --random-seed $seed \
       -g 3 -L 0 -l 44 -t 1
 if [ $? -gt 0 ]; then
-    print_exit 41
+    print_exit 47
 fi
 
-diff test/diff/$file.41.res output_files/$file.g3.res
+diff test/diff/$file.47.res output_files/$file.g3.res
 if [ $? -gt 0 ]; then
-    print_exit 42
+    print_exit 48
 fi
 
-rm test/diff/$file.41.res
+rm test/diff/$file.47.res
 
-$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.61.res \
+$(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.67.res \
       --random-seed $seed \
       -g 3 -L 0 -l 44 -t 2
 if [ $? -gt 0 ]; then
-    print_exit 61
+    print_exit 67
 fi
 
-diff test/diff/$file.61.res output_files/$file.g3.res
+diff test/diff/$file.67.res output_files/$file.g3.res
 if [ $? -gt 0 ]; then
-    print_exit 62
+    print_exit 68
 fi
 
-rm test/diff/$file.61.res
+rm test/diff/$file.67.res

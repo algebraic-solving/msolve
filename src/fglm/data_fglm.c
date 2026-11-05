@@ -69,6 +69,23 @@ static inline void free_fglm_lex_staircase(fglm_lex_staircase_t *lex){
     }
 }
 
+/* frees the arrays of tr (not tr itself) */
+static inline void free_fglm_trace(fglm_trace_t *tr){
+    if(tr!=NULL) {
+        free(tr->rowsel);
+        free(tr->is_lm);
+        free(tr->lm_of);
+        free(tr->exps_nf);
+        free(tr->row_nf);
+        free_fglm_lex_staircase(&tr->lex);
+        free(tr->s_parent);
+        free(tr->s_var);
+        free(tr->g_parent);
+        free(tr->g_var);
+        memset(tr, 0, sizeof(fglm_trace_t));
+    }
+}
+
 static inline fglm_data_t *allocate_fglm_data(szmat_t nrows, szmat_t ncols, szmat_t nvars){
   fglm_data_t * data = malloc(sizeof(fglm_data_t));
 

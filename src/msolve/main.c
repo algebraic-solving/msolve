@@ -122,8 +122,8 @@ static inline void display_help(char *str){
   display_option_help_noopt("    the input system.\n");
   display_option_help_noopt("3 - output is the reduced Groebner basis w.r.t.\n");
   display_option_help_noopt("    the lexicographical ordering, by classical\n");
-  display_option_help_noopt("    FGLM (zero-dimensional ideals, prime fields\n");
-  display_option_help_noopt("    only).\n");
+  display_option_help_noopt("    FGLM (zero-dimensional ideals; over Q,\n");
+  display_option_help_noopt("    multi-modular FGLM with a tracer).\n");
   display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
   display_option_help_noopt("blocks of variables, each block using the degree\n");
   display_option_help_noopt("reverse lexicographical monomial order. ELIM has\n");

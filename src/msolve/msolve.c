@@ -63,6 +63,7 @@ void free_rrec_data(rrec_data_t recdata);
 #include "univariate.c"
 #include "hensel.c"
 #include "boolean-zeros.c"
+#include "lifting-lexgb.c"
 #include "streams.h"
 
 #ifndef MAX
@@ -2152,7 +2153,7 @@ static int32_t *initial_modular_step(
                 build_multiplication_matrices_from_bs(lmb, dquot, bs, bs->ht,
                                                       leadmons[0], md,
                                                       bs->ht->nv, fc,
-                                                      md->info_level);
+                                                      md->info_level, NULL);
             mm->nthreads = md->nthrds;   /* all threads are used */
             double rt_fglm = realtime();
             fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX);
@@ -5779,7 +5780,7 @@ restart:
 	  int dim = - 2;
 	  long dquot = -1;
 
-      if(elim_block_len > 0 && (print_gb == 0 || print_gb == 3)){
+      if(elim_block_len && (print_gb == 0 || print_gb == 3)){
           fprintf(ERRSTREAM, "Warning: elim order not available for ");
           if(print_gb == 0){
               fprintf(ERRSTREAM, "rational parametrizations\n");
@@ -6469,16 +6470,17 @@ restart:
             int dim = - 2;
             long dquot = -1;
 
-            if(elim_block_len && print_gb == 0){
-                fprintf(ERRSTREAM, "Warning: elim order not available for rational parametrizations\n");
+            if(elim_block_len && (print_gb == 0 || print_gb == 3)){
+                fprintf(ERRSTREAM, "Warning: elim order not available for ");
+                if(print_gb == 0){
+                    fprintf(ERRSTREAM, "rational parametrizations\n");
+                } else {
+                    fprintf(ERRSTREAM, "lexicographic Groebner basis\n");
+                }
                 fprintf(ERRSTREAM, "Computing Groebner basis\n");
                 print_gb=2;
             }
 
-            if(print_gb == 3){
-              fprintf(ERRSTREAM, "Option -g 3 is only available over prime fields.\n");
-              return -1;
-            }
             if(print_gb){
 
               msflags_t flags;
@@ -6496,14 +6498,20 @@ restart:
               flags->print_gb = print_gb;
               flags->files = files;
 
-              print_msolve_gbtrace_qq(gens, flags);
+              int ret_gb = 0;
+              if(print_gb == 3){
+                  /* lex Gb by multi-modular FGLM */
+                  ret_gb = print_msolve_lexgb_qq(gens, flags);
+              } else {
+                  print_msolve_gbtrace_qq(gens, flags);
+              }
 
               free(bld);
               free(blen);
               free(bexp);
               free(bcf);
 
-              return 0;
+              return ret_gb;
             }
 
             b = real_msolve_qq(mpz_paramp,

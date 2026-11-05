@@ -200,6 +200,54 @@ void sort_terms_ff_32(
   *hmp  = hm;
 }
 
+void sort_terms_ff_64(
+    cf64_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    )
+{
+  cf64_t *cf  = *cfp;
+  hm_t *hm    = *hmp;
+  hm_t *hmo   = hm+OFFSET;
+
+  const len_t len = hm[LENGTH];
+
+  len_t i, j, k;
+
+  hm_t tmphm    = 0;
+  cf64_t tmpcf  = 0;
+
+  /* generate array of pointers to hm entries */
+  hm_t *phm[len];
+  for (i = 0; i < len; ++i) {
+    phm[i]  = &hmo[i];
+  }
+
+  /* sort pointers to hm entries -> getting permutations */
+  sort_r(phm, (unsigned long)len, sizeof(phm[0]), initial_gens_cmp, ht);
+
+  /* sort cf and hm using permutations stored in phm */
+  for (i = 0; i < len; ++i) {
+    if (i != phm[i]-hmo) {
+      tmpcf = cf[i];
+      tmphm = hmo[i];
+      k     = i;
+      while (i != (j = phm[k]-hmo)) {
+        cf[k]   = cf[j];
+        hmo[k]  = hmo[j];
+        phm[k]  = &hmo[k];
+        k       = j;
+      }
+      cf[k]   = tmpcf;
+      hmo[k]  = tmphm;
+      phm[k]  = &hmo[k];
+    }
+  }
+
+  *cfp  = cf;
+  *hmp  = hm;
+}
+
 void sort_terms_qq(
     mpz_t **cfp,
     hm_t **hmp,
@@ -268,8 +316,10 @@ void import_input_data(
     cf8_t *cf8      =   NULL;
     cf16_t *cf16    =   NULL;
     cf32_t *cf32    =   NULL;
+    cf64_t *cf64    =   NULL;
     mpz_t *cfq      =   NULL;
     int32_t *cfs_ff =   NULL;
+    int64_t *cfs_64 =   NULL;
     mpz_t **cfs_qq  =   NULL;
 
     ht_t *ht = bs->ht;
@@ -277,6 +327,7 @@ void import_input_data(
     int32_t off       = 0; /* offset in arrays */
     int32_t init_off  = 0;
     const len_t fc    = st->fc;
+    const int64_t fc64  = (int64_t)st->fc;
 
     len_t ngens = stop - start;
 
@@ -372,6 +423,25 @@ void import_input_data(
                 off +=  lens[i];
             }
             break;
+        case 64:
+            cfs_64  =   (int64_t *)vcfs;
+            for (i = start; i < stop; ++i) {
+                if (invalid_gens == NULL || invalid_gens[i] == 0) {
+                    cf64    = (cf64_t *)malloc((unsigned long)(lens[i]) * sizeof(cf64_t));
+                    bs->cf_64[ctr] = cf64;
+
+                    for (j = off; j < off+lens[i]; ++j) {
+                        /* make coefficient positive */
+                        int64_t c   =   cfs_64[j] % fc64;
+                        c           +=  (c >> 63) & fc64;
+                        cf64[j-off] =   (cf64_t)c;
+                    }
+                    sort_terms_ff_64(&(bs->cf_64[ctr]), &(bs->hm[ctr]), ht);
+                    ctr++;
+                }
+                off +=  lens[i];
+            }
+            break;
         case 0:
             cfs_qq  =   (mpz_t **)vcfs;
             mpz_t prod_den, mul;
@@ -459,7 +529,7 @@ void return_zero(
         int32_t **bexp,
         void **bcf,
         const int32_t nr_vars,
-        const uint32_t field_char,
+        const uint64_t field_char,
         void *(*mallocp) (size_t)
         )
 {
@@ -525,6 +595,9 @@ static int64_t export_data(
     if (md->ff_bits == 0) {
         cf = (mpz_t *)(*mallocp)(
             (unsigned long)(nterms) * sizeof(mpz_t));
+    } else if (md->ff_bits == 64) {
+        cf = (int64_t *)(*mallocp)(
+            (unsigned long)(nterms) * sizeof(int64_t));
     } else {
         cf = (int32_t *)(*mallocp)(
             (unsigned long)(nterms) * sizeof(int32_t));
@@ -539,6 +612,8 @@ static int64_t export_data(
         if (bs->hm[bi] == NULL) {
             if (md->ff_bits == 0) {
                 mpz_init(((mpz_t *)cf+cc)[0]);
+            } else if (md->ff_bits == 64) {
+                ((int64_t *)cf+cc)[0] = (int64_t)0;
             } else {
                 ((int32_t *)cf+cc)[0] = (int32_t)0;
             }
@@ -566,6 +641,11 @@ static int64_t export_data(
             case 32:
                 for (j = 0; j < len[cl]; ++j) {
                     ((int32_t *)cf+cc)[j] = (int32_t)bs->cf_32[bs->hm[bi][COEFFS]][j];
+                }
+                break;
+            case 64:
+                for (j = 0; j < len[cl]; ++j) {
+                    ((int64_t *)cf+cc)[j] = (int64_t)bs->cf_64[bs->hm[bi][COEFFS]][j];
                 }
                 break;
             case 0:
@@ -618,32 +698,33 @@ int32_t check_ff_bits(int32_t fc){
     }
 }
 
-void set_ff_bits(md_t *st, int32_t fc){
+void set_ff_bits(md_t *st, uint64_t fc){
     if (fc == 0) {
         st->ff_bits = 0;
     } else {
-        if (fc < (int32_t)(1) << 8) {
+        if (fc < (uint64_t)(1) << 8) {
             st->ff_bits = 8;
         } else {
-            if (fc < (int32_t)(1) << 16) {
+            if (fc < (uint64_t)(1) << 16) {
                 st->ff_bits = 16;
             } else {
-                if (fc < (int32_t)(1) << 23) {
+                if (fc < (uint64_t)(1) << 32) {
                     st->ff_bits = 32;
                 } else {
-                    st->ff_bits = 32;
+                    st->ff_bits = 64;
                 }
             }
         }
     }
 }
 
-/* return 1 if validation was possible, zero otherwise */
-int validate_input_data(
+/* return 1 if validation was possible, zero otherwise, see
+ * validate_input_data() */
+int validate_input_data_64(
         int **invalid_gensp,
         const void *cfs,
         const int32_t *lens,
-        uint32_t *field_charp,
+        uint64_t *field_charp,
         int32_t *mon_orderp,
         int32_t *elim_block_lenp,
         int32_t *nr_varsp,
@@ -660,8 +741,9 @@ int validate_input_data(
         int32_t *info_levelp
         )
 {
-    /* biggest prime msovle can handle */
-    if (*field_charp > 4294967291) {
+    /* biggest prime msolve can handle: primes < 2^32 use 32 bit
+     * coefficients, larger primes 64 bit coefficients */
+    if (*field_charp >= ((uint64_t)1 << 52)) {
         fprintf(ERRSTREAM, "Field characteristic not valid.\n");
         return 0;
     }
@@ -706,6 +788,10 @@ int validate_input_data(
         fprintf(ERRSTREAM, "Usage of signature not valid, disabled.\n");
         *use_signaturesp = 0;
     }
+    if (*use_signaturesp != 0 && *field_charp >= ((uint64_t)1 << 32)) {
+        fprintf(ERRSTREAM, "Signatures need primes < 2^32, disabled.\n");
+        *use_signaturesp = 0;
+    }
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
         fprintf(ERRSTREAM, "Fixes reduction of GB to 0 (false).\n");
         *reduce_gbp =   0;
@@ -733,6 +819,18 @@ int validate_input_data(
                 }
             }
             len += 2*lens[i];
+        }
+    } else if (*field_charp >= ((uint64_t)1 << 32)) {
+        int64_t *cf =   (int64_t *)cfs;
+        for (int i = 0; i < ngens; ++i) {
+            for (int j = 0; j < lens[i]; ++j) {
+                if (cf[j+len] % (int64_t)*field_charp == 0) {
+                    invalid_gens[i]   =   1;
+                    ctr++;
+                    break;
+                }
+            }
+            len +=  lens[i];
         }
     } else {
         int32_t *cf =   (int32_t *)cfs;
@@ -763,6 +861,37 @@ int validate_input_data(
     }
 
     return 1;
+}
+
+/* return 1 if validation was possible, zero otherwise */
+int validate_input_data(
+        int **invalid_gensp,
+        const void *cfs,
+        const int32_t *lens,
+        uint32_t *field_charp,
+        int32_t *mon_orderp,
+        int32_t *elim_block_lenp,
+        int32_t *nr_varsp,
+        int32_t *nr_gensp,
+        int32_t *nr_nfp,
+        int32_t *ht_sizep,
+        int32_t *nr_threadsp,
+        int32_t *max_nr_pairsp,
+        int32_t *reset_htp,
+        int32_t *la_optionp,
+        int32_t *use_signaturesp,
+        int32_t *reduce_gbp,
+        int32_t *truncate_liftingp,
+        int32_t *info_levelp
+        )
+{
+    uint64_t fc = *field_charp;
+    const int ret = validate_input_data_64(invalid_gensp, cfs, lens, &fc,
+            mon_orderp, elim_block_lenp, nr_varsp, nr_gensp, nr_nfp,
+            ht_sizep, nr_threadsp, max_nr_pairsp, reset_htp, la_optionp,
+            use_signaturesp, reduce_gbp, truncate_liftingp, info_levelp);
+    *field_charp = (uint32_t)fc;
+    return ret;
 }
 
 static inline int use_block_order(
@@ -932,6 +1061,27 @@ void linear_algebra(
                     exact_sparse_linear_algebra_ff_16(mat, tbr, bs, st);
                     return;
             }
+        case 64:
+            switch (st->laopt) {
+                case 1:
+                    exact_sparse_dense_linear_algebra_ff_64(mat, tbr, bs, st);
+                    return;
+                case 2:
+                    exact_sparse_linear_algebra_ff_64(mat, tbr, bs, st);
+                    return;
+                case 42:
+                    probabilistic_sparse_dense_linear_algebra_ff_64(mat, tbr, bs, st);
+                    return;
+                case 43:
+                    probabilistic_sparse_dense_linear_algebra_2_ff_64(mat, tbr, bs, st);
+                    return;
+                case 44:
+                    probabilistic_sparse_linear_algebra_ff_64(mat, tbr, bs, st);
+                    return;
+                default:
+                    exact_sparse_linear_algebra_ff_64(mat, tbr, bs, st);
+                    return;
+            }
         case 32:
         default:
             switch (st->laopt) {
@@ -974,6 +1124,9 @@ void exact_linear_algebra(
         case 16:
             exact_sparse_linear_algebra_ff_16(mat, tbr, bs, st);
             return;
+        case 64:
+            exact_sparse_linear_algebra_ff_64(mat, tbr, bs, st);
+            return;
         case 32:
         default:
             exact_sparse_linear_algebra_ff_32(mat, tbr, bs, st);
@@ -992,6 +1145,8 @@ int application_linear_algebra(
             return exact_application_sparse_linear_algebra_ff_8(mat, bs, st);
         case 16:
             return exact_application_sparse_linear_algebra_ff_16(mat, bs, st);
+        case 64:
+            return exact_application_sparse_linear_algebra_ff_64(mat, bs, st);
         case 32:
         default:
             return exact_application_sparse_linear_algebra_ff_32(mat, bs, st);
@@ -1011,6 +1166,9 @@ void trace_linear_algebra(
             return;
         case 16:
             exact_trace_sparse_linear_algebra_ff_16(trace, mat, bs, st);
+            return;
+        case 64:
+            exact_trace_sparse_linear_algebra_ff_64(trace, mat, bs, st);
             return;
         case 32:
         default:
@@ -1036,6 +1194,9 @@ void interreduce_matrix_rows(
         case 16:
             interreduce_matrix_rows_ff_16(mat, bs, st, free_basis);
             return;
+        case 64:
+            interreduce_matrix_rows_ff_64(mat, bs, st, free_basis);
+            return;
         case 32:
         default:
             interreduce_matrix_rows_ff_32(mat, bs, st, free_basis);
@@ -1045,10 +1206,14 @@ void interreduce_matrix_rows(
 
 void normalize_initial_basis(
         bs_t *bs,
-        const uint32_t fc
+        const uint64_t fc
         )
 {
     if (fc == 0) {
+        return;
+    }
+    if (fc >= ((uint64_t)1u << 32)) {
+        normalize_initial_basis_ff_64(bs, fc);
         return;
     }
     if (fc < ((uint32_t)1u << 8)) {
@@ -1155,7 +1320,7 @@ int32_t check_and_set_meta_data(
         const int32_t *exps,
         const void *cfs,
         const int *invalid_gens,
-        const uint32_t field_char,
+        const uint64_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
         const int32_t nr_vars,
@@ -1280,7 +1445,7 @@ int32_t check_and_set_meta_data_trace(
         const int32_t *exps,
         const void *cfs,
         const int *invalid_gens,
-        const uint32_t field_char,
+        const uint64_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
         const int32_t nr_vars,

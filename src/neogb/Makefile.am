@@ -32,6 +32,7 @@ EXTRA_DIST	=		basis.h \
 								io.c \
 								la_ff_16.c \
 								la_ff_32.c \
+								la_ff_64.c \
 								la_ff_8.c \
 								la_ff_common.c \
 								la_ff_small_prime.c \

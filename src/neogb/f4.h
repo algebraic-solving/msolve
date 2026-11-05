@@ -42,7 +42,7 @@ int64_t export_f4(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
-        const uint32_t field_char,
+        const uint64_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
         const int32_t nr_vars,
@@ -73,7 +73,7 @@ bs_t *core_f4(
         bs_t *gbs,
         md_t *gmd,
         int32_t *errp,
-        const len_t fc
+        const uint64_t fc
         );
 
 bs_t *modular_f4(

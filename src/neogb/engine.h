@@ -32,7 +32,7 @@ int initialize_gba_input_data(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
-        uint32_t field_char,
+        uint64_t field_char,
         int32_t mon_order,
         int32_t elim_block_len,
         int32_t nr_vars,
@@ -54,7 +54,7 @@ bs_t *core_gba(
         bs_t *bs,
         md_t *md,
         int32_t *errp,
-        const len_t fc
+        const uint64_t fc
         );
 
 int64_t export_results_from_gba(

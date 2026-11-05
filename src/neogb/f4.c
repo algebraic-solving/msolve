@@ -132,6 +132,8 @@ static void clear_matrix(
     mat->cf_16  = NULL;
     free(mat->cf_32);
     mat->cf_32  = NULL;
+    free(mat->cf_64);
+    mat->cf_64  = NULL;
     free(mat->cf_qq);
     mat->cf_qq  = NULL;
     free(mat->cf_ab_qq);
@@ -219,6 +221,10 @@ static void intermediate_reduce_basis(
                         free(bs->cf_32[i]);
                         bs->cf_32[i] = bs->cf_32[bs->ld+j];
                         break;
+                    case 64:
+                        free(bs->cf_64[i]);
+                        bs->cf_64[i] = bs->cf_64[bs->ld+j];
+                        break;
                 }
             }
         }
@@ -234,6 +240,9 @@ static void intermediate_reduce_basis(
                 break;
             case 32:
                 bs->cf_32[i] = NULL;
+                break;
+            case 64:
+                bs->cf_64[i] = NULL;
                 break;
         }
     }
@@ -349,7 +358,7 @@ static int32_t initialize_f4(
         mat_t **matp,
         md_t *gmd,
         bs_t *gbs,
-        len_t fc
+        uint64_t fc
         )
 {
     bs_t *bs     = *lbsp;
@@ -446,6 +455,10 @@ static void free_new_matrix_rows(
             case 32:
                 free(mat->cf_32[row[COEFFS]]);
                 mat->cf_32[row[COEFFS]] = NULL;
+                break;
+            case 64:
+                free(mat->cf_64[row[COEFFS]]);
+                mat->cf_64[row[COEFFS]] = NULL;
                 break;
             default:
                 break;
@@ -744,7 +757,7 @@ bs_t *core_f4(
         bs_t *gbs,
         md_t *gmd,
         int32_t *errp,
-        const len_t fc
+        const uint64_t fc
         )
 {
     double ct = cputime();
@@ -839,6 +852,8 @@ int64_t export_results_from_f4(
  * 1.  an array of the lengths of each generator
  * 2.  an array of all coefficients of all generators in the order:
  *     first all coefficients of generator 1, then all of generator 2, ...
+ *     For primes < 2^32 the coefficients are int32_t, for primes
+ *     2^32 <= p < 2^52 they are int64_t, also for the returned basis.
  * 3.  an array of all exponents of all generators in the order:
  *     first all exponents of generator 1, then all of generator 2, ...
  *
@@ -854,7 +869,7 @@ int64_t export_f4(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
-        const uint32_t field_char,
+        const uint64_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
         const int32_t nr_vars,

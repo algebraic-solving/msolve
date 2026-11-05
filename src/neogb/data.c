@@ -27,7 +27,7 @@
  *         ); */
 void normalize_initial_basis(
         bs_t *bs,
-        const uint32_t fc
+        const uint64_t fc
         );
 
 int initial_input_cmp(

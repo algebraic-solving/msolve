@@ -71,6 +71,8 @@ static inline omp_int_t omp_get_max_threads(void) { return 1;}
 typedef uint8_t cf8_t;   /* coefficient type finite field (8 bit) */
 typedef uint16_t cf16_t; /* coefficient type finite field (16 bit) */
 typedef uint32_t cf32_t; /* coefficient type finite field (32 bit) */
+typedef uint64_t cf64_t; /* coefficient type finite field (64 bit, primes
+                          * < 2^52) */
 typedef uint32_t val_t;  /* core values like hashes */
 typedef val_t hi_t;      /* index of hash table entries*/
 typedef hi_t hm_t;       /* hashed monomials for polynomial entries */
@@ -195,6 +197,7 @@ struct bs_t
     cf8_t **cf_8;   /* coefficients for finite fields (8 bit) */
     cf16_t **cf_16; /* coefficients for finite fields (16 bit) */
     cf32_t **cf_32; /* coefficients for finite fields (32 bit) */
+    cf64_t **cf_64; /* coefficients for finite fields (64 bit) */
     mpz_t **cf_qq;  /* coefficients for rationals (always multiplied such that
                        the denominator is 1) */
 };
@@ -219,6 +222,7 @@ struct mat_t
     cf8_t **cf_8;       /* coefficients for finite fields (8 bit) */
     cf16_t **cf_16;     /* coefficients for finite fields (16 bit) */
     cf32_t **cf_32;     /* coefficients for finite fields (32 bit) */
+    cf64_t **cf_64;     /* coefficients for finite fields (64 bit) */
     mpz_t **cf_qq;      /* coefficients for rationals */
     mpz_t **cf_ab_qq;   /* coefficients for rationals */
     len_t sz;           /* number of rows allocated resp. size */
@@ -427,7 +431,7 @@ struct md_t
     int32_t mnsel;
     int32_t homogeneous;
     uint32_t gfc; /* global field characteristic */
-    uint32_t fc;
+    uint64_t fc;
     int32_t nev; /* number of elimination variables */
     int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
     int32_t laopt;
@@ -481,7 +485,7 @@ struct md_t
  *         ); */
 extern void normalize_initial_basis(
         bs_t *bs,
-        const uint32_t fc
+        const uint64_t fc
         );
 
 extern int initial_input_cmp(

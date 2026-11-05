@@ -22,10 +22,10 @@
 /* Field independent part of the finite field linear algebra.
  *
  * This file is a template: it is not compiled on its own, but included
- * once at the end of each of la_ff_8.c, la_ff_16.c and la_ff_32.c. Those
- * files contain the reduction kernels specific to the corresponding
- * coefficient size and define the following macros before including
- * this file:
+ * once at the end of each of la_ff_8.c, la_ff_16.c, la_ff_32.c and
+ * la_ff_64.c. Those files contain the reduction kernels specific to the
+ * corresponding coefficient size and define the following macros before
+ * including this file:
  *
  * LA_CF_T                  coefficient type, e.g. cf8_t
  * LA_CF                    name of the coefficient arrays in bs_t and
@@ -43,6 +43,13 @@
  * LA_FF(trace_reduce_dense_row_by_known_pivots_sparse)
  * LA_FF(reduce_dense_row_by_all_pivots)
  * LA_FF(reduce_dense_row_by_dense_new_pivots)
+ *
+ * If LA_WIDE is defined (la_ff_64.c), the products of coefficients do
+ * not fit into 64 bits: the dense rows are always reduced to [0,p), the
+ * helpers ff64_init(), ff64_mont(), ff64_submul(), ff64_submul_dense()
+ * and ff64_submul_sparse() are used for the updates, and the functions
+ * LA_FF(reduce_dense_rows_by_known_pivots) and
+ * LA_FF(reduce_dense_rows_by_dense_block) have to be defined as well.
  *
  * All macros are undefined at the end of this file. */
 
@@ -71,6 +78,7 @@ static inline len_t LA_FF(rows_per_group)(
     return (uint64_t)nrl >= 2 * (uint64_t)nthrds * LA_NR ? LA_NR : 0;
 }
 
+#ifndef LA_WIDE
 /* Reduces LA_NR rows at once by the known pivots pivs[sc],...,
  * pivs[ncl-1]. The dense rows are interleaved in dr, i.e. dr[LA_NR*c+r]
  * is the entry of row r in column c, so applying a pivot updates all
@@ -84,7 +92,7 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
         const mat_t * const mat,
         hm_t * const * const pivs,
         const len_t sc,
-        const uint32_t fc
+        const uint64_t fc
         )
 {
     len_t i, j, r;
@@ -269,7 +277,7 @@ static void LA_FF(reduce_dense_rows_by_dense_block)(
         const len_t nb,
         LA_CF_T * const * const dm,
         const len_t ncr,
-        const uint32_t fc,
+        const uint64_t fc,
         int64_t *dr
         )
 {
@@ -395,6 +403,8 @@ static void LA_FF(reduce_dense_rows_by_dense_block)(
     }
 }
 
+#endif /* LA_WIDE */
+
 /* Interreduces the dense rows dm[0],...,dm[ncr-1] (NULL if there is no
  * pivot in this column), each row starts at its pivot column and has a
  * leading coefficient of 1. The pivots are handled in blocks from the
@@ -405,7 +415,7 @@ static void LA_FF(reduce_dense_rows_by_dense_block)(
 static LA_CF_T **LA_FF(interreduce_dense_matrix)(
         LA_CF_T **dm,
         const len_t ncr,
-        const uint32_t fc,
+        const uint64_t fc,
         const int32_t nthrds
         )
 {
@@ -461,7 +471,7 @@ static int LA_FF(interreduce_new_pivots_dense)(
         hm_t **pivs,
         const len_t ncl,
         const len_t ncr,
-        const uint32_t fc,
+        const uint64_t fc,
         const int32_t nthrds,
         len_t *npivsp
         )
@@ -567,7 +577,7 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
     /* unkown pivot rows we have to reduce with the known pivots first */
     hm_t **upivs  = mat->tr;
 
-    const uint32_t fc   = st->fc;
+    const uint64_t fc   = st->fc;
     /* Why do we generate the random linear combinations so strangely?
      * We can have fc > 2^31, so shifting the result of random multiplier
      * and coefficient may lead to elements of size > 2^63 which cannot
@@ -580,11 +590,15 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
      * Note: We cannot apply this trick to the reduction itself, there we
      * cannot restrict the multiplier to be < 2^31, so we have to handle the
      * fc > 2^31 case differently. */
+#ifdef LA_WIDE
+    const ff64_t f  = ff64_init(fc);
+#else
     uint64_t tmp  = (uint64_t)fc * fc;
     while (tmp > pow(2,63)) {
       tmp -=  (uint64_t)(fc/2) * fc;
     }
     const int64_t mod2  = tmp;
+#endif
     /* compute rows per block */
     const len_t nb  = (len_t)(floor(sqrt(nrl/3)))+1;
     const len_t rem = (nrl % nb == 0) ? 0 : 1;
@@ -632,6 +646,11 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
                     const len_t len = npiv[LENGTH];
                     const hm_t * const ds = npiv + OFFSET;
                     sc    = sc < ds[0] ? sc : ds[0];
+#ifdef LA_WIDE
+                    (void)os;
+                    (void)l;
+                    ff64_submul_sparse(drl, ds, cfs, len, (uint64_t)mull[k], &f);
+#else
                     for (l = 0; l < os; ++l) {
                         drl[ds[l]]  -=  mull[k] * cfs[l];
                         drl[ds[l]]  +=  (drl[ds[l]] >> 63) & mod2;
@@ -646,6 +665,7 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
                         drl[ds[l+3]]  -=  mull[k] * cfs[l+3];
                         drl[ds[l+3]]  +=  (drl[ds[l+3]] >> 63) & mod2;
                     }
+#endif
                 }
                 k     = 0;
                 cfs   = NULL;
@@ -773,9 +793,13 @@ static hm_t *LA_FF(reduce_sparse_row_by_pivots)(
         )
 {
     len_t j, nh = 0, k = 0;
+#ifdef LA_WIDE
+    const ff64_t f      = ff64_init(st->fc);
+#else
     const int64_t mod   = (int64_t)st->fc;
     const int64_t mod2  = (int64_t)st->fc * st->fc;
     const uint64_t bm   = barrett_multiplier(st->fc);
+#endif
     const len_t ncl     = mat->ncl;
     LA_CF_T * const * const mcf = mat->LA_CF;
     rba_t *rba = tr > 0 ? mat->rba[tmp_pos] : NULL;
@@ -791,7 +815,12 @@ static hm_t *LA_FF(reduce_sparse_row_by_pivots)(
         if (dr[c] == 0) {
             continue;
         }
+#ifdef LA_WIDE
+        const int64_t mul = dr[c];
+        const uint64_t mm = ff64_mont((uint64_t)mul, &f);
+#else
         const int64_t mul = (int64_t)barrett_reduce((uint64_t)dr[c], mod, bm);
+#endif
         if (mul == 0) {
             dr[c] = 0;
             continue;
@@ -815,8 +844,12 @@ static hm_t *LA_FF(reduce_sparse_row_by_pivots)(
                 mark[d] = 1;
                 push_column_to_heap(heap, &nh, d);
             }
+#ifdef LA_WIDE
+            dr[d] = ff64_submul(dr[d], pcfs[j], mm, &f);
+#else
             dr[d] -= mul * pcfs[j];
             dr[d] += (dr[d] >> 63) & mod2;
+#endif
         }
     }
     if (k == 0) {
@@ -1726,7 +1759,7 @@ static LA_CF_T **LA_FF(probabilistic_dense_linear_algebra)(
 {
     len_t i, j, k, l, m, npivs;
 
-    const uint32_t fc = st->fc;
+    const uint64_t fc = st->fc;
     const len_t nrows = mat->np; /* we need the pivots until now here */
     const len_t ncols = mat->nc;
     const len_t ncr   = mat->ncr;
@@ -1778,11 +1811,15 @@ static LA_CF_T **LA_FF(probabilistic_dense_linear_algebra)(
      * Note: We cannot apply this trick to the reduction itself, there we
      * cannot restrict the multiplier to be < 2^31, so we have to handle the
      * fc > 2^31 case differently. */
+#ifdef LA_WIDE
+    const ff64_t f  = ff64_init(fc);
+#else
     uint64_t tmp  = (uint64_t)fc * fc;
     while (tmp > pow(2,63)) {
       tmp -=  (uint64_t)(fc/2) * fc;
     }
     const int64_t mod2  = tmp;
+#endif
 
     /* compute rows per block */
     const len_t nb  = (len_t)(floor(sqrt(ntr/3)))+1;
@@ -1811,7 +1848,9 @@ static LA_CF_T **LA_FF(probabilistic_dense_linear_algebra)(
             len_t bctr  = 0;
             while (bctr < nrbl) {
                 npc = 0;
+#ifndef LA_WIDE
                 os  = ncr % UNROLL;
+#endif
 
                 /* fill random value array */
                 for (j = 0; j < nrbl; ++j) {
@@ -1825,6 +1864,11 @@ static LA_CF_T **LA_FF(probabilistic_dense_linear_algebra)(
 
                 for (k = 0, m = i*rpb; m < nbl; ++k, ++m) {
                     tmp  = tbr[m];
+#ifdef LA_WIDE
+                    (void)os;
+                    (void)l;
+                    ff64_submul_dense(drl, tmp, ncr, (uint64_t)mull[k], &f);
+#else
                     for (l = 0, j = npc; l < os; ++l, ++j) {
                         drl[j]  -=  mull[k] * tmp[l];
                         drl[j]  +=  (drl[j] >> 63) & mod2;
@@ -1839,6 +1883,7 @@ static LA_CF_T **LA_FF(probabilistic_dense_linear_algebra)(
                         drl[j+3]  -=  mull[k] * tmp[l+3];
                         drl[j+3]  +=  (drl[j+3] >> 63) & mod2;
                     }
+#endif
                 }
                 k   = 0;
                 npc = 0;
@@ -1918,8 +1963,12 @@ static LA_CF_T **LA_FF(probabilistic_sparse_dense_echelon_form)(
     /* rows already representing new pivots */
     LA_CF_T **nps  = (LA_CF_T **)calloc((uint64_t)ncr, sizeof(LA_CF_T *));
 
-    const uint32_t fc   = st->fc;
+    const uint64_t fc   = st->fc;
+#ifdef LA_WIDE
+    const ff64_t f      = ff64_init(fc);
+#else
     const int64_t mod2  = (int64_t)fc * fc;
+#endif
 
     /* compute rows per block */
     const len_t nb  = (len_t)(floor(sqrt(nrl/3)))+1;
@@ -1964,6 +2013,11 @@ static LA_CF_T **LA_FF(probabilistic_sparse_dense_echelon_form)(
                     const len_t os  = npiv[PRELOOP];
                     const len_t len = npiv[LENGTH];
                     const hm_t * const ds = npiv + OFFSET;
+#ifdef LA_WIDE
+                    (void)os;
+                    (void)l;
+                    ff64_submul_sparse(drl, ds, tmp, len, (uint64_t)mull[k], &f);
+#else
                     for (l = 0; l < os; ++l) {
                         drl[ds[l]]  -=  mull[k] * tmp[l];
                         drl[ds[l]]  +=  (drl[ds[l]] >> 63) & mod2;
@@ -1978,6 +2032,7 @@ static LA_CF_T **LA_FF(probabilistic_sparse_dense_echelon_form)(
                         drl[ds[l+3]]  -=  mull[k] * tmp[l+3];
                         drl[ds[l+3]]  +=  (drl[ds[l+3]] >> 63) & mod2;
                     }
+#endif
                 }
                 k   = 0;
                 npc = 0;
@@ -2492,3 +2547,4 @@ static void LA_FF(interreduce_matrix_rows)(
 #undef LA_CF
 #undef LA_FF
 #undef LA_RANDOM_MULTIPLIER
+#undef LA_WIDE

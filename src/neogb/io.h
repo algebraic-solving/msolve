@@ -27,7 +27,7 @@ void set_function_pointers(
         const md_t *st
         );
 
-void set_ff_bits(md_t *st, int32_t fc);
+void set_ff_bits(md_t *st, uint64_t fc);
 
 int32_t check_ff_bits(int32_t fc);
 
@@ -45,6 +45,12 @@ void sort_terms_ff_16(
 
 void sort_terms_ff_32(
     cf32_t **cfp,
+    hm_t **hmp,
+    ht_t *ht
+    );
+
+void sort_terms_ff_64(
+    cf64_t **cfp,
     hm_t **hmp,
     ht_t *ht
     );
@@ -72,7 +78,7 @@ void return_zero(
         int32_t **bexp,
         void **bcf,
         const int32_t nr_vars,
-        const uint32_t field_char,
+        const uint64_t field_char,
         void *(*mallocp) (size_t)
         );
 
@@ -82,7 +88,7 @@ int32_t check_and_set_meta_data(
         const int32_t *exps,
         const void *cfs,
         const int *invalid_gens,
-        const uint32_t field_char,
+        const uint64_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
         const int32_t nr_vars,
@@ -106,7 +112,7 @@ int32_t check_and_set_meta_data_trace(
         const int32_t *exps,
         const void *cfs,
         const int *invalid_gens,
-        const uint32_t field_char,
+        const uint64_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
         const int32_t nr_vars,
@@ -165,6 +171,29 @@ int validate_input_data(
         const void *cfs,
         const int32_t *lens,
         uint32_t *field_charp,
+        int32_t *mon_orderp,
+        int32_t *elim_block_lenp,
+        int32_t *nr_varsp,
+        int32_t *nr_gensp,
+        int32_t *nr_nfp,
+        int32_t *ht_sizep,
+        int32_t *nr_threadsp,
+        int32_t *max_nr_pairsp,
+        int32_t *reset_htp,
+        int32_t *la_optionp,
+        int32_t *use_signaturesp,
+        int32_t *reduce_gbp,
+        int32_t *truncate_liftingp,
+        int32_t *info_levelp
+        );
+
+/* like validate_input_data(), but also for primes >= 2^32: their
+ * coefficients are given as int64_t */
+int validate_input_data_64(
+        int **invalid_gensp,
+        const void *cfs,
+        const int32_t *lens,
+        uint64_t *field_charp,
         int32_t *mon_orderp,
         int32_t *elim_block_lenp,
         int32_t *nr_varsp,

@@ -973,7 +973,13 @@ static inline void normalize_nmod_param(param_t *nmod_param) {
 /* modular images of the parametrization, stored for each prime in one
    contiguous block (elim, then the coordinates), so that CRT is only
    applied when a rational reconstruction is attempted; blocks are grouped
-   by chunks of PARAM_IMAGES_CHUNK primes, which are never moved */
+   by chunks of PARAM_IMAGES_CHUNK primes, which are never moved
+
+   TODO: the same scheme (residues stored for each prime, multi-CRT of one
+   coefficient at a time right before its rational reconstruction) is used
+   by gb_modpoly_t in lifting-gb.c and by trace_det->modular_matrices in
+   mulmat_reconstruct (lifting.c), with different storage policies; the
+   three should share one helper, e.g. in src/crt/ */
 #define PARAM_IMAGES_CHUNK 64
 typedef struct{
   uint32_t **chunks;  /* images, prime-major */

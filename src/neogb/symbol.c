@@ -812,38 +812,168 @@ static int basis_supports_agree_with_trace(
     return 1;
 }
 
+/* The matrices stored in the trace are compressed: all row entries are
+ * written as varints, column indices as zigzag encoded differences to
+ * the previous column index of the row. In the header LENGTH comes
+ * first, so the length of a row can be read without decoding it. */
+static inline uint8_t *write_varint(
+        uint8_t *p,
+        uint32_t v
+        )
+{
+    while (v >= 0x80) {
+        *p++ = (uint8_t)(v | 0x80);
+        v >>= 7;
+    }
+    *p++ = (uint8_t)v;
+    return p;
+}
+
+static inline const uint8_t *read_varint(
+        const uint8_t *p,
+        uint32_t *v
+        )
+{
+    uint32_t r = *p & 0x7f;
+    int s      = 7;
+    while (*p++ & 0x80) {
+        r |= (uint32_t)(*p & 0x7f) << s;
+        s += 7;
+    }
+    *v = r;
+    return p;
+}
+
+static inline unsigned long varint_size(
+        uint32_t v
+        )
+{
+    unsigned long n = 1;
+    while (v >= 0x80) {
+        v >>= 7;
+        ++n;
+    }
+    return n;
+}
+
+/* column indices are smaller than 2^31, so their differences fit into
+ * an int32_t */
+static inline uint32_t zigzag(
+        const hm_t c,
+        const hm_t prev
+        )
+{
+    const int32_t d = (int32_t)(c - prev);
+    return ((uint32_t)d << 1) ^ (uint32_t)(d >> 31);
+}
+
+static unsigned long compressed_row_size(
+        const hm_t * const row
+        )
+{
+    len_t j;
+    hm_t prev        = 0;
+    const len_t len  = row[LENGTH]+OFFSET;
+    unsigned long sz = 0;
+
+    for (j = 0; j < OFFSET; ++j) {
+        sz += varint_size(row[j]);
+    }
+    for (j = OFFSET; j < len; ++j) {
+        sz    += varint_size(zigzag(row[j], prev));
+        prev  =  row[j];
+    }
+    return sz;
+}
+
+static uint8_t *compress_row(
+        uint8_t *p,
+        const hm_t * const row
+        )
+{
+    len_t j;
+    hm_t prev       = 0;
+    const len_t len = row[LENGTH]+OFFSET;
+
+    p = write_varint(p, row[LENGTH]);
+    for (j = 0; j < LENGTH; ++j) {
+        p = write_varint(p, row[j]);
+    }
+    for (j = OFFSET; j < len; ++j) {
+        p     = write_varint(p, zigzag(row[j], prev));
+        prev  = row[j];
+    }
+    return p;
+}
+
+static void decompress_row(
+        hm_t *row,
+        const uint8_t *p
+        )
+{
+    len_t j;
+    uint32_t v;
+    hm_t prev = 0;
+
+    p = read_varint(p, &v);
+    row[LENGTH] = v;
+    for (j = 0; j < LENGTH; ++j) {
+        p = read_varint(p, row+j);
+    }
+    const len_t len = row[LENGTH]+OFFSET;
+    for (j = OFFSET; j < len; ++j) {
+        /* most differences fit into one byte */
+        v = *p;
+        if (v < 0x80) {
+            ++p;
+        } else {
+            p = read_varint(p, &v);
+        }
+        prev    += (v >> 1) ^ (0 - (v & 1));
+        row[j]  =  prev;
+    }
+}
+
 /* generates the matrix of the current round from the matrix stored
  * in the trace */
 static void matrix_from_trace_cache(
         mat_t *mat,
         const tc_t * const tc,
-        const td_t * const td
+        const td_t * const td,
+        const int32_t nthrds
         )
 {
     len_t i;
+    uint32_t len;
     unsigned long sz = 0;
 
-    mat->rr       = (hm_t **)malloc((unsigned long)tc->nru * sizeof(hm_t *));
-    mat->tr       = (hm_t **)malloc((unsigned long)tc->nrl * sizeof(hm_t *));
-    mat->rba      = (rba_t **)malloc((unsigned long)tc->nrl * sizeof(rba_t *));
+    const len_t nru = tc->nru;
+    const len_t nr  = tc->nru + tc->nrl;
+
+    mat->rr   = (hm_t **)malloc((unsigned long)nru * sizeof(hm_t *));
+    mat->tr   = (hm_t **)malloc((unsigned long)tc->nrl * sizeof(hm_t *));
+    mat->rba  = (rba_t **)malloc((unsigned long)tc->nrl * sizeof(rba_t *));
     /* the reducer rows are handed over to the linear algebra in one block */
-    for (i = 0; i < tc->nru; ++i) {
-        sz += tc->rows[sz+LENGTH]+OFFSET;
+    for (i = 0; i < nru; ++i) {
+        read_varint(tc->rows + tc->ro[i], &len);
+        sz += len+OFFSET;
     }
     mat->rrb  = (hm_t *)malloc(sz * sizeof(hm_t));
-    memcpy(mat->rrb, tc->rows, sz * sizeof(hm_t));
     sz = 0;
-    for (i = 0; i < tc->nru; ++i) {
+    for (i = 0; i < nru; ++i) {
+        read_varint(tc->rows + tc->ro[i], &len);
         mat->rr[i] = mat->rrb + sz;
-        sz += mat->rrb[sz+LENGTH]+OFFSET;
+        sz += len+OFFSET;
     }
-    const hm_t *r = tc->rows + sz;
     for (i = 0; i < tc->nrl; ++i) {
-        const unsigned long rsz = (unsigned long)(r[LENGTH]+OFFSET) * sizeof(hm_t);
-        mat->tr[i] = (hm_t *)malloc(rsz);
-        memcpy(mat->tr[i], r, rsz);
-        r += r[LENGTH]+OFFSET;
+        read_varint(tc->rows + tc->ro[nru+i], &len);
+        mat->tr[i]  = (hm_t *)malloc((unsigned long)(len+OFFSET) * sizeof(hm_t));
         mat->rba[i] = td->rba[i];
+    }
+#pragma omp parallel for num_threads(nthrds) private(i) schedule(dynamic, 64)
+    for (i = 0; i < nr; ++i) {
+        decompress_row(i < nru ? mat->rr[i] : mat->tr[i-nru],
+                tc->rows + tc->ro[i]);
     }
     mat->nru  = tc->nru;
     mat->nrl  = tc->nrl;
@@ -864,26 +994,22 @@ static void store_matrix_in_trace_cache(
         )
 {
     len_t i;
-    unsigned long sz = 0;
 
-    for (i = 0; i < mat->nru; ++i) {
-        sz += mat->rr[i][LENGTH]+OFFSET;
-    }
-    for (i = 0; i < mat->nrl; ++i) {
-        sz += mat->tr[i][LENGTH]+OFFSET;
-    }
+    const len_t nru = mat->nru;
+    const len_t nr  = mat->nru + mat->nrl;
+
     tc_t *tc  = (tc_t *)malloc(sizeof(tc_t));
-    tc->rows  = (hm_t *)malloc(sz * sizeof(hm_t));
-    hm_t *r   = tc->rows;
-    for (i = 0; i < mat->nru; ++i) {
-        memcpy(r, mat->rr[i],
-                (unsigned long)(mat->rr[i][LENGTH]+OFFSET) * sizeof(hm_t));
-        r += mat->rr[i][LENGTH]+OFFSET;
+    tc->ro    = (unsigned long *)malloc((unsigned long)(nr+1)
+            * sizeof(unsigned long));
+    tc->ro[0] = 0;
+    for (i = 0; i < nr; ++i) {
+        tc->ro[i+1] = tc->ro[i] + compressed_row_size(
+                i < nru ? mat->rr[i] : mat->tr[i-nru]);
     }
-    for (i = 0; i < mat->nrl; ++i) {
-        memcpy(r, mat->tr[i],
-                (unsigned long)(mat->tr[i][LENGTH]+OFFSET) * sizeof(hm_t));
-        r += mat->tr[i][LENGTH]+OFFSET;
+    tc->rows  = (uint8_t *)malloc(tc->ro[nr]);
+    for (i = 0; i < nr; ++i) {
+        compress_row(tc->rows + tc->ro[i],
+                i < nru ? mat->rr[i] : mat->tr[i-nru]);
     }
     const len_t evl = sht->evl;
     tc->ev  = (exp_t *)malloc((unsigned long)mat->ncr * evl * sizeof(exp_t));
@@ -898,6 +1024,7 @@ static void store_matrix_in_trace_cache(
     if (!__sync_bool_compare_and_swap(&(tr->tc[idx]), NULL, tc)) {
         /* another prime was faster */
         free(tc->rows);
+        free(tc->ro);
         free(tc->ev);
         free(tc);
     }
@@ -938,7 +1065,7 @@ static void generate_matrix_from_trace(
             const tc_t * const tc = __atomic_load_n(tr->tc + idx,
                     __ATOMIC_ACQUIRE);
             if (tc != NULL) {
-                matrix_from_trace_cache(mat, tc, &td);
+                matrix_from_trace_cache(mat, tc, &td, md->nthrds);
                 md->tc_state = 1;
                 md->tracer_ctime += cputime() - ct;
                 md->tracer_rtime += realtime() - rt;

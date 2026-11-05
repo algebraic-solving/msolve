@@ -308,8 +308,12 @@ struct td_t
 typedef struct tc_t tc_t;
 struct tc_t
 {
-    hm_t *rows;   /* rows (header and column indices), first the nru
-                   * reducer rows, then the nrl to be reduced rows */
+    uint8_t *rows;      /* compressed rows, first the nru reducer rows,
+                         * then the nrl to be reduced rows: the header
+                         * entries (LENGTH first) as varints, then the
+                         * differences of consecutive column indices as
+                         * zigzag encoded varints */
+    unsigned long *ro;  /* start of each row in rows */
     exp_t *ev;    /* exponent vectors of the columns ncl,...,nc-1 */
     len_t nru;    /* number of reducer rows */
     len_t nrl;    /* number of to be reduced rows */

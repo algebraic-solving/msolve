@@ -73,6 +73,7 @@ void free_trace_cache(
         for (i = 0; i < tr->ltd; ++i) {
             if (tr->tc[i] != NULL) {
                 free(tr->tc[i]->rows);
+                free(tr->tc[i]->ro);
                 free(tr->tc[i]->ev);
                 free(tr->tc[i]);
             }

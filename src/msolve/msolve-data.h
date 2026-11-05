@@ -268,6 +268,31 @@ typedef struct{
   uint64_t ncoeffs;   // sum of the g_ntail
 } fglm_lex_staircase_t;
 
+/* Trace of FGLM over Q, recorded on a first prime and replayed on the next
+   ones.
+   Matrices: structure of the border; lm_of[r] is the index in the Gb of the
+   element whose lm is the border monomial r, the other border monomials
+   (exps_nf) are reduced by core_nf into the rows row_nf.
+   FGLM: staircase and leading monomials, each described by its parent:
+   s_t = x_{s_var[t]} s_{s_parent[t]}, with s_parent[0] = UINT32_MAX (s_0 = 1),
+   and g_j = x_{g_var[j]} s_{g_parent[j]} */
+typedef struct{
+  int32_t nvars;
+  szmat_t D;
+  szmat_t nnfs;       // number of border monomials
+  szmat_t *rowsel;    // nvars * D
+  char *is_lm;        // nnfs
+  long *lm_of;        // nnfs
+  int32_t nnf;        // number of normal forms computed by core_nf
+  int32_t *exps_nf;   // nnf * nvars
+  szmat_t *row_nf;    // nnf
+  fglm_lex_staircase_t lex;
+  szmat_t *s_parent;  // D
+  int32_t *s_var;     // D
+  szmat_t *g_parent;  // lex.ngens
+  int32_t *g_var;     // lex.ngens
+} fglm_trace_t;
+
 #ifndef ALIGNED32
 #define ALIGNED32 __attribute__((aligned(32)))
 #endif

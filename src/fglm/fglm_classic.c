@@ -408,8 +408,26 @@ static int fglmc_push_relation(fglmc_lu_t *E, const mp_limb_t *al,
     return 1;
 }
 
+/* Parent of a new element m x_n^k of the staircase or of a new lm (trace
+ * over Q): x_var times the parent of the prefix for k = 0, x_n times the
+ * previous element of the chain (s_{t-1}) otherwise */
+static inline void fglmc_set_parent(szmat_t *parent, int32_t *var,
+                                    const fglmc_cand_t *u, const uint64_t k,
+                                    const szmat_t t, const int32_t xn){
+    if(k == 0){
+        *parent = u->parent;
+        *var = u->var;
+    } else {
+        *parent = t - 1;
+        *var = xn;
+    }
+}
+
+/* If tr != NULL, the parents of the elements of the staircase and of the
+ * leading monomials are recorded in tr (trace over Q). */
 static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
-                              fglm_lex_staircase_t *lex, CF_t **coeffs_out){
+                              fglm_lex_staircase_t *lex, fglm_trace_t *tr,
+                              CF_t **coeffs_out){
   if(ord != FGLM_ORDER_LEX) return 0;
   const szmat_t D = Mt->ncols;
   const int32_t nv = Mt->nvars;
@@ -434,6 +452,15 @@ static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
   lex->g_lm     = malloc(maxc * nv * sizeof(int32_t));
   lex->g_ntail  = malloc(maxc * sizeof(szmat_t));
   lex->ngens = 0; lex->ncoeffs = 0;
+  if(tr != NULL){
+      tr->s_parent = malloc((D + 1) * sizeof(szmat_t));
+      tr->s_var    = malloc((D + 1) * sizeof(int32_t));
+      tr->g_parent = malloc(maxc * sizeof(szmat_t));
+      tr->g_var    = malloc(maxc * sizeof(int32_t));
+      if(!tr->s_parent || !tr->s_var || !tr->g_parent || !tr->g_var){
+          ok = 0;
+      }
+  }
   if(!ok || !Vs || !S || !pool || !acc || !wl || !al || !coeffs || !H.a
      || !lex->g_lm || !lex->g_ntail){
       ok = 0;
@@ -505,6 +532,10 @@ static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
                 ok = 0;
                 break;
             }
+            if(tr != NULL){
+                fglmc_set_parent(tr->g_parent + lex->ngens,
+                                 tr->g_var + lex->ngens, &u, k, t, xn);
+            }
             fglmc_new_head(lex, u.e, (int32_t)k, nv, t);
             chain_done = 1;
         } else {
@@ -513,6 +544,9 @@ static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
               break;
           }
           fglmc_lu_insert(&E, wl, al);
+          if(tr != NULL){
+              fglmc_set_parent(tr->s_parent + t, tr->s_var + t, &u, k, t, xn);
+          }
           fglmc_new_stair(u.e, (int32_t)k, nv, S, &t);
           k++;
           if(k >= kmax) {
@@ -561,6 +595,10 @@ static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
                   break;
               }
               fglmc_lu_insert(&E, wl, al);
+              if(tr != NULL){
+                  fglmc_set_parent(tr->s_parent + t, tr->s_var + t, &u,
+                                   k + i, t, xn);
+              }
               fglmc_new_stair(u.e, (int32_t)(k + i), nv, S, &t);
           } else {
               if(!zero){
@@ -571,6 +609,10 @@ static int fglm_classic_learn(const sp_multimatfglm_t *Mt, const int ord,
                   ok = 0;
                   break;
                   }
+              if(tr != NULL){
+                  fglmc_set_parent(tr->g_parent + lex->ngens,
+                                   tr->g_var + lex->ngens, &u, k + j0, t, xn);
+              }
               fglmc_new_head(lex, u.e, (int32_t)(k + j0), nv, t);
           }
       }
@@ -629,6 +671,76 @@ done:
 }
 
 
+/* Replays the trace on a new prime.
+ * V (D x D): row k = NF(s_k), computed from the row of its parent;
+ * W (ngens x D): row j = NF(g_j);
+ * X such that X V = -W gives g_j = lm + sum_k X[j][k] s_k: the transposed
+ * system V^T X^T = -W^T is solved. The trace is valid modulo p iff V is
+ * invertible and X[j][k] = 0 for k >= g_ntail[j].
+ * coeffs (tr->lex.ncoeffs) receives, polynomial after polynomial, the
+ * coefficients of s_0, ..., s_{g_ntail[j]-1}.
+ * Returns 0 on success, 1 if V is singular, 2 if the support differs. */
+static int fglm_classic_apply(CF_t *coeffs, const sp_multimatfglm_t *Mt,
+                              const fglm_trace_t *tr){
+  const szmat_t D = Mt->ncols;
+  const CF_t p = Mt->charac;
+  const fglm_lex_staircase_t *lex = &tr->lex;
+  const int32_t ng = lex->ngens;
+  int ret = 0;
+  CF_t *Vs = malloc((uint64_t)D * D * sizeof(CF_t));
+  CF_t *w  = malloc(D * sizeof(CF_t));
+  uint64_t *acc = malloc(D * sizeof(uint64_t));
+  nmod_mat_t Vt, Bt, Xt;
+  nmod_mat_init(Vt, D, D, p);
+  nmod_mat_init(Bt, D, ng, p);
+  nmod_mat_init(Xt, D, ng, p);
+
+  for(szmat_t k = 0; k < D; k++){
+      CF_t *row = Vs + (uint64_t)k * D;
+      if(tr->s_parent[k] == UINT32_MAX){
+          memset(row, 0, D * sizeof(CF_t));
+          row[Mt->one] = 1;
+      } else {
+          fglmc_mulvec(row, Mt, tr->s_var[k],
+                       Vs + (uint64_t)tr->s_parent[k] * D, acc);
+      }
+      for(szmat_t l = 0; l < D; l++){
+          nmod_mat_entry(Vt, l, k) = row[l];
+      }
+  }
+  for(int32_t j = 0; j < ng; j++){
+      fglmc_mulvec(w, Mt, tr->g_var[j], Vs + (uint64_t)tr->g_parent[j] * D,
+                   acc);
+      for(szmat_t l = 0; l < D; l++){
+          nmod_mat_entry(Bt, l, j) = w[l] ? p - w[l] : 0;
+      }
+  }
+  if(!nmod_mat_solve(Xt, Vt, Bt)){
+      ret = 1;
+      goto done;
+  }
+  uint64_t pos = 0;
+  for(int32_t j = 0; j < ng && !ret; j++){
+      for(szmat_t k = lex->g_ntail[j]; k < D; k++){
+          if(nmod_mat_entry(Xt, k, j)){
+              ret = 2;
+              break;
+          }
+      }
+      for(szmat_t k = 0; k < lex->g_ntail[j]; k++){
+          coeffs[pos++] = (CF_t)nmod_mat_entry(Xt, k, j);
+      }
+  }
+done:
+  nmod_mat_clear(Vt);
+  nmod_mat_clear(Bt);
+  nmod_mat_clear(Xt);
+  free(Vs);
+  free(w);
+  free(acc);
+  return ret;
+}
+
 /* Reduced lex Gb (sparse form) from the staircase and the dense coefficients
  * given by fglm_classic_learn */
 static fglm_gb_t *fglm_gb_from_staircase(const fglm_lex_staircase_t *lex,
@@ -674,7 +786,7 @@ static fglm_gb_t *fglm_classic(const sp_multimatfglm_t *Mt, const int ord){
   fglm_gb_t *G = NULL;
   CF_t *coeffs = NULL;
   const int old_thr = fglmc_flint_threads_push(Mt->nthreads);
-  if(fglm_classic_learn(Mt, ord, &lex, &coeffs)){
+  if(fglm_classic_learn(Mt, ord, &lex, NULL, &coeffs)){
       G = fglm_gb_from_staircase(&lex, coeffs, Mt->charac);
   }
   free(coeffs);

@@ -4107,7 +4107,8 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
                                                                 md_t *st,
                                                                 const int nv,
                                                                 const long fc,
-                                                                const int info_level){
+                                                                const int info_level,
+                                                                fglm_trace_t *tr){
   double rt0 = realtime();
   const szmat_t D = (szmat_t)dquot;
   const long nlm = bs->lml;
@@ -4185,9 +4186,24 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
   mm_fill_dense(M, lm_of, nnf, exps_nf, row_nf, lmb, bs, ht, st, nv, fc,
                 info_level);
 
-  free(lm_of);
-  free(exps_nf);
-  free(row_nf);
+  if(tr != NULL){
+    /* structure of the border, kept for the next primes (over Q) */
+    tr->nvars = nv;
+    tr->D = D;
+    tr->nnfs = M->nnfs;
+    tr->rowsel = malloc((uint64_t)nv * D * sizeof(szmat_t));
+    memcpy(tr->rowsel, M->rowsel, (uint64_t)nv * D * sizeof(szmat_t));
+    tr->is_lm = malloc(nb + 1);
+    memcpy(tr->is_lm, M->is_lm, nb + 1);
+    tr->lm_of = lm_of;
+    tr->nnf = nnf;
+    tr->exps_nf = exps_nf;
+    tr->row_nf = row_nf;
+  } else {
+    free(lm_of);
+    free(exps_nf);
+    free(row_nf);
+  }
 
   if(info_level){
     fprintf(VERBSTREAM,
@@ -4195,5 +4211,32 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
             "(%u leading monomials, %u normal forms), %.2f sec\n",
             M->ncols, M->nnfs, M->nlms, M->nnfs - M->nlms, realtime() - rt0);
   }
+  return M;
+}
+
+/* Multiplication matrices on a new prime from the trace: only the
+ * coefficients are computed. The Gb bs must have the same leading monomials
+ * as on the first prime (checked by the caller). */
+static sp_multimatfglm_t *build_multiplication_matrices_from_trace(const fglm_trace_t *tr,
+                                                                   int32_t *lmb,
+                                                                   bs_t *bs,
+                                                                   ht_t *ht,
+                                                                   md_t *st,
+                                                                   const long fc){
+  const int nv = tr->nvars;
+  const szmat_t D = tr->D;
+  sp_multimatfglm_t *M = calloc(1, sizeof(sp_multimatfglm_t));
+  M->charac = fc;
+  M->nvars = nv;
+  M->ncols = D;
+  M->nnfs = tr->nnfs;
+  M->nlms = tr->nnfs - tr->nnf;
+  M->one = 0;
+  M->rowsel = malloc((uint64_t)nv * D * sizeof(szmat_t));
+  memcpy(M->rowsel, tr->rowsel, (uint64_t)nv * D * sizeof(szmat_t));
+  M->is_lm = malloc(tr->nnfs + 1);
+  memcpy(M->is_lm, tr->is_lm, tr->nnfs + 1);
+  mm_fill_dense(M, tr->lm_of, tr->nnf, tr->exps_nf, tr->row_nf, lmb, bs, ht,
+                st, nv, fc, 0);
   return M;
 }

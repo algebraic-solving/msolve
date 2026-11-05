@@ -30,6 +30,10 @@ trace_t *initialize_trace(
         );
 
 
+void free_trace_cache(
+        trace_t *tr
+        );
+
 void free_trace(
         trace_t **trp
         );

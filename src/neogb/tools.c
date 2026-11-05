@@ -129,6 +129,20 @@ static hm_t *copy_rows_to_block(
     return block;
 }
 
+/* returns one block holding all reducer rows of mat, afterwards mat->rr
+ * points to the rows in this block */
+static hm_t *reducer_rows_to_block(
+        mat_t *mat
+        )
+{
+    hm_t *block = mat->rrb;
+    if (block != NULL) {
+        mat->rrb = NULL;
+        return block;
+    }
+    return copy_rows_to_block(mat->rr, mat->nru);
+}
+
 static void construct_trace(
         trace_t *trace,
         mat_t *mat

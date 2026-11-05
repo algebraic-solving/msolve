@@ -63,6 +63,33 @@ trace_t *initialize_trace(
     return tr;
 }
 
+/* frees the matrices stored in the trace when applying it */
+void free_trace_cache(
+        trace_t *tr
+        )
+{
+    len_t i;
+    if (tr->tc != NULL) {
+        for (i = 0; i < tr->ltd; ++i) {
+            if (tr->tc[i] != NULL) {
+                free(tr->tc[i]->rows);
+                free(tr->tc[i]->ev);
+                free(tr->tc[i]);
+            }
+        }
+        free(tr->tc);
+        tr->tc  = NULL;
+    }
+    if (tr->bsp != NULL) {
+        for (i = 0; i < tr->bsz; ++i) {
+            free(tr->bsp[i]);
+        }
+        free(tr->bsp);
+        tr->bsp = NULL;
+    }
+    tr->bsz = 0;
+}
+
 void free_trace(
         trace_t **trp
         )
@@ -85,6 +112,7 @@ void free_trace(
             free(tr->td[i].rba);
             free(tr->td[i].nlms);
         }
+        free_trace_cache(tr);
         free(tr->lm);
         free(tr->lmh);
         free(tr->lmps);

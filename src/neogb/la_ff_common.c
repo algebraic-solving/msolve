@@ -64,7 +64,7 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
     /* known pivot rows in one block in the order of their lead terms */
     hm_t *kpivs   = NULL;
     if (mat->rr != NULL) {
-        kpivs = copy_rows_to_block(mat->rr, mat->nru);
+        kpivs = reducer_rows_to_block(mat);
         memcpy(pivs, mat->rr, (uint64_t)mat->nru * sizeof(hm_t *));
     }
     j = nrl;
@@ -386,7 +386,7 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
      * lead terms, the reduction applies them in this order */
     hm_t *kpivs = NULL;
     if (st->in_final_reduction_step == 0) {
-        kpivs = copy_rows_to_block(mat->rr, mat->nru);
+        kpivs = reducer_rows_to_block(mat);
         memcpy(pivs, mat->rr, (uint64_t)mat->nru * sizeof(hm_t *));
     }
 
@@ -630,7 +630,7 @@ static void LA_FF(exact_trace_sparse_reduced_echelon_form)(
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((uint64_t)ncols, sizeof(hm_t *));
     /* known pivot rows in one block in the order of their lead terms */
-    hm_t *kpivs   = copy_rows_to_block(mat->rr, mat->nru);
+    hm_t *kpivs   = reducer_rows_to_block(mat);
     memcpy(pivs, mat->rr, (uint64_t)mat->nru * sizeof(hm_t *));
 
     /* unkown pivot rows we have to reduce with the known pivots first */
@@ -763,7 +763,7 @@ static int LA_FF(exact_application_sparse_reduced_echelon_form)(
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((uint64_t)ncols, sizeof(hm_t *));
     /* known pivot rows in one block in the order of their lead terms */
-    hm_t *kpivs   = copy_rows_to_block(mat->rr, mat->nru);
+    hm_t *kpivs   = reducer_rows_to_block(mat);
     memcpy(pivs, mat->rr, (uint64_t)mat->nru * sizeof(hm_t *));
 
     /* unkown pivot rows we have to reduce with the known pivots first */
@@ -909,7 +909,7 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
         ++j;
     }
     /* known pivot rows in one block in the order of their lead terms */
-    hm_t *kpivs   = copy_rows_to_block(mat->rr, mat->nru);
+    hm_t *kpivs   = reducer_rows_to_block(mat);
     memcpy(pivs, mat->rr, (uint64_t)mat->nru * sizeof(hm_t *));
 
     /* unkown pivot rows we have to reduce with the known pivots first */
@@ -1332,7 +1332,7 @@ static LA_CF_T **LA_FF(probabilistic_sparse_dense_echelon_form)(
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((uint64_t)ncols, sizeof(hm_t *));
     /* known pivot rows in one block in the order of their lead terms */
-    hm_t *kpivs   = copy_rows_to_block(mat->rr, mat->nru);
+    hm_t *kpivs   = reducer_rows_to_block(mat);
     memcpy(pivs, mat->rr, (uint64_t)mat->nru * sizeof(hm_t *));
 
     /* unkown pivot rows we have to reduce with the known pivots first */

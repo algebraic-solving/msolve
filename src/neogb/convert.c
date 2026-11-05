@@ -656,8 +656,24 @@ static void convert_sparse_matrix_rows_to_basis_elements(
     check_enlarge_basis(bs, mat->np, st);
 
     hm_t **rows = mat->tr;
-    deg_t pairs_deg = sht->hd[hcm[0]].deg;
-    switch_hcm_data_to_basis_hash_table(hcm, bht, mat, sht);
+    deg_t pairs_deg = 0;
+    if (st->tc_state == 1) {
+        /* the matrix is taken from the trace, the exponent vectors
+         * of its columns are stored there */
+        const tc_t * const tc = st->tr->tc[st->trace_rd];
+        while (bht->esz - bht->eld < mat->ncr) {
+            enlarge_hash_table(bht);
+        }
+        hcm = realloc(hcm, (unsigned long)mat->nc * sizeof(hi_t));
+        for (i = 0; i < mat->ncr; ++i) {
+            hcm[mat->ncl+i] = insert_in_hash_table(
+                    tc->ev + (unsigned long)i * bht->evl, bht);
+        }
+        st->hcm = hcm;
+    } else {
+        pairs_deg = sht->hd[hcm[0]].deg;
+        switch_hcm_data_to_basis_hash_table(hcm, bht, mat, sht);
+    }
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, k)
     for (k = 0; k < np; ++k) {

@@ -723,6 +723,186 @@ static void symbolic_preprocessing(
     md->symbol_rtime  +=  rt1 - rt0;
 }
 
+/* allocates the data for storing the matrices of the trace when the
+ * learning phase is done */
+static void initialize_trace_cache(
+        trace_t *tr,
+        const md_t * const md
+        )
+{
+    len_t i;
+
+    tr->tc  = (tc_t **)calloc((unsigned long)tr->ltd, sizeof(tc_t *));
+    /* the basis grows by the new leading monomials of each round */
+    tr->bsz = md->ngens;
+    for (i = 0; i < tr->ltd; ++i) {
+        tr->bsz += tr->td[i].nlm;
+    }
+    tr->bsp   = (hm_t **)calloc((unsigned long)tr->bsz, sizeof(hm_t *));
+    tr->tceld = 0;
+}
+
+/* prepares the use of the matrices stored in the trace when applying
+ * the trace for a new prime */
+static void start_trace_cache(
+        md_t *md,
+        const bs_t * const bs
+        )
+{
+    trace_t *tr = md->tr;
+
+    md->tc_state  = 0;
+    md->tcoff     = 1;
+    md->tcok      = NULL;
+    if (tr->tc == NULL) {
+        return;
+    }
+    /* the stored data refers to the basis hash table at the start of the
+     * application, it is not valid if this table has changed */
+    hl_t eld = __sync_val_compare_and_swap(&(tr->tceld), 0, bs->ht->eld);
+    if (eld != 0 && eld != bs->ht->eld) {
+        return;
+    }
+    md->tcoff = 0;
+    md->tcok  = (int8_t *)calloc((unsigned long)tr->bsz, sizeof(int8_t));
+}
+
+/* Checks if the basis elements of the rows ri[0], ri[2], ... have the
+ * same supports as the reference supports stored in the trace, missing
+ * reference supports are taken from bs. */
+static int basis_supports_agree_with_trace(
+        md_t *md,
+        const len_t * const ri,
+        const len_t ld,
+        const bs_t * const bs
+        )
+{
+    len_t i;
+
+    trace_t *tr = md->tr;
+    int8_t *ok  = md->tcok;
+
+    for (i = 0; i < ld; i += 2) {
+        const len_t bi = ri[i];
+        if (ok[bi] == 0) {
+            const hm_t * const b = bs->hm[bi];
+            const len_t len      = b[LENGTH];
+            hm_t *r              = tr->bsp[bi];
+            if (r == NULL) {
+                r = (hm_t *)malloc((unsigned long)(len+2) * sizeof(hm_t));
+                r[0] = len;
+                r[1] = b[COEFFS];
+                memcpy(r+2, b+OFFSET, (unsigned long)len * sizeof(hm_t));
+                if (__sync_bool_compare_and_swap(&(tr->bsp[bi]), NULL, r)) {
+                    ok[bi] = 1;
+                    continue;
+                }
+                /* another prime was faster */
+                free(r);
+                r = tr->bsp[bi];
+            }
+            ok[bi] = (r[0] == len && r[1] == b[COEFFS]
+                    && memcmp(r+2, b+OFFSET,
+                        (unsigned long)len * sizeof(hm_t)) == 0) ? 1 : 2;
+        }
+        if (ok[bi] == 2) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* generates the matrix of the current round from the matrix stored
+ * in the trace */
+static void matrix_from_trace_cache(
+        mat_t *mat,
+        const tc_t * const tc,
+        const td_t * const td
+        )
+{
+    len_t i;
+    unsigned long sz = 0;
+
+    mat->rr       = (hm_t **)malloc((unsigned long)tc->nru * sizeof(hm_t *));
+    mat->tr       = (hm_t **)malloc((unsigned long)tc->nrl * sizeof(hm_t *));
+    mat->rba      = (rba_t **)malloc((unsigned long)tc->nrl * sizeof(rba_t *));
+    /* the reducer rows are handed over to the linear algebra in one block */
+    for (i = 0; i < tc->nru; ++i) {
+        sz += tc->rows[sz+LENGTH]+OFFSET;
+    }
+    mat->rrb  = (hm_t *)malloc(sz * sizeof(hm_t));
+    memcpy(mat->rrb, tc->rows, sz * sizeof(hm_t));
+    sz = 0;
+    for (i = 0; i < tc->nru; ++i) {
+        mat->rr[i] = mat->rrb + sz;
+        sz += mat->rrb[sz+LENGTH]+OFFSET;
+    }
+    const hm_t *r = tc->rows + sz;
+    for (i = 0; i < tc->nrl; ++i) {
+        const unsigned long rsz = (unsigned long)(r[LENGTH]+OFFSET) * sizeof(hm_t);
+        mat->tr[i] = (hm_t *)malloc(rsz);
+        memcpy(mat->tr[i], r, rsz);
+        r += r[LENGTH]+OFFSET;
+        mat->rba[i] = td->rba[i];
+    }
+    mat->nru  = tc->nru;
+    mat->nrl  = tc->nrl;
+    mat->nr   = mat->sz = mat->nru + mat->nrl;
+    mat->ncl  = tc->ncl;
+    mat->ncr  = tc->ncr;
+    mat->nc   = mat->ncl + mat->ncr;
+}
+
+/* stores the matrix of the current round, already converted to column
+ * indices, in the trace */
+static void store_matrix_in_trace_cache(
+        trace_t *tr,
+        const len_t idx,
+        const mat_t * const mat,
+        const ht_t * const sht,
+        const hi_t * const hcm
+        )
+{
+    len_t i;
+    unsigned long sz = 0;
+
+    for (i = 0; i < mat->nru; ++i) {
+        sz += mat->rr[i][LENGTH]+OFFSET;
+    }
+    for (i = 0; i < mat->nrl; ++i) {
+        sz += mat->tr[i][LENGTH]+OFFSET;
+    }
+    tc_t *tc  = (tc_t *)malloc(sizeof(tc_t));
+    tc->rows  = (hm_t *)malloc(sz * sizeof(hm_t));
+    hm_t *r   = tc->rows;
+    for (i = 0; i < mat->nru; ++i) {
+        memcpy(r, mat->rr[i],
+                (unsigned long)(mat->rr[i][LENGTH]+OFFSET) * sizeof(hm_t));
+        r += mat->rr[i][LENGTH]+OFFSET;
+    }
+    for (i = 0; i < mat->nrl; ++i) {
+        memcpy(r, mat->tr[i],
+                (unsigned long)(mat->tr[i][LENGTH]+OFFSET) * sizeof(hm_t));
+        r += mat->tr[i][LENGTH]+OFFSET;
+    }
+    const len_t evl = sht->evl;
+    tc->ev  = (exp_t *)malloc((unsigned long)mat->ncr * evl * sizeof(exp_t));
+    for (i = 0; i < mat->ncr; ++i) {
+        memcpy(tc->ev + (unsigned long)i * evl, sht->ev[hcm[mat->ncl+i]],
+                (unsigned long)evl * sizeof(exp_t));
+    }
+    tc->nru = mat->nru;
+    tc->nrl = mat->nrl;
+    tc->ncl = mat->ncl;
+    tc->ncr = mat->ncr;
+    if (!__sync_bool_compare_and_swap(&(tr->tc[idx]), NULL, tc)) {
+        /* another prime was faster */
+        free(tc->rows);
+        free(tc->ev);
+        free(tc);
+    }
+}
+
 static void generate_matrix_from_trace(
         mat_t *mat,
         const bs_t * const bs,
@@ -741,9 +921,34 @@ static void generate_matrix_from_trace(
 
     const len_t idx = md->trace_rd;
 
-    td_t td   = md->tr->td[idx];
-    ht_t *bht = bs->ht;
-    ht_t *sht = md->ht;
+    td_t td     = md->tr->td[idx];
+    ht_t *bht   = bs->ht;
+    ht_t *sht   = md->ht;
+    trace_t *tr = md->tr;
+
+    /* Can we take the matrix stored in the trace (only if the application
+     * of the trace has been prepared by start_trace_cache)? Once the basis
+     * elements of a round do not agree with the stored ones, the basis
+     * hash table may differ from the one when the matrices were stored,
+     * so we do not use them for the remaining rounds. */
+    md->tc_state = 0;
+    if (md->tcok != NULL && md->tcoff == 0 && idx < tr->ltd) {
+        if (basis_supports_agree_with_trace(md, td.rri, td.rld, bs)
+                && basis_supports_agree_with_trace(md, td.tri, td.tld, bs)) {
+            const tc_t * const tc = __atomic_load_n(tr->tc + idx,
+                    __ATOMIC_ACQUIRE);
+            if (tc != NULL) {
+                matrix_from_trace_cache(mat, tc, &td);
+                md->tc_state = 1;
+                md->tracer_ctime += cputime() - ct;
+                md->tracer_rtime += realtime() - rt;
+                return;
+            }
+            md->tc_state = 2;
+        } else {
+            md->tcoff = 1;
+        }
+    }
 
     mat->rr       = (hm_t **)malloc((unsigned long)td.rld * sizeof(hm_t *));
     hm_t **rrows  = mat->rr;

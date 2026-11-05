@@ -214,6 +214,8 @@ struct mat_t
     hm_t **rr;          /* reducer rows of the matrix, only column */
                         /* entries, coefficients are handled via linking */
                         /* to coefficient arrays. */
+    hm_t *rrb;          /* if not NULL, all reducer rows are stored in */
+                        /* this one block */
     cf8_t **cf_8;       /* coefficients for finite fields (8 bit) */
     cf16_t **cf_16;     /* coefficients for finite fields (16 bit) */
     cf32_t **cf_32;     /* coefficients for finite fields (32 bit) */
@@ -298,6 +300,23 @@ struct td_t
     len_t nlm;    /* number of new leading monomials in this step */
 };
 
+/* matrix of one round of the trace in column representation, stored
+ * when the trace is applied for the first time. It can be reused for
+ * all primes for which the basis elements used in this round have the
+ * same supports, then generating the rows from the trace and converting
+ * their hashes to columns is skipped. */
+typedef struct tc_t tc_t;
+struct tc_t
+{
+    hm_t *rows;   /* rows (header and column indices), first the nru
+                   * reducer rows, then the nrl to be reduced rows */
+    exp_t *ev;    /* exponent vectors of the columns ncl,...,nc-1 */
+    len_t nru;    /* number of reducer rows */
+    len_t nrl;    /* number of to be reduced rows */
+    len_t ncl;    /* number of known pivot columns */
+    len_t ncr;    /* number of other columns */
+};
+
 /* possible trace levels */
 typedef enum {NO_TRACER, LEARN_TRACER, APPLY_TRACER} tl_t;
 typedef struct trace_t trace_t;
@@ -320,6 +339,16 @@ struct trace_t
                    * non-trivial kernels */
     len_t rld;    /* load of rounds stored, i.e. how often do saturate */
     len_t rsz;    /* size of rounds stored */
+    /* The following data is allocated when the learning phase is done,
+     * the entries are set when applying the trace and are never changed
+     * afterwards. The trace may be applied for several primes in
+     * parallel, so the entries are published atomically. */
+    tc_t **tc;    /* matrices of the rounds in column representation */
+    hm_t **bsp;   /* reference supports of basis elements used for tc in
+                   * the format length, coefficient index, hashes */
+    len_t bsz;    /* number of basis elements, i.e. size of bsp */
+    hl_t tceld;   /* load of the basis hash table at the start of the
+                   * application of the trace when tc was stored */
 };
 
 
@@ -331,6 +360,12 @@ struct md_t
     trace_t *tr;
     tl_t trace_level;
     int32_t trace_rd;
+    int32_t tc_state;   /* matrix of this round: 0 not related to tc,
+                         * 1 taken from tc, 2 to be stored in tc */
+    int32_t tcoff;      /* do not use tr->tc any more for this prime */
+    int8_t *tcok;       /* agrees the support of a basis element with
+                         * tr->bsp for this prime? 0: unknown, 1: yes,
+                         * 2: no */
 
     /* hash table data */
     ht_t *ht;

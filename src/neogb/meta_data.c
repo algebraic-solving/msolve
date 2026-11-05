@@ -60,6 +60,7 @@ void free_meta_data(
         free_pairset(&(md->ps));
     }
     free(md->hcm);
+    free(md->tcok);
 
     ht_t *ht = md->ht;
     if (ht != NULL) {

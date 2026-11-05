@@ -52,8 +52,24 @@
 #include <arm_neon.h>
 #endif
 
-/* number of rows reduced together in LA_FF(sparse_AB_CD_linear_algebra) */
+/* maximal number of rows reduced together by the known pivots, see
+ * LA_FF(reduce_dense_rows_by_known_pivots) */
 #define LA_NR 8
+
+/* Number of rows reduced together by the known pivots when reducing nrl
+ * rows with nthrds threads. The rows of a group are interleaved with
+ * LA_NR rows, so a group with fewer rows costs as much as a full one.
+ * Thus we only use full groups and only if each thread gets at least two
+ * of them, otherwise matrices with few rows to be reduced would only use
+ * some of the threads. Returns 0 if the rows should be reduced one by
+ * one. */
+static inline len_t LA_FF(rows_per_group)(
+        const len_t nrl,
+        const int32_t nthrds
+        )
+{
+    return (uint64_t)nrl >= 2 * (uint64_t)nthrds * LA_NR ? LA_NR : 0;
+}
 
 /* Reduces LA_NR rows at once by the known pivots pivs[sc],...,
  * pivs[ncl-1]. The dense rows are interleaved in dr, i.e. dr[LA_NR*c+r]
@@ -891,18 +907,24 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
         heap = (hm_t *)malloc((uint64_t)ncols * nthrds * sizeof(hm_t));
         rem  = (hm_t *)malloc((uint64_t)ncols * nthrds * sizeof(hm_t));
     }
-    /* the rows which are not reduced via the heap are first reduced by
-     * the known pivots in groups of LA_NR rows, see
+    /* the rows which fill at least 1/32 of their remaining columns are
+     * first reduced by the known pivots in groups of LA_NR rows, see
      * LA_FF(reduce_dense_rows_by_known_pivots), afterwards each remainder
-     * is reduced by the new pivots */
+     * is reduced by the new pivots. For sparser rows the reductions of
+     * the rows of a group rarely hit the same pivots, then the grouping
+     * does not pay off. */
+    const len_t gsz = LA_FF(rows_per_group)(nrl, nthrds);
     const int multi_rows = st->nf == 0 && st->in_final_reduction_step == 0
-        && st->trace_level != LEARN_TRACER;
-    int64_t *drm = NULL;
+        && st->trace_level != LEARN_TRACER && gsz > 0;
+    /* the buffers for the groups are allocated by the threads when
+     * they need them */
+    int64_t **drm = NULL;
     if (multi_rows) {
-        drm = (int64_t *)calloc((uint64_t)ncols * LA_NR * nthrds,
-                sizeof(int64_t));
+        drm = (int64_t **)calloc((uint64_t)nthrds, sizeof(int64_t *));
     }
-    const len_t ngr = (nrl + LA_NR - 1) / LA_NR;
+    /* without groups each row is handled on its own */
+    const len_t gl  = multi_rows ? gsz : 1;
+    const len_t ngr = (nrl + gl - 1) / gl;
     len_t g;
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
@@ -913,22 +935,28 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
         if (bad_prime != 0) {
             continue;
         }
-        const len_t gs  = g * LA_NR;
-        const len_t ge  = gs + LA_NR < nrl ? gs + LA_NR : nrl;
+        const len_t gs  = g * gl;
+        const len_t ge  = gs + gl < nrl ? gs + gl : nrl;
         len_t grp[LA_NR];
         len_t ng        = 0;
         int64_t *dm     = NULL;
         if (multi_rows) {
-            dm  = drm + (uint64_t)omp_get_thread_num() * ncols * LA_NR;
             sc  = ncols;
             for (i = gs; i < ge; ++i) {
                 const hm_t * const r = upivs[i];
                 const hm_t * const ds = r + OFFSET;
                 const uint64_t rc = ncols - ds[0];
                 const len_t len   = r[LENGTH];
-                if (sparse_rows && (uint64_t)len * 32 < rc
-                        && (uint64_t)len * apl * 64 < rc) {
+                if ((uint64_t)len * 32 < rc) {
                     continue;
+                }
+                if (dm == NULL) {
+                    const int tid = omp_get_thread_num();
+                    if (drm[tid] == NULL) {
+                        drm[tid] = (int64_t *)calloc(
+                                (uint64_t)ncols * LA_NR, sizeof(int64_t));
+                    }
+                    dm = drm[tid];
                 }
                 const LA_CF_T * const cfs = tbr->LA_CF[r[COEFFS]];
                 for (j = 0; j < len; ++j) {
@@ -1047,7 +1075,12 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
             }
         }
     }
-    free(drm);
+    if (drm != NULL) {
+        for (i = 0; i < (len_t)nthrds; ++i) {
+            free(drm[i]);
+        }
+        free(drm);
+    }
 
     if (bad_prime == 1) {
         for (i = kpivs != NULL ? ncl : 0; i < ncl+ncr; ++i) {
@@ -1468,42 +1501,81 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
      * after reducing CD part with AB */
     LA_CF_T **drs    = (LA_CF_T **)calloc((uint64_t)nrl, sizeof(LA_CF_T *));
 
-    /* the rows are reduced in groups of LA_NR rows, see
+    /* the rows are reduced in groups of gs rows, see
      * LA_FF(reduce_dense_rows_by_known_pivots) */
-    int64_t *dr  = (int64_t *)calloc(
-            (uint64_t)ncols * LA_NR * st->nthrds, sizeof(int64_t));
-    const len_t ngr = (nrl + LA_NR - 1) / LA_NR;
+    const len_t gs = LA_FF(rows_per_group)(nrl, st->nthrds);
+    int64_t *dr  = NULL;
+    if (gs > 0) {
+        dr  = (int64_t *)calloc(
+                (uint64_t)ncols * LA_NR * st->nthrds, sizeof(int64_t));
+        const len_t ngr = (nrl + gs - 1) / gs;
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, sc) \
     schedule(dynamic)
-    for (i = 0; i < ngr; ++i) {
-        int64_t *drl  = dr + (omp_get_thread_num() * (uint64_t)ncols * LA_NR);
-        sc = ncols;
-        for (len_t r = 0; r < LA_NR && i*LA_NR+r < nrl; ++r) {
-            hm_t *npiv              = upivs[i*LA_NR+r];
-            const LA_CF_T * const cfs = tbr->LA_CF[npiv[COEFFS]];
-            const len_t len         = npiv[LENGTH];
-            const hm_t * const ds   = npiv + OFFSET;
+        for (i = 0; i < ngr; ++i) {
+            int64_t *drl  = dr + (omp_get_thread_num() * (uint64_t)ncols * LA_NR);
+            const len_t f = i * gs;
+            const len_t l = f + gs < nrl ? gs : nrl - f;
+            sc = ncols;
+            for (len_t r = 0; r < l; ++r) {
+                hm_t *npiv              = upivs[f+r];
+                const LA_CF_T * const cfs = tbr->LA_CF[npiv[COEFFS]];
+                const len_t len         = npiv[LENGTH];
+                const hm_t * const ds   = npiv + OFFSET;
+                for (j = 0; j < len; ++j) {
+                    drl[(uint64_t)LA_NR * ds[j] + r] = (int64_t)cfs[j];
+                }
+                if (ds[0] < sc) {
+                    sc = ds[0];
+                }
+                free(npiv);
+                upivs[f+r] = NULL;
+            }
+            LA_CF_T *rows[LA_NR];
+            /* the known pivots have their lead terms left of ncl, so the
+             * remainders live in the columns of the D part; drl is zero
+             * again afterwards */
+            LA_FF(reduce_dense_rows_by_known_pivots)(
+                    drl, rows, mat, pivs, sc, st->fc);
+            for (len_t r = 0; r < l; ++r) {
+                drs[f+r] = rows[r];
+            }
+        }
+    } else {
+        const len_t ncr = mat->ncr;
+        dr  = (int64_t *)malloc(
+                (uint64_t)ncols * st->nthrds * sizeof(int64_t));
+#pragma omp parallel for num_threads(st->nthrds) \
+    private(i, j, sc) \
+    schedule(dynamic)
+        for (i = 0; i < nrl; ++i) {
+            LA_CF_T *cfs  = NULL;
+            int64_t *drl  = dr + (omp_get_thread_num() * (uint64_t)ncols);
+            hm_t *npiv    = upivs[i];
+            memset(drl, 0, (uint64_t)ncols * sizeof(int64_t));
+            cfs = tbr->LA_CF[npiv[COEFFS]];
+            const len_t len = npiv[LENGTH];
+            const hm_t * const ds = npiv + OFFSET;
             for (j = 0; j < len; ++j) {
-                drl[(uint64_t)LA_NR * ds[j] + r] = (int64_t)cfs[j];
+                drl[ds[j]]  = (int64_t)cfs[j];
             }
-            if (ds[0] < sc) {
-                sc = ds[0];
-            }
+            sc  = ds[0];
             free(npiv);
-            upivs[i*LA_NR+r] = NULL;
-        }
-        LA_CF_T *rows[LA_NR];
-        /* the known pivots have their lead terms left of ncl, so the
-         * remainders live in the columns of the D part; drl is zero
-         * again afterwards */
-        LA_FF(reduce_dense_rows_by_known_pivots)(
-                drl, rows, mat, pivs, sc, st->fc);
-        for (len_t r = 0; r < LA_NR && i*LA_NR+r < nrl; ++r) {
-            drs[i*LA_NR+r] = rows[r];
-        }
-        for (len_t r = nrl - i*LA_NR; r < LA_NR; ++r) {
-            free(rows[r]);
+            upivs[i] = NULL;
+            npiv = LA_FF(reduce_dense_row_by_known_pivots_sparse)(
+                    drl, mat, bs, pivs, sc, i, 0, 0, 0, st);
+            if (npiv != NULL) {
+                cfs = mat->LA_CF[i];
+                LA_CF_T *row = (LA_CF_T *)calloc((uint64_t)ncr, sizeof(LA_CF_T));
+                const hm_t * const rs = npiv + OFFSET;
+                for (j = 0; j < npiv[LENGTH]; ++j) {
+                    row[rs[j]-ncl] = cfs[j];
+                }
+                free(cfs);
+                free(npiv);
+                mat->LA_CF[i] = NULL;
+                drs[i]  = row;
+            }
         }
     }
     free(dr);

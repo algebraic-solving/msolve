@@ -1095,13 +1095,30 @@ static inline void param_images_crt_coeff(const param_images_t im,
 }
 
 /* Witnesses of the eliminating polynomial reconstructed simultaneously:
-   its coefficients share a common denominator (the leading coefficient of
-   the primitive integer polynomial), which can be much larger than their
-   numerators. Reconstructing k coefficients u_1, .., u_k with a common
-   denominator d, i.e. finding a short vector (d, n_1, .., n_k) with
-   n_j = d u_j mod m by LLL, needs about bits(n) + bits(d) / k bits of
-   modulus instead of bits(n) + bits(d) for a single coefficient. The
-   denominator found is used as a guess for the eliminating polynomial.
+   its coefficients share a common denominator d (the leading coefficient
+   of the primitive integer polynomial). The denominator found is used as
+   a guess for the eliminating polynomial.
+
+   Reconstructing k coefficients u_1, .., u_k with this common denominator
+   amounts to finding the short vector (d, n_1, .., n_k), n_j = d u_j mod m,
+   in the lattice spanned by (1, u_1, .., u_k) and m e_1, .., m e_k. LLL
+   finds it, heuristically, when it is the shortest vector of the lattice,
+   which requires, with bits(n) the largest bitsize of the numerators:
+   - max(bits(d), bits(n)) <= k bits(m) / (k + 1), which is the acceptance
+     test of vec_wit_try (up to RR_MARGIN bits of slack);
+   - 2 bits(d) - bits(n) < bits(m), since the lattice also contains
+     (m, 0, .., 0), hence the vectors (t d - s m, t n_1, .., t n_k) for
+     integers s, t, which have max-norm about sqrt(m 2^bits(n)) for well
+     chosen s, t.
+   When numerators and denominator have about the same bitsize b, this
+   needs about (k + 1) b / k bits of modulus, instead of 2 b to reconstruct
+   a single coefficient. There is no gain once bits(d) > 2 bits(n): a
+   single reconstruction with skewed bounds then needs fewer bits, and the
+   vector found by LLL is usually spurious (it is rejected by the check
+   with the next prime, see vec_wit_check). Scaling the numerator columns
+   by 2^(bits(d) - bits(n)) would reach about bits(n) + bits(d) / k bits in
+   all cases, but requires an estimate of bits(d) - bits(n).
+
    As LLL is more expensive than rational reconstruction, it is tried at
    a geometric schedule: each time the number of primes grows by
    VEC_WIT_GROWTH percent. */

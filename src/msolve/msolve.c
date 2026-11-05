@@ -1975,8 +1975,8 @@ static int32_t *initial_modular_step(
                         }
                         free_fglm_param(test_nmod_param[0]);
                     }
-                    free(test_nmod_param);
                 }
+                free(test_nmod_param);
             }
         }
         *dim = 0;

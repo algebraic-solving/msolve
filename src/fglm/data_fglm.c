@@ -46,6 +46,7 @@ static inline void free_sp_multimat_fglm(sp_multimatfglm_t *mat){
         free(mat->rowsel);
         free(mat->border);
         free(mat->is_lm);
+        free(mat->have_row);
         free(mat);
     }
 }
@@ -77,6 +78,7 @@ static inline void free_fglm_trace(fglm_trace_t *tr){
         free(tr->lm_of);
         free(tr->exps_nf);
         free(tr->row_nf);
+        free(tr->have_row);
         free_fglm_lex_staircase(&tr->lex);
         free(tr->s_parent);
         free(tr->s_var);

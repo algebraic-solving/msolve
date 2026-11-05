@@ -1115,6 +1115,8 @@ typedef struct{
   int state;                /* 0: nothing, 1: candidate to be checked with
                                the next prime, 2: candidate checked */
   int32_t next;             /* number of primes of the next attempt */
+  int32_t ntries;           /* number of calls to LLL */
+  double rtime;             /* elapsed time spent in vec_wit_try */
   mpz_t den;                /* common denominator */
   mpz_t num[VEC_WIT_K];     /* numerators */
 } vec_wit_struct;
@@ -1132,6 +1134,8 @@ static inline void vec_wit_init(vec_wit_t vw, const nmod_poly_t elim,
   }
   vw->state = 0;
   vw->next = VEC_WIT_START;
+  vw->ntries = 0;
+  vw->rtime = 0;
   vw->k = 0;
   if (nsols < 4 * VEC_WIT_K) {
     return;
@@ -1171,6 +1175,7 @@ static inline void vec_wit_clear(vec_wit_t vw){
    RR_MARGIN bits of slack used for rational reconstruction */
 static inline void vec_wit_try(vec_wit_t vw, const param_images_t im,
                                const mpz_t modulus){
+  double rt = realtime();
   const int k = vw->k;
   param_crt_t pc;
   param_crt_init(pc, im);
@@ -1207,6 +1212,8 @@ static inline void vec_wit_try(vec_wit_t vw, const param_images_t im,
     vw->state = 1;
   }
   fmpz_mat_clear(B);
+  vw->ntries++;
+  vw->rtime += realtime() - rt;
 }
 
 /* checks the candidate with the modular images of elim for a new prime */
@@ -3041,6 +3048,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(VERBSTREAM, "-----------------------------------------\n");
     fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
     fprintf(VERBSTREAM, "CRT and ratrecon(elapsed) %10.2f sec\n", strat);
+    if (vec_wit->ntries > 0) {
+      fprintf(VERBSTREAM, "  incl. LLL, %4d calls   %10.2f sec\n",
+              vec_wit->ntries, vec_wit->rtime);
+    }
     fprintf(VERBSTREAM, "-----------------------------------------\n");
     fflush(VERBSTREAM);
   }

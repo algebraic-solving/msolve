@@ -5779,7 +5779,7 @@ restart:
 	  int dim = - 2;
 	  long dquot = -1;
 
-      if(elim_block_len > 0){
+      if(elim_block_len > 0 && (print_gb == 0 || print_gb == 3)){
           fprintf(ERRSTREAM, "Warning: elim order not available for ");
           if(print_gb == 0){
               fprintf(ERRSTREAM, "rational parametrizations\n");

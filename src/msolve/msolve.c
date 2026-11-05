@@ -2149,13 +2149,17 @@ static int32_t *initial_modular_step(
         /* } */
         if(print_gb == 3){
             /* LEX basis by classical FGLM */
+            double rt_fglm = realtime();
             sp_multimatfglm_t *mm =
                 build_multiplication_matrices_from_bs(lmb, dquot, bs, bs->ht,
                                                       leadmons[0], md,
                                                       bs->ht->nv, fc,
                                                       md->info_level, NULL);
+            if(md->info_level){
+                fprintf(VERBSTREAM, "Mul Mat    %.2f sec\n", realtime() - rt_fglm);
+            }
             mm->nthreads = md->nthrds;   /* all threads are used */
-            double rt_fglm = realtime();
+            rt_fglm = realtime();
             fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX);
             if(md->info_level){
                 fprintf(VERBSTREAM, "FGLM (lex) %.2f sec\n", realtime() - rt_fglm);

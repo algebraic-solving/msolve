@@ -1193,6 +1193,7 @@ static cf64_t *reduce_dense_row_by_all_pivots_ff_64(
 static void reduce_dense_rows_by_known_pivots_ff_64(
         int64_t *dr,
         cf64_t **drs,
+        rba_t * const * const rbas,
         const mat_t * const mat,
         hm_t * const * const pivs,
         const len_t sc,
@@ -1228,6 +1229,15 @@ static void reduce_dense_rows_by_known_pivots_ff_64(
         }
         if (nz == 0 || pivs[i] == NULL) {
             continue;
+        }
+        if (rbas != NULL) {
+            for (r = 0; r < LA_NR; ++r) {
+                double m;
+                memcpy(&m, d+r, sizeof(double));
+                if (m != 0.0) {
+                    rbas[r][i/32] |= 1U << (i % 32);
+                }
+            }
         }
         const hm_t * const piv  = pivs[i];
         const cf64_t * const cfs = mcf[piv[COEFFS]];
@@ -1273,6 +1283,13 @@ static void reduce_dense_rows_by_known_pivots_ff_64(
                 d[r] = 0;
             }
             continue;
+        }
+        if (rbas != NULL) {
+            for (r = 0; r < LA_NR; ++r) {
+                if (d[r] != 0) {
+                    rbas[r][i/32] |= 1U << (i % 32);
+                }
+            }
         }
         const hm_t * const piv  = pivs[i];
         const cf64_t * const cfs = mcf[piv[COEFFS]];

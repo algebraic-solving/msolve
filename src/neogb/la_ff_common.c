@@ -85,10 +85,13 @@ static inline len_t LA_FF(rows_per_group)(
  * rows with one vector operation per term of the pivot. The remainders
  * of the rows live in the columns ncl,...,ncols-1, they are written to
  * drs[0],...,drs[LA_NR-1] as dense rows of length ncr, NULL for zero
- * remainders. If drs is NULL, the remainders are left in dr. */
+ * remainders. If drs is NULL, the remainders are left in dr. If rbas is
+ * not NULL, the pivots used for row r are marked in the reducer bit
+ * array rbas[r] for the tracer, rbas[r] may be NULL if row r is zero. */
 static void LA_FF(reduce_dense_rows_by_known_pivots)(
         int64_t *dr,
         LA_CF_T **drs,
+        rba_t * const * const rbas,
         const mat_t * const mat,
         hm_t * const * const pivs,
         const len_t sc,
@@ -129,6 +132,13 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
                 d[r] = 0;
             }
             continue;
+        }
+        if (rbas != NULL) {
+            for (r = 0; r < LA_NR; ++r) {
+                if (d[r] != 0) {
+                    rbas[r][i/32] |= 1U << (i % 32);
+                }
+            }
         }
         const hm_t * const piv  = pivs[i];
         const LA_CF_T * const cfs = mcf[piv[COEFFS]];
@@ -948,7 +958,10 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
      * does not pay off. */
     const len_t gsz = LA_FF(rows_per_group)(nrl, nthrds);
     const int multi_rows = st->nf == 0 && st->in_final_reduction_step == 0
-        && st->trace_level != LEARN_TRACER && gsz > 0;
+        && gsz > 0;
+    /* when learning the trace the kernel marks the used pivots of each
+     * row in its reducer bit array */
+    const int learn = st->trace_level == LEARN_TRACER;
     /* the buffers for the groups are allocated by the threads when
      * they need them */
     int64_t **drm = NULL;
@@ -1001,8 +1014,14 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
                 grp[ng++] = i;
             }
             if (ng > 0) {
+                rba_t *rbas[LA_NR];
+                if (learn) {
+                    for (j = 0; j < LA_NR; ++j) {
+                        rbas[j] = j < ng ? mat->rba[grp[j]] : NULL;
+                    }
+                }
                 LA_FF(reduce_dense_rows_by_known_pivots)(
-                        dm, NULL, mat, pivs, sc, st->fc);
+                        dm, NULL, learn ? rbas : NULL, mat, pivs, sc, st->fc);
             }
         }
         len_t lane = 0;
@@ -1569,7 +1588,7 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
              * remainders live in the columns of the D part; drl is zero
              * again afterwards */
             LA_FF(reduce_dense_rows_by_known_pivots)(
-                    drl, rows, mat, pivs, sc, st->fc);
+                    drl, rows, NULL, mat, pivs, sc, st->fc);
             for (len_t r = 0; r < l; ++r) {
                 drs[f+r] = rows[r];
             }

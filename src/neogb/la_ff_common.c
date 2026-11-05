@@ -46,6 +46,480 @@
  *
  * All macros are undefined at the end of this file. */
 
+#if defined HAVE_AVX2 || defined HAVE_AVX512_F
+#include <immintrin.h>
+#elif defined __aarch64__
+#include <arm_neon.h>
+#endif
+
+/* number of rows reduced together in LA_FF(sparse_AB_CD_linear_algebra) */
+#define LA_NR 8
+
+/* Reduces LA_NR rows at once by the known pivots pivs[sc],...,
+ * pivs[ncl-1]. The dense rows are interleaved in dr, i.e. dr[LA_NR*c+r]
+ * is the entry of row r in column c, so applying a pivot updates all
+ * rows with one vector operation per term of the pivot. The remainders
+ * of the rows live in the columns ncl,...,ncols-1, they are written to
+ * drs[0],...,drs[LA_NR-1] as dense rows of length ncr, NULL for zero
+ * remainders. If drs is NULL, the remainders are left in dr. */
+static void LA_FF(reduce_dense_rows_by_known_pivots)(
+        int64_t *dr,
+        LA_CF_T **drs,
+        const mat_t * const mat,
+        hm_t * const * const pivs,
+        const len_t sc,
+        const uint32_t fc
+        )
+{
+    len_t i, j, r;
+
+    const len_t ncl     = mat->ncl;
+    const len_t ncols   = mat->nc;
+    const int64_t mod2  = (int64_t)fc * fc;
+    const uint64_t bm   = barrett_multiplier(fc);
+    LA_CF_T * const * const mcf = mat->LA_CF;
+#if defined HAVE_AVX512_F
+    const __m512i zerov = _mm512_setzero_si512();
+    const __m512i mod2v = _mm512_set1_epi64(mod2);
+#elif defined HAVE_AVX2
+    const __m256i zerov = _mm256_setzero_si256();
+    const __m256i mod2v = _mm256_set1_epi64x(mod2);
+#elif defined __aarch64__
+    const int64x2_t mod2v = vdupq_n_s64(mod2);
+#endif
+
+    for (i = sc; i < ncl; ++i) {
+        int64_t *d = dr + (uint64_t)LA_NR * i;
+        int64_t nz = 0;
+        for (r = 0; r < LA_NR; ++r) {
+            if (d[r] != 0) {
+                d[r] = (int64_t)barrett_reduce((uint64_t)d[r], fc, bm);
+            }
+            nz |= d[r];
+        }
+        if (nz == 0) {
+            continue;
+        }
+        if (pivs[i] == NULL) {
+            for (r = 0; r < LA_NR; ++r) {
+                d[r] = 0;
+            }
+            continue;
+        }
+        const hm_t * const piv  = pivs[i];
+        const LA_CF_T * const cfs = mcf[piv[COEFFS]];
+        const len_t len         = piv[LENGTH];
+        const hm_t * const ds   = piv + OFFSET;
+#if defined HAVE_AVX512_F
+        __m512i mulv[LA_NR/8];
+        for (r = 0; r < LA_NR/8; ++r) {
+            mulv[r] = _mm512_loadu_si512((void *)(d+8*r));
+        }
+        for (j = 0; j < len; ++j) {
+            int64_t *t        = dr + (uint64_t)LA_NR * ds[j];
+            const __m512i cfv = _mm512_set1_epi64((int64_t)cfs[j]);
+            for (r = 0; r < LA_NR/8; ++r) {
+                __m512i prodv = _mm512_mul_epu32(mulv[r], cfv);
+                __m512i resv  = _mm512_sub_epi64(
+                        _mm512_loadu_si512((void *)(t+8*r)), prodv);
+                const __mmask8 cmpv = _mm512_cmpgt_epi64_mask(zerov, resv);
+                resv  = _mm512_mask_add_epi64(resv, cmpv, resv, mod2v);
+                _mm512_storeu_si512((void *)(t+8*r), resv);
+            }
+        }
+#elif defined HAVE_AVX2
+        __m256i mulv[LA_NR/4];
+        for (r = 0; r < LA_NR/4; ++r) {
+            mulv[r] = _mm256_loadu_si256((__m256i *)(d+4*r));
+        }
+        for (j = 0; j < len; ++j) {
+            int64_t *t        = dr + (uint64_t)LA_NR * ds[j];
+            const __m256i cfv = _mm256_set1_epi64x((int64_t)cfs[j]);
+            for (r = 0; r < LA_NR/4; ++r) {
+                __m256i prodv = _mm256_mul_epu32(mulv[r], cfv);
+                __m256i resv  = _mm256_sub_epi64(
+                        _mm256_loadu_si256((__m256i *)(t+4*r)), prodv);
+                resv  = _mm256_add_epi64(resv, _mm256_and_si256(
+                            _mm256_cmpgt_epi64(zerov, resv), mod2v));
+                _mm256_storeu_si256((__m256i *)(t+4*r), resv);
+            }
+        }
+#elif defined __aarch64__
+        uint32x2_t mulv[LA_NR/2];
+        for (r = 0; r < LA_NR/2; ++r) {
+            mulv[r] = vmovn_u64(vld1q_u64((const uint64_t *)(d+2*r)));
+        }
+        for (j = 0; j < len; ++j) {
+            int64_t *t            = dr + (uint64_t)LA_NR * ds[j];
+            const uint32x2_t cfv  = vdup_n_u32((uint32_t)cfs[j]);
+            for (r = 0; r < LA_NR/2; ++r) {
+                int64x2_t resv  = vsubq_s64(vld1q_s64(t+2*r),
+                        vreinterpretq_s64_u64(vmull_u32(mulv[r], cfv)));
+                const int64x2_t mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+                resv  = vaddq_s64(resv, vandq_s64(mask, mod2v));
+                vst1q_s64(t+2*r, resv);
+            }
+        }
+#else
+        int64_t mul[LA_NR];
+        for (r = 0; r < LA_NR; ++r) {
+            mul[r] = d[r];
+        }
+        for (j = 0; j < len; ++j) {
+            int64_t *t  = dr + (uint64_t)LA_NR * ds[j];
+            const int64_t c = (int64_t)cfs[j];
+            for (r = 0; r < LA_NR; ++r) {
+                t[r] -= mul[r] * c;
+                t[r] += (t[r] >> 63) & mod2;
+            }
+        }
+#endif
+        for (r = 0; r < LA_NR; ++r) {
+            d[r] = 0;
+        }
+    }
+    if (drs == NULL) {
+        return;
+    }
+    const len_t ncr = ncols - ncl;
+    for (r = 0; r < LA_NR; ++r) {
+        LA_CF_T *row = NULL;
+        for (i = ncl; i < ncols; ++i) {
+            int64_t *d = dr + (uint64_t)LA_NR * i + r;
+            if (*d == 0) {
+                continue;
+            }
+            const LA_CF_T c = (LA_CF_T)barrett_reduce((uint64_t)*d, fc, bm);
+            *d = 0;
+            if (c != 0) {
+                if (row == NULL) {
+                    row = (LA_CF_T *)calloc((uint64_t)ncr, sizeof(LA_CF_T));
+                }
+                row[i-ncl] = c;
+            }
+        }
+        drs[r] = row;
+    }
+}
+
+/* load 4 resp. 8 coefficients as 64 bit integers */
+#if defined HAVE_AVX512_F
+static inline __m512i LA_FF(load_cfs_8)(
+        const LA_CF_T * const p
+        )
+{
+    if (sizeof(LA_CF_T) == 4) {
+        return _mm512_cvtepu32_epi64(_mm256_loadu_si256((__m256i *)p));
+    }
+    if (sizeof(LA_CF_T) == 2) {
+        return _mm512_cvtepu16_epi64(_mm_loadu_si128((__m128i *)p));
+    }
+    return _mm512_cvtepu8_epi64(_mm_loadl_epi64((__m128i *)p));
+}
+#elif defined HAVE_AVX2
+static inline __m256i LA_FF(load_cfs_4)(
+        const LA_CF_T * const p
+        )
+{
+    if (sizeof(LA_CF_T) == 4) {
+        return _mm256_cvtepu32_epi64(_mm_loadu_si128((__m128i *)p));
+    }
+    if (sizeof(LA_CF_T) == 2) {
+        return _mm256_cvtepu16_epi64(_mm_loadl_epi64((__m128i *)p));
+    }
+    int32_t v;
+    memcpy(&v, p, sizeof(int32_t));
+    return _mm256_cvtepu8_epi64(_mm_cvtsi32_si128(v));
+}
+#endif
+
+/* number of rows reduced together in LA_FF(interreduce_dense_matrix) */
+#define LA_NRB 2
+
+/* Reduces the nr <= LA_NRB dense rows rows[0],...,rows[nr-1], whose pivots
+ * are in the columns rc[0],...,rc[nr-1], by the nb pivots
+ * dm[bpc[0]],...,dm[bpc[nb-1]] with rc[r] < bpc[0] < ... < bpc[nb-1].
+ * The rows of dm are dense and start at their pivot column, i.e. rows[r]
+ * has ncr-rc[r] entries. The pivots have to be zero in the pivot columns
+ * of each other, so the coefficients of the rows in all pivot columns
+ * can be used as multipliers without updating them in between. Each
+ * loaded part of a pivot is applied to all rows. dr is a buffer for
+ * LA_NRB*ncr entries. */
+static void LA_FF(reduce_dense_rows_by_dense_block)(
+        LA_CF_T **rows,
+        const len_t * const rc,
+        len_t nr,
+        const len_t * const bpc,
+        const len_t nb,
+        LA_CF_T * const * const dm,
+        const len_t ncr,
+        const uint32_t fc,
+        int64_t *dr
+        )
+{
+    len_t i, j, r;
+    LA_CF_T *rs[LA_NRB];
+    int64_t *drs[LA_NRB];
+
+    /* skip the rows which are zero in all pivot columns of the block */
+    len_t n = 0;
+    for (r = 0; r < nr; ++r) {
+        LA_CF_T * const row = rows[r] - rc[r];
+        for (i = 0; i < nb; ++i) {
+            if (row[bpc[i]] != 0) {
+                break;
+            }
+        }
+        if (i < nb) {
+            rs[n]   = row;
+            drs[n]  = dr + (uint64_t)n * ncr;
+            n++;
+        }
+    }
+    if (n == 0) {
+        return;
+    }
+    nr = n;
+    const len_t fb      = bpc[0];
+    const int64_t mod2  = (int64_t)fc * fc;
+    const uint64_t bm   = barrett_multiplier(fc);
+
+    for (r = 0; r < nr; ++r) {
+        for (j = fb; j < ncr; ++j) {
+            drs[r][j] = (int64_t)rs[r][j];
+        }
+    }
+    /* the loops below always handle LA_NRB rows, missing rows get the
+     * multiplier zero and a scratch row in dr */
+    for (r = nr; r < LA_NRB; ++r) {
+        drs[r]  = dr + (uint64_t)r * ncr;
+    }
+#if defined HAVE_AVX512_F
+    const __m512i zerov = _mm512_setzero_si512();
+    const __m512i mod2v = _mm512_set1_epi64(mod2);
+#elif defined HAVE_AVX2
+    const __m256i zerov = _mm256_setzero_si256();
+    const __m256i mod2v = _mm256_set1_epi64x(mod2);
+#elif defined __aarch64__
+    const int64x2_t mod2v = vdupq_n_s64(mod2);
+#endif
+    for (i = 0; i < nb; ++i) {
+        const len_t c = bpc[i];
+        int64_t mul[LA_NRB] = {0};
+        int64_t nz = 0;
+        for (r = 0; r < nr; ++r) {
+            mul[r]  = (int64_t)rs[r][c];
+            nz      |= mul[r];
+        }
+        if (nz == 0) {
+            continue;
+        }
+        const LA_CF_T * const piv = dm[c] - c;
+        j = c;
+#if defined HAVE_AVX512_F
+        __m512i mulv[LA_NRB];
+        for (r = 0; r < LA_NRB; ++r) {
+            mulv[r] = _mm512_set1_epi64(mul[r]);
+        }
+        for (; j + 8 <= ncr; j += 8) {
+            const __m512i cfv = LA_FF(load_cfs_8)(piv+j);
+            for (r = 0; r < LA_NRB; ++r) {
+                __m512i resv  = _mm512_sub_epi64(
+                        _mm512_loadu_si512((void *)(drs[r]+j)),
+                        _mm512_mul_epu32(mulv[r], cfv));
+                const __mmask8 cmpv = _mm512_cmpgt_epi64_mask(zerov, resv);
+                resv  = _mm512_mask_add_epi64(resv, cmpv, resv, mod2v);
+                _mm512_storeu_si512((void *)(drs[r]+j), resv);
+            }
+        }
+#elif defined HAVE_AVX2
+        __m256i mulv[LA_NRB];
+        for (r = 0; r < LA_NRB; ++r) {
+            mulv[r] = _mm256_set1_epi64x(mul[r]);
+        }
+        for (; j + 4 <= ncr; j += 4) {
+            const __m256i cfv = LA_FF(load_cfs_4)(piv+j);
+            for (r = 0; r < LA_NRB; ++r) {
+                __m256i resv  = _mm256_sub_epi64(
+                        _mm256_loadu_si256((__m256i *)(drs[r]+j)),
+                        _mm256_mul_epu32(mulv[r], cfv));
+                resv  = _mm256_add_epi64(resv, _mm256_and_si256(
+                            _mm256_cmpgt_epi64(zerov, resv), mod2v));
+                _mm256_storeu_si256((__m256i *)(drs[r]+j), resv);
+            }
+        }
+#elif defined __aarch64__
+        uint32x2_t mulv[LA_NRB];
+        for (r = 0; r < LA_NRB; ++r) {
+            mulv[r] = vdup_n_u32((uint32_t)mul[r]);
+        }
+        for (; j + 2 <= ncr; j += 2) {
+            const uint32x2_t cfv  = vcreate_u32(
+                    (uint64_t)piv[j] | ((uint64_t)piv[j+1] << 32));
+            for (r = 0; r < LA_NRB; ++r) {
+                int64x2_t resv  = vsubq_s64(vld1q_s64(drs[r]+j),
+                        vreinterpretq_s64_u64(vmull_u32(mulv[r], cfv)));
+                const int64x2_t mask = vreinterpretq_s64_u64(vcltzq_s64(resv));
+                resv  = vaddq_s64(resv, vandq_s64(mask, mod2v));
+                vst1q_s64(drs[r]+j, resv);
+            }
+        }
+#endif
+        for (; j < ncr; ++j) {
+            for (r = 0; r < LA_NRB; ++r) {
+                drs[r][j] -=  mul[r] * piv[j];
+                drs[r][j] +=  (drs[r][j] >> 63) & mod2;
+            }
+        }
+    }
+    for (r = 0; r < nr; ++r) {
+        for (j = fb; j < ncr; ++j) {
+            rs[r][j] = (LA_CF_T)barrett_reduce((uint64_t)drs[r][j], fc, bm);
+        }
+    }
+}
+
+/* Interreduces the dense rows dm[0],...,dm[ncr-1] (NULL if there is no
+ * pivot in this column), each row starts at its pivot column and has a
+ * leading coefficient of 1. The pivots are handled in blocks from the
+ * right to the left: the rows of a block are interreduced, afterwards
+ * all rows left of the block are reduced by the pivots of the block in
+ * parallel. The result is the reduced row echelon form, so it does not
+ * depend on the number of threads. */
+static LA_CF_T **LA_FF(interreduce_dense_matrix)(
+        LA_CF_T **dm,
+        const len_t ncr,
+        const uint32_t fc,
+        const int32_t nthrds
+        )
+{
+    len_t i, n = 0;
+    int64_t t;
+    const len_t bs = 64;
+
+    len_t *pc = (len_t *)malloc((uint64_t)ncr * sizeof(len_t));
+    for (i = 0; i < ncr; ++i) {
+        if (dm[i] != NULL) {
+            pc[n++] = i;
+        }
+    }
+    int64_t *dr = (int64_t *)malloc(
+            (uint64_t)ncr * LA_NRB * nthrds * sizeof(int64_t));
+
+    len_t e = n;
+    while (e > 1) {
+        const len_t s = e > bs ? e - bs : 0;
+        /* interreduce the rows of the block */
+        for (t = (int64_t)e-2; t >= (int64_t)s; --t) {
+            LA_FF(reduce_dense_rows_by_dense_block)(dm+pc[t], pc+t, 1,
+                    pc+t+1, e-1-(len_t)t, dm, ncr, fc, dr);
+        }
+        /* reduce all rows left of the block by the block, LA_NRB rows
+         * at once */
+        const int64_t ng = ((int64_t)s + LA_NRB - 1) / LA_NRB;
+#pragma omp parallel for num_threads(nthrds) private(t) schedule(dynamic, 2)
+        for (t = 0; t < ng; ++t) {
+            int64_t *drl = dr + (uint64_t)omp_get_thread_num() * ncr * LA_NRB;
+            const len_t f = (len_t)t * LA_NRB;
+            const len_t l = f + LA_NRB < s ? LA_NRB : s - f;
+            LA_CF_T *rows[LA_NRB];
+            for (len_t r = 0; r < l; ++r) {
+                rows[r] = dm[pc[f+r]];
+            }
+            LA_FF(reduce_dense_rows_by_dense_block)(rows, pc+f, l,
+                    pc+s, e-s, dm, ncr, fc, drl);
+        }
+        e = s;
+    }
+    free(dr);
+    free(pc);
+    return dm;
+}
+
+/* Interreduces the new pivots pivs[ncl],...,pivs[ncl+ncr-1] as dense rows
+ * if they are dense enough and stores them in mat->tr from the right to
+ * the left. Returns 0 if the pivots are too sparse, they are not changed
+ * then. */
+static int LA_FF(interreduce_new_pivots_dense)(
+        mat_t *mat,
+        hm_t **pivs,
+        const len_t ncl,
+        const len_t ncr,
+        const uint32_t fc,
+        const int32_t nthrds,
+        len_t *npivsp
+        )
+{
+    len_t i, j;
+    uint64_t nnz = 0, dsz = 0;
+    len_t n = 0;
+
+    for (i = 0; i < ncr; ++i) {
+        if (pivs[ncl+i] != NULL) {
+            n++;
+            nnz += pivs[ncl+i][LENGTH];
+            dsz += ncr - i;
+        }
+    }
+    if (n < 2 || 4 * nnz < dsz) {
+        return 0;
+    }
+    LA_CF_T **dm  = (LA_CF_T **)calloc((uint64_t)ncr, sizeof(LA_CF_T *));
+    hm_t *hdr     = (hm_t *)malloc((uint64_t)ncr * OFFSET * sizeof(hm_t));
+    for (i = 0; i < ncr; ++i) {
+        hm_t *row = pivs[ncl+i];
+        if (row == NULL) {
+            continue;
+        }
+        memcpy(hdr + (uint64_t)i * OFFSET, row, OFFSET * sizeof(hm_t));
+        LA_CF_T *cfs  = mat->LA_CF[row[COEFFS]];
+        dm[i]         = (LA_CF_T *)calloc((uint64_t)(ncr-i), sizeof(LA_CF_T));
+        const hm_t * const ds = row + OFFSET;
+        for (j = 0; j < row[LENGTH]; ++j) {
+            dm[i][ds[j]-ncl-i] = cfs[j];
+        }
+        free(cfs);
+        mat->LA_CF[row[COEFFS]] = NULL;
+        free(row);
+        pivs[ncl+i] = NULL;
+    }
+    dm = LA_FF(interreduce_dense_matrix)(dm, ncr, fc, nthrds);
+
+    len_t npivs = 0;
+    for (i = ncr; i > 0; --i) {
+        LA_CF_T *d = dm[i-1];
+        if (d == NULL) {
+            continue;
+        }
+        const len_t len = ncr-i+1;
+        len_t k = 0;
+        for (j = 0; j < len; ++j) {
+            k += d[j] != 0;
+        }
+        hm_t *row     = (hm_t *)malloc((uint64_t)(k+OFFSET) * sizeof(hm_t));
+        LA_CF_T *cfs  = (LA_CF_T *)malloc((uint64_t)k * sizeof(LA_CF_T));
+        memcpy(row, hdr + (uint64_t)(i-1) * OFFSET, OFFSET * sizeof(hm_t));
+        hm_t *rs = row + OFFSET;
+        k = 0;
+        for (j = 0; j < len; ++j) {
+            if (d[j] != 0) {
+                rs[k]   = ncl+i-1+j;
+                cfs[k]  = d[j];
+                k++;
+            }
+        }
+        row[PRELOOP]  = k % UNROLL;
+        row[LENGTH]   = k;
+        mat->LA_CF[row[COEFFS]] = cfs;
+        pivs[ncl+i-1] = mat->tr[npivs++] = row;
+        free(d);
+    }
+    free(dm);
+    free(hdr);
+    *npivsp = npivs;
+    return 1;
+}
+
 static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
         mat_t *mat,
         const bs_t * const bs,
@@ -211,33 +685,36 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
     LA_CF_T *cfs;
     /* starting column, coefficient array position in tmpcf */
     hm_t sc, cfp;
-    for (i = 0; i < ncr; ++i) {
-        k = ncols-1-i;
-        if (pivs[k]) {
-            memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
-            cfs = mat->LA_CF[pivs[k][COEFFS]];
-            cfp = pivs[k][COEFFS];
-            const len_t bi  = pivs[k][BINDEX];
-            const len_t mh  = pivs[k][MULT];
-            const len_t os  = pivs[k][PRELOOP];
-            const len_t len = pivs[k][LENGTH];
-            const hm_t * const ds = pivs[k] + OFFSET;
-            sc  = ds[0];
-            for (j = 0; j < os; ++j) {
-                dr[ds[j]] = (int64_t)cfs[j];
+    if (!LA_FF(interreduce_new_pivots_dense)(mat, pivs, ncl, ncr,
+                st->fc, st->nthrds, &npivs)) {
+        for (i = 0; i < ncr; ++i) {
+            k = ncols-1-i;
+            if (pivs[k]) {
+                memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
+                cfs = mat->LA_CF[pivs[k][COEFFS]];
+                cfp = pivs[k][COEFFS];
+                const len_t bi  = pivs[k][BINDEX];
+                const len_t mh  = pivs[k][MULT];
+                const len_t os  = pivs[k][PRELOOP];
+                const len_t len = pivs[k][LENGTH];
+                const hm_t * const ds = pivs[k] + OFFSET;
+                sc  = ds[0];
+                for (j = 0; j < os; ++j) {
+                    dr[ds[j]] = (int64_t)cfs[j];
+                }
+                for (; j < len; j += UNROLL) {
+                    dr[ds[j]]   = (int64_t)cfs[j];
+                    dr[ds[j+1]] = (int64_t)cfs[j+1];
+                    dr[ds[j+2]] = (int64_t)cfs[j+2];
+                    dr[ds[j+3]] = (int64_t)cfs[j+3];
+                }
+                free(pivs[k]);
+                free(cfs);
+                pivs[k] = NULL;
+                pivs[k] = mat->tr[npivs++] =
+                    LA_FF(reduce_dense_row_by_known_pivots_sparse)(
+                            dr, mat, bs, pivs, sc, cfp, mh, bi, 0, st);
             }
-            for (; j < len; j += UNROLL) {
-                dr[ds[j]]   = (int64_t)cfs[j];
-                dr[ds[j+1]] = (int64_t)cfs[j+1];
-                dr[ds[j+2]] = (int64_t)cfs[j+2];
-                dr[ds[j+3]] = (int64_t)cfs[j+3];
-            }
-            free(pivs[k]);
-            free(cfs);
-            pivs[k] = NULL;
-            pivs[k] = mat->tr[npivs++] =
-                LA_FF(reduce_dense_row_by_known_pivots_sparse)(
-                        dr, mat, bs, pivs, sc, cfp, mh, bi, 0, st);
         }
     }
     free(mat->rr);
@@ -414,13 +891,63 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
         heap = (hm_t *)malloc((uint64_t)ncols * nthrds * sizeof(hm_t));
         rem  = (hm_t *)malloc((uint64_t)ncols * nthrds * sizeof(hm_t));
     }
+    /* the rows which are not reduced via the heap are first reduced by
+     * the known pivots in groups of LA_NR rows, see
+     * LA_FF(reduce_dense_rows_by_known_pivots), afterwards each remainder
+     * is reduced by the new pivots */
+    const int multi_rows = st->nf == 0 && st->in_final_reduction_step == 0
+        && st->trace_level != LEARN_TRACER;
+    int64_t *drm = NULL;
+    if (multi_rows) {
+        drm = (int64_t *)calloc((uint64_t)ncols * LA_NR * nthrds,
+                sizeof(int64_t));
+    }
+    const len_t ngr = (nrl + LA_NR - 1) / LA_NR;
+    len_t g;
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
 #pragma omp parallel for num_threads(nthrds) \
-    private(i, j, k, sc) \
+    private(g, i, j, k, sc) \
     schedule(dynamic)
-    for (i = 0; i < nrl; ++i) {
-        if (bad_prime == 0) {
+    for (g = 0; g < ngr; ++g) {
+        if (bad_prime != 0) {
+            continue;
+        }
+        const len_t gs  = g * LA_NR;
+        const len_t ge  = gs + LA_NR < nrl ? gs + LA_NR : nrl;
+        len_t grp[LA_NR];
+        len_t ng        = 0;
+        int64_t *dm     = NULL;
+        if (multi_rows) {
+            dm  = drm + (uint64_t)omp_get_thread_num() * ncols * LA_NR;
+            sc  = ncols;
+            for (i = gs; i < ge; ++i) {
+                const hm_t * const r = upivs[i];
+                const hm_t * const ds = r + OFFSET;
+                const uint64_t rc = ncols - ds[0];
+                const len_t len   = r[LENGTH];
+                if (sparse_rows && (uint64_t)len * 32 < rc
+                        && (uint64_t)len * apl * 64 < rc) {
+                    continue;
+                }
+                const LA_CF_T * const cfs = tbr->LA_CF[r[COEFFS]];
+                for (j = 0; j < len; ++j) {
+                    dm[(uint64_t)LA_NR * ds[j] + ng] = (int64_t)cfs[j];
+                }
+                if (ds[0] < sc) {
+                    sc = ds[0];
+                }
+                grp[ng++] = i;
+            }
+            if (ng > 0) {
+                LA_FF(reduce_dense_rows_by_known_pivots)(
+                        dm, NULL, mat, pivs, sc, st->fc);
+            }
+        }
+        len_t lane = 0;
+        for (i = gs; i < ge && bad_prime == 0; ++i) {
+            /* is the row already reduced by the known pivots? */
+            const int pre = lane < ng && grp[lane] == i;
             const uint64_t tn = (uint64_t)omp_get_thread_num() * ncols;
             int64_t *drl  = dr + tn;
             hm_t *npiv      = upivs[i];
@@ -431,10 +958,20 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
             const len_t mh  = npiv[MULT];
             const hm_t * const ds = npiv + OFFSET;
             const uint64_t rc = ncols - ds[0];
-            const int sparse  = sparse_rows
+            const int sparse  = pre == 0 && sparse_rows
                 && (uint64_t)len * 32 < rc && (uint64_t)len * apl * 64 < rc;
             k = 0;
-            if (sparse == 0) {
+            if (pre) {
+                /* take the remainder of the row from its lane, it only
+                 * has entries in the columns of new pivots */
+                memset(drl, 0, (uint64_t)ncl * sizeof(int64_t));
+                for (j = ncl; j < ncols; ++j) {
+                    drl[j]  = dm[(uint64_t)LA_NR * j + lane];
+                    dm[(uint64_t)LA_NR * j + lane] = 0;
+                }
+                lane++;
+                cfs = NULL;
+            } else if (sparse == 0) {
                 /* the dense row is zero after a sparse reduction */
                 memset(drl, 0, (uint64_t)ncols * sizeof(int64_t));
                 for (j = 0; j < os; ++j) {
@@ -453,6 +990,9 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
                 /* If we do normal form computations the first monomial in the polynomial might not
                 be a known pivot, thus setting it to npiv[OFFSET] can lead to wrong results. */
                 sc  = st->nf == 0 ? npiv[OFFSET] : 0;
+                if (pre && first) {
+                    sc = ncl;
+                }
                 hm_t *prev      = npiv;
                 LA_CF_T *pcfs   = cfs;
                 if (sparse) {
@@ -507,6 +1047,7 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
             }
         }
     }
+    free(drm);
 
     if (bad_prime == 1) {
         for (i = kpivs != NULL ? ncl : 0; i < ncl+ncr; ++i) {
@@ -550,50 +1091,53 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
         LA_CF_T *cfs;
         hm_t cf_array_pos;
         int clean = 0; /* is dr zero? */
-        for (i = 0; i < ncr; ++i) {
-            k = ncols-1-i;
-            if (pivs[k]) {
-                cfs = mat->LA_CF[pivs[k][COEFFS]];
-                cf_array_pos    = pivs[k][COEFFS];
-                const len_t os  = pivs[k][PRELOOP];
-                const len_t len = pivs[k][LENGTH];
-                const len_t bi  = pivs[k][BINDEX];
-                const len_t mh  = pivs[k][MULT];
-                const hm_t * const ds = pivs[k] + OFFSET;
-                sc  = ds[0];
-                const uint64_t rc = ncols - sc;
-                if ((uint64_t)len * 32 < rc && (uint64_t)len * apl * 64 < rc) {
-                    if (clean == 0) {
-                        memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
-                        clean = 1;
+        if (!LA_FF(interreduce_new_pivots_dense)(mat, pivs, ncl, ncr,
+                    st->fc, nthrds, &npivs)) {
+            for (i = 0; i < ncr; ++i) {
+                k = ncols-1-i;
+                if (pivs[k]) {
+                    cfs = mat->LA_CF[pivs[k][COEFFS]];
+                    cf_array_pos    = pivs[k][COEFFS];
+                    const len_t os  = pivs[k][PRELOOP];
+                    const len_t len = pivs[k][LENGTH];
+                    const len_t bi  = pivs[k][BINDEX];
+                    const len_t mh  = pivs[k][MULT];
+                    const hm_t * const ds = pivs[k] + OFFSET;
+                    sc  = ds[0];
+                    const uint64_t rc = ncols - sc;
+                    if ((uint64_t)len * 32 < rc && (uint64_t)len * apl * 64 < rc) {
+                        if (clean == 0) {
+                            memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
+                            clean = 1;
+                        }
+                        hm_t *prev  = pivs[k];
+                        pivs[k]     = NULL;
+                        pivs[k] = mat->tr[npivs++] =
+                            LA_FF(reduce_sparse_row_by_pivots)(
+                                    dr, mark, heap, rem, prev + OFFSET, cfs, len,
+                                    mat, pivs, cf_array_pos, mh, bi, 0, st);
+                        free(prev);
+                        free(cfs);
+                        continue;
                     }
-                    hm_t *prev  = pivs[k];
-                    pivs[k]     = NULL;
-                    pivs[k] = mat->tr[npivs++] =
-                        LA_FF(reduce_sparse_row_by_pivots)(
-                                dr, mark, heap, rem, prev + OFFSET, cfs, len,
-                                mat, pivs, cf_array_pos, mh, bi, 0, st);
-                    free(prev);
+                    clean = 0;
+                    memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
+                    for (j = 0; j < os; ++j) {
+                        dr[ds[j]] = (int64_t)cfs[j];
+                    }
+                    for (; j < len; j += UNROLL) {
+                        dr[ds[j]]    = (int64_t)cfs[j];
+                        dr[ds[j+1]]  = (int64_t)cfs[j+1];
+                        dr[ds[j+2]]  = (int64_t)cfs[j+2];
+                        dr[ds[j+3]]  = (int64_t)cfs[j+3];
+                    }
+                    free(pivs[k]);
                     free(cfs);
-                    continue;
+                    pivs[k] = NULL;
+                    pivs[k] = mat->tr[npivs++] =
+                        LA_FF(reduce_dense_row_by_known_pivots_sparse)(
+                                dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st);
                 }
-                clean = 0;
-                memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
-                for (j = 0; j < os; ++j) {
-                    dr[ds[j]] = (int64_t)cfs[j];
-                }
-                for (; j < len; j += UNROLL) {
-                    dr[ds[j]]    = (int64_t)cfs[j];
-                    dr[ds[j+1]]  = (int64_t)cfs[j+1];
-                    dr[ds[j+2]]  = (int64_t)cfs[j+2];
-                    dr[ds[j+3]]  = (int64_t)cfs[j+3];
-                }
-                free(pivs[k]);
-                free(cfs);
-                pivs[k] = NULL;
-                pivs[k] = mat->tr[npivs++] =
-                    LA_FF(reduce_dense_row_by_known_pivots_sparse)(
-                            dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st);
             }
         }
         mat->tr = realloc(mat->tr, (uint64_t)npivs * sizeof(hi_t *));
@@ -706,33 +1250,36 @@ static void LA_FF(exact_trace_sparse_reduced_echelon_form)(
     /* interreduce new pivots */
     LA_CF_T *cfs;
     hm_t cf_array_pos;
-    for (i = 0; i < ncr; ++i) {
-        k = ncols-1-i;
-        if (pivs[k]) {
-            memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
-            cfs = mat->LA_CF[pivs[k][COEFFS]];
-            cf_array_pos    = pivs[k][COEFFS];
-            const len_t os  = pivs[k][PRELOOP];
-            const len_t len = pivs[k][LENGTH];
-            const len_t bi  = pivs[k][BINDEX];
-            const len_t mh  = pivs[k][MULT];
-            const hm_t * const ds = pivs[k] + OFFSET;
-            sc  = ds[0];
-            for (j = 0; j < os; ++j) {
-                dr[ds[j]] = (int64_t)cfs[j];
+    if (!LA_FF(interreduce_new_pivots_dense)(mat, pivs, ncl, ncr,
+                st->fc, nthrds, &npivs)) {
+        for (i = 0; i < ncr; ++i) {
+            k = ncols-1-i;
+            if (pivs[k]) {
+                memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
+                cfs = mat->LA_CF[pivs[k][COEFFS]];
+                cf_array_pos    = pivs[k][COEFFS];
+                const len_t os  = pivs[k][PRELOOP];
+                const len_t len = pivs[k][LENGTH];
+                const len_t bi  = pivs[k][BINDEX];
+                const len_t mh  = pivs[k][MULT];
+                const hm_t * const ds = pivs[k] + OFFSET;
+                sc  = ds[0];
+                for (j = 0; j < os; ++j) {
+                    dr[ds[j]] = (int64_t)cfs[j];
+                }
+                for (; j < len; j += UNROLL) {
+                    dr[ds[j]]    = (int64_t)cfs[j];
+                    dr[ds[j+1]]  = (int64_t)cfs[j+1];
+                    dr[ds[j+2]]  = (int64_t)cfs[j+2];
+                    dr[ds[j+3]]  = (int64_t)cfs[j+3];
+                }
+                free(pivs[k]);
+                free(cfs);
+                pivs[k] = NULL;
+                pivs[k] = mat->tr[npivs++] =
+                    LA_FF(reduce_dense_row_by_known_pivots_sparse)(
+                            dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st);
             }
-            for (; j < len; j += UNROLL) {
-                dr[ds[j]]    = (int64_t)cfs[j];
-                dr[ds[j+1]]  = (int64_t)cfs[j+1];
-                dr[ds[j+2]]  = (int64_t)cfs[j+2];
-                dr[ds[j+3]]  = (int64_t)cfs[j+3];
-            }
-            free(pivs[k]);
-            free(cfs);
-            pivs[k] = NULL;
-            pivs[k] = mat->tr[npivs++] =
-                LA_FF(reduce_dense_row_by_known_pivots_sparse)(
-                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st);
         }
     }
     free(pivs);
@@ -843,33 +1390,36 @@ static int LA_FF(exact_application_sparse_reduced_echelon_form)(
     /* interreduce new pivots */
     LA_CF_T *cfs;
     hm_t cf_array_pos;
-    for (i = 0; i < ncr; ++i) {
-        k = ncols-1-i;
-        if (pivs[k]) {
-            memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
-            cfs = mat->LA_CF[pivs[k][COEFFS]];
-            cf_array_pos    = pivs[k][COEFFS];
-            const len_t os  = pivs[k][PRELOOP];
-            const len_t len = pivs[k][LENGTH];
-            const len_t bi  = pivs[k][BINDEX];
-            const len_t mh  = pivs[k][MULT];
-            const hm_t * const ds = pivs[k] + OFFSET;
-            sc  = ds[0];
-            for (j = 0; j < os; ++j) {
-                dr[ds[j]] = (int64_t)cfs[j];
+    if (!LA_FF(interreduce_new_pivots_dense)(mat, pivs, ncl, ncr,
+                st->fc, nthrds, &npivs)) {
+        for (i = 0; i < ncr; ++i) {
+            k = ncols-1-i;
+            if (pivs[k]) {
+                memset(dr, 0, (uint64_t)ncols * sizeof(int64_t));
+                cfs = mat->LA_CF[pivs[k][COEFFS]];
+                cf_array_pos    = pivs[k][COEFFS];
+                const len_t os  = pivs[k][PRELOOP];
+                const len_t len = pivs[k][LENGTH];
+                const len_t bi  = pivs[k][BINDEX];
+                const len_t mh  = pivs[k][MULT];
+                const hm_t * const ds = pivs[k] + OFFSET;
+                sc  = ds[0];
+                for (j = 0; j < os; ++j) {
+                    dr[ds[j]] = (int64_t)cfs[j];
+                }
+                for (; j < len; j += UNROLL) {
+                    dr[ds[j]]    = (int64_t)cfs[j];
+                    dr[ds[j+1]]  = (int64_t)cfs[j+1];
+                    dr[ds[j+2]]  = (int64_t)cfs[j+2];
+                    dr[ds[j+3]]  = (int64_t)cfs[j+3];
+                }
+                free(pivs[k]);
+                free(cfs);
+                pivs[k] = NULL;
+                pivs[k] = mat->tr[npivs++] =
+                    LA_FF(reduce_dense_row_by_known_pivots_sparse)(
+                            dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st);
             }
-            for (; j < len; j += UNROLL) {
-                dr[ds[j]]    = (int64_t)cfs[j];
-                dr[ds[j+1]]  = (int64_t)cfs[j+1];
-                dr[ds[j+2]]  = (int64_t)cfs[j+2];
-                dr[ds[j+3]]  = (int64_t)cfs[j+3];
-            }
-            free(pivs[k]);
-            free(cfs);
-            pivs[k] = NULL;
-            pivs[k] = mat->tr[npivs++] =
-                LA_FF(reduce_dense_row_by_known_pivots_sparse)(
-                        dr, mat, bs, pivs, sc, cf_array_pos, mh, bi, 0, st);
         }
     }
     free(pivs);
@@ -896,7 +1446,6 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
     const len_t ncols = mat->nc;
     const len_t nrl   = mat->nrl;
     const len_t ncl   = mat->ncl;
-    const len_t ncr   = mat->ncr;
 
     /* we fill in all known lead terms in pivs */
     hm_t **pivs   = (hm_t **)calloc((uint64_t)ncols, sizeof(hm_t *));
@@ -919,50 +1468,42 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
      * after reducing CD part with AB */
     LA_CF_T **drs    = (LA_CF_T **)calloc((uint64_t)nrl, sizeof(LA_CF_T *));
 
-    int64_t *dr  = (int64_t *)malloc(
-            (uint64_t)ncols * st->nthrds * sizeof(int64_t));
-    /* mo need to have any sharing dependencies on parallel computation,
-     * no data to be synchronized at this step of the linear algebra */
+    /* the rows are reduced in groups of LA_NR rows, see
+     * LA_FF(reduce_dense_rows_by_known_pivots) */
+    int64_t *dr  = (int64_t *)calloc(
+            (uint64_t)ncols * LA_NR * st->nthrds, sizeof(int64_t));
+    const len_t ngr = (nrl + LA_NR - 1) / LA_NR;
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, sc) \
     schedule(dynamic)
-    for (i = 0; i < nrl; ++i) {
-        LA_CF_T *cfs = NULL;
-        int64_t *drl  = dr + (omp_get_thread_num() * (uint64_t)ncols);
-        hm_t *npiv    = upivs[i];
-        /* do the reduction */
-        memset(drl, 0, (uint64_t)ncols * sizeof(int64_t));
-        cfs = tbr->LA_CF[npiv[COEFFS]];
-        const len_t os  = npiv[PRELOOP];
-        const len_t len = npiv[LENGTH];
-        const hm_t * const ds = npiv + OFFSET;
-        for (j = 0; j < os; ++j) {
-            drl[ds[j]]  = (int64_t)cfs[j];
-        }
-        for (; j < len; j += UNROLL) {
-            drl[ds[j]]    = (int64_t)cfs[j];
-            drl[ds[j+1]]  = (int64_t)cfs[j+1];
-            drl[ds[j+2]]  = (int64_t)cfs[j+2];
-            drl[ds[j+3]]  = (int64_t)cfs[j+3];
-        }
-        sc  = ds[0];
-        free(npiv);
-        upivs[i] = NULL;
-        /* the known pivots have their lead terms left of ncl, so the
-         * remainder lives in the columns of the D part */
-        npiv = LA_FF(reduce_dense_row_by_known_pivots_sparse)(
-                drl, mat, bs, pivs, sc, i, 0, 0, 0, st);
-        if (npiv != NULL) {
-            cfs = mat->LA_CF[i];
-            LA_CF_T *row = (LA_CF_T *)calloc((uint64_t)ncr, sizeof(LA_CF_T));
-            const hm_t * const rs = npiv + OFFSET;
-            for (j = 0; j < npiv[LENGTH]; ++j) {
-                row[rs[j]-ncl] = cfs[j];
+    for (i = 0; i < ngr; ++i) {
+        int64_t *drl  = dr + (omp_get_thread_num() * (uint64_t)ncols * LA_NR);
+        sc = ncols;
+        for (len_t r = 0; r < LA_NR && i*LA_NR+r < nrl; ++r) {
+            hm_t *npiv              = upivs[i*LA_NR+r];
+            const LA_CF_T * const cfs = tbr->LA_CF[npiv[COEFFS]];
+            const len_t len         = npiv[LENGTH];
+            const hm_t * const ds   = npiv + OFFSET;
+            for (j = 0; j < len; ++j) {
+                drl[(uint64_t)LA_NR * ds[j] + r] = (int64_t)cfs[j];
             }
-            free(cfs);
+            if (ds[0] < sc) {
+                sc = ds[0];
+            }
             free(npiv);
-            mat->LA_CF[i] = NULL;
-            drs[i]  = row;
+            upivs[i*LA_NR+r] = NULL;
+        }
+        LA_CF_T *rows[LA_NR];
+        /* the known pivots have their lead terms left of ncl, so the
+         * remainders live in the columns of the D part; drl is zero
+         * again afterwards */
+        LA_FF(reduce_dense_rows_by_known_pivots)(
+                drl, rows, mat, pivs, sc, st->fc);
+        for (len_t r = 0; r < LA_NR && i*LA_NR+r < nrl; ++r) {
+            drs[i*LA_NR+r] = rows[r];
+        }
+        for (len_t r = nrl - i*LA_NR; r < LA_NR; ++r) {
+            free(rows[r]);
         }
     }
     free(dr);
@@ -991,42 +1532,6 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
     st->np = mat->np = npivs;
 
     return drs;
-}
-
-static LA_CF_T **LA_FF(interreduce_dense_matrix)(
-    LA_CF_T **dm,
-    const len_t ncr,
-    const uint32_t fc
-    )
-{
-    len_t i, j, k, l;
-    int64_t *dr = malloc((uint64_t)ncr * sizeof(int64_t));
-
-    for (i = 0; i < ncr; ++i) {
-        k = ncr-1-i;
-        if (dm[k]) {
-            memset(dr, 0, (uint64_t)ncr * sizeof(int64_t));
-            const len_t npc  = ncr - k;
-            const len_t os   = npc % UNROLL;
-            for (j = k, l = 0; l < os; ++j, ++l) {
-                dr[j] = (int64_t)dm[k][l];
-            }
-            for (; l < npc; j += UNROLL, l += UNROLL) {
-                dr[j]   = (int64_t)dm[k][l];
-                dr[j+1] = (int64_t)dm[k][l+1];
-                dr[j+2] = (int64_t)dm[k][l+2];
-                dr[j+3] = (int64_t)dm[k][l+3];
-            }
-            free(dm[k]);
-            dm[k] = NULL;
-            /* start with previous pivot the reduction process, so keep the
-             * pivot element as it is */
-            dm[k] = LA_FF(reduce_dense_row_by_dense_new_pivots)(
-                    dr, &k, dm, ncr, fc);
-        }
-    }
-    free(dr);
-    return dm;
 }
 
 static LA_CF_T **LA_FF(exact_dense_linear_algebra)(
@@ -1593,7 +2098,7 @@ static void LA_FF(exact_sparse_linear_algebra)(
         LA_CF_T **dm = LA_FF(sparse_AB_CD_linear_algebra)(mat, tbr, bs, st);
         if (mat->np > 0) {
             dm  = LA_FF(exact_dense_linear_algebra)(dm, mat, st);
-            dm  = LA_FF(interreduce_dense_matrix)(dm, mat->ncr, st->fc);
+            dm  = LA_FF(interreduce_dense_matrix)(dm, mat->ncr, st->fc, st->nthrds);
         }
         LA_FF(convert_to_sparse_matrix_rows)(mat, dm);
         if (dm) {
@@ -1710,7 +2215,7 @@ static void LA_FF(exact_sparse_dense_linear_algebra)(
     dm  = LA_FF(sparse_AB_CD_linear_algebra)(mat, tbr, bs, st);
     if (mat->np > 0) {
         dm  = LA_FF(exact_dense_linear_algebra)(dm, mat, st);
-        dm  = LA_FF(interreduce_dense_matrix)(dm, ncr, st->fc);
+        dm  = LA_FF(interreduce_dense_matrix)(dm, ncr, st->fc, st->nthrds);
     }
 
     /* convert dense matrix back to sparse matrix representation,
@@ -1760,7 +2265,7 @@ static void LA_FF(probabilistic_sparse_dense_linear_algebra_2)(
     dm  = LA_FF(sparse_AB_CD_linear_algebra)(mat, tbr, bs, st);
     if (mat->np > 0) {
         dm  = LA_FF(probabilistic_dense_linear_algebra)(dm, mat, st);
-        dm  = LA_FF(interreduce_dense_matrix)(dm, mat->ncr, st->fc);
+        dm  = LA_FF(interreduce_dense_matrix)(dm, mat->ncr, st->fc, st->nthrds);
     }
 
     /* convert dense matrix back to sparse matrix representation,
@@ -1809,7 +2314,7 @@ static void LA_FF(probabilistic_sparse_dense_linear_algebra)(
     LA_CF_T **dm = NULL;
     mat->np = 0;
     dm      = LA_FF(probabilistic_sparse_dense_echelon_form)(mat, bs, st);
-    dm      = LA_FF(interreduce_dense_matrix)(dm, mat->ncr, st->fc);
+    dm      = LA_FF(interreduce_dense_matrix)(dm, mat->ncr, st->fc, st->nthrds);
 
     /* convert dense matrix back to sparse matrix representation,
      * use tmpcf for storing the coefficient arrays */

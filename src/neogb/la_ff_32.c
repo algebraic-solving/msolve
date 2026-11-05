@@ -1889,7 +1889,25 @@ static cf32_t *reduce_dense_row_by_dense_new_pivots_31_bit(
         }
 
         const int64_t mul = (int64_t)dr[i];
-#if defined HAVE_AVX2
+#if defined HAVE_AVX512_F
+        const len_t os    = (ncr - i) % 8;
+        for (l = 0, j = i; l < os; ++l, ++j) {
+            dr[j] -=  mul * pivs[i][l];
+            dr[j] +=  (dr[j] >> 63) & mod2;
+        }
+        const __m512i mulv  = _mm512_set1_epi64(mul);
+        const __m512i zerov = _mm512_setzero_si512();
+        const __m512i mod2v = _mm512_set1_epi64(mod2);
+        for (; j < ncr; l += 8, j += 8) {
+            const __m512i prodv = _mm512_mul_epu32(mulv, _mm512_cvtepu32_epi64(
+                        _mm256_loadu_si256((__m256i *)(pivs[i]+l))));
+            __m512i resv  = _mm512_sub_epi64(
+                    _mm512_loadu_si512((void *)(dr+j)), prodv);
+            const __mmask8 cmpv = _mm512_cmpgt_epi64_mask(zerov, resv);
+            resv  = _mm512_mask_add_epi64(resv, cmpv, resv, mod2v);
+            _mm512_storeu_si512((void *)(dr+j), resv);
+        }
+#elif defined HAVE_AVX2
         const len_t os    = (ncr - i) % 8;
         for (l = 0, j = i; l < os; ++l, ++j) {
             dr[j] -=  mul * pivs[i][l];
@@ -1913,6 +1931,27 @@ static cf32_t *reduce_dense_row_by_dense_new_pivots_31_bit(
             resv  = _mm256_add_epi64(resv, _mm256_and_si256(
                         _mm256_cmpgt_epi64(zerov, resv), mod2v));
             _mm256_storeu_si256((__m256i *)(dr+j+4), resv);
+        }
+#elif defined __aarch64__
+        const len_t os    = (ncr - i) % 4;
+        for (l = 0, j = i; l < os; ++l, ++j) {
+            dr[j] -=  mul * pivs[i][l];
+            dr[j] +=  (dr[j] >> 63) & mod2;
+        }
+        const uint32x2_t mulv = vdup_n_u32((uint32_t)mul);
+        const int64x2_t mod2v = vdupq_n_s64(mod2);
+        for (; j < ncr; l += 4, j += 4) {
+            const uint32x4_t cfv  = vld1q_u32(pivs[i]+l);
+            int64x2_t resv  = vsubq_s64(vld1q_s64(dr+j),
+                    vreinterpretq_s64_u64(vmull_u32(mulv, vget_low_u32(cfv))));
+            int64x2_t mask  = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv  = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(dr+j, resv);
+            resv  = vsubq_s64(vld1q_s64(dr+j+2),
+                    vreinterpretq_s64_u64(vmull_u32(mulv, vget_high_u32(cfv))));
+            mask  = vreinterpretq_s64_u64(vcltzq_s64(resv));
+            resv  = vaddq_s64(resv, vandq_s64(mask, mod2v));
+            vst1q_s64(dr+j+2, resv);
         }
 #else
         const len_t os    = (ncr - i) % UNROLL;

@@ -1275,7 +1275,9 @@ static void hensel_matmul(fmpz_mod_poly_struct *C,
 }
 
 /* B = A^-1 modulo (f, p) by Gauss-Jordan elimination with invertible
- * pivots; returns 0 if J is not invertible */
+ * pivots, made of random combinations of rows when no entry is; returns 0
+ * if J is not invertible (or if four combinations failed, each with a
+ * probability of about deg f / p) */
 static int hensel_inv_mod_p(nmod_poly_struct *B, nmod_poly_struct *A,
                             const nmod_poly_t f, const long nv) {
   const mp_limb_t p = f->mod.n;
@@ -1285,6 +1287,9 @@ static int hensel_inv_mod_p(nmod_poly_struct *B, nmod_poly_struct *A,
   nmod_poly_init(iv, p);
   nmod_poly_init(tmp, p);
   nmod_poly_init(fac, p);
+  /* a fixed generator, so that the random numbers of msolve are not
+   * consumed */
+  uint64_t seed = 0x2545f4914f6cdd1dULL;
   for (long i = 0; i < nv; i++) {
     for (long j = 0; j < nv; j++) {
       if (i == j) {
@@ -1303,6 +1308,25 @@ static int hensel_inv_mod_p(nmod_poly_struct *B, nmod_poly_struct *A,
       nmod_poly_gcd(g, A + i * nv + k, f);
       if (nmod_poly_degree(g) == 0) {
         piv = i;
+      }
+    }
+    /* no entry of the column is invertible modulo f, which happens when
+     * f splits, each entry vanishing modulo a factor of f while the matrix
+     * is invertible (jorge square1.sZ): the row k plus random multiples
+     * of the rows below has an invertible entry, for random multiples,
+     * if the rows k to nv - 1 have rank nv - k */
+    for (int a = 0; a < 4 && piv < 0; a++) {
+      for (long i = k + 1; i < nv; i++) {
+        seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
+        const mp_limb_t r = n_mod2_preinv(seed >> 1, p, f->mod.ninv);
+        for (long j = 0; j < nv; j++) {
+          nmod_poly_scalar_addmul_nmod(A + k * nv + j, A + i * nv + j, r);
+          nmod_poly_scalar_addmul_nmod(B + k * nv + j, B + i * nv + j, r);
+        }
+      }
+      nmod_poly_gcd(g, A + k * nv + k, f);
+      if (!nmod_poly_is_zero(A + k * nv + k) && nmod_poly_degree(g) == 0) {
+        piv = k;
       }
     }
     if (piv < 0) {

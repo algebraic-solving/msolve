@@ -47,6 +47,10 @@
 #include <arm_neon.h>
 #endif
 
+/* rounding mode for _mm*_round*_pd(), clang needs it as a constant
+ * expression, a const int variable is not enough */
+#define FF64_RN (_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC)
+
 /* data for the arithmetic modulo p */
 typedef struct {
     uint64_t p;
@@ -342,14 +346,13 @@ static inline ff64_v ff64_v_submul(
         const ff64_vc_t * const c
         )
 {
-    const int rn      = _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC;
     const __m512d ad  = ff64_cvt_pd(a);
     const __m512d h   = _mm512_mul_pd(ad, m);
     const __m512d l   = _mm512_fmsub_pd(ad, m, h);
-    const __m512d q   = _mm512_roundscale_pd(_mm512_mul_pd(h, c->pinv), rn);
+    const __m512d q   = _mm512_roundscale_pd(_mm512_mul_pd(h, c->pinv), FF64_RN);
     /* r = a*m - q*p, |r| < 2p */
     __m512d r = _mm512_add_pd(_mm512_fnmadd_pd(q, c->pd, h), l);
-    const __m512d k   = _mm512_roundscale_pd(_mm512_mul_pd(r, c->pinv), rn);
+    const __m512d k   = _mm512_roundscale_pd(_mm512_mul_pd(r, c->pinv), FF64_RN);
     r = _mm512_fnmadd_pd(k, c->pd, r);
     /* -p < x < 2p */
     __m512i x = _mm512_sub_epi64(d, ff64_cvt_epi64(r));
@@ -517,14 +520,13 @@ static inline ff64_v ff64_v_submul(
         const ff64_vc_t * const c
         )
 {
-    const int rn      = _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC;
     const __m256d ad  = ff64_cvt_pd(a);
     const __m256d h   = _mm256_mul_pd(ad, m);
     const __m256d l   = _mm256_fmsub_pd(ad, m, h);
-    const __m256d q   = _mm256_round_pd(_mm256_mul_pd(h, c->pinv), rn);
+    const __m256d q   = _mm256_round_pd(_mm256_mul_pd(h, c->pinv), FF64_RN);
     /* r = a*m - q*p, |r| < 2p */
     __m256d r = _mm256_add_pd(_mm256_fnmadd_pd(q, c->pd, h), l);
-    const __m256d k   = _mm256_round_pd(_mm256_mul_pd(r, c->pinv), rn);
+    const __m256d k   = _mm256_round_pd(_mm256_mul_pd(r, c->pinv), FF64_RN);
     r = _mm256_fnmadd_pd(k, c->pd, r);
     return ff64_v_normalize(_mm256_sub_epi64(d, ff64_cvt_epi64(r)), c);
 }

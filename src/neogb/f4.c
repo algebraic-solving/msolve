@@ -652,20 +652,39 @@ static void reduce_final_basis(
         ht_t *bht   = bs->ht;
         ht_t *sht   = md->ht;
 
-        /* add all non-redundant basis elements as matrix rows */
-        mat->tr = (hm_t **)malloc((unsigned long)bs->lml * sizeof(hm_t *));
-        for (i = 0; i < bs->lml; ++i) {
-            mat->tr[i] = poly_to_matrix_row(
-                    sht, bht, bs->hm[bs->lmps[i]]);
+        /* add all non-redundant basis elements as matrix rows, their
+         * terms are inserted into sht in parallel (multiplied by 1) */
+        const len_t lml = bs->lml;
+        mat->tr = (hm_t **)malloc((unsigned long)lml * sizeof(hm_t *));
+        hm_t **polys  = (hm_t **)malloc((unsigned long)lml * sizeof(hm_t *));
+        val_t *hs     = (val_t *)calloc((unsigned long)lml, sizeof(val_t));
+        exp_t *ems    = (exp_t *)calloc(
+                (unsigned long)lml * bht->evl, sizeof(exp_t));
+        for (i = 0; i < lml; ++i) {
+            polys[i] = bs->hm[bs->lmps[i]];
+        }
+        multiplied_polys_to_matrix_rows(mat->tr, lml, hs, ems, polys,
+                sht, bht, md->nthrds);
+        for (i = 0; i < lml; ++i) {
             sht->hd[mat->tr[i][OFFSET]].idx  = 1;
         }
+        free(polys);
+        free(hs);
+        free(ems);
         mat->nr = mat->nrl = mat->sz = bs->lml;
         mat->nc = 0;
 
         symbolic_preprocessing(mat, bs, md);
-        /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
-        for (i = 0; i < sht->eld; ++i) {
-            sht->hd[i].idx = 1;
+        /* over finite fields the reducers are the known pivots on the
+         * left side of the matrix as in any other round, the basis
+         * elements are the rows to be reduced. They are reduced by the
+         * known pivots in parallel, afterwards the interreduction of the
+         * new pivots reduces them by each other. The rational linear
+         * algebra needs mat->ncl = 0, so we set all indices to 1. */
+        if (md->ff_bits == 0) {
+            for (i = 0; i < sht->eld; ++i) {
+                sht->hd[i].idx = 1;
+            }
         }
 
         /* generate hash <-> column mapping */
@@ -681,19 +700,8 @@ static void reduce_final_basis(
 
         exact_linear_algebra(mat, bs, bs, md);
 
-        /* The known pivots used as reducers are multiples of basis
-         * elements: their coefficients belong to the basis, but the rows
-         * themselves were allocated by symbolic preprocessing. In this
-         * step, the linear algebra keeps them in its pivot array at the
-         * column of their lead term and does not free them (it only frees
-         * them when detecting a bad prime, in which case mat->np = 0).
-         * Release them here, otherwise they leak at each call. */
-        if (md->ff_bits != 0 && mat->np > 0) {
-            for (i = 0; i < mat->nru; ++i) {
-                free(mat->rr[i]);
-                mat->rr[i] = NULL;
-            }
-        }
+        /* the basis keeps the order of the rows before the reduction */
+        sort_matrix_rows_increasing(mat->tr, mat->np);
 
         free_basis_elements(bs);
 

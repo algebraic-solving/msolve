@@ -24,7 +24,7 @@
 #define DEBUGBUILDMATRIX 0
 #define IO_DEBUG 0
 
-#define LONG_OPT_LENGTH 15
+#define LONG_OPT_LENGTH 18
 #define ARG_OPT_LENGTH 4
 
 
@@ -124,6 +124,14 @@ static inline void display_help(char *str){
   display_option_help_noopt("2 - Some normal forms are computed. (default)\n");
   display_option_help_noopt("3 - Lots of normal forms are computed.\n");
   display_option_help_noopt("4 - All the normal forms are computed.\n");
+  display_option_help(0, "dense-route", "DEN", "With a separating linear form and an extra\n");
+  display_option_help_noopt("variable, over the rationals: route of the\n");
+  display_option_help_noopt("multi-modular steps.\n");
+  display_option_help_noopt("0 - chosen from the sizes of the F4 matrices\n");
+  display_option_help_noopt("    (default).\n");
+  display_option_help_noopt("1 - on the system with the extra variable.\n");
+  display_option_help_noopt("2 - on the original system, parametrizations\n");
+  display_option_help_noopt("    from its multiplication matrix.\n");
   display_option_help('C', "", "", "Use sparse-FGLM-col algorithm:\n");
   display_option_help_noopt("Given an input file with k polynomials\n");
   display_option_help_noopt("compute the quotient of the ideal\n");
@@ -181,10 +189,43 @@ static inline void display_help(char *str){
   display_option_help_noopt("with respect to the kth polynomial.\n");
   display_option_help_noopt("Note: At the moment restricted to 32 bit\n");
   display_option_help_noopt("prime fields.\n");
+  display_option_help(0, "separating-element", "SEP", "Over the rationals, when the last variable\n");
+  display_option_help_noopt("does not separate the solutions: search for a\n");
+  display_option_help_noopt("separating variable or linear form on the\n");
+  display_option_help_noopt("Groebner basis already computed.\n");
+  display_option_help_noopt("0 - no search, see option -c.\n");
+  display_option_help_noopt("1 - search (default).\n");
+  display_option_help(0, "split", "SPL", "Over the rationals: splitting of the solutions\n");
+  display_option_help_noopt("along equalities of coordinates, each component\n");
+  display_option_help_noopt("being lifted separately.\n");
+  display_option_help_noopt("0 - when the largest component has at most a\n");
+  display_option_help_noopt("    quarter of the solutions (default).\n");
+  display_option_help_noopt("1 - never.\n");
+  display_option_help_noopt("2 - whenever there are several components.\n");
   display_option_help('u', "", "UHT", "Number of steps after which the\n");
   display_option_help_noopt("hash table is newly generated.\n");
   display_option_help_noopt("0 - no update (default).\n");
   display_option_help('V', "version", "", "Prints msolve's version\n");
+
+  fprintf(OUTSTREAM, "\nLifting of the parametrization over the rationals:\n\n");
+  display_option_help(0, "lifting", "LIFT", "Lifting strategy.\n");
+  display_option_help_noopt("0 - p-adic or multi-modular, chosen by a cost\n");
+  display_option_help_noopt("    model (default).\n");
+  display_option_help_noopt("1 - multi-modular.\n");
+  display_option_help_noopt("2 - p-adic when applicable.\n");
+  display_option_help_noopt("By default, msolve sets the parameters of the\n");
+  display_option_help_noopt("p-adic lifting automatically; the options below\n");
+  display_option_help_noopt("override them and are intended for experiments.\n");
+  display_option_help(0, "hensel-precision", "N", "Precision p^N per prime.\n");
+  display_option_help_noopt("0 - chosen by the cost model (default).\n");
+  display_option_help(0, "hensel-cost-scale", "K", "Factor on the cost of a modular run\n");
+  display_option_help_noopt("in the cost model; above 1, the p-adic\n");
+  display_option_help_noopt("lifting is chosen more often.\n");
+  display_option_help_noopt("1 (default).\n");
+  display_option_help(0, "hensel-memory", "MB", "Memory limit of the p-adic lifting, in\n");
+  display_option_help_noopt("megabytes, which bounds the precision.\n");
+  display_option_help_noopt("0 - computed from the size of the modular\n");
+  display_option_help_noopt("    computation (default).\n");
 }
 
 static void getoptions(
@@ -209,6 +250,13 @@ static void getoptions(
         int32_t *is_gb,
         int32_t *lift_matrix,
         int32_t *get_param,
+        int32_t *sep_search,
+        int32_t *sep_dense,
+        int32_t *split_mode,
+        int32_t *lifting,
+        int32_t *hensel_prec,
+        double *hensel_cost_scale,
+        double *hensel_memory,
         int32_t *precision,
         int32_t *generate_pbm_files,
 	int64_t *seed,
@@ -225,6 +273,13 @@ static void getoptions(
      see https://cgit.git.savannah.gnu.org/cgit/coreutils.git/tree/src/ls.c */
   enum {
     RANDOM_SEED_OPTION = CHAR_MAX + 1,
+    SEPARATING_ELEMENT_OPTION,
+    DENSE_ROUTE_OPTION,
+    SPLIT_OPTION,
+    LIFTING_OPTION,
+    HENSEL_PRECISION_OPTION,
+    HENSEL_COST_SCALE_OPTION,
+    HENSEL_MEMORY_OPTION,
     /* Below is the template for the next long option with
      * no equivalent short option */
     /* NEXT_OPTION */
@@ -235,12 +290,19 @@ static void getoptions(
     {"groebner-basis", required_argument, NULL, 'g'},
     {"help", no_argument, NULL, 'h'},
     {"linear-algebra", required_argument, NULL, 'l'},
+    {"lifting", required_argument, NULL, LIFTING_OPTION},
+    {"hensel-precision", required_argument, NULL, HENSEL_PRECISION_OPTION},
+    {"hensel-cost-scale", required_argument, NULL, HENSEL_COST_SCALE_OPTION},
+    {"hensel-memory", required_argument, NULL, HENSEL_MEMORY_OPTION},
     {"lifting-mulmat", required_argument, NULL, 'L'},
     {"normal-form", required_argument, NULL, 'n'},
     {"output-file", required_argument, NULL, 'o'},
     {"precision", required_argument, NULL, 'p'},
     {"parametrization", required_argument, NULL, 'P'},
     {"random-seed", required_argument, NULL, RANDOM_SEED_OPTION},
+    {"separating-element", required_argument, NULL, SEPARATING_ELEMENT_OPTION},
+    {"dense-route", required_argument, NULL, DENSE_ROUTE_OPTION},
+    {"split", required_argument, NULL, SPLIT_OPTION},
     {"reduce-gb", required_argument, NULL, 'r'},
     {"threads", required_argument, NULL, 't'},
     {"verbose", required_argument, NULL, 'v'},
@@ -320,6 +382,48 @@ static void getoptions(
       break;
     case 'L':
       *lift_matrix= strtol(optarg, NULL, 10);
+      break;
+    case SEPARATING_ELEMENT_OPTION:
+      *sep_search = strtol(optarg, NULL, 10) != 0;
+      break;
+    case DENSE_ROUTE_OPTION:
+      *sep_dense = strtol(optarg, NULL, 10);
+      if (*sep_dense < 0 || *sep_dense > 2) {
+          *sep_dense = 0;
+      }
+      break;
+    case SPLIT_OPTION:
+      *split_mode = strtol(optarg, NULL, 10);
+      if (*split_mode < 0 || *split_mode > 2) {
+          *split_mode = 0;
+      }
+      break;
+    case LIFTING_OPTION:
+      *lifting = strtol(optarg, NULL, 10);
+      if (*lifting < 0 || *lifting > 2) {
+          *lifting = 0;
+      }
+      break;
+    case HENSEL_PRECISION_OPTION:
+      *hensel_prec = strtol(optarg, NULL, 10);
+      if (*hensel_prec < 0) {
+          *hensel_prec = 0;
+      }
+      if (*hensel_prec > 1024) {
+          *hensel_prec = 1024;
+      }
+      break;
+    case HENSEL_COST_SCALE_OPTION:
+      *hensel_cost_scale = strtod(optarg, NULL);
+      if (*hensel_cost_scale <= 0) {
+          *hensel_cost_scale = 1.0;
+      }
+      break;
+    case HENSEL_MEMORY_OPTION:
+      *hensel_memory = strtod(optarg, NULL);
+      if (*hensel_memory < 0) {
+          *hensel_memory = 0;
+      }
       break;
     case 't':
       *nthreads = strtol(optarg, NULL, 10);
@@ -497,6 +601,13 @@ int main(int argc, char **argv){
     int32_t is_gb                 = 0;
     int32_t lift_matrix           = 0;
     int32_t get_param             = 0;
+    int32_t sep_search            = 1;
+    int32_t sep_dense             = 0;
+    int32_t split_mode            = 0;
+    int32_t lifting               = 0;
+    int32_t hensel_prec           = 0;
+    double hensel_cost_scale      = 1.0;
+    double hensel_memory          = 0;
     int32_t precision             = 64;
     int64_t seed                  = -1;
 
@@ -509,7 +620,9 @@ int main(int argc, char **argv){
                &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling,
                &unstable_staircase, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
-               &precision, &generate_pbm,
+               &sep_search, &sep_dense, &split_mode,
+               &lifting, &hensel_prec, &hensel_cost_scale,
+               &hensel_memory, &precision, &generate_pbm,
 	       &seed, &info_level, files);
 
     /* srand initialization */
@@ -558,6 +671,16 @@ int main(int argc, char **argv){
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));
     gens->elim = elim_block_len;
+    /* the parametrization of the whole solution set is not built from
+     * its components when it is not printed */
+    gens->split_global = get_param > 0;
+    gens->sep_search = sep_search;
+    gens->sep_dense = sep_dense;
+    gens->split_mode = split_mode;
+    gens->lifting = lifting;
+    gens->hensel_prec = hensel_prec;
+    gens->hensel_cost_scale = hensel_cost_scale;
+    gens->hensel_memory = hensel_memory;
 
     if(0 < field_char && field_char < pow(2, 15) && la_option > 2){
         if(info_level){

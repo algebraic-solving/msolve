@@ -216,7 +216,7 @@ static void hensel_ntt_clear(hensel_ntt_t *T) {
       free(C);
     }
   }
-  free(T->buf);
+  flint_aligned_free(T->buf);
   hensel_ntt_init(T);
 }
 
@@ -235,8 +235,8 @@ static long hensel_ntt_fit(hensel_ntt_t *T, const long D, const double bits) {
     T->N = UWORD(1) << L;
     T->trunc = FLINT_MIN(T->N, (ulong)((2 * D - 1 + BLK_SZ - 1) / BLK_SZ)
                          * BLK_SZ);
-    free(T->buf);
-    T->buf = aligned_alloc(64, T->N * sizeof(double));
+    flint_aligned_free(T->buf);
+    T->buf = flint_aligned_alloc(64, T->N * sizeof(double));
   }
   long np = 0;
   while (np < HENSEL_NTT_MAXP && (np == 0 || T->lbits[np - 1] <= bits + 1)) {
@@ -354,7 +354,7 @@ static int hensel_ntt_mat_set(hensel_ntt_mat_t *M, const fmpz_poly_struct *A,
   if (np == 0) {
     return 0;
   }
-  M->d = aligned_alloc(64, r * c * np * T->trunc * sizeof(double));
+  M->d = flint_aligned_alloc(64, r * c * np * T->trunc * sizeof(double));
   for (long i = 0; i < r * c; i++) {
     hensel_ntt_fwd(M->d + i * np * T->trunc, A + i, np, 1, T);
   }
@@ -362,7 +362,7 @@ static int hensel_ntt_mat_set(hensel_ntt_mat_t *M, const fmpz_poly_struct *A,
 }
 
 static void hensel_ntt_mat_clear(hensel_ntt_mat_t *M) {
-  free(M->d);
+  flint_aligned_free(M->d);
   M->d = NULL;
   M->np = 0;
 }
@@ -394,8 +394,8 @@ static void hensel_ntt_mul(fmpz_poly_struct *C, const hensel_ntt_mat_t *M,
                            const long D, hensel_ntt_t *T) {
   const long r = M->r, c = M->c, np = M->np;
   const ulong trunc = T->trunc, zl = 2 * D - 1;
-  double *Bh = aligned_alloc(64, c * np * trunc * sizeof(double));
-  double *out = aligned_alloc(64, np * trunc * sizeof(double));
+  double *Bh = flint_aligned_alloc(64, c * np * trunc * sizeof(double));
+  double *out = flint_aligned_alloc(64, np * trunc * sizeof(double));
   ulong *res = malloc(np * sizeof(ulong)), *t = malloc((np + 1)
                                                          * sizeof(ulong));
   for (long l = 0; l < n; l++) {
@@ -442,8 +442,8 @@ static void hensel_ntt_mul(fmpz_poly_struct *C, const hensel_ntt_mat_t *M,
   }
   free(t);
   free(res);
-  free(out);
-  free(Bh);
+  flint_aligned_free(out);
+  flint_aligned_free(Bh);
 }
 #endif
 

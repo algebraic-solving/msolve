@@ -72,7 +72,7 @@ int main(void)
         for (int j = 0; j < 2; ++j) {
             int32_t bld = 0, *blen = NULL, *bexp = NULL;
             void *bcf = NULL;
-            const int64_t nterms = export_f4(malloc, &bld, &blen, &bexp,
+            const int64_t nterms = export_f4_64(malloc, &bld, &blen, &bexp,
                     &bcf, lens, exps, cfs, field_char, 0, 0, nr_vars,
                     nr_gens, 17, nr_threads[j], 0, 0, la_options[i], 1, 0, 0);
             const int64_t *cf = (int64_t *)bcf;

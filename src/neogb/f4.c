@@ -866,7 +866,7 @@ int64_t export_results_from_f4(
  *     first all exponents of generator 1, then all of generator 2, ...
  *
  *  RETURNs the length of the jl_basis array */
-int64_t export_f4(
+int64_t export_f4_64(
         void *(*mallocp) (size_t),
         /* return values */
         int32_t *bld,   /* basis load */
@@ -950,4 +950,39 @@ int64_t export_f4(
     md    = NULL;
 
     return nterms;
+}
+
+/* same as export_f4_64(), but with a 32 bit field characteristic and
+ * thus always int32_t coefficients, this is the interface used by
+ * AlgebraicSolving.jl */
+int64_t export_f4(
+        void *(*mallocp) (size_t),
+        /* return values */
+        int32_t *bld,   /* basis load */
+        int32_t **blen, /* length of each poly in basis */
+        int32_t **bexp, /* basis exponent vectors */
+        void **bcf,     /* coefficients of basis elements */
+        /* input values */
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *cfs,
+        const uint32_t field_char,
+        const int32_t mon_order,
+        const int32_t elim_block_len,
+        const int32_t nr_vars,
+        const int32_t nr_gens,
+        const int32_t ht_size,
+        const int32_t nr_threads,
+        const int32_t max_nr_pairs,
+        const int32_t reset_ht,
+        const int32_t la_option,
+        const int32_t reduce_gb,
+        const int32_t pbm_file,
+        const int32_t info_level
+        )
+{
+    return export_f4_64(mallocp, bld, blen, bexp, bcf, lens, exps, cfs,
+            (uint64_t)field_char, mon_order, elim_block_len, nr_vars,
+            nr_gens, ht_size, nr_threads, max_nr_pairs, reset_ht,
+            la_option, reduce_gb, pbm_file, info_level);
 }

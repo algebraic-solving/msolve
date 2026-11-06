@@ -82,6 +82,12 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
   const CF_t p = M->charac;
   const uint64_t pp = (uint64_t)p * p;
   const uint64_t Mred = ((UINT64_C(1) << 63) / pp) * pp;
+  /* dense rows are added m at a time (products < (p-1)^2) to accumulators
+   * kept below 2^63, then folded */
+  const uint64_t q = (uint64_t)(p - 1) * (p - 1);
+  uint32_t m = (uint32_t)(((UINT64_C(1) << 63) - 1) / (q ? q : 1));
+  if(m < 1) m = 1;
+  if(m > 8) m = 8;
   const szmat_t *sel = M->rowsel + (uint64_t)i * D;
 #ifdef _OPENMP
   if(M->nthreads > 1 && D >= FGLMC_PAR_MIN){
@@ -92,6 +98,7 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
       const szmat_t l0 = (szmat_t)((uint64_t)D * tid / nth);
       const szmat_t l1 = (szmat_t)((uint64_t)D * (tid + 1) / nth);
       memset(acc + l0, 0, (l1 - l0) * sizeof(uint64_t));
+      uint32_t nd = 0;
       for(szmat_t k = 0; k < D; k++){
         const uint64_t a = v[k];
         if(!a) continue;
@@ -110,9 +117,10 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
             continue;
           }
           const CF_t *row = M->dense_mat + (uint64_t)(s - D) * D;
-          for(szmat_t l = l0; l < l1; l++){
-            uint64_t t = acc[l] + a * row[l];
-            acc[l] = t - (Mred & -(t >> 63));
+          for(szmat_t l = l0; l < l1; l++) acc[l] += a * row[l];
+          if(++nd == m){
+            for(szmat_t l = l0; l < l1; l++) acc[l] -= Mred & -(acc[l] >> 63);
+            nd = 0;
           }
         }
       }
@@ -122,6 +130,7 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
   }
 #endif
   memset(acc, 0, D * sizeof(uint64_t));
+  uint32_t nd = 0;
   for(szmat_t k = 0; k < D; k++){
     const uint64_t a = v[k];
     if(!a) continue;
@@ -135,9 +144,10 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
         continue;
       }
       const CF_t *row = M->dense_mat + (uint64_t)(s - D) * D;
-      for(szmat_t l = 0; l < D; l++){
-        uint64_t t = acc[l] + a * row[l];
-        acc[l] = t - (Mred & -(t >> 63));
+      for(szmat_t l = 0; l < D; l++) acc[l] += a * row[l];
+      if(++nd == m){
+        for(szmat_t l = 0; l < D; l++) acc[l] -= Mred & -(acc[l] >> 63);
+        nd = 0;
       }
     }
   }
@@ -148,8 +158,8 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
 typedef struct {
   szmat_t D, r;
   mp_limb_t p;
-  nmod_mat_t U;      /* D x D, rows 0..r-1                           */
-  nmod_mat_t Pt;     /* D x D, triangular block to reduce            */
+  CF_t *U;           /* D x D, rows 0..r-1                           */
+  CF_t *PtT;         /* D x D: PtT[j][i] = U_j[piv[i]] for i >= j     */
   CF_t *L;           /* D x D, lower triangular                      */
   mp_limb_t *dinv;   /* inverse of L[t][t]                           */
   slong *piv;        /* pivots                                       */
@@ -162,17 +172,17 @@ static int fglmc_lu_init(fglmc_lu_t *E, szmat_t D, CF_t p){
   E->r = 0;
   E->p = p;
   E->nthr = 1;
-  nmod_mat_init(E->U, D, D, p);
-  nmod_mat_init(E->Pt, D, D, p);
+  E->U = malloc((uint64_t)D * D * sizeof(CF_t) + sizeof(CF_t));
+  E->PtT = malloc((uint64_t)D * D * sizeof(CF_t) + sizeof(CF_t));
   E->L = malloc((uint64_t)D * D * sizeof(CF_t) + sizeof(CF_t));
   E->dinv = malloc((D + 1) * sizeof(mp_limb_t));
   E->piv = malloc((D + 1) * sizeof(slong));
   E->tmp = malloc((D + 1) * sizeof(uint64_t));
-  return E->L && E->dinv && E->piv && E->tmp;
+  return E->U && E->PtT && E->L && E->dinv && E->piv && E->tmp;
 }
 static void fglmc_lu_clear(fglmc_lu_t *E){
-  nmod_mat_clear(E->U);
-  nmod_mat_clear(E->Pt);
+  free(E->U);
+  free(E->PtT);
   free(E->L);
   free(E->dinv);
   free(E->piv);
@@ -194,11 +204,11 @@ static int fglmc_lu_reduce(fglmc_lu_t *E, mp_limb_t *w, slong j0, mp_limb_t *a){
   if(par){
     for(slong j = j0; j < r; j++){
       uint64_t t = w[E->piv[j]];
-      const mp_limb_t *Pj = nmod_mat_entry_ptr(E->Pt, j, 0);
       for(slong i = j0; i < j; i++){
         const mp_limb_t ai = a[i - j0];
-        if(ai && Pj[i]){
-            t += (uint64_t)(p - ai) * Pj[i];
+        const mp_limb_t pji = E->PtT[(uint64_t)i * D + j];
+        if(ai && pji){
+            t += (uint64_t)(p - ai) * pji;
             t -= Mred & -(t >> 63);
         }
       }
@@ -209,7 +219,7 @@ static int fglmc_lu_reduce(fglmc_lu_t *E, mp_limb_t *w, slong j0, mp_limb_t *a){
       uint64_t t = w[l];
       for(slong j = j0; j < r; j++){
         const mp_limb_t aj = a[j - j0];
-        const mp_limb_t x = nmod_mat_entry(E->U, j, l);
+        const mp_limb_t x = E->U[(uint64_t)j * D + l];
         if(aj && x){
             t += (uint64_t)(p - aj) * x;
             t -= Mred & -(t >> 63);
@@ -224,7 +234,7 @@ static int fglmc_lu_reduce(fglmc_lu_t *E, mp_limb_t *w, slong j0, mp_limb_t *a){
       a[j - j0] = aj;
       if(!aj) continue;
       const mp_limb_t na = p - aj;
-      const mp_limb_t *Uj = nmod_mat_entry_ptr(E->U, j, 0);
+      const CF_t *Uj = E->U + (uint64_t)j * D;
       for(slong l = pj; l < D; l++)
         if(Uj[l]) w[l] = (mp_limb_t)((w[l] + (uint64_t)na * Uj[l]) % p);
     }
@@ -247,9 +257,9 @@ static void fglmc_lu_insert(fglmc_lu_t *E, const mp_limb_t *w, const mp_limb_t *
   }
   const mp_limb_t d = w[pv];
   const mp_limb_t inv = n_invmod(d, p);
-  mp_limb_t *Ur = nmod_mat_entry_ptr(E->U, r, 0);
+  CF_t *Ur = E->U + (uint64_t)r * D;
   for(slong l = 0; l < D; l++){
-      Ur[l] = w[l] ? (mp_limb_t)(((uint64_t)w[l] * inv) % p) : 0;
+      Ur[l] = w[l] ? (CF_t)(((uint64_t)w[l] * inv) % p) : 0;
   }
   CF_t *Lr = E->L + (uint64_t)r * D;
   for(slong j = 0; j < r; j++){
@@ -257,11 +267,10 @@ static void fglmc_lu_insert(fglmc_lu_t *E, const mp_limb_t *w, const mp_limb_t *
   }
   Lr[r] = (CF_t)d;
   E->dinv[r] = inv;
-  mp_limb_t *Pr = nmod_mat_entry_ptr(E->Pt, r, 0);
   for(slong j = 0; j < r; j++){
-      Pr[j] = nmod_mat_entry(E->U, j, pv);
+      E->PtT[(uint64_t)j * D + r] = E->U[(uint64_t)j * D + pv];
   }
-  Pr[r] = 1;
+  E->PtT[(uint64_t)r * D + r] = 1;
   E->piv[r] = pv;
   E->r++;
 }
@@ -285,6 +294,65 @@ static void fglmc_lu_relation(fglmc_lu_t *E, const mp_limb_t *a, CF_t *c){
   }
 }
 
+/* B -= C U mod p, with B (K x w), C (K x n) and U (n x w) given by their first
+ * entry and their row strides; entries of B and C are reduced modulo p, U
+ * has 32-bit entries. Tiles of FGLMC_RB rows and FGLMC_WB columns; the
+ * products are accumulated in 64-bit integers kept below 2^63, m at a time
+ * before folding (m depends on p: 8 for p < 2^30). */
+#define FGLMC_RB 8
+#define FGLMC_WB 256
+FGLMC_VECTORIZE
+static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
+                           const mp_limb_t *C, const slong ldc,
+                           const CF_t *U, const slong ldu,
+                           const slong K, const slong n, const slong w,
+                           const mp_limb_t p){
+  if(K == 0 || n == 0 || w == 0) return;
+  const uint64_t pp = (uint64_t)p * p;
+  const uint64_t Mred = ((UINT64_C(1) << 63) / pp) * pp;
+  const uint64_t q = (uint64_t)(p - 1) * (p - 1);
+  slong m = (slong)(((UINT64_C(1) << 63) - 1) / (q ? q : 1));
+  if(m < 1) m = 1;
+  if(m > 8) m = 8;
+  uint64_t acc[FGLMC_RB][FGLMC_WB];
+  for(slong i0 = 0; i0 < K; i0 += FGLMC_RB){
+    const slong nr = (K - i0 < FGLMC_RB) ? K - i0 : FGLMC_RB;
+    for(slong l0 = 0; l0 < w; l0 += FGLMC_WB){
+      const slong wl = (w - l0 < FGLMC_WB) ? w - l0 : FGLMC_WB;
+      for(slong a = 0; a < nr; a++) memset(acc[a], 0, wl * sizeof(uint64_t));
+      for(slong j0 = 0; j0 < n; j0 += m){
+        const slong j1 = (j0 + m < n) ? j0 + m : n;
+        for(slong a = 0; a < nr; a++){
+          uint64_t *ac = acc[a];
+          const mp_limb_t *cr = C + (uint64_t)(i0 + a) * ldc;
+          for(slong j = j0; j < j1; j++){
+            const uint64_t c = cr[j];
+            if(!c) continue;
+            const CF_t *u = U + (uint64_t)j * ldu + l0;
+            for(slong l = 0; l < wl; l++) ac[l] += c * u[l];
+          }
+          for(slong l = 0; l < wl; l++) ac[l] -= Mred & -(ac[l] >> 63);
+        }
+      }
+      for(slong a = 0; a < nr; a++){
+        mp_limb_t *bl = B + (uint64_t)(i0 + a) * ldb + l0;
+        for(slong l = 0; l < wl; l++){
+          const mp_limb_t sv = (mp_limb_t)(acc[a][l] % p);
+          bl[l] = (bl[l] >= sv) ? bl[l] - sv : bl[l] + p - sv;
+        }
+      }
+    }
+  }
+}
+
+/* row stride of a FLINT matrix (windows included) */
+static inline slong fglmc_stride(const nmod_mat_t A){
+  return (A->r > 1) ? (slong)(nmod_mat_entry_ptr(A, 1, 0) - nmod_mat_entry_ptr(A, 0, 0))
+                    : A->c;
+}
+
+#define FGLMC_NB 64      // panel width of the triangular solve
+
 /* Reduces the rows of B against the rows a..b-1 of E, B being already reduced
  * against the rows 0..a-1: B -= C U[a..b), C (K x (b - a)) receiving the
  * coefficients. */
@@ -294,24 +362,43 @@ static void fglmc_lu_reduce_range(fglmc_lu_t *E, nmod_mat_t B, nmod_mat_t C,
   const mp_limb_t p = E->p;
   nmod_mat_init(C, K, n, p);
   if(n == 0 || K == 0) return;
-  nmod_mat_t Bt, Ct, P, Ptw, Uw;
-  nmod_mat_init(Bt, n, K, p);
-  nmod_mat_init(Ct, n, K, p);
-  for(slong j = 0; j < n; j++){
+  const slong ldb = fglmc_stride(B), ldc = fglmc_stride(C);
+  mp_limb_t *Cp = nmod_mat_entry_ptr(C, 0, 0);
+  /* Bp = B[:, piv[a..b)] */
+  mp_limb_t *Bp = malloc((uint64_t)K * n * sizeof(mp_limb_t));
+  for(slong i = 0; i < K; i++){
+    const mp_limb_t *bi = nmod_mat_entry_ptr(B, i, 0);
+    for(slong j = 0; j < n; j++) Bp[(uint64_t)i * n + j] = bi[E->piv[a + j]];
+  }
+  /* C T = Bp with T = PtT[a..b, a..b] unit upper triangular: by panels of
+   * FGLMC_NB columns, substitution inside a panel, then update of the next
+   * columns of Bp */
+  const CF_t *T = E->PtT + (uint64_t)a * D + a;
+  for(slong jb = 0; jb < n; jb += FGLMC_NB){
+    const slong je = (jb + FGLMC_NB < n) ? jb + FGLMC_NB : n;
     for(slong i = 0; i < K; i++){
-      nmod_mat_entry(Bt, j, i) = nmod_mat_entry(B, i, E->piv[a + j]);
+      mp_limb_t *bp = Bp + (uint64_t)i * n;
+      mp_limb_t *c = Cp + (uint64_t)i * ldc;
+      for(slong l = jb; l < je; l++){
+        const mp_limb_t cl = bp[l];
+        c[l] = cl;
+        if(!cl) continue;
+        const uint64_t ncl = p - cl;
+        const CF_t *tr = T + (uint64_t)l * D;
+        for(slong j = l + 1; j < je; j++){
+          if(tr[j]) bp[j] = (mp_limb_t)((bp[j] + ncl * tr[j]) % p);
+        }
+      }
+    }
+    if(je < n){
+      fglmc_gemm_sub(Bp + je, n, Cp + jb, ldc, T + (uint64_t)jb * D + je, D,
+                     K, je - jb, n - je, p);
     }
   }
-  nmod_mat_window_init(Ptw, E->Pt, a, a, b, b);
-  nmod_mat_solve_tril(Ct, Ptw, Bt, 1);
-  nmod_mat_window_clear(Ptw);
-  nmod_mat_transpose(C, Ct);
-  nmod_mat_init(P, K, D, p);
-  nmod_mat_window_init(Uw, E->U, a, 0, b, D);
-  nmod_mat_mul(P, C, Uw);
-  nmod_mat_window_clear(Uw);
-  nmod_mat_sub(B, B, P);
-  nmod_mat_clear(P); nmod_mat_clear(Bt); nmod_mat_clear(Ct);
+  free(Bp);
+  /* B -= C U[a..b) */
+  fglmc_gemm_sub(nmod_mat_entry_ptr(B, 0, 0), ldb, Cp, ldc,
+                 E->U + (uint64_t)a * D, D, K, n, D, p);
 }
 
 /* Candidates */
@@ -370,7 +457,7 @@ static fglmc_cand_t fglmc_hpop(fglmc_heap_t *H){
  * Returns 1 on success, 0 otherwise (in particular if ord is not lex). */
 /* block sizes; can be set at compile time (-DFGLMC_KMAX=...) */
 #ifndef FGLMC_KMAX
-#define FGLMC_KMAX 1024  // max size of a block
+#define FGLMC_KMAX 256   // max size of a block
 #endif
 #ifndef FGLMC_KSUB
 #define FGLMC_KSUB 64    // sub-blocks reduced together inside a block

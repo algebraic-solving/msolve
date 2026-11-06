@@ -16,6 +16,7 @@
  * Authors:
  * Jérémy Berthomieu
  * Christian Eder
+ * Vincent Neiger
  * Mohab Safey El Din */
 
 #include "streams.h"

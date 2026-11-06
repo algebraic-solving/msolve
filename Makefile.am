@@ -11,7 +11,8 @@ check_PROGRAMS		= neogb_io \
 			  fglm_build_matrixn_radical-shape-31 \
 			  fglm_build_matrixn_nonradical-shape-31 \
 			  fglm_build_matrixn_nonradical-radicalshape-31 \
-			  line_endings_support
+			  line_endings_support \
+			  hensel_lifting
 
 checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_bug-68.sh \
@@ -88,6 +89,7 @@ fglm_build_matrixn_radical_shape_31_SOURCES = test/fglm/build_matrixn_radical-sh
 fglm_build_matrixn_nonradical_shape_31_SOURCES = test/fglm/build_matrixn_nonradical-shape-31.c
 fglm_build_matrixn_nonradical_radicalshape_31_SOURCES = test/fglm/build_matrixn_nonradical-radicalshape-31.c
 line_endings_support_SOURCES = test/msolve/line_endings_support.c
+hensel_lifting_SOURCES = test/msolve/hensel_lifting.c
 
 TESTS = $(check_PROGRAMS) $(checkdiff)
 

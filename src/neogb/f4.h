@@ -57,7 +57,7 @@ int64_t export_f4(
         const int32_t info_level
         );
 
-/* like export_f4(), but for all primes < 2^52: for primes >= 2^32 the
+/* like export_f4(), but for all primes < 2^52: for primes >= 2^31 the
  * coefficients of the input and of the returned basis are int64_t */
 int64_t export_f4_64(
         void *(*mallocp) (size_t),

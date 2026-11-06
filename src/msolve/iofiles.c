@@ -655,11 +655,8 @@ static void get_characteristic(FILE *fh, char * line, int max_line_size,
     int64_t tmp_mod = strtoll(line, NULL, 10);
     if(tmp_mod >= 0){
       *field_char = tmp_mod;
-      /* primes between 2^31 and 2^32 would need 32 bit coefficients
-       * which do not fit into int32_t */
-      if(tmp_mod >= ((int64_t)1 << 52)
-          || (tmp_mod > INT32_MAX && tmp_mod < ((int64_t)1 << 32))){
-        fprintf(ERRSTREAM, "Warning: characteristic must be 0, < 2^31 or between 2^32 and 2^52\n");
+      if(tmp_mod >= ((int64_t)1 << 52)){
+        fprintf(ERRSTREAM, "Warning: characteristic must be < 2^52\n");
         free(vnames);
         free(line);
         fclose(fh);

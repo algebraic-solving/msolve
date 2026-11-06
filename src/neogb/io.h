@@ -187,7 +187,7 @@ int validate_input_data(
         int32_t *info_levelp
         );
 
-/* like validate_input_data(), but also for primes >= 2^32: their
+/* like validate_input_data(), but also for primes >= 2^31: their
  * coefficients are given as int64_t */
 int validate_input_data_64(
         int **invalid_gensp,

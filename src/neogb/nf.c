@@ -152,6 +152,12 @@ int64_t export_nf(
     int32_t err = 0;
     int success = 0;
 
+    /* coefficients are given as int32_t */
+    if (field_char > INT32_MAX) {
+        fprintf(ERRSTREAM, "Field characteristic must be 0 or < 2^31.\n");
+        exit(1);
+    }
+
     /* get polys w.r.t. which we reduce */
     success = initialize_gba_input_data(&bs, &bht, &md,
             bs_lens, bs_exps, bs_cfs, field_char, mon_order, elim_block_len,

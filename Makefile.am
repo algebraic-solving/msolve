@@ -44,6 +44,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_issue-230-squared.sh \
 			  test/diff/diff_issue-310-bivariate.sh \
 			  test/diff/diff_kat6-31.sh \
+			  test/diff/diff_kat6-32.sh \
 			  test/diff/diff_kat6-52.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_kat8-qq-truncate.sh \

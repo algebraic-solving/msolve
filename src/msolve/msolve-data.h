@@ -25,6 +25,7 @@
 #include<flint/fmpz.h>
 #include<flint/fmpq.h>
 #include <string.h>
+#include <inttypes.h>
 #include <getopt.h>
 #include <ctype.h>
 #include "../neogb/libneogb.h"
@@ -57,7 +58,7 @@ typedef struct{
   nvars_t elim;
   int32_t ngens;
   int32_t nterms;
-  int32_t field_char;
+  int64_t field_char;
   /* counts change of variable orders:
    * x1 <-> xn
    * x1 <-> xn-1
@@ -76,6 +77,7 @@ typedef struct{
   int32_t *exps;
   int32_t *cfs;    /* int32_t coeffs */
   mpz_t **mpz_cfs; /* mpz_t coeffs */
+  int64_t *cfs_64; /* int64_t coeffs for field characteristics >= 2^31 */
 } data_gens_ff_t;
 
 typedef uint32_t szmat_t;

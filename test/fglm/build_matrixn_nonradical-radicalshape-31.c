@@ -30,7 +30,7 @@ int main(void)
 
     //  int32_t mon_order   = 0;
     int32_t nr_vars     = 0;
-    int32_t field_char  = 9001;
+    int64_t field_char  = 9001;
     int32_t nr_gens     = 0;
     data_gens_ff_t *gens = allocate_data_gens();
 

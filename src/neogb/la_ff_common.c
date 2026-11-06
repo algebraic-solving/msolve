@@ -619,6 +619,20 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
     int64_t *mul  = (int64_t *)malloc(
         (uint64_t)(rpb) * st->nthrds * sizeof(int64_t));
 
+    /* if there are enough rows and the first random linear combination of
+     * a block gives a new pivot, the next up to LA_NR combinations of the
+     * block are generated at once and reduced together by the known
+     * pivots, see LA_FF(reduce_dense_rows_by_known_pivots). Afterwards
+     * each remainder is reduced by the new pivots, as long as no
+     * remainder becomes zero. The buffers for the combinations are
+     * allocated by the threads when they need them. */
+    const int multi_rows = st->nf == 0 && mat->nru > 0
+        && LA_FF(rows_per_group)(nrl, st->nthrds) > 0;
+    int64_t **drm = NULL;
+    if (multi_rows) {
+        drm = (int64_t **)calloc((uint64_t)st->nthrds, sizeof(int64_t *));
+    }
+
     /* mo need to have any sharing dependencies on parallel computation,
      * no data to be synchronized at this step of the linear algebra */
 #pragma omp parallel for num_threads(st->nthrds) \
@@ -635,7 +649,24 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
             /* starting column, offset, coefficient array position in tmpcf */
             hm_t sc, cfp;
             len_t bctr  = 0;
-            while (bctr < nrbl) {
+            /* the combinations start at the smallest lead term of the
+             * rows of the block. As in the exact linear algebra, they are
+             * only reduced together if the rows fill at least 1/32 of
+             * their columns on average, otherwise the passes over all
+             * columns of the interleaved combinations do not pay off. */
+            hm_t bsc        = ncols;
+            uint64_t blen   = 0;
+            for (m = i*rpb; m < (len_t)nbl; ++m) {
+                if (upivs[m][OFFSET] < bsc) {
+                    bsc = upivs[m][OFFSET];
+                }
+                blen  +=  upivs[m][LENGTH];
+            }
+            const int batch = multi_rows
+                && blen * 32 >= (uint64_t)nrbl * (ncols - bsc);
+            /* the first combination is reduced on its own, most blocks
+             * do not add a new pivot */
+            while (bctr < nrbl && (batch == 0 || bctr == 0)) {
                 cfp = bctr + i*rpb;
                 sc  = 0;
 
@@ -706,6 +737,109 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
                 } while (!k);
                 bctr++;
             }
+            if (batch && bctr < (len_t)nrbl) {
+                const int tid = omp_get_thread_num();
+                if (drm[tid] == NULL) {
+                    drm[tid] = (int64_t *)calloc(
+                            (uint64_t)ncols * LA_NR, sizeof(int64_t));
+                }
+                int64_t *dm = drm[tid];
+                while (bctr < (len_t)nrbl) {
+                    const len_t nl = (len_t)nrbl - bctr < LA_NR
+                        ? (len_t)nrbl - bctr : LA_NR;
+                    /* generate the combinations in the lanes 0,...,nl-1 */
+                    for (k = 0, m = i*rpb; m < (len_t)nbl; ++k, ++m) {
+                        const hm_t * const r      = upivs[m];
+                        const LA_CF_T * const cfs = bs->LA_CF[r[COEFFS]];
+                        const hm_t * const ds     = r + OFFSET;
+                        const len_t len           = r[LENGTH];
+#ifdef LA_WIDE
+                        uint64_t mm[LA_NR];
+                        for (j = 0; j < nl; ++j) {
+                            int64_t c;
+                            do {
+                                c = LA_RANDOM_MULTIPLIER(fc);
+                            } while (c == 0);
+                            mm[j] = ff64_mont((uint64_t)c, &f);
+                        }
+                        for (l = 0; l < len; ++l) {
+                            int64_t *t = dm + (uint64_t)LA_NR * ds[l];
+                            for (j = 0; j < nl; ++j) {
+                                t[j] = ff64_submul(t[j], cfs[l], mm[j], &f);
+                            }
+                        }
+#else
+                        int64_t mc[LA_NR];
+                        for (j = 0; j < nl; ++j) {
+                            do {
+                                mc[j] = LA_RANDOM_MULTIPLIER(fc);
+                            } while (mc[j] == 0);
+                        }
+                        for (l = 0; l < len; ++l) {
+                            int64_t *t      = dm + (uint64_t)LA_NR * ds[l];
+                            const int64_t c = (int64_t)cfs[l];
+                            for (j = 0; j < nl; ++j) {
+                                t[j]  -=  mc[j] * c;
+                                t[j]  +=  (t[j] >> 63) & mod2;
+                            }
+                        }
+#endif
+                    }
+                    /* the remainders are taken out of the lanes in one
+                     * pass, they only have entries in the columns of new
+                     * pivots */
+                    LA_CF_T *rems[LA_NR];
+                    LA_FF(reduce_dense_rows_by_known_pivots)(
+                            dm, rems, NULL, mat, pivs, bsc, fc);
+                    len_t lane;
+                    for (lane = 0; lane < nl; ++lane) {
+                        if (rems[lane] == NULL) {
+                            /* the combination reduces to zero */
+                            bctr  = nrbl;
+                            break;
+                        }
+                        memset(drl, 0, (uint64_t)ncl * sizeof(int64_t));
+                        for (j = ncl; j < ncols; ++j) {
+                            drl[j] = (int64_t)rems[lane][j-ncl];
+                        }
+                        free(rems[lane]);
+                        rems[lane] = NULL;
+                        const hm_t cfp  = bctr + i*rpb;
+                        hm_t sc         = ncl;
+                        hm_t *npiv      = NULL;
+                        LA_CF_T *cfs    = NULL;
+                        do {
+                            free(cfs);
+                            free(npiv);
+                            npiv  = LA_FF(reduce_dense_row_by_known_pivots_sparse)(
+                                    drl, mat, bs, pivs, sc, cfp, 0, 0, 0, st);
+                            cfs   = NULL;
+                            if (!npiv) {
+                                break;
+                            }
+                            /* normalize before other threads may use it */
+                            if (mat->LA_CF[npiv[COEFFS]][0] != 1) {
+                                LA_FF(normalize_sparse_matrix_row)(
+                                        mat->LA_CF[npiv[COEFFS]], npiv[PRELOOP],
+                                        npiv[LENGTH], st->fc);
+                            }
+                            cfs = mat->LA_CF[npiv[COEFFS]];
+                            sc  = npiv[OFFSET];
+                            k   = __sync_bool_compare_and_swap(
+                                    &pivs[npiv[OFFSET]], NULL, npiv);
+                        } while (!k);
+                        if (!npiv) {
+                            bctr  = nrbl;
+                            break;
+                        }
+                        bctr++;
+                    }
+                    /* the block is done, free the remaining remainders */
+                    for (; lane < nl; ++lane) {
+                        free(rems[lane]);
+                    }
+                }
+            }
             for (j = i*rpb; j < nbl; ++j) {
                 free(upivs[j]);
                 upivs[j]  = NULL;
@@ -714,6 +848,12 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
     }
     free(mul);
     mul   = NULL;
+    if (drm != NULL) {
+        for (i = 0; i < (len_t)st->nthrds; ++i) {
+            free(drm[i]);
+        }
+        free(drm);
+    }
 
     /* we do not need the old pivots anymore */
     for (i = 0; i < ncl; ++i) {

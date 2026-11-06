@@ -2364,6 +2364,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
   if (gens->field_char == 0 && gens->rand_linear) {
     *minpolydeg_ptr = (*nmod_params)->degsqfrelimpol;
+    free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+        bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+        blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+        num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
+        lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
     return 3;
   }
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {

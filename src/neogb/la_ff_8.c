@@ -113,6 +113,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
     int64_t np = -1;
     const uint32_t fc           = st->fc;
     const int64_t mod           = (int64_t)fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf8_t * const * const mcf  = mat->cf_8;
@@ -150,7 +151,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
     k = 0;
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;

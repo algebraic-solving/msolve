@@ -210,7 +210,6 @@ static int32_t select_spairs_by_minimal_degree(
     len_t *gens;
     exp_t *elcm, *eb;
     ht_t *bht   = bs->ht;
-    exp_t etmp[bht->evl];
     ps_t *psl   = md->ps;
     ht_t *sht   = md->ht;
 
@@ -222,10 +221,24 @@ static int32_t select_spairs_by_minimal_degree(
     spair_t *ps     = psl->p;
     const len_t evl = bht->evl;
 
-    /* sort pair set */
-    sort_r(ps, (unsigned long)psl->ld, sizeof(spair_t), spair_cmp, bht);
     /* get minimal degree */
     mdeg  = ps[0].deg;
+    for (i = 1; i < psl->ld; ++i) {
+        if (ps[i].deg < mdeg) {
+            mdeg  = ps[i].deg;
+        }
+    }
+    /* only pairs of minimal degree are selected, so we move them to the
+     * front and sort only those, the degree is the first criterion of
+     * all spair orders */
+    for (i = 0, j = 0; i < psl->ld; ++i) {
+        if (ps[i].deg == mdeg) {
+            spair_t tmp = ps[i];
+            ps[i]       = ps[j];
+            ps[j++]     = tmp;
+        }
+    }
+    sort_r(ps, (unsigned long)j, sizeof(spair_t), spair_cmp, bht);
 
     /* compute a truncated GB? Check maximal degree. */
     if (md->max_gb_degree < mdeg) {
@@ -291,6 +304,20 @@ static int32_t select_spairs_by_minimal_degree(
     mat->nc = mat->ncl = mat->ncr = 0;
     mat->nr = 0;
 
+    /* we first collect all rows, i.e. the generators and their multipliers,
+     * and then generate all rows at once, see
+     * multiplied_polys_to_matrix_rows() */
+    const len_t mnr = 2 * nps;
+    hm_t **rows   = (hm_t **)malloc((unsigned long)mnr * sizeof(hm_t *));
+    hm_t **polys  = (hm_t **)malloc((unsigned long)mnr * sizeof(hm_t *));
+    val_t *hs     = (val_t *)malloc((unsigned long)mnr * sizeof(val_t));
+    exp_t *ems    = (exp_t *)malloc((unsigned long)mnr * evl * sizeof(exp_t));
+    len_t *bis    = (len_t *)malloc((unsigned long)mnr * sizeof(len_t));
+    hi_t *mhs     = (hi_t *)malloc((unsigned long)mnr * sizeof(hi_t));
+    /* is the row the first one of its lcm, i.e. a reducer row? */
+    int8_t *isrr  = (int8_t *)malloc((unsigned long)mnr * sizeof(int8_t));
+    len_t nr      = 0;
+
     i = 0;
 
     while (i < nps) {
@@ -308,76 +335,66 @@ static int32_t select_spairs_by_minimal_degree(
         /* sort gens set */
         qsort(gens, (unsigned long)load, sizeof(len_t), gens_cmp);
 
-        len_t prev  = -1;
-
         /* first element with given lcm goes into reducer part of matrix,
          * all remaining ones go to to be reduced part */
-        prev  = gens[0];
-        /* ev might change when enlarging the hash table during insertion of a new
-            * row in the matrix, thus we have to reset elcm inside the for loop */
-        elcm  = bht->ev[lcm];
-        b     = bs->hm[prev];
-        eb    = bht->ev[b[OFFSET]];
-        for (l = 0; l < evl; ++l) {
-            etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
-        }
-        const hi_t h    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
-        /* note that we use index mat->nc and not mat->nr since for each new
-         * lcm we add exactly one row to mat->rr */
-        rrows[nrr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
-        /* track trace information ? */
-        if (md->trace_level == LEARN_TRACER) {
-           rrows[nrr][BINDEX]  = prev;
-            if (bs->ht->eld == bs->ht->esz-1) {
-                enlarge_hash_table(bs->ht);
-            }
-#if PARALLEL_HASHING
-            rrows[nrr][MULT]    = check_insert_in_hash_table(etmp, h, bs->ht);
-#else
-            rrows[nrr][MULT]    = insert_in_hash_table(etmp, bs->ht);
-#endif
-        }
-
-        /* mark lcm column as lead term column */
-        sht->hd[rrows[nrr++][OFFSET]].idx = 2;
-        /* still we have to increase the number of rows */
-        mat->nr++;
-        for (k = 1; k < load; ++k) {
+        for (k = 0; k < load; ++k) {
             /* check sorted list for doubles */
-            if (gens[k] ==  prev) {
+            if (k > 0 && gens[k] == gens[k-1]) {
                 continue;
             }
-            prev  = gens[k];
-            /* ev might change when enlarging the hash table during insertion of a new
-             * row in the matrix, thus we have to reset elcm inside the for loop */
+            /* ev might change when enlarging the hash table during
+             * insertion of the multiplier when tracing */
             elcm  = bht->ev[lcm];
-            if (elcm[0] > 0) {
-            }
-            b     = bs->hm[prev];
+            b     = bs->hm[gens[k]];
             eb    = bht->ev[b[OFFSET]];
+            exp_t *em = ems + (unsigned long)nr * evl;
             for (l = 0; l < evl; ++l) {
-                etmp[l]   =   (exp_t)(elcm[l] - eb[l]);
+                em[l]   =   (exp_t)(elcm[l] - eb[l]);
             }
-            const hi_t h  = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
-            trows[ntr] = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
+            hs[nr]    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
+            polys[nr] = b;
+            bis[nr]   = gens[k];
+            isrr[nr]  = (k == 0);
             /* track trace information ? */
             if (md->trace_level == LEARN_TRACER) {
-                trows[ntr][BINDEX]  = prev;
                 if (bs->ht->eld == bs->ht->esz-1) {
                     enlarge_hash_table(bs->ht);
                 }
 #if PARALLEL_HASHING
-                trows[ntr][MULT]    = check_insert_in_hash_table(etmp, h, bs->ht);
+                mhs[nr] = check_insert_in_hash_table(em, hs[nr], bs->ht);
 #else
-                trows[ntr][MULT]    = insert_in_hash_table(etmp, bs->ht);
+                mhs[nr] = insert_in_hash_table(em, bs->ht);
 #endif
             }
-            /* mark lcm column as lead term column */
-            sht->hd[trows[ntr++][OFFSET]].idx = 2;
-            mat->nr++;
+            nr++;
         }
         i = j;
     }
+
+    multiplied_polys_to_matrix_rows(rows, nr, hs, ems, polys, sht, bht,
+            md->nthrds);
+
+    for (k = 0; k < nr; ++k) {
+        if (md->trace_level == LEARN_TRACER) {
+            rows[k][BINDEX] = bis[k];
+            rows[k][MULT]   = mhs[k];
+        }
+        /* mark lcm column as lead term column */
+        sht->hd[rows[k][OFFSET]].idx = 2;
+        if (isrr[k]) {
+            rrows[nrr++]  = rows[k];
+        } else {
+            trows[ntr++]  = rows[k];
+        }
+        mat->nr++;
+    }
+    free(rows);
+    free(polys);
+    free(hs);
+    free(ems);
+    free(bis);
+    free(mhs);
+    free(isrr);
     /* printf("%u pairs in degree %u\n", ctr, mdeg); */
     /* fix rows to be reduced */
     mat->tr = realloc(mat->tr, (unsigned long)(mat->nr - mat->nc) * sizeof(hm_t *));
@@ -482,7 +499,10 @@ static void select_tbr(
         /* const hi_t mulh = insert_in_hash_table(mul, sht);
          * const hi_t h    = sht->hd[mulh].val;
          * const deg_t d   = sht->hd[mulh].deg; */
-        const hi_t h    = 0;
+        val_t h = 0;
+        for (len_t j = 0; j < bht->evl; ++j) {
+            h +=  bht->rn[j] * mul[j];
+        }
         trows[ntr++]    = multiplied_poly_to_matrix_row(
                 sht, bht, h, mul, b);
         mat->nr++;
@@ -490,69 +510,51 @@ static void select_tbr(
 }
 
 
-static inline void find_multiplied_reducer(
-        bs_t *bs,
+/* returns the position of the reducer of the monomial m in bs->lmps
+ * plus one, 0 if m is not divisible by any lead term of bs. Among all
+ * divisors we choose the one of shortest length, the newest one among the
+ * shortest ones: this leads to sparser matrices.
+ * Does not change any data, so it can be called in parallel. */
+static inline len_t find_reducer(
+        const bs_t * const bs,
         const hm_t m,
-        len_t *nr,
-        hm_t **rows,
-        ht_t *sht,
-        const md_t * const md
+        const ht_t * const sht
         )
 {
     len_t i, k;
 
-    ht_t *bht = bs->ht;
+    const ht_t * const bht  = bs->ht;
+    const len_t evl         = bht->evl;
+    const exp_t * const e   = sht->ev[m];
+    const sdm_t ns          = ~sht->hd[m].sdm;
+    const len_t lml         = bs->lml;
 
-    const len_t rr  = *nr;
-
-    const len_t evl = bht->evl;
-
-    const exp_t * const e  = sht->ev[m];
-
-    const hd_t hdm    = sht->hd[m];
-    const len_t lml   = bs->lml;
-    const sdm_t ns    = ~hdm.sdm;
-
-    const sdm_t * const lms = bs->lm;
-    const bl_t * const lmps = bs->lmps;
-
-    exp_t etmp[bht->evl];
-    const hd_t * const hdb  = bht->hd;
+    const sdm_t * const lms   = bs->lm;
+    const bl_t * const lmps   = bs->lmps;
     exp_t * const * const evb = bht->ev;
 
-    i = 0;
-start:
-    while (i < lml && lms[i] & ns) {
-        i++;
-    }
-    if (i < lml) {
+    len_t bi    = 0;
+    len_t blen  = 0;
+    for (i = 0; i < lml; ++i) {
+        if (lms[i] & ns) {
+            continue;
+        }
         const hm_t *b = bs->hm[lmps[i]];
+        if (blen != 0 && b[LENGTH] > blen) {
+            continue;
+        }
         const exp_t * const f = evb[b[OFFSET]];
         for (k=0; k < evl; ++k) {
             if (e[k] < f[k]) {
-                i++;
-                goto start;
+                break;
             }
-            etmp[k] = (exp_t)(e[k]-f[k]);
         }
-
-        const hi_t h  = hdm.val - hdb[b[OFFSET]].val;
-        rows[rr]  = multiplied_poly_to_matrix_row(sht, bht, h, etmp, b);
-        /* track trace information ? */
-        if (md->trace_level == LEARN_TRACER) {
-            rows[rr][BINDEX]  = lmps[i];
-            if (bht->eld == bht->esz-1) {
-                enlarge_hash_table(bht);
-            }
-#if PARALLEL_HASHING
-            rows[rr][MULT]    = check_insert_in_hash_table(etmp, h, bht);
-#else
-            rows[rr][MULT]    = insert_in_hash_table(etmp, bht);
-#endif
+        if (k == evl && (blen == 0 || b[LENGTH] < blen || lmps[i] > lmps[bi])) {
+            bi    = i;
+            blen  = b[LENGTH];
         }
-        sht->hd[m].idx  = 2;
-        *nr             = rr + 1;
     }
+    return blen > 0 ? bi + 1 : 0;
 }
 
 static void symbolic_preprocessing(
@@ -562,6 +564,7 @@ static void symbolic_preprocessing(
         )
 {
     hl_t i;
+    len_t j, k;
 
     /* timings */
     double ct0, ct1, rt0, rt1;
@@ -572,19 +575,14 @@ static void symbolic_preprocessing(
     len_t nrr = mat->nc;
 
     ht_t *sht = md->ht;
+    ht_t *bht = bs->ht;
 
-    /* note that we have already counted the different lcms, i.e.
-     * ncols until this step. moreover, we have also already marked
-     * the corresponding hash indices to represent lead terms. so
-     * we only have to do the bookkeeping for newly added reducers
-     * in the following. */
-
-    const hl_t oesld = sht->eld;
+    const len_t evl   = bht->evl;
     const len_t onrr  = mat->nc;
-    i = 1;
-    /* we only have to check if idx is set for the elements already set
-     * when selecting spairs, afterwards (second for loop) we do not
-     * have to do this check */
+    /* for the columns already present we have to check whether they are
+     * already handled (e.g. lcms of the selected pairs), the columns added
+     * here are always new */
+    const hl_t oesld  = sht->eld;
     while (mat->sz <= nrr + oesld) {
         mat->sz *=  2;
         mat->rr =   realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
@@ -593,26 +591,112 @@ static void symbolic_preprocessing(
             fprintf(ERRSTREAM, "segmentation fault will follow.\n");
         }
     }
-    for (; i < oesld; ++i) {
-        if (!sht->hd[i].idx) {
-            sht->hd[i].idx = 1;
-            mat->nc++;
-            find_multiplied_reducer(bs, i, &nrr, mat->rr, sht, md);
+
+    /* note that we have already counted the different lcms, i.e.
+     * ncols until this step. moreover, we have also already marked
+     * the corresponding hash indices to represent lead terms. so
+     * we only have to do the bookkeeping for newly added reducers
+     * in the following.
+     *
+     * we handle the columns in waves: all columns not yet handled are
+     * collected, their reducers are searched in parallel, then the
+     * reducer rows are generated, adding new columns for the next wave.
+     * the rows and new columns are generated in the same order as when
+     * handling one column after the other. */
+    len_t sz    = 0;
+    hm_t *cols  = NULL;
+    len_t *red  = NULL;
+    hm_t **polys  = NULL;
+    val_t *hs     = NULL;
+    exp_t *ems    = NULL;
+
+    hl_t lo = 1;
+    while (lo < sht->eld) {
+        const hl_t hi = sht->eld;
+        if (sz < hi - lo) {
+            sz    = hi - lo;
+            cols  = realloc(cols, (unsigned long)sz * sizeof(hm_t));
+            red   = realloc(red, (unsigned long)sz * sizeof(len_t));
+            polys = realloc(polys, (unsigned long)sz * sizeof(hm_t *));
+            hs    = realloc(hs, (unsigned long)sz * sizeof(val_t));
+            ems   = realloc(ems, (unsigned long)sz * evl * sizeof(exp_t));
         }
-    }
-    for (; i < sht->eld; ++i) {
-        if (mat->sz == nrr) {
+        len_t nc = 0;
+        for (i = lo; i < hi; ++i) {
+            if (i >= oesld || !sht->hd[i].idx) {
+                sht->hd[i].idx = 1;
+                mat->nc++;
+                cols[nc++] = i;
+            }
+        }
+#pragma omp parallel for num_threads(md->nthrds) \
+        private(j) schedule(dynamic, 32) if (md->nthrds > 1 && nc > 64)
+        for (j = 0; j < nc; ++j) {
+            red[j]  = find_reducer(bs, cols[j], sht);
+        }
+        len_t nr = 0;
+        for (j = 0; j < nc; ++j) {
+            if (red[j] == 0) {
+                continue;
+            }
+            const hm_t m        = cols[j];
+            const bl_t bi       = bs->lmps[red[j]-1];
+            const hm_t *b       = bs->hm[bi];
+            const exp_t *e      = sht->ev[m];
+            const exp_t *f      = bht->ev[b[OFFSET]];
+            exp_t *em           = ems + (unsigned long)nr * evl;
+            for (k = 0; k < evl; ++k) {
+                em[k] = (exp_t)(e[k]-f[k]);
+            }
+            hs[nr]    = sht->hd[m].val - bht->hd[b[OFFSET]].val;
+            polys[nr] = (hm_t *)b;
+            /* we need the basis index for tracing */
+            red[nr]   = bi;
+            sht->hd[m].idx  = 2;
+            nr++;
+        }
+        while (mat->sz <= nrr + nr) {
             mat->sz *=  2;
-            mat->rr  =  realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
+            mat->rr =   realloc(mat->rr, (unsigned long)mat->sz * sizeof(hm_t *));
             if (mat->rr == NULL) {
                 fprintf(ERRSTREAM, "Allocating memory for matrix failed,\n");
                 fprintf(ERRSTREAM, "segmentation fault will follow.\n");
             }
         }
-        sht->hd[i].idx = 1;
-        mat->nc++;
-        find_multiplied_reducer(bs, i, &nrr, mat->rr, sht, md);
+        /* track trace information ? */
+        hi_t *mhs = NULL;
+        if (md->trace_level == LEARN_TRACER) {
+            mhs = (hi_t *)malloc((unsigned long)nr * sizeof(hi_t));
+            for (j = 0; j < nr; ++j) {
+                if (bht->eld == bht->esz-1) {
+                    enlarge_hash_table(bht);
+                }
+#if PARALLEL_HASHING
+                mhs[j]  = check_insert_in_hash_table(
+                        ems + (unsigned long)j * evl, hs[j], bht);
+#else
+                mhs[j]  = insert_in_hash_table(
+                        ems + (unsigned long)j * evl, bht);
+#endif
+            }
+        }
+        multiplied_polys_to_matrix_rows(mat->rr + nrr, nr, hs, ems, polys,
+                sht, bht, md->nthrds);
+        if (md->trace_level == LEARN_TRACER) {
+            for (j = 0; j < nr; ++j) {
+                mat->rr[nrr+j][BINDEX]  = red[j];
+                mat->rr[nrr+j][MULT]    = mhs[j];
+            }
+            free(mhs);
+        }
+        nrr +=  nr;
+        lo  =   hi;
     }
+    free(cols);
+    free(red);
+    free(polys);
+    free(hs);
+    free(ems);
     /* realloc to real size */
     mat->rr   =   realloc(mat->rr, (unsigned long)nrr * sizeof(hm_t *));
     mat->nr   +=  nrr - onrr;
@@ -639,6 +723,313 @@ static void symbolic_preprocessing(
     md->symbol_rtime  +=  rt1 - rt0;
 }
 
+/* allocates the data for storing the matrices of the trace when the
+ * learning phase is done */
+static void initialize_trace_cache(
+        trace_t *tr,
+        const md_t * const md
+        )
+{
+    len_t i;
+
+    tr->tc  = (tc_t **)calloc((unsigned long)tr->ltd, sizeof(tc_t *));
+    /* the basis grows by the new leading monomials of each round */
+    tr->bsz = md->ngens;
+    for (i = 0; i < tr->ltd; ++i) {
+        tr->bsz += tr->td[i].nlm;
+    }
+    tr->bsp   = (hm_t **)calloc((unsigned long)tr->bsz, sizeof(hm_t *));
+    tr->tceld = 0;
+}
+
+/* prepares the use of the matrices stored in the trace when applying
+ * the trace for a new prime */
+static void start_trace_cache(
+        md_t *md,
+        const bs_t * const bs
+        )
+{
+    trace_t *tr = md->tr;
+
+    md->tc_state  = 0;
+    md->tcoff     = 1;
+    md->tcok      = NULL;
+    if (tr->tc == NULL) {
+        return;
+    }
+    /* the stored data refers to the basis hash table at the start of the
+     * application, it is not valid if this table has changed */
+    hl_t eld = __sync_val_compare_and_swap(&(tr->tceld), 0, bs->ht->eld);
+    if (eld != 0 && eld != bs->ht->eld) {
+        return;
+    }
+    md->tcoff = 0;
+    md->tcok  = (int8_t *)calloc((unsigned long)tr->bsz, sizeof(int8_t));
+}
+
+/* Checks if the basis elements of the rows ri[0], ri[2], ... have the
+ * same supports as the reference supports stored in the trace, missing
+ * reference supports are taken from bs. */
+static int basis_supports_agree_with_trace(
+        md_t *md,
+        const len_t * const ri,
+        const len_t ld,
+        const bs_t * const bs
+        )
+{
+    len_t i;
+
+    trace_t *tr = md->tr;
+    int8_t *ok  = md->tcok;
+
+    for (i = 0; i < ld; i += 2) {
+        const len_t bi = ri[i];
+        if (ok[bi] == 0) {
+            const hm_t * const b = bs->hm[bi];
+            const len_t len      = b[LENGTH];
+            hm_t *r              = tr->bsp[bi];
+            if (r == NULL) {
+                r = (hm_t *)malloc((unsigned long)(len+2) * sizeof(hm_t));
+                r[0] = len;
+                r[1] = b[COEFFS];
+                memcpy(r+2, b+OFFSET, (unsigned long)len * sizeof(hm_t));
+                if (__sync_bool_compare_and_swap(&(tr->bsp[bi]), NULL, r)) {
+                    ok[bi] = 1;
+                    continue;
+                }
+                /* another prime was faster */
+                free(r);
+                r = tr->bsp[bi];
+            }
+            ok[bi] = (r[0] == len && r[1] == b[COEFFS]
+                    && memcmp(r+2, b+OFFSET,
+                        (unsigned long)len * sizeof(hm_t)) == 0) ? 1 : 2;
+        }
+        if (ok[bi] == 2) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* The matrices stored in the trace are compressed: all row entries are
+ * written as varints, column indices as zigzag encoded differences to
+ * the previous column index of the row. In the header LENGTH comes
+ * first, so the length of a row can be read without decoding it. */
+static inline uint8_t *write_varint(
+        uint8_t *p,
+        uint32_t v
+        )
+{
+    while (v >= 0x80) {
+        *p++ = (uint8_t)(v | 0x80);
+        v >>= 7;
+    }
+    *p++ = (uint8_t)v;
+    return p;
+}
+
+static inline const uint8_t *read_varint(
+        const uint8_t *p,
+        uint32_t *v
+        )
+{
+    uint32_t r = *p & 0x7f;
+    int s      = 7;
+    while (*p++ & 0x80) {
+        r |= (uint32_t)(*p & 0x7f) << s;
+        s += 7;
+    }
+    *v = r;
+    return p;
+}
+
+static inline unsigned long varint_size(
+        uint32_t v
+        )
+{
+    unsigned long n = 1;
+    while (v >= 0x80) {
+        v >>= 7;
+        ++n;
+    }
+    return n;
+}
+
+/* column indices are smaller than 2^31, so their differences fit into
+ * an int32_t */
+static inline uint32_t zigzag(
+        const hm_t c,
+        const hm_t prev
+        )
+{
+    const int32_t d = (int32_t)(c - prev);
+    return ((uint32_t)d << 1) ^ (uint32_t)(d >> 31);
+}
+
+static unsigned long compressed_row_size(
+        const hm_t * const row
+        )
+{
+    len_t j;
+    hm_t prev        = 0;
+    const len_t len  = row[LENGTH]+OFFSET;
+    unsigned long sz = 0;
+
+    for (j = 0; j < OFFSET; ++j) {
+        sz += varint_size(row[j]);
+    }
+    for (j = OFFSET; j < len; ++j) {
+        sz    += varint_size(zigzag(row[j], prev));
+        prev  =  row[j];
+    }
+    return sz;
+}
+
+static uint8_t *compress_row(
+        uint8_t *p,
+        const hm_t * const row
+        )
+{
+    len_t j;
+    hm_t prev       = 0;
+    const len_t len = row[LENGTH]+OFFSET;
+
+    p = write_varint(p, row[LENGTH]);
+    for (j = 0; j < LENGTH; ++j) {
+        p = write_varint(p, row[j]);
+    }
+    for (j = OFFSET; j < len; ++j) {
+        p     = write_varint(p, zigzag(row[j], prev));
+        prev  = row[j];
+    }
+    return p;
+}
+
+static void decompress_row(
+        hm_t *row,
+        const uint8_t *p
+        )
+{
+    len_t j;
+    uint32_t v;
+    hm_t prev = 0;
+
+    p = read_varint(p, &v);
+    row[LENGTH] = v;
+    for (j = 0; j < LENGTH; ++j) {
+        p = read_varint(p, row+j);
+    }
+    const len_t len = row[LENGTH]+OFFSET;
+    for (j = OFFSET; j < len; ++j) {
+        /* most differences fit into one byte */
+        v = *p;
+        if (v < 0x80) {
+            ++p;
+        } else {
+            p = read_varint(p, &v);
+        }
+        prev    += (v >> 1) ^ (0 - (v & 1));
+        row[j]  =  prev;
+    }
+}
+
+/* generates the matrix of the current round from the matrix stored
+ * in the trace */
+static void matrix_from_trace_cache(
+        mat_t *mat,
+        const tc_t * const tc,
+        const td_t * const td,
+        const int32_t nthrds
+        )
+{
+    len_t i;
+    uint32_t len;
+    unsigned long sz = 0;
+
+    const len_t nru = tc->nru;
+    const len_t nr  = tc->nru + tc->nrl;
+
+    mat->rr   = (hm_t **)malloc((unsigned long)nru * sizeof(hm_t *));
+    mat->tr   = (hm_t **)malloc((unsigned long)tc->nrl * sizeof(hm_t *));
+    mat->rba  = (rba_t **)malloc((unsigned long)tc->nrl * sizeof(rba_t *));
+    /* the reducer rows are handed over to the linear algebra in one block */
+    for (i = 0; i < nru; ++i) {
+        read_varint(tc->rows + tc->ro[i], &len);
+        sz += len+OFFSET;
+    }
+    mat->rrb  = (hm_t *)malloc(sz * sizeof(hm_t));
+    sz = 0;
+    for (i = 0; i < nru; ++i) {
+        read_varint(tc->rows + tc->ro[i], &len);
+        mat->rr[i] = mat->rrb + sz;
+        sz += len+OFFSET;
+    }
+    for (i = 0; i < tc->nrl; ++i) {
+        read_varint(tc->rows + tc->ro[nru+i], &len);
+        mat->tr[i]  = (hm_t *)malloc((unsigned long)(len+OFFSET) * sizeof(hm_t));
+        mat->rba[i] = td->rba[i];
+    }
+#pragma omp parallel for num_threads(nthrds) private(i) schedule(dynamic, 64)
+    for (i = 0; i < nr; ++i) {
+        decompress_row(i < nru ? mat->rr[i] : mat->tr[i-nru],
+                tc->rows + tc->ro[i]);
+    }
+    mat->nru  = tc->nru;
+    mat->nrl  = tc->nrl;
+    mat->nr   = mat->sz = mat->nru + mat->nrl;
+    mat->ncl  = tc->ncl;
+    mat->ncr  = tc->ncr;
+    mat->nc   = mat->ncl + mat->ncr;
+}
+
+/* stores the matrix of the current round, already converted to column
+ * indices, in the trace */
+static void store_matrix_in_trace_cache(
+        trace_t *tr,
+        const len_t idx,
+        const mat_t * const mat,
+        const ht_t * const sht,
+        const hi_t * const hcm
+        )
+{
+    len_t i;
+
+    const len_t nru = mat->nru;
+    const len_t nr  = mat->nru + mat->nrl;
+
+    tc_t *tc  = (tc_t *)malloc(sizeof(tc_t));
+    tc->ro    = (unsigned long *)malloc((unsigned long)(nr+1)
+            * sizeof(unsigned long));
+    tc->ro[0] = 0;
+    for (i = 0; i < nr; ++i) {
+        tc->ro[i+1] = tc->ro[i] + compressed_row_size(
+                i < nru ? mat->rr[i] : mat->tr[i-nru]);
+    }
+    tc->rows  = (uint8_t *)malloc(tc->ro[nr]);
+    for (i = 0; i < nr; ++i) {
+        compress_row(tc->rows + tc->ro[i],
+                i < nru ? mat->rr[i] : mat->tr[i-nru]);
+    }
+    const len_t evl = sht->evl;
+    tc->ev  = (exp_t *)malloc((unsigned long)mat->ncr * evl * sizeof(exp_t));
+    for (i = 0; i < mat->ncr; ++i) {
+        memcpy(tc->ev + (unsigned long)i * evl, sht->ev[hcm[mat->ncl+i]],
+                (unsigned long)evl * sizeof(exp_t));
+    }
+    tc->nru = mat->nru;
+    tc->nrl = mat->nrl;
+    tc->ncl = mat->ncl;
+    tc->ncr = mat->ncr;
+    if (!__sync_bool_compare_and_swap(&(tr->tc[idx]), NULL, tc)) {
+        /* another prime was faster */
+        free(tc->rows);
+        free(tc->ro);
+        free(tc->ev);
+        free(tc);
+    }
+}
+
 static void generate_matrix_from_trace(
         mat_t *mat,
         const bs_t * const bs,
@@ -657,9 +1048,34 @@ static void generate_matrix_from_trace(
 
     const len_t idx = md->trace_rd;
 
-    td_t td   = md->tr->td[idx];
-    ht_t *bht = bs->ht;
-    ht_t *sht = md->ht;
+    td_t td     = md->tr->td[idx];
+    ht_t *bht   = bs->ht;
+    ht_t *sht   = md->ht;
+    trace_t *tr = md->tr;
+
+    /* Can we take the matrix stored in the trace (only if the application
+     * of the trace has been prepared by start_trace_cache)? Once the basis
+     * elements of a round do not agree with the stored ones, the basis
+     * hash table may differ from the one when the matrices were stored,
+     * so we do not use them for the remaining rounds. */
+    md->tc_state = 0;
+    if (md->tcok != NULL && md->tcoff == 0 && idx < tr->ltd) {
+        if (basis_supports_agree_with_trace(md, td.rri, td.rld, bs)
+                && basis_supports_agree_with_trace(md, td.tri, td.tld, bs)) {
+            const tc_t * const tc = __atomic_load_n(tr->tc + idx,
+                    __ATOMIC_ACQUIRE);
+            if (tc != NULL) {
+                matrix_from_trace_cache(mat, tc, &td, md->nthrds);
+                md->tc_state = 1;
+                md->tracer_ctime += cputime() - ct;
+                md->tracer_rtime += realtime() - rt;
+                return;
+            }
+            md->tc_state = 2;
+        } else {
+            md->tcoff = 1;
+        }
+    }
 
     mat->rr       = (hm_t **)malloc((unsigned long)td.rld * sizeof(hm_t *));
     hm_t **rrows  = mat->rr;

@@ -1062,21 +1062,6 @@ void normalize_initial_basis(
     normalize_initial_basis_ff_32(bs, fc);
 }
 
-cf32_t *reduce_dense_row_by_old_pivots_ff_32(
-        int64_t *dr,
-        mat_t *mat,
-        const bs_t * const bs,
-        hm_t * const * const pivs,
-        const hi_t dpiv,
-        const uint32_t fc
-        )
-{
-    if (use_17_bit_reduction(fc)) {
-        return reduce_dense_row_by_old_pivots_17_bit(dr, mat, bs, pivs, dpiv, fc);
-    }
-    return reduce_dense_row_by_old_pivots_31_bit(dr, mat, bs, pivs, dpiv, fc);
-}
-
 hm_t *sba_reduce_dense_row_by_known_pivots_sparse_ff_32(
         int64_t *dr,
         smat_t *smat,

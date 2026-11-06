@@ -47,7 +47,11 @@ static hm_t *LA_SMALL(trace_reduce_dense_row_by_known_pivots_sparse)(
     hm_t *dts;
     LA_CF_T *cfs;
     int64_t np = -1;
+    /* statistics are accumulated locally, updating st for each reducer
+     * makes all threads compete for the same cache line */
+    uint64_t nops = 0, nred = 0;
     const int64_t mod           = (int64_t)st->fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     LA_CF_T * const * const mcf  = mat->LA_CF;
@@ -55,7 +59,7 @@ static hm_t *LA_SMALL(trace_reduce_dense_row_by_known_pivots_sparse)(
     k = 0;
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -91,10 +95,13 @@ static hm_t *LA_SMALL(trace_reduce_dense_row_by_known_pivots_sparse)(
             dr[ds[j+3]] +=  mul * cfs[j+3];
         }
         dr[i] = 0;
-        st->trace_nr_mult +=  len / 1000.0;
-        st->trace_nr_add  +=  len / 1000.0;
-        st->trace_nr_red++;
+        nops  +=  len;
+        nred++;
     }
+    st->trace_nr_mult +=  nops / 1000.0;
+    st->trace_nr_add  +=  nops / 1000.0;
+    st->trace_nr_red  +=  nred;
+
     if (k == 0) {
         return NULL;
     }
@@ -132,6 +139,7 @@ static LA_CF_T *LA_SMALL(reduce_dense_row_by_all_pivots)(
 {
     hi_t i, j, k, l;
     const int64_t mod = (int64_t)fc;
+    const uint64_t bm = barrett_multiplier(mod);
     len_t np  = -1;
     LA_CF_T *red;
 
@@ -141,7 +149,7 @@ static LA_CF_T *LA_SMALL(reduce_dense_row_by_all_pivots)(
     /* step 1: reduce by sparse known pivots */
     for (i = *pc; i < ncl; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -171,7 +179,7 @@ static LA_CF_T *LA_SMALL(reduce_dense_row_by_all_pivots)(
     /* step 2: reduce by new dense pivots */
     for (i = ncl; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -205,7 +213,7 @@ static LA_CF_T *LA_SMALL(reduce_dense_row_by_all_pivots)(
     LA_CF_T *row = (LA_CF_T *)calloc((uint64_t)(ncols-np), sizeof(LA_CF_T));
     for (i = np; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         row[i-np]  = (LA_CF_T)dr[i];
     }
@@ -214,70 +222,6 @@ static LA_CF_T *LA_SMALL(reduce_dense_row_by_all_pivots)(
     }
 
     *pc = np - ncl;
-    return row;
-}
-
-static LA_CF_T *LA_SMALL(reduce_dense_row_by_old_pivots)(
-        int64_t *dr,
-        mat_t *mat,
-        const bs_t * const bs,
-        hm_t *const * const pivs,
-        const hi_t dpiv,    /* pivot of dense row at the beginning */
-        const uint32_t fc
-        )
-{
-    hi_t i, j;
-    const int64_t mod = (int64_t)fc;
-    const len_t ncols = mat->nc;
-    const len_t ncl   = mat->ncl;
-    const len_t ncr   = mat->ncr;
-
-    for (i = dpiv; i < ncl; ++i) {
-        if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
-        }
-        if (dr[i] == 0) {
-            continue;
-        }
-        if (pivs[i] == NULL) {
-            continue;
-        }
-
-        /* found reducer row, get multiplier */
-        const int64_t mul = mod - dr[i];
-        const LA_CF_T *cfs = bs->LA_CF[pivs[i][COEFFS]];
-        const len_t os    = pivs[i][PRELOOP];
-        const len_t len   = pivs[i][LENGTH];
-        const hm_t * const ds = pivs[i] + OFFSET;
-        for (j = 0; j < os; ++j) {
-            dr[ds[j]] +=  mul * cfs[j];
-        }
-        for (; j < len; j += UNROLL) {
-            dr[ds[j]]   +=  mul * cfs[j];
-            dr[ds[j+1]] +=  mul * cfs[j+1];
-            dr[ds[j+2]] +=  mul * cfs[j+2];
-            dr[ds[j+3]] +=  mul * cfs[j+3];
-        }
-        dr[i] = 0;
-    }
-
-    /* store a dense row for further dense gaussian elimination */
-    LA_CF_T *row  = (LA_CF_T *)calloc(
-            (uint64_t)(ncr), sizeof(LA_CF_T));
-    j = 0;
-    for (i = ncl; i < ncols; ++i) {
-        if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
-            if (dr[i] != 0) {
-                j++;
-                row[i-ncl]  = (LA_CF_T)dr[i];
-            }
-        }
-    }
-    if (j == 0) {
-        free(row);
-        row = NULL;
-    }
     return row;
 }
 
@@ -292,10 +236,11 @@ static LA_CF_T *LA_SMALL(reduce_dense_row_by_dense_new_pivots)(
     hi_t i, j, k, l;
     len_t np  = -1;
     const int64_t mod = (int64_t)fc;
+    const uint64_t bm = barrett_multiplier(mod);
 
     for (k = 0, i = *pc; i < ncr; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -328,7 +273,7 @@ static LA_CF_T *LA_SMALL(reduce_dense_row_by_dense_new_pivots)(
     LA_CF_T *row = (LA_CF_T *)calloc((uint64_t)(ncr-np), sizeof(LA_CF_T));
     for (i = np; i < ncr; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         row[i-np]  = (LA_CF_T)dr[i];
     }

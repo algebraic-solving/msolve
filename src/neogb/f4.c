@@ -122,6 +122,8 @@ static void clear_matrix(
     mat->rba  = NULL;
     free(mat->rr);
     mat->rr = NULL;
+    free(mat->rrb);
+    mat->rrb = NULL;
     free(mat->tr);
     mat->tr  = NULL;
     free(mat->cf_8);
@@ -388,6 +390,7 @@ static int32_t initialize_f4(
         bs->ld  = 0;
     } else {
         bs->ld = md->ngens;
+        start_trace_cache(md, bs);
     }
 
     /* TODO: make this a command line argument */
@@ -465,8 +468,14 @@ static int32_t compute_new_elements(
     ht_t *ht  = bs->ht;
     ht_t *sht = md->ht;
 
-    convert_hashes_to_columns(mat, md, sht);
-    sort_matrix_rows_decreasing(mat->rr, mat->nru);
+    if (md->tc_state != 1) {
+        convert_hashes_to_columns(mat, md, sht);
+        sort_matrix_rows_decreasing(mat->rr, mat->nru);
+        if (md->tc_state == 2) {
+            store_matrix_in_trace_cache(md->tr, md->trace_rd,
+                    mat, sht, md->hcm);
+        }
+    }
     linear_algebra(mat, bs, bs, md);
 
     /* check for bad prime */
@@ -479,6 +488,7 @@ static int32_t compute_new_elements(
              * matrix at this point, release them before bailing out */
             free_new_matrix_rows(mat, md);
             clear_matrix(mat);
+            md->tc_state = 0;
             *errp = 1;
             return 1;
         }
@@ -488,6 +498,7 @@ static int32_t compute_new_elements(
         convert_sparse_matrix_rows_to_basis_elements(
                 -1, mat, bs, ht, sht, md);
     }
+    md->tc_state = 0;
     clean_hash_table(sht);
     /* all rows in mat are now polynomials in the basis,
      * so we do not need the rows anymore */
@@ -719,8 +730,13 @@ static void finalize_f4(
     if ((*lmdp)->trace_level == LEARN_TRACER) {
         gmd->tr = (*lmdp)->tr;
         gmd->trace_level = APPLY_TRACER;
+        initialize_trace_cache(gmd->tr, *lmdp);
     }
-    gmd->min_deg_in_first_deg_fall = (*lmdp)->min_deg_in_first_deg_fall;
+    /* not changed when applying the trace, which may be done for several
+     * primes in parallel */
+    if ((*lmdp)->trace_level != APPLY_TRACER) {
+        gmd->min_deg_in_first_deg_fall = (*lmdp)->min_deg_in_first_deg_fall;
+    }
     free_local_data(matp, lmdp);
 }
 

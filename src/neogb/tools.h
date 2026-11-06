@@ -92,6 +92,28 @@ static inline uint16_t mod_p_inverse_16(
     return (uint16_t)d;
 }
 
+/* Barrett reduction: returns x mod p for 0 <= x < 2^64, where
+ * m = barrett_multiplier(p) = floor((2^64-1) / p). The quotient estimate
+ * is at most one too small, so one correction step suffices. This is
+ * much cheaper than a 64 bit division in the linear algebra kernels. */
+static inline uint64_t barrett_multiplier(
+        const uint64_t p
+        )
+{
+    return UINT64_MAX / p;
+}
+
+static inline uint64_t barrett_reduce(
+        const uint64_t x,
+        const uint64_t p,
+        const uint64_t m
+        )
+{
+    const uint64_t q  = (uint64_t)(((unsigned __int128)x * m) >> 64);
+    uint64_t r        = x - q * p;
+    return r >= p ? r - p : r;
+}
+
 static inline uint32_t mod_p_inverse_32(
         const int64_t val,
         const int64_t p

@@ -1115,6 +1115,111 @@ static inline void insert_poly_in_hash_table(
     }
 }
 
+/* The hash function is linear and all hash tables share their random
+ * values, so the hash value of the product of two monomials a and b is
+ * the sum of their hash values h. The following two functions probe with
+ * h and compare a + b on the fly, so the exponent vector of the product
+ * is only written when it has to be inserted. */
+
+/* returns the index of the product of a and b in ht if it is already
+ * stored there, 0 otherwise; does not change ht */
+static inline hi_t find_multiplied_in_hash_table(
+    const val_t h,
+    const exp_t * const ea,
+    const exp_t * const eb,
+    const ht_t * const ht
+    )
+{
+    hl_t i;
+    hi_t k;
+    len_t j;
+
+    const len_t evl = ht->evl;
+    const hl_t hsz  = ht->hsz;
+    /* ht->hsz <= 2^32 => mod is always uint32_t */
+    const hi_t mod  = (hi_t)(hsz - 1);
+
+    k = h;
+    i = 0;
+restart:
+    for (; i < hsz; ++i) {
+        k = (hi_t)((k+i) & mod);
+        const hi_t hm = ht->hmap[k];
+        if (!hm) {
+            return 0;
+        }
+        if (ht->hd[hm].val != h) {
+            continue;
+        }
+        const exp_t * const ehm = ht->ev[hm];
+        for (j = 0; j < evl; ++j) {
+            if ((exp_t)(ea[j] + eb[j]) != ehm[j]) {
+                i++;
+                goto restart;
+            }
+        }
+        return hm;
+    }
+    return 0;
+}
+
+/* returns the index of the product of a and b in ht, inserting it if
+ * needed; the caller has to ensure that ht has enough space */
+static inline hi_t insert_multiplied_in_hash_table(
+    const val_t h,
+    const exp_t * const ea,
+    const exp_t * const eb,
+    ht_t *ht
+    )
+{
+    hl_t i;
+    hi_t k;
+    len_t j;
+
+    const len_t evl = ht->evl;
+    const hl_t hsz  = ht->hsz;
+    /* ht->hsz <= 2^32 => mod is always uint32_t */
+    const hi_t mod  = (hi_t)(hsz - 1);
+
+    k = h;
+    i = 0;
+restart:
+    for (; i < hsz; ++i) {
+        k = (hi_t)((k+i) & mod);
+        const hi_t hm = ht->hmap[k];
+        if (!hm) {
+            break;
+        }
+        if (ht->hd[hm].val != h) {
+            continue;
+        }
+        const exp_t * const ehm = ht->ev[hm];
+        for (j = 0; j < evl; ++j) {
+            if ((exp_t)(ea[j] + eb[j]) != ehm[j]) {
+                i++;
+                goto restart;
+            }
+        }
+        return hm;
+    }
+
+    /* add element to hash table */
+    const hi_t pos  = (hi_t)ht->eld;
+    ht->hmap[k]     = pos;
+    exp_t *n        = ht->ev[pos];
+    for (j = 0; j < evl; ++j) {
+        n[j]  = (exp_t)(ea[j] + eb[j]);
+    }
+    hd_t *d = ht->hd + pos;
+    d->sdm  =   generate_short_divmask(n, ht);
+    d->deg  =   n[0];
+    d->deg  +=  ht->ebl > 0 ? n[ht->ebl] : 0;
+    d->val  =   h;
+    ht->eld++;
+
+    return pos;
+}
+
 static inline void insert_multiplied_poly_in_hash_table(
     hm_t *row,
     const val_t h1,
@@ -1124,19 +1229,20 @@ static inline void insert_multiplied_poly_in_hash_table(
     ht_t *ht2
     )
 {
-    len_t j, l;
-    exp_t *n;
+    len_t l;
 
     const len_t len = b[LENGTH]+OFFSET;
-    const len_t evl = ht1->evl;
 
     exp_t * const *ev1      = ht1->ev;
-    /* const hd_t * const hd1  = ht1->hd; */
-
-    exp_t **ev2     = ht2->ev;
+    const hd_t * const hd1  = ht1->hd;
 
     l = OFFSET;
 
+#if PARALLEL_HASHING
+    len_t j;
+    exp_t *n;
+    const len_t evl = ht1->evl;
+    exp_t **ev2     = ht2->ev;
     for (; l < len; ++l) {
         const exp_t * const eb = ev1[b[l]];
 
@@ -1145,13 +1251,15 @@ static inline void insert_multiplied_poly_in_hash_table(
             n[j]  = (exp_t)(ea[j] + eb[j]);
         }
 
-#if PARALLEL_HASHING
         const val_t h   = h1 + hd1[b[l]].val;
         row[l] = check_insert_in_hash_table(n, h, ht2);
-#else
-        row[l] = insert_in_hash_table(n, ht2);
-#endif
     }
+#else
+    for (; l < len; ++l) {
+        row[l] = insert_multiplied_in_hash_table(
+                h1 + hd1[b[l]].val, ea, ev1[b[l]], ht2);
+    }
+#endif
 }
 
 static inline void reinsert_in_hash_table(
@@ -1390,4 +1498,105 @@ static inline hm_t *multiplied_poly_to_matrix_row(
   insert_multiplied_poly_in_hash_table(row, hm, em, poly, bht, sht);
 
   return row;
+}
+
+/* Generates the matrix rows rows[i] = em[i] * polys[i] for 0 <= i < nr,
+ * where em[i] is stored at ems + i * evl and has hash value hs[i]. The
+ * terms of polys[i] are given w.r.t. bht, the terms of the rows are
+ * inserted in sht.
+ * Nearly all terms of the rows are already stored in sht, so we first
+ * look them up in parallel without changing sht. Afterwards we insert
+ * the missing terms sequentially, in the order of the rows and their
+ * terms. Thus sht and the rows are exactly the same as if we had
+ * inserted the rows one after the other. */
+static void multiplied_polys_to_matrix_rows(
+    hm_t **rows,
+    const len_t nr,
+    const val_t * const hs,
+    const exp_t * const ems,
+    hm_t * const * const polys,
+    ht_t *sht,
+    const ht_t * const bht,
+    const int32_t nthrds
+    )
+{
+    len_t i, l;
+
+    const len_t evl = bht->evl;
+    const hd_t * const hdb    = bht->hd;
+    exp_t * const * const evb = bht->ev;
+
+    for (i = 0; i < nr; ++i) {
+        const hm_t *poly  = polys[i];
+        rows[i] = (hm_t *)malloc((uint64_t)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
+        rows[i][COEFFS]   = poly[COEFFS];
+        rows[i][PRELOOP]  = poly[PRELOOP];
+        rows[i][LENGTH]   = poly[LENGTH];
+    }
+
+    if (nthrds == 1) {
+        for (i = 0; i < nr; ++i) {
+            while (sht->eld + polys[i][LENGTH] >= sht->esz) {
+                enlarge_hash_table(sht);
+            }
+            insert_multiplied_poly_in_hash_table(
+                    rows[i], hs[i], ems + (uint64_t)i * evl, polys[i], bht, sht);
+        }
+        return;
+    }
+
+    len_t *nmiss  = (len_t *)calloc((uint64_t)nr, sizeof(len_t));
+
+    /* sht might be (nearly) empty, e.g. at the beginning of the pair
+     * selection, then the lookups would fail. so we handle the rows in
+     * chunks of increasing size: the first rows insert most of the terms
+     * the later rows need. */
+    len_t lo  = 0;
+    len_t csz = 4;
+    while (lo < nr) {
+        const len_t hi  = nr - lo > csz ? lo + csz : nr;
+#pragma omp parallel for num_threads(nthrds) \
+        private(i, l) schedule(dynamic, 4) if (hi - lo > 8)
+        for (i = lo; i < hi; ++i) {
+            const hm_t * const poly   = polys[i];
+            hm_t *row                 = rows[i];
+            const exp_t * const em    = ems + (uint64_t)i * evl;
+            const val_t h             = hs[i];
+            const len_t len           = poly[LENGTH] + OFFSET;
+            len_t ctr                 = 0;
+            for (l = OFFSET; l < len; ++l) {
+                row[l]  = find_multiplied_in_hash_table(
+                        h + hdb[poly[l]].val, em, evb[poly[l]], sht);
+                ctr += (row[l] == 0);
+            }
+            nmiss[i]  = ctr;
+        }
+
+        uint64_t nm = 0;
+        for (i = lo; i < hi; ++i) {
+            nm  +=  nmiss[i];
+        }
+        while (sht->eld + nm >= sht->esz) {
+            enlarge_hash_table(sht);
+        }
+        for (i = lo; i < hi; ++i) {
+            if (nmiss[i] == 0) {
+                continue;
+            }
+            const hm_t * const poly   = polys[i];
+            hm_t *row                 = rows[i];
+            const exp_t * const em    = ems + (uint64_t)i * evl;
+            const val_t h             = hs[i];
+            const len_t len           = poly[LENGTH] + OFFSET;
+            for (l = OFFSET; l < len; ++l) {
+                if (row[l] == 0) {
+                    row[l]  = insert_multiplied_in_hash_table(
+                            h + hdb[poly[l]].val, em, evb[poly[l]], sht);
+                }
+            }
+        }
+        lo  = hi;
+        csz = 2 * csz;
+    }
+    free(nmiss);
 }

@@ -93,11 +93,13 @@ static int reduce_dense_row_by_dense_pivots_ff_32(
     len_t i, j;
 
     const int64_t mod   = (int64_t)fc;
+
+    const uint64_t bm = barrett_multiplier(mod);
     const int64_t mod2  = (int64_t)fc * fc;
 
     for (i = start; i < nc; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -112,7 +114,7 @@ static int reduce_dense_row_by_dense_pivots_ff_32(
              * } */
             cf32_t *np  = dm + i*nc;
             for (j = i; j < nc; ++j) {
-                dr[j] = dr[j] % mod;
+                dr[j] = (int64_t)barrett_reduce((uint64_t)dr[j], mod, bm);
                 np[j] = (cf32_t)dr[j];
             }
             /* normalize new pivot row */
@@ -323,6 +325,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
     cf32_t *cfs;
     int64_t np  = -1;
     const int64_t mod           = (int64_t)st->fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf32_t * const * const mcf  = mat->cf_32;
@@ -348,7 +351,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
     k = 0;
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -550,9 +553,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_17_bit(
         }
 #endif
         dr[i] = 0;
-        st->application_nr_mult +=  len / 1000.0;
-        st->application_nr_add  +=  len / 1000.0;
-        st->application_nr_red++;
     }
     if (k == 0) {
         return NULL;
@@ -597,6 +597,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
     hm_t *dts;
     int64_t np = -1;
     const int64_t mod   = (int64_t)st->fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const int64_t mod2  = (int64_t)st->fc * st->fc;
 #ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
@@ -607,7 +608,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
 
     for (i = dpiv; i < end; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -686,9 +687,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
         }
 #endif
         dr[i] = 0;
-        st->application_nr_mult +=  len / 1000.0;
-        st->application_nr_add  +=  len / 1000.0;
-        st->application_nr_red++;
     }
 
     k = ncols-end;
@@ -698,7 +696,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_up_to_ff_31_bit(
     hm_t *rs  = row + OFFSET;
     for (i = end; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] != 0) {
             rs[j] = (hm_t)i;
@@ -738,6 +736,7 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
     hm_t *dts;
     int32_t fnzc       = -1; /* first non zero column */
     const int64_t mod  = (int64_t)st->fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const int64_t mod2 = (int64_t)st->fc * st->fc;
     const len_t nc     = smat->nc;
 #ifdef HAVE_AVX2
@@ -750,7 +749,7 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
     k = 0;
     for (i = dpiv; i < nc; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -840,9 +839,6 @@ static hm_t *sba_reduce_dense_row_by_known_pivots_sparse_31_bit(
         }
 #endif
         dr[i] = 0;
-        st->application_nr_mult +=  len / 1000.0;
-        st->application_nr_add  +=  len / 1000.0;
-        st->application_nr_red++;
     }
 
     if (k == 0) {
@@ -897,6 +893,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     int64_t np = -1;
     const int64_t mod           = (int64_t)st->fc;
     const int64_t mod2          = (int64_t)st->fc * st->fc;
+    const uint64_t bm           = barrett_multiplier(st->fc);
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
     cf32_t * const * const mcf  = mat->cf_32;
@@ -928,7 +925,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
     k = 0;
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -1127,9 +1124,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_31_bit(
         }
 #endif
         dr[i] = 0;
-        st->application_nr_mult +=  len / 1000.0;
-        st->application_nr_add  +=  len / 1000.0;
-        st->application_nr_red++;
     }
 
     if (k == 0) {
@@ -1178,6 +1172,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     hm_t *dts, *dtsm;
     int64_t np = -1;
     const int64_t mod           = (int64_t)st->fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const int64_t mod2          = (int64_t)st->fc * st->fc;
 #ifdef HAVE_AVX2
     int64_t res[4] __attribute__((aligned(32)));
@@ -1189,7 +1184,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     k = 0;
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -1330,9 +1325,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
         }
 #endif
         dr[i] = 0;
-        st->application_nr_mult +=  len / 1000.0;
-        st->application_nr_add  +=  len / 1000.0;
-        st->application_nr_red++;
     }
 
     /* we always have to write the multiplier entry for the kernel
@@ -1375,7 +1367,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_sat_ff_31_bit(
     hm_t *rs  = row + OFFSET;
     for (i = np; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] != 0) {
             rs[j] = (hm_t)i;
@@ -1409,7 +1401,11 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
     cf32_t *cfs;
     hm_t *dts;
     int64_t np = -1;
+    /* statistics are accumulated locally, updating st for each reducer
+     * makes all threads compete for the same cache line */
+    uint64_t nops = 0, nred = 0;
     const int64_t mod           = (int64_t)st->fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const int64_t mod2          = (int64_t)st->fc * st->fc;
     const len_t ncols           = mat->nc;
     const len_t ncl             = mat->ncl;
@@ -1424,7 +1420,7 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
     k = 0;
     for (i = dpiv; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -1511,10 +1507,13 @@ static hm_t *trace_reduce_dense_row_by_known_pivots_sparse_31_bit(
         }
 #endif
         dr[i] = 0;
-        st->trace_nr_mult +=  len / 1000.0;
-        st->trace_nr_add  +=  len / 1000.0;
-        st->trace_nr_red++;
+        nops  +=  len;
+        nred++;
     }
+
+    st->trace_nr_mult +=  nops / 1000.0;
+    st->trace_nr_add  +=  nops / 1000.0;
+    st->trace_nr_red  +=  nred;
 
     if (k == 0) {
         return NULL;
@@ -1621,9 +1620,6 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_32_bit(
             drlow[ds[j]]  +=  (prod & mask);
         }
         udr[i]  = 0;
-        st->application_nr_mult +=  len / 1000.0;
-        st->application_nr_add  +=  len / 1000.0;
-        st->application_nr_red++;
     }
 
     if (k == 0) {
@@ -1765,6 +1761,7 @@ static cf32_t *reduce_dense_row_by_all_pivots_31_bit(
 {
     hi_t i, j, k, l;
     const int64_t mod   = (int64_t)fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const int64_t mod2  = (int64_t)fc * fc;
     len_t np  = -1;
     cf32_t *red;
@@ -1775,7 +1772,7 @@ static cf32_t *reduce_dense_row_by_all_pivots_31_bit(
     /* step 1: reduce by sparse known pivots */
     for (i = *pc; i < ncl; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -1810,7 +1807,7 @@ static cf32_t *reduce_dense_row_by_all_pivots_31_bit(
     /* step 2: reduce by new dense pivots */
     for (i = ncl; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -1849,7 +1846,7 @@ static cf32_t *reduce_dense_row_by_all_pivots_31_bit(
     cf32_t *row = (cf32_t *)calloc((uint64_t)(ncols-np), sizeof(cf32_t));
     for (i = np; i < ncols; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         row[i-np]  = (cf32_t)dr[i];
     }
@@ -1858,78 +1855,6 @@ static cf32_t *reduce_dense_row_by_all_pivots_31_bit(
     }
 
     *pc = np - ncl;
-
-    return row;
-}
-
-static cf32_t *reduce_dense_row_by_old_pivots_31_bit(
-        int64_t *dr,
-        mat_t *mat,
-        const bs_t * const bs,
-        hm_t *const *pivs,
-        const hi_t dpiv,  /* pivot of dense row at the beginning */
-        const uint32_t fc
-        )
-{
-    hi_t i, j;
-    const int64_t mod   = (int64_t)fc;
-    const int64_t mod2  = (int64_t)fc * fc;
-    const len_t ncols   = mat->nc;
-    const len_t ncl     = mat->ncl;
-    const len_t ncr     = mat->ncr;
-
-    for (i = dpiv; i < ncl; ++i) {
-        if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
-        }
-        if (dr[i] == 0) {
-            continue;
-        }
-        if (pivs[i] == NULL) {
-            continue;
-        }
-
-        /* found reducer row, get multiplier */
-        const int64_t mul = (int64_t)dr[i];
-        const cf32_t *cfs = bs->cf_32[pivs[i][COEFFS]];
-        const len_t os    = pivs[i][PRELOOP];
-        const len_t len   = pivs[i][LENGTH];
-        const hm_t * const ds = pivs[i] + OFFSET;
-        for (j = 0; j < os; ++j) {
-            dr[ds[j]] -=  mul * cfs[j];
-            dr[ds[j]] +=  (dr[ds[j]] >> 63) & mod2;
-        }
-        for (; j < len; j += UNROLL) {
-            dr[ds[j]]   -=  mul * cfs[j];
-            dr[ds[j+1]] -=  mul * cfs[j+1];
-            dr[ds[j+2]] -=  mul * cfs[j+2];
-            dr[ds[j+3]] -=  mul * cfs[j+3];
-            dr[ds[j]]   +=  (dr[ds[j]] >> 63) & mod2;
-            dr[ds[j+1]] +=  (dr[ds[j+1]] >> 63) & mod2;
-            dr[ds[j+2]] +=  (dr[ds[j+2]] >> 63) & mod2;
-            dr[ds[j+3]] +=  (dr[ds[j+3]] >> 63) & mod2;
-        }
-        dr[i] = 0;
-    }
-
-    /* store a dense row for further dense gaussian elimination */
-    cf32_t *row  = (cf32_t *)calloc(
-            (uint64_t)(ncr), sizeof(cf32_t));
-
-    j = 0;
-    for (i = ncl; i < ncols; ++i) {
-        if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
-            if (dr[i] != 0) {
-                j++;
-                row[i-ncl]  = (cf32_t)dr[i];
-            }
-        }
-    }
-    if (j == 0) {
-        free(row);
-        row = NULL;
-    }
 
     return row;
 }
@@ -1945,11 +1870,12 @@ static cf32_t *reduce_dense_row_by_dense_new_pivots_31_bit(
     hi_t i, j, k, l;
     len_t np  = -1;
     const int64_t mod = (int64_t)fc;
+    const uint64_t bm = barrett_multiplier(mod);
     const int64_t mod2  = (int64_t)fc * fc;
 
     for (k = 0, i = *pc; i < ncr; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         if (dr[i] == 0) {
             continue;
@@ -1963,6 +1889,32 @@ static cf32_t *reduce_dense_row_by_dense_new_pivots_31_bit(
         }
 
         const int64_t mul = (int64_t)dr[i];
+#if defined HAVE_AVX2
+        const len_t os    = (ncr - i) % 8;
+        for (l = 0, j = i; l < os; ++l, ++j) {
+            dr[j] -=  mul * pivs[i][l];
+            dr[j] +=  (dr[j] >> 63) & mod2;
+        }
+        const __m256i mulv  = _mm256_set1_epi32((uint32_t)mul);
+        const __m256i zerov = _mm256_setzero_si256();
+        const __m256i mod2v = _mm256_set1_epi64x(mod2);
+        for (; j < ncr; l += 8, j += 8) {
+            __m256i prodv = _mm256_mul_epu32(mulv, _mm256_cvtepu32_epi64(
+                        _mm_loadu_si128((__m128i *)(pivs[i]+l))));
+            __m256i resv  = _mm256_sub_epi64(
+                    _mm256_loadu_si256((__m256i *)(dr+j)), prodv);
+            resv  = _mm256_add_epi64(resv, _mm256_and_si256(
+                        _mm256_cmpgt_epi64(zerov, resv), mod2v));
+            _mm256_storeu_si256((__m256i *)(dr+j), resv);
+            prodv = _mm256_mul_epu32(mulv, _mm256_cvtepu32_epi64(
+                        _mm_loadu_si128((__m128i *)(pivs[i]+l+4))));
+            resv  = _mm256_sub_epi64(
+                    _mm256_loadu_si256((__m256i *)(dr+j+4)), prodv);
+            resv  = _mm256_add_epi64(resv, _mm256_and_si256(
+                        _mm256_cmpgt_epi64(zerov, resv), mod2v));
+            _mm256_storeu_si256((__m256i *)(dr+j+4), resv);
+        }
+#else
         const len_t os    = (ncr - i) % UNROLL;
         for (l = 0, j = i; l < os; ++l, ++j) {
             dr[j] -=  mul * pivs[i][l];
@@ -1978,6 +1930,7 @@ static cf32_t *reduce_dense_row_by_dense_new_pivots_31_bit(
             dr[j+2] +=  (dr[j+2] >> 63) & mod2;
             dr[j+3] +=  (dr[j+3] >> 63) & mod2;
         }
+#endif
     }
     if (k == 0) {
         *pc = -1;
@@ -1987,7 +1940,7 @@ static cf32_t *reduce_dense_row_by_dense_new_pivots_31_bit(
     cf32_t *row = (cf32_t *)calloc((uint64_t)(ncr-np), sizeof(cf32_t));
     for (i = np; i < ncr; ++i) {
         if (dr[i] != 0) {
-            dr[i] = dr[i] % mod;
+            dr[i] = (int64_t)barrett_reduce((uint64_t)dr[i], mod, bm);
         }
         row[i-np]  = (cf32_t)dr[i];
     }

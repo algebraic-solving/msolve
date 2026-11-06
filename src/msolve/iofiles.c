@@ -652,7 +652,7 @@ static void get_characteristic(FILE *fh, char * line, int max_line_size,
   *field_char = 0;
 
   if(fgets(line, max_line_size, fh) != NULL){
-    int64_t tmp_mod = atol(line);
+    int64_t tmp_mod = strtoll(line, NULL, 10);
     if(tmp_mod >= 0){
       *field_char = tmp_mod;
       /* primes between 2^31 and 2^32 would need 32 bit coefficients
@@ -885,7 +885,7 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
     for(int64_t j = 1; j < nterms; j++){
       get_term(line, &prev_pos, &term, &term_size);
       if (term != NULL) {
-        cf_tmp  = (int64_t)strtol(term, NULL, 10);
+        cf_tmp  = (int64_t)strtoll(term, NULL, 10);
 
         if (cf_tmp == 0) {
           if (term[0] == '-') {

@@ -16,6 +16,7 @@
  * Authors:
  * Jérémy Berthomieu
  * Christian Eder
+ * Vincent Neiger
  * Mohab Safey El Din */
 
 #include "msolve.h"
@@ -257,71 +258,6 @@ static inline void mpz_param_out_str_maple(FILE *file,
                                            param_t *mod_param) {
   mpz_param_out_str(file, gens, dquot, param, mod_param);
   fprintf(file, "]");
-}
-
-static inline void display_fglm_crt_matrix(FILE *file, crt_mpz_matfglm_t mat) {
-
-  fprintf(file, "%u\n", mat->ncols);
-  fprintf(file, "%u\n", mat->nrows);
-
-  long len1 = (mat->ncols) * (mat->nrows);
-  for (long i = 0; i < len1; i++) {
-    mpz_out_str(file, 10, mat->dense_mat[i]);
-    fprintf(file, " ");
-  }
-  fprintf(file, "\n");
-  long len2 = (mat->ncols) - (mat->nrows);
-  for (long i = 0; i < len2; i++) {
-    fprintf(file, "%d ", mat->triv_idx[i]);
-  }
-  fprintf(file, "\n");
-  for (long i = 0; i < len2; i++) {
-    fprintf(file, "%d ", mat->triv_pos[i]);
-  }
-  fprintf(file, "\n");
-  for (long i = 0; i < mat->nrows; i++) {
-    fprintf(file, "%d ", mat->dense_idx[i]);
-  }
-  fprintf(file, "\n");
-}
-
-static inline void display_fglm_mpq_matrix(FILE *file, mpq_matfglm_t mat) {
-
-  fprintf(file, "%u\n", mat->ncols);
-  fprintf(file, "%u\n", mat->nrows);
-
-  uint64_t nc = mat->ncols;
-
-  fprintf(file, "[");
-  for (long i = 0; i < mat->nrows; i++) {
-    long c = 2 * i * mat->ncols;
-    fprintf(file, "[");
-    for (long j = 0; j < nc - 1; j++) {
-      mpz_out_str(file, 10, mat->dense_mat[c + 2 * j]);
-      fprintf(file, "/");
-      mpz_out_str(file, 10, mat->dense_mat[c + 2 * j + 1]);
-      fprintf(file, ", ");
-    }
-    mpz_out_str(file, 10, mat->dense_mat[c + 2 * nc - 2]);
-    fprintf(file, "/");
-    mpz_out_str(file, 10, mat->dense_mat[c + 2 * nc - 1]);
-    fprintf(file, "]\n");
-  }
-  fprintf(file, "]");
-  fprintf(file, "\n");
-  long len2 = (mat->ncols) - (mat->nrows);
-  for (long i = 0; i < len2; i++) {
-    fprintf(file, "%d ", mat->triv_idx[i]);
-  }
-  fprintf(file, "\n");
-  for (long i = 0; i < len2; i++) {
-    fprintf(file, "%d ", mat->triv_pos[i]);
-  }
-  fprintf(file, "\n");
-  for (long i = 0; i < mat->nrows; i++) {
-    fprintf(file, "%d ", mat->dense_idx[i]);
-  }
-  fprintf(file, "\n");
 }
 
 data_gens_ff_t *allocate_data_gens() {
@@ -973,7 +909,13 @@ static inline void normalize_nmod_param(param_t *nmod_param) {
 /* modular images of the parametrization, stored for each prime in one
    contiguous block (elim, then the coordinates), so that CRT is only
    applied when a rational reconstruction is attempted; blocks are grouped
-   by chunks of PARAM_IMAGES_CHUNK primes, which are never moved */
+   by chunks of PARAM_IMAGES_CHUNK primes, which are never moved
+
+   TODO: the same scheme (residues stored for each prime, multi-CRT of one
+   coefficient at a time right before its rational reconstruction) is used
+   by gb_modpoly_t in lifting-gb.c and by trace_det->modular_matrices in
+   mulmat_reconstruct (lifting.c), with different storage policies; the
+   three should share one helper, e.g. in src/crt/ */
 #define PARAM_IMAGES_CHUNK 64
 typedef struct{
   uint32_t **chunks;  /* images, prime-major */
@@ -1095,13 +1037,30 @@ static inline void param_images_crt_coeff(const param_images_t im,
 }
 
 /* Witnesses of the eliminating polynomial reconstructed simultaneously:
-   its coefficients share a common denominator (the leading coefficient of
-   the primitive integer polynomial), which can be much larger than their
-   numerators. Reconstructing k coefficients u_1, .., u_k with a common
-   denominator d, i.e. finding a short vector (d, n_1, .., n_k) with
-   n_j = d u_j mod m by LLL, needs about bits(n) + bits(d) / k bits of
-   modulus instead of bits(n) + bits(d) for a single coefficient. The
-   denominator found is used as a guess for the eliminating polynomial.
+   its coefficients share a common denominator d (the leading coefficient
+   of the primitive integer polynomial). The denominator found is used as
+   a guess for the eliminating polynomial.
+
+   Reconstructing k coefficients u_1, .., u_k with this common denominator
+   amounts to finding the short vector (d, n_1, .., n_k), n_j = d u_j mod m,
+   in the lattice spanned by (1, u_1, .., u_k) and m e_1, .., m e_k. LLL
+   finds it, heuristically, when it is the shortest vector of the lattice,
+   which requires, with bits(n) the largest bitsize of the numerators:
+   - max(bits(d), bits(n)) <= k bits(m) / (k + 1), which is the acceptance
+     test of vec_wit_try (up to RR_MARGIN bits of slack);
+   - 2 bits(d) - bits(n) < bits(m), since the lattice also contains
+     (m, 0, .., 0), hence the vectors (t d - s m, t n_1, .., t n_k) for
+     integers s, t, which have max-norm about sqrt(m 2^bits(n)) for well
+     chosen s, t.
+   When numerators and denominator have about the same bitsize b, this
+   needs about (k + 1) b / k bits of modulus, instead of 2 b to reconstruct
+   a single coefficient. There is no gain once bits(d) > 2 bits(n): a
+   single reconstruction with skewed bounds then needs fewer bits, and the
+   vector found by LLL is usually spurious (it is rejected by the check
+   with the next prime, see vec_wit_check). Scaling the numerator columns
+   by 2^(bits(d) - bits(n)) would reach about bits(n) + bits(d) / k bits in
+   all cases, but requires an estimate of bits(d) - bits(n).
+
    As LLL is more expensive than rational reconstruction, it is tried at
    a geometric schedule: each time the number of primes grows by
    VEC_WIT_GROWTH percent. */
@@ -1115,6 +1074,8 @@ typedef struct{
   int state;                /* 0: nothing, 1: candidate to be checked with
                                the next prime, 2: candidate checked */
   int32_t next;             /* number of primes of the next attempt */
+  int32_t ntries;           /* number of calls to LLL */
+  double rtime;             /* elapsed time spent in vec_wit_try */
   mpz_t den;                /* common denominator */
   mpz_t num[VEC_WIT_K];     /* numerators */
 } vec_wit_struct;
@@ -1132,6 +1093,8 @@ static inline void vec_wit_init(vec_wit_t vw, const nmod_poly_t elim,
   }
   vw->state = 0;
   vw->next = VEC_WIT_START;
+  vw->ntries = 0;
+  vw->rtime = 0;
   vw->k = 0;
   if (nsols < 4 * VEC_WIT_K) {
     return;
@@ -1171,6 +1134,7 @@ static inline void vec_wit_clear(vec_wit_t vw){
    RR_MARGIN bits of slack used for rational reconstruction */
 static inline void vec_wit_try(vec_wit_t vw, const param_images_t im,
                                const mpz_t modulus){
+  double rt = realtime();
   const int k = vw->k;
   param_crt_t pc;
   param_crt_init(pc, im);
@@ -1207,6 +1171,8 @@ static inline void vec_wit_try(vec_wit_t vw, const param_images_t im,
     vw->state = 1;
   }
   fmpz_mat_clear(B);
+  vw->ntries++;
+  vw->rtime += realtime() - rt;
 }
 
 /* checks the candidate with the modular images of elim for a new prime */
@@ -1258,8 +1224,7 @@ static inline int param_ratrecon_coeff(mpz_t num, mpz_t den, mpz_t u,
 
 static inline int new_rational_reconstruction_mpz_ptr_with_denom_param(
     mpz_t *recons, mpz_t denominator, const param_images_t im, int64_t start,
-    param_crt_struct *pc, deg_t len, mpz_t modulus,
-    deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden, mpz_t *tmp_num,
+    param_crt_struct *pc, deg_t len, mpz_t modulus, mpz_t rden, mpz_t *tmp_num,
     mpz_t *tmp_den, mpz_t lcm, mpz_t gnum, mpz_t guessed_den, rrec_data_t rdata,
     mpz_t *bN, mpz_t *bD, const int nb) {
 
@@ -1302,9 +1267,8 @@ static inline int new_rational_reconstruction_mpz_ptr_with_denom_param(
 
 
 static inline int rational_reconstruction_mpz_ptr_with_denom_elim(
-    mpz_t *recons, mpz_t denominator, const param_images_t im, int64_t start,
-    param_crt_struct *pc, deg_t len, mpz_t modulus,
-    deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden, mpz_t *tmp_num,
+    mpz_t *recons, const param_images_t im, int64_t start,
+    param_crt_struct *pc, deg_t len, mpz_t modulus, mpz_t rden, mpz_t *tmp_num,
     mpz_t *tmp_den, int16_t *check_lift, mpz_t lcm, mpz_t gnum,
     mpz_t guessed_den, rrec_data_t rdata, mpz_t *bN, mpz_t *bD, const int nb) {
 
@@ -1361,30 +1325,28 @@ static inline int rational_reconstruction_mpz_ptr_with_denom_elim(
 
 
 static inline int rational_reconstruction_upoly_with_denom_elim(
-    mpz_upoly_t recons, mpz_t denominator, const param_images_t im,
-    int64_t start, param_crt_struct *pc, long len,
-    mpz_t modulus, deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden,
+    mpz_upoly_t recons, const param_images_t im,
+    int64_t start, param_crt_struct *pc, long len, mpz_t modulus, mpz_t rden,
     mpz_upoly_t tmp_num, mpz_upoly_t tmp_den, int16_t *check_lift,
     mpz_t lcm, mpz_t guessed_num,
     mpz_t guessed_den, rrec_data_t rdata, mpz_t *bN, mpz_t *bD, const int nb) {
 
   return rational_reconstruction_mpz_ptr_with_denom_elim(
-      recons->coeffs, denominator, im, start, pc, len, modulus, maxrec, coef,
-      rnum, rden, tmp_num->coeffs, tmp_den->coeffs, check_lift, lcm, guessed_num,
+      recons->coeffs, im, start, pc, len, modulus,
+      rden, tmp_num->coeffs, tmp_den->coeffs, check_lift, lcm, guessed_num,
       guessed_den, rdata, bN, bD, nb);
 }
 
 static inline int rational_reconstruction_upoly_with_denom_param(
     mpz_upoly_t recons, mpz_t denominator, const param_images_t im,
-    int64_t start, param_crt_struct *pc, long len,
-    mpz_t modulus, deg_t *maxrec, mpq_t *coef, mpz_t rnum, mpz_t rden,
+    int64_t start, param_crt_struct *pc, long len, mpz_t modulus, mpz_t rden,
     mpz_upoly_t tmp_num, mpz_upoly_t tmp_den, mpz_t lcm, mpz_t guessed_num,
     mpz_t guessed_den, rrec_data_t rdata, mpz_t *bN, mpz_t *bD, const int nb) {
 
 
     return new_rational_reconstruction_mpz_ptr_with_denom_param(
-      recons->coeffs, denominator, im, start, pc, len, modulus, maxrec, coef,
-      rnum, rden, tmp_num->coeffs, tmp_den->coeffs, lcm, guessed_num,
+      recons->coeffs, denominator, im, start, pc, len, modulus,
+      rden, tmp_num->coeffs, tmp_den->coeffs, lcm, guessed_num,
       guessed_den, rdata, bN, bD, nb);
 
 }
@@ -1392,9 +1354,9 @@ static inline int rational_reconstruction_upoly_with_denom_param(
 
 static inline void lift_coordinate(mpz_param_t mpz_param,
         const param_images_t images, param_crt_struct *pc,
-        param_t *nmod_param, mpz_upoly_t numer, mpz_upoly_t denom, int16_t *check_lift,
-        mpz_t modulus, mpz_t prod_crt, int32_t prime, mpq_t *coef, mpz_t rnum, mpz_t rden,
-        rrec_data_t recdata, mpz_t guessed_num, mpz_t guessed_den, deg_t *maxrec,
+        param_t *nmod_param, mpz_upoly_t numer, mpz_upoly_t denom,
+        mpz_t modulus, mpz_t rden,
+        rrec_data_t recdata, mpz_t guessed_num, mpz_t guessed_den,
         int *is_lifted, mpz_t denominator, mpz_t lcm, mpq_t c, const int idx,
         mpz_t *bN, mpz_t *bD, const int nb, const int info_level){
 
@@ -1411,7 +1373,7 @@ static inline void lift_coordinate(mpz_param_t mpz_param,
             mpz_param->coords[idx], denominator, images,
             images->elen + idx * images->clen, pc,
             MIN((deg_t)nmod_param->coords[idx]->length, images->clen),
-            modulus, maxrec, coef, rnum, rden,
+            modulus, rden,
             numer, denom, lcm, guessed_num, guessed_den, recdata, bN, bD, nb);
         if(b){
             is_lifted[idx + 1] = 1;
@@ -1433,8 +1395,8 @@ static inline void lift_coordinate(mpz_param_t mpz_param,
 static inline int lift_parametrization(mpz_param_t mpz_param,
         const param_images_t images,
         param_t *nmod_param, mpz_upoly_t numer, mpz_upoly_t denom, int16_t *check_lift,
-        mpz_t modulus, mpz_t prod_crt, int32_t prime, mpq_t *coef, mpz_t rnum, mpz_t rden,
-        rrec_data_t recdata, mpz_t guessed_num, mpz_t guessed_den, deg_t *maxrec,
+        mpz_t modulus, mpz_t rden,
+        rrec_data_t recdata, mpz_t guessed_num, mpz_t guessed_den,
         int *is_lifted, mpz_t denominator, mpz_t lcm, const int info_level){
     mpz_set_ui(lcm, 1);
     mpz_set_ui(denominator, 1);
@@ -1479,8 +1441,8 @@ static inline int lift_parametrization(mpz_param_t mpz_param,
     if (is_lifted[0] == 0) {
 
       b = rational_reconstruction_upoly_with_denom_elim(
-          mpz_param->elim, denominator, images, 0, pc,
-          nmod_param->elim->length, modulus, maxrec, coef, rnum, rden, numer,
+          mpz_param->elim, images, 0, pc,
+          nmod_param->elim->length, modulus, rden, numer,
           denom, check_lift, lcm, guessed_num, guessed_den, recdata,
           bN, bD, 2);
       if (b == 0) {
@@ -1516,9 +1478,9 @@ static inline int lift_parametrization(mpz_param_t mpz_param,
             continue;
         }
         lift_coordinate(mpz_param, images, pc,
-                nmod_param, numer, denom, check_lift,
-                modulus, prod_crt, prime, coef, rnum, rden,
-                recdata, guessed_num, guessed_den, maxrec,
+                nmod_param, numer, denom,
+                modulus, rden,
+                recdata, guessed_num, guessed_den,
                 is_lifted, denominator, lcm, c, i, bN + 2, bD + 2, 3,
                 info_level);
     }
@@ -1545,7 +1507,7 @@ static inline int rational_reconstruction_param(
     nvars_t nlins, nvars_t *linvars, uint32_t *lineqs,
     trace_det_fglm_mat_t trace_det, sp_matfglm_t *mat, mpz_upoly_t numer,
     mpz_upoly_t denom, int16_t *check_lift, mpz_t modulus, mpz_t prod_crt, int32_t prime,
-    mpq_t *coef, mpz_t rnum, mpz_t rden, rrec_data_t recdata,
+    mpz_t rnum, mpz_t rden, rrec_data_t recdata,
     mpz_t guessed_num, mpz_t guessed_den, deg_t *maxrec,
     deg_t *matrec, deg_t *oldmatrec_checked, deg_t *matrec_checked,
     int *is_lifted, int *mat_lifted, int *lin_lifted, int doit,
@@ -1650,18 +1612,15 @@ static inline int rational_reconstruction_param(
     mpz_init_set_ui(denominator, 1);
     mpz_t lcm;
     mpz_init_set_ui(lcm, 1);
-    mpq_t c;
-    mpq_init(c);
 
     int b = lift_parametrization(mpz_param, images,
         nmod_param, numer, denom, check_lift,
-        modulus, prod_crt, prime, coef, rnum, rden,
-        recdata, guessed_num, guessed_den, maxrec,
+        modulus, rden,
+        recdata, guessed_num, guessed_den,
         is_lifted, denominator, lcm, info_level);
 
     mpz_clear(denominator);
     mpz_clear(lcm);
-    mpq_clear(c);
     return b;
   }
 
@@ -2017,8 +1976,8 @@ static int32_t *initial_modular_step(
                         }
                         free_fglm_param(test_nmod_param[0]);
                     }
-                    free(test_nmod_param);
                 }
+                free(test_nmod_param);
             }
         }
         *dim = 0;
@@ -2952,7 +2911,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
               *mpz_paramp, images, vec_wit, nmod_params[i],
               bnlins[i], blinvars[i], lineqs_ptr[i],
               trace_det, bmatrix[i], numer,
-              denom, check_lift, modulus, prod_crt, lp->p[i], &result, rnum, rden, recdata,
+              denom, check_lift, modulus, prod_crt, lp->p[i], rnum, rden, recdata,
               guessed_num, guessed_den, &maxrec, &matrec, &oldmatrec_checked,
               &matrec_checked, is_lifted,
               &mat_lifted, &lin_lifted, doit && (int32_t)i == lastgood, nbdoit,
@@ -3041,6 +3000,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(VERBSTREAM, "-----------------------------------------\n");
     fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
     fprintf(VERBSTREAM, "CRT and ratrecon(elapsed) %10.2f sec\n", strat);
+    if (vec_wit->ntries > 0) {
+      fprintf(VERBSTREAM, "  incl. LLL, %4d calls   %10.2f sec\n",
+              vec_wit->ntries, vec_wit->rtime);
+    }
     fprintf(VERBSTREAM, "-----------------------------------------\n");
     fflush(VERBSTREAM);
   }

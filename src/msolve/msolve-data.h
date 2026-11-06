@@ -16,6 +16,7 @@
  * Authors:
  * Jérémy Berthomieu
  * Christian Eder
+ * Vincent Neiger
  * Mohab Safey El Din */
 
 #ifndef MSOLVE_DATA_H
@@ -184,10 +185,6 @@ typedef struct{
   mpz_t tmp;
   mpz_t N;
   mpz_t D;
-  mpz_t N1;
-  mpz_t D1;
-  mpz_t N2;
-  mpz_t D2;
 } rrec_data_struct_t;
 
 typedef rrec_data_struct_t rrec_data_t[1];
@@ -219,40 +216,6 @@ typedef struct{
 } mpz_param_array_struct;
 typedef mpz_param_array_struct mpz_param_array_t[1];
 
-typedef struct{
-  uint32_t ncols; /* dimension of quotient */
-  uint32_t nrows; /* number of non trivial lines */
-  mpz_t *dense_mat; /*array of nrows*ncols*2 mpz_t coefficients (num, den)*/
-  mpz_t *denoms;
-  uint32_t *triv_idx; /*array of indices of rows which are unit vectors*/
-  uint32_t *triv_pos; /*position of '1' in unit vectors */
-  uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
-  uint32_t *dst; /* blocks of 0's in non-trivial rows */
-} mpq_matfglm_struct;
-typedef mpq_matfglm_struct mpq_matfglm_t[1];
-
-typedef struct{
-  uint32_t ncols; /* dimension of quotient */
-  uint32_t nrows; /* number of non trivial lines */
-  mpz_t *dense_mat; /*array of nrows*ncols mpz_t coefficients*/
-  mpz_t *denoms; /*denominators for rows which are not unit vectors*/
-  uint32_t *triv_idx; /*array of indices of rows which are unit vectors*/
-  uint32_t *triv_pos; /*position of '1' in unit vectors */
-  uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
-  uint32_t *dst; /* blocks of 0's in non-trivial rows */
-} mpz_matfglm_struct;
-typedef mpz_matfglm_struct mpz_matfglm_t[1];
-
-typedef struct{
-  uint32_t ncols; /* dimension of quotient */
-  uint32_t nrows; /* number of non trivial lines */
-  mpz_t *dense_mat; /*array of nrows*ncols*2 mpz_t coefficients (num, den)*/
-  uint32_t *triv_idx; /*array of indices of rows which are unit vectors*/
-  uint32_t *triv_pos; /*position of '1' in unit vectors */
-  uint32_t *dense_idx; /* array of rows which are NOT unit vectors */
-  uint32_t *dst; /* blocks of 0's in non-trivial rows */
-} crt_mpz_matfglm_struct;
-typedef crt_mpz_matfglm_struct crt_mpz_matfglm_t[1];
 
 typedef struct{
   uint32_t trace_idx;

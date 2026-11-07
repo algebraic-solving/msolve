@@ -2771,10 +2771,15 @@ static long hensel_nf_nmem(hensel_state_t *st, const long D,
  * of the F4 matrices, and the fglmops operations of FGLM or the denseops
  * ones of the dense route, weighted as above; N and skip given by the
  * user are kept. The gain, which decides whether the lifting is used, is
- * the best precision per cost with N at most the precision allowed by the
- * memory limit at the start (see hensel_nf_nmem), which grows with the
- * estimated number of bits: the run aims at N (random2_10_10: 319 primes
- * at about p^12, the limit at the start, 117 at p^32) */
+ * the best precision per cost, relative to that of the modular runs, of
+ * the variant (with or without the transforms) having the best one with N
+ * at most the precision allowed by the memory limit at the start (see
+ * hensel_nf_nmem). The gain is not computed within that limit, which
+ * grows with the estimated number of bits, so that the run reaches higher
+ * precisions (random2_10_10: 319 primes at about p^12, the limit at the
+ * start, 117 at p^32; chandra 11: p^6 at the start, about p^34 per prime
+ * in the end, gain 1.11 within the limit at the start, 1.49 without it,
+ * 1.71 measured) */
 static void hensel_choose(hensel_state_t *st, const long D, const double lp,
                           const double f4ops, const double f4new,
                           const double f4terms, const double fglmops,
@@ -2840,7 +2845,7 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
   hs->cnewton = cnewton;
   hs->N = bN;
   hs->skip = bs;
-  hs->gain = bestc * hs->cmod;
+  hs->gain = best * hs->cmod;
   if (info_level) {
     /* the costs are in the unit of the model of Newton's iteration; the
      * gain is the precision per cost of the lifting, relative to that of
@@ -2893,10 +2898,10 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
               hs->skip, hs->skip > 1 ? "s" : "");
     }
     fprintf(VERBSTREAM, "\n");
-    fprintf(VERBSTREAM, "%-27s %10.2f at p^%ld\n", "gain", best * hs->cmod,
-            hs->N);
-    fprintf(VERBSTREAM, "%-27s %10.2f at p^%ld (threshold %.2f)\n",
-            "gain within memory limit", hs->gain, bNc, HENSEL_MIN_GAIN);
+    fprintf(VERBSTREAM, "%-27s %10.2f at p^%ld (threshold %.2f)\n", "gain",
+            hs->gain, hs->N, HENSEL_MIN_GAIN);
+    fprintf(VERBSTREAM, "%-27s %10.2f at p^%ld\n",
+            "gain within memory limit", bestc * hs->cmod, bNc);
   }
 }
 

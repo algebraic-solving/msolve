@@ -779,14 +779,6 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
 
     ht_t *bht = bs->ht;
 
-    if(info_level > 2){
-        fprintf(VERBSTREAM, "------------------------------------------\n");
-        fprintf(VERBSTREAM, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
-        fprintf(VERBSTREAM, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
-        fprintf(VERBSTREAM, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
-        fprintf(VERBSTREAM, "------------------------------------------\n");
-    }
-
     /* Leading monomials from Grobner basis */
     int32_t *bexp_lm = get_lm_from_bs(bs, bht);
     /* may be non NULL if the computation has been restarted */
@@ -1708,13 +1700,6 @@ restart:
       /* nprimes += st->nthrds; */
       nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */
       if(nprimes == 1){
-        if(info_level>2){
-          fprintf(VERBSTREAM, "------------------------------------------\n");
-          fprintf(VERBSTREAM, "#ADDITIONS       %13lu\n", (unsigned long)st->application_nr_add * 1000);
-          fprintf(VERBSTREAM, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->application_nr_mult * 1000);
-          fprintf(VERBSTREAM, "#REDUCTIONS      %13lu\n", (unsigned long)st->application_nr_red);
-          fprintf(VERBSTREAM, "------------------------------------------\n");
-        }
         /* if(info_level>1){ */
         /*   fprintf(ERRSTREAM, "Application phase %.2f Gops/sec\n", */
         /*           (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4)); */
@@ -1727,12 +1712,11 @@ restart:
 		    "multi-mod overall(elapsed) %9.2f sec\n",
 		    stf4);
 	    if (info_level > 1){
-	      fprintf(VERBSTREAM,
-		      "learning phase             %9.2f Gops/sec\n",
-		      (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(st->learning_rtime));
+	      /* multiply-adds by the known pivots, recorded in the trace,
+	       * for the prime of this step */
 	      fprintf(VERBSTREAM,
 		      "application phase          %9.2f Gops/sec\n",
-		      (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
+		      2.0*st->tr->nmadd/1000.0/1000.0/1000.0/(stf4));
 	    }
 	    fprintf(VERBSTREAM,
 		    "-----------------------------------------\n");

@@ -287,6 +287,7 @@ data_gens_ff_t *allocate_data_gens() {
   gens->sep_search = 1;
   gens->sep_dense = 0;
   gens->split_mode = 0;
+  gens->byte_encoding = 1;
 
   gens->elim = 0;
   return gens;
@@ -4825,12 +4826,18 @@ restart:
     bcf   = malloc(sizeof(void *));
     b     = 0;
 
-    if(gens->field_char > INT32_MAX){
+    if(gens->field_char > INT32_MAX || is_gf2_ext(gens->field_char)){
         /* for field characteristics >= 2^31 only Groebner bases can be
-         * computed, F4 works with 64 bit coefficients then */
+         * computed, F4 works with 64 bit coefficients then. The same
+         * holds for GF(16) and GF(256) given by the field characteristics
+         * 16 and 256. */
         if (print_gb == 0 || use_signatures > 0 || saturate > 0
                 || colon > 0 || normal_form > 0) {
-            fprintf(ERRSTREAM, "For field characteristics >= 2^31 msolve ");
+            if (is_gf2_ext(gens->field_char)) {
+                fprintf(ERRSTREAM, "Over GF(16) and GF(256) msolve ");
+            } else {
+                fprintf(ERRSTREAM, "For field characteristics >= 2^31 msolve ");
+            }
             fprintf(ERRSTREAM, "only computes Groebner bases (option -g).\n");
             free(bld);
             free(blen);
@@ -4843,8 +4850,19 @@ restart:
         md_t *st    = NULL;
         int32_t err = 0;
 
+        void *cfs = (void *)gens->cfs_64;
+        if (is_gf2_ext(gens->field_char)) {
+            /* integer coefficients are taken modulo 2, the import of
+             * the data removes terms with zero coefficient */
+            if (gens->byte_encoding == 0) {
+                for (int64_t i = 0; i < gens->nterms; ++i) {
+                    gens->cfs[i] &= 1;
+                }
+            }
+            cfs = (void *)gens->cfs;
+        }
         int success = initialize_gba_input_data(&bs, &bht, &st,
-                gens->lens, gens->exps, (void *)gens->cfs_64,
+                gens->lens, gens->exps, cfs,
                 gens->field_char, 0 /* DRL order */, elim_block_len,
                 gens->nvars, gens->ngens, 0 /* # normal forms */,
                 initial_hts, nr_threads, max_pairs, update_ht, la_option,

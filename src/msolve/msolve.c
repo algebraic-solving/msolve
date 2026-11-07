@@ -2852,7 +2852,8 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 	    fprintf(VERBSTREAM,
 		    "multi-mod FGLM             %9.2f sec\n",
 		    ca1-stf4);
-	    if (info_level > 1){
+	    /* no trace is learned with probabilistic linear algebra */
+	    if (info_level > 1 && st->tr != NULL){
 	      /* multiply-adds by the known pivots, recorded in the trace,
 	       * for the st->nthrds primes of this step */
 	      fprintf(VERBSTREAM,

@@ -2213,14 +2213,20 @@ static double hensel_model(const hensel_sys_t *hs, const long D,
 /* costs of a modular run in units of the model, a bit operation of the
  * products of Newton's iteration, about 5e-11 s (measured 4.3e-11 to
  * 6.7e-11 s for the products modulo w for D = 32 to 4096 and 60 to 3900
- * bits): a multiply-add counted in F4, 5.1e-10 s, a term of the F4
- * matrices, 6.4e-9 s, and a multiply-add of the products by the dense
- * rows of the multiplication matrix in FGLM, 8e-11 s (fitted on the
- * modular runs of 26 systems, within 25% for most, 40% slower on eco and
- * henrion); --hensel-cost-scale multiplies them */
-#define HENSEL_KAPPA_F4 10.0
-#define HENSEL_KAPPA_F4TERM 128.0
-#define HENSEL_KAPPA_FGLM 1.6
+ * bits): a multiply-add of F4 by a known pivot, 1.5e-10 s, one of the
+ * estimate of the multiply-adds of F4 among the new rows, 2.6e-10 s, and a
+ * term of the F4 matrices, 2.2e-9 s, all recorded in the trace (see
+ * construct_trace), a multiply-add of the products by the dense rows of
+ * the multiplication matrix in FGLM, 7.5e-11 s, and one of the products
+ * by the dense matrix of the multiplication by the separating form on
+ * the dense route of separating.c, 3.8e-10 s (fitted on the modular runs
+ * of 48 systems, the dense route on 4 of them); --hensel-cost-scale
+ * multiplies them */
+#define HENSEL_KAPPA_F4 3.0
+#define HENSEL_KAPPA_F4NEW 5.2
+#define HENSEL_KAPPA_F4TERM 44.0
+#define HENSEL_KAPPA_FGLM 1.5
+#define HENSEL_KAPPA_DENSE 7.6
 
 
 /* the lifting state across the batches of primes */
@@ -2724,22 +2730,27 @@ static long hensel_nf_nmem(hensel_state_t *st, const long D,
 
 /* chooses N (a power of 2) and skip maximizing the precision per cost of
  * a prime, N / (cost of a modular run + cost of the lifting), where a
- * modular run costs the f4ops and fglmops operations and the f4terms
- * terms of the F4 matrices weighted as above; N and skip given by the
+ * modular run costs the f4ops multiply-adds by the known pivots, the
+ * f4new estimated multiply-adds among the new rows and the f4terms terms
+ * of the F4 matrices, and the fglmops operations of FGLM or the denseops
+ * ones of the dense route, weighted as above; N and skip given by the
  * user are kept. The gain, which decides whether the lifting is used, is
  * the best precision per cost with N at most the precision allowed by the
  * memory limit at the start (see hensel_nf_nmem), which grows with the
  * estimated number of bits: the run aims at N (random2_10_10: 319 primes
  * at about p^12, the limit at the start, 117 at p^32) */
 static void hensel_choose(hensel_state_t *st, const long D, const double lp,
-                          const double f4ops, const double f4terms,
-                          const double fglmops, const int info_level) {
+                          const double f4ops, const double f4new,
+                          const double f4terms, const double fglmops,
+                          const double denseops, const int info_level) {
   hensel_sys_t *hs = &st->hs;
   st->lp = lp;
   const double mem = hensel_nf_mem(st, D, 0, 0);
   const double kappa = st->kappa;
-  hs->cmod = kappa * (HENSEL_KAPPA_F4 * f4ops + HENSEL_KAPPA_F4TERM * f4terms
-                       + HENSEL_KAPPA_FGLM * fglmops);
+  hs->cmod = kappa * (HENSEL_KAPPA_F4 * f4ops + HENSEL_KAPPA_F4NEW * f4new
+                       + HENSEL_KAPPA_F4TERM * f4terms
+                       + HENSEL_KAPPA_FGLM * fglmops
+                       + HENSEL_KAPPA_DENSE * denseops);
   /* with and without the products by transforms, which take memory and
    * may lower the precision within the memory limit (eco 12: p^7 instead
    * of p^12): the one with the best gain within the memory limit */
@@ -2828,10 +2839,16 @@ static void hensel_choose(hensel_state_t *st, const long D, const double lp,
             ? "of polynomials (low degree)"
             : "of polynomials (better within the memory limit)");
 #endif
-    fprintf(VERBSTREAM, "%-27s %10.3g operations, %.3g matrix terms\n",
-            "F4 of a modular run", f4ops, f4terms);
-    fprintf(VERBSTREAM, "%-27s %10.3g operations\n", "FGLM of a modular run",
-            fglmops);
+    fprintf(VERBSTREAM, "%-27s %10.3g operations, %.3g among new rows, "
+            "%.3g matrix terms\n", "F4 of a modular run", f4ops, f4new,
+            f4terms);
+    if (denseops > 0) {
+      fprintf(VERBSTREAM, "%-27s %10.3g operations\n",
+              "dense route of a modular run", denseops);
+    } else {
+      fprintf(VERBSTREAM, "%-27s %10.3g operations\n",
+              "FGLM of a modular run", fglmops);
+    }
     fprintf(VERBSTREAM, "%-27s %10.3g\n", "cost of a modular run", hs->cmod);
     fprintf(VERBSTREAM, "%-27s %10.3g to p^%ld", "cost of lifting one prime",
             hs->cnewton, hs->N);

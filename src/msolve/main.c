@@ -210,7 +210,8 @@ static inline void display_help(char *str){
   fprintf(OUTSTREAM, "\nLifting of the parametrization over the rationals:\n\n");
   display_option_help(0, "lifting", "LIFT", "Lifting strategy.\n");
   display_option_help_noopt("0 - p-adic or multi-modular, chosen by a cost\n");
-  display_option_help_noopt("    model (default).\n");
+  display_option_help_noopt("    model (default); multi-modular with the\n");
+  display_option_help_noopt("    probabilistic linear algebra (-l 42, 44).\n");
   display_option_help_noopt("1 - multi-modular.\n");
   display_option_help_noopt("2 - p-adic when applicable.\n");
   display_option_help_noopt("By default, msolve sets the parameters of the\n");

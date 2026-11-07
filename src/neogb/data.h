@@ -482,11 +482,6 @@ struct md_t
     double application_nr_mult;
     double application_nr_add;
     uint64_t application_nr_red;
-    /* operations of the runs which applied a trace, added up by
-     * finalize_f4 (in thousands, as above) */
-    double tracer_nr_mult;
-    double tracer_nr_add;
-    uint64_t tracer_nr_red;
 
     int32_t print_gb;
     int32_t truncate_lifting;

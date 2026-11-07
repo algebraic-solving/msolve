@@ -1243,7 +1243,10 @@ the estimate of the bits needed.
 \begin{itemize}
 \item The flag \verb+--lifting <int>+ chooses the method: \verb+0+ lets the
   cost model choose, \verb+1+ enforces the multi-modular lifting, \verb+2+
-  enforces the $p$-adic lifting when it applies.
+  enforces the $p$-adic lifting when it applies. With the probabilistic
+  linear algebra (\verb+-l 42+ or \verb+44+), the cost model has
+  no measure of the work of $F_4$, so \verb+0+ uses the multi-modular
+  lifting.
 
   \hfill \verb+Default value:0+
 \end{itemize}

@@ -3251,6 +3251,16 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   long hensel_T = gens->lifting != 1 && gens->ngens >= gens->nvars
     ? st->nthrds : 0;
   int hensel_chosen = 0;
+  /* with probabilistic linear algebra (-l 42 or 44), F4 learns no
+   * trace, so the cost model has no measure of the work of F4: the usual
+   * lifting is used unless the p-adic one is forced */
+  if (hensel_T > 0 && gens->lifting != 2 && st->laopt >= 40) {
+    if (info_level) {
+      fprintf(VERBSTREAM, "p-adic lifting not used: probabilistic linear "
+              "algebra (option -l %d)\n", (int)st->laopt);
+    }
+    hensel_T = 0;
+  }
   /* Newton's iteration needs simple roots: the parametrization, of the
    * radical, has degree the dimension of the quotient only when the ideal
    * is radical */
@@ -3328,9 +3338,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     double ca0 = realtime();
     double stf4 = 0;
-    /* multiply-adds of the modular runs, for the cost model of hensel.c */
+    /* meta data of the F4 runs applying the trace, whose work is recorded
+     * in the trace, for the cost model of hensel.c */
     md_t *const f4md = dense ? sd.st : st;
-    const double f4ops0 = f4md->tracer_nr_mult;
     if (dense) {
       sep_dense_modular_steps(&sd, nmod_params, lp, bad_primes, st->nprimes,
                               &stf4);
@@ -3382,7 +3392,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 		    "multi-mod FGLM             %9.2f sec\n",
 		    ca1-stf4);
 	    /* no trace is learned with probabilistic linear algebra */
-	    if (info_level > 1 && st->tr != NULL){
+	    if (info_level > 1 && f4md->tr != NULL){
 	      /* multiply-adds by the known pivots, recorded in the trace,
 	       * for the st->nthrds primes of this step */
 	      fprintf(VERBSTREAM,
@@ -3409,18 +3419,28 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         continue;
       }
       if (!hensel_chosen) {
-        /* operations of one modular run: F4, then FGLM (2 D matrix-vector
-         * products by the dense rows of the multiplication matrix) */
+        /* operations of one modular run: F4, recorded in the trace when it
+         * was learned, then FGLM (2 D matrix-vector products by the dense
+         * rows of the multiplication matrix), or on the dense route the
+         * 2 D products by the dense D x D matrix of the multiplication by
+         * the separating form (see sep_dense_param) */
         const double D = *dquot_ptr;
-        const double f4ops = (f4md->tracer_nr_mult - f4ops0) * 1000.0
-          / st->nthrds;
+        const trace_t *const f4tr = f4md->tr;
+        /* with probabilistic linear algebra no trace is learned, which
+         * happens here only when the p-adic lifting is forced: only the
+         * terms of the matrices of the last run are known */
+        const double f4ops = f4tr != NULL ? (double)f4tr->nmadd : 0;
+        const double f4new = f4tr != NULL ? (double)f4tr->nmadd_new : 0;
+        const double f4terms = f4tr != NULL ? (double)f4tr->nterms
+          : (double)f4md->mat_nterms;
         const double fglmops = dense ? 0
           : 2.0 * D * bmatrix[0]->nrows * bmatrix[0]->ncols;
+        const double denseops = dense ? 2.0 * D * D * D : 0;
         hensel_set_memref(&hst, MAX(st->max_mat_nterms,
                                     dense ? sd.st->max_mat_nterms : 0),
                           *dquot_ptr, st->nthrds);
-        hensel_choose(&hst, *dquot_ptr, log2((double)lp->p[0]), f4ops,
-                      (double)f4md->mat_nterms, fglmops, info_level);
+        hensel_choose(&hst, *dquot_ptr, log2((double)lp->p[0]), f4ops, f4new,
+                      f4terms, fglmops, denseops, info_level);
         hensel_chosen = 1;
         if (gens->lifting != 2 && hst.hs.gain < HENSEL_MIN_GAIN) {
           if (info_level) {

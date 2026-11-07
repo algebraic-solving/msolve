@@ -52,6 +52,7 @@ fglm_build_matrixn_radical-shape-31
 line_endings_support
 neogb_io
 neogb_f4_52_bit
+neogb_gf2_ext
 msolve-*.tar.gz
 msolve-*/
 src/msolve/msolve-version.h

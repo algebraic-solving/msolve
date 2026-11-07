@@ -80,7 +80,7 @@ is doing. Try this.
 `msolve` computes Groebner bases when the base field is either the field of rational numbers 
 or a prime field
 (characteristic should be less than 2^52; for characteristics of at least 2^31
-only Groebner bases can be computed).
+only Groebner bases can be computed), or GF(16) resp. GF(256), see below.
 
 
 The following command
@@ -109,6 +109,14 @@ thanks to the `-e` flag. The following command
 ```
 will perform the Groebner basis computation eliminating the first variable. 
 More generally, using `-e k` will eliminate the first `k` variables. 
+
+Groebner bases (options `-g 1` and `-g 2`) can also be computed over the 
+binary extension fields GF(16) and GF(256), the 2nd line of the input file 
+is then `16` resp. `256`. Their elements are given by bytes: bit `i` is the 
+coefficient of `t^i` in GF(2)[t]/(t^4+t+1) resp. 
+GF(2)[t]/(t^8+t^4+t^3+t+1), e.g. `0x1b*x1^2+3*x2` (hexadecimal coefficients 
+are allowed). With the option `-b 0` the coefficients are instead taken 
+modulo 2, i.e. the input system has coefficients in GF(2). 
 
 # Solving over the real numbers
 

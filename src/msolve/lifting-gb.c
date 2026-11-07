@@ -1711,7 +1711,8 @@ restart:
 	    fprintf(VERBSTREAM,
 		    "multi-mod overall(elapsed) %9.2f sec\n",
 		    stf4);
-	    if (info_level > 1){
+	    /* no trace is learned with probabilistic linear algebra */
+	    if (info_level > 1 && st->tr != NULL){
 	      /* multiply-adds by the known pivots, recorded in the trace,
 	       * for the prime of this step */
 	      fprintf(VERBSTREAM,

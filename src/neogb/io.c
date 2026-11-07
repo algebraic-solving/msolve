@@ -852,11 +852,11 @@ int validate_input_data_64(
         return 1;
     }
 
-    *nr_gensp   -=  ctr;
-
     /* recheck number of generators, if the input was only (0) then
-     * no more generators are left over. */
-    if (*nr_gensp < 1) {
+     * no more generators are left over. Note that *nr_gensp is not
+     * changed: the invalid generators are still part of the input data,
+     * they are skipped when importing it. */
+    if (*nr_gensp - ctr < 1) {
         return -1;
     }
 

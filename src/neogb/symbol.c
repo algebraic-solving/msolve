@@ -515,46 +515,210 @@ static void select_tbr(
  * divisors we choose the one of shortest length, the newest one among the
  * shortest ones: this leads to sparser matrices.
  * Does not change any data, so it can be called in parallel. */
+/* Index for finding reducers: the positions of the lead monomials of
+ * the basis sorted by their short divisor masks, together with a binary
+ * trie on the sorted masks. Each node of the trie stores the bits which
+ * all masks of its range have in common, so the lead monomials whose
+ * masks are contained in the mask of a given monomial can be found
+ * without checking all lead monomials. */
+typedef struct
+{
+    sdm_t cm;     /* bits all masks in this node have in common */
+    len_t lo;     /* range of sorted masks of this node */
+    len_t hi;
+    len_t c0;     /* children, 0 for leaves */
+    len_t c1;
+} red_node_t;
+
+typedef struct
+{
+    sdm_t *sdm;         /* sorted masks */
+    len_t *pos;         /* positions of the lead monomials in bs->lm */
+    len_t *len;         /* lengths of the corresponding basis elements */
+    exp_t *ev;          /* exponent vectors of the lead monomials */
+    red_node_t *nd;     /* nodes of the trie, nd[0] is the root */
+    len_t nnd;
+    len_t snd;
+} red_idx_t;
+
+#define RED_IDX_LEAF 32
+
+static int cmp_uint64(
+        const void *a,
+        const void *b
+        )
+{
+    const uint64_t x = *((const uint64_t *)a);
+    const uint64_t y = *((const uint64_t *)b);
+    return x < y ? -1 : (x > y);
+}
+
+/* adds the node for the range lo,...,hi-1 of sorted masks and its
+ * subtree, returns the index of the node */
+static len_t add_reducer_index_node(
+        red_idx_t *ri,
+        const len_t lo,
+        const len_t hi
+        )
+{
+    len_t i;
+
+    if (ri->nnd == ri->snd) {
+        ri->snd = 2 * ri->snd;
+        ri->nd  = realloc(ri->nd, (unsigned long)ri->snd * sizeof(red_node_t));
+    }
+    const len_t n = ri->nnd++;
+    sdm_t cm = ri->sdm[lo];
+    for (i = lo+1; i < hi; ++i) {
+        cm &= ri->sdm[i];
+    }
+    ri->nd[n].cm  = cm;
+    ri->nd[n].lo  = lo;
+    ri->nd[n].hi  = hi;
+    ri->nd[n].c0  = 0;
+    ri->nd[n].c1  = 0;
+    /* the masks are sorted, so the first and the last mask differ in
+     * the highest bit in which any two masks of the range differ */
+    const sdm_t d = ri->sdm[lo] ^ ri->sdm[hi-1];
+    if (hi - lo <= RED_IDX_LEAF || d == 0) {
+        return n;
+    }
+    const sdm_t b = (sdm_t)1 << (8*sizeof(sdm_t) - 1 - __builtin_clz(d));
+    len_t m = lo;
+    while (!(ri->sdm[m] & b)) {
+        m++;
+    }
+    const len_t c0  = add_reducer_index_node(ri, lo, m);
+    const len_t c1  = add_reducer_index_node(ri, m, hi);
+    ri->nd[n].c0    = c0;
+    ri->nd[n].c1    = c1;
+    return n;
+}
+
+static void initialize_reducer_index(
+        red_idx_t *ri,
+        const bs_t * const bs
+        )
+{
+    len_t i;
+
+    const len_t n = bs->lml;
+    ri->sdm = (sdm_t *)malloc((unsigned long)n * sizeof(sdm_t));
+    ri->pos = (len_t *)malloc((unsigned long)n * sizeof(len_t));
+    ri->len = NULL;
+    ri->ev  = NULL;
+    ri->nnd = 0;
+    ri->snd = 64;
+    ri->nd  = (red_node_t *)malloc((unsigned long)ri->snd * sizeof(red_node_t));
+    if (n == 0) {
+        return;
+    }
+    uint64_t *tmp = (uint64_t *)malloc((unsigned long)n * sizeof(uint64_t));
+    for (i = 0; i < n; ++i) {
+        tmp[i] = ((uint64_t)bs->lm[i] << 32) | i;
+    }
+    qsort(tmp, (unsigned long)n, sizeof(uint64_t), cmp_uint64);
+    const len_t evl = bs->ht->evl;
+    ri->len = (len_t *)malloc((unsigned long)n * sizeof(len_t));
+    ri->ev  = (exp_t *)malloc((unsigned long)n * evl * sizeof(exp_t));
+    for (i = 0; i < n; ++i) {
+        ri->sdm[i]      = (sdm_t)(tmp[i] >> 32);
+        ri->pos[i]      = (len_t)(tmp[i] & 0xFFFFFFFF);
+        const hm_t *b   = bs->hm[bs->lmps[ri->pos[i]]];
+        ri->len[i]      = b[LENGTH];
+        memcpy(ri->ev + (unsigned long)i * evl, bs->ht->ev[b[OFFSET]],
+                (unsigned long)evl * sizeof(exp_t));
+    }
+    free(tmp);
+    add_reducer_index_node(ri, 0, n);
+}
+
+static void free_reducer_index(
+        red_idx_t *ri
+        )
+{
+    free(ri->sdm);
+    free(ri->pos);
+    free(ri->nd);
+    free(ri->len);
+    free(ri->ev);
+    ri->len = NULL;
+    ri->ev  = NULL;
+    ri->sdm = NULL;
+    ri->pos = NULL;
+    ri->nd  = NULL;
+    ri->nnd = ri->snd = 0;
+}
+
+/* Among all reducers of the monomial e with short divisor mask ms we
+ * choose the shortest one and among those the newest one, i.e. the
+ * result does not depend on the order in which the lead monomials are
+ * checked. Returns the position of the reducer in bs->lm + 1, 0 if
+ * there is no reducer. */
+static len_t search_reducer(
+        const red_idx_t * const ri,
+        const sdm_t ms,
+        const exp_t * const e,
+        const bs_t * const bs
+        )
+{
+    len_t i, k, l;
+    len_t st[64];
+
+    const bl_t * const lmps   = bs->lmps;
+    const len_t evl           = bs->ht->evl;
+    const sdm_t ns            = ~ms;
+    const red_node_t * const nd = ri->nd;
+
+    len_t bi    = 0;
+    len_t blen  = 0;
+    len_t ns_   = 0;
+    if (ri->nnd > 0) {
+        st[ns_++] = 0;
+    }
+    while (ns_ > 0) {
+        const red_node_t * const n = nd + st[--ns_];
+        if (n->cm & ns) {
+            continue;
+        }
+        if (n->c0 != 0) {
+            st[ns_++] = n->c1;
+            st[ns_++] = n->c0;
+            continue;
+        }
+        for (l = n->lo; l < n->hi; ++l) {
+            if (ri->sdm[l] & ns) {
+                continue;
+            }
+            const len_t bl = ri->len[l];
+            if (blen != 0 && bl > blen) {
+                continue;
+            }
+            const exp_t * const f = ri->ev + (unsigned long)l * evl;
+            for (k = 0; k < evl; ++k) {
+                if (e[k] < f[k]) {
+                    break;
+                }
+            }
+            i = ri->pos[l];
+            if (k == evl
+                    && (blen == 0 || bl < blen || lmps[i] > lmps[bi])) {
+                bi    = i;
+                blen  = bl;
+            }
+        }
+    }
+    return blen > 0 ? bi + 1 : 0;
+}
+
 static inline len_t find_reducer(
         const bs_t * const bs,
+        const red_idx_t * const ri,
         const hm_t m,
         const ht_t * const sht
         )
 {
-    len_t i, k;
-
-    const ht_t * const bht  = bs->ht;
-    const len_t evl         = bht->evl;
-    const exp_t * const e   = sht->ev[m];
-    const sdm_t ns          = ~sht->hd[m].sdm;
-    const len_t lml         = bs->lml;
-
-    const sdm_t * const lms   = bs->lm;
-    const bl_t * const lmps   = bs->lmps;
-    exp_t * const * const evb = bht->ev;
-
-    len_t bi    = 0;
-    len_t blen  = 0;
-    for (i = 0; i < lml; ++i) {
-        if (lms[i] & ns) {
-            continue;
-        }
-        const hm_t *b = bs->hm[lmps[i]];
-        if (blen != 0 && b[LENGTH] > blen) {
-            continue;
-        }
-        const exp_t * const f = evb[b[OFFSET]];
-        for (k=0; k < evl; ++k) {
-            if (e[k] < f[k]) {
-                break;
-            }
-        }
-        if (k == evl && (blen == 0 || b[LENGTH] < blen || lmps[i] > lmps[bi])) {
-            bi    = i;
-            blen  = b[LENGTH];
-        }
-    }
-    return blen > 0 ? bi + 1 : 0;
+    return search_reducer(ri, sht->hd[m].sdm, sht->ev[m], bs);
 }
 
 static void symbolic_preprocessing(
@@ -610,6 +774,9 @@ static void symbolic_preprocessing(
     val_t *hs     = NULL;
     exp_t *ems    = NULL;
 
+    red_idx_t ri;
+    initialize_reducer_index(&ri, bs);
+
     hl_t lo = 1;
     while (lo < sht->eld) {
         const hl_t hi = sht->eld;
@@ -632,7 +799,7 @@ static void symbolic_preprocessing(
 #pragma omp parallel for num_threads(md->nthrds) \
         private(j) schedule(dynamic, 32) if (md->nthrds > 1 && nc > 64)
         for (j = 0; j < nc; ++j) {
-            red[j]  = find_reducer(bs, cols[j], sht);
+            red[j]  = find_reducer(bs, &ri, cols[j], sht);
         }
         len_t nr = 0;
         for (j = 0; j < nc; ++j) {
@@ -692,6 +859,7 @@ static void symbolic_preprocessing(
         nrr +=  nr;
         lo  =   hi;
     }
+    free_reducer_index(&ri);
     free(cols);
     free(red);
     free(polys);

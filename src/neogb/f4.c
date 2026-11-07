@@ -132,6 +132,8 @@ static void clear_matrix(
     mat->cf_16  = NULL;
     free(mat->cf_32);
     mat->cf_32  = NULL;
+    free(mat->cf_64);
+    mat->cf_64  = NULL;
     free(mat->cf_qq);
     mat->cf_qq  = NULL;
     free(mat->cf_ab_qq);
@@ -219,6 +221,10 @@ static void intermediate_reduce_basis(
                         free(bs->cf_32[i]);
                         bs->cf_32[i] = bs->cf_32[bs->ld+j];
                         break;
+                    case 64:
+                        free(bs->cf_64[i]);
+                        bs->cf_64[i] = bs->cf_64[bs->ld+j];
+                        break;
                 }
             }
         }
@@ -234,6 +240,9 @@ static void intermediate_reduce_basis(
                 break;
             case 32:
                 bs->cf_32[i] = NULL;
+                break;
+            case 64:
+                bs->cf_64[i] = NULL;
                 break;
         }
     }
@@ -349,7 +358,7 @@ static int32_t initialize_f4(
         mat_t **matp,
         md_t *gmd,
         bs_t *gbs,
-        len_t fc
+        uint64_t fc
         )
 {
     bs_t *bs     = *lbsp;
@@ -446,6 +455,10 @@ static void free_new_matrix_rows(
             case 32:
                 free(mat->cf_32[row[COEFFS]]);
                 mat->cf_32[row[COEFFS]] = NULL;
+                break;
+            case 64:
+                free(mat->cf_64[row[COEFFS]]);
+                mat->cf_64[row[COEFFS]] = NULL;
                 break;
             default:
                 break;
@@ -639,20 +652,39 @@ static void reduce_final_basis(
         ht_t *bht   = bs->ht;
         ht_t *sht   = md->ht;
 
-        /* add all non-redundant basis elements as matrix rows */
-        mat->tr = (hm_t **)malloc((unsigned long)bs->lml * sizeof(hm_t *));
-        for (i = 0; i < bs->lml; ++i) {
-            mat->tr[i] = poly_to_matrix_row(
-                    sht, bht, bs->hm[bs->lmps[i]]);
+        /* add all non-redundant basis elements as matrix rows, their
+         * terms are inserted into sht in parallel (multiplied by 1) */
+        const len_t lml = bs->lml;
+        mat->tr = (hm_t **)malloc((unsigned long)lml * sizeof(hm_t *));
+        hm_t **polys  = (hm_t **)malloc((unsigned long)lml * sizeof(hm_t *));
+        val_t *hs     = (val_t *)calloc((unsigned long)lml, sizeof(val_t));
+        exp_t *ems    = (exp_t *)calloc(
+                (unsigned long)lml * bht->evl, sizeof(exp_t));
+        for (i = 0; i < lml; ++i) {
+            polys[i] = bs->hm[bs->lmps[i]];
+        }
+        multiplied_polys_to_matrix_rows(mat->tr, lml, hs, ems, polys,
+                sht, bht, md->nthrds);
+        for (i = 0; i < lml; ++i) {
             sht->hd[mat->tr[i][OFFSET]].idx  = 1;
         }
+        free(polys);
+        free(hs);
+        free(ems);
         mat->nr = mat->nrl = mat->sz = bs->lml;
         mat->nc = 0;
 
         symbolic_preprocessing(mat, bs, md);
-        /* no known pivots, we need mat->ncl = 0, so set all indices to 1 */
-        for (i = 0; i < sht->eld; ++i) {
-            sht->hd[i].idx = 1;
+        /* over finite fields the reducers are the known pivots on the
+         * left side of the matrix as in any other round, the basis
+         * elements are the rows to be reduced. They are reduced by the
+         * known pivots in parallel, afterwards the interreduction of the
+         * new pivots reduces them by each other. The rational linear
+         * algebra needs mat->ncl = 0, so we set all indices to 1. */
+        if (md->ff_bits == 0) {
+            for (i = 0; i < sht->eld; ++i) {
+                sht->hd[i].idx = 1;
+            }
         }
 
         /* generate hash <-> column mapping */
@@ -668,19 +700,8 @@ static void reduce_final_basis(
 
         exact_linear_algebra(mat, bs, bs, md);
 
-        /* The known pivots used as reducers are multiples of basis
-         * elements: their coefficients belong to the basis, but the rows
-         * themselves were allocated by symbolic preprocessing. In this
-         * step, the linear algebra keeps them in its pivot array at the
-         * column of their lead term and does not free them (it only frees
-         * them when detecting a bad prime, in which case mat->np = 0).
-         * Release them here, otherwise they leak at each call. */
-        if (md->ff_bits != 0 && mat->np > 0) {
-            for (i = 0; i < mat->nru; ++i) {
-                free(mat->rr[i]);
-                mat->rr[i] = NULL;
-            }
-        }
+        /* the basis keeps the order of the rows before the reduction */
+        sort_matrix_rows_increasing(mat->tr, mat->np);
 
         free_basis_elements(bs);
 
@@ -744,7 +765,7 @@ bs_t *core_f4(
         bs_t *gbs,
         md_t *gmd,
         int32_t *errp,
-        const len_t fc
+        const uint64_t fc
         )
 {
     double ct = cputime();
@@ -839,11 +860,13 @@ int64_t export_results_from_f4(
  * 1.  an array of the lengths of each generator
  * 2.  an array of all coefficients of all generators in the order:
  *     first all coefficients of generator 1, then all of generator 2, ...
+ *     For primes < 2^32 the coefficients are int32_t, for primes
+ *     2^32 <= p < 2^52 they are int64_t, also for the returned basis.
  * 3.  an array of all exponents of all generators in the order:
  *     first all exponents of generator 1, then all of generator 2, ...
  *
  *  RETURNs the length of the jl_basis array */
-int64_t export_f4(
+int64_t export_f4_64(
         void *(*mallocp) (size_t),
         /* return values */
         int32_t *bld,   /* basis load */
@@ -854,7 +877,7 @@ int64_t export_f4(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
-        const uint32_t field_char,
+        const uint64_t field_char,
         const int32_t mon_order,
         const int32_t elim_block_len,
         const int32_t nr_vars,
@@ -927,4 +950,39 @@ int64_t export_f4(
     md    = NULL;
 
     return nterms;
+}
+
+/* same as export_f4_64(), but with a 32 bit field characteristic and
+ * thus always int32_t coefficients, this is the interface used by
+ * AlgebraicSolving.jl */
+int64_t export_f4(
+        void *(*mallocp) (size_t),
+        /* return values */
+        int32_t *bld,   /* basis load */
+        int32_t **blen, /* length of each poly in basis */
+        int32_t **bexp, /* basis exponent vectors */
+        void **bcf,     /* coefficients of basis elements */
+        /* input values */
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *cfs,
+        const uint32_t field_char,
+        const int32_t mon_order,
+        const int32_t elim_block_len,
+        const int32_t nr_vars,
+        const int32_t nr_gens,
+        const int32_t ht_size,
+        const int32_t nr_threads,
+        const int32_t max_nr_pairs,
+        const int32_t reset_ht,
+        const int32_t la_option,
+        const int32_t reduce_gb,
+        const int32_t pbm_file,
+        const int32_t info_level
+        )
+{
+    return export_f4_64(mallocp, bld, blen, bexp, bcf, lens, exps, cfs,
+            (uint64_t)field_char, mon_order, elim_block_len, nr_vars,
+            nr_gens, ht_size, nr_threads, max_nr_pairs, reset_ht,
+            la_option, reduce_gb, pbm_file, info_level);
 }

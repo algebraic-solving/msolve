@@ -129,6 +129,24 @@ static hm_t *copy_rows_to_block(
     return block;
 }
 
+/* returns the smallest column index of the row. Usually this is the
+ * column of its lead term, but when reducing the final basis the lead
+ * terms of the rows are no known pivots while terms of their tails may
+ * be, these are left of the lead term in the matrix. */
+static inline hm_t first_column(
+        const hm_t * const row
+        )
+{
+    const hm_t * const ds = row + OFFSET;
+    hm_t c = ds[0];
+    for (len_t i = 1; i < row[LENGTH]; ++i) {
+        if (ds[i] < c) {
+            c = ds[i];
+        }
+    }
+    return c;
+}
+
 /* returns one block holding all reducer rows of mat, afterwards mat->rr
  * points to the rows in this block */
 static hm_t *reducer_rows_to_block(

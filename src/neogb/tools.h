@@ -142,4 +142,43 @@ static inline uint32_t mod_p_inverse_32(
 
     return d;
 }
+
+static inline uint64_t mod_p_inverse_64(
+        const int64_t val,
+        const int64_t p
+        )
+{
+    int64_t a, b, c, d, e, f;
+    a =   p;
+    b =   val % p;
+    /* if b < 0 we shift correspondingly */
+    b +=  (b >> 63) & p;
+    c =   1;
+    d =   0;
+
+    while (b != 0) {
+        f = b;
+        e = a/f;
+        b = a - e*f;
+        a = f;
+        f = c;
+        c = d - e*f;
+        d = f;
+    }
+
+    /* if d < 0 we shift correspondingly */
+    d +=  (d >> 63) & p;
+
+    return (uint64_t)d;
+}
+
+/* a * b mod p for a, b < p < 2^63 */
+static inline uint64_t mul_mod_64(
+        const uint64_t a,
+        const uint64_t b,
+        const uint64_t p
+        )
+{
+    return (uint64_t)(((unsigned __int128)a * b) % p);
+}
 #endif

@@ -103,7 +103,7 @@ local dense_idx,triv_idx,triv_pos,Mxn,dst,cpt;
 
              "    //  int32_t mon_order   = 0;\n"
              "    int32_t nr_vars     = 0;\n"
-             "    int32_t field_char  = 9001;\n"
+             "    int64_t field_char  = 9001;\n"
              "    int32_t nr_gens     = 0;\n"
              "    data_gens_ff_t *gens = allocate_data_gens();\n\n"
              "    get_data_from_file(files->in_file, &nr_vars, &field_char,&nr_gens,gens);\n\n"

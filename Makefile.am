@@ -8,6 +8,7 @@ bin_PROGRAMS	= msolve
 msolve_SOURCES 	= src/msolve/main.c
 
 check_PROGRAMS		= neogb_io \
+			  neogb_f4_52_bit \
 			  fglm_build_matrixn_radical-shape-31 \
 			  fglm_build_matrixn_nonradical-shape-31 \
 			  fglm_build_matrixn_nonradical-radicalshape-31 \
@@ -43,6 +44,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_issue-230-squared.sh \
 			  test/diff/diff_issue-310-bivariate.sh \
 			  test/diff/diff_kat6-31.sh \
+			  test/diff/diff_kat6-52.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_kat8-qq-truncate.sh \
 			  test/diff/diff_line-endings.sh \
@@ -82,6 +84,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 
 # dist_check_DATA         = test/input_files
 neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c
+neogb_f4_52_bit_SOURCES = test/neogb/f4/f4_52_bit.c
 fglm_build_matrixn_radical_shape_31_SOURCES = test/fglm/build_matrixn_radical-shape-31.c
 fglm_build_matrixn_nonradical_shape_31_SOURCES = test/fglm/build_matrixn_nonradical-shape-31.c
 fglm_build_matrixn_nonradical_radicalshape_31_SOURCES = test/fglm/build_matrixn_nonradical-radicalshape-31.c

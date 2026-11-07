@@ -1040,11 +1040,86 @@ restart:
     psl->ld = m;
 }
 
+/* Inserts the pairwise different exponent vectors evs[0],...,evs[n-1]
+ * into ht and stores their positions in pos. The missing exponent
+ * vectors get consecutive positions in the given order, so ht has the
+ * same entries as after inserting them one after the other with
+ * insert_in_hash_table(), only the slots in ht->hmap may differ. ht must
+ * have space for n further entries. */
+static void insert_in_hash_table_parallel(
+    hi_t *pos,
+    const exp_t * const *evs,
+    const len_t n,
+    ht_t *ht,
+    const int32_t nthrds
+    )
+{
+    len_t i, j;
+
+    if (nthrds == 1 || n < 1024) {
+        for (i = 0; i < n; ++i) {
+            pos[i] = insert_in_hash_table(evs[i], ht);
+        }
+        return;
+    }
+
+    const len_t evl = ht->evl;
+    const hi_t mod  = (hi_t)(ht->hsz - 1);
+    val_t *hv       = (val_t *)malloc((unsigned long)n * sizeof(val_t));
+
+    /* look up the exponent vectors, the hash table is not changed */
+#pragma omp parallel for num_threads(nthrds) private(i, j)
+    for (i = 0; i < n; ++i) {
+        hi_t k;
+        val_t h = 0;
+        for (j = 0; j < evl; ++j) {
+            h +=  ht->rn[j] * evs[i][j];
+        }
+        hv[i]   = h;
+        pos[i]  = is_contained_in_hash_table(evs[i], ht, h, &k) == 1 ? k : 0;
+    }
+    /* positions of the missing exponent vectors */
+    hl_t eld = ht->eld;
+    for (i = 0; i < n; ++i) {
+        if (pos[i] == 0) {
+            pos[i]  = (hi_t)eld++;
+        }
+    }
+    /* add the missing exponent vectors, they are pairwise different,
+     * so we only have to find a free slot in hmap for each of them */
+#pragma omp parallel for num_threads(nthrds) private(i, j)
+    for (i = 0; i < n; ++i) {
+        const hi_t p = pos[i];
+        if (p < ht->eld) {
+            continue;
+        }
+        const val_t h = hv[i];
+        exp_t *e      = ht->ev[p];
+        hd_t *d       = ht->hd + p;
+        memcpy(e, evs[i], (unsigned long)evl * sizeof(exp_t));
+        d->sdm  =   generate_short_divmask(e, ht);
+        d->deg  =   e[0];
+        d->deg  +=  ht->ebl > 0 ? e[ht->ebl] : 0;
+        d->val  =   h;
+        hi_t k  = h;
+        for (j = 0; ; ++j) {
+            k = (hi_t)((k+j) & mod);
+            if (ht->hmap[k] == 0
+                    && __sync_bool_compare_and_swap(ht->hmap+k, 0, p)) {
+                break;
+            }
+        }
+    }
+    ht->eld = eld;
+    free(hv);
+}
+
 static inline void switch_hcm_data_to_basis_hash_table(
     hi_t *hcm,
     ht_t *bht,
     const mat_t *mat,
-    const ht_t * const sht
+    const ht_t * const sht,
+    const int32_t nthrds
     )
 {
     const len_t start = mat->ncl;
@@ -1054,14 +1129,13 @@ static inline void switch_hcm_data_to_basis_hash_table(
         enlarge_hash_table(bht);
     }
 
+    const exp_t **evs = (const exp_t **)malloc(
+            (unsigned long)mat->ncr * sizeof(exp_t *));
     for (len_t i = start; i < end; ++i) {
-#if PARALLEL_HASHING
-        hcm[i] = check_insert_in_hash_table(
-                sht->ev[hcm[i]], sht->hd[hcm[i]].val, bht);
-#else
-        hcm[i] = insert_in_hash_table(sht->ev[hcm[i]], bht);
-#endif
+        evs[i-start] = sht->ev[hcm[i]];
     }
+    insert_in_hash_table_parallel(hcm+start, evs, mat->ncr, bht, nthrds);
+    free(evs);
 }
 
 static inline void insert_in_basis_hash_table_pivots(
@@ -1509,6 +1583,159 @@ static inline hm_t *multiplied_poly_to_matrix_row(
  * the missing terms sequentially, in the order of the rows and their
  * terms. Thus sht and the rows are exactly the same as if we had
  * inserted the rows one after the other. */
+/* Inserts the terms of the multiplied rows which are not yet in sht
+ * (marked by 0 in rows, nmiss[i] of them in row i, nm in total) in
+ * parallel. The same monomial may be missing in several rows, so we
+ * first determine for each missing term its first occurrence (in the
+ * order of the rows and their terms) via a temporary concurrent hash
+ * table. The first occurrences then get consecutive positions in sht,
+ * so sht has the same entries as after inserting the terms one after
+ * the other, only the slots in sht->hmap may differ. sht must have
+ * space for nm further entries. */
+static void insert_missing_multiplied_terms(
+    hm_t **rows,
+    const len_t nr,
+    const val_t * const hs,
+    const exp_t * const ems,
+    hm_t * const * const polys,
+    const len_t * const nmiss,
+    const uint64_t nm,
+    ht_t *sht,
+    const ht_t * const bht,
+    const int32_t nthrds
+    )
+{
+    len_t i, l, j;
+
+    const len_t evl = bht->evl;
+    const hd_t * const hdb    = bht->hd;
+    exp_t * const * const evb = bht->ev;
+
+    /* start of the missing terms of each row */
+    uint64_t *off = (uint64_t *)malloc((uint64_t)(nr+1) * sizeof(uint64_t));
+    off[0] = 0;
+    for (i = 0; i < nr; ++i) {
+        off[i+1] = off[i] + nmiss[i];
+    }
+    exp_t *tev    = (exp_t *)malloc(nm * evl * sizeof(exp_t));
+    val_t *th     = (val_t *)malloc(nm * sizeof(val_t));
+    uint64_t *rep = (uint64_t *)malloc(nm * sizeof(uint64_t));
+    hi_t *pos     = (hi_t *)malloc(nm * sizeof(hi_t));
+    uint64_t tsz  = 1;
+    while (tsz < 2*nm) {
+        tsz *= 2;
+    }
+    const uint64_t tmod = tsz - 1;
+    /* slots store the first occurrence + 1 of a monomial, 0 if empty */
+    uint64_t *tab = (uint64_t *)calloc(tsz, sizeof(uint64_t));
+
+#pragma omp parallel for num_threads(nthrds) private(i, l, j) \
+    schedule(dynamic, 4)
+    for (i = 0; i < nr; ++i) {
+        const hm_t * const poly   = polys[i];
+        const hm_t * const row    = rows[i];
+        const exp_t * const em    = ems + (uint64_t)i * evl;
+        const len_t len           = poly[LENGTH] + OFFSET;
+        uint64_t q                = off[i];
+        for (l = OFFSET; l < len; ++l) {
+            if (row[l] != 0) {
+                continue;
+            }
+            exp_t *e  = tev + q * evl;
+            const exp_t * const eb = evb[poly[l]];
+            for (j = 0; j < evl; ++j) {
+                e[j] = (exp_t)(em[j] + eb[j]);
+            }
+            const val_t h = hs[i] + hdb[poly[l]].val;
+            th[q]         = h;
+            uint64_t k    = h & tmod;
+            while (1) {
+                uint64_t t = __atomic_load_n(tab+k, __ATOMIC_ACQUIRE);
+                if (t == 0) {
+                    if (__sync_bool_compare_and_swap(tab+k, 0, q+1)) {
+                        break;
+                    }
+                    continue;
+                }
+                if (th[t-1] == h && memcmp(tev + (t-1) * evl, e,
+                            (unsigned long)evl * sizeof(exp_t)) == 0) {
+                    /* keep the first occurrence */
+                    while (t > q+1
+                            && !__sync_bool_compare_and_swap(tab+k, t, q+1)) {
+                        t = __atomic_load_n(tab+k, __ATOMIC_ACQUIRE);
+                    }
+                    break;
+                }
+                k = (k+1) & tmod;
+            }
+            q++;
+        }
+    }
+    /* find the first occurrence of each missing term */
+#pragma omp parallel for num_threads(nthrds) private(j)
+    for (uint64_t q = 0; q < nm; ++q) {
+        const exp_t * const e = tev + q * evl;
+        uint64_t k            = th[q] & tmod;
+        while (1) {
+            const uint64_t t = tab[k];
+            if (th[t-1] == th[q] && memcmp(tev + (t-1) * evl, e,
+                        (unsigned long)evl * sizeof(exp_t)) == 0) {
+                rep[q] = t-1;
+                break;
+            }
+            k = (k+1) & tmod;
+        }
+    }
+    hl_t eld = sht->eld;
+    for (uint64_t q = 0; q < nm; ++q) {
+        if (rep[q] == q) {
+            pos[q] = (hi_t)eld++;
+        }
+    }
+    /* add the new monomials to sht and write the rows */
+    const hi_t mod = (hi_t)(sht->hsz - 1);
+#pragma omp parallel for num_threads(nthrds) private(i, l, j) \
+    schedule(dynamic, 4)
+    for (i = 0; i < nr; ++i) {
+        hm_t *row       = rows[i];
+        const len_t len = row[LENGTH] + OFFSET;
+        uint64_t q      = off[i];
+        for (l = OFFSET; l < len; ++l) {
+            if (row[l] != 0) {
+                continue;
+            }
+            if (rep[q] == q) {
+                const hi_t p  = pos[q];
+                const val_t h = th[q];
+                exp_t *e      = sht->ev[p];
+                hd_t *d       = sht->hd + p;
+                memcpy(e, tev + q * evl, (unsigned long)evl * sizeof(exp_t));
+                d->sdm  =   generate_short_divmask(e, sht);
+                d->deg  =   e[0];
+                d->deg  +=  sht->ebl > 0 ? e[sht->ebl] : 0;
+                d->val  =   h;
+                hi_t k  = h;
+                for (j = 0; ; ++j) {
+                    k = (hi_t)((k+j) & mod);
+                    if (sht->hmap[k] == 0
+                            && __sync_bool_compare_and_swap(sht->hmap+k, 0, p)) {
+                        break;
+                    }
+                }
+            }
+            row[l] = pos[rep[q]];
+            q++;
+        }
+    }
+    sht->eld = eld;
+    free(tab);
+    free(pos);
+    free(rep);
+    free(th);
+    free(tev);
+    free(off);
+}
+
 static void multiplied_polys_to_matrix_rows(
     hm_t **rows,
     const len_t nr,
@@ -1578,6 +1805,14 @@ static void multiplied_polys_to_matrix_rows(
         }
         while (sht->eld + nm >= sht->esz) {
             enlarge_hash_table(sht);
+        }
+        if (nm > 4096) {
+            insert_missing_multiplied_terms(rows+lo, hi-lo, hs+lo,
+                    ems + (uint64_t)lo * evl, polys+lo, nmiss+lo, nm,
+                    sht, bht, nthrds);
+            lo  = hi;
+            csz = 2 * csz;
+            continue;
         }
         for (i = lo; i < hi; ++i) {
             if (nmiss[i] == 0) {

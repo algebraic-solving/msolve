@@ -286,7 +286,9 @@ static void print_msolve_polynomials_ff(
             fprintf(file, "#Reduced Groebner basis data\n");
         }
         fprintf(file, "#---\n");
-        fprintf(file, "#field characteristic: %u\n", st->gfc);
+        /* gfc only has 32 bits */
+        fprintf(file, "#field characteristic: %" PRIu64 "\n",
+                st->ff_bits == 64 ? st->fc : (uint64_t)st->gfc);
         fprintf(file, "#variable order:       ");
         for (i = 0; i < nv-1; ++i) {
             fprintf(file, "%s, ", vnames[i]);
@@ -380,6 +382,9 @@ static void print_msolve_polynomials_ff(
                 case 32:
                   fprintf(file, "%u", bs->cf_32[bs->hm[idx][COEFFS]][0]);
                   break;
+                case 64:
+                  fprintf(file, "%" PRIu64, bs->cf_64[bs->hm[idx][COEFFS]][0]);
+                  break;
                 }
                 for (k = 0; k < nv; ++k) {
                     if (ht->ev[hm[0]][evi[k]] > 0) {
@@ -399,6 +404,9 @@ static void print_msolve_polynomials_ff(
 		    break;
 		  case 32:
 		    fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
+		    break;
+		  case 64:
+		    fprintf(file, "+%" PRIu64, bs->cf_64[bs->hm[idx][COEFFS]][j]);
 		    break;
 		  }
 		  for (k = 0; k < nv; ++k) {
@@ -640,15 +648,18 @@ static void get_variables(FILE *fh, char * line, int max_line_size,
 }
 
 static void get_characteristic(FILE *fh, char * line, int max_line_size,
-                               int32_t *field_char, char **vnames){
+                               int64_t *field_char, char **vnames){
   *field_char = 0;
 
   if(fgets(line, max_line_size, fh) != NULL){
-    int64_t tmp_mod = atol(line);
+    int64_t tmp_mod = strtoll(line, NULL, 10);
     if(tmp_mod >= 0){
-      *field_char = (int32_t) tmp_mod;
-      if(tmp_mod > 2147483647){
-        fprintf(ERRSTREAM, "Warning: characteristic must be 0 or < 2^31\n");
+      *field_char = tmp_mod;
+      /* primes between 2^31 and 2^32 would need 32 bit coefficients
+       * which do not fit into int32_t */
+      if(tmp_mod >= ((int64_t)1 << 52)
+          || (tmp_mod > INT32_MAX && tmp_mod < ((int64_t)1 << 32))){
+        fprintf(ERRSTREAM, "Warning: characteristic must be 0, < 2^31 or between 2^32 and 2^52\n");
         free(vnames);
         free(line);
         fclose(fh);
@@ -827,7 +838,7 @@ static inline void get_term(const char *line, char **prev_pos,
 
 /*assumes that coeffs in file fit in word size */
 static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
-                                          int32_t field_char,
+                                          int64_t field_char,
                                           data_gens_ff_t *gens, int64_t pos){
   char *prev_pos = NULL;
   size_t term_size = 50000;
@@ -837,7 +848,9 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
   prev_pos = line;
   get_term(line, &prev_pos, &term, &term_size);
   if(term != NULL){
-    int32_t iv_tmp  = (int32_t)strtol(term, NULL, 10);
+    /* coefficients for characteristics >= 2^31 are 64 bit integers */
+    int64_t iv_tmp  = gens->cfs_64 != NULL
+        ? (int64_t)strtoll(term, NULL, 10) : (int32_t)strtol(term, NULL, 10);
     if (iv_tmp == 0) {
       switch (term[0]) {
           case '0':
@@ -853,14 +866,18 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
     }
     iv_tmp %= field_char;
     if (iv_tmp == 0) {
-      fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %d).\n", term, field_char);
+      fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %" PRId64 ").\n", term, field_char);
       free(term);
       return 1;
     }
     if (iv_tmp < 0) {
       iv_tmp  +=  field_char; //MS change int -> long int
     }
-    gens->cfs[pos]  = (int32_t)iv_tmp;
+    if (gens->cfs_64 != NULL) {
+      gens->cfs_64[pos] = iv_tmp;
+    } else {
+      gens->cfs[pos]  = (int32_t)iv_tmp;
+    }
     if (store_exponent(term, gens, pos * (int64_t)gens->nvars)) {
       free(term);
       return 1;
@@ -868,7 +885,7 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
     for(int64_t j = 1; j < nterms; j++){
       get_term(line, &prev_pos, &term, &term_size);
       if (term != NULL) {
-        cf_tmp  = (int64_t)strtol(term, NULL, 10);
+        cf_tmp  = (int64_t)strtoll(term, NULL, 10);
 
         if (cf_tmp == 0) {
           if (term[0] == '-') {
@@ -879,14 +896,18 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
         }
         cf_tmp %= field_char;
         if (cf_tmp == 0) {
-          fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %d).\n", term, field_char);
+          fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %" PRId64 ").\n", term, field_char);
           free(term);
           return 1;
         }
         if (cf_tmp < 0) {
           cf_tmp  += field_char;
         }
-        gens->cfs[pos+j] = (int32_t)cf_tmp;
+        if (gens->cfs_64 != NULL) {
+          gens->cfs_64[pos+j] = cf_tmp;
+        } else {
+          gens->cfs[pos+j] = (int32_t)cf_tmp;
+        }
         if (store_exponent(term, gens, (pos + j) * (int64_t)gens->nvars)) {
           free(term);
           return 1;
@@ -1010,7 +1031,11 @@ static void get_coeffs_and_exponents_ff32(FILE *fh, nelts_t all_nterms,
     if(getline(&line, &size, fh) !=-1){
     }
 
-    gens->cfs = (int32_t *)(malloc(sizeof(int32_t) * (size_t)all_nterms));
+    if (gens->field_char > INT32_MAX) {
+        gens->cfs_64 = (int64_t *)(malloc(sizeof(int64_t) * (size_t)all_nterms));
+    } else {
+        gens->cfs = (int32_t *)(malloc(sizeof(int32_t) * (size_t)all_nterms));
+    }
     gens->exps = (int32_t *)calloc((size_t)all_nterms * (size_t)gens->nvars, sizeof(int32_t));
     for (int32_t i = 0; i < *nr_gens; i++) {
         do {
@@ -1086,7 +1111,7 @@ static void get_coeffs_and_exponents_mpz(FILE *fh, nelts_t all_nterms,
 
 
 
-static inline void initialize_data_gens(int32_t nvars, int32_t ngens, int32_t field_char, data_gens_ff_t *gens){
+static inline void initialize_data_gens(int32_t nvars, int32_t ngens, int64_t field_char, data_gens_ff_t *gens){
   gens->nvars = nvars;
   gens->ngens = ngens;
   gens->field_char = field_char;
@@ -1113,7 +1138,7 @@ static int duplicate_vnames(char **vnames, int32_t nvars) {
 
 //nr_gens is a pointer to the number of generators
 static inline void get_data_from_file(char *fn, int32_t *nr_vars,
-                                      int32_t *field_char,
+                                      int64_t *field_char,
                                       int32_t *nr_gens, data_gens_ff_t *gens){
   *nr_vars = get_nvars(fn);
   if (*nr_vars == -1)
@@ -1165,12 +1190,12 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
 
 static inline void display_gens_ff(FILE *fh, data_gens_ff_t *gens){
   int64_t pos = 0;
-  int32_t c;
+  int64_t c;
   for(long i = 0; i < gens->ngens; i++){
     for(long j = 0; j < gens->lens[i]-1; j++){
-      c = gens->cfs[pos+j];
+      c = gens->cfs_64 != NULL ? gens->cfs_64[pos+j] : gens->cfs[pos+j];
       if(c != 1){
-        fprintf(fh, "%d", c);
+        fprintf(fh, "%" PRId64, c);
         display_monomial(fh, gens, pos+j, &gens->exps);
       }
       else{
@@ -1178,9 +1203,10 @@ static inline void display_gens_ff(FILE *fh, data_gens_ff_t *gens){
       }
       fprintf(fh, "+");
     }
-    c = gens->cfs[pos+gens->lens[i]-1];
+    c = gens->cfs_64 != NULL ? gens->cfs_64[pos+gens->lens[i]-1]
+        : gens->cfs[pos+gens->lens[i]-1];
     if(c!= 1){
-      fprintf(fh, "%d*", c);
+      fprintf(fh, "%" PRId64 "*", c);
       display_monomial(fh, gens, pos+gens->lens[i]-1, &gens->exps);
     }
     else{
@@ -1240,7 +1266,7 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
     fprintf(fh, "%s, ", gens->vnames[i]);
   }
   fprintf(fh, "%s\n", gens->vnames[gens->nvars-1]);
-  fprintf(fh, "%d\n", gens->field_char);
+  fprintf(fh, "%" PRId64 "\n", gens->field_char);
   if(gens->field_char > 0){
     display_gens_ff(fh, gens);
   }

@@ -155,7 +155,7 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
                                      const long dquot, mpz_param_t param,
                                      param_t *mod_param) {
   fprintf(file, "[");
-  fprintf(file, "%d, \n", gens->field_char); /* field charac */
+  fprintf(file, "%" PRId64 ", \n", gens->field_char); /* field charac */
   fprintf(file, "%d, \n", param->nvars);     // nvars
   fprintf(file, "%ld, \n", dquot);           // dim quotient
   /* Print all variables:
@@ -330,6 +330,7 @@ data_gens_ff_t *allocate_data_gens() {
   gens->exps = NULL;
   gens->cfs = NULL;
   gens->mpz_cfs = NULL;
+  gens->cfs_64 = NULL;
   gens->random_linear_form = NULL;
 
   gens->elim = 0;
@@ -356,6 +357,7 @@ void free_data_gens(data_gens_ff_t *gens) {
   free(gens->mpz_cfs);
   free(gens->lens);
   free(gens->cfs);
+  free(gens->cfs_64);
   free(gens->exps);
   free(gens->random_linear_form);
   free(gens);
@@ -2364,6 +2366,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
   if (gens->field_char == 0 && gens->rand_linear) {
     *minpolydeg_ptr = (*nmod_params)->degsqfrelimpol;
+    free_msolve_trace_qq_initial_data(invalid_gens, st, lp, bs_qq, bs, nmod_params,
+        bad_primes, bmatrix, bdiv_xn, blen_gb_xn, bstart_cf_gb_xn, bextra_nf,
+        blens_extra_nf, bexps_extra_nf, bcfs_extra_nf, bdata_fglm, bdata_bms,
+        num_gb, leadmons_ori, leadmons_current, bnlins, blinvars, linvars,
+        lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
     return 3;
   }
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
@@ -4016,6 +4023,53 @@ restart:
     bcf   = malloc(sizeof(void *));
     b     = 0;
 
+    if(gens->field_char > INT32_MAX){
+        /* for field characteristics >= 2^31 only Groebner bases can be
+         * computed, F4 works with 64 bit coefficients then */
+        if (print_gb == 0 || use_signatures > 0 || saturate > 0
+                || colon > 0 || normal_form > 0) {
+            fprintf(ERRSTREAM, "For field characteristics >= 2^31 msolve ");
+            fprintf(ERRSTREAM, "only computes Groebner bases (option -g).\n");
+            free(bld);
+            free(blen);
+            free(bexp);
+            free(bcf);
+            return -1;
+        }
+        bs_t *bs    = NULL;
+        ht_t *bht   = NULL;
+        md_t *st    = NULL;
+        int32_t err = 0;
+
+        int success = initialize_gba_input_data(&bs, &bht, &st,
+                gens->lens, gens->exps, (void *)gens->cfs_64,
+                gens->field_char, 0 /* DRL order */, elim_block_len,
+                gens->nvars, gens->ngens, 0 /* # normal forms */,
+                initial_hts, nr_threads, max_pairs, update_ht, la_option,
+                0 /* use_signatures */, 1 /* reduce_gb */, 0,
+                0 /* truncate_lifting */, info_level);
+
+        if (success != 1) {
+            fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
+            exit(1);
+        }
+        bs = core_gba(bs, st, &err, gens->field_char);
+        if (err) {
+            fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
+            exit(1);
+        }
+        print_ff_basis_data(files->out_file, "ab", bs, bs->ht, st, gens,
+                print_gb);
+
+        free_shared_hash_data(bht);
+        free_basis(&bs);
+        free(st);
+        free(bld);
+        free(blen);
+        free(bexp);
+        free(bcf);
+        return 0;
+    }
     if(gens->field_char > 0){
         if (use_signatures > 0) {
             /* timings */
@@ -5547,6 +5601,13 @@ void msolve_julia(
     /* timinigs */
     double st0 = cputime();
     double rt0 = realtime();
+
+    /* the coefficients are given as 32 bit integers, thus larger field
+     * characteristics are not supported via this interface */
+    if (field_char > INT32_MAX) {
+        fprintf(ERRSTREAM, "Field characteristic must be 0 or < 2^31.\n");
+        exit(1);
+    }
 
     len_t i;
     files_gb *files = calloc(1, sizeof(files_gb));

@@ -24,7 +24,7 @@
 
 md_t *copy_meta_data(
 		     const md_t * const gmd,
-		     const int32_t prime
+		     const uint64_t prime
 		     )
 {
     md_t *md = (md_t *)malloc(sizeof(md_t));
@@ -113,7 +113,7 @@ void print_initial_statistics(
         fprintf(file, "#variables             %11d\n", st->nvars);
         fprintf(file, "#equations             %11d\n", st->ngens);
         fprintf(file, "#invalid equations     %11d\n", st->ngens_invalid);
-        fprintf(file, "field characteristic   %11u\n", st->fc);
+        fprintf(file, "field characteristic   %11lu\n", (unsigned long)st->fc);
         fprintf(file, "homogeneous input?     %11d\n", st->homogeneous);
         fprintf(file, "signature-based computation %6d\n", st->use_signatures);
         if (st->mo == 0 && st->nev == 0) {

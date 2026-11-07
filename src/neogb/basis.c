@@ -50,6 +50,14 @@ static void free_basis_elements(
             bs->hm[i] = NULL;
         }
     }
+    if (bs->cf_64) {
+        for (i = 0; i < bs->ld; ++i) {
+            free(bs->cf_64[i]);
+            bs->cf_64[i]  = NULL;
+            free(bs->hm[i]);
+            bs->hm[i] = NULL;
+        }
+    }
     if (bs->cf_qq) {
         for (i = 0; i < bs->ld; ++i) {
             len = bs->hm[i][LENGTH];
@@ -121,6 +129,16 @@ void free_basis_without_hash_table(
         }
         free(bs->cf_32);
         bs->cf_32 = NULL;
+        free(bs->hm);
+        bs->hm  = NULL;
+    }
+    if (bs->cf_64) {
+        for (i = 0; i < bs->ld; ++i) {
+            free(bs->cf_64[i]);
+            free(bs->hm[i]);
+        }
+        free(bs->cf_64);
+        bs->cf_64 = NULL;
         free(bs->hm);
         bs->hm  = NULL;
     }
@@ -196,6 +214,9 @@ bs_t *initialize_basis(
         case 32:
             bs->cf_32  = (cf32_t **)malloc((unsigned long)bs->sz * sizeof(cf32_t *));
             break;
+        case 64:
+            bs->cf_64  = (cf64_t **)malloc((unsigned long)bs->sz * sizeof(cf64_t *));
+            break;
         case 0:
             bs->cf_qq = (mpz_t **)malloc((unsigned long)bs->sz * sizeof(mpz_t *));
             break;
@@ -239,6 +260,11 @@ void check_enlarge_basis(
                 bs->cf_32  = realloc(bs->cf_32,
                         (unsigned long)bs->sz * sizeof(cf32_t *));
                 memset(bs->cf_32+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf32_t *));
+                break;
+            case 64:
+                bs->cf_64  = realloc(bs->cf_64,
+                        (unsigned long)bs->sz * sizeof(cf64_t *));
+                memset(bs->cf_64+bs->ld, 0, (unsigned long)(bs->sz-bs->ld) * sizeof(cf64_t *));
                 break;
             case 0:
                 bs->cf_qq = realloc(bs->cf_qq,
@@ -374,6 +400,30 @@ static inline void normalize_initial_basis_ff_32(
             row[j+1]  =   (cf32_t)tmp2;
             row[j+2]  =   (cf32_t)tmp3;
             row[j+3]  =   (cf32_t)tmp4;
+        }
+    }
+}
+
+/* finite field stuff  --  64 bit */
+static inline void normalize_initial_basis_ff_64(
+        bs_t *bs,
+        const uint64_t fc
+        )
+{
+    len_t i, j;
+
+    cf64_t **cf       = bs->cf_64;
+    hm_t * const *hm  = bs->hm;
+    const bl_t ld     = bs->ld;
+
+    for (i = 0; i < ld; ++i) {
+        cf64_t *row = cf[hm[i][COEFFS]];
+
+        const uint64_t inv  = mod_p_inverse_64((int64_t)row[0], (int64_t)fc);
+        const len_t len     = hm[i][LENGTH];
+
+        for (j = 0; j < len; ++j) {
+            row[j]  = mul_mod_64(row[j], inv, fc);
         }
     }
 }

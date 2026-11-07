@@ -99,7 +99,8 @@ int main(void)
         char fn2[200] = TEST_IOFILES_PREFIX;
         strcat(fn2, fn_unix[k]);
 
-        int32_t nr_vars1, nr_vars2, field_char1, field_char2, nr_gens1, nr_gens2;
+        int32_t nr_vars1, nr_vars2, nr_gens1, nr_gens2;
+        int64_t field_char1, field_char2;
         data_gens_ff_t * gens1 = allocate_data_gens();
         data_gens_ff_t * gens2 = allocate_data_gens();
 

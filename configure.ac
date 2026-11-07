@@ -223,6 +223,9 @@ AC_CONFIG_LINKS([
  input_files/kat6-31.ms:input_files/kat6-31.ms
  output_files/kat6-31.P2.d0.res:output_files/kat6-31.P2.d0.res
  test/diff/diff_kat6-31.sh:test/diff/diff_kat6-31.sh
+ input_files/kat6-52.ms:input_files/kat6-52.ms
+ output_files/kat6-52.g2.res:output_files/kat6-52.g2.res
+ test/diff/diff_kat6-52.sh:test/diff/diff_kat6-52.sh
  input_files/kat7-qq.ms:input_files/kat7-qq.ms
  output_files/kat7-qq.P2.d0.res:output_files/kat7-qq.P2.d0.res
  test/diff/diff_kat7-qq.sh:test/diff/diff_kat7-qq.sh

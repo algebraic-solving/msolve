@@ -38,6 +38,7 @@
 #include "la_ff_8.c"  /* finite field linear algebra (8 bit) */
 #include "la_ff_16.c" /* finite field linear algebra (16 bit) */
 #include "la_ff_32.c" /* finite field linear algebra (32 bit) */
+#include "la_ff_64.c" /* finite field linear algebra (64 bit) */
 #include "la_qq.c"    /* rational linear algebra */
 #include "update.c"   /* update process and pairset handling */
 #include "convert.c"  /* conversion between hashes and column indices*/

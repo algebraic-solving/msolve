@@ -30,7 +30,7 @@ int initialize_gba_input_data(
         const int32_t *lens,
         const int32_t *exps,
         const void *cfs,
-        uint32_t field_char,
+        uint64_t field_char,
         int32_t mon_order,
         int32_t elim_block_len,
         int32_t nr_vars,
@@ -55,7 +55,7 @@ int initialize_gba_input_data(
     st  = allocate_meta_data();
 
     int *invalid_gens   =   NULL;
-    int res = validate_input_data(&invalid_gens, cfs, lens, &field_char, &mon_order,
+    int res = validate_input_data_64(&invalid_gens, cfs, lens, &field_char, &mon_order,
             &elim_block_len, &nr_vars, &nr_gens, &nr_nf, &ht_size, &nr_threads,
             &max_nr_pairs, &reset_ht, &la_option, &use_signatures,
             &reduce_gb, &truncate_lifting, &info_level);
@@ -117,7 +117,7 @@ bs_t *core_gba(
         bs_t *bs,
         md_t *md,
         int32_t *errp,
-        const len_t fc
+        const uint64_t fc
         )
 {
     return core_f4(bs, md, errp, fc);

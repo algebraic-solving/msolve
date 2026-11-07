@@ -296,6 +296,67 @@ static void sba_convert_hashes_to_columns(
 }
 
 
+/* sorts the columns hcm[0],...,hcm[n-1] w.r.t. hcm_cmp: blocks of hcm
+ * are sorted in parallel and then merged. hcm_cmp is a total order on
+ * the columns, so the result is the same as for a serial sort. */
+static void sort_columns(
+        hi_t *hcm,
+        const len_t n,
+        ht_t *sht,
+        const int32_t nthrds
+        )
+{
+    len_t i;
+
+    if (nthrds == 1 || n < 8192) {
+        sort_r(hcm, (uint64_t)n, sizeof(hi_t), hcm_cmp, sht);
+        return;
+    }
+    len_t nb = 1;
+    while (nb < (len_t)nthrds) {
+        nb *= 2;
+    }
+    len_t *b = (len_t *)malloc((unsigned long)(nb+1) * sizeof(len_t));
+    for (i = 0; i <= nb; ++i) {
+        b[i] = (len_t)((uint64_t)n * i / nb);
+    }
+#pragma omp parallel for num_threads(nthrds) private(i)
+    for (i = 0; i < nb; ++i) {
+        sort_r(hcm+b[i], (uint64_t)(b[i+1]-b[i]), sizeof(hi_t), hcm_cmp, sht);
+    }
+    hi_t *src = hcm;
+    hi_t *dst = (hi_t *)malloc((unsigned long)n * sizeof(hi_t));
+    for (len_t w = 1; w < nb; w *= 2) {
+#pragma omp parallel for num_threads(nthrds) private(i)
+        for (i = 0; i < nb; i += 2*w) {
+            len_t l       = b[i];
+            len_t r       = b[i+w];
+            const len_t m = b[i+w];
+            const len_t e = b[i+2*w];
+            len_t k       = b[i];
+            while (l < m && r < e) {
+                dst[k++] = hcm_cmp(src+l, src+r, sht) <= 0 ? src[l++] : src[r++];
+            }
+            while (l < m) {
+                dst[k++] = src[l++];
+            }
+            while (r < e) {
+                dst[k++] = src[r++];
+            }
+        }
+        hi_t *tmp = src;
+        src       = dst;
+        dst       = tmp;
+    }
+    if (src != hcm) {
+        memcpy(hcm, src, (unsigned long)n * sizeof(hi_t));
+        free(src);
+    } else {
+        free(dst);
+    }
+    free(b);
+}
+
 static void convert_hashes_to_columns(
         mat_t *mat,
         md_t *st,
@@ -337,7 +398,7 @@ static void convert_hashes_to_columns(
             k++;
         }
     }
-    sort_r(hcm, (uint64_t)j, sizeof(hi_t), hcm_cmp, sht);
+    sort_columns(hcm, (len_t)j, sht, st->nthrds);
 
     /* printf("hcm\n");
     for (int ii=0; ii<j; ++ii) {
@@ -595,6 +656,9 @@ static void return_normal_forms_to_basis(
                 case 32:
                     bs->cf_32[bs->ld] = mat->cf_32[rows[i][COEFFS]];
                     break;
+                case 64:
+                    bs->cf_64[bs->ld] = mat->cf_64[rows[i][COEFFS]];
+                    break;
                 default:
                     bs->cf_32[bs->ld] = mat->cf_32[rows[i][COEFFS]];
                     break;
@@ -614,6 +678,9 @@ static void return_normal_forms_to_basis(
                     break;
                 case 32:
                     bs->cf_32[bs->ld] = NULL;
+                    break;
+                case 64:
+                    bs->cf_64[bs->ld] = NULL;
                     break;
                 default:
                     bs->cf_32[bs->ld] = NULL;
@@ -665,14 +732,18 @@ static void convert_sparse_matrix_rows_to_basis_elements(
             enlarge_hash_table(bht);
         }
         hcm = realloc(hcm, (unsigned long)mat->nc * sizeof(hi_t));
+        const exp_t **evs = (const exp_t **)malloc(
+                (unsigned long)mat->ncr * sizeof(exp_t *));
         for (i = 0; i < mat->ncr; ++i) {
-            hcm[mat->ncl+i] = insert_in_hash_table(
-                    tc->ev + (unsigned long)i * bht->evl, bht);
+            evs[i] = tc->ev + (unsigned long)i * bht->evl;
         }
+        insert_in_hash_table_parallel(hcm+mat->ncl, evs, mat->ncr,
+                bht, st->nthrds);
+        free(evs);
         st->hcm = hcm;
     } else {
         pairs_deg = sht->hd[hcm[0]].deg;
-        switch_hcm_data_to_basis_hash_table(hcm, bht, mat, sht);
+        switch_hcm_data_to_basis_hash_table(hcm, bht, mat, sht, st->nthrds);
     }
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, k)
@@ -710,6 +781,9 @@ static void convert_sparse_matrix_rows_to_basis_elements(
                 break;
             case 32:
                 bs->cf_32[bl+k] = mat->cf_32[rows[i][COEFFS]];
+                break;
+            case 64:
+                bs->cf_64[bl+k] = mat->cf_64[rows[i][COEFFS]];
                 break;
             default:
                 bs->cf_32[bl+k] = mat->cf_32[rows[i][COEFFS]];
@@ -844,6 +918,9 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
                 break;
             case 32:
                 bs->cf_32[bl+k] = mat->cf_32[rows[i][COEFFS]];
+                break;
+            case 64:
+                bs->cf_64[bl+k] = mat->cf_64[rows[i][COEFFS]];
                 break;
             default:
                 bs->cf_32[bl+k] = mat->cf_32[rows[i][COEFFS]];

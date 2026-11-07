@@ -3282,17 +3282,6 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     double ca1 = realtime() - ca0;
 
     if (nprimes == 1) {
-      if (info_level > 2) {
-        fprintf(VERBSTREAM, "------------------------------------------\n");
-        fprintf(VERBSTREAM, "#ADDITIONS       %13lu\n",
-                (unsigned long)st->application_nr_add * 1000);
-        fprintf(VERBSTREAM, "#MULTIPLICATIONS %13lu\n",
-                (unsigned long)st->application_nr_mult * 1000);
-        fprintf(VERBSTREAM, "#REDUCTIONS      %13lu\n",
-                (unsigned long)st->application_nr_red);
-        fprintf(VERBSTREAM, "------------------------------------------\n");
-        fflush(VERBSTREAM);
-      }
       if(info_level){
 	    fprintf(VERBSTREAM,
 		    "\n---------------- TIMINGS ----------------\n");
@@ -3306,12 +3295,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 		    "multi-mod FGLM             %9.2f sec\n",
 		    ca1-stf4);
 	    if (info_level > 1){
-	      fprintf(VERBSTREAM,
-		      "learning phase             %9.2f Gops/sec\n",
-		      (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(st->learning_rtime));
+	      /* multiply-adds by the known pivots, recorded in the trace,
+	       * for the st->nthrds primes of this step */
 	      fprintf(VERBSTREAM,
 		      "application phase          %9.2f Gops/sec\n",
-		      (st->application_nr_add+st->application_nr_mult)/1000.0/1000.0/(stf4));
+		      2.0*st->tr->nmadd*st->nthrds/1000.0/1000.0/1000.0/(stf4));
 	    }
 	    fprintf(VERBSTREAM,
 		    "-----------------------------------------\n");

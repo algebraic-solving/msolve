@@ -163,7 +163,8 @@ static hm_t *reducer_rows_to_block(
 
 static void construct_trace(
         trace_t *trace,
-        mat_t *mat
+        mat_t *mat,
+        const bs_t * const bs
         )
 {
     len_t i, j;
@@ -221,12 +222,21 @@ static void construct_trace(
         if (mat->tr[i] != NULL) {
             trace->td[ld].tri[ctr++]  = mat->tr[i][BINDEX];
             trace->td[ld].tri[ctr++]  = mat->tr[i][MULT];
+            /* the row is a multiple of this basis element */
+            trace->nterms += bs->hm[mat->tr[i][BINDEX]][LENGTH];
         }
     }
-    /* get all needed reducers */
+    /* get all needed reducers, the reduction of a row by a known pivot
+     * costs one multiply-add per term of the pivot, the known pivot of
+     * column i being mat->rr[i] */
     for (i = 0; i < ntr; ++i) {
         for (j = 0; j < lrba; ++j) {
             reds[j] |= rba[i][j];
+            rba_t w = rba[i][j];
+            while (w != 0) {
+                trace->nmadd += mat->rr[32*j + __builtin_ctz(w)][LENGTH];
+                w &= w - 1;
+            }
         }
     }
 
@@ -240,6 +250,7 @@ static void construct_trace(
         if (reds[i/32] >> (i%32) & 1U) {
             trace->td[ld].rri[ctr++]  = mat->rr[i][BINDEX];
             trace->td[ld].rri[ctr++]  = mat->rr[i][MULT];
+            trace->nterms += mat->rr[i][LENGTH];
         }
     }
     trace->td[ld].rri = realloc(trace->td[ld].rri,
@@ -316,10 +327,13 @@ static void add_lms_to_trace(
     trace->td[ld].nlms  = realloc(trace->td[ld].nlms,
             (unsigned long)np * sizeof(hm_t));
 
+    uint64_t len = 0;
     for (i = 0; i < np; ++i) {
         trace->td[ld].nlms[i]  = bs->hm[bs->ld + i][OFFSET];
+        len += bs->hm[bs->ld + i][LENGTH];
     }
     trace->td[ld].nlm = np;
+    trace->nmadd_new += (uint64_t)np * len;
 }
 
 #if 0

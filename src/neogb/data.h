@@ -357,6 +357,16 @@ struct trace_t
     len_t bsz;    /* number of basis elements, i.e. size of bsp */
     hl_t tceld;   /* load of the basis hash table at the start of the
                    * application of the trace when tc was stored */
+    /* work of one application of the trace, the same for all primes,
+     * summed over its rounds when it is learned: the multiply-adds of the
+     * reductions of the rows by the known pivots, the terms of the rows
+     * of the matrices (rows to be reduced and reducers used), and an
+     * estimate of the multiply-adds of the reductions of the new rows by
+     * each other: the number of new elements of a round times their
+     * total length */
+    uint64_t nmadd;
+    uint64_t nterms;
+    uint64_t nmadd_new;
 };
 
 

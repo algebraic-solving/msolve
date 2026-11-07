@@ -16,6 +16,7 @@
  * Authors:
  * Jérémy Berthomieu
  * Christian Eder
+ * Vincent Neiger
  * Mohab Safey El Din */
 
 /* Splitting the solution set along the equalities of coordinates.

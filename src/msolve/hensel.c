@@ -1119,6 +1119,26 @@ static void hensel_eval_set(fmpz_mod_poly_struct *res, const hensel_sys_t *hs,
       tcf[k] = Q[i].c + t;
     }
   }
+  /* the coefficients larger than q / 2 in absolute value are replaced by
+   * their symmetric residues modulo q, so that a term costs at most a
+   * product of coefficients of the size of q; the others, usually all of
+   * them, are kept */
+  const long nt = start[mt->nmon];
+  fmpz_t hq;
+  fmpz_init(hq);
+  fmpz_fdiv_q_2exp(hq, fmpz_mod_ctx_modulus(ctx), 1);
+  long nbig = 0;
+  for (long k = 0; k < nt; k++) {
+    nbig += fmpz_cmpabs(tcf[k], hq) > 0;
+  }
+  fmpz *big = nbig > 0 ? _fmpz_vec_init(nbig) : NULL;
+  for (long k = 0, j = 0; k < nt && j < nbig; k++) {
+    if (fmpz_cmpabs(tcf[k], hq) > 0) {
+      fmpz_smod(big + j, tcf[k], fmpz_mod_ctx_modulus(ctx));
+      tcf[k] = big + j++;
+    }
+  }
+  fmpz_clear(hq);
   long *nsucc = pos;
   memset(nsucc, 0, mt->nmon * sizeof(long));
   for (long j = 0; j < mt->nord[w]; j++) {
@@ -1199,6 +1219,9 @@ static void hensel_eval_set(fmpz_mod_poly_struct *res, const hensel_sys_t *hs,
   }
   free(val);
   free(nsucc);
+  if (nbig > 0) {
+    _fmpz_vec_clear(big, nbig);
+  }
   free(tcf);
   free(teq);
   free(start);
@@ -2041,17 +2064,30 @@ static long hensel_nterms(const hensel_sys_t *hs, const int w) {
 }
 
 /* cost of the terms of an evaluation of F or J (see hensel_eval_set): D
- * coefficients of b bits multiplied by a small integer and added, for
- * each term, about 5.5 ns + 0.008 ns per bit for a coefficient (measured
+ * coefficients of b bits multiplied by the coefficient of the term and
+ * added, for each term, about 5.5 ns + 0.008 ns per bit for a
+ * coefficient when the coefficient of the term fits in a limb (measured
  * for D = 32 to 2048 and 60 to 3900 bits, in units of 5e-11 s, see
- * hensel_choose); this matters on dense systems (cp_d_3_n_7_p_2: 24987
+ * hensel_choose), the part per bit being multiplied by the number of
+ * limbs of the coefficient of the term, reduced to at most b bits (see
+ * hensel_eval_set); this matters on dense systems (cp_d_3_n_7_p_2: 24987
  * terms for 330 monomials in F, 63498 terms in J) */
 #define HENSEL_TERM_C0 110.0
 #define HENSEL_TERM_C1 0.16
 static double hensel_term_cost(const hensel_sys_t *hs, const int w,
                                const long D, const double b) {
-  return (double)hensel_nterms(hs, w) * D
-    * (HENSEL_TERM_C0 + HENSEL_TERM_C1 * b);
+  const long np = w == 0 ? hs->nv : hs->nv * hs->nv;
+  const hensel_poly_t *Q = w == 0 ? hs->sys : hs->jac;
+  const double maxl = FLINT_MAX(1.0, ceil(b / FLINT_BITS));
+  double nl = 0;
+  for (long i = 0; i < np; i++) {
+    for (long t = 0; t < Q[i].nt; t++) {
+      nl += FLINT_MIN((double)fmpz_size(Q[i].c + t), maxl);
+    }
+  }
+  /* fmpz_size is 0 for the coefficient 0, which has no term */
+  return (double)hensel_nterms(hs, w) * D * HENSEL_TERM_C0
+    + nl * D * HENSEL_TERM_C1 * b;
 }
 
 /* cost of an evaluation of F (w = 0) or of J (w = 1) at b bits (see

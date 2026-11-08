@@ -49,6 +49,13 @@
 #include <malloc.h>
 #endif
 
+/* gives the free pages of the heap back to the system, where possible */
+static void hensel_trim(void) {
+#ifdef __GLIBC__
+  malloc_trim(0);
+#endif
+}
+
 /* the products of polynomial matrices by transforms (see hensel_ntt_mul)
  * use the interface of fft_small of FLINT 3.2.0 and later; HENSEL_NTT 0,
  * or older versions, keep the products of fmpz_poly_mul */
@@ -1857,8 +1864,9 @@ static void hensel_crt_get(fmpz_t x, const hensel_crt_t *C, const long i,
 
 /* evaluates the system at x_v = B_v / g' mod g (x_t = t) modulo p;
  * returns 1 if it vanishes, 0 if not, -1 if p divides a denominator */
-static int hensel_check(const fmpq *rec, const long dg, const hensel_sys_t *hs,
+static int hensel_check(const split_group_t *G, const hensel_sys_t *hs,
                         const mp_limb_t p) {
+  const long dg = G->deg;
   const long nv = hs->nv;
   nmod_t mod;
   nmod_init(&mod, p);
@@ -1875,14 +1883,17 @@ static int hensel_check(const fmpq *rec, const long dg, const hensel_sys_t *hs,
   }
   int ok = 1;
   /* g, then the B_v */
+  mp_limb_t id = 0;
   for (long i = 0; i < dg * nv && ok == 1; i++) {
-    const mp_limb_t den = fmpz_fdiv_ui(fmpq_denref(rec + i), p);
-    if (den == 0) {
-      ok = -1;
-      break;
+    if (i % dg == 0) {
+      const mp_limb_t den = fmpz_fdiv_ui(G->den + i / dg, p);
+      if (den == 0) {
+        ok = -1;
+        break;
+      }
+      id = nmod_inv(den, mod);
     }
-    const mp_limb_t u = nmod_mul(fmpz_fdiv_ui(fmpq_numref(rec + i), p),
-                                 nmod_inv(den, mod), mod);
+    const mp_limb_t u = nmod_mul(fmpz_fdiv_ui(G->num + i, p), id, mod);
     if (i < dg) {
       nmod_poly_set_coeff_ui(g, i, u);
     } else {
@@ -1957,10 +1968,12 @@ static int hensel_rr(fmpq_t r, const fmpz_t a, const fmpz_t M,
 }
 
 /* reconstructs the block blk (g, then the B_v) from the highest degree,
- * with the running denominator d; returns the number of coefficients
- * reconstructed before the first failure */
-static long hensel_rec_block(fmpq *rec, const hensel_crt_t *C, const long blk,
-                             fmpz_t d, const slong *eb, fmpz *tmp) {
+ * with the running denominator d, as numerators over its final value,
+ * stored in den[blk]; returns the number of coefficients reconstructed
+ * before the first failure */
+static long hensel_rec_block(fmpz *num, fmpz *den, const hensel_crt_t *C,
+                             const long blk, fmpz_t d, const slong *eb,
+                             fmpz *tmp) {
   const long dg = C->dg;
   const fmpz *M = C->MQ;
   fmpz *a = tmp, *c = tmp + 1, *t = tmp + 2, *Nb = tmp + 3, *Db = tmp + 4;
@@ -1975,11 +1988,17 @@ static long hensel_rec_block(fmpq *rec, const hensel_crt_t *C, const long blk,
     if (!hensel_rr(r, a, M, eb, Nb, Db)) {
       break;
     }
-    fmpz_mul(fmpq_denref(rec + i), fmpq_denref(r), d);
-    fmpz_set(fmpq_numref(rec + i), fmpq_numref(r));
-    fmpq_canonicalise(rec + i);
-    fmpz_mul(d, d, fmpq_denref(r));
+    /* the value is num(r) / (den(r) d): the numerators above it are
+     * brought to the denominator den(r) d, which happens rarely, once d
+     * is the common denominator */
+    if (!fmpz_is_one(fmpq_denref(r))) {
+      _fmpz_vec_scalar_mul_fmpz(num + i + 1, num + i + 1, k,
+                                fmpq_denref(r));
+      fmpz_mul(d, d, fmpq_denref(r));
+    }
+    fmpz_set(num + i, fmpq_numref(r));
   }
+  fmpz_set(den + blk, d);
   fmpq_clear(r);
   return k;
 }
@@ -1992,10 +2011,13 @@ static long hensel_rec_block(fmpq *rec, const hensel_crt_t *C, const long blk,
  * if it fails: the B_v often share the denominator of g (random2_9_9:
  * 39000 bits, which a start from 1 has to reconstruct again with each
  * B_v, 81000 bits instead of 52000), but not always (katsura 13: 27800
- * bits from the denominator of g instead of 20500). nrec receives the
- * number of coefficients of g reconstructed before the first failure.
- * Returns 1 if all succeed */
-static int hensel_reconstruct(fmpq *rec, const hensel_crt_t *C,
+ * bits from the denominator of g instead of 20500). The free pages are
+ * given back after each block: the temporary integers of the rational
+ * reconstructions, freed between the numerators, would otherwise stay in
+ * the heap (random2_10_10: 465 MB at the end instead of 381 MB). nrec
+ * receives the number of coefficients of g reconstructed before the first
+ * failure. Returns 1 if all succeed */
+static int hensel_reconstruct(split_group_t *G, const hensel_crt_t *C,
                               const fmpz *d0, long *nrec) {
   const slong b = fmpz_bits(C->MQ);
   const slong eb[3] = {b / 64, b / 16, -1};
@@ -2008,18 +2030,19 @@ static int hensel_reconstruct(fmpq *rec, const hensel_crt_t *C,
   } else {
     fmpz_one(d);
   }
-  const long k = hensel_rec_block(rec, C, 0, d, eb, tmp);
+  const long k = hensel_rec_block(G->num, G->den, C, 0, d, eb, tmp);
   if (nrec != NULL) {
     *nrec = k;
   }
   int ok = k == C->dg;
   fmpz_set(dG, d);
   for (long blk = 1; blk < C->nv && ok; blk++) {
+    hensel_trim();
     fmpz_set(d, dG);
-    ok = hensel_rec_block(rec, C, blk, d, eb, tmp) == C->dg;
+    ok = hensel_rec_block(G->num, G->den, C, blk, d, eb, tmp) == C->dg;
     if (!ok && !fmpz_is_one(dG)) {
       fmpz_one(d);
-      ok = hensel_rec_block(rec, C, blk, d, eb, tmp) == C->dg;
+      ok = hensel_rec_block(G->num, G->den, C, blk, d, eb, tmp) == C->dg;
     }
   }
   fmpz_clear(d);
@@ -2403,7 +2426,8 @@ static void hensel_state_start(hensel_state_t *st, const hensel_prime_t *P) {
     G->sig = calloc(MAX(sp->nwords, 1), sizeof(uint64_t));
     G->n = G->deg * nv;
     G->crt = _fmpz_vec_init(G->n);
-    G->rec = _fmpq_vec_init(G->n);
+    G->num = _fmpz_vec_init(G->n);
+    G->den = _fmpz_vec_init(nv);
     G->state = 0;
     fmpz_one(st->M + r);
   }
@@ -2422,9 +2446,7 @@ static void hensel_state_start(hensel_state_t *st, const hensel_prime_t *P) {
 static void hensel_release(const int nthreads) {
 #pragma omp parallel num_threads(nthreads)
   _fmpz_cleanup_mpz_content();
-#ifdef __GLIBC__
-  malloc_trim(0);
-#endif
+  hensel_trim();
 }
 
 /* starts the lifting of P: data modulo p and J^-1 modulo (w, p) */
@@ -3121,11 +3143,11 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     C.L = st->resL;
     const fmpz *M2 = C.MQ;
     long nrec = 0, nrec2 = 0;
-    done = hensel_reconstruct(G->rec, &C, NULL, &nrec);
+    done = hensel_reconstruct(G, &C, NULL, &nrec);
     ar += realtime() - rt;
     if (done) {
       rt = realtime();
-      done = hensel_check(G->rec, dg, hs, st->pchk) == 1;
+      done = hensel_check(G, hs, st->pchk) == 1;
       ac += realtime() - rt;
     }
     rt = realtime();
@@ -3136,11 +3158,11 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
       hensel_vecwit(st->vden, &C);
     }
     if (!done && !fmpz_is_zero(st->vden)) {
-      done = hensel_reconstruct(G->rec, &C, st->vden, &nrec2);
+      done = hensel_reconstruct(G, &C, st->vden, &nrec2);
       ar += realtime() - rt;
       if (done) {
         rt = realtime();
-        done = hensel_check(G->rec, dg, hs, st->pchk) == 1;
+        done = hensel_check(G, hs, st->pchk) == 1;
         ac += realtime() - rt;
       }
       rt = realtime();
@@ -3152,9 +3174,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
     }
     if (!done) {
       /* the partial reconstruction would stay scattered in the heap */
-      for (long i = 0; i < n; i++) {
-        fmpq_zero(G->rec + i);
-      }
+      _fmpz_vec_zero(G->num, n);
     }
     if (st->nh < HENSEL_NHIST) {
       st->hb[st->nh] = fmpz_bits(M2);

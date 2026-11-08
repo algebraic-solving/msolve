@@ -610,16 +610,20 @@ static void test_lift(const char *name, const tri_t *S, const long extra,
     fmpz_init_set_ui(one, 1);
     hensel_crt_t C;
     hensel_crt_init(&C, one, P, T, d, nv);
-    fmpq *r = _fmpq_vec_init(d * nv);
+    split_group_t G;
+    G.deg = d;
+    G.n = d * nv;
+    G.num = _fmpz_vec_init(G.n);
+    G.den = _fmpz_vec_init(nv);
     long nrec = 0;
-    CHECK(hensel_reconstruct(r, &C, NULL, &nrec), "%s: not reconstructed "
+    CHECK(hensel_reconstruct(&G, &C, NULL, &nrec), "%s: not reconstructed "
           "(%ld of %ld coefficients of w)", name, nrec, d);
     /* the parametrization modulo another prime: w and B_v = X_v w' mod w */
     const mp_limb_t q = n_nextprime(UWORD(1) << 29, 1);
     hensel_prime_t Q;
     CHECK(param_mod_p(&Q, S, q), "%s: no parametrization modulo %lu", name,
           (unsigned long)q);
-    CHECK(hensel_check(r, d, &hs, q) == 1, "%s: check modulo %lu fails",
+    CHECK(hensel_check(&G, &hs, q) == 1, "%s: check modulo %lu fails",
           name, (unsigned long)q);
     nmod_poly_t wd, b;
     nmod_poly_init(wd, q);
@@ -633,15 +637,16 @@ static void test_lift(const char *name, const tri_t *S, const long extra,
         nmod_poly_mulmod(b, Q.X + (i - d) / d, wd, Q.w);
         e = nmod_poly_get_coeff_ui(b, (i - d) % d);
       }
-      const mp_limb_t den = fmpz_fdiv_ui(fmpq_denref(r + i), q);
-      CHECK(den != 0 && fmpz_fdiv_ui(fmpq_numref(r + i), q)
+      const mp_limb_t den = fmpz_fdiv_ui(G.den + i / d, q);
+      CHECK(den != 0 && fmpz_fdiv_ui(G.num + i, q)
             == n_mulmod2(e, den, q), "%s: coefficient %ld differs modulo %lu",
             name, i, (unsigned long)q);
     }
     nmod_poly_clear(wd);
     nmod_poly_clear(b);
     prime_free(&Q, 1, nv);
-    _fmpq_vec_clear(r, d * nv);
+    _fmpz_vec_clear(G.num, G.n);
+    _fmpz_vec_clear(G.den, nv);
     hensel_crt_clear(&C);
     fmpz_clear(one);
   }

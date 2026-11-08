@@ -22,6 +22,12 @@
 #include "hash.h"
 #include "../msolve/streams.h"
 
+#if defined __SSE2__
+#include <emmintrin.h>
+#elif defined __aarch64__
+#include <arm_neon.h>
+#endif
+
 /* we have three different hash tables:
  * 1. one hash table for elements in the basis (bht)
  * 2. one hash table for the spairs during the update process (uht)
@@ -1195,6 +1201,63 @@ static inline void insert_poly_in_hash_table(
  * h and compare a + b on the fly, so the exponent vector of the product
  * is only written when it has to be inserted. */
 
+/* checks whether c is the product of a and b, i.e. whether
+ * c[j] == a[j] + b[j] (modulo 2^16) for all j < evl. exponent vectors
+ * with at least 8 entries are compared in chunks of 8 entries (exp_t
+ * has 16 bits), the last chunk overlapping the previous one, so that no
+ * entry beyond evl is read. */
+#if defined __SSE2__
+static inline int is_product_of_8(
+    const exp_t * const a,
+    const exp_t * const b,
+    const exp_t * const c
+    )
+{
+    const __m128i s = _mm_add_epi16(_mm_loadu_si128((const __m128i *)a),
+            _mm_loadu_si128((const __m128i *)b));
+    return _mm_movemask_epi8(_mm_cmpeq_epi16(s,
+                _mm_loadu_si128((const __m128i *)c))) == 0xFFFF;
+}
+#elif defined __aarch64__
+static inline int is_product_of_8(
+    const exp_t * const a,
+    const exp_t * const b,
+    const exp_t * const c
+    )
+{
+    return vminvq_u16(vceqq_u16(vaddq_u16(vld1q_u16(a), vld1q_u16(b)),
+                vld1q_u16(c))) != 0;
+}
+#endif
+
+static inline int is_product_of(
+    const exp_t * const a,
+    const exp_t * const b,
+    const exp_t * const c,
+    const len_t evl
+    )
+{
+    len_t j;
+
+#if defined __SSE2__ || defined __aarch64__
+    if (evl >= 8) {
+        const len_t t = evl - 8;
+        for (j = 0; j < t; j += 8) {
+            if (!is_product_of_8(a + j, b + j, c + j)) {
+                return 0;
+            }
+        }
+        return is_product_of_8(a + t, b + t, c + t);
+    }
+#endif
+    for (j = 0; j < evl; ++j) {
+        if ((exp_t)(a[j] + b[j]) != c[j]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
 /* returns the index of the product of a and b in ht if it is already
  * stored there, 0 otherwise; does not change ht */
 static inline hi_t find_multiplied_in_hash_table(
@@ -1206,7 +1269,6 @@ static inline hi_t find_multiplied_in_hash_table(
 {
     hl_t i;
     hi_t k;
-    len_t j;
 
     const len_t evl = ht->evl;
     const hl_t hsz  = ht->hsz;
@@ -1214,9 +1276,7 @@ static inline hi_t find_multiplied_in_hash_table(
     const hi_t mod  = (hi_t)(hsz - 1);
 
     k = h;
-    i = 0;
-restart:
-    for (; i < hsz; ++i) {
+    for (i = 0; i < hsz; ++i) {
         k = (hi_t)((k+i) & mod);
         const hi_t hm = ht->hmap[k];
         if (!hm) {
@@ -1225,12 +1285,8 @@ restart:
         if (ht->hd[hm].val != h) {
             continue;
         }
-        const exp_t * const ehm = ht->ev[hm];
-        for (j = 0; j < evl; ++j) {
-            if ((exp_t)(ea[j] + eb[j]) != ehm[j]) {
-                i++;
-                goto restart;
-            }
+        if (!is_product_of(ea, eb, ht->ev[0] + (uint64_t)hm * evl, evl)) {
+            continue;
         }
         return hm;
     }
@@ -1256,9 +1312,7 @@ static inline hi_t insert_multiplied_in_hash_table(
     const hi_t mod  = (hi_t)(hsz - 1);
 
     k = h;
-    i = 0;
-restart:
-    for (; i < hsz; ++i) {
+    for (i = 0; i < hsz; ++i) {
         k = (hi_t)((k+i) & mod);
         const hi_t hm = ht->hmap[k];
         if (!hm) {
@@ -1267,12 +1321,8 @@ restart:
         if (ht->hd[hm].val != h) {
             continue;
         }
-        const exp_t * const ehm = ht->ev[hm];
-        for (j = 0; j < evl; ++j) {
-            if ((exp_t)(ea[j] + eb[j]) != ehm[j]) {
-                i++;
-                goto restart;
-            }
+        if (!is_product_of(ea, eb, ht->ev[0] + (uint64_t)hm * evl, evl)) {
+            continue;
         }
         return hm;
     }
@@ -1292,6 +1342,37 @@ restart:
     ht->eld++;
 
     return pos;
+}
+
+/* distance in terms for prefetching when looking up the multiplied
+ * terms of a polynomial in a hash table: the basis data of term l + 3d,
+ * the hash map slot of term l + 2d and the hash data and the exponent
+ * vector of the first probed entry of term l + d are prefetched while
+ * handling term l, so that the loads of each stage hit the cache */
+#define MUL_PF_DIST 4
+
+static inline void prefetch_multiplied_terms(
+    const val_t h1,
+    const hm_t * const b,
+    const len_t l,
+    const len_t len,
+    const hd_t * const hd1,
+    const ht_t * const ht
+    )
+{
+    const hi_t mod = (hi_t)(ht->hsz - 1);
+    if (l + 3*MUL_PF_DIST < len) {
+        __builtin_prefetch(hd1 + b[l + 3*MUL_PF_DIST]);
+    }
+    if (l + 2*MUL_PF_DIST < len) {
+        __builtin_prefetch(ht->hmap
+                + ((h1 + hd1[b[l + 2*MUL_PF_DIST]].val) & mod));
+    }
+    if (l + MUL_PF_DIST < len) {
+        const hi_t hm = ht->hmap[(h1 + hd1[b[l + MUL_PF_DIST]].val) & mod];
+        __builtin_prefetch(ht->hd + hm);
+        __builtin_prefetch(ht->ev[0] + (uint64_t)hm * ht->evl);
+    }
 }
 
 static inline void insert_multiplied_poly_in_hash_table(
@@ -1329,9 +1410,13 @@ static inline void insert_multiplied_poly_in_hash_table(
         row[l] = check_insert_in_hash_table(n, h, ht2);
     }
 #else
+    /* the exponent vectors are stored in one block */
+    const exp_t * const eb  = ev1[0];
+    const len_t evl1        = ht1->evl;
     for (; l < len; ++l) {
-        row[l] = insert_multiplied_in_hash_table(
-                h1 + hd1[b[l]].val, ea, ev1[b[l]], ht2);
+        prefetch_multiplied_terms(h1, b, l, len, hd1, ht2);
+        row[l] = insert_multiplied_in_hash_table(h1 + hd1[b[l]].val, ea,
+                eb + (uint64_t)b[l] * evl1, ht2);
     }
 #endif
 }
@@ -1751,7 +1836,8 @@ static void multiplied_polys_to_matrix_rows(
 
     const len_t evl = bht->evl;
     const hd_t * const hdb    = bht->hd;
-    exp_t * const * const evb = bht->ev;
+    /* the exponent vectors are stored in one block */
+    const exp_t * const evb   = bht->ev[0];
 
     for (i = 0; i < nr; ++i) {
         const hm_t *poly  = polys[i];
@@ -1792,8 +1878,9 @@ static void multiplied_polys_to_matrix_rows(
             const len_t len           = poly[LENGTH] + OFFSET;
             len_t ctr                 = 0;
             for (l = OFFSET; l < len; ++l) {
-                row[l]  = find_multiplied_in_hash_table(
-                        h + hdb[poly[l]].val, em, evb[poly[l]], sht);
+                prefetch_multiplied_terms(h, poly, l, len, hdb, sht);
+                row[l]  = find_multiplied_in_hash_table(h + hdb[poly[l]].val,
+                        em, evb + (uint64_t)poly[l] * evl, sht);
                 ctr += (row[l] == 0);
             }
             nmiss[i]  = ctr;
@@ -1826,7 +1913,8 @@ static void multiplied_polys_to_matrix_rows(
             for (l = OFFSET; l < len; ++l) {
                 if (row[l] == 0) {
                     row[l]  = insert_multiplied_in_hash_table(
-                            h + hdb[poly[l]].val, em, evb[poly[l]], sht);
+                            h + hdb[poly[l]].val, em,
+                            evb + (uint64_t)poly[l] * evl, sht);
                 }
             }
         }

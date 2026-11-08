@@ -86,7 +86,12 @@ static inline void display_help(char *str){
   fprintf(OUTSTREAM, "Input file format:\n");
   fprintf(OUTSTREAM, "\t - first line: variables separated by a comma\n");
   fprintf(OUTSTREAM, "\t                (no comma at end of line)\n");
-  fprintf(OUTSTREAM, "\t - second line: characteristic of the field\n");
+  fprintf(OUTSTREAM, "\t - second line: characteristic of the field, or 2^4 resp. 2^8\n");
+  fprintf(OUTSTREAM, "\t                for GF(16) = GF(2)[t]/(t^4+t+1) resp.\n");
+  fprintf(OUTSTREAM, "\t                GF(256) = GF(2)[t]/(t^8+t^4+t^3+t+1) (only option -g),\n");
+  fprintf(OUTSTREAM, "\t                their elements are written as bytes in hexadecimal\n");
+  fprintf(OUTSTREAM, "\t                notation, e.g. 0x1b for t^4+t^3+t+1, integers are\n");
+  fprintf(OUTSTREAM, "\t                taken modulo 2\n");
   fprintf(OUTSTREAM, "\t - next lines provide the polynomials (one per line),\n");
   fprintf(OUTSTREAM, "\t   separated by a comma\n");
   fprintf(OUTSTREAM, "\t   (no comma after the last polynomial)\n\n");
@@ -132,13 +137,6 @@ static inline void display_help(char *str){
   display_option_help_noopt("1 - on the system with the extra variable.\n");
   display_option_help_noopt("2 - on the original system, parametrizations\n");
   display_option_help_noopt("    from its multiplication matrix.\n");
-  display_option_help('b', "byte-encoding", "BENC", "Interpretation of the input coefficients over GF(16) and\n");
-  display_option_help_noopt("GF(256), i.e. for field characteristic 16 resp. 256:\n");
-  display_option_help_noopt("0 - Coefficients are integers, i.e. they are taken modulo 2.\n");
-  display_option_help_noopt("1 - Coefficients are the byte representations of the field\n");
-  display_option_help_noopt("    elements: bit i is the coefficient of t^i, the fields are\n");
-  display_option_help_noopt("    GF(2)[t]/(t^4+t+1) resp. GF(2)[t]/(t^8+t^4+t^3+t+1).\n");
-  display_option_help_noopt("    Hexadecimal coefficients like 0x1b are accepted. (default)\n");
   display_option_help('C', "", "", "Use sparse-FGLM-col algorithm:\n");
   display_option_help_noopt("Given an input file with k polynomials\n");
   display_option_help_noopt("compute the quotient of the ideal\n");
@@ -242,7 +240,6 @@ static void getoptions(
         int32_t *split_mode,
         int32_t *precision,
         int32_t *generate_pbm_files,
-        int32_t *byte_encoding,
 	int64_t *seed,
         int32_t *info_level,
         files_gb *files){
@@ -250,7 +247,7 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char short_options[] = "b:c:Cd:e:f:g:hil:L:m:M:n:N:o:p:P:q:r:s:St:u:v:V";
+  char short_options[] = "c:Cd:e:f:g:hil:L:m:M:n:N:o:p:P:q:r:s:St:u:v:V";
 
   /* For long options that have no equivalent short option, use a
      non-character as a pseudo short option, starting with CHAR_MAX + 1.
@@ -265,7 +262,6 @@ static void getoptions(
     /* NEXT_OPTION */
   };
   struct option long_options[] = {
-    {"byte-encoding", required_argument, NULL, 'b'},
     {"elimination", required_argument, NULL, 'e'},
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
@@ -347,12 +343,6 @@ static void getoptions(
       break;
     case 'C':
       *colon = 1;
-      break;
-    case 'b':
-      *byte_encoding = strtol(optarg, NULL, 10);
-      if (*byte_encoding < 0 || *byte_encoding > 1) {
-        *byte_encoding = 1;
-      }
       break;
     case 'r':
       *reduce_gb = strtol(optarg, NULL, 10);
@@ -561,7 +551,6 @@ int main(int argc, char **argv){
     int32_t sep_dense             = 0;
     int32_t split_mode            = 0;
     int32_t precision             = 64;
-    int32_t byte_encoding         = 1;
     int64_t seed                  = -1;
 
     files_gb *files = malloc(sizeof(files_gb));
@@ -574,7 +563,7 @@ int main(int argc, char **argv){
                &unstable_staircase, &saturate, &colon,
                &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
                &sep_search, &sep_dense, &split_mode,
-               &precision, &generate_pbm, &byte_encoding,
+               &precision, &generate_pbm,
 	       &seed, &info_level, files);
 
     /* srand initialization */
@@ -620,7 +609,6 @@ int main(int argc, char **argv){
     display_gens(VERBSTREAM, gens);
 #endif
 
-    gens->byte_encoding         = byte_encoding;
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));
     gens->elim = elim_block_len;

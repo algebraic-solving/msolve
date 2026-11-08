@@ -287,7 +287,6 @@ data_gens_ff_t *allocate_data_gens() {
   gens->sep_search = 1;
   gens->sep_dense = 0;
   gens->split_mode = 0;
-  gens->byte_encoding = 1;
 
   gens->elim = 0;
   return gens;
@@ -4853,13 +4852,8 @@ restart:
         void *cfs = (void *)gens->cfs_64;
         uint64_t fc = gens->field_char;
         if (is_gf2_ext(fc)) {
-            /* integer coefficients are taken modulo 2, the import of
-             * the data removes terms with zero coefficient */
-            if (gens->byte_encoding == 0) {
-                for (int64_t i = 0; i < gens->nterms; ++i) {
-                    gens->cfs[i] &= 1;
-                }
-            }
+            /* the import of the data removes terms with zero coefficient,
+             * e.g. from even integer coefficients */
             cfs = (void *)gens->cfs;
             /* if all coefficients lie in the prime field GF(2), so does
              * the reduced Groebner basis, thus we compute it over GF(2) */

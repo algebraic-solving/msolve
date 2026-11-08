@@ -44,21 +44,26 @@ static inline int coefficient_base(const char *str, int64_t field_char,
     return 10;
 }
 
-/* parses the coefficient at the beginning of term, over GF(16) and
- * GF(256) also hexadecimal coefficients are accepted */
-static inline int64_t parse_coefficient(const char *term, int64_t field_char)
+/* returns the coefficient at the beginning of term over GF(16) resp.
+ * GF(256): a hexadecimal coefficient like 0x1b is the field element with
+ * this byte representation, bit i being the coefficient of t^i, an
+ * integer n stands for n*1, i.e. for n modulo 2, a missing coefficient
+ * for 1. Signs do not matter in characteristic 2. Returns -1 if a
+ * hexadecimal coefficient is not an element of the field. */
+static inline int64_t coefficient_gf2x(const char *term, int64_t field_char)
 {
     const char *digits;
     const int base = coefficient_base(term, field_char, &digits);
-    if (base == 10) {
-        return (int64_t)strtoll(term, NULL, 10);
+    if (base == 16) {
+        const int64_t v = (int64_t)strtoll(digits, NULL, 16);
+        return v < field_char ? v : -1;
     }
-    const char *s = term;
-    while (*s == ' ' || *s == '+') {
-        ++s;
+    /* the parity of an integer is given by its last digit */
+    const char *e = digits;
+    while (*e >= '0' && *e <= '9') {
+        ++e;
     }
-    const int64_t v = (int64_t)strtoll(digits, NULL, 16);
-    return *s == '-' ? -v : v;
+    return e == digits ? 1 : (e[-1] - '0') & 1;
 }
 
 static inline int store_exponent(const char *term, data_gens_ff_t *gens, int64_t pos)
@@ -303,8 +308,7 @@ static void print_msolve_polynomials_ff(
         const md_t *st,
         char **vnames,
         const int lead_ideal_only,
-        const int is_nf,
-        const int byte_encoding
+        const int is_nf
         )
 {
     len_t i, j, k, idx;
@@ -312,8 +316,9 @@ static void print_msolve_polynomials_ff(
     len_t len   = 0;
     hm_t *hm    = NULL;
 
-    /* over GF(16) and GF(256) the coefficients are printed as bytes */
-    const int hex = is_gf2_ext(st->fc) && byte_encoding != 0;
+    /* over GF(16) and GF(256) the coefficients are printed as bytes in
+     * hexadecimal notation, as they are read */
+    const int hex = is_gf2_ext(st->fc);
 
     const len_t nv  = ht->nv;
     const len_t ebl = ht->ebl;
@@ -494,12 +499,12 @@ static void print_ff_nf_data(
         if(fn != NULL){
             FILE *ofile = fopen(fn, mode);
             print_msolve_polynomials_ff(ofile, from, to, bs, ht,
-                    st, gens->vnames, 2-print_gb, 1, gens->byte_encoding);
+                    st, gens->vnames, 2-print_gb, 1);
             fclose(ofile);
         }
         else{
             print_msolve_polynomials_ff(OUTSTREAM, from, to, bs, ht,
-                    st, gens->vnames, 2-print_gb, 1, gens->byte_encoding);
+                    st, gens->vnames, 2-print_gb, 1);
         }
     }
 }
@@ -517,12 +522,12 @@ static void print_ff_basis_data(
         if(fn != NULL){
             FILE *ofile = fopen(fn, mode);
             print_msolve_polynomials_ff(ofile, 0, bs->lml, bs, ht,
-                    st, gens->vnames, 2-print_gb, 0, gens->byte_encoding);
+                    st, gens->vnames, 2-print_gb, 0);
             fclose(ofile);
         }
         else{
             print_msolve_polynomials_ff(OUTSTREAM, 0, bs->lml, bs, ht,
-                    st, gens->vnames, 2-print_gb, 0, gens->byte_encoding);
+                    st, gens->vnames, 2-print_gb, 0);
         }
     }
 }
@@ -705,7 +710,23 @@ static void get_characteristic(FILE *fh, char * line, int max_line_size,
   *field_char = 0;
 
   if(fgets(line, max_line_size, fh) != NULL){
-    int64_t tmp_mod = strtoll(line, NULL, 10);
+    char *end = NULL;
+    int64_t tmp_mod = strtoll(line, &end, 10);
+    /* the binary extension fields are given as 2^4 resp. 2^8 */
+    while (*end == ' ') {
+      ++end;
+    }
+    if (*end == '^') {
+      const int64_t e = strtoll(end+1, NULL, 10);
+      if (tmp_mod != 2 || (e != 1 && e != 4 && e != 8)) {
+        fprintf(ERRSTREAM, "Bad file format (only 2^4 and 2^8 are supported as fields of non-prime order)\n");
+        free(vnames);
+        free(line);
+        fclose(fh);
+        exit(1);
+      }
+      tmp_mod = (int64_t)1 << e;
+    }
     if(tmp_mod >= 0){
       *field_char = tmp_mod;
       if(tmp_mod >= ((int64_t)1 << 52)){
@@ -898,10 +919,20 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
   prev_pos = line;
   get_term(line, &prev_pos, &term, &term_size);
   if(term != NULL){
+    int64_t iv_tmp;
+    if (is_gf2_ext(field_char)) {
+      /* zero coefficients are possible, e.g. for even integers, neogb
+       * removes these terms */
+      iv_tmp = coefficient_gf2x(term, field_char);
+      if (iv_tmp < 0) {
+        fprintf(stderr, "Error when parsing term %s (coefficient is not an element of GF(%" PRId64 ")).\n", term, field_char);
+        free(term);
+        return 1;
+      }
+    } else {
     /* coefficients for characteristics >= 2^31 are 64 bit integers */
-    int64_t iv_tmp  = gens->cfs_64 != NULL
-        ? (int64_t)strtoll(term, NULL, 10)
-        : (int32_t)parse_coefficient(term, field_char);
+    iv_tmp  = gens->cfs_64 != NULL
+        ? (int64_t)strtoll(term, NULL, 10) : (int32_t)strtol(term, NULL, 10);
     if (iv_tmp == 0) {
       switch (term[0]) {
           case '0':
@@ -915,20 +946,15 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
             break;
       }
     }
-    /* in characteristic 2 we have -a = a */
-    if (is_gf2_ext(field_char) && iv_tmp < 0) {
-      iv_tmp = -iv_tmp;
-    }
     iv_tmp %= field_char;
-    /* over GF(16) and GF(256) zero coefficients may come from integers
-     * taken modulo 2 (option -b 0), neogb removes these terms */
-    if (iv_tmp == 0 && !is_gf2_ext(field_char)) {
+    if (iv_tmp == 0) {
       fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %" PRId64 ").\n", term, field_char);
       free(term);
       return 1;
     }
     if (iv_tmp < 0) {
       iv_tmp  +=  field_char; //MS change int -> long int
+    }
     }
     if (gens->cfs_64 != NULL) {
       gens->cfs_64[pos] = iv_tmp;
@@ -942,7 +968,15 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
     for(int64_t j = 1; j < nterms; j++){
       get_term(line, &prev_pos, &term, &term_size);
       if (term != NULL) {
-        cf_tmp  = parse_coefficient(term, field_char);
+        if (is_gf2_ext(field_char)) {
+          cf_tmp = coefficient_gf2x(term, field_char);
+          if (cf_tmp < 0) {
+            fprintf(stderr, "Error when parsing term %s (coefficient is not an element of GF(%" PRId64 ")).\n", term, field_char);
+            free(term);
+            return 1;
+          }
+        } else {
+        cf_tmp  = (int64_t)strtoll(term, NULL, 10);
 
         if (cf_tmp == 0) {
           if (term[0] == '-') {
@@ -951,17 +985,15 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
             cf_tmp = 1;
           }
         }
-        if (is_gf2_ext(field_char) && cf_tmp < 0) {
-          cf_tmp = -cf_tmp;
-        }
         cf_tmp %= field_char;
-        if (cf_tmp == 0 && !is_gf2_ext(field_char)) {
+        if (cf_tmp == 0) {
           fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 modulo %" PRId64 ").\n", term, field_char);
           free(term);
           return 1;
         }
         if (cf_tmp < 0) {
           cf_tmp  += field_char;
+        }
         }
         if (gens->cfs_64 != NULL) {
           gens->cfs_64[pos+j] = cf_tmp;

@@ -45,6 +45,9 @@
 #include <flint/fmpz_poly_mat.h>
 #include <flint/fmpz_mat.h>
 #include <flint/fmpz_lll.h>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 
 /* the products of polynomial matrices by transforms (see hensel_ntt_mul)
  * use the interface of fft_small of FLINT 3.2.0 and later; HENSEL_NTT 0,
@@ -2409,6 +2412,21 @@ static void hensel_state_start(hensel_state_t *st, const hensel_prime_t *P) {
 /* ------------------------------------------------------------------ */
 /* lifting of the parametrization, step by step                         */
 
+/* FLINT keeps the integers freed by the lifting in a cache of each
+ * thread, with up to 64 limbs (p^87 on katsura 13 needs 42): 600 MB
+ * which would stay scattered in the heap; they are freed after each step
+ * of Newton's iteration, before the CRT and the reconstruction, which
+ * would otherwise run with them (random2_10_10: 337 MB at 139 sec instead
+ * of 199 MB, about what the usual lifting holds then), and the free pages
+ * are given back to the system */
+static void hensel_release(const int nthreads) {
+#pragma omp parallel num_threads(nthreads)
+  _fmpz_cleanup_mpz_content();
+#ifdef __GLIBC__
+  malloc_trim(0);
+#endif
+}
+
 /* starts the lifting of P: data modulo p and J^-1 modulo (w, p) */
 static void hensel_nf_start(hensel_prime_t *P, const hensel_sys_t *hs) {
   const long nv = hs->nv;
@@ -3078,6 +3096,7 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
       hensel_nf_step(hd->pr + j, hs, target, jcap);
       hensel_nf_images(hd->pr + j, hs);
     }
+    hensel_release(nthreads);
     *tnewton += realtime() - rt;
     /* attempt with the primes used and the batch at this precision, when
      * the modulus has grown by HENSEL_ATTEMPT_GROWTH percent since the
@@ -3227,10 +3246,6 @@ static int hensel_state_step(hensel_state_t *st, hensel_data_t *hd,
   for (long j = 0; j < hd->nprimes; j++) {
     hensel_nf_clear(hd->pr + j, hs);
   }
-  /* FLINT keeps the integers freed by the lifting in a cache of each
-   * thread, with up to 64 limbs (p^87 on katsura 13 needs 42): 600 MB
-   * which would stay scattered in the heap */
-#pragma omp parallel num_threads(nthreads)
-  _fmpz_cleanup_mpz_content();
+  hensel_release(nthreads);
   return done;
 }

@@ -1263,6 +1263,11 @@ void trace_linear_algebra(
         md_t *st
         )
 {
+    /* the learning phases in modular.c do not set st->trace_level, so
+     * symbolic preprocessing has not allocated the reducer bit arrays */
+    if (mat->rba == NULL) {
+        allocate_reducer_bit_arrays(mat);
+    }
     switch (st->ff_bits) {
         case 8:
             exact_trace_sparse_linear_algebra_ff_8(trace, mat, bs, st);

@@ -4851,7 +4851,8 @@ restart:
         int32_t err = 0;
 
         void *cfs = (void *)gens->cfs_64;
-        if (is_gf2_ext(gens->field_char)) {
+        uint64_t fc = gens->field_char;
+        if (is_gf2_ext(fc)) {
             /* integer coefficients are taken modulo 2, the import of
              * the data removes terms with zero coefficient */
             if (gens->byte_encoding == 0) {
@@ -4860,10 +4861,23 @@ restart:
                 }
             }
             cfs = (void *)gens->cfs;
+            /* if all coefficients lie in the prime field GF(2), so does
+             * the reduced Groebner basis, thus we compute it over GF(2) */
+            int64_t i = 0;
+            while (i < gens->nterms && (uint32_t)gens->cfs[i] <= 1) {
+                ++i;
+            }
+            if (i == gens->nterms) {
+                fc = 2;
+                if (info_level > 0) {
+                    fprintf(VERBSTREAM, "All coefficients lie in GF(2), ");
+                    fprintf(VERBSTREAM, "computing over GF(2).\n");
+                }
+            }
         }
         int success = initialize_gba_input_data(&bs, &bht, &st,
                 gens->lens, gens->exps, cfs,
-                gens->field_char, 0 /* DRL order */, elim_block_len,
+                fc, 0 /* DRL order */, elim_block_len,
                 gens->nvars, gens->ngens, 0 /* # normal forms */,
                 initial_hts, nr_threads, max_pairs, update_ht, la_option,
                 0 /* use_signatures */, 1 /* reduce_gb */, 0,
@@ -4873,11 +4887,14 @@ restart:
             fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
             exit(1);
         }
-        bs = core_gba(bs, st, &err, gens->field_char);
+        bs = core_gba(bs, st, &err, fc);
         if (err) {
             fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
             exit(1);
         }
+        /* a basis computed over GF(2) has only coefficients 1, these
+         * are printed as elements of the given field */
+        st->fc = gens->field_char;
         print_ff_basis_data(files->out_file, "ab", bs, bs->ht, st, gens,
                 print_gb);
 

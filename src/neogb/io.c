@@ -298,11 +298,11 @@ void sort_terms_qq(
 }
 
 /* Imports the coefficients of the generators start,...,stop-1 over
- * GF(16) resp. GF(256), off is the position of the first coefficient of
- * generator start in cfs. The integer c stands for the element with byte
- * representation |c| mod fc, note that -a = a in characteristic 2. Terms
- * with zero coefficient are removed. Returns the number of imported
- * generators. */
+ * GF(2), GF(16) resp. GF(256), off is the position of the first
+ * coefficient of generator start in cfs. The integer c stands for the
+ * element with byte representation |c| mod fc, note that -a = a in
+ * characteristic 2. Terms with zero coefficient are removed. Returns the
+ * number of imported generators. */
 static len_t import_coefficients_gf2x(
         bs_t *bs,
         const int32_t start,
@@ -416,7 +416,7 @@ void import_input_data(
     ctr = 0;
     switch (st->ff_bits) {
         case 8:
-            if (is_gf2_ext(fc)) {
+            if (fc == 2 || is_gf2_ext(fc)) {
                 ctr = import_coefficients_gf2x(bs, start, stop, lens,
                         (int32_t *)vcfs, invalid_gens, fc, init_off);
                 break;
@@ -897,7 +897,7 @@ int validate_input_data_64(
             }
             len +=  lens[i];
         }
-    } else if (is_gf2_ext(*field_charp)) {
+    } else if (*field_charp == 2 || is_gf2_ext(*field_charp)) {
         /* zero coefficients are removed when importing the data, see
          * import_coefficients_gf2x(), only zero polynomials are invalid */
         int32_t *cf =   (int32_t *)cfs;

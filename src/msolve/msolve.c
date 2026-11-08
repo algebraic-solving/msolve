@@ -3478,13 +3478,15 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
       if (res == 1) {
         /* the primes at which the parametrization was lifted */
         nprimes = hst.nused;
-        if (gens->split_global) {
-          split_recombine(*mpz_paramp, &hst.sp);
-        }
         /* with one group, the real roots are isolated from *mpz_paramp
-         * when it is built, instead of a copy of it */
-        if (hst.sp.ngroups > 1 || !gens->split_global) {
-          split_set_params(&(gens->split_params), &hst.sp);
+         * when it is built, instead of a copy of it; the reconstructed
+         * values are freed by the last of them */
+        const int setp = hst.sp.ngroups > 1 || !gens->split_global;
+        if (gens->split_global) {
+          split_recombine(*mpz_paramp, &hst.sp, !setp);
+        }
+        if (setp) {
+          split_set_params(&(gens->split_params), &hst.sp, 1);
         }
         hensel_state_clear(&hst, 1);
         hensel_T = 0;
@@ -3531,9 +3533,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         /* the parametrization of the whole solution set is only built
          * when it is returned */
         if (gens->split_global) {
-          split_recombine(*mpz_paramp, &sp);
+          split_recombine(*mpz_paramp, &sp, 0);
         }
-        split_set_params(&(gens->split_params), &sp);
+        split_set_params(&(gens->split_params), &sp, 0);
         rerun = 0;
         mcheck = 0;
       }

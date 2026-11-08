@@ -351,21 +351,33 @@ static int split_start(split_data_t *sp, const param_t *param,
   return 1;
 }
 
-/* P = product of the g's of groups lo..hi-1, S[v] = sum of B_v P / g */
+/* P = product of the g's of groups lo..hi-1, S[v] = sum of B_v P / g;
+ * the reconstructed values are freed as they are read if free_rec is set,
+ * since each one holds its denominator, which the polynomials share
+ * (random2_10_10: 547 MB at the end instead of 333 MB for the usual
+ * lifting) */
 static void split_combine(fmpq_poly_t P, fmpq_poly_struct *S,
-                          const split_data_t *sp, long lo, long hi) {
+                          const split_data_t *sp, long lo, long hi,
+                          const int free_rec) {
   const long nc = sp->nc;
   if (hi - lo == 1) {
     const split_group_t *G = sp->groups + lo;
     fmpq_poly_zero(P);
     for (long i = 0; i < G->deg; i++) {
       fmpq_poly_set_coeff_fmpq(P, i, G->rec + i);
+      if (free_rec) {
+        fmpq_zero(G->rec + i);
+      }
     }
     fmpq_poly_set_coeff_ui(P, G->deg, 1);
     for (long v = 0; v < nc; v++) {
       fmpq_poly_zero(S + v);
       for (long i = 0; i < G->deg; i++) {
-        fmpq_poly_set_coeff_fmpq(S + v, i, G->rec + (v + 1) * G->deg + i);
+        fmpq *r = G->rec + (v + 1) * G->deg + i;
+        fmpq_poly_set_coeff_fmpq(S + v, i, r);
+        if (free_rec) {
+          fmpq_zero(r);
+        }
       }
     }
     return;
@@ -378,8 +390,8 @@ static void split_combine(fmpq_poly_t P, fmpq_poly_struct *S,
   for (long v = 0; v < nc; v++) {
     fmpq_poly_init(SR + v);
   }
-  split_combine(P, S, sp, lo, mid);
-  split_combine(PR, SR, sp, mid, hi);
+  split_combine(P, S, sp, lo, mid, free_rec);
+  split_combine(PR, SR, sp, mid, hi, free_rec);
   for (long v = 0; v < nc; v++) {
     fmpq_poly_mul(tmp, SR + v, P);
     fmpq_poly_mul(S + v, S + v, PR);
@@ -414,9 +426,10 @@ static void split_set_mpz_upoly(mpz_upoly_t out, const fmpz_poly_t in,
 }
 
 /* the parametrization of the solutions of groups lo..hi-1, with its
- * denominator elim' */
+ * denominator elim'; their reconstructed values are freed if free_rec is
+ * set */
 static void split_param_range(mpz_param_t mpz_param, const split_data_t *sp,
-                              long lo, long hi) {
+                              long lo, long hi, const int free_rec) {
   const long nc = sp->nc;
   fmpq_poly_t E;
   fmpq_poly_init(E);
@@ -424,7 +437,7 @@ static void split_param_range(mpz_param_t mpz_param, const split_data_t *sp,
   for (long v = 0; v < nc; v++) {
     fmpq_poly_init(S + v);
   }
-  split_combine(E, S, sp, lo, hi);
+  split_combine(E, S, sp, lo, hi, free_rec);
 
   /* integer primitive eliminating polynomial lambda E, with lambda > 0 */
   fmpz_poly_t num;
@@ -459,9 +472,11 @@ static void split_param_range(mpz_param_t mpz_param, const split_data_t *sp,
   fmpq_poly_clear(E);
 }
 
-/* the parametrization of the whole solution set, from the groups */
-static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp) {
-  split_param_range(mpz_param, sp, 0, sp->ngroups);
+/* the parametrization of the whole solution set, from the groups, whose
+ * reconstructed values are freed if free_rec is set */
+static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp,
+                            const int free_rec) {
+  split_param_range(mpz_param, sp, 0, sp->ngroups, free_rec);
 }
 
 static void split_params_clear(mpz_param_array_struct *params) {
@@ -473,9 +488,10 @@ static void split_params_clear(mpz_param_array_struct *params) {
   params->nb = 0;
 }
 
-/* the parametrizations of the groups, one by one */
+/* the parametrizations of the groups, one by one, whose reconstructed
+ * values are freed if free_rec is set */
 static void split_set_params(mpz_param_array_struct *params,
-                             const split_data_t *sp) {
+                             const split_data_t *sp, const int free_rec) {
   const long nc = sp->nc;
   split_params_clear(params);
   params->nb = sp->ngroups;
@@ -495,6 +511,6 @@ static void split_set_params(mpz_param_array_struct *params,
       P->coords[v]->length = 0;
       mpz_init(P->cfs[v]);
     }
-    split_param_range(P, sp, i, i + 1);
+    split_param_range(P, sp, i, i + 1, free_rec);
   }
 }

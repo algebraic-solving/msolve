@@ -93,13 +93,6 @@ void print_tracer_statistics(
         /*     fprintf(ERRSTREAM, "Learning phase %.2f Gops/sec\n", */
         /*             (st->trace_nr_add+st->trace_nr_mult)/1000.0/1000.0/(realtime()-rt)); */
         /* } */
-        if(st->info_level > 2){
-            fprintf(ERRSTREAM, "------------------------------------------\n");
-            fprintf(ERRSTREAM, "#ADDITIONS       %13lu\n", (unsigned long)st->trace_nr_add * 1000);
-            fprintf(ERRSTREAM, "#MULTIPLICATIONS %13lu\n", (unsigned long)st->trace_nr_mult * 1000);
-            fprintf(ERRSTREAM, "#REDUCTIONS      %13lu\n", (unsigned long)st->trace_nr_red);
-            fprintf(ERRSTREAM, "------------------------------------------\n");
-        }
     }
 }
 

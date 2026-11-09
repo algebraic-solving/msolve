@@ -51,8 +51,9 @@
  * possible signs of the others lead to the same decision (no root, one
  * root, or a bisection, which is always safe). Otherwise, and when the
  * sign of u at 1/2 or 1 is needed but unknown, the node polynomial is
- * computed again exactly from F (the number of such fallbacks is small:
- * W is about 1.5 n).
+ * computed again exactly from F. W starts at about 1.5 n, which makes
+ * these fallbacks rare on most inputs; it is doubled when they become
+ * frequent (close roots, large coefficients).
  *
  * As in bisection_rec, the right half is not investigated when the node
  * has at most 2 sign variations and the left half as many (the numbers of
@@ -98,6 +99,10 @@ typedef struct {
   int stop;             /* a root was found and flags->hasrealroots is set */
   long fallbacks;
   long subtrees;        /* subtrees investigated in fixed point */
+  slong wmax;           /* largest working precision */
+  long nodes;           /* nodes investigated here */
+  long recent_nodes;    /* nodes and fallbacks since w last changed */
+  long recent_fallbacks;
 } usolve_bal_t;
 
 static void usolve_bal_node_init(usolve_bal_node_t *a, const slong n){
@@ -355,6 +360,16 @@ static void usolve_bal_exact(usolve_bal_t *B, usolve_bal_node_t *a,
   a->s = 0;
   a->exact = 1;
   B->fallbacks++;
+  /* frequent fallbacks: w is too small for the separation of the roots
+   * and the size of the coefficients of F, it is doubled (the nodes
+   * computed later from exact polynomials use it) */
+  B->recent_fallbacks++;
+  if(B->recent_fallbacks >= 4 && 8 * B->recent_fallbacks >= B->recent_nodes
+     && B->w < B->wmax){
+    B->w = FLINT_MIN(2 * B->w, B->wmax);
+    B->recent_nodes = 0;
+    B->recent_fallbacks = 0;
+  }
 }
 
 /* sign of the i-th coefficient of a polynomial with error bounds:
@@ -535,6 +550,8 @@ static long usolve_bal_node(usolve_bal_t *B, const usolve_bal_node_t *a0,
   const slong n = B->n;
   usolve_flags *flags = B->flags;
   (flags->node_looked)++;
+  B->nodes++;
+  B->recent_nodes++;
   /* a: a0, or own when the node polynomial is computed again */
   const usolve_bal_node_t *a = a0;
   usolve_bal_node_t own;
@@ -698,6 +715,10 @@ static void usolve_bal_init(usolve_bal_t *B, mpz_t *upol,
     fmpz_set_mpz(B->f + i, upol[i]);
   }
   B->w = (3 * (n + 1)) / 2 + 64;
+  B->wmax = 64 * (n + 1);
+  B->nodes = 0;
+  B->recent_nodes = 0;
+  B->recent_fallbacks = 0;
   B->lbin = malloc((n + 1) * sizeof(double));
   for(slong i = 0; i <= n; i++){
     B->lbin[i] = (lgamma(n + 2.0) - lgamma(i + 2.0) - lgamma(n - i + 1.0))
@@ -715,8 +736,9 @@ static void usolve_bal_init(usolve_bal_t *B, mpz_t *upol,
 
 static void usolve_bal_clear(usolve_bal_t *B){
   if(B->flags->verbose >= 1){
-    fprintf(VERBSTREAM, "\n%ld subtrees in fixed point, %ld exact node "
-            "polynomials computed again\n", B->subtrees, B->fallbacks);
+    fprintf(VERBSTREAM, "\n%ld subtrees in fixed point (%ld nodes), %ld "
+            "exact node polynomials computed again, final precision %ld "
+            "bits\n", B->subtrees, B->nodes, B->fallbacks, (long)B->w);
   }
   for(long i = 0; i < B->npowers; i++){
     fmpz_poly_clear(B->powers[i].c);

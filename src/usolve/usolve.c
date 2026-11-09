@@ -66,7 +66,7 @@ static long bisection_rec(mpz_t *, unsigned long *,
                           interval *,
                           unsigned long int *,
                           usolve_flags *,
-                          mpz_t);
+                          mpz_t, long *);
 
 /* Kioustelidis's bound : 2*max(abs(-ai/an)^(1/(n-i)),
    the maximum being taken over the i with sgn(a_i) != sgn(an) */
@@ -668,39 +668,86 @@ static long nb_2_case_in_bisection_rec(mpz_t c, const long k,
 }
 
 
+/* powers of (x + 1) used by the Taylor shifts of polynomials of degree
+ * deg, after the degree changed */
+static void update_shift_pwx(usolve_flags *flags, const unsigned long int deg){
+  flags->cur_deg = deg;
+  const unsigned long int newpwx = compute_degpower(deg);
+  if(flags->classical_algo != 0 || newpwx == flags->pwx){
+    return;
+  }
+  if(flags->shift_pwx != NULL){
+    unallocate_shift_pwx(flags->shift_pwx, flags->npwr, flags->pwx);
+    free(flags->shift_pwx);
+  }
+  flags->pwx = newpwx;
+  if(newpwx >= deg){
+    flags->nblocks = 0;
+    flags->npwr = 0;
+    flags->shift_pwx = NULL;
+    return;
+  }
+  flags->nblocks = 1<<LOG2(deg / flags->pwx);
+  flags->npwr = LOG2(flags->nblocks);
+  if(flags->npwr > 0){
+    flags->shift_pwx = (mpz_t **)malloc(sizeof(mpz_t *) * flags->npwr);
+    allocate_shift_pwx(flags->shift_pwx, flags->npwr, flags->pwx);
+    compute_shift_pwx(flags->shift_pwx, flags->npwr, flags->pwx,
+                      flags->nthreads);
+  }
+  else{
+    flags->shift_pwx = NULL;
+  }
+}
+
+/* upol is the polynomial of the interval (c / 2^k, (c + 1) / 2^k), which
+ * has nb >= 2 sign variations (nb = 3 stands for 3 or more). The left half
+ * is investigated first; the polynomial of the right half is then obtained
+ * by a Taylor shift of the polynomial left in upol by the last interval
+ * investigated in the left half, which ends at the middle of the
+ * interval, rescaled with the level of this last interval (returned by
+ * bisection_rec).
+ * The numbers of sign variations of the two halves add up to at most nb
+ * (Theorem 13 of M. Sagraloff and K. Mehlhorn, Computing real roots of
+ * real polynomials, arXiv:1308.4088). Hence, when nb <= 2 and the left half
+ * has nb sign variations, the right half has no root and is not
+ * investigated. In this case, which needs a copy of upol, upol is restored
+ * from the copy and k is returned. The copy is kept only when nb <= 2: as
+ * the numbers of sign variations do not increase from an interval to its
+ * halves, only the last intervals of the current path of the tree keep
+ * one. */
 static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg,
                                              mpz_t c,
                                              const long k, mpz_t tmp,
                                              interval *roots,
                                              unsigned long int *nbr,
                                              usolve_flags *flags, int is_half_root,
-                                             mpz_t tmp_half){
-  long oldk, nb;
+                                             mpz_t tmp_half, const long nb){
+  long oldk, nbleft;
   double e_time;
   mpz_set(tmp, c);
-
-  int branch_left = 1;
-  int branch_right = 1;
 
   if(flags->verbose>=1){
     fprintf(VERBSTREAM,"-");
   }
+  const unsigned long int sdeg = *deg;
+  mpz_t *saved = NULL;
+  if(flags->classical_algo == 0 && nb <= 2){
+    saved = (mpz_t *)malloc((sdeg + 1) * sizeof(mpz_t));
+    for(unsigned long int i = 0; i <= sdeg; i++){
+      mpz_init_set(saved[i], upol[i]);
+    }
+  }
+
   mpz_mul_2exp(tmp, tmp, 1);
   USOLVEmpz_poly_rescale_normalize_2exp_th(upol, -1,
                                            *deg, flags->nthreads);
-
-  if(branch_left==1){
-    oldk = bisection_rec(upol, deg, tmp, k+1, roots, nbr,
-                         flags, tmp_half);
-  }
-  else{
-    if(flags->verbose >= 1) fprintf(VERBSTREAM, "!");
-    oldk = k + 1;
-  }
+  oldk = bisection_rec(upol, deg, tmp, k+1, roots, nbr,
+                       flags, tmp_half, &nbleft);
 
   if(flags->hasrealroots == 1 && (*nbr)>0){
-    mpz_clear(tmp);
-    return -1;
+    oldk = -1;
+    goto clear;
   }
   mpz_add_ui(tmp, tmp, 1);
 
@@ -714,14 +761,34 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
       if((*nbr) % 100 == 0) fprintf(VERBSTREAM, "[%lu]",(*nbr));
     }
     if(flags->hasrealroots == 1 && (*nbr)>0){
-      mpz_clear(tmp);
-      return -1;
+      oldk = -1;
+      goto clear;
     }
   }
 
   if (oldk == -1){
-    mpz_clear(tmp);
-    return -1;
+    goto clear;
+  }
+
+  if(saved != NULL){
+    /* back to the polynomial of the interval; the exact roots divided
+     * out of upol in the left half are not in the right half */
+    for(unsigned long int i = 0; i <= sdeg; i++){
+      mpz_swap(upol[i], saved[i]);
+    }
+    *deg = sdeg;
+    update_shift_pwx(flags, sdeg);
+    if(nbleft == nb){
+      (flags->skipped)++;
+      if(flags->verbose>=1){
+        fprintf(VERBSTREAM,"s");
+      }
+      oldk = k;
+      goto clear;
+    }
+    USOLVEmpz_poly_rescale_normalize_2exp_th(upol, -1,
+                                             *deg, flags->nthreads);
+    oldk = k + 1;
   }
 
   e_time =  realtime();
@@ -742,26 +809,19 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
   if (oldk > k + 1){
     USOLVEmpz_poly_rescale_normalize_2exp_th(upol, oldk - (k + 1), *deg,
                                              flags->nthreads);
-    }
-  if(branch_right==1){
-    oldk = bisection_rec(upol, deg, tmp, k+1, roots, nbr,
-                         flags, tmp_half);
   }
-  else{
-    oldk = k + 1;
-    nb = mpz_poly_sgn_variations_coeffs_is_zero(upol, (*deg));
-    if(flags->verbose >= 1) fprintf(VERBSTREAM, "!");
-    if(nb == 0) oldk = -1;
-  }
-
-  if (oldk == -1){
-    mpz_clear(tmp);
-    return -1;
-  }
+  oldk = bisection_rec(upol, deg, tmp, k+1, roots, nbr,
+                       flags, tmp_half, &nbleft);
 
   if(flags->hasrealroots==1 && (*nbr)>0){
-    mpz_clear(tmp);
-    return -1;
+    oldk = -1;
+  }
+clear:
+  if(saved != NULL){
+    for(unsigned long int i = 0; i <= sdeg; i++){
+      mpz_clear(saved[i]);
+    }
+    free(saved);
   }
   mpz_clear(tmp);
   return oldk;
@@ -770,13 +830,18 @@ static long nb_default_case_in_bisection_rec(mpz_t *upol, unsigned long int *deg
 
 
 /* investigates  (c / 2^k, (c+1) / 2^k) */
-/* returns k */
+/* returns -1 when there is no root right of the interval (or when the
+ * search stops), otherwise the level of the interval whose polynomial is
+ * left in upol, which ends at (c + 1) / 2^k; *nbv is set to the number of sign
+ * variations of the Descartes test of the interval (3 for 3 or more), or
+ * to -1 if the test is not performed */
 static long bisection_rec(mpz_t *upol, unsigned long *deg,
                           mpz_t c, long k,
                           interval *roots,
                           unsigned long int *nbr,
                           usolve_flags *flags,
-                          mpz_t tmp_half){
+                          mpz_t tmp_half, long *nbv){
+  *nbv = -1;
 
   /* display_roots_system(ERRSTREAM, roots, *nbr); */
   long nb;
@@ -828,6 +893,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
   nb = mpz_poly_sgn_variations_coeffs_is_zero(upol, (*deg));
 
   if(nb == 0){
+    *nbv = 0;
 
     if(is_half_root){
       mpz_set(tmp, c);
@@ -869,6 +935,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
     nb = descartes(upol, flags->tmpol_desc, *deg, flags);
   }
   flags->time_desc += (realtime()-e_time);
+  *nbv = nb;
 
   if(flags->verbose>=3){
     fprintf(VERBSTREAM,"[nb=%lu]",nb);
@@ -915,7 +982,7 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
     return nb_default_case_in_bisection_rec(upol, deg, c, k, tmp,
                                             roots, nbr,
                                             flags, is_half_root,
-                                            tmp_half);
+                                            tmp_half, nb);
   }
 
 }
@@ -937,6 +1004,7 @@ static void initialize_flags(usolve_flags *flags){
   flags->transl = 0;
   flags->node_looked = 0;
   flags->half_done = 0;
+  flags->skipped = 0;
 
   flags->cur_deg = 0;
   flags->pwx = 0;
@@ -1072,6 +1140,7 @@ static void display_stats(usolve_flags *flags){
   fprintf(VERBSTREAM,"Number of nodes : %lu\n", flags->node_looked);
   fprintf(VERBSTREAM,"Number of shifts : %lu\n", flags->transl);
   fprintf(VERBSTREAM,"Number of half splits : %lu\n", flags->half_done);
+  fprintf(VERBSTREAM,"Number of right halves skipped : %lu\n", flags->skipped);
   fprintf(VERBSTREAM,"Time in Descartes (elapsed): %.2f sec\n", flags->time_desc);
   fprintf(VERBSTREAM,"Time in Taylor shifts (elapsed): %.2f sec\n", flags->time_shift);
   fprintf(VERBSTREAM,"\n");
@@ -1158,9 +1227,10 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     initialize_heap_flags(flags, deg);
 
     unsigned olddeg = deg;
+    long nbv;
     bisection_rec(upol, &deg, e, 0,
                   pos_roots, nb_pos_roots,
-                  flags, tmp_half);
+                  flags, tmp_half, &nbv);
     nb_positive_roots = *nb_pos_roots;
 
     free_heap_flags(flags, olddeg);
@@ -1214,9 +1284,10 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
 
     initialize_heap_flags(flags, deg);
     unsigned long int olddeg = deg;
+    long nbv;
     bisection_rec(upol, &deg, e, 0,
                   neg_roots, nb_neg_roots,
-                  flags, tmp_half);
+                  flags, tmp_half, &nbv);
     nb_negative_roots = (*nb_neg_roots);
     free_heap_flags(flags, olddeg);
     unallocate_shift_pwx(flags->shift_pwx,

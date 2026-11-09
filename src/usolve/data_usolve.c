@@ -33,6 +33,7 @@ typedef struct{
   unsigned long int transl;
   unsigned long int node_looked;
   unsigned long int half_done;
+  unsigned long int skipped; /* right halves without roots, not computed */
 
   unsigned long int cur_deg;
   unsigned long int pwx;

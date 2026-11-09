@@ -37,12 +37,13 @@
  * polynomial, since it depends mainly on the size of its coefficients. */
 
 #include "flint/fmpz_vec.h"
+#include "flint/fmpq.h"
 #include "flint/arb.h"
 #include "flint/arb_fmpz_poly.h"
 
 /* sign of f at n / 2^K (K >= 0); the precision is doubled until the ball
- * excludes 0, or until the evaluation is exact, in which case 0 is
- * returned if f(n / 2^K) = 0 */
+ * excludes 0, up to the size of the exact value, beyond which the sign is
+ * computed in exact arithmetic */
 static int usolve_sign_2exp_arb(const fmpz_poly_t f, const fmpz_t n,
                                 const slong K, slong *extra){
   if (fmpz_poly_length(f) == 0) {
@@ -53,7 +54,7 @@ static int usolve_sign_2exp_arb(const fmpz_poly_t f, const fmpz_t n,
   arb_init(y);
   arb_set_fmpz(x, n);
   arb_mul_2exp_si(x, x, -K);
-  /* all mantissas have at most pex bits: the evaluation is then exact */
+  /* size of the exact value */
   const slong deg = fmpz_poly_degree(f);
   const slong pex = FLINT_ABS(_fmpz_vec_max_bits(f->coeffs, f->length))
     + deg * FLINT_MAX(K, (slong)fmpz_bits(n)) + FLINT_BIT_COUNT(deg) + 64;
@@ -70,7 +71,17 @@ static int usolve_sign_2exp_arb(const fmpz_poly_t f, const fmpz_t n,
       break;
     }
     if (p >= pex) {
-      s = 0;
+      fmpq_t xq, v;
+      fmpq_init(xq);
+      fmpq_init(v);
+      fmpz_set(fmpq_numref(xq), n);
+      fmpz_one(fmpq_denref(xq));
+      fmpz_mul_2exp(fmpq_denref(xq), fmpq_denref(xq), K);
+      fmpq_canonicalise(xq);
+      fmpz_poly_evaluate_fmpq(v, f, xq);
+      s = fmpq_sgn(v);
+      fmpq_clear(xq);
+      fmpq_clear(v);
       break;
     }
     p = FLINT_MIN(2 * p, pex);
@@ -224,13 +235,18 @@ void usolve_refine_root_arb(interval *rt, const fmpz_poly_t f,
         if (fmpz_cmp(N, t) < 0 || fmpz_cmp(N, u) >= 0) {
           break;
         }
-        const int s1 = usolve_sign_2exp_arb(f, N, K, &ex);
+        /* the ends t / 2^K and u / 2^K of the interval may be roots of f
+         * outside it: f has the sign slo right of the first one and -slo
+         * left of the second one */
+        const int s1 = fmpz_equal(N, t) ? slo
+          : usolve_sign_2exp_arb(f, N, K, &ex);
         if (s1 == 0) {
           usolve_set_exact_root(rt, N, K);
           goto clear;
         }
         fmpz_add_ui(N, N, 1);
-        const int s2 = usolve_sign_2exp_arb(f, N, K, &ex);
+        const int s2 = fmpz_equal(N, u) ? -slo
+          : usolve_sign_2exp_arb(f, N, K, &ex);
         if (s2 == 0) {
           usolve_set_exact_root(rt, N, K);
           goto clear;

@@ -61,6 +61,7 @@ ht_t *initialize_basis_hash_table(
     ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
     ht->nv    = nv;
     ht->mo    = st->mo;
+    ht->boolean = st->boolean;
     /* generate map */
     ht->bpv = (len_t)((CHAR_BIT * sizeof(sdm_t)) / (unsigned long)nv);
     if (ht->bpv == 0) {
@@ -145,6 +146,7 @@ ht_t *copy_hash_table(
 
     ht->nv    = bht->nv;
     ht->mo    = bht->mo;
+    ht->boolean = bht->boolean;
     ht->evl   = bht->evl;
     ht->ebl   = bht->ebl;
     ht->hsz   = bht->hsz;
@@ -200,6 +202,7 @@ ht_t *initialize_secondary_hash_table(
     ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
     ht->nv    = bht->nv;
     ht->mo    = bht->mo;
+    ht->boolean = bht->boolean;
     ht->evl   = bht->evl;
     ht->ebl   = bht->ebl;
 
@@ -1636,6 +1639,431 @@ static inline hm_t *poly_to_matrix_row(
 
   return row;
 }
+/* Boolean ring: e is the exponent vector of the product of the
+ * squarefree monomials with exponents em and eb having a common
+ * variable, using x^2 = x for all variables x */
+static inline void boolean_product(
+    exp_t *e,
+    const exp_t * const em,
+    const exp_t * const eb,
+    const ht_t * const ht
+    )
+{
+    len_t j;
+    const len_t evl = ht->evl;
+    const len_t ebl = ht->ebl;
+
+    for (j = 0; j < evl; ++j) {
+        e[j] = em[j] | eb[j];
+    }
+    e[0] = 0;
+    for (j = 1; j < ebl; ++j) {
+        e[0] += e[j];
+    }
+    if (ebl > 0) {
+        e[ebl] = 0;
+        for (j = ebl+1; j < evl; ++j) {
+            e[ebl] += e[j];
+        }
+    } else {
+        for (j = 1; j < evl; ++j) {
+            e[0] += e[j];
+        }
+    }
+}
+
+/* data of the terms of a Boolean row, see boolean_multiplied_row() */
+typedef struct {
+    exp_t *vm;      /* 0xFFFF for the variables, 0 for the degree entries */
+    val_t *h;       /* hash values of the terms */
+    len_t *rep;     /* first appearance of equal terms */
+    len_t *tab;     /* hash table for finding equal terms */
+    int8_t *ov;     /* has the term a common variable with the multiplier */
+    exp_t *me;      /* exponent vectors of the terms missing in sht */
+    val_t *mh;      /* hash values of the terms missing in sht */
+    len_t tsz;      /* size of tab, a power of two */
+} boolean_row_t;
+
+/* Boolean ring: the product of the multiplier em with a squarefree
+ * monomial b consists of the variables of em and those of b that are not
+ * in em, the key of b. Thus two products are equal iff the keys are. The
+ * following functions check whether the monomials a and b have the same
+ * key, vm being 0xFFFF for the variables and 0 for the degree entries;
+ * the chunks are handled as in is_product_of(). */
+#if defined __SSE2__
+static inline int boolean_same_key_8(
+    const exp_t * const a,
+    const exp_t * const b,
+    const exp_t * const em,
+    const exp_t * const vm
+    )
+{
+    const __m128i m = _mm_loadu_si128((const __m128i *)em);
+    const __m128i d = _mm_and_si128(_mm_xor_si128(
+                _mm_andnot_si128(m, _mm_loadu_si128((const __m128i *)a)),
+                _mm_andnot_si128(m, _mm_loadu_si128((const __m128i *)b))),
+            _mm_loadu_si128((const __m128i *)vm));
+    return _mm_movemask_epi8(_mm_cmpeq_epi16(d, _mm_setzero_si128())) == 0xFFFF;
+}
+#elif defined __aarch64__
+static inline int boolean_same_key_8(
+    const exp_t * const a,
+    const exp_t * const b,
+    const exp_t * const em,
+    const exp_t * const vm
+    )
+{
+    const uint16x8_t m = vld1q_u16(em);
+    return vmaxvq_u16(vandq_u16(veorq_u16(vbicq_u16(vld1q_u16(a), m),
+                    vbicq_u16(vld1q_u16(b), m)), vld1q_u16(vm))) == 0;
+}
+#endif
+
+static inline int boolean_same_key(
+    const exp_t * const a,
+    const exp_t * const b,
+    const exp_t * const em,
+    const exp_t * const vm,
+    const len_t evl
+    )
+{
+    len_t j;
+
+#if defined __SSE2__ || defined __aarch64__
+    if (evl >= 8) {
+        const len_t t = evl - 8;
+        for (j = 0; j < t; j += 8) {
+            if (!boolean_same_key_8(a + j, b + j, em + j, vm + j)) {
+                return 0;
+            }
+        }
+        return boolean_same_key_8(a + t, b + t, em + t, vm + t);
+    }
+#endif
+    for (j = 0; j < evl; ++j) {
+        if (((a[j] & ~em[j]) ^ (b[j] & ~em[j])) & vm[j]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+/* writes the exponent vector of term i of the product of em and poly to
+ * e, see boolean_multiplied_row() */
+static inline void boolean_term_exponents(
+    exp_t *e,
+    const len_t i,
+    const int8_t ov,
+    const exp_t * const em,
+    const hm_t * const poly,
+    const ht_t * const bht
+    )
+{
+    len_t j;
+    const len_t evl = bht->evl;
+    const exp_t * const eb  = bht->ev[0] + (uint64_t)poly[OFFSET+i] * evl;
+    if (ov) {
+        boolean_product(e, em, eb, bht);
+    } else {
+        for (j = 0; j < evl; ++j) {
+            e[j] = (exp_t)(em[j] + eb[j]);
+        }
+    }
+}
+
+/* Boolean ring: writes the terms of the product of the monomial with
+ * exponents em and hash value hm with poly to row, using x^2 = x for all
+ * variables x. Equal terms cancel in pairs, the order of the remaining
+ * terms is kept, so the lead term stays the first one if it does not
+ * cancel. Terms already stored in sht are given by their index, the other
+ * ones by 0, their exponent vectors and hash values are stored in br->me
+ * and br->mh, their number in nm. Returns the length of the row.
+ * The multiplier has only a few variables. A term without any of them
+ * has the usual product, which is looked up as in
+ * find_multiplied_in_hash_table(). For the other terms the hash value of
+ * the product is the sum of the hash values of the factors minus the
+ * hash values of the common variables, their exponent vectors are only
+ * computed when needed. Two terms with the usual product are different,
+ * so only the other terms are stored in a hash table for finding equal
+ * terms. */
+static len_t boolean_multiplied_row(
+    hm_t *row,
+    len_t *nm,
+    boolean_row_t *br,
+    const val_t hm,
+    const exp_t * const em,
+    const hm_t * const poly,
+    const ht_t * const bht,
+    const ht_t * const sht
+    )
+{
+    len_t i, j, k, m, q;
+    const len_t evl = bht->evl;
+    const len_t ebl = bht->ebl;
+    const len_t len = poly[LENGTH];
+    const exp_t * const evb = bht->ev[0];
+    const hd_t * const hdb  = bht->hd;
+
+    /* the variables of the multiplier and the hash values of the
+     * variables of degree one */
+    len_t tv[evl];
+    val_t cr[evl];
+    len_t nt  = 0;
+    for (j = 1; j < evl; ++j) {
+        if (j != ebl && em[j] != 0) {
+            tv[nt]  = j;
+            cr[nt]  = bht->rn[j] + bht->rn[(ebl > 0 && j > ebl) ? ebl : 0];
+            nt++;
+        }
+    }
+    len_t nov = 0;
+    for (i = 0; i < len; ++i) {
+        /* prefetching as in prefetch_multiplied_terms() */
+        if (i + MUL_PF_DIST < len) {
+            __builtin_prefetch(hdb + poly[OFFSET+i+MUL_PF_DIST]);
+            __builtin_prefetch(evb + (uint64_t)poly[OFFSET+i+MUL_PF_DIST] * evl);
+        }
+        const exp_t * const eb  = evb + (uint64_t)poly[OFFSET+i] * evl;
+        val_t c = 0;
+        int8_t o  = 0;
+        for (q = 0; q < nt; ++q) {
+            if (eb[tv[q]] != 0) {
+                c += cr[q];
+                o  = 1;
+            }
+        }
+        br->h[i]  = hm + hdb[poly[OFFSET+i]].val - c;
+        br->ov[i] = o;
+        nov       += o;
+    }
+    /* rep[k] is the index of the k-th remaining term */
+    len_t *rep  = br->rep;
+    len_t n     = len;
+    if (nov > 0) {
+        /* tab stores the first appearance + 1 of the terms with a common
+         * variable with the multiplier; rep[i] is the first appearance
+         * of the terms equal to term i, the number of these terms modulo
+         * 2 is stored in the highest bit of rep of the first appearance,
+         * a term remains if this number is odd, then its first appearance
+         * is kept */
+        const len_t odd = (len_t)1 << 31;
+        const len_t msk = br->tsz - 1;
+        len_t *tab      = br->tab;
+        for (i = 0; i < len; ++i) {
+            rep[i]  = i | odd;
+        }
+        for (i = 0; i < len; ++i) {
+            if (!br->ov[i]) {
+                continue;
+            }
+            for (k = (len_t)br->h[i] & msk; ; k = (k+1) & msk) {
+                const len_t t = tab[k];
+                if (t == 0) {
+                    tab[k]  = i + 1;
+                    break;
+                }
+                if (br->h[t-1] == br->h[i] && boolean_same_key(
+                            evb + (uint64_t)poly[OFFSET+t-1] * evl,
+                            evb + (uint64_t)poly[OFFSET+i] * evl, em, br->vm, evl)) {
+                    rep[t-1] ^= odd;
+                    rep[i]    = t-1;
+                    break;
+                }
+            }
+        }
+        /* the terms with the usual product, the first appearance of
+         * equal terms is the smallest one */
+        for (i = 0; i < len; ++i) {
+            if (br->ov[i]) {
+                continue;
+            }
+            for (k = (len_t)br->h[i] & msk; tab[k] != 0; k = (k+1) & msk) {
+                const len_t t = tab[k] - 1;
+                if (br->h[t] == br->h[i] && boolean_same_key(
+                            evb + (uint64_t)poly[OFFSET+t] * evl,
+                            evb + (uint64_t)poly[OFFSET+i] * evl, em, br->vm, evl)) {
+                    const len_t p = rep[t] & ~odd;
+                    rep[p] ^= odd;
+                    if (i < p) {
+                        /* term i becomes the first appearance */
+                        rep[i]  = (rep[p] & odd) | i;
+                        rep[p]  = i;
+                        tab[k]  = i + 1;
+                    } else {
+                        rep[i]  = p;
+                    }
+                    break;
+                }
+            }
+        }
+        for (i = 0; i < len; ++i) {
+            if (br->ov[i]) {
+                for (k = (len_t)br->h[i] & msk; tab[k] != 0; k = (k+1) & msk) {
+                    tab[k] = 0;
+                }
+            }
+        }
+        for (i = 0, n = 0; i < len; ++i) {
+            if (rep[i] == (i | odd)) {
+                rep[n++] = i;
+            }
+        }
+    } else {
+        for (i = 0; i < len; ++i) {
+            rep[i] = i;
+        }
+    }
+    const hi_t mod  = (hi_t)(sht->hsz - 1);
+    for (k = 0, m = 0; k < n; ++k) {
+        if (k + 2*MUL_PF_DIST < n) {
+            __builtin_prefetch(sht->hmap + (br->h[rep[k+2*MUL_PF_DIST]] & mod));
+        }
+        if (k + MUL_PF_DIST < n) {
+            const hi_t hm = sht->hmap[br->h[rep[k+MUL_PF_DIST]] & mod];
+            __builtin_prefetch(sht->hd + hm);
+            __builtin_prefetch(sht->ev[0] + (uint64_t)hm * evl);
+        }
+        i = rep[k];
+        hi_t p  = 0;
+        if (br->ov[i]) {
+            exp_t *ei = br->me + (uint64_t)m * evl;
+            boolean_term_exponents(ei, i, 1, em, poly, bht);
+            if (!is_contained_in_hash_table(ei, sht, br->h[i], &p)) {
+                p = 0;
+            }
+        } else {
+            const exp_t * const eb  = evb + (uint64_t)poly[OFFSET+i] * evl;
+            p = find_multiplied_in_hash_table(br->h[i], em, eb, sht);
+            if (p == 0) {
+                boolean_term_exponents(br->me + (uint64_t)m * evl, i, 0,
+                        em, poly, bht);
+            }
+        }
+        row[OFFSET+k] = p;
+        if (p == 0) {
+            br->mh[m++] = br->h[i];
+        }
+    }
+    row[LENGTH]   = n;
+    row[PRELOOP]  = n % UNROLL;
+    *nm           = m;
+    return n;
+}
+
+/* Boolean ring: generates the matrix rows rows[i] = em[i] * polys[i] for
+ * 0 <= i < nr as multiplied_polys_to_matrix_rows() does, using x^2 = x
+ * for all variables x, equal terms cancel in pairs. The terms of the rows
+ * are computed and looked up in sht in parallel, the missing ones are
+ * then inserted in the order of the rows and their terms, so sht and the
+ * rows are the same as when handling one row after the other. */
+static void boolean_multiplied_polys_to_matrix_rows(
+    hm_t **rows,
+    const len_t nr,
+    const val_t * const hs,
+    const exp_t * const ems,
+    hm_t * const * const polys,
+    ht_t *sht,
+    const ht_t * const bht,
+    const int32_t nthrds
+    )
+{
+    len_t i, l;
+
+    const len_t evl = bht->evl;
+    const len_t ebl = bht->ebl;
+
+    exp_t vm[evl];
+    for (l = 0; l < evl; ++l) {
+        vm[l] = (l != 0 && l != ebl) ? (exp_t)0xFFFF : 0;
+    }
+
+    len_t mlen  = 0;
+    for (i = 0; i < nr; ++i) {
+        const hm_t *poly  = polys[i];
+        rows[i] = (hm_t *)malloc((uint64_t)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
+        rows[i][COEFFS]   = poly[COEFFS];
+        mlen  = mlen > poly[LENGTH] ? mlen : poly[LENGTH];
+    }
+    len_t tsz = 1;
+    while (tsz < 2 * mlen) {
+        tsz *= 2;
+    }
+    /* exponent vectors and hash values of the terms missing in sht */
+    exp_t **mev = (exp_t **)calloc((uint64_t)nr, sizeof(exp_t *));
+    val_t **mh  = (val_t **)calloc((uint64_t)nr, sizeof(val_t *));
+    len_t *nmiss  = (len_t *)calloc((uint64_t)nr, sizeof(len_t));
+
+    /* sht might be (nearly) empty, so we handle the rows in chunks of
+     * increasing size, see multiplied_polys_to_matrix_rows() */
+    len_t lo  = 0;
+    len_t csz = 4;
+    while (lo < nr) {
+        const len_t hi  = nr - lo > csz ? lo + csz : nr;
+#pragma omp parallel num_threads(nthrds) private(i) if (hi - lo > 8)
+        {
+        boolean_row_t br;
+        br.h    = (val_t *)malloc((uint64_t)mlen * sizeof(val_t));
+        br.rep  = (len_t *)malloc((uint64_t)mlen * sizeof(len_t));
+        br.tab  = (len_t *)calloc((uint64_t)tsz, sizeof(len_t));
+        br.ov   = (int8_t *)malloc((uint64_t)mlen * sizeof(int8_t));
+        br.me   = (exp_t *)malloc((uint64_t)mlen * evl * sizeof(exp_t));
+        br.mh   = (val_t *)malloc((uint64_t)mlen * sizeof(val_t));
+        br.tsz  = tsz;
+        br.vm   = vm;
+#pragma omp for schedule(dynamic, 4)
+        for (i = lo; i < hi; ++i) {
+            len_t m = 0;
+            boolean_multiplied_row(rows[i], &m, &br, hs[i],
+                    ems + (uint64_t)i * evl, polys[i], bht, sht);
+            nmiss[i]  = m;
+            if (m > 0) {
+                mev[i]  = (exp_t *)malloc((uint64_t)m * evl * sizeof(exp_t));
+                mh[i]   = (val_t *)malloc((uint64_t)m * sizeof(val_t));
+                memcpy(mev[i], br.me, (uint64_t)m * evl * sizeof(exp_t));
+                memcpy(mh[i], br.mh, (uint64_t)m * sizeof(val_t));
+            }
+        }
+        free(br.h);
+        free(br.rep);
+        free(br.tab);
+        free(br.ov);
+        free(br.me);
+        free(br.mh);
+        }
+        uint64_t nm = 0;
+        for (i = lo; i < hi; ++i) {
+            nm  +=  nmiss[i];
+        }
+        while (sht->eld + nm >= sht->esz) {
+            enlarge_hash_table(sht);
+        }
+        for (i = lo; i < hi; ++i) {
+            if (nmiss[i] == 0) {
+                continue;
+            }
+            hm_t *row       = rows[i];
+            const len_t len = row[LENGTH] + OFFSET;
+            len_t m         = 0;
+            for (l = OFFSET; l < len; ++l) {
+                if (row[l] == 0) {
+                    const exp_t * const em = mev[i] + (uint64_t)m * evl;
+                    hi_t k  = 0;
+                    row[l]  = is_contained_in_hash_table(em, sht, mh[i][m], &k) ?
+                        k : (hm_t)add_to_hash_table(em, mh[i][m], k, sht);
+                    m++;
+                }
+            }
+            free(mev[i]);
+            free(mh[i]);
+        }
+        lo  = hi;
+        csz = 2 * csz;
+    }
+    free(mev);
+    free(mh);
+    free(nmiss);
+}
+
 static inline hm_t *multiplied_poly_to_matrix_row(
     ht_t *sht,
     const ht_t *bht,
@@ -1644,6 +2072,12 @@ static inline hm_t *multiplied_poly_to_matrix_row(
     const hm_t *poly
     )
 {
+  if (bht->boolean) {
+    hm_t *row = NULL;
+    hm_t *p   = (hm_t *)poly;
+    boolean_multiplied_polys_to_matrix_rows(&row, 1, &hm, em, &p, sht, bht, 1);
+    return row;
+  }
   hm_t *row = (hm_t *)malloc((uint64_t)(poly[LENGTH]+OFFSET) * sizeof(hm_t));
   row[COEFFS]   = poly[COEFFS];
   row[PRELOOP]  = poly[PRELOOP];
@@ -1833,6 +2267,12 @@ static void multiplied_polys_to_matrix_rows(
     )
 {
     len_t i, l;
+
+    if (bht->boolean) {
+        boolean_multiplied_polys_to_matrix_rows(rows, nr, hs, ems, polys,
+                sht, bht, nthrds);
+        return;
+    }
 
     const len_t evl = bht->evl;
     const hd_t * const hdb    = bht->hd;

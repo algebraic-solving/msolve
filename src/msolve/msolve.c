@@ -3952,9 +3952,14 @@ void single_exact_real_root_param(mpz_param_t param, interval *rt, long nb,
 
 typedef struct {
   long nc;                /* number of coordinates */
-  fmpz_poly_t elim, delim;
-  fmpz_poly_t den, dden;
-  fmpz_poly_struct *co;   /* the C_j */
+  fmpz_poly_struct elim;  /* the coefficients of the eliminating polynomial,
+                             read in place from param */
+  fmpz_poly_t delim;      /* its derivative */
+  fmpz *den;              /* D, read in place */
+  slong lden;
+  fmpz_poly_t dden;       /* its derivative */
+  fmpz **co;              /* the C_j, read in place */
+  slong *lco;
   fmpz_poly_struct *dco;  /* their derivatives */
   fmpz *cfs;              /* the c_j */
   slong extra;            /* bits lost by cancellation, see refine_arb.c */
@@ -3962,33 +3967,48 @@ typedef struct {
   long nref;              /* number of refinements of the roots */
 } real_coords_t;
 
-static void fmpz_poly_set_mpz_upoly(fmpz_poly_t f, const mpz_upoly_t p) {
-  fmpz_poly_fit_length(f, p->length);
+/* the coefficients of p as fmpz reading those of p, without copy */
+static fmpz *real_coords_alias(const mpz_upoly_t p) {
+  fmpz *v = flint_malloc(MAX(p->length, 1) * sizeof(fmpz));
   for (long i = 0; i < p->length; i++) {
-    fmpz_set_mpz(f->coeffs + i, p->coeffs[i]);
+    fmpz_init_set_readonly(v + i, p->coeffs[i]);
   }
-  _fmpz_poly_set_length(f, p->length);
-  _fmpz_poly_normalise(f);
+  return v;
+}
+
+static void real_coords_alias_clear(fmpz *v, const slong len) {
+  for (slong i = 0; i < len; i++) {
+    fmpz_clear_readonly(v + i);
+  }
+  flint_free(v);
 }
 
 static void real_coords_init(real_coords_t *rc, mpz_param_t param) {
   rc->nc = param->nvars - 1;
-  fmpz_poly_init(rc->elim);
+  rc->elim.coeffs = real_coords_alias(param->elim);
+  rc->elim.alloc = param->elim->length;
+  rc->elim.length = param->elim->length;
   fmpz_poly_init(rc->delim);
-  fmpz_poly_init(rc->den);
+  fmpz_poly_derivative(rc->delim, &rc->elim);
+  rc->den = real_coords_alias(param->denom);
+  rc->lden = param->denom->length;
   fmpz_poly_init(rc->dden);
-  fmpz_poly_set_mpz_upoly(rc->elim, param->elim);
-  fmpz_poly_derivative(rc->delim, rc->elim);
-  fmpz_poly_set_mpz_upoly(rc->den, param->denom);
-  fmpz_poly_derivative(rc->dden, rc->den);
-  rc->co = malloc(MAX(rc->nc, 1) * sizeof(fmpz_poly_struct));
+  fmpz_poly_fit_length(rc->dden, MAX(rc->lden - 1, 1));
+  _fmpz_poly_derivative(rc->dden->coeffs, rc->den, rc->lden);
+  _fmpz_poly_set_length(rc->dden, MAX(rc->lden - 1, 0));
+  _fmpz_poly_normalise(rc->dden);
+  rc->co = malloc(MAX(rc->nc, 1) * sizeof(fmpz *));
+  rc->lco = malloc(MAX(rc->nc, 1) * sizeof(slong));
   rc->dco = malloc(MAX(rc->nc, 1) * sizeof(fmpz_poly_struct));
   rc->cfs = _fmpz_vec_init(MAX(rc->nc, 1));
   for (long j = 0; j < rc->nc; j++) {
-    fmpz_poly_init(rc->co + j);
+    rc->co[j] = real_coords_alias(param->coords[j]);
+    rc->lco[j] = param->coords[j]->length;
     fmpz_poly_init(rc->dco + j);
-    fmpz_poly_set_mpz_upoly(rc->co + j, param->coords[j]);
-    fmpz_poly_derivative(rc->dco + j, rc->co + j);
+    fmpz_poly_fit_length(rc->dco + j, MAX(rc->lco[j] - 1, 1));
+    _fmpz_poly_derivative(rc->dco[j].coeffs, rc->co[j], rc->lco[j]);
+    _fmpz_poly_set_length(rc->dco + j, MAX(rc->lco[j] - 1, 0));
+    _fmpz_poly_normalise(rc->dco + j);
     fmpz_set_mpz(rc->cfs + j, param->cfs[j]);
   }
   rc->extra = 64;
@@ -3997,27 +4017,28 @@ static void real_coords_init(real_coords_t *rc, mpz_param_t param) {
 }
 
 static void real_coords_clear(real_coords_t *rc) {
-  fmpz_poly_clear(rc->elim);
+  real_coords_alias_clear(rc->elim.coeffs, rc->elim.length);
   fmpz_poly_clear(rc->delim);
-  fmpz_poly_clear(rc->den);
+  real_coords_alias_clear(rc->den, rc->lden);
   fmpz_poly_clear(rc->dden);
   for (long j = 0; j < rc->nc; j++) {
-    fmpz_poly_clear(rc->co + j);
+    real_coords_alias_clear(rc->co[j], rc->lco[j]);
     fmpz_poly_clear(rc->dco + j);
   }
   free(rc->co);
+  free(rc->lco);
   free(rc->dco);
   _fmpz_vec_clear(rc->cfs, MAX(rc->nc, 1));
 }
 
 /* y = p(m) + p'(T) (T - m), with r0 the radius of p(m) (rounding errors)
  * and r1 = |p'(T)| rad(T) */
-static void real_coords_eval(arb_t y, mag_t r0, mag_t r1, const fmpz_poly_t p,
-                             const fmpz_poly_t dp, const arb_t T,
-                             const arb_t m, const slong prec) {
+static void real_coords_eval(arb_t y, mag_t r0, mag_t r1, const fmpz *p,
+                             const slong len, const fmpz_poly_t dp,
+                             const arb_t T, const arb_t m, const slong prec) {
   arb_t d;
   arb_init(d);
-  arb_fmpz_poly_evaluate_arb(y, p, m, prec);
+  _arb_fmpz_poly_evaluate_arb(y, p, len, m, prec);
   arb_fmpz_poly_evaluate_arb(d, dp, T, prec);
   arb_get_mag(r1, d);
   mag_mul(r1, r1, arb_radref(T));
@@ -4058,12 +4079,12 @@ static int real_coords_balls(arb_ptr x, real_coords_t *rc,
   fmpz_clear(n);
 
   int ret = 0;
-  real_coords_eval(w, r0w, r1w, rc->den, rc->dden, T, m, p);
+  real_coords_eval(w, r0w, r1w, rc->den, rc->lden, rc->dden, T, m, p);
   if (arb_contains_zero(w)) {
     ret = mag_cmp(r1w, r0w) > 0 ? 1 : 2;
   }
   for (long j = 0; j < rc->nc && ret == 0; j++) {
-    real_coords_eval(v, r0v, r1v, rc->co + j, rc->dco + j, T, m, p);
+    real_coords_eval(v, r0v, r1v, rc->co[j], rc->lco[j], rc->dco + j, T, m, p);
     arb_mul_fmpz(x + j, w, rc->cfs + j, p);
     arb_div(x + j, v, x + j, p);
     arb_neg(x + j, x + j);
@@ -4157,7 +4178,7 @@ static void real_coords_point(real_coords_t *rc, mpz_param_t param,
         break;
       }
       if (r == 1) {
-        usolve_refine_root_arb(rt, rc->elim, rc->delim, 2 * rt->k,
+        usolve_refine_root_arb(rt, &rc->elim, rc->delim, 2 * rt->k,
                                &rc->extra);
         rc->nref++;
       } else {

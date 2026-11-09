@@ -2148,6 +2148,9 @@ static int32_t *initial_modular_step(
         /*     fprintf(ERRSTREAM, "Dimension of quotient: %ld\n", dquot); */
         /* } */
         if(print_gb == 3){
+            md->fglm_rtime = realtime();
+            md->fglm_ctime = cputime();
+            print_fglm_header (VERBSTREAM,md);
             /* LEX basis by classical FGLM */
             double rt_fglm = realtime();
             fglmc_rows_t rp;
@@ -2162,8 +2165,11 @@ static int32_t *initial_modular_step(
             }
             mm->nthreads = md->nthrds;   /* all threads are used */
             rt_fglm = realtime();
+            /* TODO */
             fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX, &rp);
             mm_rows_clear(&rp);
+            fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX, md);
+            /******/
             if(md->info_level){
                 fprintf(VERBSTREAM, "FGLM (lex) %.2f sec\n", realtime() - rt_fglm);
             }

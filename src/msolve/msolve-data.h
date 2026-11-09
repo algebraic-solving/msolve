@@ -252,9 +252,10 @@ typedef struct{
   CF_t charac;
   int32_t nvars;
   int32_t ngens;
+  int32_t nterms;     // sum of lens
   int32_t *lens;      // ngens
   int32_t *exps;      // (sum of lens) * nvars
-  CF_t *cfs;          // sum of lens
+  CF_t *cfs;
 } fglm_gb_t;
 
 /* Result of the greedy phase of FGLM (fglm_classic_learn): the staircase

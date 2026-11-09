@@ -76,9 +76,9 @@ double omp_get_wtime(void) { return realtime();}
 void print_fglm_data(
         FILE *file,
         const md_t * const st,
-	sp_matfglm_t *matrix,
-	param_t *param
-		     )
+        sp_matfglm_t *matrix,
+        param_t *param
+                     )
 {
   if (st->info_level > 0) {
     fprintf(file, "\n---------------- TIMINGS ----------------\n");

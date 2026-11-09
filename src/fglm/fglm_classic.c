@@ -23,6 +23,36 @@
 #include <omp.h>
 #endif
 
+void print_fglm_classic_data(
+        FILE *file,
+        const md_t * const st,
+        const sp_multimatfglm_t *matrix,
+        fglm_gb_t *G
+                     )
+{
+  if (st->info_level > 0) {
+    fprintf(file, "\n---------------- TIMINGS ----------------\n");
+    fprintf(file, "overall(elapsed) %11.2f sec\n", st->fglm_rtime);
+    fprintf(file, "overall(cpu) %15.2f sec\n", st->fglm_ctime);
+    fprintf(file, "-----------------------------------------\n");
+    fprintf(file, "\n---------- COMPUTATIONAL DATA -----------\n");
+    fprintf(file, "degree of ideal    %16lu\n", (unsigned long)matrix->ncols);
+    fprintf(file, "#dense rows        %16lu\n", (unsigned long)matrix->nnfs);
+    fprintf(file, "#normal forms      %16lu\n", (unsigned long)(matrix->nnfs - matrix->nlms));
+    /* fprintf(file, "total density                   %5.1f%%\n", 100*matrix->totaldensity); */
+    /* fprintf(file, "density of the free part        %5.1f%%\n", 100*matrix->freepartdensity); */
+    /* if(matrix->nnfs){ */
+    /*   fprintf(file, "density of the nonfree part     %5.1f%%\n", 100*matrix->nonfreepartdensity); */
+    /* } */
+    /* fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol); */
+    /* fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol); */
+    fprintf(file, "size of basis      %16lu\n", (unsigned long)(G->ngens));
+    fprintf(file, "#terms in basis    %16lu\n",  (unsigned long)(G->nterms));
+    fprintf(file, "-----------------------------------------\n\n");
+  }
+}
+
+
 /* Threshold on D for parallelism in fglmc_mulvec and fglmc_lu_reduce:
  * below it, the sequential path is used. Not tuned yet. */
 #define FGLMC_PAR_MIN 256
@@ -900,6 +930,7 @@ static fglm_gb_t *fglm_gb_from_staircase(const fglm_lex_staircase_t *lex,
   G->charac = p;
   G->nvars = nv;
   G->ngens = lex->ngens;
+  G->nterms = nterms;
   G->lens = malloc((lex->ngens + 1) * sizeof(int32_t));
   G->exps = malloc((nterms + 1) * nv * sizeof(int32_t));
   G->cfs  = malloc((nterms + 1) * sizeof(CF_t));
@@ -924,8 +955,8 @@ static fglm_gb_t *fglm_gb_from_staircase(const fglm_lex_staircase_t *lex,
 
 /* FGLM over a prime field: the greedy phase (LU elimination) gives at once the
  * staircase, the leading monomials and the relations. */
-static fglm_gb_t *fglm_classic(sp_multimatfglm_t *Mt, const int ord,
-                               const fglmc_rows_t *rp){
+static fglm_gb_t *fglm_classic(const sp_multimatfglm_t *Mt, const int ord,
+                               md_t * st){
   fglm_lex_staircase_t lex;
   memset(&lex, 0, sizeof(lex));
   fglm_gb_t *G = NULL;
@@ -937,6 +968,9 @@ static fglm_gb_t *fglm_classic(sp_multimatfglm_t *Mt, const int ord,
   free(coeffs);
   fglmc_flint_threads_pop(old_thr);
   free_fglm_lex_staircase(&lex);
+  st->fglm_rtime = realtime() - st->fglm_rtime;
+  st->fglm_ctime = cputime() - st->fglm_ctime;
+  print_fglm_classic_data (VERBSTREAM, st, Mt, G);
   return G;
 }
 

@@ -151,6 +151,7 @@ typedef struct{
   int32_t *cfs;    /* int32_t coeffs */
   mpz_t **mpz_cfs; /* mpz_t coeffs */
   int64_t *cfs_64; /* int64_t coeffs for field characteristics >= 2^31 */
+  int32_t boolean; /* 1 for the Boolean ring over GF(2), i.e. x^2 = x */
 } data_gens_ff_t;
 
 typedef uint32_t szmat_t;

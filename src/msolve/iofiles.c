@@ -347,6 +347,9 @@ static void print_msolve_polynomials_ff(
             fprintf(file, "#field characteristic: %" PRIu64 "\n",
                     st->ff_bits == 64 ? st->fc : (uint64_t)st->gfc);
         }
+        if (st->boolean) {
+            fprintf(file, "#Boolean ring:         x^2 = x for all variables x\n");
+        }
         fprintf(file, "#variable order:       ");
         for (i = 0; i < nv-1; ++i) {
             fprintf(file, "%s, ", vnames[i]);
@@ -706,10 +709,22 @@ static void get_variables(FILE *fh, char * line, int max_line_size,
 }
 
 static void get_characteristic(FILE *fh, char * line, int max_line_size,
-                               int64_t *field_char, char **vnames){
+                               int64_t *field_char, int32_t *boolean,
+                               char **vnames){
   *field_char = 0;
+  *boolean    = 0;
 
   if(fgets(line, max_line_size, fh) != NULL){
+    /* the Boolean ring over GF(2) is given as boolean */
+    const char *b = line;
+    while (*b == ' ') {
+      ++b;
+    }
+    if (strncmp(b, "boolean", 7) == 0) {
+      *field_char = 2;
+      *boolean    = 1;
+      return;
+    }
     char *end = NULL;
     int64_t tmp_mod = strtoll(line, &end, 10);
     /* the binary extension fields are given as 2^4 resp. 2^8 */
@@ -1256,9 +1271,11 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
       free(line);
       exit(1);
   }
-  get_characteristic(fh, line, max_line_size, field_char, vnames);
+  int32_t boolean = 0;
+  get_characteristic(fh, line, max_line_size, field_char, &boolean, vnames);
 
   initialize_data_gens(*nr_vars, *nr_gens, *field_char, gens);
+  gens->boolean = boolean;
 
   nelts_t nterms, all_nterms = 0;
   get_nterms_and_all_nterms(fh, max_line_size, gens, nr_gens,

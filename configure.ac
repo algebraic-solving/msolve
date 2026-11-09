@@ -247,6 +247,12 @@ AC_CONFIG_LINKS([
  input_files/random8-gf2.ms:input_files/random8-gf2.ms
  output_files/random8-gf2.g2.res:output_files/random8-gf2.g2.res
  test/diff/diff_random8-gf2.sh:test/diff/diff_random8-gf2.sh
+ input_files/boolean-random12.ms:input_files/boolean-random12.ms
+ output_files/boolean-random12.g2.res:output_files/boolean-random12.g2.res
+ test/diff/diff_boolean-random12.sh:test/diff/diff_boolean-random12.sh
+ input_files/boolean-elim10.ms:input_files/boolean-elim10.ms
+ output_files/boolean-elim10.g2.res:output_files/boolean-elim10.g2.res
+ test/diff/diff_boolean-elim10.sh:test/diff/diff_boolean-elim10.sh
  input_files/kat7-qq.ms:input_files/kat7-qq.ms
  output_files/kat7-qq.P2.d0.res:output_files/kat7-qq.P2.d0.res
  test/diff/diff_kat7-qq.sh:test/diff/diff_kat7-qq.sh

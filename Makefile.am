@@ -22,6 +22,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_cyclic5-16.sh \
 			  test/diff/diff_cyclic5-31.sh \
 			  test/diff/diff_cyclic5-qq.sh \
+			  test/diff/diff_cyclic5-qq-options.sh \
 			  test/diff/diff_eco10-31.sh \
 			  test/diff/diff_eco6-16.sh \
 			  test/diff/diff_eco6-31.sh \
@@ -34,6 +35,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_f4sat-field-char.sh \
 			  test/diff/diff_f4sat-is-saturated-check.sh \
 			  test/diff/diff_f4sat-zero-input.sh \
+			  test/diff/diff_fekete-valdes-n5-qq.sh \
 			  test/diff/diff_groebner-g2.sh \
 			  test/diff/diff_hankel-degenerate-16.sh \
 			  test/diff/diff_sum-squares-system.sh \

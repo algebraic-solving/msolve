@@ -55,6 +55,8 @@ void free_rrec_data(rrec_data_t recdata);
 #include "linear.c"
 #include "lifting.c"
 #include "lifting-gb.c"
+#include "separating.c"
+#include "splitting.c"
 #include "streams.h"
 
 #ifndef MAX
@@ -190,7 +192,12 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
       fprintf(file, "/%d", sum);
     }
   } else {
-    if (gens->linear_form_base_coef > 0) {
+    if (gens->linear_form_base_coef > 0 && gens->sep_form != NULL) {
+      for (int i = 0; i < param->nvars - 1; ++i) {
+        fprintf(file, "%d,", gens->sep_form[i]);
+      }
+      fprintf(file, "%d", (int32_t)(1));
+    } else if (gens->linear_form_base_coef > 0) {
       const int32_t bcf = gens->linear_form_base_coef;
       for (int i = 0; i < param->nvars - 1; ++i) {
         fprintf(file, "%d,", (int32_t)(pow(i + 1, bcf - 1)));
@@ -268,6 +275,18 @@ data_gens_ff_t *allocate_data_gens() {
   gens->mpz_cfs = NULL;
   gens->cfs_64 = NULL;
   gens->random_linear_form = NULL;
+  gens->sep_status = SEP_NONE;
+  gens->sep_var = -1;
+  gens->sep_form = NULL;
+  gens->sep_matnterms = 0;
+  gens->sep_matnterms_ori = 0;
+  gens->sep_nsols = 0;
+  gens->split_params.nb = 0;
+  gens->split_params.params = NULL;
+  gens->split_global = 1;
+  gens->sep_search = 1;
+  gens->sep_dense = 0;
+  gens->split_mode = 0;
 
   gens->elim = 0;
   return gens;
@@ -296,6 +315,8 @@ void free_data_gens(data_gens_ff_t *gens) {
   free(gens->cfs_64);
   free(gens->exps);
   free(gens->random_linear_form);
+  free(gens->sep_form);
+  split_params_clear(&(gens->split_params));
   free(gens);
 }
 
@@ -483,6 +504,62 @@ static int change_variable_order_in_input_system(data_gens_ff_t *gens,
   return 1;
 }
 
+/* The added linear form is the last generator; its terms are the
+ * variables x_0, ..., x_{nvars-2} and then the extra variable, in this
+ * order. compact_linear_form removes the terms with zero coefficient,
+ * expand_linear_form restores all the terms (their coefficients are then
+ * overwritten by the caller). The arrays keep their full size, and for
+ * QQ the removed mpz_t are kept after the last term. */
+static void compact_linear_form(data_gens_ff_t *gens) {
+  const int32_t nvars = gens->nvars;
+  int64_t len_old = 0;
+  for (int32_t i = 0; i < gens->ngens - 1; ++i) {
+    len_old += gens->lens[i];
+  }
+  int64_t w = len_old;
+  for (int32_t t = 0; t < nvars; ++t) {
+    const int64_t s = len_old + t;
+    const int keep = (t == nvars - 1) ||
+      (gens->field_char > 0 ? gens->cfs[s] != 0
+       : mpz_sgn(*(gens->mpz_cfs[2 * s])) != 0);
+    if (!keep) {
+      continue;
+    }
+    if (w != s) {
+      memcpy(gens->exps + w * nvars, gens->exps + s * nvars,
+             (unsigned long)nvars * sizeof(int32_t));
+      if (gens->field_char > 0) {
+        gens->cfs[w] = gens->cfs[s];
+      } else {
+        for (int32_t k = 0; k < 2; ++k) {
+          mpz_t *tmp = gens->mpz_cfs[2 * w + k];
+          gens->mpz_cfs[2 * w + k] = gens->mpz_cfs[2 * s + k];
+          gens->mpz_cfs[2 * s + k] = tmp;
+        }
+      }
+    }
+    w++;
+  }
+  gens->lens[gens->ngens - 1] = (int32_t)(w - len_old);
+}
+
+static void expand_linear_form(data_gens_ff_t *gens) {
+  const int32_t nvars = gens->nvars;
+  if (gens->linear_form_base_coef == 0 || gens->lens[gens->ngens - 1] == nvars) {
+    return;
+  }
+  int64_t len_old = 0;
+  for (int32_t i = 0; i < gens->ngens - 1; ++i) {
+    len_old += gens->lens[i];
+  }
+  memset(gens->exps + len_old * nvars, 0,
+         (unsigned long)nvars * nvars * sizeof(int32_t));
+  for (int32_t t = 0; t < nvars; ++t) {
+    gens->exps[(len_old + t) * nvars + t] = 1;
+  }
+  gens->lens[gens->ngens - 1] = nvars;
+}
+
 /* Used if staircase is not generic enough, after
  * we tried to change variable order.
  *
@@ -494,6 +571,9 @@ static int add_linear_form_to_input_system(data_gens_ff_t *gens,
   int32_t k;
   int32_t nvars_old, nvars_new;
   int64_t len_old = 0, len_new;
+  free(gens->sep_form);
+  gens->sep_form = NULL;
+  expand_linear_form(gens);
   if (gens->linear_form_base_coef == 0) {
     nvars_old = gens->nvars;
     nvars_new = nvars_old + 1;
@@ -593,6 +673,9 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
   int64_t i, j;
   int32_t nvars_old, nvars_new;
   int64_t len_old = 0, len_new;
+  free(gens->sep_form);
+  gens->sep_form = NULL;
+  expand_linear_form(gens);
 
   if (gens->linear_form_base_coef == 0) {
     nvars_old = gens->nvars;
@@ -694,6 +777,73 @@ static int add_random_linear_form_to_input_system(data_gens_ff_t *gens,
   }
   gens->rand_linear = 1;
   return 1;
+}
+
+/* Applies the separating element found by find_separating_element:
+ * moves the separating variable to the last position, or adds the
+ * separating linear form with a new variable as add_linear_form_to_input_system
+ * does. Returns 1 if the input system was changed, 0 otherwise. */
+static int apply_separating_element(data_gens_ff_t *gens,
+                                    int32_t info_level) {
+  if (gens->sep_status == SEP_VAR) {
+    const int32_t nvars = gens->nvars;
+    const int32_t v = gens->sep_var;
+    char *tmp_char = gens->vnames[nvars - 1];
+    gens->vnames[nvars - 1] = gens->vnames[v];
+    gens->vnames[v] = tmp_char;
+    int64_t len = 0;
+    for (int32_t i = 0; i < gens->ngens; ++i) {
+      for (int32_t j = 0; j < gens->lens[i]; ++j) {
+        int32_t *e = gens->exps + len + (int64_t)j * nvars;
+        int32_t tmp = e[nvars - 1];
+        e[nvars - 1] = e[v];
+        e[v] = tmp;
+      }
+      len += (int64_t)gens->lens[i] * nvars;
+    }
+    /* same state as after the corresponding change of variable order */
+    gens->change_var_order = v;
+    gens->sep_status = SEP_APPLIED;
+    if (info_level > 0) {
+      fprintf(VERBSTREAM, "\nMoving separating variable %s to the last position\n",
+              gens->vnames[nvars - 1]);
+    }
+    return 1;
+  }
+  if (gens->sep_status == SEP_FORM) {
+    int32_t *c = gens->sep_form;
+    gens->sep_form = NULL;
+    if (add_linear_form_to_input_system(gens, 0) == 0) {
+      free(c);
+      return 0;
+    }
+    /* overwrite the coefficients k^0 of the linear form */
+    const int32_t nvars_old = gens->nvars - 1;
+    int64_t len_old = 0;
+    for (int32_t i = 0; i < gens->ngens - 1; ++i) {
+      len_old += gens->lens[i];
+    }
+    for (int32_t k = 0; k < nvars_old; ++k) {
+      if (gens->field_char > 0) {
+        gens->cfs[len_old + k] = c[k] % gens->field_char;
+      } else {
+        mpz_set_si(*(gens->mpz_cfs[2 * (len_old + k)]), c[k]);
+      }
+    }
+    compact_linear_form(gens);
+    gens->sep_form = c;
+    gens->sep_status = SEP_APPLIED;
+    if (info_level > 0) {
+      fprintf(VERBSTREAM, "\nAdding a separating linear form with an extra variable ");
+      fprintf(VERBSTREAM, "(lowest w.r.t. monomial order)\n[coefficients");
+      for (int32_t k = 0; k < nvars_old; ++k) {
+        fprintf(VERBSTREAM, " %d", c[k]);
+      }
+      fprintf(VERBSTREAM, "]\n");
+    }
+    return 1;
+  }
+  return 0;
 }
 
 static inline void nmod_param_out_str(FILE *file, const long dquot,
@@ -1981,6 +2131,33 @@ static int32_t *initial_modular_step(
                 }
                 free(test_nmod_param);
             }
+            if (*success == 0 && gens->field_char == 0
+                && gens->sep_status == SEP_NONE
+                && gens->change_var_order == -1
+                && gens->linear_form_base_coef == 0) {
+                gens->sep_status = SEP_FAILED;
+                if (gens->sep_search) {
+                    int32_t *c = calloc(bs->ht->nv, sizeof(int32_t));
+                    int32_t v = -1;
+                    int found = find_separating_element(bs, lmb, dquot, fc,
+                                                        &v, c, &(gens->sep_nsols),
+                                                        md->info_level);
+                    gens->sep_matnterms_ori = md->mat_nterms;
+                    if (found == 1) {
+                        gens->sep_var = v;
+                        gens->sep_status = SEP_VAR;
+                        free(c);
+                    } else if (found == 2) {
+                        gens->sep_form = c;
+                        gens->sep_status = SEP_FORM;
+                    } else {
+                        free(c);
+                    }
+                }
+            }
+        }
+        if (gens->sep_status == SEP_APPLIED) {
+            gens->sep_matnterms = md->mat_nterms;
         }
         *dim = 0;
         *dquot_ori = dquot;
@@ -2146,6 +2323,197 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
   st->nthrds = nthrds;
 }
 
+/* threshold for the multi-modular steps on the original system */
+#define SEP_DENSE_RATIO 1.2
+
+/* Multi-modular steps when a separating linear form t was added with an
+ * extra variable: when the F4 matrices for the system with t are much
+ * larger than those for the original system, the tracer is run on the
+ * original system and the parametrization is computed from the
+ * multiplication matrix by t (see sep_dense_param), without the extra
+ * variable. */
+typedef struct {
+  bs_t *bs_qq;      /* original system */
+  md_t *st;         /* its tracer */
+  int32_t num_gb;   /* number of elements of its Groebner bases */
+  int32_t *lm;      /* their leading monomials */
+  int32_t *lmb;     /* their staircase */
+  long dquot;
+  long degelim;     /* degrees of the minimal polynomial of the form */
+  long degsqfr;     /* and of its squarefree part */
+  const int32_t *form;
+} sep_dense_t;
+
+static void sep_dense_clear(sep_dense_t *sd) {
+  if (sd->bs_qq != NULL) {
+    free_basis(&(sd->bs_qq));
+    free(sd->bs_qq);
+  }
+  if (sd->st != NULL) {
+    free_trace(&(sd->st->tr));
+    free(sd->st);
+  }
+  free(sd->lm);
+  free(sd->lmb);
+  sd->bs_qq = NULL;
+  sd->st = NULL;
+  sd->lm = NULL;
+  sd->lmb = NULL;
+}
+
+/* Learns the tracer of the original system (gens without its last
+ * generator, the linear form, and its last variable) modulo prime, and
+ * checks that the parametrization computed from its Groebner basis is
+ * param, computed with the extra variable. Returns the number of terms of
+ * the Groebner basis of the original system, or 0 if it cannot be used. */
+static int64_t sep_dense_init(sep_dense_t *sd, data_gens_ff_t *gens,
+                              param_t *param, uint32_t prime,
+                              int32_t ht_size, int32_t nr_threads,
+                              int32_t max_nr_pairs, int32_t reset_ht,
+                              int32_t la_option, int32_t use_signatures,
+                              int32_t pbm_file) {
+  sd->bs_qq = NULL;
+  sd->st = NULL;
+  sd->lm = NULL;
+  sd->lmb = NULL;
+  sd->form = gens->sep_form;
+
+  int32_t nr_vars = gens->nvars - 1;
+  int32_t nr_gens = gens->ngens - 1;
+  const int32_t nva = gens->nvars;
+  int64_t len = 0;
+  for (int32_t i = 0; i < nr_gens; ++i) {
+    len += gens->lens[i];
+  }
+  int32_t *exps = malloc((unsigned long)len * nr_vars * sizeof(int32_t));
+  for (int64_t j = 0; j < len; ++j) {
+    if (gens->exps[j * nva + nr_vars] != 0) {
+      free(exps);
+      return 0;
+    }
+    memcpy(exps + j * nr_vars, gens->exps + j * nva,
+           (unsigned long)nr_vars * sizeof(int32_t));
+  }
+
+  uint32_t field_char = 0;
+  int32_t mon_order = 0, elim_block_len = 0, nr_nf = 0, reduce_gb = 1;
+  int32_t truncate_lifting = 0, info_level = 0;
+  int *invalid_gens = NULL;
+  md_t *st = allocate_meta_data();
+  sd->st = st;
+  if (validate_input_data(&invalid_gens, gens->mpz_cfs, gens->lens,
+                          &field_char, &mon_order, &elim_block_len, &nr_vars,
+                          &nr_gens, &nr_nf, &ht_size, &nr_threads,
+                          &max_nr_pairs, &reset_ht, &la_option,
+                          &use_signatures, &reduce_gb, &truncate_lifting,
+                          &info_level) == -1
+      || check_and_set_meta_data_trace(st, gens->lens, exps, gens->mpz_cfs,
+                                       invalid_gens, field_char, mon_order,
+                                       elim_block_len, nr_vars, nr_gens,
+                                       nr_nf, ht_size, nr_threads,
+                                       max_nr_pairs, reset_ht, la_option,
+                                       use_signatures, reduce_gb,
+                                       (uint32_t)1 << 30, nr_threads,
+                                       pbm_file, 0, info_level)) {
+    free(invalid_gens);
+    free(exps);
+    free(st);
+    sd->st = NULL;
+    return 0;
+  }
+  sd->bs_qq = initialize_basis(st, NULL);
+  import_input_data(sd->bs_qq, st, 0, st->ngens_input, gens->lens, exps,
+                    gens->mpz_cfs, invalid_gens);
+  free(invalid_gens);
+  free(exps);
+  calculate_divmask(sd->bs_qq->ht);
+  sort_r(sd->bs_qq->hm, (unsigned long)sd->bs_qq->ld, sizeof(hm_t *),
+         initial_input_cmp, sd->bs_qq->ht);
+  remove_content_of_initial_basis(sd->bs_qq);
+
+  /* learning */
+  st->print_gb = 0;
+  st->f4_qq_round = 1;
+  int32_t error = 0;
+  bs_t *bs = core_gba(sd->bs_qq, st, &error, prime);
+  if (bs == NULL || error > 0) {
+    free(bs);
+    sep_dense_clear(sd);
+    return 0;
+  }
+  int64_t nterms = 0;
+  for (len_t i = 0; i < bs->lml; ++i) {
+    nterms += bs->hm[bs->lmps[i]][LENGTH];
+  }
+  sd->num_gb = bs->lml;
+  sd->lm = get_lm_from_bs(bs, bs->ht);
+  sd->dquot = 0;
+  if (has_dimension_zero(bs->lml, nr_vars, sd->lm)) {
+    sd->lmb = monomial_basis(bs->lml, nr_vars, sd->lm, &(sd->dquot));
+  }
+  sd->degelim = param->degelimpol;
+  sd->degsqfr = param->degsqfrelimpol;
+  int ok = sd->lmb != NULL && sd->degsqfr == param->elim->length - 1;
+  if (ok) {
+    sep_mulmat_t mm;
+    ok = sep_mulmat_init(&mm, bs, sd->lmb, sd->dquot, prime);
+    if (ok) {
+      param_t *par = allocate_fglm_param(prime, gens->nvars);
+      ok = sep_dense_param(par, &mm, sd->form, sd->degelim, sd->degsqfr) == 0
+        && nmod_poly_equal(par->elim, param->elim);
+      for (int32_t v = 0; ok && v < nr_vars; ++v) {
+        ok = nmod_poly_equal(par->coords[v], param->coords[v]);
+      }
+      free_fglm_param(par);
+      sep_mulmat_clear(&mm);
+    }
+  }
+  free_basis_without_hash_table(&bs);
+  if (!ok) {
+    sep_dense_clear(sd);
+    return 0;
+  }
+  return nterms;
+}
+
+static void sep_dense_modular_steps(sep_dense_t *sd, param_t **nmod_params,
+                                    const primes_t *lp, uint32_t *bad_primes,
+                                    const len_t nprimes, double *stf4) {
+  md_t *st = sd->st;
+  st->info_level = 0;
+  st->f4_qq_round = 2;
+  const int nthrds = st->nthrds;
+  const int32_t nv = st->nvars;
+  st->nthrds = 1;
+  double rt = realtime();
+  len_t i;
+#pragma omp parallel for num_threads(nthrds) private(i) schedule(static)
+  for (i = 0; i < nprimes; ++i) {
+    bad_primes[i] = 1;
+    int32_t error = 0;
+    bs_t *bs = core_gba(sd->bs_qq, st, &error, lp->p[i]);
+    *stf4 = realtime() - rt;
+    if (bs == NULL || error > 0) {
+      free(bs);
+      continue;
+    }
+    if (bs->lml == sd->num_gb) {
+      int32_t *lm = malloc((unsigned long)sd->num_gb * nv * sizeof(int32_t));
+      get_lm_from_bs_trace(bs, bs->ht, lm);
+      if (memcmp(lm, sd->lm, (unsigned long)sd->num_gb * nv * sizeof(int32_t)) == 0) {
+        sep_mulmat_t mm;
+        if (sep_mulmat_init(&mm, bs, sd->lmb, sd->dquot, lp->p[i])) {
+          bad_primes[i] = sep_dense_param(nmod_params[i], &mm, sd->form,
+                                          sd->degelim, sd->degsqfr);
+          sep_mulmat_clear(&mm);
+        }
+      }
+      free(lm);
+    }
+    free_basis_and_only_local_hash_table_data(&bs);
+  }
+  st->nthrds = nthrds;
+}
 
 /* returns 1 if the parametrization can be split, otherwise returns 0*/
 int is_splittable(param_t **nmod_params, const int fc){
@@ -2574,6 +2942,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         lineqs_ptr, bsquvars, squvars, lmb_ori, field_char);
     return 3;
   }
+  if (gens->sep_status == SEP_APPLIED && gens->sep_nsols > 0
+      && *minpolydeg_ptr == -1) {
+    /* degree of the squarefree part of the minimal polynomial of a random
+       linear form, from the search for a separating element */
+    *minpolydeg_ptr = gens->sep_nsols;
+  }
   if (*dim_ptr == 0 && success && *dquot_ptr > 0 && print_gb == 0) {
     if (nmod_params[0]->degsqfrelimpol != *minpolydeg_ptr
         && nmod_params[0]->degelimpol != *dquot_ptr) {
@@ -2660,6 +3034,58 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
   }
 
+  /* separating linear form with an extra variable: if the F4 matrices
+     with the extra variable have more than SEP_DENSE_RATIO times more terms
+     than for the original system (in the run which found the linear form),
+     the multi-modular steps use the original system. These counts do not
+     depend on the machine, so neither does the choice; the output does not
+     depend on it either. */
+  sep_dense_t sd;
+  sd.bs_qq = NULL;
+  sd.st = NULL;
+  sd.lm = NULL;
+  sd.lmb = NULL;
+  int dense = 0;
+  sp_matfglm_t *dmat = NULL;
+  if (gens->sep_status == SEP_APPLIED && gens->sep_form != NULL
+      && gens->linear_form_base_coef > 0 && lift_matrix == 0) {
+    const int force = gens->sep_dense == 2;
+    const int larger = gens->sep_matnterms
+      > SEP_DENSE_RATIO * gens->sep_matnterms_ori;
+    if (info_level) {
+      fprintf(VERBSTREAM, "\nF4 matrices with the linear form: %ld terms; "
+              "without: %ld terms\n", (long)gens->sep_matnterms,
+              (long)gens->sep_matnterms_ori);
+    }
+    if (gens->sep_dense != 1 && (force || larger)) {
+      double rt = realtime();
+      /* learns the tracer of the original system and checks the
+         parametrization from the multiplication matrix at primeinit */
+      dense = sep_dense_init(&sd, gens, nmod_params[0], primeinit,
+                             ht_size, nr_threads, max_nr_pairs,
+                             reset_ht, la_option, use_signatures,
+                             pbm_file) > 0;
+      if (info_level) {
+        if (dense) {
+          fprintf(VERBSTREAM, "Multi-modular steps on the original system, "
+                  "parametrizations from the multiplication matrix (%.2f sec)\n",
+                  realtime() - rt);
+        } else {
+          fprintf(VERBSTREAM, "Parametrizations from the multiplication matrix "
+                  "not applicable (%.2f sec)\n", realtime() - rt);
+        }
+      }
+      if (!dense) {
+        sep_dense_clear(&sd);
+      } else {
+        /* no witness coefficients of the multiplication matrix */
+        dmat = calloc(1, sizeof(sp_matfglm_t));
+        dmat->ncols = *dquot_ptr;
+        dmat->nrows = 0;
+      }
+    }
+  }
+
   *to_split_ptr = is_splittable(nmod_params, lp->p[0]);
   /* duplicate data for multi-threaded multi-mod computation */
   duplicate_data_mthread_trace(st->nthrds, bs_qq, st, num_gb,
@@ -2693,8 +3119,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   }
   trace_det_initset(trace_det, nmod_params[0]->elim->coeffs[tridx],
                     nmod_params[0]->elim->coeffs[detidx], tridx, detidx,
-                    bmatrix, lift_matrix, nlins, nv, lineqs_ptr, 4*st->nthrds,
+                    dense ? &dmat : bmatrix, lift_matrix, nlins, nv,
+                    lineqs_ptr, 4*st->nthrds,
                     lp->p[0]);
+  if (dense) {
+    /* no multiplication matrix to lift */
+    trace_det->mat_lifted = 2;
+  }
   /********************************************************************/
 
   mpz_t modulus;
@@ -2763,6 +3194,13 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   /* measures time spent in rational reconstruction */
   double strat = 0;
 
+  /* splitting of the solutions along equalities of coordinates, see
+     splitting.c: the components are then lifted separately */
+  split_data_t sp;
+  split_params_clear(&(gens->split_params));
+  int split = split_start(&sp, nmod_params[0], gens->split_mode, info_level);
+  int nmismatch = 0;
+
   while (rerun == 1 || mcheck == 1) {
     /* controls call to rational reconstruction */
     doit = ((prdone % nbdoit) == 0);
@@ -2810,6 +3248,10 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     double ca0 = realtime();
     double stf4 = 0;
+    if (dense) {
+      sep_dense_modular_steps(&sd, nmod_params, lp, bad_primes, st->nprimes,
+                              &stf4);
+    } else
     secondary_modular_steps(bmatrix,
 			    bdiv_xn,
 			    blen_gb_xn,
@@ -2877,6 +3319,49 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         normalize_nmod_param(nmod_params[i]);
       }
     }
+    if (split) {
+      double crr = realtime();
+      for (len_t i = 0; i < st->nthrds; i++) {
+        if (bad_primes[i] == 0 && split_add_image(&sp, nmod_params[i])) {
+          nprimes++;
+          continue;
+        }
+        if (bad_primes[i] == 0) {
+          nmismatch++;
+        }
+        nbadprimes++;
+        if (info_level) {
+          fprintf(VERBSTREAM, "<bp: %d>", lp->p[i]);
+        }
+      }
+      split_reconstruct(&sp);
+      if (sp.ndone == sp.ngroups) {
+        /* the parametrization of the whole solution set is only built
+         * when it is returned */
+        if (gens->split_global) {
+          split_recombine(*mpz_paramp, &sp);
+        }
+        split_set_params(&(gens->split_params), &sp);
+        rerun = 0;
+        mcheck = 0;
+      }
+      strat += realtime() - crr;
+      if (info_level && (LOG2(nprimes) > clog || sp.ndone == sp.ngroups)) {
+        fprintf(VERBSTREAM, "{%d: %ld/%ld}", nprimes, sp.ndone, sp.ngroups);
+        fflush(VERBSTREAM);
+        clog = LOG2(nprimes);
+      }
+      if (rerun && nmismatch >= SPLIT_MAX_MISMATCH) {
+        /* the components differ from one prime to the other */
+        if (info_level) {
+          fprintf(VERBSTREAM, "\ncomponents differ modulo %d primes, "
+                  "usual lifting\n", nmismatch);
+        }
+        split_data_clear(&sp);
+        split = 0;
+      }
+      continue;
+    }
     /* scrr measures time spent in ratrecon for modular images */
     double crr = 0, scrr = 0;
     /* CRT + rational reconstruction; reconstruction is attempted only
@@ -2906,7 +3391,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           br = rational_reconstruction_param(
               *mpz_paramp, images, vec_wit, nmod_params[i],
               bnlins[i], blinvars[i], lineqs_ptr[i],
-              trace_det, bmatrix[i], numer,
+              trace_det, dense ? dmat : bmatrix[i], numer,
               denom, check_lift, modulus, prod_crt, lp->p[i], rnum, rden, recdata,
               guessed_num, guessed_den, &maxrec, &matrec, &oldmatrec_checked,
               &matrec_checked, is_lifted,
@@ -2938,6 +3423,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
           free_msolve_trace_qq_secondary_data(trace_det, modulus,
                   prod_crt, result, test, rnum, rden, numer, denom, check_lift,
                   guessed_num, guessed_den, is_lifted, recdata);
+          sep_dense_clear(&sd);
+          free(dmat);
+          if (split) {
+            split_data_clear(&sp);
+          }
           return -4;
         }
       }
@@ -3013,6 +3503,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   free_msolve_trace_qq_secondary_data(trace_det, modulus,
                   prod_crt, result, test, rnum, rden, numer, denom, check_lift,
                   guessed_num, guessed_den, is_lifted, recdata);
+  sep_dense_clear(&sd);
+  free(dmat);
+  if (split) {
+    split_data_clear(&sp);
+  }
   return 0;
 }
 
@@ -3956,6 +4451,85 @@ void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
   (*lreal_pts_ptr) = lreal_pts;
 }
 
+/* roots of eliminating polynomials, compared by their left ends */
+static const interval *split_roots_cmp_tab;
+
+static int split_roots_cmp(const void *a, const void *b) {
+  const interval *ra = split_roots_cmp_tab + *(const long *)a;
+  const interval *rb = split_roots_cmp_tab + *(const long *)b;
+  mpz_t na, nb;
+  mpz_init(na);
+  mpz_init(nb);
+  const long k = MAX(ra->k, rb->k);
+  mpz_mul_2exp(na, ra->numer, k - ra->k);
+  mpz_mul_2exp(nb, rb->numer, k - rb->k);
+  const int c = mpz_cmp(na, nb);
+  mpz_clear(na);
+  mpz_clear(nb);
+  return c;
+}
+
+/* isolates the real roots of the components of the solution set (see
+ * splitting.c) one by one; the points are sorted by the values of the
+ * separating element */
+static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *params,
+                                              long *nb_real_roots_ptr,
+                                              interval **real_roots_ptr,
+                                              int32_t precision,
+                                              int32_t nr_threads, int to_split,
+                                              int32_t info_level) {
+  double rt = realtime();
+  const long nc = params->nb;
+  long *lnb = malloc(nc * sizeof(long));
+  interval **lroots = malloc(nc * sizeof(interval *));
+  real_point_t **lpts = malloc(nc * sizeof(real_point_t *));
+  long nb = 0;
+  for (long i = 0; i < nc; i++) {
+    lpts[i] = isolate_real_roots_param(params->params[i], lnb + i, lroots + i,
+                                       precision, nr_threads, to_split, 0);
+    nb += lnb[i];
+  }
+  interval *roots = malloc(MAX(nb, 1) * sizeof(interval));
+  real_point_t *pts = NULL;
+  if (nb > 0) {
+    interval *tmp_roots = malloc(nb * sizeof(interval));
+    real_point_t *tmp_pts = malloc(nb * sizeof(real_point_t));
+    long *idx = malloc(nb * sizeof(long));
+    long n = 0;
+    for (long i = 0; i < nc; i++) {
+      for (long j = 0; j < lnb[i]; j++, n++) {
+        tmp_roots[n] = lroots[i][j];
+        memcpy(tmp_pts[n], lpts[i][j], sizeof(real_point_t));
+        idx[n] = n;
+      }
+    }
+    split_roots_cmp_tab = tmp_roots;
+    qsort(idx, nb, sizeof(long), split_roots_cmp);
+    pts = malloc(nb * sizeof(real_point_t));
+    for (long i = 0; i < nb; i++) {
+      roots[i] = tmp_roots[idx[i]];
+      memcpy(pts[i], tmp_pts[idx[i]], sizeof(real_point_t));
+    }
+    free(idx);
+    free(tmp_roots);
+    free(tmp_pts);
+  }
+  for (long i = 0; i < nc; i++) {
+    free(lroots[i]);
+    free(lpts[i]);
+  }
+  free(lnb);
+  free(lroots);
+  free(lpts);
+  if (info_level) {
+    fprintf(VERBSTREAM, "Real roots of the %ld components: %ld real roots "
+            "(%.2f sec)\n", nc, nb, realtime() - rt);
+  }
+  *nb_real_roots_ptr = nb;
+  *real_roots_ptr = roots;
+  return pts;
+}
+
 int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                    long *dquot_ptr, int *minpolydeg_ptr, int* is0dim_ptr,
                    long *nb_real_roots_ptr,
@@ -4047,9 +4621,15 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
 
   if (b == 0 && *dim_ptr == 0 && *dquot_ptr > 0 && gens->field_char == 0) {
 
-    pts =
-        isolate_real_roots_param(*mpz_paramp, nb_real_roots_ptr, real_roots_ptr,
-                                 precision, nr_threads, to_split, info_level);
+    if (gens->split_params.nb > 0) {
+      pts = split_isolate_real_roots(&(gens->split_params), nb_real_roots_ptr,
+                                     real_roots_ptr, precision, nr_threads,
+                                     to_split, info_level);
+    } else {
+      pts = isolate_real_roots_param(*mpz_paramp, nb_real_roots_ptr,
+                                     real_roots_ptr, precision, nr_threads,
+                                     to_split, info_level);
+    }
     int32_t nb = *nb_real_roots_ptr;
 
     if (nb) {
@@ -4058,6 +4638,8 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
       if (gens->linear_form_base_coef > 0) {
         for (long i = 0; i < nb; ++i) {
           pts[i]->nvars--;
+          mpz_clear(pts[i]->coords[pts[i]->nvars]->val_up);
+          mpz_clear(pts[i]->coords[pts[i]->nvars]->val_do);
         }
       }
       /* If we changed the variable order for genericity reasons we have
@@ -5506,6 +6088,9 @@ restart:
                 free(param);
                 param = NULL;
                 if (genericity_handling > 0) {
+                    if (apply_separating_element(gens, info_level)) {
+                        goto restart;
+                    }
                     if (change_variable_order_in_input_system(gens, info_level)) {
                         goto restart;
                     }

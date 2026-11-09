@@ -54,6 +54,39 @@ typedef int64_t bits_t;
 
 
 
+/* states of the search for a separating element, see data_gens_ff_t */
+#define SEP_NONE 0
+#define SEP_FAILED 1
+#define SEP_VAR 2
+#define SEP_FORM 3
+#define SEP_APPLIED 4
+
+typedef struct{
+  deg_t length;
+  deg_t alloc;
+  mpz_t *coeffs;
+} mpz_upoly_struct;
+
+typedef mpz_upoly_struct mpz_upoly_t[1];
+
+typedef struct{
+  nvars_t nvars;
+  deg_t nsols;
+  len_t dquot;
+  deg_t dim;
+  mpz_upoly_t elim;
+  mpz_upoly_t denom;
+  mpz_upoly_t *coords;
+  mpz_t *cfs;
+} mpz_param_struct;
+typedef mpz_param_struct mpz_param_t[1];
+
+typedef struct{
+  len_t nb;
+  mpz_param_t *params;
+} mpz_param_array_struct;
+typedef mpz_param_array_struct mpz_param_array_t[1];
+
 typedef struct{
   nvars_t nvars;
   nvars_t elim;
@@ -73,6 +106,35 @@ typedef struct{
   /* set to 1 if a linear form is chosen randomly */
   int32_t rand_linear;
   int32_t *random_linear_form;
+  /* separating element found from the multiplication matrices modulo
+   * a prime, see separating.c: SEP_NONE (not searched yet), SEP_FAILED,
+   * SEP_VAR (variable sep_var), SEP_FORM (linear form with coefficients
+   * sep_form) or SEP_APPLIED */
+  int32_t sep_status;
+  int32_t sep_var;
+  int32_t *sep_form;
+  /* nonzero terms of all F4 matrices modulo the first prime, with the
+   * separating linear form and for the original system */
+  int64_t sep_matnterms;
+  int64_t sep_matnterms_ori;
+  /* number of distinct solutions modulo the prime of the search: degree of
+   * the squarefree part of the minimal polynomial of a random linear form */
+  int32_t sep_nsols;
+  /* parametrizations of the components of the solution set lifted
+   * separately (see splitting.c), and whether the parametrization of the
+   * whole solution set is built from them */
+  mpz_param_array_struct split_params;
+  int32_t split_global;
+  /* search for a separating element on the Groebner basis when the last
+   * variable is not separating (1, default) or not (0); route of the
+   * multi-modular steps with a separating linear form (see
+   * SEP_DENSE_RATIO in msolve.c): 0 chosen, 1 never through the
+   * multiplication matrix of the original system, 2 always; splitting of
+   * the solutions along equalities of coordinates (see splitting.c): 0
+   * chosen, 1 never, 2 whenever there are several components */
+  int32_t sep_search;
+  int32_t sep_dense;
+  int32_t split_mode;
   char **vnames;
   int32_t *lens;
   int32_t *exps;
@@ -192,31 +254,6 @@ typedef struct{
 typedef rrec_data_struct_t rrec_data_t[1];
 
 
-typedef struct{
-  deg_t length;
-  deg_t alloc;
-  mpz_t *coeffs;
-} mpz_upoly_struct;
-
-typedef mpz_upoly_struct mpz_upoly_t[1];
-
-typedef struct{
-  nvars_t nvars;
-  deg_t nsols;
-  len_t dquot;
-  deg_t dim;
-  mpz_upoly_t elim;
-  mpz_upoly_t denom;
-  mpz_upoly_t *coords;
-  mpz_t *cfs;
-} mpz_param_struct;
-typedef mpz_param_struct mpz_param_t[1];
-
-typedef struct{
-  len_t nb;
-  mpz_param_t *params;
-} mpz_param_array_struct;
-typedef mpz_param_array_struct mpz_param_array_t[1];
 
 
 typedef struct{

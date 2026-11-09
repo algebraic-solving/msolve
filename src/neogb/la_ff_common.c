@@ -1313,7 +1313,7 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
 
     /* construct the trace */
     if (st->trace_level == LEARN_TRACER && st->in_final_reduction_step == 0) {
-        construct_trace(st->tr, mat);
+        construct_trace(st->tr, mat, tbr);
     }
 
     /* we do not need the old pivots anymore */
@@ -1478,7 +1478,7 @@ static void LA_FF(exact_trace_sparse_reduced_echelon_form)(
     }
 
     /* construct the trace */
-    construct_trace(trace, mat);
+    construct_trace(trace, mat, bs);
 
     /* we do not need the old pivots anymore */
     for (i = 0; i < ncl; ++i) {
@@ -2476,7 +2476,7 @@ static void LA_FF(exact_sparse_linear_algebra)(
                     mat->tr[i] = NULL;
                 }
             }
-            construct_trace(st->tr, mat);
+            construct_trace(st->tr, mat, tbr);
             free(mat->rrb);
             mat->rrb = NULL;
             for (len_t i = 0; i < nrl; ++i) {

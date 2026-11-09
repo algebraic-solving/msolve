@@ -59,6 +59,7 @@
 #include "evaluate.c"
 #include "print_usolve.c"
 #include "refine.c"
+#include "refine_arb.c"
 
 static long bisection_rec(mpz_t *, unsigned long *,
                           mpz_t, long,
@@ -1318,7 +1319,6 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   }
 
   double refine_time = realtime();
-  double step = (e_time+1) / (deg) * 1000 * LOG2(flags->prec_isole) * 2;
 
   if(nbroots > 0 && flags->prec_isole >= 0){
     if(flags->classical_algo > 0){
@@ -1326,8 +1326,7 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
                              flags->prec_isole);
     }
     else{
-      refine_QIR_roots_adaptative(upoly, &deg, roots, *nb_neg_roots, *nb_pos_roots,
-                                  flags->prec_isole, flags->verbose, step);
+      usolve_refine_roots_arb(upoly, deg, roots, nbroots, flags->prec_isole);
     }
   }
   refine_time = realtime() - refine_time;

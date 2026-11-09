@@ -18,6 +18,10 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include <flint/fmpz_poly.h>
+
+void usolve_refine_root_arb(interval *, const fmpz_poly_t, const fmpz_poly_t,
+                            const slong, slong *);
 
 interval *real_roots(mpz_t *, unsigned long,
                      unsigned long int *,

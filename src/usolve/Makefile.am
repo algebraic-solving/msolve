@@ -20,6 +20,7 @@ EXTRA_DIST = 		libusolve.h \
 								evaluate.c \
 								print_usolve.c \
 								refine.c \
+								refine_arb.c \
 								taylor_shift.c \
 								tests.c \
 								univmultiply.c \

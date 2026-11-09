@@ -212,6 +212,8 @@ static void merge_root(interval *roots,
 }
 
 
+#include "bisection_balanced.c"
+
 static inline void allocate_shift_pwx(mpz_t **shifted,
                                       const unsigned long int npwr,
                                       const unsigned long int pwx){
@@ -865,6 +867,12 @@ static long bisection_rec(mpz_t *upol, unsigned long *deg,
             mpz_poly_max_bsize_coeffs(upol, *deg));
   }
 
+  if(flags->bal != NULL
+     && usolve_bal_subtree(flags->bal, upol, *deg, c, k, nbv)){
+    mpz_clear(tmp);
+    return ((usolve_bal_t *)flags->bal)->stop ? -1 : k;
+  }
+
   is_zero_root(upol, c, k, deg, roots, nbr,
                flags);
   unsigned int olddeg = *deg;
@@ -1005,6 +1013,7 @@ static void initialize_flags(usolve_flags *flags){
   flags->node_looked = 0;
   flags->half_done = 0;
   flags->skipped = 0;
+  flags->bal = NULL;
 
   flags->cur_deg = 0;
   flags->pwx = 0;
@@ -1227,10 +1236,19 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     initialize_heap_flags(flags, deg);
 
     unsigned olddeg = deg;
+    usolve_bal_t bal;
+    if(flags->classical_algo == 0){
+      usolve_bal_init(&bal, upol, deg, pos_roots, nb_pos_roots, flags);
+      flags->bal = &bal;
+    }
     long nbv;
     bisection_rec(upol, &deg, e, 0,
                   pos_roots, nb_pos_roots,
                   flags, tmp_half, &nbv);
+    if(flags->classical_algo == 0){
+      usolve_bal_clear(&bal);
+      flags->bal = NULL;
+    }
     nb_positive_roots = *nb_pos_roots;
 
     free_heap_flags(flags, olddeg);
@@ -1284,10 +1302,19 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
 
     initialize_heap_flags(flags, deg);
     unsigned long int olddeg = deg;
+    usolve_bal_t bal;
+    if(flags->classical_algo == 0){
+      usolve_bal_init(&bal, upol, deg, neg_roots, nb_neg_roots, flags);
+      flags->bal = &bal;
+    }
     long nbv;
     bisection_rec(upol, &deg, e, 0,
                   neg_roots, nb_neg_roots,
                   flags, tmp_half, &nbv);
+    if(flags->classical_algo == 0){
+      usolve_bal_clear(&bal);
+      flags->bal = NULL;
+    }
     nb_negative_roots = (*nb_neg_roots);
     free_heap_flags(flags, olddeg);
     unallocate_shift_pwx(flags->shift_pwx,

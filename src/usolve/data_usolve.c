@@ -34,6 +34,7 @@ typedef struct{
   unsigned long int node_looked;
   unsigned long int half_done;
   unsigned long int skipped; /* right halves without roots, not computed */
+  void *bal; /* usolve_bal_t of the bisection in fixed point, or NULL */
 
   unsigned long int cur_deg;
   unsigned long int pwx;

@@ -14,6 +14,7 @@ EXTRA_DIST = 		libusolve.h \
 								refine.h \
 								taylor_shift.h \
 								univmultiply.h \
+								bisection_balanced.c \
 								data_usolve.c \
 								debug.c \
 								descartes.c \

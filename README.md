@@ -79,7 +79,8 @@ is doing. Try this.
 
 `msolve` computes Groebner bases when the base field is either the field of rational numbers 
 or a prime field
-(characteristic should be less than 2^31).
+(characteristic should be less than 2^52; for characteristics of at least 2^31
+only Groebner bases can be computed).
 
 
 The following command

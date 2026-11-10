@@ -708,7 +708,7 @@ void set_ff_bits(md_t *st, uint64_t fc){
             if (fc < (uint64_t)(1) << 16) {
                 st->ff_bits = 16;
             } else {
-                if (fc < (uint64_t)(1) << 32) {
+                if (fc < (uint64_t)(1) << 31) {
                     st->ff_bits = 32;
                 } else {
                     st->ff_bits = 64;
@@ -741,7 +741,7 @@ int validate_input_data_64(
         int32_t *info_levelp
         )
 {
-    /* biggest prime msolve can handle: primes < 2^32 use 32 bit
+    /* biggest prime msolve can handle: primes < 2^31 use 32 bit
      * coefficients, larger primes 64 bit coefficients */
     if (*field_charp >= ((uint64_t)1 << 52)) {
         fprintf(ERRSTREAM, "Field characteristic not valid.\n");
@@ -788,8 +788,8 @@ int validate_input_data_64(
         fprintf(ERRSTREAM, "Usage of signature not valid, disabled.\n");
         *use_signaturesp = 0;
     }
-    if (*use_signaturesp != 0 && *field_charp >= ((uint64_t)1 << 32)) {
-        fprintf(ERRSTREAM, "Signatures need primes < 2^32, disabled.\n");
+    if (*use_signaturesp != 0 && *field_charp >= ((uint64_t)1 << 31)) {
+        fprintf(ERRSTREAM, "Signatures need primes < 2^31, disabled.\n");
         *use_signaturesp = 0;
     }
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
@@ -820,7 +820,7 @@ int validate_input_data_64(
             }
             len += 2*lens[i];
         }
-    } else if (*field_charp >= ((uint64_t)1 << 32)) {
+    } else if (*field_charp >= ((uint64_t)1 << 31)) {
         int64_t *cf =   (int64_t *)cfs;
         for (int i = 0; i < ngens; ++i) {
             for (int j = 0; j < lens[i]; ++j) {
@@ -885,6 +885,12 @@ int validate_input_data(
         int32_t *info_levelp
         )
 {
+    /* coefficients are given as int32_t, primes >= 2^31 need
+     * validate_input_data_64() and int64_t coefficients */
+    if (*field_charp > INT32_MAX) {
+        fprintf(ERRSTREAM, "Field characteristic not valid.\n");
+        return 0;
+    }
     uint64_t fc = *field_charp;
     const int ret = validate_input_data_64(invalid_gensp, cfs, lens, &fc,
             mon_orderp, elim_block_lenp, nr_varsp, nr_gensp, nr_nfp,
@@ -1212,7 +1218,7 @@ void normalize_initial_basis(
     if (fc == 0) {
         return;
     }
-    if (fc >= ((uint64_t)1u << 32)) {
+    if (fc >= ((uint64_t)1u << 31)) {
         normalize_initial_basis_ff_64(bs, fc);
         return;
     }

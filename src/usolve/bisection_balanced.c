@@ -89,7 +89,12 @@ typedef struct {
 
 typedef struct {
   slong n;
-  fmpz *f;              /* F, exact */
+  /* F(y) = 2^d g(s 2^b y), with g = f, or f / x when the root 0 of the
+   * input f was divided out (o = 1), and s = -1 for the negative roots;
+   * f is read in place (fl coefficients, aliases of the input) */
+  fmpz *f;
+  slong fl, o, b, d;
+  int s;
   slong w;              /* working precision */
   double *lbin;         /* log2 binom(n + 1, i + 1) */
   usolve_bal_power_t *powers;
@@ -355,7 +360,17 @@ static void usolve_bal_exact(usolve_bal_t *B, usolve_bal_node_t *a,
                              const fmpz_t c, const slong k){
   const slong n = B->n;
   for(slong i = 0; i <= n; i++){
-    fmpz_mul_2exp(a->v + i, B->f + i, (n - i) * k);
+    /* the coefficient of F times 2^((n - i) k), an integer */
+    const slong x = B->b * i + B->d + (n - i) * k;
+    if(x >= 0){
+      fmpz_mul_2exp(a->v + i, B->f + B->o + i, x);
+    }
+    else{
+      fmpz_fdiv_q_2exp(a->v + i, B->f + B->o + i, -x);
+    }
+    if(B->s < 0 && (i & 1)){
+      fmpz_neg(a->v + i, a->v + i);
+    }
     fmpz_zero(a->e + i);
   }
   _fmpz_poly_taylor_shift(a->v, c, n + 1);
@@ -547,6 +562,35 @@ static void usolve_bal_root(usolve_bal_t *B, const fmpz_t c, const slong k,
   }
 }
 
+/* sign of F at y = x / 2^K >= 0, from the signs of f (see usolve_bal_t) */
+static int usolve_bal_sign_F(usolve_bal_t *B, const fmpz_poly_t f,
+                             const fmpz_t x, const slong K){
+  if(fmpz_is_zero(x)){
+    return fmpz_sgn(B->f + B->o);
+  }
+  /* t = s 2^b y */
+  fmpz_t t;
+  fmpz_init(t);
+  slong e = K - B->b;
+  if(e >= 0){
+    fmpz_set(t, x);
+  }
+  else{
+    fmpz_mul_2exp(t, x, -e);
+    e = 0;
+  }
+  if(B->s < 0){
+    fmpz_neg(t, t);
+  }
+  int sg = usolve_sign_2exp_arb(f, t, e, &B->sign_extra);
+  /* the sign of t when g = f / x */
+  if(B->o && B->s < 0){
+    sg = -sg;
+  }
+  fmpz_clear(t);
+  return sg;
+}
+
 /* Signs of F at the points (c 2^q + j) / 2^(k + q), 0 <= j <= 2^q, of grids
  * with q from about log2(2 r) to log2(16 r), r = vmax, each point being
  * evaluated once (certified signs, see refine_arb.c). When r cells of a
@@ -561,11 +605,11 @@ static int usolve_bal_grid(usolve_bal_t *B, const fmpz_t c, const slong k,
   }
   q1 = q0 + 3;
   const slong m = 1L << q1;
-  /* F as a polynomial, on the coefficients of B */
+  /* f as a polynomial, on the coefficients of B */
   fmpz_poly_struct f;
   f.coeffs = B->f;
-  f.alloc = B->n + 1;
-  f.length = B->n + 1;
+  f.alloc = B->fl;
+  f.length = B->fl;
   int *sg = malloc((m + 1) * sizeof(int));
   for(slong j = 0; j <= m; j++){
     sg[j] = 2;
@@ -582,7 +626,7 @@ static int usolve_bal_grid(usolve_bal_t *B, const fmpz_t c, const slong k,
       if(sg[j] == 2){
         fmpz_mul_2exp(x, c, q1);
         fmpz_add_ui(x, x, j);
-        sg[j] = usolve_sign_2exp_arb(&f, x, k + q1, &B->sign_extra);
+        sg[j] = usolve_bal_sign_F(B, &f, x, k + q1);
         B->grid_signs++;
       }
       if(sg[j] == 0){
@@ -790,15 +834,23 @@ clear:
   return nb;
 }
 
-static void usolve_bal_init(usolve_bal_t *B, mpz_t *upol,
-                            const unsigned long int deg, interval *roots,
-                            unsigned long int *nbr, usolve_flags *flags){
-  const slong n = deg;
+static void usolve_bal_init(usolve_bal_t *B, mpz_t *upol0,
+                            const unsigned long int deg0, const int o,
+                            const int s, const long b, const long z,
+                            interval *roots, unsigned long int *nbr,
+                            usolve_flags *flags){
+  const slong n = deg0 - o;
   B->n = n;
-  B->f = _fmpz_vec_init(n + 1);
-  for(slong i = 0; i <= n; i++){
-    fmpz_set_mpz(B->f + i, upol[i]);
+  B->fl = deg0 + 1;
+  B->f = malloc(B->fl * sizeof(fmpz));
+  for(slong i = 0; i < B->fl; i++){
+    fmpz_init_set_readonly(B->f + i, upol0[i]);
   }
+  B->o = o;
+  B->s = s;
+  /* see USOLVEmpz_poly_rescale_normalize_2exp_th */
+  B->b = b;
+  B->d = ((b > 0) ? 0 : -b * n) - z;
   B->w = (3 * (n + 1)) / 2 + 64;
   B->wmax = 64 * (n + 1);
   B->nodes = 0;
@@ -837,7 +889,10 @@ static void usolve_bal_clear(usolve_bal_t *B){
   }
   free(B->powers);
   free(B->lbin);
-  _fmpz_vec_clear(B->f, B->n + 1);
+  for(slong i = 0; i < B->fl; i++){
+    fmpz_clear_readonly(B->f + i);
+  }
+  free(B->f);
 }
 
 /* called by bisection_rec on the node (c, k), whose exact polynomial is

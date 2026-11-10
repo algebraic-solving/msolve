@@ -293,23 +293,26 @@ done:
 }
 
 /* Refines all the non-exact isolating intervals in roots, of the real
- * roots of upol (of degree deg), to rt->k >= prec, with nthreads threads
- * sharing f and f' (each root gets the same interval whatever the
- * precisions learned on the others, so the output does not depend on the
- * number of threads); the integers cached by FLINT in each thread are then
- * freed */
+ * roots of upol (of degree deg, read in place), to rt->k >= prec, with
+ * nthreads threads sharing f and f' (each root gets the same interval
+ * whatever the precisions learned on the others, so the output does not
+ * depend on the number of threads); the integers cached by FLINT in each
+ * thread are then freed */
 static void usolve_refine_roots_arb(mpz_t *upol, const unsigned long int deg,
                                     interval *roots,
                                     const unsigned long int nbroots,
                                     const slong prec, const int nthreads){
-  fmpz_poly_t f, df;
-  fmpz_poly_init2(f, deg + 1);
-  fmpz_poly_init(df);
+  /* f on aliases of the coefficients of upol */
+  fmpz_poly_struct f[1];
+  fmpz_poly_t df;
+  f->coeffs = malloc((deg + 1) * sizeof(fmpz));
   for (unsigned long int i = 0; i <= deg; i++) {
-    fmpz_set_mpz(f->coeffs + i, upol[i]);
+    fmpz_init_set_readonly(f->coeffs + i, upol[i]);
   }
-  _fmpz_poly_set_length(f, deg + 1);
+  f->alloc = deg + 1;
+  f->length = deg + 1;
   _fmpz_poly_normalise(f);
+  fmpz_poly_init(df);
   fmpz_poly_derivative(df, f);
 #pragma omp parallel num_threads(nthreads)
   {
@@ -320,6 +323,9 @@ static void usolve_refine_roots_arb(mpz_t *upol, const unsigned long int deg,
     }
     _fmpz_cleanup_mpz_content();
   }
-  fmpz_poly_clear(f);
+  for (unsigned long int i = 0; i <= deg; i++) {
+    fmpz_clear_readonly(f->coeffs + i);
+  }
+  free(f->coeffs);
   fmpz_poly_clear(df);
 }

@@ -4267,11 +4267,6 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
                          interval **real_roots_ptr, int32_t precision,
                          int32_t nr_threads, int to_split, int32_t info_level) {
-  mpz_t *pol = malloc(param->elim->length * sizeof(mpz_t));
-
-  for (long i = 0; i < param->elim->length; i++) {
-    mpz_init_set(pol[i], param->elim->coeffs[i]);
-  }
   long maxnbits =
       mpz_poly_max_bsize_coeffs(param->elim->coeffs, param->elim->length - 1);
 
@@ -4302,7 +4297,9 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
 
   long unsigned int nbpos = 0;
   long unsigned int nbneg = 0;
-  interval *roots = real_roots(pol, param->elim->length - 1, &nbpos, &nbneg,
+  /* the eliminating polynomial is read in place */
+  interval *roots = real_roots(param->elim->coeffs, param->elim->length - 1,
+                               &nbpos, &nbneg,
                                prec, nr_threads, info_level);
   long nb = nbpos + nbneg;
 
@@ -4335,10 +4332,6 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
   *real_roots_ptr = roots;
   *nb_real_roots_ptr = nb;
 
-  for (long i = 0; i < param->elim->length; i++) {
-    mpz_clear(pol[i]);
-  }
-  free(pol);
   return pts;
 }
 

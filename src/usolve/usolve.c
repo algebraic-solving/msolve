@@ -1230,7 +1230,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
       fprintf(VERBSTREAM, "Bound for positive roots: %ld\n\n", flags->bound_pos);
     }
 
-    USOLVEmpz_poly_rescale_normalize_2exp_th(upol,
+    const long z = USOLVEmpz_poly_rescale_normalize_2exp_th(upol,
                                              flags->bound_pos, deg,
                                              flags->nthreads);
     initialize_heap_flags(flags, deg);
@@ -1238,7 +1238,8 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     unsigned olddeg = deg;
     usolve_bal_t bal;
     if(flags->classical_algo == 0){
-      usolve_bal_init(&bal, upol, deg, pos_roots, nb_pos_roots, flags);
+      usolve_bal_init(&bal, upol0, deg0, zero_root, 1, flags->bound_pos, z,
+                      pos_roots, nb_pos_roots, flags);
       flags->bal = &bal;
     }
     long nbv;
@@ -1289,7 +1290,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
 
     flags->bound_neg = bound_roots(upol, deg);
 
-    USOLVEmpz_poly_rescale_normalize_2exp_th(upol,
+    const long z = USOLVEmpz_poly_rescale_normalize_2exp_th(upol,
                                              flags->bound_neg, deg,
                                              flags->nthreads);
 
@@ -1304,7 +1305,8 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     unsigned long int olddeg = deg;
     usolve_bal_t bal;
     if(flags->classical_algo == 0){
-      usolve_bal_init(&bal, upol, deg, neg_roots, nb_neg_roots, flags);
+      usolve_bal_init(&bal, upol0, deg0, zero_root, -1, flags->bound_neg, z,
+                      neg_roots, nb_neg_roots, flags);
       flags->bal = &bal;
     }
     long nbv;

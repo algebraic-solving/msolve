@@ -71,6 +71,7 @@
 #define USOLVE_BAL_BASE 64   /* Horner's scheme below this length */
 #define USOLVE_BAL_EBITS 30  /* bits of the error bounds in the products */
 #define USOLVE_BAL_NCACHE 4096
+#define USOLVE_BAL_GRIDMAX 8  /* grids of sign evaluations up to 8 roots */
 
 typedef struct {
   fmpz *v;    /* coefficients */
@@ -99,6 +100,8 @@ typedef struct {
   int stop;             /* a root was found and flags->hasrealroots is set */
   long fallbacks;
   long subtrees;        /* subtrees investigated in fixed point */
+  slong sign_extra;     /* bits lost by cancellation in the signs of F */
+  long grids, grids_ok, grid_signs; /* grids tried, successful, signs */
   slong wmax;           /* largest working precision */
   long nodes;           /* nodes investigated here */
   long recent_nodes;    /* nodes and fallbacks since w last changed */
@@ -421,10 +424,11 @@ static void usolve_bal_variations(const int *sg, const slong len,
 }
 
 /* Descartes test of the node: 0, 1, 2 (exactly 2 sign variations),
- * 3 (3 or more) or -1 (unknown); trunc = 0 asks for the exact test of an
- * exact node */
+ * 3 (3 or more) or -1 (unknown); *vmaxp is an upper bound on the number
+ * of sign variations, hence on the number of roots of the node; trunc = 0
+ * asks for the exact test of an exact node */
 static long usolve_bal_test(usolve_bal_t *B, const usolve_bal_node_t *a,
-                            const int trunc){
+                            const int trunc, long *vmaxp){
   const slong n = B->n;
   /* u_i = v_i 2^x_i: size mb of the largest coefficient of u */
   slong mb = 0;
@@ -476,6 +480,7 @@ static long usolve_bal_test(usolve_bal_t *B, const usolve_bal_node_t *a,
   }
   long vmin, vmax;
   usolve_bal_variations(sg, n + 1, &vmin, &vmax);
+  *vmaxp = vmax;
   free(sg);
   _fmpz_vec_clear(t, n + 1);
   _fmpz_vec_clear(et, n + 1);
@@ -542,6 +547,78 @@ static void usolve_bal_root(usolve_bal_t *B, const fmpz_t c, const slong k,
   }
 }
 
+/* Signs of F at the points (c 2^q + j) / 2^(k + q), 0 <= j <= 2^q, of grids
+ * with q from about log2(2 r) to log2(16 r), r = vmax, each point being
+ * evaluated once (certified signs, see refine_arb.c). When r cells of a
+ * grid have a sign change, each holds one root (the node has at most r):
+ * they are given as isolating intervals and 1 is returned. Otherwise, or
+ * if F vanishes at a point of a grid, 0 is returned. */
+static int usolve_bal_grid(usolve_bal_t *B, const fmpz_t c, const slong k,
+                           const long r){
+  slong q0 = 1, q1;
+  while((1L << q0) < 2 * r){
+    q0++;
+  }
+  q1 = q0 + 3;
+  const slong m = 1L << q1;
+  /* F as a polynomial, on the coefficients of B */
+  fmpz_poly_struct f;
+  f.coeffs = B->f;
+  f.alloc = B->n + 1;
+  f.length = B->n + 1;
+  int *sg = malloc((m + 1) * sizeof(int));
+  for(slong j = 0; j <= m; j++){
+    sg[j] = 2;
+  }
+  fmpz_t x;
+  fmpz_init(x);
+  int ok = 0;
+  B->grids++;
+  for(slong q = q0; q <= q1 && !ok; q++){
+    const slong step = 1L << (q1 - q);
+    long changes = 0;
+    int last = 0, zero = 0;
+    for(slong j = 0; j <= m; j += step){
+      if(sg[j] == 2){
+        fmpz_mul_2exp(x, c, q1);
+        fmpz_add_ui(x, x, j);
+        sg[j] = usolve_sign_2exp_arb(&f, x, k + q1, &B->sign_extra);
+        B->grid_signs++;
+      }
+      if(sg[j] == 0){
+        zero = 1;
+        break;
+      }
+      if(last && sg[j] != last){
+        changes++;
+      }
+      last = sg[j];
+    }
+    if(zero){
+      break;
+    }
+    if(changes == r){
+      ok = 1;
+      /* one root in each cell with a sign change */
+      int prev = sg[0];
+      for(slong j = step; j <= m && !B->stop; j += step){
+        if(sg[j] != prev){
+          fmpz_mul_2exp(x, c, q);
+          fmpz_add_ui(x, x, j / step - 1);
+          usolve_bal_root(B, x, k + q, 0, prev);
+        }
+        prev = sg[j];
+      }
+    }
+  }
+  if(ok){
+    B->grids_ok++;
+  }
+  fmpz_clear(x);
+  free(sg);
+  return ok;
+}
+
 /* investigates the node (c, k) of polynomial a0, which is not modified
  * (so that the left half can share it); returns its number of sign
  * variations (3 for 3 or more) */
@@ -558,18 +635,19 @@ static long usolve_bal_node(usolve_bal_t *B, const usolve_bal_node_t *a0,
   int owned = 0;
 
   double e_time = realtime();
-  long nb = usolve_bal_test(B, a, 1);
+  long vmax;
+  long nb = usolve_bal_test(B, a, 1, &vmax);
   if(nb < 0 && a->exact){
-    nb = usolve_bal_test(B, a, 0);
+    nb = usolve_bal_test(B, a, 0, &vmax);
   }
   if(nb < 0){
     usolve_bal_node_init(&own, n);
     owned = 1;
     usolve_bal_exact(B, &own, c, k);
     a = &own;
-    nb = usolve_bal_test(B, a, 1);
+    nb = usolve_bal_test(B, a, 1, &vmax);
     if(nb < 0){
-      nb = usolve_bal_test(B, a, 0);
+      nb = usolve_bal_test(B, a, 0, &vmax);
     }
   }
   flags->time_desc += (realtime() - e_time);
@@ -611,6 +689,13 @@ static long usolve_bal_node(usolve_bal_t *B, const usolve_bal_node_t *a0,
       fmpz_add_ui(c2, c2, 1);
       usolve_bal_root(B, c2, k + 1, 0, half);
     }
+    goto clear;
+  }
+
+  /* at most vmax roots: vmax cells of a grid with a sign change each
+   * contain one root each, and there is no other one */
+  if(vmax >= 2 && vmax <= USOLVE_BAL_GRIDMAX
+     && usolve_bal_grid(B, c, k, vmax)){
     goto clear;
   }
 
@@ -732,13 +817,19 @@ static void usolve_bal_init(usolve_bal_t *B, mpz_t *upol,
   B->stop = 0;
   B->fallbacks = 0;
   B->subtrees = 0;
+  B->sign_extra = 64;
+  B->grids = 0;
+  B->grids_ok = 0;
+  B->grid_signs = 0;
 }
 
 static void usolve_bal_clear(usolve_bal_t *B){
   if(B->flags->verbose >= 1){
     fprintf(VERBSTREAM, "\n%ld subtrees in fixed point (%ld nodes), %ld "
             "exact node polynomials computed again, final precision %ld "
-            "bits\n", B->subtrees, B->nodes, B->fallbacks, (long)B->w);
+            "bits; %ld of %ld grids conclusive (%ld signs)\n",
+            B->subtrees, B->nodes, B->fallbacks, (long)B->w, B->grids_ok,
+            B->grids, B->grid_signs);
   }
   for(long i = 0; i < B->npowers; i++){
     fmpz_poly_clear(B->powers[i].c);

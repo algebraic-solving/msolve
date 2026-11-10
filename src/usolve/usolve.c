@@ -1424,7 +1424,8 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
                              flags->prec_isole);
     }
     else{
-      usolve_refine_roots_arb(upoly, deg, roots, nbroots, flags->prec_isole);
+      usolve_refine_roots_arb(upoly, deg, roots, nbroots, flags->prec_isole,
+                              flags->nthreads);
     }
   }
   refine_time = realtime() - refine_time;

@@ -4227,14 +4227,35 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv) {
   }
 }
 
+/* The points are computed with nthreads threads, which share the
+ * parametrization (read in place) and its derivatives. Each root starts
+ * from the working precisions learned on the first one, computed alone, so
+ * that the output does not depend on the number of threads. */
 void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
                               real_point_t *pts, long prec, int to_split,
-                              int info_level) {
+                              int nthreads, int info_level) {
   real_coords_t rc;
   real_coords_init(&rc, param);
-  for (long i = 0; i < nb; i++) {
-    real_coords_point(&rc, param, roots + i, pts[i], prec, to_split);
+  if (nb > 0) {
+    real_coords_point(&rc, param, roots, pts[0], prec, to_split);
   }
+  long nref = rc.nref;
+#pragma omp parallel num_threads(nthreads) reduction(+:nref)
+  {
+    /* shares the polynomials of rc, with its own precisions */
+    real_coords_t lc = rc;
+#pragma omp for schedule(dynamic, 1)
+    for (long i = 1; i < nb; i++) {
+      lc.extra = rc.extra;
+      lc.wprec = rc.wprec;
+      lc.nref = 0;
+      real_coords_point(&lc, param, roots + i, pts[i], prec, to_split);
+      nref += lc.nref;
+    }
+  }
+  /* integers cached by FLINT in each thread */
+  hensel_release(nthreads);
+  rc.nref = nref;
   if (info_level) {
     fprintf(VERBSTREAM, "Refinements of the roots during the extraction: %ld\n",
             rc.nref);
@@ -4304,7 +4325,7 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
     }
 
     extract_real_roots_param(param, roots, nb, pts, prec, to_split,
-                             info_level);
+                             nr_threads, info_level);
     if (info_level) {
       fprintf(VERBSTREAM, "Elapsed time (real root extraction) = %.2f\n",
               realtime() - st);

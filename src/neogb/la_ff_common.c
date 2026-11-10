@@ -51,6 +51,14 @@
  * LA_FF(reduce_dense_rows_by_known_pivots) and
  * LA_FF(reduce_dense_rows_by_dense_block) have to be defined as well.
  *
+ * LA_ACC_BITS is the size of the entries of the interleaved rows of
+ * LA_FF(reduce_dense_rows_by_known_pivots), LA_ACC_T is their type:
+ * 16 bits in la_ff_8.c and 32 bits in la_ff_16.c, i.e. p^2 <
+ * 2^LA_ACC_BITS, and 32 bits in la_ff_32.c, where p < 2^31 and
+ * LA_ACC_REDUCED is defined: the entries are kept reduced in [0,p) and
+ * the products are reduced with Shoup's method. Otherwise (la_ff_64.c)
+ * the entries have 64 bits.
+ *
  * All macros are undefined at the end of this file. */
 
 #if defined HAVE_AVX2 || defined HAVE_AVX512_F
@@ -60,8 +68,19 @@
 #endif
 
 /* maximal number of rows reduced together by the known pivots, see
- * LA_FF(reduce_dense_rows_by_known_pivots) */
+ * LA_FF(reduce_dense_rows_by_known_pivots). With 16 bit entries one
+ * column of the interleaved rows fills an AVX2 vector, with 32 bit
+ * entries 16 rows are not faster than 8 rows. */
+#if LA_ACC_BITS == 16
+#define LA_NR 16
+#define LA_ACC_T uint16_t
+#elif LA_ACC_BITS == 32
 #define LA_NR 8
+#define LA_ACC_T uint32_t
+#else
+#define LA_NR 8
+#define LA_ACC_T int64_t
+#endif
 
 /* Number of rows reduced together by the known pivots when reducing nrl
  * rows with nthrds threads. The rows of a group are interleaved with
@@ -87,9 +106,13 @@ static inline len_t LA_FF(rows_per_group)(
  * drs[0],...,drs[LA_NR-1] as dense rows of length ncr, NULL for zero
  * remainders. If drs is NULL, the remainders are left in dr. If rbas is
  * not NULL, the pivots used for row r are marked in the reducer bit
- * array rbas[r] for the tracer, rbas[r] may be NULL if row r is zero. */
+ * array rbas[r] for the tracer, rbas[r] may be NULL if row r is zero.
+ * The entries of dr are kept in [0,p^2], for LA_ACC_BITS < 64 a borrow
+ * in t - m*c, i.e. t <= m*c, is corrected by adding p^2. With
+ * LA_ACC_REDUCED they are kept in [0,p): with m' = floor(m*2^32/p) and
+ * q = floor(m'*c/2^32) we get m*c - q*p in [0,2p), see V. Shoup, NTL. */
 static void LA_FF(reduce_dense_rows_by_known_pivots)(
-        int64_t *dr,
+        LA_ACC_T *dr,
         LA_CF_T **drs,
         rba_t * const * const rbas,
         const mat_t * const mat,
@@ -102,10 +125,32 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
 
     const len_t ncl     = mat->ncl;
     const len_t ncols   = mat->nc;
+#ifndef LA_ACC_REDUCED
     const int64_t mod2  = (int64_t)fc * fc;
+#endif
     const uint64_t bm   = barrett_multiplier(fc);
     LA_CF_T * const * const mcf = mat->LA_CF;
-#if defined HAVE_AVX512_F
+#if defined LA_ACC_REDUCED
+    /* floor(2^64/p) up to one, for computing the m' */
+    const uint64_t pinv = UINT64_MAX / fc;
+#if defined HAVE_AVX2 || defined HAVE_AVX512_F
+    const __m256i pv = _mm256_set1_epi32((int32_t)fc);
+#elif defined __aarch64__
+    const uint32x4_t pv = vdupq_n_u32((uint32_t)fc);
+#endif
+#elif LA_ACC_BITS == 16
+#if defined HAVE_AVX2 || defined HAVE_AVX512_F
+    const __m256i mod2v = _mm256_set1_epi16((int16_t)mod2);
+#elif defined __aarch64__
+    const uint16x8_t mod2v = vdupq_n_u16((uint16_t)mod2);
+#endif
+#elif LA_ACC_BITS == 32
+#if defined HAVE_AVX2 || defined HAVE_AVX512_F
+    const __m256i mod2v = _mm256_set1_epi32((int32_t)mod2);
+#elif defined __aarch64__
+    const uint32x4_t mod2v = vdupq_n_u32((uint32_t)mod2);
+#endif
+#elif defined HAVE_AVX512_F
     const __m512i zerov = _mm512_setzero_si512();
     const __m512i mod2v = _mm512_set1_epi64(mod2);
 #elif defined HAVE_AVX2
@@ -116,11 +161,11 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
 #endif
 
     for (i = sc; i < ncl; ++i) {
-        int64_t *d = dr + (uint64_t)LA_NR * i;
+        LA_ACC_T *d = dr + (uint64_t)LA_NR * i;
         int64_t nz = 0;
         for (r = 0; r < LA_NR; ++r) {
             if (d[r] != 0) {
-                d[r] = (int64_t)barrett_reduce((uint64_t)d[r], fc, bm);
+                d[r] = (LA_ACC_T)barrett_reduce((uint64_t)d[r], fc, bm);
             }
             nz |= d[r];
         }
@@ -144,7 +189,162 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
         const LA_CF_T * const cfs = mcf[piv[COEFFS]];
         const len_t len         = piv[LENGTH];
         const hm_t * const ds   = piv + OFFSET;
-#if defined HAVE_AVX512_F
+#if defined LA_ACC_REDUCED
+        uint32_t mp[LA_NR];
+        for (r = 0; r < LA_NR; ++r) {
+            const uint64_t x  = (uint64_t)d[r] << 32;
+            uint64_t q        = (uint64_t)(((__uint128_t)x * pinv) >> 64);
+            while (x - q * fc >= fc) {
+                q++;
+            }
+            mp[r] = (uint32_t)q;
+        }
+#endif
+#if defined LA_ACC_REDUCED && (defined HAVE_AVX2 || defined HAVE_AVX512_F)
+        __m256i mulv[LA_NR/8], mpev[LA_NR/8], mpov[LA_NR/8];
+        for (r = 0; r < LA_NR/8; ++r) {
+            mulv[r] = _mm256_loadu_si256((__m256i *)(d+8*r));
+            mpev[r] = _mm256_loadu_si256((__m256i *)(mp+8*r));
+            mpov[r] = _mm256_srli_epi64(mpev[r], 32);
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t       = dr + (uint64_t)LA_NR * ds[j];
+            const __m256i cfv = _mm256_set1_epi32((int32_t)cfs[j]);
+            for (r = 0; r < LA_NR/8; ++r) {
+                /* q = floor(m'*c/2^32) for the even and the odd lanes */
+                const __m256i qv  = _mm256_blend_epi32(_mm256_srli_epi64(
+                            _mm256_mul_epu32(mpev[r], cfv), 32),
+                        _mm256_mul_epu32(mpov[r], cfv), 0xAA);
+                __m256i prodv     = _mm256_sub_epi32(
+                        _mm256_mullo_epi32(mulv[r], cfv),
+                        _mm256_mullo_epi32(qv, pv));
+                prodv = _mm256_min_epu32(prodv, _mm256_sub_epi32(prodv, pv));
+                __m256i tv        = _mm256_sub_epi32(
+                        _mm256_loadu_si256((__m256i *)(t+8*r)), prodv);
+                tv    = _mm256_min_epu32(tv, _mm256_add_epi32(tv, pv));
+                _mm256_storeu_si256((__m256i *)(t+8*r), tv);
+            }
+        }
+#elif defined LA_ACC_REDUCED && defined __aarch64__
+        uint32x4_t mulv[LA_NR/4], mpv[LA_NR/4];
+        for (r = 0; r < LA_NR/4; ++r) {
+            mulv[r] = vld1q_u32(d+4*r);
+            mpv[r]  = vld1q_u32(mp+4*r);
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t           = dr + (uint64_t)LA_NR * ds[j];
+            const uint32x4_t cfv  = vdupq_n_u32((uint32_t)cfs[j]);
+            for (r = 0; r < LA_NR/4; ++r) {
+                const uint32x4_t qv = vcombine_u32(
+                        vshrn_n_u64(vmull_u32(vget_low_u32(mpv[r]),
+                                vget_low_u32(cfv)), 32),
+                        vshrn_n_u64(vmull_high_u32(mpv[r], cfv), 32));
+                uint32x4_t prodv    = vmlsq_u32(vmulq_u32(mulv[r], cfv), qv, pv);
+                prodv = vminq_u32(prodv, vsubq_u32(prodv, pv));
+                uint32x4_t tv       = vsubq_u32(vld1q_u32(t+4*r), prodv);
+                tv    = vminq_u32(tv, vaddq_u32(tv, pv));
+                vst1q_u32(t+4*r, tv);
+            }
+        }
+#elif defined LA_ACC_REDUCED
+        const uint32_t p32 = (uint32_t)fc;
+        uint32_t mul[LA_NR];
+        for (r = 0; r < LA_NR; ++r) {
+            mul[r] = d[r];
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t       = dr + (uint64_t)LA_NR * ds[j];
+            const uint32_t c  = (uint32_t)cfs[j];
+            for (r = 0; r < LA_NR; ++r) {
+                const uint32_t q  = (uint32_t)(((uint64_t)mp[r] * c) >> 32);
+                uint32_t prod     = mul[r] * c - q * p32;
+                prod  -=  prod >= p32 ? p32 : 0;
+                t[r]  =   t[r] - prod + (t[r] < prod ? p32 : 0);
+            }
+        }
+#elif LA_ACC_BITS == 16 && (defined HAVE_AVX2 || defined HAVE_AVX512_F)
+        __m256i mulv[LA_NR/16];
+        for (r = 0; r < LA_NR/16; ++r) {
+            mulv[r] = _mm256_loadu_si256((__m256i *)(d+16*r));
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t       = dr + (uint64_t)LA_NR * ds[j];
+            const __m256i cfv = _mm256_set1_epi16((int16_t)cfs[j]);
+            for (r = 0; r < LA_NR/16; ++r) {
+                const __m256i prodv = _mm256_mullo_epi16(mulv[r], cfv);
+                const __m256i tv    = _mm256_loadu_si256((__m256i *)(t+16*r));
+                const __m256i bv    = _mm256_cmpeq_epi16(
+                        _mm256_min_epu16(tv, prodv), tv);
+                _mm256_storeu_si256((__m256i *)(t+16*r), _mm256_add_epi16(
+                            _mm256_sub_epi16(tv, prodv),
+                            _mm256_and_si256(bv, mod2v)));
+            }
+        }
+#elif LA_ACC_BITS == 16 && defined __aarch64__
+        uint16x8_t mulv[LA_NR/8];
+        for (r = 0; r < LA_NR/8; ++r) {
+            mulv[r] = vld1q_u16(d+8*r);
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t           = dr + (uint64_t)LA_NR * ds[j];
+            const uint16x8_t cfv  = vdupq_n_u16((uint16_t)cfs[j]);
+            for (r = 0; r < LA_NR/8; ++r) {
+                const uint16x8_t prodv  = vmulq_u16(mulv[r], cfv);
+                const uint16x8_t tv     = vld1q_u16(t+8*r);
+                const uint16x8_t bv     = vcleq_u16(tv, prodv);
+                vst1q_u16(t+8*r, vaddq_u16(vsubq_u16(tv, prodv),
+                            vandq_u16(bv, mod2v)));
+            }
+        }
+#elif LA_ACC_BITS == 32 && (defined HAVE_AVX2 || defined HAVE_AVX512_F)
+        __m256i mulv[LA_NR/8];
+        for (r = 0; r < LA_NR/8; ++r) {
+            mulv[r] = _mm256_loadu_si256((__m256i *)(d+8*r));
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t       = dr + (uint64_t)LA_NR * ds[j];
+            const __m256i cfv = _mm256_set1_epi32((int32_t)cfs[j]);
+            for (r = 0; r < LA_NR/8; ++r) {
+                const __m256i prodv = _mm256_mullo_epi32(mulv[r], cfv);
+                const __m256i tv    = _mm256_loadu_si256((__m256i *)(t+8*r));
+                const __m256i bv    = _mm256_cmpeq_epi32(
+                        _mm256_min_epu32(tv, prodv), tv);
+                _mm256_storeu_si256((__m256i *)(t+8*r), _mm256_add_epi32(
+                            _mm256_sub_epi32(tv, prodv),
+                            _mm256_and_si256(bv, mod2v)));
+            }
+        }
+#elif LA_ACC_BITS == 32 && defined __aarch64__
+        uint32x4_t mulv[LA_NR/4];
+        for (r = 0; r < LA_NR/4; ++r) {
+            mulv[r] = vld1q_u32(d+4*r);
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t           = dr + (uint64_t)LA_NR * ds[j];
+            const uint32x4_t cfv  = vdupq_n_u32((uint32_t)cfs[j]);
+            for (r = 0; r < LA_NR/4; ++r) {
+                const uint32x4_t prodv  = vmulq_u32(mulv[r], cfv);
+                const uint32x4_t tv     = vld1q_u32(t+4*r);
+                const uint32x4_t bv     = vcleq_u32(tv, prodv);
+                vst1q_u32(t+4*r, vaddq_u32(vsubq_u32(tv, prodv),
+                            vandq_u32(bv, mod2v)));
+            }
+        }
+#elif LA_ACC_BITS == 16 || LA_ACC_BITS == 32
+        LA_ACC_T mul[LA_NR];
+        for (r = 0; r < LA_NR; ++r) {
+            mul[r] = d[r];
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t       = dr + (uint64_t)LA_NR * ds[j];
+            const LA_ACC_T c  = (LA_ACC_T)cfs[j];
+            for (r = 0; r < LA_NR; ++r) {
+                const LA_ACC_T prod = (LA_ACC_T)(mul[r] * c);
+                t[r] = (LA_ACC_T)(t[r] - prod
+                        + (t[r] <= prod ? (LA_ACC_T)mod2 : 0));
+            }
+        }
+#elif defined HAVE_AVX512_F
         __m512i mulv[LA_NR/8];
         for (r = 0; r < LA_NR/8; ++r) {
             mulv[r] = _mm512_loadu_si512((void *)(d+8*r));
@@ -219,7 +419,7 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
     for (r = 0; r < LA_NR; ++r) {
         LA_CF_T *row = NULL;
         for (i = ncl; i < ncols; ++i) {
-            int64_t *d = dr + (uint64_t)LA_NR * i + r;
+            LA_ACC_T *d = dr + (uint64_t)LA_NR * i + r;
             if (*d == 0) {
                 continue;
             }
@@ -628,9 +828,9 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
      * allocated by the threads when they need them. */
     const int multi_rows = st->nf == 0 && mat->nru > 0
         && LA_FF(rows_per_group)(nrl, st->nthrds) > 0;
-    int64_t **drm = NULL;
+    LA_ACC_T **drm = NULL;
     if (multi_rows) {
-        drm = (int64_t **)calloc((uint64_t)st->nthrds, sizeof(int64_t *));
+        drm = (LA_ACC_T **)calloc((uint64_t)st->nthrds, sizeof(LA_ACC_T *));
     }
 
     /* mo need to have any sharing dependencies on parallel computation,
@@ -740,10 +940,10 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
             if (batch && bctr < (len_t)nrbl) {
                 const int tid = omp_get_thread_num();
                 if (drm[tid] == NULL) {
-                    drm[tid] = (int64_t *)calloc(
-                            (uint64_t)ncols * LA_NR, sizeof(int64_t));
+                    drm[tid] = (LA_ACC_T *)calloc(
+                            (uint64_t)ncols * LA_NR, sizeof(LA_ACC_T));
                 }
-                int64_t *dm = drm[tid];
+                LA_ACC_T *dm = drm[tid];
                 while (bctr < (len_t)nrbl) {
                     const len_t nl = (len_t)nrbl - bctr < LA_NR
                         ? (len_t)nrbl - bctr : LA_NR;
@@ -776,11 +976,21 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
                             } while (mc[j] == 0);
                         }
                         for (l = 0; l < len; ++l) {
-                            int64_t *t      = dm + (uint64_t)LA_NR * ds[l];
+                            LA_ACC_T *t     = dm + (uint64_t)LA_NR * ds[l];
                             const int64_t c = (int64_t)cfs[l];
                             for (j = 0; j < nl; ++j) {
+#if defined LA_ACC_REDUCED
+                                const uint64_t prod = (uint64_t)(mc[j] * c) % fc;
+                                t[j]  = (LA_ACC_T)(t[j] < prod
+                                        ? t[j] + fc - prod : t[j] - prod);
+#elif LA_ACC_BITS == 16 || LA_ACC_BITS == 32
+                                const LA_ACC_T prod = (LA_ACC_T)(mc[j] * c);
+                                t[j]  = (LA_ACC_T)(t[j] - prod
+                                        + (t[j] <= prod ? (LA_ACC_T)mod2 : 0));
+#else
                                 t[j]  -=  mc[j] * c;
                                 t[j]  +=  (t[j] >> 63) & mod2;
+#endif
                             }
                         }
 #endif
@@ -1097,9 +1307,9 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
         && st->in_final_reduction_step == 0;
     /* the buffers for the groups are allocated by the threads when
      * they need them */
-    int64_t **drm = NULL;
+    LA_ACC_T **drm = NULL;
     if (multi_rows) {
-        drm = (int64_t **)calloc((uint64_t)nthrds, sizeof(int64_t *));
+        drm = (LA_ACC_T **)calloc((uint64_t)nthrds, sizeof(LA_ACC_T *));
     }
     /* without groups each row is handled on its own */
     const len_t gl  = multi_rows ? gsz : 1;
@@ -1118,7 +1328,7 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
         const len_t ge  = gs + gl < nrl ? gs + gl : nrl;
         len_t grp[LA_NR];
         len_t ng        = 0;
-        int64_t *dm     = NULL;
+        LA_ACC_T *dm    = NULL;
         if (multi_rows) {
             sc  = ncols;
             for (i = gs; i < ge; ++i) {
@@ -1133,14 +1343,14 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
                 if (dm == NULL) {
                     const int tid = omp_get_thread_num();
                     if (drm[tid] == NULL) {
-                        drm[tid] = (int64_t *)calloc(
-                                (uint64_t)ncols * LA_NR, sizeof(int64_t));
+                        drm[tid] = (LA_ACC_T *)calloc(
+                                (uint64_t)ncols * LA_NR, sizeof(LA_ACC_T));
                     }
                     dm = drm[tid];
                 }
                 const LA_CF_T * const cfs = tbr->LA_CF[r[COEFFS]];
                 for (j = 0; j < len; ++j) {
-                    dm[(uint64_t)LA_NR * ds[j] + ng] = (int64_t)cfs[j];
+                    dm[(uint64_t)LA_NR * ds[j] + ng] = (LA_ACC_T)cfs[j];
                 }
                 if (c0 < sc) {
                     sc = c0;
@@ -1725,14 +1935,14 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
     const len_t gs = LA_FF(rows_per_group)(nrl, st->nthrds);
     int64_t *dr  = NULL;
     if (gs > 0) {
-        dr  = (int64_t *)calloc(
-                (uint64_t)ncols * LA_NR * st->nthrds, sizeof(int64_t));
+        LA_ACC_T *dg  = (LA_ACC_T *)calloc(
+                (uint64_t)ncols * LA_NR * st->nthrds, sizeof(LA_ACC_T));
         const len_t ngr = (nrl + gs - 1) / gs;
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, sc) \
     schedule(dynamic)
         for (i = 0; i < ngr; ++i) {
-            int64_t *drl  = dr + (omp_get_thread_num() * (uint64_t)ncols * LA_NR);
+            LA_ACC_T *drl = dg + (omp_get_thread_num() * (uint64_t)ncols * LA_NR);
             const len_t f = i * gs;
             const len_t l = f + gs < nrl ? gs : nrl - f;
             sc = ncols;
@@ -1742,7 +1952,7 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
                 const len_t len         = npiv[LENGTH];
                 const hm_t * const ds   = npiv + OFFSET;
                 for (j = 0; j < len; ++j) {
-                    drl[(uint64_t)LA_NR * ds[j] + r] = (int64_t)cfs[j];
+                    drl[(uint64_t)LA_NR * ds[j] + r] = (LA_ACC_T)cfs[j];
                 }
                 if (ds[0] < sc) {
                     sc = ds[0];
@@ -1769,6 +1979,7 @@ static LA_CF_T **LA_FF(sparse_AB_CD_linear_algebra)(
                 drs[f+r] = rows[r];
             }
         }
+        free(dg);
     } else {
         const len_t ncr = mat->ncr;
         dr  = (int64_t *)malloc(
@@ -2807,3 +3018,7 @@ static void LA_FF(interreduce_matrix_rows)(
 #undef LA_FF
 #undef LA_RANDOM_MULTIPLIER
 #undef LA_WIDE
+#undef LA_ACC_BITS
+#undef LA_ACC_REDUCED
+#undef LA_ACC_T
+#undef LA_NR

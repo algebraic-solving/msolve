@@ -2152,7 +2152,6 @@ static int32_t *initial_modular_step(
             md->fglm_ctime = cputime();
             print_fglm_header (VERBSTREAM,md);
             /* LEX basis by classical FGLM */
-            double rt_fglm = realtime();
             fglmc_rows_t rp;
             memset(&rp, 0, sizeof(rp));
             sp_multimatfglm_t *mm =
@@ -2160,19 +2159,12 @@ static int32_t *initial_modular_step(
                                                       leadmons[0], md,
                                                       bs->ht->nv, fc,
                                                       md->info_level, NULL, &rp);
-            if(md->info_level){
-                fprintf(VERBSTREAM, "Mul Mat    %.2f sec\n", realtime() - rt_fglm);
-            }
+            /* if(md->info_level){ */
+            /*     fprintf(VERBSTREAM, "Mul Mat    %.2f sec\n", realtime() - rt_fglm); */
+            /* } */
             mm->nthreads = md->nthrds;   /* all threads are used */
-            rt_fglm = realtime();
-            /* TODO */
-            fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX, &rp);
+            fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX, &rp, md);
             mm_rows_clear(&rp);
-            fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX, md);
-            /******/
-            if(md->info_level){
-                fprintf(VERBSTREAM, "FGLM (lex) %.2f sec\n", realtime() - rt_fglm);
-            }
             if(lexgb == NULL){
                 fprintf(ERRSTREAM, "FGLM failed.\n");
                 *success = 0;
@@ -5593,7 +5585,7 @@ restart:
 
             /* compute normal form of last element in tbr */
 
-            tbr = core_nf(tbr, st, mul, bs, &err);
+            tbr = core_nf(tbr, st, mul, bs, &err, 0);
 
             if (err) {
                 fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
@@ -5991,7 +5983,7 @@ restart:
              * to be reduced by basis */
             exp_t *mul  = (exp_t *)calloc(bht->evl, sizeof(exp_t));
             /* compute normal form of last element in tbr */
-            tbr = core_nf(tbr, st, mul, bs, &err);
+            tbr = core_nf(tbr, st, mul, bs, &err, 1);
 
             if (err) {
                 fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");

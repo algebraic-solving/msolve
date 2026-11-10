@@ -33,9 +33,9 @@ void print_fglm_header(
         )
 {
     if (st->info_level > 1) {
-            fprintf(f, "\nfglm steps                                     \
-          time(rd) in sec (real|cpu)\n");
-            fprintf(f, "-------------------------------------------------\
+        fprintf(f, "\nfglm steps                                         ");
+        fprintf(f, "        new data         time(rd) in sec (real|cpu)\n");
+        fprintf(f, "-------------------------------------------------\
 -----------------------------------------------------\n");
     }
 }
@@ -1821,7 +1821,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* print_msolve_polynomials_ff(VERBSTREAM, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
   int32_t err = 0;
-  tbr = core_nf(tbr, st, mul, bs, &err);
+  tbr = core_nf(tbr, st, mul, bs, &err, 0);
   if (err) {
     fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
     exit(1);
@@ -2004,7 +2004,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
 	  /* printf ("mononomial to be reduced\n"); */
 	  /* print_msolve_polynomials_ff(VERBSTREAM, 0, tbr->lml, tbr, bht, */
 	  /* 		      st, gens->vnames, 0); */
-	  success = core_nf(&tbr, &bht, &st, mul, bs);
+	  success = core_nf(&tbr, &bht, &st, mul, bs, 0);
 	  if (!success) {
 	    fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
 	    exit(1);
@@ -2053,7 +2053,7 @@ build_matrixn_colon(int32_t *lmb, long dquot, int32_t bld,
   /* printf ("shifts of phi to be reduced\n"); */
   /* print_msolve_polynomials_ff(VERBSTREAM, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
-  int success = core_nf(&tbr, &bht, &st, mul, bs);
+  int success = core_nf(&tbr, &bht, &st, mul, bs, 0);
   if (!success) {
     fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
     exit(1);
@@ -2268,7 +2268,7 @@ build_matrixn_colon_no_zero(int32_t *lmb, long dquot, int32_t bld,
   /* print_msolve_polynomials_ff(VERBSTREAM, 0, tbr->lml, tbr, bht, */
   /* 			      st, gens->vnames, 0); */
   int32_t err = 0;
-  tbr = core_nf(tbr, st, mul, bs, &err);
+  tbr = core_nf(tbr, st, mul, bs, &err, 0);
   if (err) {
     fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
     exit(1);
@@ -3127,7 +3127,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
       tbr->lmps[k]  = k; /* fix input element in bs */
     }
     int32_t err = 0;
-    tbr = core_nf(tbr, md, mul, bs, &err);
+    tbr = core_nf(tbr, md, mul, bs, &err, 0);
     if (err) {
       fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
       exit(1);
@@ -3676,10 +3676,7 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
       tbr->lmps[k]  = k; /* fix input element in bs */
     }
     int32_t err = 0;
-    if (st->info_level > 1) {
-      fprintf (VERBSTREAM, "normal forms\n");
-    }
-    tbr = core_nf(tbr, md, mul, bs, &err);
+    tbr = core_nf(tbr, md, mul, bs, &err, 0);
     if (err) {
       fprintf(ERRSTREAM, "Problem with normalform, stopped computation.\n");
       exit(1);
@@ -3847,9 +3844,9 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
   if (st->info_level > 1){
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
-    fprintf (VERBSTREAM,
-	     "multiplication matrix                               ");
-    fprintf (VERBSTREAM,"%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+    fprintf(VERBSTREAM, "multiplication matrix ");
+    fprintf(VERBSTREAM, "                                                 ");
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
   free(evi);
   return matrix;
@@ -4093,7 +4090,10 @@ static void mm_compute_nf_rows(sp_multimatfglm_t *M, int32_t nnf,
   }
   int32_t *lens_nf = malloc(nnf * sizeof(int32_t));
   int32_t *cfs_nf = malloc(nnf * sizeof(int32_t));
-  for(int32_t q = 0; q < nnf; q++){ lens_nf[q] = 1; cfs_nf[q] = 1; }
+  for(int32_t q = 0; q < nnf; q++){
+      lens_nf[q] = 1;
+      cfs_nf[q] = 1;
+  }
 
   md_t *md = copy_meta_data(st, fc);
   bs_t *tbr = initialize_basis(md, ht);
@@ -4104,10 +4104,7 @@ static void mm_compute_nf_rows(sp_multimatfglm_t *M, int32_t nnf,
     tbr->lmps[q] = q;
   }
   int32_t err = 0;
-  if(info_level > 1){
-    fprintf(VERBSTREAM, "normal forms (%d border monomials)\n", nnf);
-  }
-  tbr = core_nf(tbr, md, mul, bs, &err);
+  tbr = core_nf(tbr, md, mul, bs, &err, 0);
   if(err){
     fprintf(ERRSTREAM, "Problem with normalform, stopped computation.\n");
     exit(1);
@@ -4134,7 +4131,7 @@ typedef struct {
 } mm_rows_ctx_t;
 
 static int mm_fill_rows(void *vctx, sp_multimatfglm_t *M, const szmat_t *rows,
-                        szmat_t n){
+                        szmat_t n, const int info_level){
   mm_rows_ctx_t *c = (mm_rows_ctx_t *)vctx;
   const int nv = c->nv;
   int32_t *exps = malloc(((uint64_t)n + 1) * nv * sizeof(int32_t));
@@ -4144,7 +4141,7 @@ static int mm_fill_rows(void *vctx, sp_multimatfglm_t *M, const szmat_t *rows,
            nv * sizeof(int32_t));
   }
   mm_compute_nf_rows(M, (int32_t)n, exps, rows, c->lmb, c->bs, c->ht, c->st,
-                     nv, c->fc, 0);
+                     nv, c->fc, info_level);
   for(szmat_t q = 0; q < n; q++) M->have_row[rows[q]] = 1;
   free(exps);
   return 1;
@@ -4187,7 +4184,8 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
                                                                 const int info_level,
                                                                 fglm_trace_t *tr,
                                                                 fglmc_rows_t *rp){
-  double rt0 = realtime();
+  double st_fglm = realtime();
+  double cst_fglm = cputime();
   const szmat_t D = (szmat_t)dquot;
   const long nlm = bs->lml;
 
@@ -4316,12 +4314,12 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
   }
 
   if(info_level){
-    fprintf(VERBSTREAM,
-            "multiplication matrices: D = %u, %u border monomials "
-            "(%u leading monomials, %u normal forms, %d computed now), "
-            "%.2f sec\n",
-            M->ncols, M->nnfs, M->nlms, M->nnfs - M->nlms, nnf_now,
-            realtime() - rt0);
+    double rt_fglm = realtime()-st_fglm;
+    double crt_fglm = cputime()-cst_fglm;
+    fprintf(VERBSTREAM, "multiplication matrix ");
+    fprintf(VERBSTREAM, "                                                 ");
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+
   }
   return M;
 }

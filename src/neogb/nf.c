@@ -58,7 +58,8 @@ bs_t *core_nf(
         md_t *md,
         const exp_t * const mul,
         bs_t *bs,
-        int32_t *errp
+        int32_t *errp,
+        const int header_footer
         )
 {
     double ct = cputime();
@@ -82,6 +83,16 @@ bs_t *core_nf(
     md->nf = 1;
     select_tbr(tbr, mul, 0, mat, md, md->ht, bht, NULL);
 
+    if(md->info_level > 1) {
+        if (header_footer) {
+            fprintf(VERBSTREAM, "\n                           mat          density \
+           new data         time(rd) in sec (real|cpu)\n");
+            fprintf(VERBSTREAM, "-------------------------------------------------\
+-----------------------------------------------------\n");
+        }
+        fprintf(VERBSTREAM, "nf                 ");
+    }
+
     symbolic_preprocessing(mat, bs, md);
     convert_hashes_to_columns(mat, md, md->ht);
     sort_matrix_rows_decreasing(mat->rr, mat->nru);
@@ -97,8 +108,9 @@ bs_t *core_nf(
     clear_matrix(mat);
 
     print_round_timings(VERBSTREAM, md, rt, ct);
-    print_round_information_footer(VERBSTREAM, md);
-
+    if (header_footer) {
+        print_round_information_footer(VERBSTREAM, md);
+    }
     /* free and clean up */
     free(md->hcm);
     if (md->ht != NULL) {
@@ -201,7 +213,7 @@ int64_t export_nf(
      * to be reduced by basis */
     exp_t *mul  = (exp_t *)calloc(bht->evl, sizeof(exp_t));
     /* compute normal form of last element in tbr */
-    tbr = core_nf(tbr, md, mul, bs, &err);
+    tbr = core_nf(tbr, md, mul, bs, &err, 1);
 
     if (err) {
         fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");

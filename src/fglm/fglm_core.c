@@ -1096,10 +1096,10 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
   if (invert_table_polynomial (param, data, data_bms, block_size,
                                prime, 0, 0)) {
 #if DEBUGFGLM > 0
-    fprintf (VERBSTREAM,"C1=");
-    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+    fprintf(VERBSTREAM,"C1=");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf(VERBSTREAM,"\n");
     fprintf(VERBSTREAM, "invC1=");
-    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf(VERBSTREAM,"\n");
 #endif
 
     long dec = 0;
@@ -1156,10 +1156,10 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           invert_table_polynomial (param, data, data_bms, block_size,
                                    prime, nc+1-dec, lambda);
 #if DEBUGFGLM > 1
-          fprintf (VERBSTREAM,"C2=");
-          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+          fprintf(VERBSTREAM,"C2=");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf(VERBSTREAM,"\n");
           fprintf(VERBSTREAM, "invC2=");
-          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf(VERBSTREAM,"\n");
 #endif
 
           divide_table_polynomials(param,data,data_bms, dimquot, block_size,
@@ -1229,10 +1229,10 @@ static int compute_parametrizations_colon(param_t *param,
   if (invert_table_polynomial (param, data, data_bms, block_size,
                                prime, 0, 0)) {
 #if DEBUGFGLM > 0
-    fprintf (VERBSTREAM,"C1=");
-    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+    fprintf(VERBSTREAM,"C1=");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf(VERBSTREAM,"\n");
     fprintf(VERBSTREAM, "invC1=");
-    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf(VERBSTREAM,"\n");
 #endif
     long dec = 0;
     for(long nc = 0; nc < nvars - 1 ; nc++){
@@ -1263,10 +1263,10 @@ static int compute_parametrizations_colon(param_t *param,
           invert_table_polynomial (param, data, data_bms, block_size,
                                    prime, nc+1-dec, lambda);
 #if DEBUGFGLM > 1
-          fprintf (VERBSTREAM,"C2=");
-          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+          fprintf(VERBSTREAM,"C2=");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf(VERBSTREAM,"\n");
           fprintf(VERBSTREAM, "invC2=");
-          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf(VERBSTREAM,"\n");
 #endif
 
           divide_table_polynomials_colon(param,data,data_bms, block_size,
@@ -1423,8 +1423,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   exit(1);
 #else
   if (info_level > 1) {
-    fprintf(VERBSTREAM,
-	    "scalar sequence                                     ");
+    fprintf(VERBSTREAM, "scalar sequence       ");
+    fprintf(VERBSTREAM, "                                                 ");
     fflush(VERBSTREAM);
   }
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
@@ -1435,14 +1435,14 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
     /* fprintf(ERRSTREAM, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm); */
-    fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
 
   st_fglm = realtime();
   cst_fglm = cputime();
   if (info_level > 1) {
-    fprintf(VERBSTREAM,
-	    "elimination polynomial                              ");
+    fprintf(VERBSTREAM, "elimination polynomial");
+    fprintf(VERBSTREAM, "                                 ");
     fflush(VERBSTREAM);
   }
 
@@ -1456,11 +1456,12 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     /*         realtime()-st_fglm); */
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
-    fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+    fprintf(VERBSTREAM, "1 new           ");
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
   if (param->degelimpol < 1) {
       if (info_level > 1) {
-          fprintf (VERBSTREAM, "Constant polynomial, computation will restart\n");
+          fprintf(VERBSTREAM, "Constant polynomial, computation will restart\n");
           goto restart;
       }
   }
@@ -1469,8 +1470,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     st_fglm = realtime();
     cst_fglm = cputime();
     if (info_level > 1){
-      fprintf(VERBSTREAM,
-	      "parametrizations                                    ");
+      fprintf(VERBSTREAM, "parametrizations");
+      fprintf(VERBSTREAM, "                        ");
       fflush(VERBSTREAM);
     }
 
@@ -1487,10 +1488,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     if (info_level > 1){
       double rt_fglm = realtime()-st_fglm;
       double crt_fglm = cputime()-cst_fglm;
+      fprintf(VERBSTREAM, "%16lu new           ",(unsigned long) (nvars-1));
       fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
-      fprintf(VERBSTREAM,
-	      "-------------------------------------------------\
------------------------------------------------------\n");
     }
   }
   else {
@@ -1501,8 +1500,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
     st_fglm = realtime();
     if (info_level > 1){
-      fprintf (VERBSTREAM,
-	       "parametrizations                                               ");
+      fprintf(VERBSTREAM,
+	       "parametrizations                                    ");
     }
     int right_param= compute_parametrizations_non_shape_position_case(param,
                                                                       *bdata,
@@ -1517,10 +1516,9 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
     if (info_level > 1){
       double rt_fglm = realtime()-st_fglm;
-      fprintf(VERBSTREAM, "%.2f\n",rt_fglm);
-      fprintf(VERBSTREAM,
-	      "-------------------------------------------------\
------------------------------------------------------\n");
+      double crt_fglm = cputime()-cst_fglm;
+      fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+      /* fprintf(VERBSTREAM, "%.2f\n",rt_fglm); */
     }
     if (right_param == 0) {
       if(info_level){
@@ -1546,6 +1544,11 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
         }
 
     }
+  }
+  if (info_level > 1){
+      fprintf(VERBSTREAM,
+              "-------------------------------------------------\
+-----------------------------------------------------\n");
   }
   st->fglm_rtime = realtime() - st->fglm_rtime;
   st->fglm_ctime = cputime() - st->fglm_ctime;
@@ -1858,7 +1861,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
     fprintf(VERBSTREAM, "Elimination done.\n");
   }
 
-  /* nmod_poly_fprint_pretty(ERRSTREAM, param->elim, "x"); fprintf (VERBSTREAM,"\n"); */
+  /* nmod_poly_fprint_pretty(ERRSTREAM, param->elim, "x"); fprintf(VERBSTREAM,"\n"); */
 
   //////////////////////////////////////////////////////////////////
 

@@ -390,5 +390,9 @@ AC_CONFIG_LINKS([
  output_files/lifting-single-point.p128.res:output_files/lifting-single-point.p128.res
  output_files/lifting-single-point.p1024.res:output_files/lifting-single-point.p1024.res
  test/diff/diff_lifting-single-point.sh:test/diff/diff_lifting-single-point.sh
+ input_files/univariate-wilkinson-both-signs.ms:input_files/univariate-wilkinson-both-signs.ms
+ output_files/univariate-wilkinson-both-signs.p128.res:output_files/univariate-wilkinson-both-signs.p128.res
+ output_files/univariate-wilkinson-both-signs.p1024.res:output_files/univariate-wilkinson-both-signs.p1024.res
+ test/diff/diff_univariate-wilkinson-both-signs.sh:test/diff/diff_univariate-wilkinson-both-signs.sh
 ])
 AC_OUTPUT

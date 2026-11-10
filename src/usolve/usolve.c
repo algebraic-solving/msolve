@@ -1246,15 +1246,17 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     bisection_rec(upol, &deg, e, 0,
                   pos_roots, nb_pos_roots,
                   flags, tmp_half, &nbv);
+    free_heap_flags(flags, olddeg);
+    unallocate_shift_pwx(flags->shift_pwx,
+                         flags->npwr, flags->pwx);
     if(flags->classical_algo == 0){
+      /* the subtrees left in fixed point, once the memory of the exact
+       * bisection is freed */
+      usolve_bal_run(&bal);
       usolve_bal_clear(&bal);
       flags->bal = NULL;
     }
     nb_positive_roots = *nb_pos_roots;
-
-    free_heap_flags(flags, olddeg);
-    unallocate_shift_pwx(flags->shift_pwx,
-                         flags->npwr, flags->pwx);
   }
 
   /* replaces upol(x) by upol(-x) => negative roots */
@@ -1313,14 +1315,15 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     bisection_rec(upol, &deg, e, 0,
                   neg_roots, nb_neg_roots,
                   flags, tmp_half, &nbv);
+    free_heap_flags(flags, olddeg);
+    unallocate_shift_pwx(flags->shift_pwx,
+                         flags->npwr, flags->pwx);
     if(flags->classical_algo == 0){
+      usolve_bal_run(&bal);
       usolve_bal_clear(&bal);
       flags->bal = NULL;
     }
     nb_negative_roots = (*nb_neg_roots);
-    free_heap_flags(flags, olddeg);
-    unallocate_shift_pwx(flags->shift_pwx,
-                         flags->npwr, flags->pwx);
   }
 
   unsigned long int nbroots = nb_positive_roots + nb_negative_roots;

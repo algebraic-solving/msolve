@@ -65,6 +65,11 @@
  * coefficients are handled by the exact fallback. */
 
 #include <math.h>
+#include <sys/resource.h>
+#include <unistd.h>
+#if defined(__APPLE__)
+#include <mach/mach.h>
+#endif
 #include "flint/fmpz_vec.h"
 
 #define USOLVE_BAL_SLOPE 2   /* nodes with a smaller best slope stay exact */
@@ -72,6 +77,13 @@
 #define USOLVE_BAL_EBITS 30  /* bits of the error bounds in the products */
 #define USOLVE_BAL_NCACHE 4096
 #define USOLVE_BAL_GRIDMAX 8  /* grids of sign evaluations up to 8 roots */
+/* memory, measured on katsura-12 and katsura-13: each thread of
+ * usolve_bal_run adds about USOLVE_BAL_THRMEM (n + 1) w bits to the
+ * resident memory (mostly the work space of FLINT's products, which each
+ * thread keeps), and the exact bisection reaches about USOLVE_BAL_TOPMEM
+ * times the size of its largest node polynomial */
+#define USOLVE_BAL_THRMEM 50
+#define USOLVE_BAL_TOPMEM 18
 
 typedef struct {
   fmpz *v;    /* coefficients */
@@ -87,6 +99,12 @@ typedef struct {
   slong z;          /* c_j = 0 for j < z */
 } usolve_bal_power_t;
 
+/* the cache of the powers, shared by the threads */
+typedef struct {
+  usolve_bal_power_t *p;
+  long n;
+} usolve_bal_cache_t;
+
 typedef struct {
   slong n;
   /* F(y) = 2^d g(s 2^b y), with g = f, or f / x when the root 0 of the
@@ -97,8 +115,13 @@ typedef struct {
   int s;
   slong w;              /* working precision */
   double *lbin;         /* log2 binom(n + 1, i + 1) */
-  usolve_bal_power_t *powers;
-  long npowers;
+  usolve_bal_cache_t *powers;
+  /* subtrees left for usolve_bal_run: nodes (rebalanced), c and k */
+  usolve_bal_node_t *queue;
+  fmpz *qc;
+  slong *qk;
+  long nqueue, aqueue;
+  double smax;          /* bytes of the largest exact node polynomial */
   interval *roots;
   unsigned long int *nbr;
   usolve_flags *flags;
@@ -134,19 +157,37 @@ static void usolve_bal_node_set(usolve_bal_node_t *a,
 }
 
 /* index of (y + 2^-t)^m in the cache of B */
+static long usolve_bal_power_new(usolve_bal_cache_t *C, const slong m,
+                                 const slong t, const slong q);
+
+/* the entries of the cache are never moved nor modified once computed;
+ * the threads look them up and compute them one at a time */
 static long usolve_bal_power(usolve_bal_t *B, const slong m, const slong t,
                              const slong q){
-  for(long i = 0; i < B->npowers; i++){
-    if(B->powers[i].m == m && B->powers[i].t == t && B->powers[i].q == q){
-      return i;
+  usolve_bal_cache_t *C = B->powers;
+  long id = -1;
+#pragma omp critical(usolve_bal_power)
+  {
+    for(long i = 0; i < C->n && id < 0; i++){
+      if(C->p[i].m == m && C->p[i].t == t && C->p[i].q == q){
+        id = i;
+      }
+    }
+    if(id < 0){
+      id = usolve_bal_power_new(C, m, t, q);
     }
   }
-  if(B->npowers == USOLVE_BAL_NCACHE){
+  return id;
+}
+
+static long usolve_bal_power_new(usolve_bal_cache_t *C, const slong m,
+                                 const slong t, const slong q){
+  if(C->n == USOLVE_BAL_NCACHE){
     fprintf(ERRSTREAM, "usolve: too many powers of (x + 2^-t)\n");
     exit(1);
   }
-  const long id = B->npowers++;
-  usolve_bal_power_t *P = B->powers + id;
+  const long id = C->n++;
+  usolve_bal_power_t *P = C->p + id;
   P->m = m;
   P->t = t;
   P->q = q;
@@ -233,7 +274,7 @@ static void usolve_bal_shift(usolve_bal_t *B, fmpz *v, fmpz *e,
   usolve_bal_shift(B, v + m, e + m, len - m, t, tmp);
   /* v = v0 + (y + 2^-t)^m v1 */
   const slong q = (t > 0) ? B->w + 64 : 0;
-  const usolve_bal_power_t *P = B->powers + usolve_bal_power(B, m, t, q);
+  const usolve_bal_power_t *P = B->powers->p + usolve_bal_power(B, m, t, q);
   const slong l1 = len - m, lp = l1 + P->c->length - 1;
   fmpz *prod = _fmpz_vec_init(lp);
   fmpz *perr = _fmpz_vec_init(lp);
@@ -861,8 +902,15 @@ static void usolve_bal_init(usolve_bal_t *B, mpz_t *upol0,
     B->lbin[i] = (lgamma(n + 2.0) - lgamma(i + 2.0) - lgamma(n - i + 1.0))
       / log(2.0);
   }
-  B->powers = malloc(USOLVE_BAL_NCACHE * sizeof(usolve_bal_power_t));
-  B->npowers = 0;
+  B->powers = malloc(sizeof(usolve_bal_cache_t));
+  B->powers->p = malloc(USOLVE_BAL_NCACHE * sizeof(usolve_bal_power_t));
+  B->powers->n = 0;
+  B->queue = NULL;
+  B->qc = NULL;
+  B->qk = NULL;
+  B->nqueue = 0;
+  B->aqueue = 0;
+  B->smax = 0;
   B->roots = roots;
   B->nbr = nbr;
   B->flags = flags;
@@ -883,11 +931,18 @@ static void usolve_bal_clear(usolve_bal_t *B){
             B->subtrees, B->nodes, B->fallbacks, (long)B->w, B->grids_ok,
             B->grids, B->grid_signs);
   }
-  for(long i = 0; i < B->npowers; i++){
-    fmpz_poly_clear(B->powers[i].c);
-    fmpz_poly_clear(B->powers[i].ce);
+  for(long i = 0; i < B->powers->n; i++){
+    fmpz_poly_clear(B->powers->p[i].c);
+    fmpz_poly_clear(B->powers->p[i].ce);
   }
+  free(B->powers->p);
   free(B->powers);
+  free(B->queue);
+  for(long i = 0; i < B->aqueue; i++){
+    fmpz_clear(B->qc + i);
+  }
+  free(B->qc);
+  free(B->qk);
   free(B->lbin);
   for(slong i = 0; i < B->fl; i++){
     fmpz_clear_readonly(B->f + i);
@@ -898,13 +953,20 @@ static void usolve_bal_clear(usolve_bal_t *B){
 /* called by bisection_rec on the node (c, k), whose exact polynomial is
  * upol, of degree deg: when the node polynomial still has the degree of
  * F (no exact root was divided out), upol(0) != 0, and its best slope is
- * at least USOLVE_BAL_SLOPE, its subtree is investigated in fixed point;
- * then 1 is returned, *nbv is the number of sign variations of the node,
- * and upol is unchanged. Otherwise, 0 is returned. */
+ * at least USOLVE_BAL_SLOPE, its subtree is investigated in fixed point,
+ * later by usolve_bal_run when the test of the node shows at least two
+ * sign variations, at once otherwise; then 1 is returned, *nbv is the
+ * number of sign variations of the node, and upol is unchanged.
+ * Otherwise, 0 is returned. */
 static int usolve_bal_subtree(usolve_bal_t *B, mpz_t *upol,
                               const unsigned long int deg, const mpz_t c,
                               const long k, long *nbv){
   const slong n = B->n;
+  double sz = 0;
+  for(unsigned long int i = 0; i <= deg; i++){
+    sz += (double)mpz_size(upol[i]) * sizeof(mp_limb_t);
+  }
+  B->smax = FLINT_MAX(B->smax, sz);
   if((slong)deg != n || mpz_sgn(upol[0]) == 0){
     return 0;
   }
@@ -919,6 +981,28 @@ static int usolve_bal_subtree(usolve_bal_t *B, mpz_t *upol,
   }
   usolve_bal_rebalance(B, &a);
   B->subtrees++;
+  /* a subtree with at least 2 sign variations is left for usolve_bal_run,
+   * unless the bisection stops at the first root */
+  long vmax;
+  const long nb = B->flags->hasrealroots ? -1 : usolve_bal_test(B, &a, 1, &vmax);
+  if(nb >= 2){
+    if(B->nqueue == B->aqueue){
+      const long na = FLINT_MAX(16, 2 * B->aqueue);
+      B->queue = realloc(B->queue, na * sizeof(usolve_bal_node_t));
+      B->qc = realloc(B->qc, na * sizeof(fmpz));
+      for(long i = B->aqueue; i < na; i++){
+        fmpz_init(B->qc + i);
+      }
+      B->qk = realloc(B->qk, na * sizeof(slong));
+      B->aqueue = na;
+    }
+    B->queue[B->nqueue] = a;
+    fmpz_set_mpz(B->qc + B->nqueue, c);
+    B->qk[B->nqueue] = k;
+    B->nqueue++;
+    *nbv = nb;
+    return 1;
+  }
   fmpz_t cf;
   fmpz_init(cf);
   fmpz_set_mpz(cf, c);
@@ -926,4 +1010,161 @@ static int usolve_bal_subtree(usolve_bal_t *B, mpz_t *upol,
   fmpz_clear(cf);
   usolve_bal_node_clear(&a, n);
   return 1;
+}
+
+/* peak and current resident memory of the process, in bytes; returns 0
+ * if the current one cannot be read */
+static int usolve_bal_rss(double *peak, double *cur){
+  struct rusage ru;
+  if(getrusage(RUSAGE_SELF, &ru)){
+    return 0;
+  }
+#if defined(__APPLE__)
+  *peak = (double)ru.ru_maxrss;
+  struct mach_task_basic_info info;
+  mach_msg_type_number_t cnt = MACH_TASK_BASIC_INFO_COUNT;
+  if(task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+               (task_info_t)&info, &cnt) != KERN_SUCCESS){
+    return 0;
+  }
+  *cur = (double)info.resident_size;
+  return 1;
+#elif defined(__linux__)
+  *peak = 1024.0 * ru.ru_maxrss;
+  long pages, res;
+  FILE *fd = fopen("/proc/self/statm", "r");
+  if(fd == NULL){
+    return 0;
+  }
+  const int ok = (fscanf(fd, "%ld %ld", &pages, &res) == 2);
+  fclose(fd);
+  *cur = (double)res * sysconf(_SC_PAGESIZE);
+  return ok;
+#else
+  return 0;
+#endif
+}
+
+/* order of the intervals of the roots: by left ends (numer / 2^k, or
+ * numer when k <= 0, see merge_root), an exact root before the interval
+ * starting at it */
+static int usolve_bal_cmp_roots(const void *x, const void *y){
+  const interval *a = x, *b = y;
+  const long ka = FLINT_MAX(a->k, 0), kb = FLINT_MAX(b->k, 0);
+  mpz_t s, t;
+  mpz_init(s);
+  mpz_init(t);
+  if(ka >= kb){
+    mpz_set(s, a->numer);
+    mpz_mul_2exp(t, b->numer, ka - kb);
+  }
+  else{
+    mpz_mul_2exp(s, a->numer, kb - ka);
+    mpz_set(t, b->numer);
+  }
+  int r = mpz_cmp(s, t);
+  mpz_clear(s);
+  mpz_clear(t);
+  if(r == 0){
+    r = (int)b->isexact - (int)a->isexact;
+  }
+  return (r > 0) - (r < 0);
+}
+
+/* investigates the subtrees left by usolve_bal_subtree with the threads of
+ * B->flags, as many as fit below the peak memory of the process so far
+ * (that of the exact bisection, or of earlier computations, such as the
+ * parametrization in msolve), or, when the memory of the process cannot be
+ * read, below the memory used by the exact bisection. Each one starts from
+ * the state of B (working precision, ...),
+ * learns on its own and writes its roots in its own array, so that the
+ * output does not depend on the number of threads; the roots are then
+ * sorted back in the order of the sequential bisection (by increasing x
+ * for the positive roots, by decreasing x for the negative ones) */
+static void usolve_bal_run(usolve_bal_t *B){
+  const long nq = B->nqueue;
+  if(nq == 0){
+    return;
+  }
+  const slong n = B->n;
+  usolve_flags *flags = B->flags;
+  const slong w0 = B->w;
+  /* the work space of FLINT's products in the exact bisection */
+  flint_cleanup();
+  const double thr = USOLVE_BAL_THRMEM * (double)(n + 1) * w0 / 8;
+  double peak, cur, room;
+  if(usolve_bal_rss(&peak, &cur)){
+    room = FLINT_MAX(peak - cur, 0);
+  }
+  else{
+    room = USOLVE_BAL_TOPMEM * B->smax + thr;
+  }
+  /* the main thread counts too: its work space was freed above */
+  int nthreads = (int)FLINT_MIN((double)flags->nthreads, room / thr);
+  nthreads = FLINT_MAX(nthreads, 1);
+  if(flags->verbose >= 1){
+    fprintf(VERBSTREAM, "\n%ld subtrees in fixed point on %d threads "
+            "(%.0f MB available below the peak memory, about %.0f MB per "
+            "thread)\n", nq, nthreads, room / 1e6, thr / 1e6);
+  }
+#pragma omp parallel num_threads(nthreads)
+  {
+#pragma omp for schedule(dynamic, 1)
+    for(long j = 0; j < nq; j++){
+      usolve_flags fl = *flags;
+      fl.node_looked = 0;
+      fl.half_done = 0;
+      fl.skipped = 0;
+      fl.transl = 0;
+      fl.time_desc = 0;
+      fl.time_shift = 0;
+      unsigned long int nbr = 0;
+      usolve_bal_t T = *B;
+      T.flags = &fl;
+      T.roots = malloc((n + 1) * sizeof(interval));
+      T.nbr = &nbr;
+      T.w = w0;
+      T.nodes = 0;
+      T.fallbacks = 0;
+      T.grids = 0;
+      T.grids_ok = 0;
+      T.grid_signs = 0;
+      T.recent_nodes = 0;
+      T.recent_fallbacks = 0;
+      usolve_bal_node(&T, B->queue + j, B->qc + j, B->qk[j]);
+      usolve_bal_node_clear(B->queue + j, n);
+#pragma omp critical(usolve_bal_run)
+      {
+        /* the intervals are moved (their numerators are not copied) */
+        for(unsigned long int i = 0; i < nbr; i++){
+          B->roots[*(B->nbr) + i] = T.roots[i];
+        }
+        *(B->nbr) += nbr;
+        B->w = FLINT_MAX(B->w, T.w);
+        B->nodes += T.nodes;
+        B->fallbacks += T.fallbacks;
+        B->grids += T.grids;
+        B->grids_ok += T.grids_ok;
+        B->grid_signs += T.grid_signs;
+        flags->node_looked += fl.node_looked;
+        flags->half_done += fl.half_done;
+        flags->skipped += fl.skipped;
+        flags->transl += fl.transl;
+        flags->time_desc += fl.time_desc;
+        flags->time_shift += fl.time_shift;
+      }
+      free(T.roots);
+    }
+    flint_cleanup();
+  }
+  B->nqueue = 0;
+  const unsigned long int nr = *(B->nbr);
+  qsort(B->roots, nr, sizeof(interval), usolve_bal_cmp_roots);
+  if(flags->sign){
+    for(unsigned long int i = 0; i < nr / 2; i++){
+      interval x = B->roots[i];
+      B->roots[i] = B->roots[nr - 1 - i];
+      B->roots[nr - 1 - i] = x;
+    }
+  }
 }

@@ -275,7 +275,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     M->nthreads = md->nthrds;
     const int old_flint = fglmc_flint_threads_push(md->nthrds);
     CF_t *res = NULL;
-    int ok = fglm_classic_learn(M, FGLM_ORDER_LEX, &tr.lex, &tr, &rp, &res);
+    int ok = fglm_classic_learn(M, FGLM_ORDER_LEX, &tr.lex, &tr, &rp, &res, md);
     /* the next primes only compute the rows computed on p0 */
     mm_trace_keep_computed_rows(&tr, M);
     mm_rows_clear(&rp);

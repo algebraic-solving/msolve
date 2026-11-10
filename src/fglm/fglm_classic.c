@@ -556,14 +556,16 @@ static inline void fglmc_set_parent(szmat_t *parent, int32_t *var,
 /* Dense rows computed on demand (normal forms by core_nf, see hilbert.c):
  * fill computes the dense rows rows[0..n) of M, returns 0 on failure. */
 typedef struct {
-  int (*fill)(void *ctx, sp_multimatfglm_t *M, const szmat_t *rows, szmat_t n);
+  int (*fill)(void *ctx, sp_multimatfglm_t *M, const szmat_t *rows,
+              szmat_t n, const int info_level);
   void *ctx;
 } fglmc_rows_t;
 
 /* computes, if needed, the rows of the matrix of x_i used by the product
  * with v. Returns 0 on failure. */
 static int fglmc_need_rows(const fglmc_rows_t *rp, sp_multimatfglm_t *M,
-                           const int32_t i, const CF_t *v){
+                           const int32_t i, const CF_t *v,
+                           const int info_level){
   if(rp == NULL || rp->fill == NULL || M->have_row == NULL) return 1;
   const szmat_t D = M->ncols;
   const szmat_t *sel = M->rowsel + (uint64_t)i * D;
@@ -575,7 +577,7 @@ static int fglmc_need_rows(const fglmc_rows_t *rp, sp_multimatfglm_t *M,
     }
   }
   int ok = 1;
-  if(n > 0) ok = rp->fill(rp->ctx, M, rows, n);
+  if(n > 0) ok = rp->fill(rp->ctx, M, rows, n, info_level);
   free(rows);
   return ok;
 }
@@ -584,7 +586,8 @@ static int fglmc_need_rows(const fglmc_rows_t *rp, sp_multimatfglm_t *M,
  * demand (only the rows of the matrix of x_n are needed beforehand). */
 static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
                               fglm_lex_staircase_t *lex, fglm_trace_t *tr,
-                              const fglmc_rows_t *rp, CF_t **coeffs_out){
+                              const fglmc_rows_t *rp, CF_t **coeffs_out,
+                              md_t * st){
   if(ord != FGLM_ORDER_LEX) return 0;
   const szmat_t D = Mt->ncols;
   const int32_t nv = Mt->nvars;
@@ -608,7 +611,8 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   fglmc_heap_t H = { malloc(maxc * sizeof(fglmc_cand_t)), 0, nv, ord };
   lex->g_lm     = malloc(maxc * nv * sizeof(int32_t));
   lex->g_ntail  = malloc(maxc * sizeof(szmat_t));
-  lex->ngens = 0; lex->ncoeffs = 0;
+  lex->ngens = 0;
+  lex->ncoeffs = 0;
   if(tr != NULL){
       tr->s_parent = malloc((D + 1) * sizeof(szmat_t));
       tr->s_var    = malloc((D + 1) * sizeof(int32_t));
@@ -635,17 +639,51 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
               );
   const int32_t *last = NULL;
 
+  double rt = realtime();
+  double ct = cputime();
+  uint64_t npols = 0; // number of polynomials by variables
+  if (st->info_level > 1) {
+      fprintf(VERBSTREAM, "elimination polynomial                  ");
+  }
+  int32_t curvar = xn;
   while(H.n && ok){
     fglmc_cand_t u = fglmc_hpop(&H);
     if(last && !memcmp(last, u.e, nv * sizeof(int32_t))) continue;
     last = u.e;
+    if (st->info_level > 1) {
+        int32_t degu = 0;
+        for(int32_t i = 0; i < xn; i++) {
+            degu += u.e[i];
+            if (degu > 1) break;
+        }
+        if (degu == 1) { // new variable for the chain
+            rt = realtime() - rt;
+            ct = cputime() - ct;
+            if (curvar != xn){
+                fprintf(VERBSTREAM,
+                        "variable %3d                            ", curvar);
+            }
+            fprintf(VERBSTREAM,
+                    "%16lu new           ",npols);
+            fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt,ct);
+            fflush(VERBSTREAM);
+            rt = realtime();
+            ct = cputime();
+            curvar--;
+            npols = 0;
+        }
+    }
     /* is it a multiple of a lm? if not bound kmax */
     int skip = 0;
     uint64_t kmax = D + 1;
     for(int32_t l = 0; l < lex->ngens && !skip; l++){
       const int32_t *lm = lex->g_lm + (uint64_t)l * nv;
       int div = 1;
-      for(int32_t i = 0; i < xn && div; i++) if(lm[i] > u.e[i]) div = 0;
+      for(int32_t i = 0; i < xn && div; i++) {
+          if(lm[i] > u.e[i]) {
+              div = 0;
+          }
+      }
       if(!div) continue;
       if(lm[xn] == 0){
           skip = 1;
@@ -674,7 +712,8 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
           }
           else {
               if(!fglmc_need_rows(rp, Mt, u.var,
-                                  Vs + (uint64_t)u.parent * D)){
+                                  Vs + (uint64_t)u.parent * D,
+                                  st->info_level)){
                   ok = 0;
                   break;
               }
@@ -699,6 +738,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
                                  tr->g_var + lex->ngens, &u, k, t, xn);
             }
             fglmc_new_head(lex, u.e, (int32_t)k, nv, t);
+            npols++;
             chain_done = 1;
         } else {
           if(t == D){
@@ -777,6 +817,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
                                        tr->g_var + lex->ngens, &u, k + i, t, xn);
                   }
                   fglmc_new_head(lex, u.e, (int32_t)(k + i), nv, t);
+                  npols++;
                   j0 = i;
                   break;
               }
@@ -811,6 +852,18 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
         }
     }
   }
+  if(st->info_level > 1) { // largest variable is done
+      rt = realtime() - rt;
+      ct = cputime() - ct;
+      fprintf(VERBSTREAM,
+              "variable %3d                            ", curvar);
+      fprintf(VERBSTREAM,
+              "%16lu new           ",npols);
+      fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt,ct);
+      fflush(VERBSTREAM);
+      rt = realtime();
+      ct = cputime();
+  }
   if(t != D) {
       ok = 0;
   }
@@ -835,6 +888,11 @@ done:
   free(al);
   free(coeffs);
   free(H.a);
+  if (st->info_level > 1){
+      fprintf(VERBSTREAM,
+              "-------------------------------------------------\
+-----------------------------------------------------\n");
+  }
   return ok;
 }
 
@@ -955,14 +1013,14 @@ static fglm_gb_t *fglm_gb_from_staircase(const fglm_lex_staircase_t *lex,
 
 /* FGLM over a prime field: the greedy phase (LU elimination) gives at once the
  * staircase, the leading monomials and the relations. */
-static fglm_gb_t *fglm_classic(const sp_multimatfglm_t *Mt, const int ord,
-                               md_t * st){
+static fglm_gb_t *fglm_classic(sp_multimatfglm_t *Mt, const int ord,
+                               const fglmc_rows_t *rp, md_t * st){
   fglm_lex_staircase_t lex;
   memset(&lex, 0, sizeof(lex));
   fglm_gb_t *G = NULL;
   CF_t *coeffs = NULL;
   const int old_thr = fglmc_flint_threads_push(Mt->nthreads);
-  if(fglm_classic_learn(Mt, ord, &lex, NULL, rp, &coeffs)){
+  if(fglm_classic_learn(Mt, ord, &lex, NULL, rp, &coeffs, st)){
       G = fglm_gb_from_staircase(&lex, coeffs, Mt->charac);
   }
   free(coeffs);

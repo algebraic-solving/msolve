@@ -5127,7 +5127,7 @@ restart:
         if (print_gb == 0 || use_signatures > 0 || saturate > 0
                 || colon > 0 || normal_form > 0) {
             if (gens->boolean) {
-                fprintf(ERRSTREAM, "In the Boolean ring msolve ");
+                fprintf(ERRSTREAM, "In the boolean ring msolve ");
             } else if (is_gf2_ext(gens->field_char)) {
                 fprintf(ERRSTREAM, "Over GF(16) and GF(256) msolve ");
             } else {
@@ -5183,13 +5183,15 @@ restart:
                 }
             }
         }
+        /* in the Boolean ring the input statistics are printed below,
+         * once st knows that it computes in the Boolean ring */
         int success = initialize_gba_input_data(&bs, &bht, &st,
                 gens->lens, gens->exps, cfs,
                 fc, 0 /* DRL order */, elim_block_len,
                 gens->nvars, gens->ngens, 0 /* # normal forms */,
                 initial_hts, nr_threads, max_pairs, update_ht, la_option,
                 0 /* use_signatures */, 1 /* reduce_gb */, 0,
-                0 /* truncate_lifting */, info_level);
+                0 /* truncate_lifting */, gens->boolean ? 0 : info_level);
 
         if (success != 1) {
             fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
@@ -5199,6 +5201,8 @@ restart:
             st->boolean     = 1;
             bht->boolean    = 1;
             bs->ht->boolean = 1;
+            st->info_level  = info_level;
+            print_initial_statistics(VERBSTREAM, st);
         }
         bs = core_gba(bs, st, &err, fc);
         if (err) {

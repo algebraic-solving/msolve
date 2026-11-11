@@ -348,7 +348,7 @@ static void print_msolve_polynomials_ff(
                     st->ff_bits == 64 ? st->fc : (uint64_t)st->gfc);
         }
         if (st->boolean) {
-            fprintf(file, "#Boolean ring:         x^2 = x for all variables x\n");
+            fprintf(file, "#boolean ring:         x^2 = x for all variables x\n");
         }
         fprintf(file, "#variable order:       ");
         for (i = 0; i < nv-1; ++i) {

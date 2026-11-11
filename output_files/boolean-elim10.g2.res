@@ -1,7 +1,7 @@
 #Reduced Groebner basis data
 #---
 #field characteristic: 2
-#Boolean ring:         x^2 = x for all variables x
+#boolean ring:         x^2 = x for all variables x
 #variable order:       x1, x2, x3, x4, x5, x6, x7, x8, x9, x10
 #monomial order:       eliminating first 3 variables, blocks: graded reverse lexicographical
 #length of basis:      29 elements sorted by increasing leading monomials

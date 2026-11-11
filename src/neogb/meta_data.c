@@ -107,6 +107,9 @@ void print_initial_statistics(
         fprintf(file, "#equations             %11d\n", st->ngens);
         fprintf(file, "#invalid equations     %11d\n", st->ngens_invalid);
         fprintf(file, "field characteristic   %11lu\n", (unsigned long)st->fc);
+        if (st->boolean) {
+            fprintf(file, "boolean ring (x^2 = x)         yes\n");
+        }
         fprintf(file, "homogeneous input?     %11d\n", st->homogeneous);
         fprintf(file, "signature-based computation %6d\n", st->use_signatures);
         if (st->mo == 0 && st->nev == 0) {

@@ -4348,6 +4348,32 @@ static void real_stats_init(real_stats_t *rs) {
   memset(rs, 0, sizeof(real_stats_t));
 }
 
+static int real_cmp_deg(const void *a, const void *b) {
+  const long da = *(const long *)a, db = *(const long *)b;
+  return (da < db) - (da > db);
+}
+
+/* the number of components and of components of each degree, by
+ * decreasing degree */
+static void real_components_print(const long *deg, const long n) {
+  long *d = malloc(MAX(n, 1) * sizeof(long));
+  memcpy(d, deg, n * sizeof(long));
+  qsort(d, n, sizeof(long), real_cmp_deg);
+  fprintf(VERBSTREAM, "\n-------------- COMPONENTS ---------------\n");
+  fprintf(VERBSTREAM, "#components              %15ld\n", n);
+  for (long i = 0; i < n;) {
+    long j = i;
+    while (j < n && d[j] == d[i]) {
+      j++;
+    }
+    fprintf(VERBSTREAM, "#components of degree %-6ld%11ld\n", d[i], j - i);
+    i = j;
+  }
+  fprintf(VERBSTREAM, "-----------------------------------------\n");
+  fflush(VERBSTREAM);
+  free(d);
+}
+
 static void real_stats_print(const real_stats_t *rs, const double rt,
                              const int info_level) {
   fprintf(VERBSTREAM, "\n---------- COMPUTATIONAL DATA -----------\n");
@@ -4466,6 +4492,10 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
   double rt = realtime();
   real_stats_t rs;
   real_stats_init(&rs);
+  if (info_level > 1) {
+    const long d = param->elim->length - 1;
+    real_components_print(&d, 1);
+  }
   real_point_t *pts = real_roots_param(param, nb_real_roots_ptr,
                                        real_roots_ptr, precision, nr_threads,
                                        info_level, &rs);
@@ -4528,6 +4558,14 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
   real_stats_t rs;
   real_stats_init(&rs);
   const long nc = params->nb;
+  if (info_level > 1) {
+    long *deg = malloc(MAX(nc, 1) * sizeof(long));
+    for (long i = 0; i < nc; i++) {
+      deg[i] = params->params[i]->elim->length - 1;
+    }
+    real_components_print(deg, nc);
+    free(deg);
+  }
   long *lnb = malloc(nc * sizeof(long));
   interval **lroots = malloc(nc * sizeof(interval *));
   real_point_t **lpts = malloc(nc * sizeof(real_point_t *));

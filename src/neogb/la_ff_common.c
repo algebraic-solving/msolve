@@ -68,18 +68,38 @@
 #endif
 
 /* maximal number of rows reduced together by the known pivots, see
- * LA_FF(reduce_dense_rows_by_known_pivots). With 16 bit entries one
- * column of the interleaved rows fills an AVX2 vector, with 32 bit
- * entries 16 rows are not faster than 8 rows. */
+ * LA_FF(reduce_dense_rows_by_known_pivots). With 16 and 32 bit entries
+ * one column of the interleaved rows fills an AVX-512 vector, resp. an
+ * AVX2 vector, with AVX2 and 32 bit entries 16 rows are not faster than
+ * 8 rows. */
 #if LA_ACC_BITS == 16
+#if defined HAVE_AVX512_BW
+#define LA_NR 32
+#else
 #define LA_NR 16
+#endif
 #define LA_ACC_T uint16_t
 #elif LA_ACC_BITS == 32
+#if defined HAVE_AVX512_F
+#define LA_NR 16
+#else
 #define LA_NR 8
+#endif
 #define LA_ACC_T uint32_t
 #else
 #define LA_NR 8
 #define LA_ACC_T int64_t
+#endif
+
+/* With LA_ACC_REDUCED the multipliers m' of Shoup's method are
+ * floor(m*2^LA_MP_SHIFT/p). NEON gets floor(m'*c/2^31) with one vqdmulh,
+ * x86 and the scalar code get floor(m'*c/2^32). */
+#if defined LA_ACC_REDUCED
+#if defined __aarch64__ && !defined HAVE_AVX2 && !defined HAVE_AVX512_F
+#define LA_MP_SHIFT 31
+#else
+#define LA_MP_SHIFT 32
+#endif
 #endif
 
 /* Number of rows reduced together by the known pivots when reducing nrl
@@ -109,8 +129,9 @@ static inline len_t LA_FF(rows_per_group)(
  * array rbas[r] for the tracer, rbas[r] may be NULL if row r is zero.
  * The entries of dr are kept in [0,p^2], for LA_ACC_BITS < 64 a borrow
  * in t - m*c, i.e. t <= m*c, is corrected by adding p^2. With
- * LA_ACC_REDUCED they are kept in [0,p): with m' = floor(m*2^32/p) and
- * q = floor(m'*c/2^32) we get m*c - q*p in [0,2p), see V. Shoup, NTL. */
+ * LA_ACC_REDUCED they are kept in [0,p): with s = LA_MP_SHIFT,
+ * m' = floor(m*2^s/p) and q = floor(m'*c/2^s) we get m*c - q*p in [0,2p),
+ * see V. Shoup, NTL. */
 static void LA_FF(reduce_dense_rows_by_known_pivots)(
         LA_ACC_T *dr,
         LA_CF_T **drs,
@@ -133,19 +154,25 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
 #if defined LA_ACC_REDUCED
     /* floor(2^64/p) up to one, for computing the m' */
     const uint64_t pinv = UINT64_MAX / fc;
-#if defined HAVE_AVX2 || defined HAVE_AVX512_F
+#if defined HAVE_AVX512_F
+    const __m512i pv = _mm512_set1_epi32((int32_t)fc);
+#elif defined HAVE_AVX2
     const __m256i pv = _mm256_set1_epi32((int32_t)fc);
 #elif defined __aarch64__
     const uint32x4_t pv = vdupq_n_u32((uint32_t)fc);
 #endif
 #elif LA_ACC_BITS == 16
-#if defined HAVE_AVX2 || defined HAVE_AVX512_F
+#if defined HAVE_AVX512_BW
+    const __m512i mod2v = _mm512_set1_epi16((int16_t)mod2);
+#elif defined HAVE_AVX2 || defined HAVE_AVX512_F
     const __m256i mod2v = _mm256_set1_epi16((int16_t)mod2);
 #elif defined __aarch64__
     const uint16x8_t mod2v = vdupq_n_u16((uint16_t)mod2);
 #endif
 #elif LA_ACC_BITS == 32
-#if defined HAVE_AVX2 || defined HAVE_AVX512_F
+#if defined HAVE_AVX512_F
+    const __m512i mod2v = _mm512_set1_epi32((int32_t)mod2);
+#elif defined HAVE_AVX2
     const __m256i mod2v = _mm256_set1_epi32((int32_t)mod2);
 #elif defined __aarch64__
     const uint32x4_t mod2v = vdupq_n_u32((uint32_t)mod2);
@@ -192,7 +219,7 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
 #if defined LA_ACC_REDUCED
         uint32_t mp[LA_NR];
         for (r = 0; r < LA_NR; ++r) {
-            const uint64_t x  = (uint64_t)d[r] << 32;
+            const uint64_t x  = (uint64_t)d[r] << LA_MP_SHIFT;
             uint64_t q        = (uint64_t)(((__uint128_t)x * pinv) >> 64);
             while (x - q * fc >= fc) {
                 q++;
@@ -200,7 +227,32 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
             mp[r] = (uint32_t)q;
         }
 #endif
-#if defined LA_ACC_REDUCED && (defined HAVE_AVX2 || defined HAVE_AVX512_F)
+#if defined LA_ACC_REDUCED && defined HAVE_AVX512_F
+        __m512i mulv[LA_NR/16], mpev[LA_NR/16], mpov[LA_NR/16];
+        for (r = 0; r < LA_NR/16; ++r) {
+            mulv[r] = _mm512_loadu_si512((void *)(d+16*r));
+            mpev[r] = _mm512_loadu_si512((void *)(mp+16*r));
+            mpov[r] = _mm512_srli_epi64(mpev[r], 32);
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t       = dr + (uint64_t)LA_NR * ds[j];
+            const __m512i cfv = _mm512_set1_epi32((int32_t)cfs[j]);
+            for (r = 0; r < LA_NR/16; ++r) {
+                /* q = floor(m'*c/2^32) for the even and the odd lanes */
+                const __m512i qv  = _mm512_mask_blend_epi32(0xAAAA,
+                        _mm512_srli_epi64(_mm512_mul_epu32(mpev[r], cfv), 32),
+                        _mm512_mul_epu32(mpov[r], cfv));
+                __m512i prodv     = _mm512_sub_epi32(
+                        _mm512_mullo_epi32(mulv[r], cfv),
+                        _mm512_mullo_epi32(qv, pv));
+                prodv = _mm512_min_epu32(prodv, _mm512_sub_epi32(prodv, pv));
+                __m512i tv        = _mm512_sub_epi32(
+                        _mm512_loadu_si512((void *)(t+16*r)), prodv);
+                tv    = _mm512_min_epu32(tv, _mm512_add_epi32(tv, pv));
+                _mm512_storeu_si512((void *)(t+16*r), tv);
+            }
+        }
+#elif defined LA_ACC_REDUCED && defined HAVE_AVX2
         __m256i mulv[LA_NR/8], mpev[LA_NR/8], mpov[LA_NR/8];
         for (r = 0; r < LA_NR/8; ++r) {
             mulv[r] = _mm256_loadu_si256((__m256i *)(d+8*r));
@@ -226,19 +278,20 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
             }
         }
 #elif defined LA_ACC_REDUCED && defined __aarch64__
-        uint32x4_t mulv[LA_NR/4], mpv[LA_NR/4];
+        uint32x4_t mulv[LA_NR/4];
+        int32x4_t mpv[LA_NR/4];
         for (r = 0; r < LA_NR/4; ++r) {
             mulv[r] = vld1q_u32(d+4*r);
-            mpv[r]  = vld1q_u32(mp+4*r);
+            mpv[r]  = vreinterpretq_s32_u32(vld1q_u32(mp+4*r));
         }
         for (j = 0; j < len; ++j) {
             LA_ACC_T *t           = dr + (uint64_t)LA_NR * ds[j];
             const uint32x4_t cfv  = vdupq_n_u32((uint32_t)cfs[j]);
             for (r = 0; r < LA_NR/4; ++r) {
-                const uint32x4_t qv = vcombine_u32(
-                        vshrn_n_u64(vmull_u32(vget_low_u32(mpv[r]),
-                                vget_low_u32(cfv)), 32),
-                        vshrn_n_u64(vmull_high_u32(mpv[r], cfv), 32));
+                /* q = floor(2*m'*c/2^32) = floor(m'*c/2^31), m' and c are
+                 * smaller than 2^31, so vqdmulh does not saturate */
+                const uint32x4_t qv = vreinterpretq_u32_s32(vqdmulhq_s32(
+                            mpv[r], vreinterpretq_s32_u32(cfv)));
                 uint32x4_t prodv    = vmlsq_u32(vmulq_u32(mulv[r], cfv), qv, pv);
                 prodv = vminq_u32(prodv, vsubq_u32(prodv, pv));
                 uint32x4_t tv       = vsubq_u32(vld1q_u32(t+4*r), prodv);
@@ -260,6 +313,23 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
                 uint32_t prod     = mul[r] * c - q * p32;
                 prod  -=  prod >= p32 ? p32 : 0;
                 t[r]  =   t[r] - prod + (t[r] < prod ? p32 : 0);
+            }
+        }
+#elif LA_ACC_BITS == 16 && defined HAVE_AVX512_BW
+        __m512i mulv[LA_NR/32];
+        for (r = 0; r < LA_NR/32; ++r) {
+            mulv[r] = _mm512_loadu_si512((void *)(d+32*r));
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t       = dr + (uint64_t)LA_NR * ds[j];
+            const __m512i cfv = _mm512_set1_epi16((int16_t)cfs[j]);
+            for (r = 0; r < LA_NR/32; ++r) {
+                const __m512i prodv = _mm512_mullo_epi16(mulv[r], cfv);
+                const __m512i tv    = _mm512_loadu_si512((void *)(t+32*r));
+                const __mmask32 bv  = _mm512_cmple_epu16_mask(tv, prodv);
+                const __m512i resv  = _mm512_sub_epi16(tv, prodv);
+                _mm512_storeu_si512((void *)(t+32*r),
+                        _mm512_mask_add_epi16(resv, bv, resv, mod2v));
             }
         }
 #elif LA_ACC_BITS == 16 && (defined HAVE_AVX2 || defined HAVE_AVX512_F)
@@ -296,7 +366,24 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
                             vandq_u16(bv, mod2v)));
             }
         }
-#elif LA_ACC_BITS == 32 && (defined HAVE_AVX2 || defined HAVE_AVX512_F)
+#elif LA_ACC_BITS == 32 && defined HAVE_AVX512_F
+        __m512i mulv[LA_NR/16];
+        for (r = 0; r < LA_NR/16; ++r) {
+            mulv[r] = _mm512_loadu_si512((void *)(d+16*r));
+        }
+        for (j = 0; j < len; ++j) {
+            LA_ACC_T *t       = dr + (uint64_t)LA_NR * ds[j];
+            const __m512i cfv = _mm512_set1_epi32((int32_t)cfs[j]);
+            for (r = 0; r < LA_NR/16; ++r) {
+                const __m512i prodv = _mm512_mullo_epi32(mulv[r], cfv);
+                const __m512i tv    = _mm512_loadu_si512((void *)(t+16*r));
+                const __mmask16 bv  = _mm512_cmple_epu32_mask(tv, prodv);
+                const __m512i resv  = _mm512_sub_epi32(tv, prodv);
+                _mm512_storeu_si512((void *)(t+16*r),
+                        _mm512_mask_add_epi32(resv, bv, resv, mod2v));
+            }
+        }
+#elif LA_ACC_BITS == 32 && defined HAVE_AVX2
         __m256i mulv[LA_NR/8];
         for (r = 0; r < LA_NR/8; ++r) {
             mulv[r] = _mm256_loadu_si256((__m256i *)(d+8*r));
@@ -3020,5 +3107,6 @@ static void LA_FF(interreduce_matrix_rows)(
 #undef LA_WIDE
 #undef LA_ACC_BITS
 #undef LA_ACC_REDUCED
+#undef LA_MP_SHIFT
 #undef LA_ACC_T
 #undef LA_NR

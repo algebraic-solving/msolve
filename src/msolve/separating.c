@@ -45,8 +45,18 @@
  * if no c_v reaches the target, the best one is kept. The search is
  * deterministic: it only depends on the Groebner basis and the prime. */
 
+#ifdef HAVE_FLINT_NMOD_H
+#include <flint/nmod.h>
+#endif
 #include <flint/nmod_vec.h>
 #include <flint/nmod_poly.h>
+
+/* before FLINT 3.2, _nmod_vec_dot takes the number of limbs of the
+ * products instead of dot_params_t */
+#if __FLINT_VERSION < 3 || (__FLINT_VERSION == 3 && __FLINT_VERSION_MINOR < 2)
+typedef int dot_params_t;
+#define _nmod_vec_dot_params(len, mod) _nmod_vec_dot_bound_limbs(len, mod)
+#endif
 
 
 /* hash table of exponent vectors */

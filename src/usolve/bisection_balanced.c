@@ -116,8 +116,9 @@ typedef struct {
   slong w;              /* working precision */
   double *lbin;         /* log2 binom(n + 1, i + 1) */
   usolve_bal_cache_t *powers;
-  /* subtrees left for usolve_bal_run: nodes (rebalanced), c and k */
-  usolve_bal_node_t *queue;
+  /* subtrees left for usolve_bal_run: nodes (rebalanced, packed by
+   * usolve_bal_pack), c and k */
+  ulong **queue;
   fmpz *qc;
   slong *qk;
   long nqueue, aqueue;
@@ -937,6 +938,9 @@ static void usolve_bal_clear(usolve_bal_t *B){
   }
   free(B->powers->p);
   free(B->powers);
+  for(long i = 0; i < B->nqueue; i++){
+    free(B->queue[i]);
+  }
   free(B->queue);
   for(long i = 0; i < B->aqueue; i++){
     fmpz_clear(B->qc + i);
@@ -948,6 +952,61 @@ static void usolve_bal_clear(usolve_bal_t *B){
     fmpz_clear_readonly(B->f + i);
   }
   free(B->f);
+}
+
+/* the node a in one block of words: s, exact, then for each coefficient
+ * of v and e, its number of limbs l and sign (2 l + 1 if negative), then
+ * its limbs. A queued node is kept this way while the exact bisection
+ * goes on: its integers, scattered in the heap among the large ones of the
+ * exact bisection, would keep the memory these free from being reused
+ * (and those of a rebalanced node keep the room of the exact
+ * coefficients) */
+static ulong *usolve_bal_pack(const usolve_bal_node_t *a, const slong n){
+  slong len = 2;
+  for(slong i = 0; i <= n; i++){
+    len += 2 + fmpz_size(a->v + i) + fmpz_size(a->e + i);
+  }
+  ulong *buf = malloc(len * sizeof(ulong));
+  buf[0] = (ulong)a->s;
+  buf[1] = (ulong)a->exact;
+  slong pos = 2;
+  fmpz_t x;
+  fmpz_init(x);
+  for(slong i = 0; i < 2 * (n + 1); i++){
+    const fmpz *y = (i <= n) ? a->v + i : a->e + (i - n - 1);
+    const slong l = fmpz_size(y);
+    buf[pos++] = 2 * (ulong)l + (fmpz_sgn(y) < 0);
+    if(l > 0){
+      fmpz_abs(x, y);
+      fmpz_get_ui_array(buf + pos, l, x);
+      pos += l;
+    }
+  }
+  fmpz_clear(x);
+  return buf;
+}
+
+static void usolve_bal_unpack(usolve_bal_node_t *a, const ulong *buf,
+                              const slong n){
+  a->s = (slong)buf[0];
+  a->exact = (int)buf[1];
+  slong pos = 2;
+  for(slong i = 0; i < 2 * (n + 1); i++){
+    fmpz *y = (i <= n) ? a->v + i : a->e + (i - n - 1);
+    const slong l = buf[pos] / 2;
+    const int neg = buf[pos] & 1;
+    pos++;
+    if(l == 0){
+      fmpz_zero(y);
+    }
+    else{
+      fmpz_set_ui_array(y, buf + pos, l);
+      if(neg){
+        fmpz_neg(y, y);
+      }
+      pos += l;
+    }
+  }
 }
 
 /* called by bisection_rec on the node (c, k), whose exact polynomial is
@@ -988,7 +1047,7 @@ static int usolve_bal_subtree(usolve_bal_t *B, mpz_t *upol,
   if(nb >= 2){
     if(B->nqueue == B->aqueue){
       const long na = FLINT_MAX(16, 2 * B->aqueue);
-      B->queue = realloc(B->queue, na * sizeof(usolve_bal_node_t));
+      B->queue = realloc(B->queue, na * sizeof(ulong *));
       B->qc = realloc(B->qc, na * sizeof(fmpz));
       for(long i = B->aqueue; i < na; i++){
         fmpz_init(B->qc + i);
@@ -996,7 +1055,8 @@ static int usolve_bal_subtree(usolve_bal_t *B, mpz_t *upol,
       B->qk = realloc(B->qk, na * sizeof(slong));
       B->aqueue = na;
     }
-    B->queue[B->nqueue] = a;
+    B->queue[B->nqueue] = usolve_bal_pack(&a, n);
+    usolve_bal_node_clear(&a, n);
     fmpz_set_mpz(B->qc + B->nqueue, c);
     B->qk[B->nqueue] = k;
     B->nqueue++;
@@ -1131,8 +1191,13 @@ static void usolve_bal_run(usolve_bal_t *B){
       T.grid_signs = 0;
       T.recent_nodes = 0;
       T.recent_fallbacks = 0;
-      usolve_bal_node(&T, B->queue + j, B->qc + j, B->qk[j]);
-      usolve_bal_node_clear(B->queue + j, n);
+      usolve_bal_node_t a;
+      usolve_bal_node_init(&a, n);
+      usolve_bal_unpack(&a, B->queue[j], n);
+      free(B->queue[j]);
+      B->queue[j] = NULL;
+      usolve_bal_node(&T, &a, B->qc + j, B->qk[j]);
+      usolve_bal_node_clear(&a, n);
 #pragma omp critical(usolve_bal_run)
       {
         /* the intervals are moved (their numerators are not copied) */

@@ -44,8 +44,8 @@
 /* sign of f at n / 2^K (K >= 0); the precision is doubled until the ball
  * excludes 0, up to the size of the exact value, beyond which the sign is
  * computed in exact arithmetic */
-static int usolve_sign_2exp_arb(const fmpz_poly_t f, const fmpz_t n,
-                                const slong K, slong *extra){
+int usolve_sign_2exp_arb(const fmpz_poly_t f, const fmpz_t n,
+                         const slong K, slong *extra){
   if (fmpz_poly_length(f) == 0) {
     return 0;
   }

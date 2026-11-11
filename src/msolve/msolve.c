@@ -59,6 +59,7 @@ void free_rrec_data(rrec_data_t recdata);
 #include "lifting-gb.c"
 #include "separating.c"
 #include "splitting.c"
+#include "relations.c"
 #include "hensel.c"
 #include "boolean-zeros.c"
 #include "streams.h"
@@ -3945,8 +3946,11 @@ void single_exact_real_root_param(mpz_param_t param, interval *rt, long nb,
  * of x_j, which is much less than with a Horner scheme on the interval T.
  * The ball of each x_j must have a radius at most 2^-(prec + 2), so that
  * its ends rounded outwards to multiples of 2^-(prec + 2) give an interval
- * of width at most 2^-prec, and, when no coordinate vanishes at a root
- * (to_split = 0), it must not contain 0 in its interior. When a ball fails, the root is refined
+ * of width at most 2^-prec, and, when the relations between the
+ * coordinates are known (see relations.c), it must exclude 0: the
+ * coordinates which vanish at the root are then given as 0 exactly, those
+ * equal to t or to a previous coordinate are given the same interval, and
+ * the others are not 0. When a ball fails, the root is refined
  * (usolve_refine_root_arb) if the radius coming from T dominates, and the
  * working precision is doubled otherwise. */
 
@@ -3962,6 +3966,7 @@ typedef struct {
   slong *lco;
   fmpz_poly_struct *dco;  /* their derivatives */
   fmpz *cfs;              /* the c_j */
+  long *id;               /* id[j] = j: no relation between the coordinates */
   slong extra;            /* bits lost by cancellation, see refine_arb.c */
   slong wprec;            /* same for the coordinates */
   long nref;              /* number of refinements of the roots */
@@ -4011,6 +4016,10 @@ static void real_coords_init(real_coords_t *rc, mpz_param_t param) {
     _fmpz_poly_normalise(rc->dco + j);
     fmpz_set_mpz(rc->cfs + j, param->cfs[j]);
   }
+  rc->id = malloc(MAX(rc->nc, 1) * sizeof(long));
+  for (long j = 0; j < rc->nc; j++) {
+    rc->id[j] = j;
+  }
   rc->extra = 64;
   rc->wprec = 64;
   rc->nref = 0;
@@ -4029,6 +4038,7 @@ static void real_coords_clear(real_coords_t *rc) {
   free(rc->lco);
   free(rc->dco);
   _fmpz_vec_clear(rc->cfs, MAX(rc->nc, 1));
+  free(rc->id);
 }
 
 /* y = p(m) + p'(T) (T - m), with r0 the radius of p(m) (rounding errors)
@@ -4055,7 +4065,8 @@ static void real_coords_eval(arb_t y, mag_t r0, mag_t r1, const fmpz *p,
  * increased */
 static int real_coords_balls(arb_ptr x, real_coords_t *rc,
                              const interval *rt, const long prec,
-                             const int to_split, const slong p) {
+                             const long *rep, const int nonzero,
+                             const slong p) {
   arb_t T, m, w, v;
   mag_t r0w, r1w, r0v, r1v;
   arb_init(T);
@@ -4084,14 +4095,16 @@ static int real_coords_balls(arb_ptr x, real_coords_t *rc,
     ret = mag_cmp(r1w, r0w) > 0 ? 1 : 2;
   }
   for (long j = 0; j < rc->nc && ret == 0; j++) {
+    if (rep[j] != j) {
+      continue;
+    }
     real_coords_eval(v, r0v, r1v, rc->co[j], rc->lco[j], rc->dco + j, T, m, p);
     arb_mul_fmpz(x + j, w, rc->cfs + j, p);
     arb_div(x + j, v, x + j, p);
     arb_neg(x + j, x + j);
     /* radius 2^-(prec + 2): width 2^-prec after rounding the ends */
     if (mag_cmp_2exp_si(arb_radref(x + j), -prec - 2) > 0 ||
-        (to_split == 0 && arb_contains_negative(x + j) &&
-         arb_contains_positive(x + j))) {
+        (nonzero && arb_contains_zero(x + j))) {
       ret = (mag_cmp(r1v, r0v) > 0 || mag_cmp(r1w, r0w) > 0) ? 1 : 2;
     }
   }
@@ -4107,26 +4120,50 @@ static int real_coords_balls(arb_ptr x, real_coords_t *rc,
 }
 
 /* c = [lower, upper] bounds of x, rounded outwards to multiples of
- * 2^-(prec + 2) */
+ * 2^-K, K = prec + 2, or more when x excludes 0 and the rounded interval
+ * would not */
 static void real_coords_set_coord(coord_t c, const arb_t x, const slong p,
                                   const long prec) {
-  arf_t a;
-  fmpz_t mt;
+  arf_t a, b;
+  fmpz_t lo, up;
   arf_init(a);
-  fmpz_init(mt);
+  arf_init(b);
+  fmpz_init(lo);
+  fmpz_init(up);
   arb_get_lbound_arf(a, x, p);
-  arf_mul_2exp_si(a, a, prec + 2);
-  arf_get_fmpz(mt, a, ARF_RND_FLOOR);
-  fmpz_get_mpz(c->val_do, mt);
-  c->k_do = prec + 2;
-  arb_get_ubound_arf(a, x, p);
-  arf_mul_2exp_si(a, a, prec + 2);
-  arf_get_fmpz(mt, a, ARF_RND_CEIL);
-  fmpz_get_mpz(c->val_up, mt);
-  c->k_up = prec + 2;
+  arb_get_ubound_arf(b, x, p);
+  const int s = arb_is_positive(x) ? 1 : (arb_is_negative(x) ? -1 : 0);
+  long K = prec + 2;
+  for (;;) {
+    arf_mul_2exp_si(a, a, K);
+    arf_get_fmpz(lo, a, ARF_RND_FLOOR);
+    arf_mul_2exp_si(a, a, -K);
+    arf_mul_2exp_si(b, b, K);
+    arf_get_fmpz(up, b, ARF_RND_CEIL);
+    arf_mul_2exp_si(b, b, -K);
+    if ((s > 0 && fmpz_sgn(lo) <= 0) || (s < 0 && fmpz_sgn(up) >= 0)) {
+      K++;
+      continue;
+    }
+    break;
+  }
+  fmpz_get_mpz(c->val_do, lo);
+  fmpz_get_mpz(c->val_up, up);
+  c->k_do = K;
+  c->k_up = K;
   c->isexact = 0;
   arf_clear(a);
-  fmpz_clear(mt);
+  arf_clear(b);
+  fmpz_clear(lo);
+  fmpz_clear(up);
+}
+
+static void real_coords_copy(coord_t c, const coord_t d) {
+  mpz_set(c->val_do, d->val_do);
+  mpz_set(c->val_up, d->val_up);
+  c->k_do = d->k_do;
+  c->k_up = d->k_up;
+  c->isexact = d->isexact;
 }
 
 /* the root of rt is exact: exact coordinates, as rationals rounded to
@@ -4154,12 +4191,25 @@ static void real_coords_exact(mpz_param_t param, interval *rt,
 }
 
 static void real_coords_point(real_coords_t *rc, mpz_param_t param,
-                              interval *rt, real_point_t pt, const long prec,
-                              const int to_split) {
+                              const real_rel_t *rel, interval *rt,
+                              real_point_t pt, const long prec) {
   const long nv = param->nvars;
   if (rt->isexact == 1) {
     real_coords_exact(param, rt, pt, prec);
     return;
+  }
+  const long *rep = rc->id;
+  if (rel->known) {
+    /* t != 0: its interval does not end at 0 */
+    while (rt->isexact == 0 && (mpz_sgn(rt->numer) == 0 ||
+                                mpz_cmp_si(rt->numer, -1) == 0)) {
+      usolve_refine_root_arb(rt, &rc->elim, rc->delim, rt->k + 1,
+                             &rc->extra);
+      rc->nref++;
+    }
+    if (rt->isexact == 0) {
+      rep = rel->rep[real_rel_group(rel, rt)];
+    }
   }
   if (rc->nc > 0) {
     arb_ptr x = _arb_vec_init(rc->nc);
@@ -4170,10 +4220,26 @@ static void real_coords_point(real_coords_t *rc, mpz_param_t param,
         return;
       }
       const slong p = rt->k + rc->wprec + 32;
-      const int r = real_coords_balls(x, rc, rt, prec, to_split, p);
+      const int r = real_coords_balls(x, rc, rt, prec, rep, rel->known, p);
       if (r == 0) {
         for (long j = 0; j < rc->nc; j++) {
-          real_coords_set_coord(pt->coords[j], x + j, p, prec);
+          if (rep[j] == j) {
+            real_coords_set_coord(pt->coords[j], x + j, p, prec);
+          } else if (rep[j] == -1) {
+            mpz_set_ui(pt->coords[j]->val_do, 0);
+            mpz_set_ui(pt->coords[j]->val_up, 0);
+            pt->coords[j]->k_do = 0;
+            pt->coords[j]->k_up = 0;
+            pt->coords[j]->isexact = 1;
+          } else if (rep[j] == -2) {
+            mpz_set(pt->coords[j]->val_do, rt->numer);
+            mpz_add_ui(pt->coords[j]->val_up, rt->numer, 1);
+            pt->coords[j]->k_do = rt->k;
+            pt->coords[j]->k_up = rt->k;
+            pt->coords[j]->isexact = 0;
+          } else {
+            real_coords_copy(pt->coords[j], pt->coords[rep[j]]);
+          }
         }
         break;
       }
@@ -4231,13 +4297,13 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv) {
  * parametrization (read in place) and its derivatives. Each root starts
  * from the working precisions learned on the first one, computed alone, so
  * that the output does not depend on the number of threads. */
-void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
-                              real_point_t *pts, long prec, int to_split,
-                              int nthreads, int info_level) {
+void extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
+                              interval *roots, long nb, real_point_t *pts,
+                              long prec, int nthreads, int info_level) {
   real_coords_t rc;
   real_coords_init(&rc, param);
   if (nb > 0) {
-    real_coords_point(&rc, param, roots, pts[0], prec, to_split);
+    real_coords_point(&rc, param, rel, roots, pts[0], prec);
   }
   long nref = rc.nref;
 #pragma omp parallel num_threads(nthreads) reduction(+:nref)
@@ -4249,7 +4315,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
       lc.extra = rc.extra;
       lc.wprec = rc.wprec;
       lc.nref = 0;
-      real_coords_point(&lc, param, roots + i, pts[i], prec, to_split);
+      real_coords_point(&lc, param, rel, roots + i, pts[i], prec);
       nref += lc.nref;
     }
   }
@@ -4266,7 +4332,7 @@ void extract_real_roots_param(mpz_param_t param, interval *roots, long nb,
 
 real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
                          interval **real_roots_ptr, int32_t precision,
-                         int32_t nr_threads, int to_split, int32_t info_level) {
+                         int32_t nr_threads, int32_t info_level) {
   long maxnbits =
       mpz_poly_max_bsize_coeffs(param->elim->coeffs, param->elim->length - 1);
 
@@ -4295,6 +4361,10 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
    * roots are refined further during the extraction when they need it */
   long prec = 2 * precision;
 
+  /* the zero and equal coordinates at the roots */
+  real_rel_t rel;
+  real_rel_init(&rel, param, info_level);
+
   long unsigned int nbpos = 0;
   long unsigned int nbneg = 0;
   /* the eliminating polynomial is read in place */
@@ -4321,14 +4391,15 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
       real_point_init(pts[i], param->nvars);
     }
 
-    extract_real_roots_param(param, roots, nb, pts, prec, to_split,
-                             nr_threads, info_level);
+    extract_real_roots_param(param, &rel, roots, nb, pts, prec, nr_threads,
+                             info_level);
     if (info_level) {
       fprintf(VERBSTREAM, "Elapsed time (real root extraction) = %.2f\n",
               realtime() - st);
       fflush(VERBSTREAM);
     }
   }
+  real_rel_clear(&rel);
   *real_roots_ptr = roots;
   *nb_real_roots_ptr = nb;
 
@@ -4338,7 +4409,7 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
 void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
                                interval ***lreal_roots_ptr,
                                real_point_t ***lreal_pts_ptr, int32_t precision,
-                               int32_t nr_threads, int to_split, int32_t info_level) {
+                               int32_t nr_threads, int32_t info_level) {
   long *lnbr = malloc(sizeof(long) * lparams->nb);
   interval **lreal_roots = malloc(sizeof(interval *) * lparams->nb);
   real_point_t **lreal_pts = malloc(sizeof(real_point_t *) * lparams->nb);
@@ -4350,7 +4421,7 @@ void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
   for (int i = 0; i < lparams->nb; i++) {
     lreal_pts[i] =
         isolate_real_roots_param(lparams->params[i], lnbr + i, lreal_roots + i,
-                                 precision, nr_threads, to_split, info_level);
+                                 precision, nr_threads, info_level);
   }
   (*lnbr_ptr) = lnbr;
   (*lreal_roots_ptr) = lreal_roots;
@@ -4382,7 +4453,7 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
                                               long *nb_real_roots_ptr,
                                               interval **real_roots_ptr,
                                               int32_t precision,
-                                              int32_t nr_threads, int to_split,
+                                              int32_t nr_threads,
                                               int32_t info_level) {
   double rt = realtime();
   const long nc = params->nb;
@@ -4397,8 +4468,7 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
       fflush(VERBSTREAM);
     }
     lpts[i] = isolate_real_roots_param(params->params[i], lnb + i, lroots + i,
-                                       precision, nr_threads, to_split,
-                                       info_level);
+                                       precision, nr_threads, info_level);
     nb += lnb[i];
   }
   interval *roots = malloc(MAX(nb, 1) * sizeof(interval));
@@ -4536,11 +4606,11 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
     if (gens->split_params.nb > 0) {
       pts = split_isolate_real_roots(&(gens->split_params), nb_real_roots_ptr,
                                      real_roots_ptr, precision, nr_threads,
-                                     to_split, info_level);
+                                     info_level);
     } else {
       pts = isolate_real_roots_param(*mpz_paramp, nb_real_roots_ptr,
                                      real_roots_ptr, precision, nr_threads,
-                                     to_split, info_level);
+                                     info_level);
     }
     int32_t nb = *nb_real_roots_ptr;
 

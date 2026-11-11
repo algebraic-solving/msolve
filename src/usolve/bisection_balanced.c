@@ -77,12 +77,12 @@
 #define USOLVE_BAL_EBITS 30  /* bits of the error bounds in the products */
 #define USOLVE_BAL_NCACHE 4096
 #define USOLVE_BAL_GRIDMAX 8  /* grids of sign evaluations up to 8 roots */
-/* memory, measured on katsura-12 and katsura-13: each thread of
+/* memory, measured on katsura-12 to katsura-14: each thread of
  * usolve_bal_run adds about USOLVE_BAL_THRMEM (n + 1) w bits to the
  * resident memory (mostly the work space of FLINT's products, which each
  * thread keeps), and the exact bisection reaches about USOLVE_BAL_TOPMEM
  * times the size of its largest node polynomial */
-#define USOLVE_BAL_THRMEM 50
+#define USOLVE_BAL_THRMEM 55
 #define USOLVE_BAL_TOPMEM 18
 
 typedef struct {

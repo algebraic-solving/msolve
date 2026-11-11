@@ -4190,16 +4190,18 @@ static void real_coords_exact(mpz_param_t param, interval *rt,
   free(tab);
 }
 
+/* rep: the representatives of the coordinates at the root of rt (see
+ * real_rel_t), NULL if the relations are not known */
 static void real_coords_point(real_coords_t *rc, mpz_param_t param,
-                              const real_rel_t *rel, interval *rt,
+                              const long *rep, interval *rt,
                               real_point_t pt, const long prec) {
   const long nv = param->nvars;
   if (rt->isexact == 1) {
     real_coords_exact(param, rt, pt, prec);
     return;
   }
-  const long *rep = rc->id;
-  if (rel->known) {
+  const int known = (rep != NULL);
+  if (known) {
     /* t != 0: its interval does not end at 0 */
     while (rt->isexact == 0 && (mpz_sgn(rt->numer) == 0 ||
                                 mpz_cmp_si(rt->numer, -1) == 0)) {
@@ -4207,9 +4209,8 @@ static void real_coords_point(real_coords_t *rc, mpz_param_t param,
                              &rc->extra);
       rc->nref++;
     }
-    if (rt->isexact == 0) {
-      rep = rel->rep[real_rel_group(rel, rt)];
-    }
+  } else {
+    rep = rc->id;
   }
   if (rc->nc > 0) {
     arb_ptr x = _arb_vec_init(rc->nc);
@@ -4220,7 +4221,7 @@ static void real_coords_point(real_coords_t *rc, mpz_param_t param,
         return;
       }
       const slong p = rt->k + rc->wprec + 32;
-      const int r = real_coords_balls(x, rc, rt, prec, rep, rel->known, p);
+      const int r = real_coords_balls(x, rc, rt, prec, rep, known, p);
       if (r == 0) {
         for (long j = 0; j < rc->nc; j++) {
           if (rep[j] == j) {
@@ -4297,13 +4298,15 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv) {
  * parametrization (read in place) and its derivatives. Each root starts
  * from the working precisions learned on the first one, computed alone, so
  * that the output does not depend on the number of threads. */
+/* the root i is in the group grp[i] of rel (see real_rel_t) */
 long extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
-                              interval *roots, long nb, real_point_t *pts,
-                              long prec, int nthreads) {
+                              interval *roots, const long *grp, long nb,
+                              real_point_t *pts, long prec, int nthreads) {
   real_coords_t rc;
   real_coords_init(&rc, param);
   if (nb > 0) {
-    real_coords_point(&rc, param, rel, roots, pts[0], prec);
+    real_coords_point(&rc, param, rel->known ? rel->rep[grp[0]] : NULL,
+                      roots, pts[0], prec);
   }
   long nref = rc.nref;
 #pragma omp parallel num_threads(nthreads) reduction(+:nref)
@@ -4315,7 +4318,8 @@ long extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
       lc.extra = rc.extra;
       lc.wprec = rc.wprec;
       lc.nref = 0;
-      real_coords_point(&lc, param, rel, roots + i, pts[i], prec);
+      real_coords_point(&lc, param, rel->known ? rel->rep[grp[i]] : NULL,
+                        roots + i, pts[i], prec);
       nref += lc.nref;
     }
   }
@@ -4328,7 +4332,8 @@ long extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
 
 /* statistics of the real solutions of one or several parametrizations */
 typedef struct {
-  long ncomps;          /* parametrizations */
+  long ncomps;          /* components: factors of the eliminating
+                           polynomials whose roots are isolated apart */
   long deg;             /* sum of the degrees of their eliminating polynomials */
   long nbits_elim;      /* largest bit size of their coefficients */
   long nbits_coords;    /* idem for the coordinates */
@@ -4415,12 +4420,53 @@ static void real_stats_print(const real_stats_t *rs, const double rt,
   fflush(VERBSTREAM);
 }
 
-/* the real solutions of param, added to the statistics rs */
-static real_point_t *real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
-                                      interval **real_roots_ptr,
-                                      int32_t precision, int32_t nr_threads,
-                                      int32_t info_level, real_stats_t *rs) {
-  rs->ncomps++;
+/* roots of eliminating polynomials, compared by their left ends */
+static const interval *split_roots_cmp_tab;
+
+static int split_roots_cmp(const void *a, const void *b) {
+  const interval *ra = split_roots_cmp_tab + *(const long *)a;
+  const interval *rb = split_roots_cmp_tab + *(const long *)b;
+  mpz_t na, nb;
+  mpz_init(na);
+  mpz_init(nb);
+  const long k = MAX(ra->k, rb->k);
+  mpz_mul_2exp(na, ra->numer, k - ra->k);
+  mpz_mul_2exp(nb, rb->numer, k - rb->k);
+  const int c = mpz_cmp(na, nb);
+  mpz_clear(na);
+  mpz_clear(nb);
+  return c;
+}
+
+/* the factors of the eliminating polynomial w of a parametrization whose
+ * real roots are isolated apart, as components: the cofactor and the
+ * polynomials of the groups of roots with zero or equal coordinates (see
+ * relations.c), or w alone (read in place) */
+typedef struct {
+  real_rel_t rel;
+  long nf;    /* factors */
+  long *fg;   /* group of the roots of each factor, rel.ng for the cofactor
+                 or w */
+  int split;  /* 0 if w is not split */
+} real_comp_t;
+
+static const fmpz_poly_struct *real_comp_factor(const real_comp_t *c,
+                                                const long j) {
+  const long g = c->fg[j];
+  return (g < c->rel.ng) ? c->rel.g + g : c->rel.cof;
+}
+
+static long real_comp_degree(const real_comp_t *c, const mpz_param_t param,
+                             const long j) {
+  if (!c->split) {
+    return param->elim->length - 1;
+  }
+  return fmpz_poly_degree(real_comp_factor(c, j));
+}
+
+/* the relations and the factors of w, added to the statistics rs */
+static void real_comp_init(real_comp_t *c, const mpz_param_t param,
+                           real_stats_t *rs) {
   rs->deg += param->elim->length - 1;
   rs->nbits_elim = MAX(rs->nbits_elim,
       (long)mpz_poly_max_bsize_coeffs(param->elim->coeffs,
@@ -4430,41 +4476,208 @@ static real_point_t *real_roots_param(mpz_param_t param, long *nb_real_roots_ptr
                                           param->coords[i]->length - 1);
     rs->nbits_coords = MAX(cmax, rs->nbits_coords);
   }
+  real_rel_init(&c->rel, param);
+  rs->t_rel += c->rel.time;
+  rs->rel_primes += c->rel.nprimes;
+  if (c->rel.known) {
+    rs->rel_ident += c->rel.nident;
+    rs->rel_roots += c->rel.nroots;
+    rs->rel_groups += c->rel.ng;
+  } else {
+    rs->rel_unknown++;
+  }
+  const long ng = c->rel.ng;
+  c->split = c->rel.known && ng > 0;
+  c->fg = malloc((ng + 1) * sizeof(long));
+  c->nf = 0;
+  if (!c->split || fmpz_poly_degree(c->rel.cof) > 0) {
+    c->fg[c->nf++] = ng;
+  }
+  for (long i = 0; i < ng && c->split; i++) {
+    c->fg[c->nf++] = i;
+  }
+  rs->ncomps += c->nf;
+}
+
+static void real_comp_clear(real_comp_t *c) {
+  real_rel_clear(&c->rel);
+  free(c->fg);
+}
+
+/* the left end of r, numer / 2^k, compared with that of s */
+static int real_cmp_left(const interval *r, const interval *s) {
+  mpz_t a, b;
+  mpz_init(a);
+  mpz_init(b);
+  const long k = MAX(r->k, s->k);
+  mpz_mul_2exp(a, r->numer, k - r->k);
+  mpz_mul_2exp(b, s->numer, k - s->k);
+  const int c = mpz_cmp(a, b);
+  mpz_clear(a);
+  mpz_clear(b);
+  return c;
+}
+
+/* 1 if the right end of r is at least the left end of s */
+static int real_overlap(const interval *r, const interval *s) {
+  mpz_t a, b;
+  mpz_init(a);
+  mpz_init(b);
+  const long k = MAX(r->k, s->k);
+  mpz_add_ui(a, r->numer, r->isexact ? 0 : 1);
+  mpz_mul_2exp(a, a, k - r->k);
+  mpz_mul_2exp(b, s->numer, k - s->k);
+  const int c = (mpz_cmp(a, b) >= 0);
+  mpz_clear(a);
+  mpz_clear(b);
+  return c;
+}
+
+/* halves the isolating interval r of a root of f, with k >= 0 */
+static void real_bisect(interval *r, const fmpz_poly_t f, slong *extra) {
+  fmpz_t a;
+  fmpz_init(a);
+  fmpz_set_mpz(a, r->numer);
+  const int sl = usolve_sign_2exp_arb(f, a, r->k, extra);
+  fmpz_mul_2exp(a, a, 1);
+  fmpz_add_ui(a, a, 1);
+  const int sm = usolve_sign_2exp_arb(f, a, r->k + 1, extra);
+  mpz_mul_2exp(r->numer, r->numer, 1);
+  r->k++;
+  if (sm == 0) {
+    mpz_add_ui(r->numer, r->numer, 1);
+    r->isexact = 1;
+  } else if (sm == sl) {
+    mpz_add_ui(r->numer, r->numer, 1);
+  }
+  fmpz_clear(a);
+}
+
+static const interval *real_sort_tab;
+
+static int real_sort_cmp(const void *a, const void *b) {
+  return real_cmp_left(real_sort_tab + *(const long *)a,
+                       real_sort_tab + *(const long *)b);
+}
+
+/* the real solutions of the components of c, numbered from first among
+ * ncomps; vnames are the names of the variables */
+static real_point_t *real_comp_roots(real_comp_t *c, mpz_param_t param,
+                                     long *nb_real_roots_ptr,
+                                     interval **real_roots_ptr,
+                                     int32_t precision, int32_t nr_threads,
+                                     int32_t info_level, real_stats_t *rs,
+                                     const long first, const long ncomps,
+                                     char **vnames) {
   /* the coordinates are computed to 2^-(2 precision), as before; the
    * roots are refined further during the extraction when they need it */
   long prec = 2 * precision;
   rs->prec = prec;
 
-  /* the zero and equal coordinates at the roots */
-  real_rel_t rel;
-  real_rel_init(&rel, param);
-  rs->t_rel += rel.time;
-  rs->rel_primes += rel.nprimes;
-  if (rel.known) {
-    rs->rel_ident += rel.nident;
-    rs->rel_roots += rel.nroots;
-    rs->rel_groups += rel.ng;
-  } else {
-    rs->rel_unknown++;
+  interval **lroots = malloc(c->nf * sizeof(interval *));
+  long *lnb = malloc(c->nf * sizeof(long));
+  long nb = 0;
+  for (long j = 0; j < c->nf; j++) {
+    const long d = real_comp_degree(c, param, j);
+    if (info_level > 1) {
+      fprintf(VERBSTREAM, "\ncomponent %ld of %ld: degree %ld, ", first + j + 1,
+              ncomps, d);
+      if (c->rel.known) {
+        real_rel_print(VERBSTREAM, &c->rel, c->fg[j], vnames);
+      } else {
+        fprintf(VERBSTREAM, "zero and equal coordinates not known");
+      }
+      fprintf(VERBSTREAM, "\n");
+      fflush(VERBSTREAM);
+    }
+    long unsigned int nbpos = 0;
+    long unsigned int nbneg = 0;
+    usolve_stats_t iso;
+    if (!c->split) {
+      /* the eliminating polynomial is read in place */
+      lroots[j] = real_roots(param->elim->coeffs, d, &nbpos, &nbneg, prec,
+                             nr_threads, info_level, &iso);
+    } else {
+      const fmpz_poly_struct *f = real_comp_factor(c, j);
+      mpz_t *u = malloc((d + 1) * sizeof(mpz_t));
+      for (long i = 0; i <= d; i++) {
+        mpz_init(u[i]);
+        fmpz_get_mpz(u[i], f->coeffs + i);
+      }
+      lroots[j] = real_roots(u, d, &nbpos, &nbneg, prec, nr_threads,
+                             info_level, &iso);
+      for (long i = 0; i <= d; i++) {
+        mpz_clear(u[i]);
+      }
+      free(u);
+    }
+    lnb[j] = nbpos + nbneg;
+    nb += lnb[j];
+    rs->iso.isolation += iso.isolation;
+    rs->iso.refinement += iso.refinement;
+    rs->iso.descartes += iso.descartes;
+    rs->iso.shifts += iso.shifts;
+    rs->iso.nodes += iso.nodes;
+    rs->iso.transl += iso.transl;
+    rs->iso.half_splits += iso.half_splits;
+    rs->iso.skipped += iso.skipped;
   }
-
-  long unsigned int nbpos = 0;
-  long unsigned int nbneg = 0;
-  usolve_stats_t iso;
-  /* the eliminating polynomial is read in place */
-  interval *roots = real_roots(param->elim->coeffs, param->elim->length - 1,
-                               &nbpos, &nbneg,
-                               prec, nr_threads, info_level, &iso);
-  long nb = nbpos + nbneg;
-  rs->iso.isolation += iso.isolation;
-  rs->iso.refinement += iso.refinement;
-  rs->iso.descartes += iso.descartes;
-  rs->iso.shifts += iso.shifts;
-  rs->iso.nodes += iso.nodes;
-  rs->iso.transl += iso.transl;
-  rs->iso.half_splits += iso.half_splits;
-  rs->iso.skipped += iso.skipped;
   rs->nroots += nb;
+
+  /* the roots of all the factors, by increasing values, their intervals
+   * being halved until they are disjoint, so that they isolate the roots
+   * of w */
+  interval *roots;
+  long *grp = malloc(MAX(nb, 1) * sizeof(long));
+  if (c->nf == 1) {
+    roots = lroots[0];
+    for (long i = 0; i < nb; i++) {
+      grp[i] = c->fg[0];
+    }
+  } else {
+    interval *tmp = malloc(MAX(nb, 1) * sizeof(interval));
+    long *fac = malloc(MAX(nb, 1) * sizeof(long));
+    long n = 0;
+    for (long j = 0; j < c->nf; j++) {
+      for (long i = 0; i < lnb[j]; i++, n++) {
+        tmp[n] = lroots[j][i];
+        fac[n] = j;
+      }
+      free(lroots[j]);
+    }
+    long *idx = malloc(MAX(nb, 1) * sizeof(long));
+    for (long i = 0; i < nb; i++) {
+      idx[i] = i;
+    }
+    slong extra = 64;
+    for (int changed = 1; changed;) {
+      real_sort_tab = tmp;
+      qsort(idx, nb, sizeof(long), real_sort_cmp);
+      changed = 0;
+      for (long i = 0; i + 1 < nb; i++) {
+        interval *r = tmp + idx[i], *q = tmp + idx[i + 1];
+        if (real_overlap(r, q) && (!r->isexact || !q->isexact)) {
+          if (!r->isexact) {
+            real_bisect(r, real_comp_factor(c, fac[idx[i]]), &extra);
+          }
+          if (!q->isexact) {
+            real_bisect(q, real_comp_factor(c, fac[idx[i + 1]]), &extra);
+          }
+          changed = 1;
+        }
+      }
+    }
+    roots = malloc(MAX(nb, 1) * sizeof(interval));
+    for (long i = 0; i < nb; i++) {
+      roots[i] = tmp[idx[i]];
+      grp[i] = c->fg[fac[idx[i]]];
+    }
+    free(idx);
+    free(fac);
+    free(tmp);
+  }
+  free(lroots);
+  free(lnb);
 
   real_point_t *pts = NULL;
   if (nb) {
@@ -4475,34 +4688,127 @@ static real_point_t *real_roots_param(mpz_param_t param, long *nb_real_roots_ptr
       real_point_init(pts[i], param->nvars);
     }
 
-    rs->nref += extract_real_roots_param(param, &rel, roots, nb, pts, prec,
-                                         nr_threads);
+    rs->nref += extract_real_roots_param(param, &c->rel, roots, grp, nb, pts,
+                                         prec, nr_threads);
     rs->t_ext += realtime() - st;
   }
-  real_rel_clear(&rel);
+  free(grp);
   *real_roots_ptr = roots;
   *nb_real_roots_ptr = nb;
 
   return pts;
 }
 
-real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
-                         interval **real_roots_ptr, int32_t precision,
-                         int32_t nr_threads, int32_t info_level) {
+/* isolates the real roots of the parametrizations params[0..np-1]
+ * component by component; with several parametrizations (the components
+ * of the solution set, see splitting.c), the points are sorted by the
+ * values of the separating element */
+static real_point_t *real_roots_params(mpz_param_struct **params,
+                                       const long np, long *nb_real_roots_ptr,
+                                       interval **real_roots_ptr,
+                                       int32_t precision, int32_t nr_threads,
+                                       int32_t info_level, char **vnames) {
   double rt = realtime();
   real_stats_t rs;
   real_stats_init(&rs);
-  if (info_level > 1) {
-    const long d = param->elim->length - 1;
-    real_components_print(&d, 1);
+  real_comp_t *comps = malloc(np * sizeof(real_comp_t));
+  for (long i = 0; i < np; i++) {
+    real_comp_init(comps + i, params[i], &rs);
   }
-  real_point_t *pts = real_roots_param(param, nb_real_roots_ptr,
-                                       real_roots_ptr, precision, nr_threads,
-                                       info_level, &rs);
+  /* default names of the variables */
+  char **names = vnames;
+  const long nv = params[0]->nvars;
+  if (info_level > 1 && names == NULL) {
+    names = malloc(nv * sizeof(char *));
+    for (long v = 0; v < nv; v++) {
+      names[v] = malloc(24);
+      snprintf(names[v], 24, "x%ld", v + 1);
+    }
+  }
+  if (info_level > 1) {
+    long *deg = malloc(rs.ncomps * sizeof(long));
+    long n = 0;
+    for (long i = 0; i < np; i++) {
+      for (long j = 0; j < comps[i].nf; j++) {
+        deg[n++] = real_comp_degree(comps + i, params[i], j);
+      }
+    }
+    real_components_print(deg, n);
+    free(deg);
+  }
+  long *lnb = malloc(np * sizeof(long));
+  interval **lroots = malloc(np * sizeof(interval *));
+  real_point_t **lpts = malloc(np * sizeof(real_point_t *));
+  long nb = 0;
+  long first = 0;
+  for (long i = 0; i < np; i++) {
+    lpts[i] = real_comp_roots(comps + i, params[i], lnb + i, lroots + i,
+                              precision, nr_threads, info_level, &rs, first,
+                              rs.ncomps, names);
+    first += comps[i].nf;
+    nb += lnb[i];
+    real_comp_clear(comps + i);
+  }
+  free(comps);
+  if (names != vnames) {
+    for (long v = 0; v < nv; v++) {
+      free(names[v]);
+    }
+    free(names);
+  }
+  interval *roots;
+  real_point_t *pts;
+  if (np == 1) {
+    roots = lroots[0];
+    pts = lpts[0];
+  } else {
+    roots = malloc(MAX(nb, 1) * sizeof(interval));
+    pts = NULL;
+    if (nb > 0) {
+      interval *tmp_roots = malloc(nb * sizeof(interval));
+      real_point_t *tmp_pts = malloc(nb * sizeof(real_point_t));
+      long *idx = malloc(nb * sizeof(long));
+      long n = 0;
+      for (long i = 0; i < np; i++) {
+        for (long j = 0; j < lnb[i]; j++, n++) {
+          tmp_roots[n] = lroots[i][j];
+          memcpy(tmp_pts[n], lpts[i][j], sizeof(real_point_t));
+          idx[n] = n;
+        }
+      }
+      split_roots_cmp_tab = tmp_roots;
+      qsort(idx, nb, sizeof(long), split_roots_cmp);
+      pts = malloc(nb * sizeof(real_point_t));
+      for (long i = 0; i < nb; i++) {
+        roots[i] = tmp_roots[idx[i]];
+        memcpy(pts[i], tmp_pts[idx[i]], sizeof(real_point_t));
+      }
+      free(idx);
+      free(tmp_roots);
+      free(tmp_pts);
+    }
+    for (long i = 0; i < np; i++) {
+      free(lroots[i]);
+      free(lpts[i]);
+    }
+  }
+  free(lnb);
+  free(lroots);
+  free(lpts);
   if (info_level) {
     real_stats_print(&rs, rt, info_level);
   }
+  *nb_real_roots_ptr = nb;
+  *real_roots_ptr = roots;
   return pts;
+}
+
+real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
+                         interval **real_roots_ptr, int32_t precision,
+                         int32_t nr_threads, int32_t info_level) {
+  mpz_param_struct *p = param;
+  return real_roots_params(&p, 1, nb_real_roots_ptr, real_roots_ptr,
+                           precision, nr_threads, info_level, NULL);
 }
 
 void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
@@ -4527,96 +4833,23 @@ void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
   (*lreal_pts_ptr) = lreal_pts;
 }
 
-/* roots of eliminating polynomials, compared by their left ends */
-static const interval *split_roots_cmp_tab;
-
-static int split_roots_cmp(const void *a, const void *b) {
-  const interval *ra = split_roots_cmp_tab + *(const long *)a;
-  const interval *rb = split_roots_cmp_tab + *(const long *)b;
-  mpz_t na, nb;
-  mpz_init(na);
-  mpz_init(nb);
-  const long k = MAX(ra->k, rb->k);
-  mpz_mul_2exp(na, ra->numer, k - ra->k);
-  mpz_mul_2exp(nb, rb->numer, k - rb->k);
-  const int c = mpz_cmp(na, nb);
-  mpz_clear(na);
-  mpz_clear(nb);
-  return c;
-}
-
 /* isolates the real roots of the components of the solution set (see
- * splitting.c) one by one; the points are sorted by the values of the
- * separating element */
+ * splitting.c) */
 static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *params,
                                               long *nb_real_roots_ptr,
                                               interval **real_roots_ptr,
                                               int32_t precision,
                                               int32_t nr_threads,
-                                              int32_t info_level) {
-  double rt = realtime();
-  real_stats_t rs;
-  real_stats_init(&rs);
-  const long nc = params->nb;
-  if (info_level > 1) {
-    long *deg = malloc(MAX(nc, 1) * sizeof(long));
-    for (long i = 0; i < nc; i++) {
-      deg[i] = params->params[i]->elim->length - 1;
-    }
-    real_components_print(deg, nc);
-    free(deg);
+                                              int32_t info_level,
+                                              char **vnames) {
+  mpz_param_struct **p = malloc(params->nb * sizeof(mpz_param_struct *));
+  for (long i = 0; i < params->nb; i++) {
+    p[i] = params->params[i];
   }
-  long *lnb = malloc(nc * sizeof(long));
-  interval **lroots = malloc(nc * sizeof(interval *));
-  real_point_t **lpts = malloc(nc * sizeof(real_point_t *));
-  long nb = 0;
-  for (long i = 0; i < nc; i++) {
-    if (info_level > 1 && nc > 1) {
-      fprintf(VERBSTREAM, "\ncomponent %ld of %ld: degree %ld\n", i + 1, nc,
-              (long)params->params[i]->elim->length - 1);
-      fflush(VERBSTREAM);
-    }
-    lpts[i] = real_roots_param(params->params[i], lnb + i, lroots + i,
-                               precision, nr_threads, info_level, &rs);
-    nb += lnb[i];
-  }
-  interval *roots = malloc(MAX(nb, 1) * sizeof(interval));
-  real_point_t *pts = NULL;
-  if (nb > 0) {
-    interval *tmp_roots = malloc(nb * sizeof(interval));
-    real_point_t *tmp_pts = malloc(nb * sizeof(real_point_t));
-    long *idx = malloc(nb * sizeof(long));
-    long n = 0;
-    for (long i = 0; i < nc; i++) {
-      for (long j = 0; j < lnb[i]; j++, n++) {
-        tmp_roots[n] = lroots[i][j];
-        memcpy(tmp_pts[n], lpts[i][j], sizeof(real_point_t));
-        idx[n] = n;
-      }
-    }
-    split_roots_cmp_tab = tmp_roots;
-    qsort(idx, nb, sizeof(long), split_roots_cmp);
-    pts = malloc(nb * sizeof(real_point_t));
-    for (long i = 0; i < nb; i++) {
-      roots[i] = tmp_roots[idx[i]];
-      memcpy(pts[i], tmp_pts[idx[i]], sizeof(real_point_t));
-    }
-    free(idx);
-    free(tmp_roots);
-    free(tmp_pts);
-  }
-  for (long i = 0; i < nc; i++) {
-    free(lroots[i]);
-    free(lpts[i]);
-  }
-  free(lnb);
-  free(lroots);
-  free(lpts);
-  if (info_level) {
-    real_stats_print(&rs, rt, info_level);
-  }
-  *nb_real_roots_ptr = nb;
-  *real_roots_ptr = roots;
+  real_point_t *pts = real_roots_params(p, params->nb, nb_real_roots_ptr,
+                                        real_roots_ptr, precision, nr_threads,
+                                        info_level, vnames);
+  free(p);
   return pts;
 }
 
@@ -4714,11 +4947,11 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
     if (gens->split_params.nb > 0) {
       pts = split_isolate_real_roots(&(gens->split_params), nb_real_roots_ptr,
                                      real_roots_ptr, precision, nr_threads,
-                                     info_level);
+                                     info_level, gens->vnames);
     } else {
-      pts = isolate_real_roots_param(*mpz_paramp, nb_real_roots_ptr,
-                                     real_roots_ptr, precision, nr_threads,
-                                     info_level);
+      mpz_param_struct *p = *mpz_paramp;
+      pts = real_roots_params(&p, 1, nb_real_roots_ptr, real_roots_ptr,
+                              precision, nr_threads, info_level, gens->vnames);
     }
     int32_t nb = *nb_real_roots_ptr;
 

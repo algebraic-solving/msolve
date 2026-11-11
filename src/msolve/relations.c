@@ -65,6 +65,7 @@ typedef struct {
   uint64_t *ident;    /* relations at all the roots of w */
   long ng;            /* groups of roots with some other relation */
   fmpz_poly_struct *g;  /* their primitive polynomials over ZZ */
+  fmpz_poly_t cof;    /* w divided by their product, when they are known */
   uint64_t **sig;     /* their relations */
   long **rep;         /* rep[i][v], for the group i < ng, and rep[ng] for the
                          other roots: -1 if x_v = 0, -2 if x_v = t, otherwise
@@ -385,7 +386,7 @@ static long rel_index(const real_rel_t *rel, const long a, const long b) {
 /* checks exactly the groups rel->g: their product divides w, and each one
  * divides the relations between the elements of its classes and the
  * smallest element of these classes */
-static int rel_certify(const real_rel_t *rel, const mpz_param_t param) {
+static int rel_certify(real_rel_t *rel, const mpz_param_t param) {
   const long nc = rel->nc;
   fmpz_poly_t w, P, q, r;
   fmpz_poly_init(w);
@@ -398,6 +399,9 @@ static int rel_certify(const real_rel_t *rel, const mpz_param_t param) {
     fmpz_poly_mul(P, P, rel->g + i);
   }
   int ok = fmpz_poly_divides(q, w, P);
+  if (ok) {
+    fmpz_poly_set(rel->cof, q);
+  }
   /* the product of the groups on which the relation e is checked */
   fmpz_poly_struct *Pe = malloc(rel->ne * sizeof(fmpz_poly_struct));
   for (long e = 0; e < rel->ne; e++) {
@@ -480,6 +484,7 @@ static int rel_reconstruct(fmpz_poly_t g, const fmpz_poly_t u,
 }
 
 static void real_rel_clear(real_rel_t *rel) {
+  fmpz_poly_clear(rel->cof);
   free(rel->ea);
   free(rel->eb);
   free(rel->ident);
@@ -511,6 +516,7 @@ static void real_rel_init(real_rel_t *rel, const mpz_param_t param) {
   rel->rep = NULL;
   rel->known = 0;
   rel->nprimes = 0;
+  fmpz_poly_init(rel->cof);
   /* relations between 0, t and the x_v */
   const long nel = nc + 2;
   rel->ea = malloc(nel * nel * sizeof(long));
@@ -643,29 +649,40 @@ done:
   rel->time = realtime() - rt;
 }
 
-/* the group of the root of rt, a non-exact isolating interval
- * [numer, numer + 1] / 2^k with k >= 0: the polynomial of the group changes
- * sign on it (it has no root at its ends, which are not roots of w); rel->ng
- * for the roots of no group */
-static long real_rel_group(const real_rel_t *rel, const interval *rt) {
-  if (rel->ng == 0) {
-    return 0;
-  }
-  fmpz_t a, b;
-  fmpz_init(a);
-  fmpz_init(b);
-  fmpz_set_mpz(a, rt->numer);
-  fmpz_add_ui(b, a, 1);
-  slong extra = 64;
-  long i = 0;
-  for (; i < rel->ng; i++) {
-    const int sa = usolve_sign_2exp_arb(rel->g + i, a, rt->k, &extra);
-    const int sb = usolve_sign_2exp_arb(rel->g + i, b, rt->k, &extra);
-    if (sa * sb < 0) {
-      break;
+/* prints the relations of the group i (rel->ng for the other roots), as
+ * classes of equal values: the coordinates, then t, then 0; vnames are the
+ * names of the variables, t being the last one */
+static void real_rel_print(FILE *f, const real_rel_t *rel, const long i,
+                           char **vnames) {
+  const long ne = rel->nc + 2;
+  long *parent = malloc(ne * sizeof(long));
+  rel_classes(parent, rel, (i < rel->ng) ? rel->sig[i] : rel->ident);
+  int any = 0;
+  for (long r = 0; r < ne; r++) {
+    long n = 0;
+    for (long x = r; x < ne; x++) {
+      n += (parent[x] == r);
+    }
+    if (parent[r] != r || n < 2) {
+      continue;
+    }
+    fprintf(f, "%s", any ? ", " : "");
+    any = 1;
+    long m = 0;
+    for (long x = 2; x < ne; x++) {
+      if (parent[x] == r) {
+        fprintf(f, "%s%s", m++ ? " = " : "", vnames[x - 2]);
+      }
+    }
+    if (parent[1] == r) {
+      fprintf(f, "%s%s", m++ ? " = " : "", vnames[rel->nc]);
+    }
+    if (r == 0) {
+      fprintf(f, " = 0");
     }
   }
-  fmpz_clear(a);
-  fmpz_clear(b);
-  return i;
+  if (!any) {
+    fprintf(f, "no zero or equal coordinates");
+  }
+  free(parent);
 }

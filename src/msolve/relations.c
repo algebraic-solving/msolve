@@ -71,6 +71,9 @@ typedef struct {
                          the first coordinate equal to x_v */
   int known;          /* 0 if the relations could not be determined */
   long nprimes;       /* primes used */
+  long nident;        /* relations at all the roots of w */
+  long nroots;        /* roots of the groups */
+  double time;        /* elapsed time of real_rel_init */
 } real_rel_t;
 
 /* the parametrization modulo p */
@@ -497,8 +500,7 @@ static void real_rel_clear(real_rel_t *rel) {
 /* the relations between the coordinates at the roots of the eliminating
  * polynomial of param (see above); rel->known is 0 if they could not be
  * determined */
-static void real_rel_init(real_rel_t *rel, const mpz_param_t param,
-                          const int info_level) {
+static void real_rel_init(real_rel_t *rel, const mpz_param_t param) {
   double rt = realtime();
   const long nc = param->nvars - 1;
   rel->nc = nc;
@@ -630,32 +632,15 @@ done:
   if (rel->known) {
     rel_set_reps(rel);
   }
-  if (info_level) {
-    long ni = 0;
-    for (long e = 0; e < rel->ne; e++) {
-      ni += rel_test(rel->ident, e);
-    }
-    if (ni > 0) {
-      fprintf(VERBSTREAM, "Zero or equal coordinates at all the roots "
-              "(%ld relations)\n", ni);
-    }
-    if (!rel->known) {
-      fprintf(VERBSTREAM, "Zero and equal coordinates not determined: "
-              "their intervals may contain 0 or differ\n");
-    } else if (rel->ng == 0) {
-      fprintf(VERBSTREAM, "No %szero or equal coordinates (%.2f sec)\n",
-              ni > 0 ? "other " : "", realtime() - rt);
-    } else {
-      long d = 0;
-      for (long i = 0; i < rel->ng; i++) {
-        d += fmpz_poly_degree(rel->g + i);
-      }
-      fprintf(VERBSTREAM, "Zero or equal coordinates at %ld roots, in %ld "
-              "groups (%ld primes, %.2f sec)\n", d, rel->ng, rel->nprimes,
-              realtime() - rt);
-    }
-    fflush(VERBSTREAM);
+  rel->nident = 0;
+  for (long e = 0; e < rel->ne; e++) {
+    rel->nident += rel_test(rel->ident, e);
   }
+  rel->nroots = 0;
+  for (long i = 0; i < rel->ng; i++) {
+    rel->nroots += fmpz_poly_degree(rel->g + i);
+  }
+  rel->time = realtime() - rt;
 }
 
 /* the group of the root of rt, a non-exact isolating interval

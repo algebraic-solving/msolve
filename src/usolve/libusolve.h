@@ -31,7 +31,8 @@ interval *real_roots(mpz_t *, unsigned long,
                      unsigned long int *,
                      const int32_t,
                      int,
-                     int);
+                     int,
+                     usolve_stats_t *);
 
 void display_roots_system(FILE *, interval *, unsigned long int);
 

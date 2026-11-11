@@ -4297,9 +4297,9 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv) {
  * parametrization (read in place) and its derivatives. Each root starts
  * from the working precisions learned on the first one, computed alone, so
  * that the output does not depend on the number of threads. */
-void extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
+long extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
                               interval *roots, long nb, real_point_t *pts,
-                              long prec, int nthreads, int info_level) {
+                              long prec, int nthreads) {
   real_coords_t rc;
   real_coords_init(&rc, param);
   if (nb > 0) {
@@ -4321,69 +4321,127 @@ void extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
   }
   /* integers cached by FLINT in each thread */
   hensel_release(nthreads);
-  rc.nref = nref;
-  if (info_level) {
-    fprintf(VERBSTREAM, "Refinements of the roots during the extraction: %ld\n",
-            rc.nref);
-  }
   real_coords_clear(&rc);
   normalize_points(pts, nb, param->nvars);
+  return nref;
 }
 
-real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
-                         interval **real_roots_ptr, int32_t precision,
-                         int32_t nr_threads, int32_t info_level) {
-  long maxnbits =
-      mpz_poly_max_bsize_coeffs(param->elim->coeffs, param->elim->length - 1);
+/* statistics of the real solutions of one or several parametrizations */
+typedef struct {
+  long ncomps;          /* parametrizations */
+  long deg;             /* sum of the degrees of their eliminating polynomials */
+  long nbits_elim;      /* largest bit size of their coefficients */
+  long nbits_coords;    /* idem for the coordinates */
+  long nroots;          /* real roots */
+  long nref;            /* refinements of the roots during the extraction */
+  long prec;            /* precision of the isolating intervals, in bits */
+  long rel_unknown;     /* parametrizations whose relations are not known */
+  long rel_ident;       /* relations at all the roots of w */
+  long rel_roots;       /* roots of w with other relations */
+  long rel_groups;      /* groups of these roots */
+  long rel_primes;      /* primes used */
+  double t_rel, t_ext;  /* elapsed times of the relations and the extraction */
+  usolve_stats_t iso;   /* isolation and refinement */
+} real_stats_t;
 
-  if(info_level){
-      fprintf(VERBSTREAM, "Maximum bit size in elimination polynomial: %ld\n", maxnbits);
-      fprintf(VERBSTREAM, "Maximum bit size of coeffs in parametrizations: [");
-      fflush(VERBSTREAM);
+static void real_stats_init(real_stats_t *rs) {
+  memset(rs, 0, sizeof(real_stats_t));
+}
+
+static void real_stats_print(const real_stats_t *rs, const double rt,
+                             const int info_level) {
+  fprintf(VERBSTREAM, "\n---------- COMPUTATIONAL DATA -----------\n");
+  if (rs->ncomps > 1) {
+    fprintf(VERBSTREAM, "#components              %15ld\n", rs->ncomps);
   }
+  fprintf(VERBSTREAM, "degree of elim. poly.    %15ld\n", rs->deg);
+  fprintf(VERBSTREAM, "max bit size, elim. poly.%15ld\n", rs->nbits_elim);
+  fprintf(VERBSTREAM, "max bit size, coords.    %15ld\n", rs->nbits_coords);
+  if (rs->rel_unknown) {
+    fprintf(VERBSTREAM, "zero/equal coords.       %15s\n", "not known");
+  } else {
+    fprintf(VERBSTREAM, "#zero/equal at all roots %15ld\n", rs->rel_ident);
+    fprintf(VERBSTREAM, "#roots with zero/equal   %15ld\n", rs->rel_roots);
+    fprintf(VERBSTREAM, "  #groups                %15ld\n", rs->rel_groups);
+  }
+  fprintf(VERBSTREAM, "  #primes                %15ld\n", rs->rel_primes);
+  if (info_level > 1) {
+    fprintf(VERBSTREAM, "#nodes (isolation)       %15lu\n", rs->iso.nodes);
+    fprintf(VERBSTREAM, "  #Taylor shifts         %15lu\n", rs->iso.transl);
+    fprintf(VERBSTREAM, "  #half splits           %15lu\n", rs->iso.half_splits);
+    fprintf(VERBSTREAM, "  #right halves skipped  %15lu\n", rs->iso.skipped);
+  }
+  fprintf(VERBSTREAM, "#real roots              %15ld\n", rs->nroots);
+  fprintf(VERBSTREAM, "precision (bits)         %15ld\n", rs->prec);
+  fprintf(VERBSTREAM, "#refinements (extraction)%15ld\n", rs->nref);
+  fprintf(VERBSTREAM, "-----------------------------------------\n");
+  fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
+  fprintf(VERBSTREAM, "zero/equal coords(elapsed)%10.2f sec\n", rs->t_rel);
+  fprintf(VERBSTREAM, "isolation(elapsed) %17.2f sec\n", rs->iso.isolation);
+  if (info_level > 1) {
+    fprintf(VERBSTREAM, "  Descartes(elapsed) %15.2f sec\n", rs->iso.descartes);
+    fprintf(VERBSTREAM, "  Taylor shifts(elapsed) %11.2f sec\n", rs->iso.shifts);
+  }
+  fprintf(VERBSTREAM, "refinement(elapsed) %16.2f sec\n", rs->iso.refinement);
+  fprintf(VERBSTREAM, "extraction(elapsed) %16.2f sec\n", rs->t_ext);
+  fprintf(VERBSTREAM, "real roots(elapsed) %16.2f sec\n", realtime() - rt);
+  fprintf(VERBSTREAM, "-----------------------------------------\n");
+  fflush(VERBSTREAM);
+}
+
+/* the real solutions of param, added to the statistics rs */
+static real_point_t *real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
+                                      interval **real_roots_ptr,
+                                      int32_t precision, int32_t nr_threads,
+                                      int32_t info_level, real_stats_t *rs) {
+  rs->ncomps++;
+  rs->deg += param->elim->length - 1;
+  rs->nbits_elim = MAX(rs->nbits_elim,
+      (long)mpz_poly_max_bsize_coeffs(param->elim->coeffs,
+                                      param->elim->length - 1));
   for (int i = 0; i < param->nvars - 1; i++) {
     long cmax = mpz_poly_max_bsize_coeffs(param->coords[i]->coeffs,
                                           param->coords[i]->length - 1);
-    if(info_level){
-        fprintf(VERBSTREAM, "%ld",cmax);
-        if(i == param->nvars - 2){
-            fprintf(VERBSTREAM, "]\n");
-            fflush(VERBSTREAM);
-        }
-        else{
-            fprintf(VERBSTREAM, ", ");
-            fflush(VERBSTREAM);
-        }
-    }
-    maxnbits = MAX(cmax, maxnbits);
+    rs->nbits_coords = MAX(cmax, rs->nbits_coords);
   }
   /* the coordinates are computed to 2^-(2 precision), as before; the
    * roots are refined further during the extraction when they need it */
   long prec = 2 * precision;
+  rs->prec = prec;
 
   /* the zero and equal coordinates at the roots */
   real_rel_t rel;
-  real_rel_init(&rel, param, info_level);
+  real_rel_init(&rel, param);
+  rs->t_rel += rel.time;
+  rs->rel_primes += rel.nprimes;
+  if (rel.known) {
+    rs->rel_ident += rel.nident;
+    rs->rel_roots += rel.nroots;
+    rs->rel_groups += rel.ng;
+  } else {
+    rs->rel_unknown++;
+  }
 
   long unsigned int nbpos = 0;
   long unsigned int nbneg = 0;
+  usolve_stats_t iso;
   /* the eliminating polynomial is read in place */
   interval *roots = real_roots(param->elim->coeffs, param->elim->length - 1,
                                &nbpos, &nbneg,
-                               prec, nr_threads, info_level);
+                               prec, nr_threads, info_level, &iso);
   long nb = nbpos + nbneg;
+  rs->iso.isolation += iso.isolation;
+  rs->iso.refinement += iso.refinement;
+  rs->iso.descartes += iso.descartes;
+  rs->iso.shifts += iso.shifts;
+  rs->iso.nodes += iso.nodes;
+  rs->iso.transl += iso.transl;
+  rs->iso.half_splits += iso.half_splits;
+  rs->iso.skipped += iso.skipped;
+  rs->nroots += nb;
 
   real_point_t *pts = NULL;
-  if (info_level > 0) {
-    fprintf(VERBSTREAM, "Number of real roots: %ld\n", nb);
-    fflush(VERBSTREAM);
-  }
   if (nb) {
-    /* */
-    if (info_level) {
-      fprintf(VERBSTREAM, "Starts real root extraction.\n");
-      fflush(VERBSTREAM);
-    }
     double st = realtime();
     pts = malloc(sizeof(real_point_t) * nb);
 
@@ -4391,18 +4449,29 @@ real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_pt
       real_point_init(pts[i], param->nvars);
     }
 
-    extract_real_roots_param(param, &rel, roots, nb, pts, prec, nr_threads,
-                             info_level);
-    if (info_level) {
-      fprintf(VERBSTREAM, "Elapsed time (real root extraction) = %.2f\n",
-              realtime() - st);
-      fflush(VERBSTREAM);
-    }
+    rs->nref += extract_real_roots_param(param, &rel, roots, nb, pts, prec,
+                                         nr_threads);
+    rs->t_ext += realtime() - st;
   }
   real_rel_clear(&rel);
   *real_roots_ptr = roots;
   *nb_real_roots_ptr = nb;
 
+  return pts;
+}
+
+real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
+                         interval **real_roots_ptr, int32_t precision,
+                         int32_t nr_threads, int32_t info_level) {
+  double rt = realtime();
+  real_stats_t rs;
+  real_stats_init(&rs);
+  real_point_t *pts = real_roots_param(param, nb_real_roots_ptr,
+                                       real_roots_ptr, precision, nr_threads,
+                                       info_level, &rs);
+  if (info_level) {
+    real_stats_print(&rs, rt, info_level);
+  }
   return pts;
 }
 
@@ -4456,19 +4525,21 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
                                               int32_t nr_threads,
                                               int32_t info_level) {
   double rt = realtime();
+  real_stats_t rs;
+  real_stats_init(&rs);
   const long nc = params->nb;
   long *lnb = malloc(nc * sizeof(long));
   interval **lroots = malloc(nc * sizeof(interval *));
   real_point_t **lpts = malloc(nc * sizeof(real_point_t *));
   long nb = 0;
   for (long i = 0; i < nc; i++) {
-    if (info_level && nc > 1) {
+    if (info_level > 1 && nc > 1) {
       fprintf(VERBSTREAM, "\ncomponent %ld of %ld: degree %ld\n", i + 1, nc,
               (long)params->params[i]->elim->length - 1);
       fflush(VERBSTREAM);
     }
-    lpts[i] = isolate_real_roots_param(params->params[i], lnb + i, lroots + i,
-                                       precision, nr_threads, info_level);
+    lpts[i] = real_roots_param(params->params[i], lnb + i, lroots + i,
+                               precision, nr_threads, info_level, &rs);
     nb += lnb[i];
   }
   interval *roots = malloc(MAX(nb, 1) * sizeof(interval));
@@ -4503,9 +4574,8 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
   free(lnb);
   free(lroots);
   free(lpts);
-  if (info_level && nc > 1) {
-    fprintf(VERBSTREAM, "\nReal roots of the %ld components: %ld real roots "
-            "(%.2f sec)\n", nc, nb, realtime() - rt);
+  if (info_level) {
+    real_stats_print(&rs, rt, info_level);
   }
   *nb_real_roots_ptr = nb;
   *real_roots_ptr = roots;

@@ -1143,18 +1143,6 @@ static inline void free_heap_flags(usolve_flags *flags,
   }
 }
 
-static void display_stats(usolve_flags *flags){
-
-  fprintf(VERBSTREAM,"\n");
-  fprintf(VERBSTREAM,"Number of nodes : %lu\n", flags->node_looked);
-  fprintf(VERBSTREAM,"Number of shifts : %lu\n", flags->transl);
-  fprintf(VERBSTREAM,"Number of half splits : %lu\n", flags->half_done);
-  fprintf(VERBSTREAM,"Number of right halves skipped : %lu\n", flags->skipped);
-  fprintf(VERBSTREAM,"Time in Descartes (elapsed): %.2f sec\n", flags->time_desc);
-  fprintf(VERBSTREAM,"Time in Taylor shifts (elapsed): %.2f sec\n", flags->time_shift);
-  fprintf(VERBSTREAM,"\n");
-
-}
 
 
 
@@ -1227,7 +1215,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
     flags->bound_pos = bound_roots(upol, deg);
 
     if(flags->verbose>=1){
-      fprintf(VERBSTREAM, "Bound for positive roots: %ld\n\n", flags->bound_pos);
+      fprintf(VERBSTREAM, "\npositive roots, bound 2^%ld:\n", flags->bound_pos);
     }
 
     const long z = USOLVEmpz_poly_rescale_normalize_2exp_th(upol,
@@ -1297,7 +1285,7 @@ interval *bisection_Uspensky(mpz_t *upol0, unsigned long deg,
                                              flags->nthreads);
 
     if(flags->verbose>=1){
-      fprintf(VERBSTREAM, "\nBound for negative roots: %ld\n\n", flags->bound_neg);
+      fprintf(VERBSTREAM, "\nnegative roots, bound 2^%ld:\n", flags->bound_neg);
     }
 
     mpz_set_ui(e, 0);
@@ -1370,31 +1358,18 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
                      unsigned long int *nb_neg_roots,
                      const int32_t precision,
                      int nthrds,
-                     int info_level){
+                     int info_level,
+                     usolve_stats_t *stats){
   usolve_flags *flags = (usolve_flags*)(malloc(sizeof(usolve_flags)));
   initialize_flags(flags);
   flags->cur_deg = deg;
   flags->prec_isole = precision;
-  if(info_level){
-    fprintf(VERBSTREAM, "Real root isolation starts at precision %d\n",
-            precision);
-  }
   if (info_level > 0) {
     flags->verbose = info_level - 1;
   } else {
     flags->verbose = 0;
   }
-  if(info_level>1){
-    flags->print_stats = 1;
-  }
   flags->nthreads = nthrds;
-  if(flags->verbose>=1 || flags->print_stats == 1){
-    fprintf(VERBSTREAM, "Degree = %ld \t Max bit size = %lu Min bit size = %lu \n",
-            flags->cur_deg,
-            mpz_poly_max_bsize_coeffs(upoly, deg),
-            mpz_poly_min_bsize_coeffs(upoly, deg));
-    fprintf(VERBSTREAM, "nthreads = %d\n", flags->nthreads);
-  }
   double e_time = realtime ( );
 
   interval *roots = bisection_Uspensky(upoly, deg, nb_pos_roots, nb_neg_roots,
@@ -1412,14 +1387,6 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
   /* display_root(ERRSTREAM, roots); */
 
   e_time = realtime ( ) - e_time;
-
-  if(flags->verbose>=1){
-    fprintf(VERBSTREAM, "\n");
-  }
-
-  if((flags->verbose>=1) || (flags->print_stats>=1)){
-    fprintf(VERBSTREAM,"Time for isolation (elapsed): %.2f sec\n", e_time);
-  }
 
   double refine_time = realtime();
 
@@ -1443,13 +1410,15 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
     }
   }
 
-  if(flags->print_stats>=1){
-    display_stats(flags);
-  }
-
-  if((flags->verbose>=1) || (flags->print_stats>=1)){
-    fprintf(VERBSTREAM,"Time for isolation (elapsed): %.2f sec\n", e_time);
-    fprintf(VERBSTREAM,"Time for refinement (elapsed): %.2f sec\n", refine_time);
+  if(stats != NULL){
+    stats->isolation = e_time;
+    stats->refinement = refine_time;
+    stats->descartes = flags->time_desc;
+    stats->shifts = flags->time_shift;
+    stats->nodes = flags->node_looked;
+    stats->transl = flags->transl;
+    stats->half_splits = flags->half_done;
+    stats->skipped = flags->skipped;
   }
 
   free(flags);

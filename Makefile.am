@@ -92,6 +92,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_reals-dim0-extract.sh \
 			  test/diff/diff_reals-dim0.sh \
 			  test/diff/diff_reals-dim0-swapvar.sh \
+			  test/diff/diff_reals-close-components.sh \
 			  test/diff/diff_test-lifting2.sh \
 			  test/diff/diff_lifting-single-point.sh \
 			  test/diff/diff_univariate-assign-left.sh \

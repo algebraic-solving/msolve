@@ -371,6 +371,10 @@ AC_CONFIG_LINKS([
  output_files/reals-close-components.p128.res:output_files/reals-close-components.p128.res
  output_files/reals-close-components.p1024.res:output_files/reals-close-components.p1024.res
  test/diff/diff_reals-close-components.sh:test/diff/diff_reals-close-components.sh
+ input_files/reals-zero-equal.ms:input_files/reals-zero-equal.ms
+ output_files/reals-zero-equal.p128.res:output_files/reals-zero-equal.p128.res
+ output_files/reals-zero-equal.p1024.res:output_files/reals-zero-equal.p1024.res
+ test/diff/diff_reals-zero-equal.sh:test/diff/diff_reals-zero-equal.sh
  input_files/test-lifting2.ms:input_files/test-lifting2.ms
  output_files/test-lifting2.P2.d0.res:output_files/test-lifting2.P2.d0.res
  test/diff/diff_test-lifting2.sh:test/diff/diff_test-lifting2.sh

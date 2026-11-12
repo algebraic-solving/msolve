@@ -4294,6 +4294,17 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv) {
   }
 }
 
+/* when info_level > 1, a dot is printed as each point is done */
+static void real_point_progress(const int info_level) {
+  if (info_level > 1) {
+#pragma omp critical(real_point_progress)
+    {
+      fputc('.', VERBSTREAM);
+      fflush(VERBSTREAM);
+    }
+  }
+}
+
 /* The points are computed with nthreads threads, which share the
  * parametrization (read in place) and its derivatives. Each root starts
  * from the working precisions learned on the first one, computed alone, so
@@ -4301,12 +4312,18 @@ void normalize_points(real_point_t *pts, int64_t nb, int32_t nv) {
 /* the root i is in the group grp[i] of rel (see real_rel_t) */
 long extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
                               interval *roots, const long *grp, long nb,
-                              real_point_t *pts, long prec, int nthreads) {
+                              real_point_t *pts, long prec, int nthreads,
+                              int info_level) {
+  if (info_level > 1) {
+    fprintf(VERBSTREAM, "\nextraction of %ld point%s to 2^-%ld:\n", nb,
+            nb > 1 ? "s" : "", prec);
+  }
   real_coords_t rc;
   real_coords_init(&rc, param);
   if (nb > 0) {
     real_coords_point(&rc, param, rel->known ? rel->rep[grp[0]] : NULL,
                       roots, pts[0], prec);
+    real_point_progress(info_level);
   }
   long nref = rc.nref;
 #pragma omp parallel num_threads(nthreads) reduction(+:nref)
@@ -4321,7 +4338,11 @@ long extract_real_roots_param(mpz_param_t param, const real_rel_t *rel,
       real_coords_point(&lc, param, rel->known ? rel->rep[grp[i]] : NULL,
                         roots + i, pts[i], prec);
       nref += lc.nref;
+      real_point_progress(info_level);
     }
+  }
+  if (info_level > 1) {
+    fprintf(VERBSTREAM, "\n");
   }
   /* integers cached by FLINT in each thread */
   hensel_release(nthreads);
@@ -4689,7 +4710,7 @@ static real_point_t *real_comp_roots(real_comp_t *c, mpz_param_t param,
     }
 
     rs->nref += extract_real_roots_param(param, &c->rel, roots, grp, nb, pts,
-                                         prec, nr_threads);
+                                         prec, nr_threads, info_level);
     rs->t_ext += realtime() - st;
   }
   free(grp);

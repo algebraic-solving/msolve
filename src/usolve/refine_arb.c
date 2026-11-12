@@ -297,11 +297,13 @@ done:
  * nthreads threads sharing f and f' (each root gets the same interval
  * whatever the precisions learned on the others, so the output does not
  * depend on the number of threads); the integers cached by FLINT in each
- * thread are then freed */
+ * thread are then freed; when verbose, a character is printed as each
+ * root is done: '.', or '!' when it turns out to be exact */
 static void usolve_refine_roots_arb(mpz_t *upol, const unsigned long int deg,
                                     interval *roots,
                                     const unsigned long int nbroots,
-                                    const slong prec, const int nthreads){
+                                    const slong prec, const int nthreads,
+                                    const int verbose){
   /* f on aliases of the coefficients of upol */
   fmpz_poly_struct f[1];
   fmpz_poly_t df;
@@ -320,6 +322,13 @@ static void usolve_refine_roots_arb(mpz_t *upol, const unsigned long int deg,
 #pragma omp for schedule(dynamic, 1)
     for (unsigned long int i = 0; i < nbroots; i++) {
       usolve_refine_root_arb(roots + i, f, df, prec, &extra);
+      if (verbose) {
+#pragma omp critical(usolve_refine_progress)
+        {
+          fputc(roots[i].isexact ? '!' : '.', VERBSTREAM);
+          fflush(VERBSTREAM);
+        }
+      }
     }
     _fmpz_cleanup_mpz_content();
   }

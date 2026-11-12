@@ -1396,8 +1396,15 @@ interval *real_roots(mpz_t *upoly, unsigned long deg,
                              flags->prec_isole);
     }
     else{
+      if(flags->verbose>=1){
+        fprintf(VERBSTREAM, "\nrefinement of %lu root%s to 2^-%d:\n", nbroots,
+                nbroots > 1 ? "s" : "", flags->prec_isole);
+      }
       usolve_refine_roots_arb(upoly, deg, roots, nbroots, flags->prec_isole,
-                              flags->nthreads);
+                              flags->nthreads, flags->verbose>=1);
+      if(flags->verbose>=1){
+        fprintf(VERBSTREAM, "\n");
+      }
     }
   }
   refine_time = realtime() - refine_time;

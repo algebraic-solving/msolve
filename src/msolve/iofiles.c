@@ -85,8 +85,9 @@ static inline int store_exponent(const char *term, data_gens_ff_t *gens, int64_t
     char *var = NULL;
     char *ev  = NULL;
     char *end = NULL;
-    for (i = 0; i < strlen(term)+1; ++i) {
-        if (term[i] == '*' || i == strlen(term)) {
+    const len_t tl = strlen(term);
+    for (i = 0; i < tl+1; ++i) {
+        if (term[i] == '*' || i == tl) {
             j = op;
             while (j < i && term[j] != '^') {
                 ++j;

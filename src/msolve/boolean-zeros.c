@@ -181,16 +181,22 @@ static uint32_t bz_heap_pop(bz_heap_t *h, const int lex)
 /* hash map of the monomials met so far, the value is the index of a
  * standard monomial, BZ_QUEUED or BZ_NONSTD */
 typedef struct {
-  uint32_t *key;
-  int32_t *val;
+  uint32_t key;
+  int32_t val;
+} bz_entry_t;
+
+typedef struct {
+  bz_entry_t *e;
   uint64_t ld;
   uint64_t sz;  /* a power of two */
+  int32_t sh;   /* 64 - log2(sz) */
 } bz_map_t;
 
 static inline uint64_t bz_map_slot(const bz_map_t *mp, const uint32_t t)
 {
-  uint64_t k  = (uint64_t)((t * 0x9E3779B97F4A7C15ULL) >> 20) & (mp->sz - 1);
-  while (mp->val[k] != BZ_EMPTY && mp->key[k] != t) {
+  /* Fibonacci hashing, the top bits of the product are the best mixed */
+  uint64_t k  = ((uint64_t)t * 0x9E3779B97F4A7C15ULL) >> mp->sh;
+  while (mp->e[k].val != BZ_EMPTY && mp->e[k].key != t) {
     k = (k+1) & (mp->sz - 1);
   }
   return k;
@@ -198,38 +204,41 @@ static inline uint64_t bz_map_slot(const bz_map_t *mp, const uint32_t t)
 
 static inline int32_t bz_map_get(const bz_map_t *mp, const uint32_t t)
 {
-  return mp->val[bz_map_slot(mp, t)];
+  return mp->e[bz_map_slot(mp, t)].val;
+}
+
+static void bz_map_init(bz_map_t *mp, const int32_t lg)
+{
+  mp->sz  = (uint64_t)1 << lg;
+  mp->sh  = 64 - lg;
+  mp->ld  = 0;
+  mp->e   = (bz_entry_t *)malloc(mp->sz * sizeof(bz_entry_t));
+  for (uint64_t i = 0; i < mp->sz; ++i) {
+    mp->e[i].val  = BZ_EMPTY;
+  }
 }
 
 static void bz_map_set(bz_map_t *mp, const uint32_t t, const int32_t v)
 {
   uint64_t k  = bz_map_slot(mp, t);
-  if (mp->val[k] == BZ_EMPTY) {
+  if (mp->e[k].val == BZ_EMPTY) {
     if (2 * (mp->ld + 1) > mp->sz) {
-      const uint64_t osz    = mp->sz;
-      uint32_t *okey        = mp->key;
-      int32_t *oval         = mp->val;
-      mp->sz  = 2 * osz;
-      mp->key = (uint32_t *)malloc(mp->sz * sizeof(uint32_t));
-      mp->val = (int32_t *)malloc(mp->sz * sizeof(int32_t));
+      bz_map_t nm;
+      bz_map_init(&nm, 64 - mp->sh + 1);
       for (uint64_t i = 0; i < mp->sz; ++i) {
-        mp->val[i] = BZ_EMPTY;
-      }
-      for (uint64_t i = 0; i < osz; ++i) {
-        if (oval[i] != BZ_EMPTY) {
-          const uint64_t l  = bz_map_slot(mp, okey[i]);
-          mp->key[l]  = okey[i];
-          mp->val[l]  = oval[i];
+        if (mp->e[i].val != BZ_EMPTY) {
+          nm.e[bz_map_slot(&nm, mp->e[i].key)] = mp->e[i];
         }
       }
-      free(okey);
-      free(oval);
+      nm.ld = mp->ld;
+      free(mp->e);
+      *mp = nm;
       k = bz_map_slot(mp, t);
     }
-    mp->key[k]  = t;
+    mp->e[k].key  = t;
     mp->ld++;
   }
-  mp->val[k]  = v;
+  mp->e[k].val  = v;
 }
 
 /* writes the monomial t to s as msolve prints terms, with coefficient 1
@@ -466,13 +475,7 @@ static int boolean_zeros_gb(
   heap.ld = 0;
   heap.m  = (uint32_t *)malloc(heap.sz * sizeof(uint32_t));
   bz_map_t map;
-  map.sz  = 1024;
-  map.ld  = 0;
-  map.key = (uint32_t *)malloc(map.sz * sizeof(uint32_t));
-  map.val = (int32_t *)malloc(map.sz * sizeof(int32_t));
-  for (i = 0; i < map.sz; ++i) {
-    map.val[i] = BZ_EMPTY;
-  }
+  bz_map_init(&map, 10);
 
   uint64_t r, nst = 0;
   bz_heap_push(&heap, 0, lex);
@@ -599,8 +602,7 @@ static int boolean_zeros_gb(
   }
 
   free(heap.m);
-  free(map.key);
-  free(map.val);
+  free(map.e);
   free(lts);
   free(nfo);
   free(nfs);

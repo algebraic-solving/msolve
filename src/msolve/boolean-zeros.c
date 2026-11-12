@@ -51,6 +51,131 @@
 #define BZ_QUEUED   -1
 #define BZ_NONSTD   -2
 
+/* the zeta transform is done in passes over tiles: the first pass
+ * handles the levels inside the words and the first BZ_TILE levels of the
+ * word index on contiguous tiles of 2^BZ_TILE words, each further pass
+ * the next BZ_TILE2 - BZ_CHUNK levels on tiles of 2^BZ_TILE2 words made of
+ * chunks of 2^BZ_CHUNK contiguous words. Since the chunks lie at
+ * distances of a power of two they are copied to a buffer, otherwise they
+ * evict each other from the cache. */
+#define BZ_TILE   15
+#define BZ_TILE2  16
+#define BZ_CHUNK  5
+
+/* zeta transform of the levels of the row index of nr rows of cl
+ * contiguous words each */
+static inline void bz_zeta_rows(
+    uint64_t *b,
+    const uint64_t nr,
+    const uint64_t cl
+    )
+{
+  uint64_t h = 1, j, l;
+
+  if (cl == 1 && nr >= 8) {
+    /* the first three levels on groups of eight words */
+    for (j = 0; j < nr; j += 8) {
+      uint64_t *w = b + j;
+      w[1] ^= w[0];
+      w[3] ^= w[2];
+      w[5] ^= w[4];
+      w[7] ^= w[6];
+      w[2] ^= w[0];
+      w[3] ^= w[1];
+      w[6] ^= w[4];
+      w[7] ^= w[5];
+      w[4] ^= w[0];
+      w[5] ^= w[1];
+      w[6] ^= w[2];
+      w[7] ^= w[3];
+    }
+    h = 8;
+  }
+  for (; h < nr; h *= 2) {
+    const uint64_t hl = h * cl;
+    for (j = 0; j < nr; j += 2 * h) {
+      uint64_t *restrict r        = b + (j + h) * cl;
+      const uint64_t *restrict q  = b + j * cl;
+      for (l = 0; l < hl; ++l) {
+        r[l] ^= q[l];
+      }
+    }
+  }
+}
+
+/* zeta transform of c of 2^nwb words for the levels k0, ..., k1-1 of the
+ * word index, and also for the levels inside the words if k0 == 0: word i
+ * becomes the sum of the words j with j & ~i == 0 and i & ~j having only
+ * bits in these levels. If z is not NULL this is the last pass, then the
+ * points where c is not zero are removed from z and c is cleared. */
+static void bz_zeta_pass(
+    uint64_t *c,
+    uint64_t *z,
+    const int32_t nwb,
+    const int32_t k0,
+    const int32_t k1,
+    const int32_t nthrds
+    )
+{
+  static const uint64_t lo[6] = {
+    0x5555555555555555, 0x3333333333333333, 0x0F0F0F0F0F0F0F0F,
+    0x00FF00FF00FF00FF, 0x0000FFFF0000FFFF, 0x00000000FFFFFFFF
+  };
+  /* a tile consists of 2^(k1-k0) rows of 2^cs contiguous words, row j
+   * starts at o + j * 2^k0 */
+  const int32_t cs  = k0 < BZ_CHUNK ? k0 : BZ_CHUNK;
+  const uint64_t cl = (uint64_t)1 << cs;
+  const uint64_t nr = (uint64_t)1 << (k1 - k0);
+  const uint64_t nt = (uint64_t)1 << (nwb - (k1 - k0) - cs);
+  const int64_t lm  = ((int64_t)1 << (k0 - cs)) - 1;
+
+#pragma omp parallel num_threads(nthrds) if (nt > 1 && nwb > 16)
+  {
+    uint64_t *buf = k0 > 0 ? (uint64_t *)malloc(nr * cl * sizeof(uint64_t))
+      : NULL;
+#pragma omp for
+    for (int64_t t = 0; t < (int64_t)nt; ++t) {
+      const uint64_t o  = (((uint64_t)t & lm) << cs)
+        | (((uint64_t)t >> (k0 - cs)) << k1);
+      uint64_t j, l;
+      uint64_t *b = c + o;
+      if (k0 == 0) {
+        for (j = 0; j < nr; ++j) {
+          uint64_t w  = b[j];
+          w ^= (w & lo[0]) << 1;
+          w ^= (w & lo[1]) << 2;
+          w ^= (w & lo[2]) << 4;
+          w ^= (w & lo[3]) << 8;
+          w ^= (w & lo[4]) << 16;
+          w ^= (w & lo[5]) << 32;
+          b[j]  = w;
+        }
+      } else {
+        for (j = 0; j < nr; ++j) {
+          memcpy(buf + j * cl, b + (j << k0), cl * sizeof(uint64_t));
+        }
+        b = buf;
+      }
+      bz_zeta_rows(b, nr, cl);
+      if (z != NULL) {
+        for (j = 0; j < nr; ++j) {
+          const uint64_t *restrict r  = b + j * cl;
+          uint64_t *restrict y        = z + o + (j << k0);
+          for (l = 0; l < cl; ++l) {
+            y[l] &= ~r[l];
+          }
+          memset(c + o + (j << k0), 0, cl * sizeof(uint64_t));
+        }
+      } else if (k0 > 0) {
+        for (j = 0; j < nr; ++j) {
+          memcpy(c + o + (j << k0), b + j * cl, cl * sizeof(uint64_t));
+        }
+      }
+    }
+    free(buf);
+  }
+}
+
 /* returns the bit array of the common zeros of the input polynomials,
  * bit S is set iff the point with the variables of S equal to 1 is a
  * common zero, NULL if there is not enough memory */
@@ -66,25 +191,28 @@ static uint64_t *boolean_common_zeros(
   const int32_t nv  = gens->nvars;
   const uint64_t np = (uint64_t)1 << nv;
   const uint64_t nw = np < 64 ? 1 : np / 64;
+  const int32_t nwb = nv < 6 ? 0 : nv - 6;
   int64_t pos = 0;
-  uint64_t i;
+  int64_t i;
   int32_t g, j, k;
 
   uint64_t *z = (uint64_t *)malloc(nw * sizeof(uint64_t));
   uint64_t *c = (uint64_t *)malloc(nw * sizeof(uint64_t));
+  /* c is cleared by the last pass of the transform */
   if (z == NULL || c == NULL) {
     free(z);
     free(c);
     return NULL;
   }
-  for (i = 0; i < nw; ++i) {
+#pragma omp parallel for num_threads(nthrds) if (nwb > 16)
+  for (i = 0; i < (int64_t)nw; ++i) {
     z[i] = ~(uint64_t)0;
+    c[i] = 0;
   }
   if (np < 64) {
     z[0] = ((uint64_t)1 << np) - 1;
   }
   for (g = 0; g < gens->ngens; ++g) {
-    memset(c, 0, nw * sizeof(uint64_t));
     for (j = 0; j < gens->lens[g]; ++j, ++pos) {
       const int32_t *e  = gens->exps + pos * nv;
       uint64_t s        = 0;
@@ -97,24 +225,21 @@ static uint64_t *boolean_common_zeros(
     }
     /* the value at the point S is the sum of the coefficients of the
      * monomials dividing S */
-    for (k = 0; k < nv && k < 6; ++k) {
-      const int sh  = 1 << k;
-#pragma omp parallel for num_threads(nthrds) if (nw > ((uint64_t)1 << 16))
-      for (i = 0; i < nw; ++i) {
-        c[i] ^= (c[i] & lo[k]) << sh;
+    if (nv < 6) {
+      for (k = 0; k < nv; ++k) {
+        c[0] ^= (c[0] & lo[k]) << (1 << k);
       }
-    }
-    for (k = 6; k < nv; ++k) {
-      const uint64_t b  = (uint64_t)1 << (k - 6);
-#pragma omp parallel for num_threads(nthrds) if (nw > ((uint64_t)1 << 16))
-      for (i = 0; i < nw; ++i) {
-        if (i & b) {
-          c[i] ^= c[i ^ b];
-        }
+      z[0] &= ~c[0];
+      c[0]  = 0;
+    } else {
+      k = nwb < BZ_TILE ? nwb : BZ_TILE;
+      bz_zeta_pass(c, k < nwb ? NULL : z, nwb, 0, k, nthrds);
+      while (k < nwb) {
+        const int32_t k1  = k + BZ_TILE2 - BZ_CHUNK < nwb
+          ? k + BZ_TILE2 - BZ_CHUNK : nwb;
+        bz_zeta_pass(c, k1 < nwb ? NULL : z, nwb, k, k1, nthrds);
+        k = k1;
       }
-    }
-    for (i = 0; i < nw; ++i) {
-      z[i] &= ~c[i];
     }
   }
   free(c);

@@ -134,6 +134,17 @@ Powers of variables in the input are reduced, e.g. `x1^3*x2^2+x1*x2` is
 one of the ideal with the field equations `x^2+x` added, without the 
 field equations themselves. 
 
+For input systems in few variables (at most 32), e.g. a single polynomial 
+describing a set of points, the option `--boolean-zeros` computes the 
+reduced Groebner basis in the boolean ring via the common zeros of the input 
+polynomials: the ideal in the boolean ring consists of all polynomials 
+vanishing on these zeros, its Groebner basis is computed by the 
+Buchberger-Moeller algorithm. All 2^n points are evaluated, so the time and 
+memory needed grow with 2^n and with the square of the number of common 
+zeros. With the option `--lex` the basis is computed w.r.t. the 
+lexicographical order instead of the graded reverse lexicographical one, 
+only together with `--boolean-zeros`. 
+
 # Solving over the real numbers
 
 When the input polynomial system has rational coefficients and when 

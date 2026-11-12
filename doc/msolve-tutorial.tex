@@ -346,7 +346,11 @@ source files are provided.
   \verb+0x100+, an integer coefficient $n$ stands for $n$ modulo $2$), or in the boolean
   ring over $\mathbb{F}_2$, i.e.\ with $x^2 = x$ for all variables $x$
   (\verb+boolean+ in the second line of the input file, or the option
-  \verb+--boolean+ for an input file over $\mathbb{F}_2$);
+  \verb+--boolean+ for an input file over $\mathbb{F}_2$); for few variables
+  (at most $32$) the option \verb+--boolean-zeros+ computes this Gr\"obner
+  basis via the common zeros of the input polynomials with the
+  Buchberger-M\"oller algorithm, also w.r.t.\ the lexicographical order
+  with the additional option \verb+--lex+;
 \item compute parametrizations of the solutions of polynomial systems with
   coefficients which are either rational numbers or in a prime field
   $\mathbb{Z}/p\mathbb{Z}$ with $p < 2^{31}$ (assuming that the system has

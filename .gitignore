@@ -53,6 +53,8 @@ line_endings_support
 hensel_lifting
 neogb_io
 neogb_f4_52_bit
+neogb_gf2_ext
+neogb_gf2
 msolve-*.tar.gz
 msolve-*/
 src/msolve/msolve-version.h

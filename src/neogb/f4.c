@@ -865,8 +865,8 @@ int64_t export_results_from_f4(
  * 1.  an array of the lengths of each generator
  * 2.  an array of all coefficients of all generators in the order:
  *     first all coefficients of generator 1, then all of generator 2, ...
- *     For primes < 2^32 the coefficients are int32_t, for primes
- *     2^32 <= p < 2^52 they are int64_t, also for the returned basis.
+ *     For primes < 2^31 the coefficients are int32_t, for primes
+ *     2^31 <= p < 2^52 they are int64_t, also for the returned basis.
  * 3.  an array of all exponents of all generators in the order:
  *     first all exponents of generator 1, then all of generator 2, ...
  *
@@ -958,8 +958,8 @@ int64_t export_f4_64(
 }
 
 /* same as export_f4_64(), but with a 32 bit field characteristic and
- * thus always int32_t coefficients, this is the interface used by
- * AlgebraicSolving.jl */
+ * int32_t coefficients, thus only for primes < 2^31, this is the
+ * interface used by AlgebraicSolving.jl */
 int64_t export_f4(
         void *(*mallocp) (size_t),
         /* return values */
@@ -986,6 +986,10 @@ int64_t export_f4(
         const int32_t info_level
         )
 {
+    if (field_char > INT32_MAX) {
+        fprintf(ERRSTREAM, "Field characteristic must be 0 or < 2^31.\n");
+        exit(1);
+    }
     return export_f4_64(mallocp, bld, blen, bexp, bcf, lens, exps, cfs,
             (uint64_t)field_char, mon_order, elim_block_len, nr_vars,
             nr_gens, ht_size, nr_threads, max_nr_pairs, reset_ht,

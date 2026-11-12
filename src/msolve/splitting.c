@@ -40,6 +40,9 @@
    the g's and H_g = E / g, the numerators of the parametrization of E are
    R_v = -x_v E' mod E = -sum_g B_v H_g, since E' = g' H_g mod g. */
 
+#ifdef HAVE_FLINT_NMOD_H
+#include <flint/nmod.h>
+#endif
 #include <flint/fmpq.h>
 #include <flint/fmpq_poly.h>
 #include <flint/fmpq_vec.h>

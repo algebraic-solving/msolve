@@ -337,7 +337,13 @@ source files are provided.
   coefficients and finitely many complex solutions;
 \item compute Gr\"obner bases of polynomial systems with coefficients which are
   either rational numbers or in a prime field $\mathbb{Z}/p\mathbb{Z}$ with $p <
-  2^{31}$;
+  2^{52}$ or in one of the fields $\mathbb{F}_{16}$ and $\mathbb{F}_{256}$
+  (\verb+2^4+ resp.\ \verb+2^8+ in the second line of the input file, the
+  field elements are written in hexadecimal notation as the byte
+  representations of the elements of $\mathbb{F}_2[t]/(t^4+t+1)$ resp.\
+  $\mathbb{F}_2[t]/(t^8+t^4+t^3+t+1)$, e.g.\ \verb+0x1b+ for $t^4+t^3+t+1$,
+  the elements have to be reduced, i.e.\ less than \verb+0x10+ resp.\
+  \verb+0x100+, an integer coefficient $n$ stands for $n$ modulo $2$);
 \item compute parametrizations of the solutions of polynomial systems with
   coefficients which are either rational numbers or in a prime field
   $\mathbb{Z}/p\mathbb{Z}$ with $p < 2^{31}$ (assuming that the system has

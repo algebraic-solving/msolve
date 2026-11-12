@@ -627,4 +627,13 @@ extern cf32_t *reduce_dense_row_by_dense_new_pivots_ff_32(
         const uint32_t fc
         );
 
+/* the field characteristic fc = 16 resp. 256 stands for the binary
+ * extension fields GF(16) resp. GF(256), see gf2_ext.c */
+static inline int is_gf2_ext(
+        const uint64_t fc
+        )
+{
+    return fc == 16 || fc == 256;
+}
+
 #endif

@@ -297,6 +297,52 @@ void sort_terms_qq(
   *hmp  = hm;
 }
 
+/* Imports the coefficients of the generators start,...,stop-1 over
+ * GF(2), GF(16) resp. GF(256), off is the position of the first
+ * coefficient of generator start in cfs. The integer c stands for the
+ * element with byte representation |c| mod fc, note that -a = a in
+ * characteristic 2. Terms with zero coefficient are removed. Returns the
+ * number of imported generators. */
+static len_t import_coefficients_gf2x(
+        bs_t *bs,
+        const int32_t start,
+        const int32_t stop,
+        const int32_t *lens,
+        const int32_t *cfs,
+        const int *invalid_gens,
+        const uint64_t fc,
+        int32_t off
+        )
+{
+    int32_t i, j;
+    len_t ctr = 0;
+
+    for (i = start; i < stop; ++i) {
+        if (invalid_gens == NULL || invalid_gens[i] == 0) {
+            hm_t *hm  = bs->hm[ctr];
+            cf8_t *cf = (cf8_t *)malloc((unsigned long)(lens[i]) * sizeof(cf8_t));
+            len_t nt  = 0;
+            for (j = 0; j < lens[i]; ++j) {
+                const int32_t c = cfs[off+j];
+                const uint32_t a = (c < 0 ? -(uint32_t)c : (uint32_t)c)
+                    & (uint32_t)(fc-1);
+                if (a != 0) {
+                    cf[nt]          = (cf8_t)a;
+                    hm[OFFSET+nt]   = hm[OFFSET+j];
+                    nt++;
+                }
+            }
+            hm[LENGTH]      = nt;
+            hm[PRELOOP]     = nt % UNROLL;
+            bs->cf_8[ctr]   = cf;
+            sort_terms_ff_8(&(bs->cf_8[ctr]), &(bs->hm[ctr]), bs->ht);
+            ctr++;
+        }
+        off +=  lens[i];
+    }
+    return ctr;
+}
+
 void import_input_data(
         bs_t *bs,
         md_t *st,
@@ -370,6 +416,11 @@ void import_input_data(
     ctr = 0;
     switch (st->ff_bits) {
         case 8:
+            if (fc == 2 || is_gf2_ext(fc)) {
+                ctr = import_coefficients_gf2x(bs, start, stop, lens,
+                        (int32_t *)vcfs, invalid_gens, fc, init_off);
+                break;
+            }
             cfs_ff  =   (int32_t *)vcfs;
             for (i = start; i < stop; ++i) {
                 if (invalid_gens == NULL || invalid_gens[i] == 0) {
@@ -699,6 +750,12 @@ int32_t check_ff_bits(int32_t fc){
 }
 
 void set_ff_bits(md_t *st, uint64_t fc){
+    /* GF(16) and GF(256) store their elements in bytes */
+    if (is_gf2_ext(fc)) {
+        st->ff_bits = 8;
+        gf2x_init_tables();
+        return;
+    }
     if (fc == 0) {
         st->ff_bits = 0;
     } else {
@@ -708,7 +765,7 @@ void set_ff_bits(md_t *st, uint64_t fc){
             if (fc < (uint64_t)(1) << 16) {
                 st->ff_bits = 16;
             } else {
-                if (fc < (uint64_t)(1) << 32) {
+                if (fc < (uint64_t)(1) << 31) {
                     st->ff_bits = 32;
                 } else {
                     st->ff_bits = 64;
@@ -741,7 +798,7 @@ int validate_input_data_64(
         int32_t *info_levelp
         )
 {
-    /* biggest prime msolve can handle: primes < 2^32 use 32 bit
+    /* biggest prime msolve can handle: primes < 2^31 use 32 bit
      * coefficients, larger primes 64 bit coefficients */
     if (*field_charp >= ((uint64_t)1 << 52)) {
         fprintf(ERRSTREAM, "Field characteristic not valid.\n");
@@ -788,8 +845,16 @@ int validate_input_data_64(
         fprintf(ERRSTREAM, "Usage of signature not valid, disabled.\n");
         *use_signaturesp = 0;
     }
-    if (*use_signaturesp != 0 && *field_charp >= ((uint64_t)1 << 32)) {
-        fprintf(ERRSTREAM, "Signatures need primes < 2^32, disabled.\n");
+    if (is_gf2_ext(*field_charp) && *nr_nfp > 0) {
+        fprintf(ERRSTREAM, "Normal forms over GF(16) and GF(256) are not supported.\n");
+        return 0;
+    }
+    if (*use_signaturesp != 0 && is_gf2_ext(*field_charp)) {
+        fprintf(ERRSTREAM, "Signatures need prime fields, disabled.\n");
+        *use_signaturesp = 0;
+    }
+    if (*use_signaturesp != 0 && *field_charp >= ((uint64_t)1 << 31)) {
+        fprintf(ERRSTREAM, "Signatures need primes < 2^31, disabled.\n");
         *use_signaturesp = 0;
     }
     if (*reduce_gbp < 0 || *reduce_gbp > 1) {
@@ -820,7 +885,7 @@ int validate_input_data_64(
             }
             len += 2*lens[i];
         }
-    } else if (*field_charp >= ((uint64_t)1 << 32)) {
+    } else if (*field_charp >= ((uint64_t)1 << 31)) {
         int64_t *cf =   (int64_t *)cfs;
         for (int i = 0; i < ngens; ++i) {
             for (int j = 0; j < lens[i]; ++j) {
@@ -829,6 +894,22 @@ int validate_input_data_64(
                     ctr++;
                     break;
                 }
+            }
+            len +=  lens[i];
+        }
+    } else if (*field_charp == 2 || is_gf2_ext(*field_charp)) {
+        /* zero coefficients are removed when importing the data, see
+         * import_coefficients_gf2x(), only zero polynomials are invalid */
+        int32_t *cf =   (int32_t *)cfs;
+        const uint32_t mask = (uint32_t)(*field_charp-1);
+        for (int i = 0; i < ngens; ++i) {
+            int j = 0;
+            while (j < lens[i] && ((uint32_t)cf[j+len] & mask) == 0) {
+                ++j;
+            }
+            if (j == lens[i]) {
+                invalid_gens[i]   =   1;
+                ctr++;
             }
             len +=  lens[i];
         }
@@ -852,11 +933,11 @@ int validate_input_data_64(
         return 1;
     }
 
-    *nr_gensp   -=  ctr;
-
     /* recheck number of generators, if the input was only (0) then
-     * no more generators are left over. */
-    if (*nr_gensp < 1) {
+     * no more generators are left over. Note that *nr_gensp is not
+     * changed: the invalid generators are still part of the input data,
+     * they are skipped when importing it. */
+    if (*nr_gensp - ctr < 1) {
         return -1;
     }
 
@@ -885,6 +966,12 @@ int validate_input_data(
         int32_t *info_levelp
         )
 {
+    /* coefficients are given as int32_t, primes >= 2^31 need
+     * validate_input_data_64() and int64_t coefficients */
+    if (*field_charp > INT32_MAX) {
+        fprintf(ERRSTREAM, "Field characteristic not valid.\n");
+        return 0;
+    }
     uint64_t fc = *field_charp;
     const int ret = validate_input_data_64(invalid_gensp, cfs, lens, &fc,
             mon_orderp, elim_block_lenp, nr_varsp, nr_gensp, nr_nfp,
@@ -1020,6 +1107,14 @@ void linear_algebra(
             }
             return;
         case 8:
+            if (st->fc == 2) {
+                exact_sparse_linear_algebra_gf2(mat, tbr, bs, st);
+                return;
+            }
+            if (is_gf2_ext(st->fc)) {
+                exact_sparse_linear_algebra_gf2x(mat, tbr, bs, st);
+                return;
+            }
             switch (st->laopt) {
                 case 1:
                     exact_sparse_dense_linear_algebra_ff_8(mat, tbr, bs, st);
@@ -1119,6 +1214,14 @@ void exact_linear_algebra(
             exact_sparse_linear_algebra_qq(mat, tbr, bs, st);
             return;
         case 8:
+            if (st->fc == 2) {
+                exact_sparse_linear_algebra_gf2(mat, tbr, bs, st);
+                return;
+            }
+            if (is_gf2_ext(st->fc)) {
+                exact_sparse_linear_algebra_gf2x(mat, tbr, bs, st);
+                return;
+            }
             exact_sparse_linear_algebra_ff_8(mat, tbr, bs, st);
             return;
         case 16:
@@ -1160,6 +1263,11 @@ void trace_linear_algebra(
         md_t *st
         )
 {
+    /* the learning phases in modular.c do not set st->trace_level, so
+     * symbolic preprocessing has not allocated the reducer bit arrays */
+    if (mat->rba == NULL) {
+        allocate_reducer_bit_arrays(mat);
+    }
     switch (st->ff_bits) {
         case 8:
             exact_trace_sparse_linear_algebra_ff_8(trace, mat, bs, st);
@@ -1189,6 +1297,14 @@ void interreduce_matrix_rows(
             interreduce_matrix_rows_qq(mat, bs, st, free_basis);
             return;
         case 8:
+            if (st->fc == 2) {
+                interreduce_matrix_rows_gf2(mat, bs, st, free_basis);
+                return;
+            }
+            if (is_gf2_ext(st->fc)) {
+                interreduce_matrix_rows_gf2x(mat, bs, st, free_basis);
+                return;
+            }
             interreduce_matrix_rows_ff_8(mat, bs, st, free_basis);
             return;
         case 16:
@@ -1212,7 +1328,11 @@ void normalize_initial_basis(
     if (fc == 0) {
         return;
     }
-    if (fc >= ((uint64_t)1u << 32)) {
+    if (is_gf2_ext(fc)) {
+        normalize_initial_basis_gf2x(bs, fc);
+        return;
+    }
+    if (fc >= ((uint64_t)1u << 31)) {
         normalize_initial_basis_ff_64(bs, fc);
         return;
     }

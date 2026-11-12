@@ -642,6 +642,9 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   double rt = realtime();
   double ct = cputime();
   lex->npols = calloc(nv, sizeof(uint64_t)); // number of polynomials by variables
+  if(lex->npols == NULL){
+      ok = 0;
+  }
   uint64_t npols = 0;
   if (st->info_level > 1) {
       fprintf(VERBSTREAM, "elimination polynomial                  ");
@@ -651,29 +654,30 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
     fglmc_cand_t u = fglmc_hpop(&H);
     if(last && !memcmp(last, u.e, nv * sizeof(int32_t))) continue;
     last = u.e;
-    if (st->info_level > 1) {
-        int32_t degu = 0;
-        for(int32_t i = 0; i < xn; i++) {
-            degu += u.e[i];
-            if (degu > 1) break;
-        }
-        if (degu == 1) { // new variable for the chain
-            rt = realtime() - rt;
-            ct = cputime() - ct;
+    int32_t degu = 0;
+    for(int32_t i = 0; i < xn; i++) {
+        degu += u.e[i];
+        if (degu > 1) break;
+    }
+    if (degu == 1) { // new variable for the chain
+        rt = realtime() - rt;
+        ct = cputime() - ct;
+        if (st->info_level > 1) {
             if (curvar != xn){
                 fprintf(VERBSTREAM,
-                        "variable %3d                            ", curvar);
+                        "variable %3d                            ",
+                        curvar);
             }
             fprintf(VERBSTREAM,
                     "%16lu new           ",npols);
             fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt,ct);
             fflush(VERBSTREAM);
-            rt = realtime();
-            ct = cputime();
-            lex->npols[curvar] = npols;
-            curvar--;
-            npols = 0;
         }
+        rt = realtime();
+        ct = cputime();
+        lex->npols[curvar] = npols;
+        curvar--;
+        npols = 0;
     }
     /* is it a multiple of a lm? if not bound kmax */
     int skip = 0;
@@ -854,17 +858,20 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
         }
     }
   }
-  if(st->info_level > 1) { // largest variable is done
-      rt = realtime() - rt;
-      ct = cputime() - ct;
+  // largest variable is done
+  rt = realtime() - rt;
+  ct = cputime() - ct;
+  if(st->info_level > 1) {
       fprintf(VERBSTREAM,
               "variable %3d                            ", curvar);
       fprintf(VERBSTREAM,
               "%16lu new           ",npols);
       fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt,ct);
       fflush(VERBSTREAM);
-      rt = realtime();
-      ct = cputime();
+  }
+  rt = realtime();
+  ct = cputime();
+  if(lex->npols != NULL){
       lex->npols[curvar] = npols;
   }
   if(t != D) {

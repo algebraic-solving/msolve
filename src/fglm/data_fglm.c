@@ -66,6 +66,7 @@ static inline void free_fglm_lex_staircase(fglm_lex_staircase_t *lex){
         free(lex->S);
         free(lex->g_lm);
         free(lex->g_ntail);
+        free(lex->npols);
         memset(lex, 0, sizeof(fglm_lex_staircase_t));
     }
 }

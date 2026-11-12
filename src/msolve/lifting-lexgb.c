@@ -292,15 +292,13 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     md->learning_rtime = realtime()-ca0;
     print_fglm_classic_data(VERBSTREAM, md, M, &tr.lex);
     if(info_level){
-      fprintf(VERBSTREAM, "FGLM learning (lex): D = %ld, %d polynomials, "
-              "%lu coefficients to lift, %.2f sec\n", dquot, tr.lex.ngens,
-              (unsigned long)tr.lex.ncoeffs, md->fglm_rtime);
       fprintf(VERBSTREAM,"\n---------- COMPUTATIONAL DATA -----------\n");
-      for(int i = nv-1; i >= 0; i--){
-          fprintf(VERBSTREAM, "[%ld]", tr.lex.npols[i]);
-          fflush(VERBSTREAM);
+      if(tr.lex.npols != NULL){
+        for(int i = nv-1; i >= 0; i--){
+          fprintf(VERBSTREAM, "[%lu]", (unsigned long)tr.lex.npols[i]);
+        }
+        fprintf(VERBSTREAM, "\n");
       }
-      fprintf(VERBSTREAM, "\n");
       fprintf(VERBSTREAM,
               "#polynomials to lift %14lu\n",
               (unsigned long) tr.lex.ngens);
@@ -344,6 +342,12 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     int consec_bad = 0;
     uint32_t nbad = 0;
     double rt_app = realtime();
+    /* timings of the second prime (first prime of the first batch) */
+    double st_f4 = 0, st_fglm = 0, st_prime2 = 0;
+    int first_batch = 1;
+    /* progress display: {n} = good primes used, p0 included, as for the
+     * parametrizations (msolve_trace_qq) */
+    int32_t lstart = dl->lstart;
     while(ok && !done && consec_bad < LEXGB_MAX_BAD){
       for(int i = 0; i < nthr; i++){
         prime = lexgb_next_prime(prime, bs, p0);
@@ -352,8 +356,15 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
 #pragma omp parallel for num_threads(nthr) schedule(dynamic)
       for(int i = 0; i < nthr; i++){
         CF_t *ri = bres + (uint64_t)i * (tr.lex.ncoeffs + 1);
+        const int timed = (first_batch && i == 0);
+        double rt_p = timed ? realtime() : 0;
         int32_t lerr = 0;
         bs_t *bsq = core_gba(bs, md, &lerr, bprimes[i]);
+        double rt_f = 0;
+        if(timed){
+          rt_f = realtime();
+          st_f4 = rt_f - rt_p;
+        }
         int bad = (lerr != 0 || bsq == NULL);
         if(!bad && bsq->lml != nlm0){
             bad = 1;
@@ -369,17 +380,37 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
                                                        md, bprimes[i]);
           if(fglm_classic_apply(ri, Mq, &tr)) bad = 1;
           free_sp_multimat_fglm(Mq);
+          if(timed) st_fglm = realtime() - rt_f;
         }
         if(bsq != NULL){
             free_basis_and_only_local_hash_table_data(&bsq);
         }
         bbad[i] = bad;
+        if(timed){
+          st_prime2 = realtime() - rt_p;
+          if(info_level){
+            fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
+            fprintf(VERBSTREAM, "multi-mod overall(elapsed) %9.2f sec\n", st_prime2);
+            fprintf(VERBSTREAM, "multi-mod F4               %9.2f sec\n", st_f4);
+            fprintf(VERBSTREAM, "multi-mod FGLM             %9.2f sec\n", st_fglm);
+            fprintf(VERBSTREAM, "-----------------------------------------\n");
+            fprintf(VERBSTREAM, "\nmulti-modular steps\n");
+            fprintf(VERBSTREAM, "-------------------------------------------------\
+-----------------------------------------------------\n");
+            fflush(VERBSTREAM);
+          }
+        }
       }
+      first_batch = 0;
       for(int i = 0; i < nthr && !done; i++){
         const CF_t *ri = bres + (uint64_t)i * (tr.lex.ncoeffs + 1);
         if(bbad[i]){
           nbad++;
           consec_bad++;
+          if(info_level > 1){
+            fprintf(VERBSTREAM, "[!]");
+            fflush(VERBSTREAM);
+          }
           continue;
         }
         consec_bad = 0;
@@ -391,12 +422,34 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         while(2 * rr <= (int32_t)modgbs->nprimes / RR_PERIOD_DIV){
             rr *= 2;
         }
-        dl->rr = rr;
+        if(rr != dl->rr){
+          dl->rr = rr;
+          if(info_level){
+            fprintf(VERBSTREAM, "(->%d)", dl->rr);
+            fflush(VERBSTREAM);
+          }
+        }
+        if(info_level && !(modgbs->nprimes & (modgbs->nprimes - 1))){
+          fprintf(VERBSTREAM, "{%u}", modgbs->nprimes);
+          fflush(VERBSTREAM);
+        }
+        if(dl->lstart != lstart){
+          if(info_level){
+            fprintf(VERBSTREAM, "<%.2f%%>",
+                    100 * (float)MIN((dl->lstart + 1), modgbs->ld) / modgbs->ld);
+            fflush(VERBSTREAM);
+          }
+          lstart = dl->lstart;
+        }
         done = 1;
         for(int32_t j = 0; j < tr.lex.ngens; j++){
           if(dl->check2[j] < NBCHECK){ done = 0; break; }
         }
       }
+    }
+    if(info_level && ok){
+      fprintf(VERBSTREAM, " \n-------------------------------------------------\
+-----------------------------------------------------\n");
     }
     md->nthrds = nthr;
     free(bprimes); free(bbad); free(bres);
@@ -406,8 +459,18 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
       if(info_level){
         fprintf(VERBSTREAM, "multi-modular steps: %u primes used, %u bad, "
                 "%lu bits, %d thread(s), %.2f sec (overall %.2f sec)\n",
-                modgbs->nprimes, nbad, (unsigned long)mpz_sizeinbase(mod_p, 2), nthr,
-                realtime() - rt_app, realtime() - rt0);
+                modgbs->nprimes, nbad, (unsigned long)mpz_sizeinbase(mod_p, 2),
+                nthr, realtime() - rt_app, realtime() - rt0);
+        fprintf(VERBSTREAM,"\n\n---------- COMPUTATIONAL DATA -----------\n");
+        fprintf(VERBSTREAM, "Max coeff. bitsize %16lu\n",
+                (unsigned long)max_bit_size_gb(modgbs));
+        fprintf(VERBSTREAM, "#primes            %16lu\n", (unsigned long) modgbs->nprimes);
+        fprintf(VERBSTREAM, "#bad primes        %16lu\n", (unsigned long) nbad);
+        fprintf(VERBSTREAM, "-----------------------------------------\n");
+        fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
+        fprintf(VERBSTREAM, "CRT     (elapsed)         %10.2f sec\n", st_crt);
+        fprintf(VERBSTREAM, "ratrecon(elapsed)         %10.2f sec\n", st_rrec);
+        fprintf(VERBSTREAM, "-----------------------------------------\n");
       }
       FILE *f = lexgb_open_output(flags->files);
       lexgb_print(f, &tr.lex, modgbs, gens->vnames);

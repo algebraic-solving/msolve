@@ -501,10 +501,12 @@ void import_input_data(
                 if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     mpz_set_si(prod_den, 1);
 
+                    /* the denominators are cleared by their lcm, their
+                     * product grows with the number of terms */
                     for (j = off; j < off+lens[i]; ++j) {
-                        /* printf("i %u | j %u\n", i, j);
-                         * gmp_printf("%Zd\n", *(cfs[2*j+1])); */
-                        mpz_mul(prod_den, prod_den, *(cfs_qq[2*j+1]));
+                        if (mpz_cmp_ui(*(cfs_qq[2*j+1]), 1) != 0) {
+                            mpz_lcm(prod_den, prod_den, *(cfs_qq[2*j+1]));
+                        }
                     }
                     cfq = (mpz_t *)malloc((unsigned long)(lens[i]) * sizeof(mpz_t));
 

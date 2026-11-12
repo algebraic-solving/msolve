@@ -1500,8 +1500,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
     st_fglm = realtime();
     if (info_level > 1){
-      fprintf(VERBSTREAM,
-	       "parametrizations                                    ");
+      fprintf(VERBSTREAM, "parametrizations");
+      fprintf(VERBSTREAM, "                        ");
     }
     int right_param= compute_parametrizations_non_shape_position_case(param,
                                                                       *bdata,
@@ -1517,6 +1517,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     if (info_level > 1){
       double rt_fglm = realtime()-st_fglm;
       double crt_fglm = cputime()-cst_fglm;
+      fprintf(VERBSTREAM, "%16lu new           ",(unsigned long) (nvars-1));
       fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
       /* fprintf(VERBSTREAM, "%.2f\n",rt_fglm); */
     }

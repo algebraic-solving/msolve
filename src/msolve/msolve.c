@@ -3778,7 +3778,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         (nbdoit != 1 && (nprimes % (lpow2 + 1) == 0))) {
       if (info_level) {
         fprintf(VERBSTREAM, "{%d}", nprimes);
-	fflush(VERBSTREAM);
+        fflush(VERBSTREAM);
       }
       clog++;
       lpow2 = 2 * lpow2;
@@ -6643,7 +6643,7 @@ restart:
 		  } else if (oldminpolydeg == minpolydeg) {
 		    /* same degree for both random linear forms */
 		    if (info_level > 0) {
-		      printf ("\nRestarting with a non-random linear form");
+		        fprintf (VERBSTREAM,"\nRestarting with a non-random linear form");
 		    }
 		    /* set back the base coefficient to its previous form
 		       before introducing the random linear form.
@@ -6669,7 +6669,7 @@ restart:
 		       another 2nd time */
 		  minpolydeg = -1;
 		  if (info_level > 0) {
-		    printf ("\nRestarting with another random linear form");
+		      fprintf (VERBSTREAM,"\nRestarting with another random linear form");
 		  }
 		  /* set back the base coefficient to its previous form
 		     before introducing the random linear form.

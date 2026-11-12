@@ -254,6 +254,8 @@ AC_CONFIG_LINKS([
  output_files/boolean-elim10.g2.res:output_files/boolean-elim10.g2.res
  test/diff/diff_boolean-elim10.sh:test/diff/diff_boolean-elim10.sh
  test/diff/diff_boolean-zeros-random12.sh:test/diff/diff_boolean-zeros-random12.sh
+ output_files/boolean-random12.lex.g2.res:output_files/boolean-random12.lex.g2.res
+ test/diff/diff_boolean-zeros-lex-random12.sh:test/diff/diff_boolean-zeros-lex-random12.sh
  input_files/kat7-qq.ms:input_files/kat7-qq.ms
  output_files/kat7-qq.P2.d0.res:output_files/kat7-qq.P2.d0.res
  test/diff/diff_kat7-qq.sh:test/diff/diff_kat7-qq.sh

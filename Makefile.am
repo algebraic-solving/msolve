@@ -58,6 +58,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_boolean-random12.sh \
 			  test/diff/diff_boolean-elim10.sh \
 			  test/diff/diff_boolean-zeros-random12.sh \
+			  test/diff/diff_boolean-zeros-lex-random12.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_kat8-qq-truncate.sh \
 			  test/diff/diff_line-endings.sh \

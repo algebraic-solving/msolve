@@ -155,6 +155,7 @@ typedef struct{
   int32_t boolean_zeros; /* 1 for computing the Groebner basis in the
                           * Boolean ring via the common zeros, see
                           * boolean-zeros.c */
+  int32_t lex;     /* 1 for LEX instead of DRL, only with boolean_zeros */
 } data_gens_ff_t;
 
 typedef uint32_t szmat_t;

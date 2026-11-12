@@ -153,6 +153,8 @@ static inline void display_help(char *str){
   display_option_help_noopt("Buchberger-Moeller algorithm. All 2^n points are\n");
   display_option_help_noopt("evaluated, so this is meant for few variables (at\n");
   display_option_help_noopt("most 32). Implies --boolean (only option -g).\n");
+  display_option_help(0, "lex", "", "Uses the lexicographical monomial order, only with\n");
+  display_option_help_noopt("option --boolean-zeros.\n");
   display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
   display_option_help_noopt("blocks of variables, each block using the degree reverse\n");
   display_option_help_noopt("lexicographical monomial order. ELIM has to be a number\n");
@@ -279,6 +281,7 @@ static void getoptions(
 	int64_t *seed,
         int32_t *boolean,
         int32_t *boolean_zeros,
+        int32_t *lex,
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
@@ -301,6 +304,7 @@ static void getoptions(
     HENSEL_MEMORY_OPTION,
     BOOLEAN_OPTION,
     BOOLEAN_ZEROS_OPTION,
+    LEX_OPTION,
     /* Below is the template for the next long option with
      * no equivalent short option */
     /* NEXT_OPTION */
@@ -312,6 +316,7 @@ static void getoptions(
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
     {"help", no_argument, NULL, 'h'},
+    {"lex", no_argument, NULL, LEX_OPTION},
     {"linear-algebra", required_argument, NULL, 'l'},
     {"lifting-param", required_argument, NULL, LIFTING_PARAM_OPTION},
     {"hensel-precision", required_argument, NULL, HENSEL_PRECISION_OPTION},
@@ -351,6 +356,9 @@ static void getoptions(
       break;
     case BOOLEAN_ZEROS_OPTION:
       *boolean_zeros = 1;
+      break;
+    case LEX_OPTION:
+      *lex = 1;
       break;
     case 'N':
       *truncate_lifting = strtol(optarg, NULL, 10);
@@ -641,6 +649,7 @@ int main(int argc, char **argv){
     int64_t seed                  = -1;
     int32_t boolean               = 0;
     int32_t boolean_zeros         = 0;
+    int32_t lex                   = 0;
 
     files_gb *files = malloc(sizeof(files_gb));
     if(files == NULL) exit(1);
@@ -654,7 +663,7 @@ int main(int argc, char **argv){
                &sep_search, &sep_dense, &split_mode,
                &lifting, &hensel_prec, &hensel_cost_scale,
                &hensel_memory, &precision, &generate_pbm,
-	       &seed, &boolean, &boolean_zeros, &info_level, files);
+	       &seed, &boolean, &boolean_zeros, &lex, &info_level, files);
 
     /* srand initialization */
     uint32_t true_seed;
@@ -711,6 +720,11 @@ int main(int argc, char **argv){
       }
       gens->boolean       = 1;
       gens->boolean_zeros = 1;
+      gens->lex           = lex;
+    } else if (lex) {
+      fprintf(ERRSTREAM, "The lexicographical order (option --lex) is only ");
+      fprintf(ERRSTREAM, "available with option --boolean-zeros.\n");
+      exit(1);
     }
 #ifdef IODEBUG
     display_gens(VERBSTREAM, gens);

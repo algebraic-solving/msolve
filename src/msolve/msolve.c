@@ -361,6 +361,7 @@ data_gens_ff_t *allocate_data_gens() {
   gens->hensel_memory = 0;
   gens->boolean = 0;
   gens->boolean_zeros = 0;
+  gens->lex = 0;
 
   gens->elim = 0;
   return gens;
@@ -5175,8 +5176,8 @@ restart:
                     fprintf(ERRSTREAM, "does not support elimination ");
                     fprintf(ERRSTREAM, "orders.\n");
                 } else {
-                    ret = boolean_zeros_gb(gens, files->out_file, 0, print_gb,
-                            info_level);
+                    ret = boolean_zeros_gb(gens, files->out_file, gens->lex,
+                            print_gb, info_level);
                 }
                 free(bld);
                 free(blen);

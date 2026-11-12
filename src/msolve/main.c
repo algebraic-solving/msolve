@@ -213,8 +213,8 @@ static inline void display_help(char *str){
   display_option_help_noopt("0 - no update (default).\n");
   display_option_help('V', "version", "", "Prints msolve's version\n");
 
-  fprintf(OUTSTREAM, "\nLifting of the parametrization over the rationals:\n\n");
-  display_option_help(0, "lifting", "LIFT", "Lifting strategy.\n");
+  display_option_help(0, "lifting-param", "LIFT", "Lifting strategy for the parametrizations\n");
+  display_option_help_noopt("over the rationals\n");
   display_option_help_noopt("0 - p-adic or multi-modular, chosen by a cost\n");
   display_option_help_noopt("    model (default); multi-modular with the\n");
   display_option_help_noopt("    probabilistic linear algebra (-l 42, 44).\n");
@@ -283,7 +283,7 @@ static void getoptions(
     SEPARATING_ELEMENT_OPTION,
     DENSE_ROUTE_OPTION,
     SPLIT_OPTION,
-    LIFTING_OPTION,
+    LIFTING_PARAM_OPTION,
     HENSEL_PRECISION_OPTION,
     HENSEL_COST_SCALE_OPTION,
     HENSEL_MEMORY_OPTION,
@@ -297,7 +297,7 @@ static void getoptions(
     {"groebner-basis", required_argument, NULL, 'g'},
     {"help", no_argument, NULL, 'h'},
     {"linear-algebra", required_argument, NULL, 'l'},
-    {"lifting", required_argument, NULL, LIFTING_OPTION},
+    {"lifting-param", required_argument, NULL, LIFTING_PARAM_OPTION},
     {"hensel-precision", required_argument, NULL, HENSEL_PRECISION_OPTION},
     {"hensel-cost-scale", required_argument, NULL, HENSEL_COST_SCALE_OPTION},
     {"hensel-memory", required_argument, NULL, HENSEL_MEMORY_OPTION},
@@ -405,7 +405,7 @@ static void getoptions(
           *split_mode = 0;
       }
       break;
-    case LIFTING_OPTION:
+    case LIFTING_PARAM_OPTION:
       *lifting = strtol(optarg, NULL, 10);
       if (*lifting < 0 || *lifting > 2) {
           *lifting = 0;

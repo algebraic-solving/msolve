@@ -5177,7 +5177,7 @@ restart:
                     fprintf(ERRSTREAM, "orders.\n");
                 } else {
                     ret = boolean_zeros_gb(gens, files->out_file, gens->lex,
-                            print_gb, info_level);
+                            print_gb, nr_threads, info_level);
                 }
                 free(bld);
                 free(blen);

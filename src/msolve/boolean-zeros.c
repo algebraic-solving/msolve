@@ -40,6 +40,12 @@
 /* at most 2^32 points are evaluated */
 #define BOOLEAN_ZEROS_MAX_NVARS 32
 
+/* number of monomials whose values are reduced together, each row of
+ * the echelon form is read once per batch */
+#ifndef BZ_BATCH
+#define BZ_BATCH    256
+#endif
+
 /* values of the hash map of monomials */
 #define BZ_EMPTY    INT32_MIN
 #define BZ_QUEUED   -1
@@ -48,7 +54,10 @@
 /* returns the bit array of the common zeros of the input polynomials,
  * bit S is set iff the point with the variables of S equal to 1 is a
  * common zero, NULL if there is not enough memory */
-static uint64_t *boolean_common_zeros(const data_gens_ff_t *gens)
+static uint64_t *boolean_common_zeros(
+    const data_gens_ff_t *gens,
+    const int32_t nthrds
+    )
 {
   static const uint64_t lo[6] = {
     0x5555555555555555, 0x3333333333333333, 0x0F0F0F0F0F0F0F0F,
@@ -90,14 +99,14 @@ static uint64_t *boolean_common_zeros(const data_gens_ff_t *gens)
      * monomials dividing S */
     for (k = 0; k < nv && k < 6; ++k) {
       const int sh  = 1 << k;
-#pragma omp parallel for if (nw > ((uint64_t)1 << 16))
+#pragma omp parallel for num_threads(nthrds) if (nw > ((uint64_t)1 << 16))
       for (i = 0; i < nw; ++i) {
         c[i] ^= (c[i] & lo[k]) << sh;
       }
     }
     for (k = 6; k < nv; ++k) {
       const uint64_t b  = (uint64_t)1 << (k - 6);
-#pragma omp parallel for if (nw > ((uint64_t)1 << 16))
+#pragma omp parallel for num_threads(nthrds) if (nw > ((uint64_t)1 << 16))
       for (i = 0; i < nw; ++i) {
         if (i & b) {
           c[i] ^= c[i ^ b];
@@ -241,6 +250,36 @@ static void bz_map_set(bz_map_t *mp, const uint32_t t, const int32_t v)
   mp->e[k].val  = v;
 }
 
+/* reduces v by the rows r0, ..., r1-1 in this order, the first mw words
+ * of v are values on the points, the others the sum of the standard
+ * monomials giving these values, see boolean_zeros_gb() */
+static inline void bz_reduce(
+    uint64_t *v,
+    const uint64_t *red,
+    const uint32_t *piv,
+    const uint64_t mw,
+    const uint64_t r0,
+    const uint64_t r1
+    )
+{
+  uint64_t *c = v + mw;
+  uint64_t i, r;
+
+  for (r = r0; r < r1; ++r) {
+    const uint32_t p  = piv[r];
+    if ((v[p / 64] >> (p % 64)) & 1) {
+      const uint64_t *row = red + 2 * r * mw;
+      for (i = p / 64; i < mw; ++i) {
+        v[i] ^= row[i];
+      }
+      const uint64_t cw = r / 64 + 1;
+      for (i = 0; i < cw; ++i) {
+        c[i] ^= row[mw + i];
+      }
+    }
+  }
+}
+
 /* writes the monomial t to s as msolve prints terms, with coefficient 1
  * if cf != 0, returns the end of the string */
 static char *boolean_zeros_monomial_str(
@@ -353,6 +392,7 @@ static int boolean_zeros_gb(
     const char *fn,
     const int lex,
     const int32_t print_gb,
+    const int32_t nthrds,
     const int32_t info_level
     )
 {
@@ -379,7 +419,7 @@ static int boolean_zeros_gb(
   }
 
   /* the common zeros */
-  uint64_t *z = boolean_common_zeros(gens);
+  uint64_t *z = boolean_common_zeros(gens, nthrds);
   if (z == NULL) {
     fprintf(ERRSTREAM, "Not enough memory for evaluating the input ");
     fprintf(ERRSTREAM, "polynomials at all points.\n");
@@ -423,28 +463,29 @@ static int boolean_zeros_gb(
   }
 
   /* data of the Buchberger-Moeller algorithm: there are exactly m
-   * standard monomials, their values on the points are stored in val,
-   * the rows red are in echelon form, the first nw words of row r are the
-   * values reduced by the rows before, the others the standard monomials
+   * standard monomials, the rows red are in echelon form, the first mw
+   * words of row r are the values of the r-th standard monomial on the
+   * points reduced by the rows before, the others the standard monomials
    * whose sum gives these values, row r has the pivot piv[r] and no bits
-   * before it. */
+   * before it. The values of the monomials of a batch bt are stored and
+   * reduced in the same way in bv. */
   const uint64_t mw   = (m + 63) / 64;
   uint32_t *std       = (uint32_t *)malloc(m * sizeof(uint32_t));
   uint32_t *piv       = (uint32_t *)malloc(m * sizeof(uint32_t));
-  uint64_t *val       = (uint64_t *)malloc(m * mw * sizeof(uint64_t));
   uint64_t *red       = (uint64_t *)malloc(2 * m * mw * sizeof(uint64_t));
   uint64_t *xv        = (uint64_t *)calloc((uint64_t)nv * mw, sizeof(uint64_t));
-  uint64_t *v         = (uint64_t *)malloc(2 * mw * sizeof(uint64_t));
-  if (std == NULL || piv == NULL || val == NULL || red == NULL
-      || xv == NULL || v == NULL) {
+  uint32_t *bt        = (uint32_t *)malloc(BZ_BATCH * sizeof(uint32_t));
+  uint64_t *bv        = (uint64_t *)malloc(BZ_BATCH * 2 * mw * sizeof(uint64_t));
+  if (std == NULL || piv == NULL || red == NULL || xv == NULL
+      || bt == NULL || bv == NULL) {
     fprintf(ERRSTREAM, "Not enough memory for the linear algebra on ");
     fprintf(ERRSTREAM, "%" PRIu64 " common zeros.\n", m);
     free(std);
     free(piv);
-    free(val);
     free(red);
     free(xv);
-    free(v);
+    free(bt);
+    free(bv);
     free(pts);
     if (ofile != stdout) {
       fclose(ofile);
@@ -477,111 +518,155 @@ static int boolean_zeros_gb(
   bz_map_t map;
   bz_map_init(&map, 10);
 
-  uint64_t r, nst = 0;
+  /* the rows are reduced in blocks of about 4 MB, so that a block is read
+   * from memory only once for all monomials of a batch */
+  const uint64_t rb = ((uint64_t)1 << 22) / (16 * mw) > 0
+    ? ((uint64_t)1 << 22) / (16 * mw) : 1;
+  uint64_t b, nb, nbt = 0, nbr = 0, nst = 0;
   bz_heap_push(&heap, 0, lex);
   bz_map_set(&map, 0, BZ_QUEUED);
   while (heap.ld > 0) {
-    /* all monomials pushed later are bigger than t, thus the monomials
-     * dividing t are handled */
-    const uint32_t t  = bz_heap_pop(&heap, lex);
-    /* t is a standard monomial or a leading monomial of the reduced
-     * Groebner basis iff all t / x are standard monomials */
-    int32_t sd  = 0;
-    for (k = 0; k < nv; ++k) {
-      if ((t >> k) & 1) {
-        sd  = bz_map_get(&map, t ^ ((uint32_t)1 << k));
-        if (sd < 0) {
-          break;
+    /* the next batch: the smallest monomials which are still candidates,
+     * all monomials pushed later are bigger than them, thus their
+     * divisors are handled or in the batch */
+    nb  = 0;
+    while (nb < BZ_BATCH && heap.ld > 0) {
+      const uint32_t t  = bz_heap_pop(&heap, lex);
+      int32_t sd  = 0;
+      for (k = 0; k < nv; ++k) {
+        if ((t >> k) & 1) {
+          sd  = bz_map_get(&map, t ^ ((uint32_t)1 << k));
+          if (sd == BZ_NONSTD) {
+            break;
+          }
+        }
+      }
+      if (sd == BZ_NONSTD) {
+        bz_map_set(&map, t, BZ_NONSTD);
+        continue;
+      }
+      bt[nb++]  = t;
+    }
+    if (nb == 0) {
+      break;
+    }
+    nbt++;
+    /* their values on the points, reduced by the rows known so far */
+    const uint64_t nr = nst;
+#pragma omp parallel num_threads(nthrds) if (nb > 1 && nr * mw > ((uint64_t)1 << 16))
+    {
+#pragma omp for
+      for (b = 0; b < nb; ++b) {
+        uint64_t *e = bv + 2 * b * mw;
+        uint64_t l;
+        for (l = 0; l < mw; ++l) {
+          e[l] = ~(uint64_t)0;
+        }
+        if (m % 64 != 0) {
+          e[mw-1] = ((uint64_t)1 << (m % 64)) - 1;
+        }
+        for (int32_t x = 0; x < nv; ++x) {
+          if ((bt[b] >> x) & 1) {
+            const uint64_t *vx  = xv + (uint64_t)x * mw;
+            for (l = 0; l < mw; ++l) {
+              e[l] &= vx[l];
+            }
+          }
+        }
+        memset(e + mw, 0, mw * sizeof(uint64_t));
+      }
+      for (uint64_t r0 = 0; r0 < nr; r0 += rb) {
+        const uint64_t r1 = r0 + rb < nr ? r0 + rb : nr;
+#pragma omp for schedule(dynamic, 1)
+        for (b = 0; b < nb; ++b) {
+          bz_reduce(bv + 2 * b * mw, red, piv, mw, r0, r1);
         }
       }
     }
-    if (sd < 0) {
-      bz_map_set(&map, t, BZ_NONSTD);
-      continue;
-    }
-    /* the values of t on the points */
-    uint64_t *e = v;
-    uint64_t *c = v + mw;
-    if (t == 0) {
-      for (i = 0; i < mw; ++i) {
-        e[i] = ~(uint64_t)0;
-      }
-      if (m % 64 != 0) {
-        e[mw-1] = ((uint64_t)1 << (m % 64)) - 1;
-      }
-    } else {
-      /* t = x * s for the first variable x of t, s is a standard
-       * monomial as checked above */
-      const int32_t l     = __builtin_ctz(t);
-      const uint64_t *vs  = val + (uint64_t)bz_map_get(&map,
-          t ^ ((uint32_t)1 << l)) * mw;
-      const uint64_t *vx  = xv + (uint64_t)l * mw;
-      for (i = 0; i < mw; ++i) {
-        e[i] = vs[i] & vx[i];
-      }
-    }
-    if (nst < m) {
-      memcpy(val + nst * mw, e, mw * sizeof(uint64_t));
-    }
-    memset(c, 0, mw * sizeof(uint64_t));
-    /* reduction by the rows */
-    for (r = 0; r < nst; ++r) {
-      const uint32_t p  = piv[r];
-      if ((e[p / 64] >> (p % 64)) & 1) {
-        const uint64_t *row = red + 2 * r * mw;
-        for (i = p / 64; i < mw; ++i) {
-          e[i] ^= row[i];
+    /* the batch in increasing order, reduced by the new rows */
+    int nu      = 0;
+    uint32_t um = 0;
+    for (b = 0; b < nb; ++b) {
+      const uint32_t t  = bt[b];
+      if (nu > 0 && boolean_zeros_cmp(um, t, lex) < 0) {
+        /* a monomial queued in this batch is smaller than the rest of
+         * the batch, so the rest has to wait */
+        for (; b < nb; ++b) {
+          bz_heap_push(&heap, bt[b], lex);
         }
-        const uint64_t cw = r / 64 + 1;
-        for (i = 0; i < cw; ++i) {
-          c[i] ^= row[mw + i];
+        nbr++;
+        break;
+      }
+      /* t is a standard monomial or a leading monomial of the reduced
+       * Groebner basis iff all t / x are standard monomials */
+      int32_t sd  = 0;
+      for (k = 0; k < nv; ++k) {
+        if ((t >> k) & 1) {
+          sd  = bz_map_get(&map, t ^ ((uint32_t)1 << k));
+          if (sd < 0) {
+            break;
+          }
         }
       }
-    }
-    uint64_t f  = 0;
-    while (f < mw && e[f] == 0) {
-      f++;
-    }
-    if (f == mw) {
-      /* t is the leading monomial of t + the sum of the standard
-       * monomials in c */
-      const uint64_t cw = (nst + 63) / 64;
-      if (ng == gsz) {
-        gsz = 2 * gsz;
-        lts = (uint32_t *)realloc(lts, gsz * sizeof(uint32_t));
-        nfo = (uint64_t *)realloc(nfo, (gsz + 1) * sizeof(uint64_t));
+      if (sd < 0) {
+        bz_map_set(&map, t, BZ_NONSTD);
+        continue;
       }
-      while (nfo[ng] + cw > nsz) {
-        nsz = 2 * nsz;
-        nfs = (uint64_t *)realloc(nfs, nsz * sizeof(uint64_t));
+      uint64_t *e = bv + 2 * b * mw;
+      uint64_t *c = e + mw;
+      bz_reduce(e, red, piv, mw, nr, nst);
+      uint64_t f  = 0;
+      while (f < mw && e[f] == 0) {
+        f++;
       }
-      lts[ng] = t;
-      memcpy(nfs + nfo[ng], c, cw * sizeof(uint64_t));
-      nfo[ng+1] = nfo[ng] + cw;
-      ng++;
-      bz_map_set(&map, t, BZ_NONSTD);
-      continue;
-    }
-    /* t is a new standard monomial */
-    uint64_t *row = red + 2 * nst * mw;
-    memcpy(row, e, mw * sizeof(uint64_t));
-    memcpy(row + mw, c, mw * sizeof(uint64_t));
-    row[mw + nst / 64] ^= (uint64_t)1 << (nst % 64);
-    piv[nst]  = (uint32_t)(f * 64 + __builtin_ctzll(e[f]));
-    std[nst]  = t;
-    bz_map_set(&map, t, (int32_t)nst);
-    nst++;
-    for (k = 0; k < nv; ++k) {
-      const uint32_t u  = t | ((uint32_t)1 << k);
-      if (u != t && bz_map_get(&map, u) == BZ_EMPTY) {
-        bz_map_set(&map, u, BZ_QUEUED);
-        bz_heap_push(&heap, u, lex);
+      if (f == mw) {
+        /* t is the leading monomial of t + the sum of the standard
+         * monomials in c */
+        const uint64_t cw = (nst + 63) / 64;
+        if (ng == gsz) {
+          gsz = 2 * gsz;
+          lts = (uint32_t *)realloc(lts, gsz * sizeof(uint32_t));
+          nfo = (uint64_t *)realloc(nfo, (gsz + 1) * sizeof(uint64_t));
+        }
+        while (nfo[ng] + cw > nsz) {
+          nsz = 2 * nsz;
+          nfs = (uint64_t *)realloc(nfs, nsz * sizeof(uint64_t));
+        }
+        lts[ng] = t;
+        memcpy(nfs + nfo[ng], c, cw * sizeof(uint64_t));
+        nfo[ng+1] = nfo[ng] + cw;
+        ng++;
+        bz_map_set(&map, t, BZ_NONSTD);
+        continue;
+      }
+      /* t is a new standard monomial */
+      uint64_t *row = red + 2 * nst * mw;
+      memcpy(row, e, 2 * mw * sizeof(uint64_t));
+      row[mw + nst / 64] ^= (uint64_t)1 << (nst % 64);
+      piv[nst]  = (uint32_t)(f * 64 + __builtin_ctzll(e[f]));
+      std[nst]  = t;
+      bz_map_set(&map, t, (int32_t)nst);
+      nst++;
+      for (k = 0; k < nv; ++k) {
+        const uint32_t u  = t | ((uint32_t)1 << k);
+        if (u != t && bz_map_get(&map, u) == BZ_EMPTY) {
+          bz_map_set(&map, u, BZ_QUEUED);
+          bz_heap_push(&heap, u, lex);
+          if (nu == 0 || boolean_zeros_cmp(u, um, lex) < 0) {
+            um  = u;
+            nu  = 1;
+          }
+        }
       }
     }
   }
   double rt2  = realtime();
   if (info_level > 0) {
     fprintf(VERBSTREAM, "#standard monomials     %11" PRIu64 "\n", nst);
+    if (info_level > 1) {
+      fprintf(VERBSTREAM, "#batches                %11" PRIu64 "\n", nbt);
+      fprintf(VERBSTREAM, "#interrupted batches    %11" PRIu64 "\n", nbr);
+    }
     fprintf(VERBSTREAM, "#basis elements         %11" PRIu64 "   %10.2f sec\n",
         ng, rt2 - rt1);
   }
@@ -608,9 +693,9 @@ static int boolean_zeros_gb(
   free(nfs);
   free(std);
   free(piv);
-  free(val);
   free(red);
   free(xv);
-  free(v);
+  free(bt);
+  free(bv);
   return 0;
 }

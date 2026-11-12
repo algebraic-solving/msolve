@@ -152,6 +152,9 @@ typedef struct{
   mpz_t **mpz_cfs; /* mpz_t coeffs */
   int64_t *cfs_64; /* int64_t coeffs for field characteristics >= 2^31 */
   int32_t boolean; /* 1 for the Boolean ring over GF(2), i.e. x^2 = x */
+  int32_t boolean_zeros; /* 1 for computing the Groebner basis in the
+                          * Boolean ring via the common zeros, see
+                          * boolean-zeros.c */
 } data_gens_ff_t;
 
 typedef uint32_t szmat_t;

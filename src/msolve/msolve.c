@@ -58,6 +58,7 @@ void free_rrec_data(rrec_data_t recdata);
 #include "separating.c"
 #include "splitting.c"
 #include "hensel.c"
+#include "boolean-zeros.c"
 #include "streams.h"
 
 #ifndef MAX
@@ -359,6 +360,7 @@ data_gens_ff_t *allocate_data_gens() {
   gens->hensel_cost_scale = 1.0;
   gens->hensel_memory = 0;
   gens->boolean = 0;
+  gens->boolean_zeros = 0;
 
   gens->elim = 0;
   return gens;
@@ -5163,6 +5165,24 @@ restart:
                 free(bexp);
                 free(bcf);
                 return 0;
+            }
+            if (gens->boolean_zeros) {
+                /* special handling via the common zeros */
+                int ret = -1;
+                if (elim_block_len > 0) {
+                    fprintf(ERRSTREAM, "The computation via the common ");
+                    fprintf(ERRSTREAM, "zeros (option --boolean-zeros) ");
+                    fprintf(ERRSTREAM, "does not support elimination ");
+                    fprintf(ERRSTREAM, "orders.\n");
+                } else {
+                    ret = boolean_zeros_gb(gens, files->out_file, 0, print_gb,
+                            info_level);
+                }
+                free(bld);
+                free(blen);
+                free(bexp);
+                free(bcf);
+                return ret;
             }
         }
         if (is_gf2_ext(fc)) {

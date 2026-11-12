@@ -148,6 +148,11 @@ static inline void display_help(char *str){
   display_option_help(0, "boolean", "", "Computes in the boolean ring over GF(2), i.e. with\n");
   display_option_help_noopt("x^2 = x for all variables x, the field characteristic\n");
   display_option_help_noopt("of the input file has to be 2 (only option -g).\n");
+  display_option_help(0, "boolean-zeros", "", "Computes the Groebner basis in the boolean ring via\n");
+  display_option_help_noopt("the common zeros of the input polynomials using the\n");
+  display_option_help_noopt("Buchberger-Moeller algorithm. All 2^n points are\n");
+  display_option_help_noopt("evaluated, so this is meant for few variables (at\n");
+  display_option_help_noopt("most 32). Implies --boolean (only option -g).\n");
   display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
   display_option_help_noopt("blocks of variables, each block using the degree reverse\n");
   display_option_help_noopt("lexicographical monomial order. ELIM has to be a number\n");
@@ -273,6 +278,7 @@ static void getoptions(
         int32_t *generate_pbm_files,
 	int64_t *seed,
         int32_t *boolean,
+        int32_t *boolean_zeros,
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
@@ -294,12 +300,14 @@ static void getoptions(
     HENSEL_COST_SCALE_OPTION,
     HENSEL_MEMORY_OPTION,
     BOOLEAN_OPTION,
+    BOOLEAN_ZEROS_OPTION,
     /* Below is the template for the next long option with
      * no equivalent short option */
     /* NEXT_OPTION */
   };
   struct option long_options[] = {
     {"boolean", no_argument, NULL, BOOLEAN_OPTION},
+    {"boolean-zeros", no_argument, NULL, BOOLEAN_ZEROS_OPTION},
     {"elimination", required_argument, NULL, 'e'},
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
@@ -340,6 +348,9 @@ static void getoptions(
     switch(opt) {
     case BOOLEAN_OPTION:
       *boolean = 1;
+      break;
+    case BOOLEAN_ZEROS_OPTION:
+      *boolean_zeros = 1;
       break;
     case 'N':
       *truncate_lifting = strtol(optarg, NULL, 10);
@@ -629,6 +640,7 @@ int main(int argc, char **argv){
     int32_t precision             = 64;
     int64_t seed                  = -1;
     int32_t boolean               = 0;
+    int32_t boolean_zeros         = 0;
 
     files_gb *files = malloc(sizeof(files_gb));
     if(files == NULL) exit(1);
@@ -642,7 +654,7 @@ int main(int argc, char **argv){
                &sep_search, &sep_dense, &split_mode,
                &lifting, &hensel_prec, &hensel_cost_scale,
                &hensel_memory, &precision, &generate_pbm,
-	       &seed, &boolean, &info_level, files);
+	       &seed, &boolean, &boolean_zeros, &info_level, files);
 
     /* srand initialization */
     uint32_t true_seed;
@@ -690,6 +702,15 @@ int main(int argc, char **argv){
         exit(1);
       }
       gens->boolean = 1;
+    }
+    if (boolean_zeros) {
+      if (field_char != 2) {
+        fprintf(ERRSTREAM, "The computation via the common zeros (option ");
+        fprintf(ERRSTREAM, "--boolean-zeros) needs the field characteristic 2.\n");
+        exit(1);
+      }
+      gens->boolean       = 1;
+      gens->boolean_zeros = 1;
     }
 #ifdef IODEBUG
     display_gens(VERBSTREAM, gens);

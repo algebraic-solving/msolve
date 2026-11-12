@@ -86,24 +86,56 @@ static inline void lcm_exponents(
     }
 }
 
-/* is the lcm of the lead monomials of g and the new element n different
- * from the monomial lcm, kl being the hash index of the first lcm or 0 if
- * it was not in the hash table when the pairs were generated */
-static inline int pair_lcm_differs(
-        const hi_t kl,
-        const bi_t g,
-        const hm_t n,
-        const hi_t lcm,
-        const bs_t * const bs,
-        const ht_t * const bht
+/* total degree of the monomial with exponents e as computed by
+ * lcm_exponents() */
+static inline deg_t total_degree(
+        const exp_t * const e,
+        const ht_t * const ht
         )
 {
-    if (kl != 0) {
-        return kl != lcm;
+    return e[0] + (ht->ebl > 0 ? e[ht->ebl] : 0);
+}
+
+/* total degree of the gcd of the monomials with exponents ea and eb */
+static inline deg_t gcd_degree(
+        const exp_t * const ea,
+        const exp_t * const eb,
+        const ht_t * const ht
+        )
+{
+    len_t i;
+    deg_t d = 0;
+    const len_t evl = ht->evl;
+    const len_t ebl = ht->ebl;
+
+    for (i = 0; i < evl; ++i) {
+        d += ea[i] < eb[i] ? ea[i] : eb[i];
     }
-    exp_t etmp[bht->evl];
-    lcm_exponents(etmp, bht->ev[bs->hm[g][OFFSET]], bht->ev[n], bht);
-    return memcmp(etmp, bht->ev[lcm], (uint64_t)bht->evl * sizeof(exp_t)) != 0;
+    d -= ea[0] < eb[0] ? ea[0] : eb[0];
+    if (ebl > 0) {
+        d -= ea[ebl] < eb[ebl] ? ea[ebl] : eb[ebl];
+    }
+    return d;
+}
+
+/* mask of the variables of the monomial with exponents e, folded to 64
+ * bits */
+static inline uint64_t variable_mask(
+        const exp_t * const e,
+        const ht_t * const ht
+        )
+{
+    len_t i;
+    uint64_t m = 0;
+    const len_t evl = ht->evl;
+    const len_t ebl = ht->ebl;
+
+    for (i = 1; i < evl; ++i) {
+        if (e[i] != 0 && i != ebl) {
+            m |= (uint64_t)1 << (i & 63);
+        }
+    }
+    return m;
 }
 
 /* data for comparing the new pairs of one new element whose lcms are
@@ -162,7 +194,6 @@ static void insert_and_update_spairs(
     const len_t bl    = bs->ld;
     const len_t pl    = psl->ld;
     const len_t evl   = bht->evl;
-    const len_t ebl   = bht->ebl;
     const bl_t lml    = bs->lml;
     const bl_t * const lmps = bs->lmps;
 
@@ -216,125 +247,241 @@ static void insert_and_update_spairs(
     }
     st->num_redundant += nred;
 
-    /* generate the new pairs, lcm is the hash index of the lcm if it is
-     * already in the hash table, 0 otherwise */
+    /* variable masks of the lead monomials */
+    uint64_t *vm  = (uint64_t *)malloc((uint64_t)(bl + npivs) * sizeof(uint64_t));
+#pragma omp parallel for num_threads(nthrds) private(i)
+    for (i = 0; i < bl + npivs; ++i) {
+        vm[i] = variable_mask(bht->ev[bs->hm[i][OFFSET]], bht);
+    }
+
+    /* Generate the new pairs of each new element and apply the
+     * Gebauer-Moeller criterion to them: sorted by increasing lcm, earlier
+     * polys coming first, a pair is removed if the lcm of an earlier pair
+     * that is not removed divides its lcm. A proper divisor has a smaller
+     * total degree, so we handle the pairs by increasing degree of the lcm
+     * and check them only against the remaining pairs of lower degree;
+     * pairs of the same degree only remove the ones with the same lcm.
+     * Only the pairs of one degree with a new lcm and the remaining pairs
+     * in the end have to be sorted. The lcms are compared in a local view
+     * of the hash table. kd and kt store the degree of all pairs with the
+     * k-th new element and the total degree of their lcms before the
+     * criterion is applied, these are needed for the older pairs. */
     spair_t *pp = (spair_t *)malloc(np * sizeof(spair_t));
-#pragma omp parallel for num_threads(nthrds) private(i, k) \
-    schedule(dynamic)
+    deg_t *pdeg = (deg_t *)malloc(np * sizeof(deg_t));
+    deg_t *ptd  = (deg_t *)malloc(np * sizeof(deg_t));
+    const len_t nmax  = bl + npivs - 1;
+#pragma omp parallel num_threads(nthrds) private(i, k)
+    {
+    exp_t *e      = (exp_t *)malloc((uint64_t)nmax * evl * sizeof(exp_t));
+    exp_t **ev    = (exp_t **)malloc((uint64_t)nmax * sizeof(exp_t *));
+    hd_t *hd      = (hd_t *)calloc((uint64_t)nmax, sizeof(hd_t));
+    len_t *srt    = (len_t *)malloc((uint64_t)nmax * sizeof(len_t));
+    sdm_t *dsdm   = (sdm_t *)malloc((uint64_t)nmax * sizeof(sdm_t));
+    /* the lcm of the pair of a remaining older element g and the new
+     * element n divides the lcm of the pair of h and n iff g has at most
+     * the exponents of h in the variables where its exponent is larger than
+     * the one of n, these exponents are stored in dx and dp in the range
+     * given by doff, the mask of these variables in dm */
+    uint64_t *dm  = (uint64_t *)malloc((uint64_t)nmax * sizeof(uint64_t));
+    len_t *doff   = (len_t *)malloc((uint64_t)(nmax + 1) * sizeof(len_t));
+    len_t dxsz    = nmax;
+    exp_t *dx     = (exp_t *)malloc((uint64_t)dxsz * sizeof(exp_t));
+    len_t *dp     = (len_t *)malloc((uint64_t)dxsz * sizeof(len_t));
+    spair_t *sp   = (spair_t *)malloc((uint64_t)nmax * sizeof(spair_t));
+    len_t *cnt    = NULL;
+    deg_t ccap    = 0;
+    ht_t lht      = *bht;
+    lht.ev  = ev;
+    lht.hd  = hd;
+    for (i = 0; i < nmax; ++i) {
+        ev[i] = e + (uint64_t)i * evl;
+    }
+#pragma omp for schedule(dynamic)
     for (k = 0; k < npivs; ++k) {
-        exp_t etmp[evl];
+        spair_t *p    = pp + off[k];
+        deg_t *kd     = pdeg + off[k];
+        deg_t *kt     = ptd + off[k];
+        const len_t n = bl + k;
         const exp_t * const eb = bht->ev[nch[k]];
-        for (i = 0; i < bl+k; ++i) {
-            spair_t *p  = pp + off[k] + i;
-            len_t l;
-            val_t h     = 0;
-            hi_t pos    = 0;
-            lcm_exponents(etmp, bht->ev[bs->hm[i][OFFSET]], eb, bht);
-            for (l = 0; l < evl; ++l) {
-                h +=  bht->rn[l] * etmp[l];
-            }
-            p->lcm  = is_contained_in_hash_table(etmp, bht, h, &pos) ? pos : 0;
-            p->gen1 = i;
-            p->gen2 = bl+k;
-            p->type = S_PAIR;
+        const deg_t bdeg  = total_degree(eb, bht);
+        const sdm_t bsdm  = bht->hd[nch[k]].sdm;
+        deg_t d, dmax = 0;
+        len_t l, m, t;
+        for (i = 0; i < n; ++i) {
+            /* the exponents of the lcm are only computed for the pairs
+             * that are not removed by an lcm of lower degree, the short
+             * divisor mask of the lcm is the one of the lead monomials */
+            const exp_t * const ea  = bht->ev[bs->hm[i][OFFSET]];
+            const deg_t gdeg  = gcd_degree(ea, eb, bht);
+            const deg_t ldeg  = total_degree(ea, bht) + bdeg - gdeg;
+            hd[i].sdm = bht->hd[bs->hm[i][OFFSET]].sdm | bsdm;
+            kt[i]     = ldeg;
+            dmax      = dmax > ldeg ? dmax : ldeg;
+            p[i].lcm  = 0;
+            p[i].gen1 = i;
+            p[i].gen2 = n;
+            p[i].type = S_PAIR;
             if ((i < bl && mby[i] <= k) || (i >= bl && bs->red[i] != 0)) {
-                p->deg = -1;
+                p[i].deg = -1;
             } else {
-                if (prime_monomials(bs->hm[i][OFFSET], nch[k], bht)) {
-                    p->deg = -2;
+                if (gdeg == 0) {
+                    p[i].deg = -2;
                 } else {
                     /* compute total degree of pair, not trivial if block order is chosen */
-                    const deg_t ldeg  = etmp[0] + (ebl > 0 ? etmp[ebl] : 0);
                     if (st->nev == 0) {
-                        p->deg = ldeg;
+                        p[i].deg = ldeg;
                     } else {
                         const deg_t deg1  = ldeg
                             - bht->hd[bs->hm[i][OFFSET]].deg + bs->hm[i][DEG];
                         const deg_t deg2  = ldeg
-                            - bht->hd[nch[k]].deg + bs->hm[bl+k][DEG];
-                        p->deg = deg1 > deg2 ? deg1 : deg2;
+                            - bht->hd[nch[k]].deg + bs->hm[n][DEG];
+                        p[i].deg = deg1 > deg2 ? deg1 : deg2;
                     }
                 }
             }
+            kd[i] = p[i].deg;
+        }
+        /* bucket the pairs that are not removed by the degree of
+         * their lcms, cnt[d] is the end of the bucket of degree d */
+        if (dmax + 2 > ccap) {
+            ccap  = dmax + 2;
+            cnt   = realloc(cnt, (uint64_t)ccap * sizeof(len_t));
+        }
+        memset(cnt, 0, (uint64_t)(dmax + 2) * sizeof(len_t));
+        for (i = 0; i < n; ++i) {
+            if (p[i].deg != -1) {
+                cnt[kt[i]+1]++;
+            }
+        }
+        for (d = 0; d <= dmax; ++d) {
+            cnt[d+1] += cnt[d];
+        }
+        for (i = 0; i < n; ++i) {
+            if (p[i].deg != -1) {
+                srt[cnt[kt[i]]++] = i;
+            }
+        }
+        spair_cmp_local_t ctx = {p, &lht};
+        len_t nd  = 0;
+        len_t ns  = 0;
+        doff[0]   = 0;
+        len_t b0  = 0;
+        for (d = 0; d <= dmax; ++d) {
+            const len_t b1  = cnt[d];
+            /* remove the pairs divisible by an lcm of lower degree */
+            for (m = b0, l = b0; l < b1; ++l) {
+                const len_t x   = srt[l];
+                const sdm_t nsx = ~hd[x].sdm;
+                const uint64_t nvx  = ~vm[x];
+                const exp_t * const ea  = bht->ev[bs->hm[x][OFFSET]];
+                if (p[x].deg >= 0) {
+                    for (t = 0; t < nd; ++t) {
+                        if (!(dm[t] & nvx) && !(dsdm[t] & nsx)) {
+                            len_t u;
+                            for (u = doff[t]; u < doff[t+1]; ++u) {
+                                if (ea[dp[u]] < dx[u]) {
+                                    break;
+                                }
+                            }
+                            if (u == doff[t+1]) {
+                                break;
+                            }
+                        }
+                    }
+                    if (t < nd) {
+                        p[x].deg = -1;
+                        continue;
+                    }
+                }
+                lcm_exponents(ev[x], ea, eb, bht);
+                srt[m++] = x;
+            }
+            /* only the first pair with a given lcm remains */
+            if (m - b0 > 1) {
+                sort_r(srt+b0, (unsigned long)(m - b0), sizeof(len_t),
+                        spair_cmp_update_local, &ctx);
+            }
+            for (l = b0; l < m; ++l) {
+                const len_t x = srt[l];
+                if (l > b0 && monomial_cmp(srt[l-1], x, &lht) == 0) {
+                    if (p[x].deg >= 0) {
+                        p[x].deg = -1;
+                    }
+                    continue;
+                }
+                const exp_t * const ex  = bht->ev[bs->hm[x][OFFSET]];
+                if (doff[nd] + evl > dxsz) {
+                    dxsz  = 2 * dxsz > doff[nd] + evl ? 2 * dxsz : doff[nd] + evl;
+                    dx    = realloc(dx, (uint64_t)dxsz * sizeof(exp_t));
+                    dp    = realloc(dp, (uint64_t)dxsz * sizeof(len_t));
+                }
+                len_t u   = doff[nd];
+                dm[nd]    = 0;
+                for (t = 1; t < evl; ++t) {
+                    if (ex[t] > eb[t] && t != bht->ebl) {
+                        dx[u]   = ex[t];
+                        dp[u]   = t;
+                        dm[nd]  |= (uint64_t)1 << (t & 63);
+                        u++;
+                    }
+                }
+                doff[nd+1]  = u;
+                dsdm[nd]    = hd[x].sdm;
+                nd++;
+                if (p[x].deg >= 0) {
+                    srt[ns++] = x;
+                }
+            }
+            b0  = b1;
+        }
+        /* the remaining pairs come first, in the order of the criterion */
+        if (ns > 1) {
+            sort_r(srt, (unsigned long)ns, sizeof(len_t),
+                    spair_cmp_update_local, &ctx);
+        }
+        for (l = 0; l < ns; ++l) {
+            sp[l] = p[srt[l]];
+        }
+        memcpy(p, sp, (uint64_t)ns * sizeof(spair_t));
+        for (i = ns; i < n; ++i) {
+            p[i].deg = -1;
         }
     }
-    /* the pairs with the k-th new element before they are sorted, needed
-     * for the criteria applied to the older pairs */
-    hi_t *plcm  = (hi_t *)malloc(np * sizeof(hi_t));
-    deg_t *pdeg = (deg_t *)malloc(np * sizeof(deg_t));
-#pragma omp parallel for num_threads(nthrds) private(j)
-    for (j = 0; j < np; ++j) {
-        plcm[j] = pp[j].lcm;
-        pdeg[j] = pp[j].deg;
+    free(e);
+    free(ev);
+    free(hd);
+    free(srt);
+    free(dsdm);
+    free(dm);
+    free(doff);
+    free(dx);
+    free(dp);
+    free(sp);
+    free(cnt);
     }
 
-    /* Gebauer-Moeller: check old pairs first, the missing lcms of the new
-     * pairs differ from the ones of the old pairs */
+    /* Gebauer-Moeller: check old pairs. The lcm of a pair (g, h) is
+     * compared with the lcm of g and the new element n only if n divides
+     * it. Then g and n divide it, so does their lcm, and both lcms are
+     * equal iff their total degrees are equal. Thus we do not need to look
+     * up the lcms of the new pairs in the hash table. */
     spair_t *ps = psl->p;
     for (k = 0; k < npivs; ++k) {
-        const hi_t *kl  = plcm + off[k];
         const deg_t *kd = pdeg + off[k];
+        const deg_t *kt = ptd + off[k];
 #pragma omp parallel for num_threads(nthrds) private(i) \
         schedule(static, 4096)
         for (i = 0; i < pl; ++i) {
             const bi_t g1 = ps[i].gen1;
             const bi_t g2 = ps[i].gen2;
-            if (ps[i].deg >= 0 && kl[g1] != ps[i].lcm && kl[g2] != ps[i].lcm
-                    && kd[g1] <= ps[i].deg && kd[g2] <= ps[i].deg
+            if (ps[i].deg >= 0 && kd[g1] <= ps[i].deg && kd[g2] <= ps[i].deg
                     && check_monomial_division(ps[i].lcm, nch[k], bht)) {
-                ps[i].deg   =   -1;
-            }
-        }
-    }
-
-    /* Gebauer-Moeller: sort the new pairs of each new element by
-     * increasing lcm, earlier polys coming first, and remove multiples;
-     * the lcms are compared in a local view of the hash table */
-#pragma omp parallel for num_threads(nthrds) private(i, k) \
-    schedule(dynamic)
-    for (k = 0; k < npivs; ++k) {
-        spair_t *p    = pp + off[k];
-        const len_t n = bl + k;
-        len_t l;
-        exp_t *e      = (exp_t *)malloc((uint64_t)n * evl * sizeof(exp_t));
-        exp_t **ev    = (exp_t **)malloc((uint64_t)n * sizeof(exp_t *));
-        hd_t *hd      = (hd_t *)calloc((uint64_t)n, sizeof(hd_t));
-        len_t *ord    = (len_t *)malloc((uint64_t)n * sizeof(len_t));
-        spair_t *sp   = (spair_t *)malloc((uint64_t)n * sizeof(spair_t));
-        ht_t lht      = *bht;
-        lht.ev  = ev;
-        lht.hd  = hd;
-        for (i = 0; i < n; ++i) {
-            ev[i]   = e + (uint64_t)i * evl;
-            lcm_exponents(ev[i], bht->ev[bs->hm[i][OFFSET]], bht->ev[nch[k]], bht);
-            hd[i].sdm = generate_short_divmask(ev[i], bht);
-            ord[i]  = i;
-        }
-        spair_cmp_local_t ctx = {p, &lht};
-        sort_r(ord, (unsigned long)n, sizeof(len_t), spair_cmp_update_local, &ctx);
-        for (i = 0; i < n; ++i) {
-            sp[i] = p[ord[i]];
-        }
-        for (i = 1; i < n; ++i) {
-            if (sp[i].deg < 0) {
-                continue;
-            }
-            for (l = 0; l < i; ++l) {
-                if (sp[l].deg == -1) {
-                    continue;
-                }
-                if (check_monomial_division(ord[i], ord[l], &lht)) {
-                    sp[i].deg   =   -1;
-                    break;
+                const deg_t ld  = total_degree(bht->ev[ps[i].lcm], bht);
+                if (kt[g1] != ld && kt[g2] != ld) {
+                    ps[i].deg   =   -1;
                 }
             }
         }
-        memcpy(p, sp, (uint64_t)n * sizeof(spair_t));
-        free(e);
-        free(ev);
-        free(hd);
-        free(ord);
-        free(sp);
     }
 
     /* remove the useless new pairs, soff[k] is the number of remaining
@@ -350,38 +497,31 @@ static void insert_and_update_spairs(
         }
         soff[k+1] = j;
     }
-    /* insert the missing lcms of the remaining new pairs */
-    uint64_t nmiss = 0;
-    for (j = 0; j < soff[npivs]; ++j) {
-        if (pp[j].lcm == 0) {
-            nmiss++;
-        }
-    }
-    while (bht->esz - bht->eld < nmiss) {
+    /* insert the lcms of the remaining new pairs */
+    while (bht->esz - bht->eld < soff[npivs]) {
         enlarge_hash_table(bht);
     }
     for (j = 0; j < soff[npivs]; ++j) {
-        if (pp[j].lcm == 0) {
-            pp[j].lcm = get_lcm(bs->hm[pp[j].gen1][OFFSET],
-                    bs->hm[pp[j].gen2][OFFSET], bht, bht);
-        }
+        pp[j].lcm = get_lcm(bs->hm[pp[j].gen1][OFFSET],
+                bs->hm[pp[j].gen2][OFFSET], bht, bht);
     }
 
     /* Gebauer-Moeller: the old pair check of the later new elements for
-     * the pairs of the earlier ones */
+     * the pairs of the earlier ones, the lcms are compared as above */
     for (k = 1; k < npivs; ++k) {
-        const hi_t *kl  = plcm + off[k];
         const deg_t *kd = pdeg + off[k];
+        const deg_t *kt = ptd + off[k];
 #pragma omp parallel for num_threads(nthrds) private(j) \
         schedule(static, 4096)
         for (j = 0; j < soff[k]; ++j) {
             const bi_t g1 = pp[j].gen1;
             const bi_t g2 = pp[j].gen2;
             if (pp[j].deg >= 0 && kd[g1] <= pp[j].deg && kd[g2] <= pp[j].deg
-                    && check_monomial_division(pp[j].lcm, nch[k], bht)
-                    && pair_lcm_differs(kl[g1], g1, nch[k], pp[j].lcm, bs, bht)
-                    && pair_lcm_differs(kl[g2], g2, nch[k], pp[j].lcm, bs, bht)) {
-                pp[j].deg   =   -1;
+                    && check_monomial_division(pp[j].lcm, nch[k], bht)) {
+                const deg_t ld  = total_degree(bht->ev[pp[j].lcm], bht);
+                if (kt[g1] != ld && kt[g2] != ld) {
+                    pp[j].deg   =   -1;
+                }
             }
         }
     }
@@ -413,14 +553,15 @@ static void insert_and_update_spairs(
     bs->ld += npivs;
 
     free(nch);
+    free(vm);
     free(ndeg);
     free(marks);
     free(off);
     free(soff);
     free(mby);
     free(pp);
-    free(plcm);
     free(pdeg);
+    free(ptd);
 }
 
 static void update_lm(

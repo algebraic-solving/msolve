@@ -871,13 +871,12 @@ static void symbolic_preprocessing(
     mat->nrl  =   mat->nr - nrr;
     mat->nru  =   nrr;
     mat->sz   =   mat->nr;
-    mat->rbal =   mat->nrl;
 
     /* initialize memory for reducer bit arrays for tracing information */
-    mat->rba  = (rba_t **)malloc((uint64_t)mat->rbal * sizeof(rba_t *));
-    const uint64_t len = nrr / 32 + ((nrr % 32) != 0);
-    for (i = 0; i < mat->nrl; ++i) {
-        mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
+    mat->rbal = 0;
+    mat->rba  = NULL;
+    if (md->trace_level == LEARN_TRACER) {
+        allocate_reducer_bit_arrays(mat);
     }
 
     /* statistics */

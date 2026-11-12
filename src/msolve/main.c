@@ -86,7 +86,13 @@ static inline void display_help(char *str){
   fprintf(OUTSTREAM, "Input file format:\n");
   fprintf(OUTSTREAM, "\t - first line: variables separated by a comma\n");
   fprintf(OUTSTREAM, "\t                (no comma at end of line)\n");
-  fprintf(OUTSTREAM, "\t - second line: characteristic of the field\n");
+  fprintf(OUTSTREAM, "\t - second line: characteristic of the field, or 2^4 resp. 2^8\n");
+  fprintf(OUTSTREAM, "\t                for GF(16) = GF(2)[t]/(t^4+t+1) resp.\n");
+  fprintf(OUTSTREAM, "\t                GF(256) = GF(2)[t]/(t^8+t^4+t^3+t+1) (only option -g),\n");
+  fprintf(OUTSTREAM, "\t                their elements are written as bytes in hexadecimal\n");
+  fprintf(OUTSTREAM, "\t                notation, e.g. 0x1b for t^4+t^3+t+1, they have to\n");
+  fprintf(OUTSTREAM, "\t                be reduced, i.e. less than 0x10 resp. 0x100,\n");
+  fprintf(OUTSTREAM, "\t                integers are taken modulo 2\n");
   fprintf(OUTSTREAM, "\t - next lines provide the polynomials (one per line),\n");
   fprintf(OUTSTREAM, "\t   separated by a comma\n");
   fprintf(OUTSTREAM, "\t   (no comma after the last polynomial)\n\n");

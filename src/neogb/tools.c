@@ -161,6 +161,23 @@ static hm_t *reducer_rows_to_block(
     return copy_rows_to_block(mat->rr, mat->nru);
 }
 
+/* allocates for each row to be reduced the array of bits marking the
+ * reducer rows used in its reduction; only needed when learning a
+ * trace */
+static void allocate_reducer_bit_arrays(
+        mat_t *mat
+        )
+{
+    len_t i;
+
+    const uint64_t len = mat->nru / 32 + ((mat->nru % 32) != 0);
+    mat->rbal = mat->nrl;
+    mat->rba  = (rba_t **)malloc((uint64_t)mat->rbal * sizeof(rba_t *));
+    for (i = 0; i < mat->rbal; ++i) {
+        mat->rba[i] = (rba_t *)calloc(len, sizeof(rba_t));
+    }
+}
+
 static void construct_trace(
         trace_t *trace,
         mat_t *mat,

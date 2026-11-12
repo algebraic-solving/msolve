@@ -235,6 +235,18 @@ AC_CONFIG_LINKS([
  input_files/kat6-52.ms:input_files/kat6-52.ms
  output_files/kat6-52.g2.res:output_files/kat6-52.g2.res
  test/diff/diff_kat6-52.sh:test/diff/diff_kat6-52.sh
+ input_files/kat6-gf16.ms:input_files/kat6-gf16.ms
+ output_files/kat6-gf16.g2.res:output_files/kat6-gf16.g2.res
+ test/diff/diff_kat6-gf16.sh:test/diff/diff_kat6-gf16.sh
+ input_files/kat6-gf256.ms:input_files/kat6-gf256.ms
+ output_files/kat6-gf256.g2.res:output_files/kat6-gf256.g2.res
+ test/diff/diff_kat6-gf256.sh:test/diff/diff_kat6-gf256.sh
+ input_files/random6-gf256-int.ms:input_files/random6-gf256-int.ms
+ output_files/random6-gf256-int.g2.res:output_files/random6-gf256-int.g2.res
+ test/diff/diff_random6-gf256-int.sh:test/diff/diff_random6-gf256-int.sh
+ input_files/random8-gf2.ms:input_files/random8-gf2.ms
+ output_files/random8-gf2.g2.res:output_files/random8-gf2.g2.res
+ test/diff/diff_random8-gf2.sh:test/diff/diff_random8-gf2.sh
  input_files/kat7-qq.ms:input_files/kat7-qq.ms
  output_files/kat7-qq.P2.d0.res:output_files/kat7-qq.P2.d0.res
  test/diff/diff_kat7-qq.sh:test/diff/diff_kat7-qq.sh

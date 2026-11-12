@@ -27,6 +27,7 @@ EXTRA_DIST	=		basis.h \
 								engine.c \
 								f4.c \
 								f4sat.c \
+								gf2_ext.c \
 								sba.c \
 								hash.c \
 								io.c \
@@ -36,6 +37,8 @@ EXTRA_DIST	=		basis.h \
 								la_ff_8.c \
 								la_ff_common.c \
 								la_ff_small_prime.c \
+								la_gf2_ext.c \
+								la_gf2.c \
 								la_qq.c \
 								modular.c \
 								nf.c \

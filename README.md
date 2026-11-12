@@ -80,7 +80,7 @@ is doing. Try this.
 `msolve` computes Groebner bases when the base field is either the field of rational numbers 
 or a prime field
 (characteristic should be less than 2^52; for characteristics of at least 2^31
-only Groebner bases can be computed).
+only Groebner bases can be computed), or GF(16) resp. GF(256), see below.
 
 
 The following command
@@ -109,6 +109,20 @@ thanks to the `-e` flag. The following command
 ```
 will perform the Groebner basis computation eliminating the first variable. 
 More generally, using `-e k` will eliminate the first `k` variables. 
+
+Groebner bases (options `-g 1` and `-g 2`) can also be computed over the 
+binary extension fields GF(16) and GF(256), the 2nd line of the input file 
+is then `2^4` resp. `2^8` (`16` resp. `256` are accepted as well). Field 
+elements are written in hexadecimal notation as bytes: bit `i` is the 
+coefficient of `t^i` in GF(2)[t]/(t^4+t+1) resp. 
+GF(2)[t]/(t^8+t^4+t^3+t+1), e.g. `0x1b` is `t^4+t^3+t+1`. Field elements 
+have to be reduced, i.e. less than `0x10` resp. `0x100`, msolve stops 
+with an error otherwise. An integer 
+coefficient `n` stands for `n*1`, i.e. for `n` modulo 2, as usual in 
+characteristic 2. For example, `0x1b*x1^2+3*x2+x3` has the coefficients 
+`t^4+t^3+t+1`, `1` and `1`. The Groebner basis is printed with hexadecimal 
+coefficients. If all coefficients lie in GF(2), e.g. if they are all 
+integers, the Groebner basis is computed over GF(2), which is faster. 
 
 # Solving over the real numbers
 

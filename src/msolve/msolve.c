@@ -4825,12 +4825,18 @@ restart:
     bcf   = malloc(sizeof(void *));
     b     = 0;
 
-    if(gens->field_char > INT32_MAX){
+    if(gens->field_char > INT32_MAX || is_gf2_ext(gens->field_char)){
         /* for field characteristics >= 2^31 only Groebner bases can be
-         * computed, F4 works with 64 bit coefficients then */
+         * computed, F4 works with 64 bit coefficients then. The same
+         * holds for GF(16) and GF(256) given by the field characteristics
+         * 16 and 256. */
         if (print_gb == 0 || use_signatures > 0 || saturate > 0
                 || colon > 0 || normal_form > 0) {
-            fprintf(ERRSTREAM, "For field characteristics >= 2^31 msolve ");
+            if (is_gf2_ext(gens->field_char)) {
+                fprintf(ERRSTREAM, "Over GF(16) and GF(256) msolve ");
+            } else {
+                fprintf(ERRSTREAM, "For field characteristics >= 2^31 msolve ");
+            }
             fprintf(ERRSTREAM, "only computes Groebner bases (option -g).\n");
             free(bld);
             free(blen);
@@ -4843,9 +4849,29 @@ restart:
         md_t *st    = NULL;
         int32_t err = 0;
 
+        void *cfs = (void *)gens->cfs_64;
+        uint64_t fc = gens->field_char;
+        if (is_gf2_ext(fc)) {
+            /* the import of the data removes terms with zero coefficient,
+             * e.g. from even integer coefficients */
+            cfs = (void *)gens->cfs;
+            /* if all coefficients lie in the prime field GF(2), so does
+             * the reduced Groebner basis, thus we compute it over GF(2) */
+            int64_t i = 0;
+            while (i < gens->nterms && (uint32_t)gens->cfs[i] <= 1) {
+                ++i;
+            }
+            if (i == gens->nterms) {
+                fc = 2;
+                if (info_level > 0) {
+                    fprintf(VERBSTREAM, "All coefficients lie in GF(2), ");
+                    fprintf(VERBSTREAM, "computing over GF(2).\n");
+                }
+            }
+        }
         int success = initialize_gba_input_data(&bs, &bht, &st,
-                gens->lens, gens->exps, (void *)gens->cfs_64,
-                gens->field_char, 0 /* DRL order */, elim_block_len,
+                gens->lens, gens->exps, cfs,
+                fc, 0 /* DRL order */, elim_block_len,
                 gens->nvars, gens->ngens, 0 /* # normal forms */,
                 initial_hts, nr_threads, max_pairs, update_ht, la_option,
                 0 /* use_signatures */, 1 /* reduce_gb */, 0,
@@ -4855,11 +4881,14 @@ restart:
             fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
             exit(1);
         }
-        bs = core_gba(bs, st, &err, gens->field_char);
+        bs = core_gba(bs, st, &err, fc);
         if (err) {
             fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
             exit(1);
         }
+        /* a basis computed over GF(2) has only coefficients 1, these
+         * are printed as elements of the given field */
+        st->fc = gens->field_char;
         print_ff_basis_data(files->out_file, "ab", bs, bs->ht, st, gens,
                 print_gb);
 

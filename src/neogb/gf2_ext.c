@@ -20,10 +20,10 @@
 
 /* Arithmetic in the binary extension fields
  *
- *   GF(16)  = GF(2)[x]/(x^4+x+1),
- *   GF(256) = GF(2)[x]/(x^8+x^4+x^3+x+1).
+ *   GF(16)  = GF(2)[t]/(t^4+t+1),
+ *   GF(256) = GF(2)[t]/(t^8+t^4+t^3+t+1).
  *
- * An element is stored in one byte, bit i is the coefficient of x^i, so
+ * An element is stored in one byte, bit i is the coefficient of t^i, so
  * the elements of GF(16) are the bytes < 16. Addition and subtraction
  * are both XOR. Multiplication is done via lookup tables:
  *

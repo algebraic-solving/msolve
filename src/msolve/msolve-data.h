@@ -268,6 +268,8 @@ typedef struct{
   int32_t *g_lm;      // ngens * nvars
   szmat_t *g_ntail;   // ngens
   uint64_t ncoeffs;   // sum of the g_ntail
+  uint64_t nterms;    // number of nonzero coefficients
+  uint64_t *npols;
 } fglm_lex_staircase_t;
 
 /* Trace of FGLM over Q, recorded on a first prime and replayed on the next

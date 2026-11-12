@@ -27,7 +27,7 @@ void print_fglm_classic_data(
         FILE *file,
         const md_t * const st,
         const sp_multimatfglm_t *matrix,
-        fglm_gb_t *G
+        fglm_lex_staircase_t *lex
                      )
 {
   if (st->info_level > 0) {
@@ -46,8 +46,8 @@ void print_fglm_classic_data(
     /* } */
     /* fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol); */
     /* fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol); */
-    fprintf(file, "size of basis      %16lu\n", (unsigned long)(G->ngens));
-    fprintf(file, "#terms in basis    %16lu\n",  (unsigned long)(G->nterms));
+    fprintf(file, "size of basis      %16lu\n", (unsigned long)(lex->ngens));
+    fprintf(file, "#terms in basis    %16lu\n", (unsigned long)(lex->nterms));
     fprintf(file, "-----------------------------------------\n\n");
   }
 }
@@ -641,7 +641,8 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
 
   double rt = realtime();
   double ct = cputime();
-  uint64_t npols = 0; // number of polynomials by variables
+  lex->npols = calloc(nv, sizeof(uint64_t)); // number of polynomials by variables
+  uint64_t npols = 0;
   if (st->info_level > 1) {
       fprintf(VERBSTREAM, "elimination polynomial                  ");
   }
@@ -669,6 +670,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
             fflush(VERBSTREAM);
             rt = realtime();
             ct = cputime();
+            lex->npols[curvar] = npols;
             curvar--;
             npols = 0;
         }
@@ -863,6 +865,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
       fflush(VERBSTREAM);
       rt = realtime();
       ct = cputime();
+      lex->npols[curvar] = npols;
   }
   if(t != D) {
       ok = 0;
@@ -874,6 +877,13 @@ done:
       S = NULL;
       lex->D = D;
       lex->nvars = nv;
+      lex->nterms = lex->ngens;
+      for(uint64_t i = 0; i < lex->ncoeffs; i++){
+          if(coeffs[i]){
+              lex->nterms++;
+          }
+      }
+
   }
   if(ok && coeffs_out != NULL){
       *coeffs_out = coeffs;
@@ -979,19 +989,13 @@ static fglm_gb_t *fglm_gb_from_staircase(const fglm_lex_staircase_t *lex,
                                          const CF_t *coeffs, const CF_t p){
   const int32_t nv = lex->nvars;
   fglm_gb_t *G = calloc(1, sizeof(fglm_gb_t));
-  uint64_t nterms = lex->ngens;
-  for(uint64_t i = 0; i < lex->ncoeffs; i++){
-      if(coeffs[i]){
-          nterms++;
-      }
-  }
   G->charac = p;
   G->nvars = nv;
   G->ngens = lex->ngens;
-  G->nterms = nterms;
+  G->nterms = lex->nterms;
   G->lens = malloc((lex->ngens + 1) * sizeof(int32_t));
-  G->exps = malloc((nterms + 1) * nv * sizeof(int32_t));
-  G->cfs  = malloc((nterms + 1) * sizeof(CF_t));
+  G->exps = malloc((lex->nterms + 1) * nv * sizeof(int32_t));
+  G->cfs  = malloc((lex->nterms + 1) * sizeof(CF_t));
   uint64_t off = 0, pos = 0;
   for(int32_t j = 0; j < lex->ngens; j++){
       const szmat_t nt = lex->g_ntail[j];
@@ -1023,12 +1027,12 @@ static fglm_gb_t *fglm_classic(sp_multimatfglm_t *Mt, const int ord,
   if(fglm_classic_learn(Mt, ord, &lex, NULL, rp, &coeffs, st)){
       G = fglm_gb_from_staircase(&lex, coeffs, Mt->charac);
   }
+  st->fglm_rtime = realtime() - st->fglm_rtime;
+  st->fglm_ctime = cputime() - st->fglm_ctime;
+  print_fglm_classic_data (VERBSTREAM, st, Mt, /* G,*/ &lex);
   free(coeffs);
   fglmc_flint_threads_pop(old_thr);
   free_fglm_lex_staircase(&lex);
-  st->fglm_rtime = realtime() - st->fglm_rtime;
-  st->fglm_ctime = cputime() - st->fglm_ctime;
-  print_fglm_classic_data (VERBSTREAM, st, Mt, G);
   return G;
 }
 

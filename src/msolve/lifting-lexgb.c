@@ -184,6 +184,8 @@ static uint32_t lexgb_next_prime(uint32_t prime, const bs_t *bs, uint32_t avoid)
 /* Entry point for -g 3 in characteristic 0.
  * Returns 0 if the basis was printed, -1 otherwise. */
 static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
+  double ca0 = realtime();
+
   const int32_t info_level = flags->info_level;
 
   for(int attempt = 0; attempt < LEXGB_MAX_ATTEMPTS; attempt++){
@@ -261,16 +263,18 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
       return unit ? 0 : -1;
     }
 
+    md->fglm_rtime = realtime();
+    md->fglm_ctime = cputime();
     long dquot = 0;
     int32_t *lmb = monomial_basis(nlm0, nv, lm0, &dquot);
     fglm_trace_t tr;
     memset(&tr, 0, sizeof(tr));
     fglmc_rows_t rp;
     memset(&rp, 0, sizeof(rp));
+    print_fglm_header(VERBSTREAM,md);
     sp_multimatfglm_t *M =
         build_multiplication_matrices_from_bs(lmb, dquot, bsp, bsp->ht, lm0,
                                               md, nv, p0, info_level, &tr, &rp);
-    double rt_fglm = realtime();
     /* p0 uses all the threads, each next prime only one */
     M->nthreads = md->nthrds;
     const int old_flint = fglmc_flint_threads_push(md->nthrds);
@@ -283,10 +287,24 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         res = malloc(sizeof(CF_t));
     }
     fglmc_flint_threads_pop(old_flint);
+    md->fglm_rtime = realtime() - md->fglm_rtime;
+    md->fglm_ctime = cputime() - md->fglm_ctime;
+    md->learning_rtime = realtime()-ca0;
+    print_fglm_classic_data(VERBSTREAM, md, M, &tr.lex);
     if(info_level){
       fprintf(VERBSTREAM, "FGLM learning (lex): D = %ld, %d polynomials, "
               "%lu coefficients to lift, %.2f sec\n", dquot, tr.lex.ngens,
-              (unsigned long)tr.lex.ncoeffs, realtime() - rt_fglm);
+              (unsigned long)tr.lex.ncoeffs, md->fglm_rtime);
+      fprintf(VERBSTREAM,"\n---------- COMPUTATIONAL DATA -----------\n");
+      for(int i = nv-1; i >= 0; i--){
+          fprintf(VERBSTREAM, "[%ld]", tr.lex.npols[i]);
+          fflush(VERBSTREAM);
+      }
+      fprintf(VERBSTREAM, "\n");
+      fprintf(VERBSTREAM,
+              "#polynomials to lift %14lu\n",
+              (unsigned long) tr.lex.ngens);
+      fprintf(VERBSTREAM, "-----------------------------------------\n");
     }
     free_sp_multimat_fglm(M);
     free_basis_without_hash_table(&bsp);
@@ -320,6 +338,9 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     int *bbad = malloc(nthr * sizeof(int));
     CF_t *bres = malloc((uint64_t)nthr * (tr.lex.ncoeffs + 1) * sizeof(CF_t));
     uint32_t prime = rand() % (1303905301 - (1 << 30) + 1) + (1 << 30);
+    if(info_level){
+        fprintf(VERBSTREAM, "New prime = %d\n", prime);
+    }
     int consec_bad = 0;
     uint32_t nbad = 0;
     double rt_app = realtime();

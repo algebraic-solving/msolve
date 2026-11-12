@@ -4313,7 +4313,7 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
     free(row_nf);
   }
 
-  if(info_level){
+  if(info_level > 1){
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
     fprintf(VERBSTREAM, "multiplication matrix ");

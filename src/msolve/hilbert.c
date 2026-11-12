@@ -593,7 +593,9 @@ static inline int is_larger_exponent(int32_t *exp1, int32_t *exp2, const long nv
   if (deg1 > deg2){
     return 1;
   }
-  for (long i = nvars-1; i>1; i--) {
+  /* degrees are equal, so once the exponents of x_{n-1}, ..., x_1
+   * coincide, the ones of x_0 do too */
+  for (long i = nvars-1; i>0; i--) {
     /* printf ("x[%ld]: %d, %d\n",i,exp1[i],exp2[i]); */
     if(exp1[i]<exp2[i]){
       return 1;
@@ -626,7 +628,9 @@ static inline int is_larger_exponent_bs(const ht_t * const exp1, int32_t hmj,
   if (deg1 > deg2){
     return 1;
   }
-  for (long i = nvars-1; i>1; i--) {
+  /* degrees are equal, so once the exponents of x_{n-1}, ..., x_1
+   * coincide, the ones of x_0 do too */
+  for (long i = nvars-1; i>0; i--) {
     /* printf ("x[%ld]: %d, %d\n",i,exp1->ev[hmj][evi[i]],exp2[i]); */
     if(exp1->ev[hmj][evi[i]]<exp2[i]){
       return 1;
@@ -867,12 +871,17 @@ copy_poly_in_matrixcol_no_zero(sp_matfglmcol_t* matrix, long nrows,
 #endif
   long i;
   long N = nrows * matrix->ncols ;
+  /* the tail of the polynomial is stored by decreasing order at indices
+   * start + 1, ..., end - 1; k counts the tail terms already processed
+   * from the smallest one, so the current term is at index end - 1 - k
+   * and we must have k < pos - 1, otherwise we would reach the leading
+   * term and then the terms of the previous polynomial */
   long k = 0;
   /* printf("["); */
   for(i = 0; i < matrix->ncols; i++){
-    if (k < end) {
+    if (k < pos - 1) {
       int b = is_larger_exponent((*bexp) + (end - 1 - k) * nv, lmb + i * nv, nv);
-      while (b < 0 && k < end-2) {
+      while (b < 0 && k < pos - 2) {
 	k++;
 	b = is_larger_exponent((*bexp) + (end - 1 - k) * nv, lmb + i *  nv, nv);
       }

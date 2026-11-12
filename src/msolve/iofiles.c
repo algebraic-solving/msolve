@@ -844,80 +844,28 @@ static void get_nterms_and_all_nterms(FILE *fh,
 static inline void get_term(const char *line, char **prev_pos,
                             char **term, size_t *term_size)
 {
-  /** note that maximal term length we handle */
-  const char add_splicer    = '+';
-  const char minus_splicer  = '-';
+  /* the term ends before the next "+" or "-", a "-" at the beginning of
+   * the line is the sign of the first term; the line is scanned only up
+   * to this position, otherwise reading a polynomial without "-" would
+   * take quadratic time */
+  const char *start_pos = *prev_pos != line ? *prev_pos - 1 : *prev_pos;
+  const char *curr_pos  = *prev_pos;
+  if (curr_pos == line && *curr_pos == '-') {
+    ++curr_pos;
+  }
+  curr_pos  +=  strcspn(curr_pos, "+-");
 
-  char *start_pos;
-  char *curr_pos_add    = strchr(*prev_pos, add_splicer);
-  char *curr_pos_minus  = strchr(*prev_pos, minus_splicer);
-  if (curr_pos_minus == line)
-    curr_pos_minus  = strchr(*prev_pos+1, minus_splicer);
-
-  if (*prev_pos != line)
-    start_pos = *prev_pos - 1;
-  else
-    start_pos = *prev_pos;
-
-  if (curr_pos_add != NULL && curr_pos_minus != NULL) {
-    size_t term_diff_add   = (size_t)(curr_pos_add - start_pos);
-    size_t term_diff_minus = (size_t)(curr_pos_minus - start_pos);
-    /** if "-" is the first char in the line, we have to adjust the
-      * if minus is nearer */
-    if (term_diff_add > term_diff_minus) {
-      if( term_diff_minus >= *term_size){
-        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
-        exit(1);
-      }
-      memcpy(*term, start_pos, term_diff_minus);
-      (*term)[term_diff_minus]  = '\0';
-      *prev_pos                 = curr_pos_minus+1;
-      return;
-    /** if plus is nearer */
-    } else {
-      if(term_diff_add >= *term_size){
-        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
-        exit(1);
-      }
-      memcpy(*term, start_pos, term_diff_add);
-      (*term)[term_diff_add]  = '\0';
-      *prev_pos               = curr_pos_add+1;
-      return;
-    }
-  } else {
-    if (curr_pos_add != NULL) {
-      size_t term_diff_add   = (size_t)(curr_pos_add - start_pos);
-      if(term_diff_add >= *term_size){
-        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
-        exit(1);
-      }
-      memcpy(*term, start_pos, term_diff_add);
-      (*term)[term_diff_add]  = '\0';
-      *prev_pos               = curr_pos_add+1;
-      return;
-    }
-    if (curr_pos_minus != NULL) {
-      size_t term_diff_minus = (size_t)(curr_pos_minus - start_pos);
-      if(term_diff_minus >= *term_size){
-        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
-        exit(1);
-      }
-      memcpy(*term, start_pos, term_diff_minus);
-      (*term)[term_diff_minus]  = '\0';
-      *prev_pos                 = curr_pos_minus+1;
-      return;
-    }
-    if (curr_pos_add == NULL && curr_pos_minus == NULL) {
-      size_t prev_idx  = (size_t)(start_pos - line);
-      size_t term_diff = strlen(line) + 1 - prev_idx;
-      if(term_diff >= *term_size){
-        fprintf(ERRSTREAM, "Too large input integers, exit...\n");
-        exit(1);
-      }
-      memcpy(*term, start_pos, term_diff);
-      (*term)[term_diff]  = '\0';
-      return;
-    }
+  /* the last term is copied with its terminating null character */
+  const size_t term_diff  = (size_t)(curr_pos - start_pos)
+    + (*curr_pos == '\0' ? 1 : 0);
+  if (term_diff >= *term_size) {
+    fprintf(ERRSTREAM, "Too large input integers, exit...\n");
+    exit(1);
+  }
+  memcpy(*term, start_pos, term_diff);
+  (*term)[term_diff]  = '\0';
+  if (*curr_pos != '\0') {
+    *prev_pos = (char *)curr_pos + 1;
   }
 }
 

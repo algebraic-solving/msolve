@@ -7,20 +7,6 @@ file=random6-gf256-int
 
 source test/diff/diff_source.sh
 
-for t in 1 2; do
-    $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.$t.res \
-          --random-seed $seed \
-          -g 2 -t $t
-    if [ $? -gt 0 ]; then
-        print_exit $((2*t-1))
-    fi
-
-    diff test/diff/$file.$t.res output_files/$file.g2.res
-    if [ $? -gt 0 ]; then
-        print_exit $((2*t))
-    fi
-
-    rm test/diff/$file.$t.res
-done
+source test/diff/diff_source-gb-red.sh
 
 normal_exit

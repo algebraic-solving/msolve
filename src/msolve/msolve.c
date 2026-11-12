@@ -36,6 +36,7 @@ static inline void duplicate_data_mthread_gbtrace(int nthreads,
                                                    int32_t **leadmons_ori,
                                                    int32_t **leadmons_current,
                                                    trace_t **btrace);
+static inline int lifted_nvars(const md_t *st);
 
 static inline mpz_t *allocate_crt_linear_forms(int nlins, int nv,
                                                 uint32_t **lineqs_ptr);
@@ -294,6 +295,7 @@ data_gens_ff_t *allocate_data_gens() {
   gens->hensel_memory = 0;
 
   gens->elim = 0;
+  gens->elim_full_basis = 0;
   return gens;
 }
 

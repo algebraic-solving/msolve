@@ -2150,7 +2150,7 @@ static int32_t *initial_modular_step(
         if(print_gb == 3){
             md->fglm_rtime = realtime();
             md->fglm_ctime = cputime();
-            print_fglm_header (VERBSTREAM,md);
+            print_fglm_header(VERBSTREAM,md);
             /* LEX basis by classical FGLM */
             fglmc_rows_t rp;
             memset(&rp, 0, sizeof(rp));
@@ -2190,7 +2190,7 @@ static int32_t *initial_modular_step(
             /* 					 md->info_level); */
             md->fglm_rtime = realtime();
             md->fglm_ctime = cputime();
-            print_fglm_header (VERBSTREAM,md);
+            print_fglm_header(VERBSTREAM,md);
             *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
                                                             blen_gb_xn,
                                                             bstart_cf_gb_xn,

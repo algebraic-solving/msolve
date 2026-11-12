@@ -1164,6 +1164,128 @@ will display in the \verb+out.ms+ file the following content.
 
 \end{itemize}
 
+\subsection{Lifting of the parametrization over the rationals}\label{sec:lifting}
+
+When the input polynomials have rational coefficients, \msolve computes the
+rational parametrization of the solutions modulo prime numbers and lifts it
+over the rationals. Two methods are available. The \emph{multi-modular}
+lifting computes the parametrization modulo many primes and combines them by
+Chinese remaindering and rational reconstruction. The \emph{$p$-adic} lifting
+computes it modulo a few primes $p$ only, lifts each of them modulo $p^N$ by
+Newton's iteration, then combines them in the same way; the result is
+checked by evaluating the input system at it modulo a prime that was not
+used. The $p$-adic lifting applies when there are at least as many
+equations as variables and the solutions are simple; otherwise, or when the
+solutions are split along equalities of coordinates, \msolve uses the
+multi-modular lifting. It pays off when the modular computations are
+expensive compared with the size of the parametrization (e.g. on
+\texttt{katsura-13}, about 10 times faster).
+
+The $p$-adic lifting is in fact hybrid between a pure $p$-adic lifting and
+a multi-modular one: a single prime lifted to a high precision and many
+primes not lifted at all are its two extreme cases. Its parameters are the
+precision $p^N$ reached at each prime and, through it, the number of primes.
+They are chosen as follows; both methods return the same parametrization,
+whatever these choices.
+
+\paragraph{Cost of a modular computation.} The F4 runs of the modular
+computations, after the first one, apply the tracer learnt at the first prime:
+they perform the same reductions, so that their cost is the same at each
+prime. During the first of them, \msolve counts the multiply-adds performed
+by the tracer and the terms of its matrices, and the multiply-adds of the
+products by the multiplication matrix in FGLM. These counts are weighted by constants measured once and
+for all, which gives the cost $C_{\mathrm{mod}}$ of one modular
+computation. Each such computation brings $\log_2 p$ bits ($p$ is close to
+$2^{30}$).
+
+\paragraph{Cost of the lifting.} Newton's iteration doubles the precision at
+each step. Its cost $C_{\mathrm{lift}}(N)$ at one prime, from $p$ to $p^N$,
+is computed from the degree $D$ of the parametrization, the number of
+variables and the monomials and terms of the input system. It accounts for
+the evaluations of the system and of its Jacobian matrix at the
+parametrization, the products of polynomials of degree $D$ with growing
+coefficients and the updates of the inverse of the Jacobian matrix. A
+prime lifted to $p^N$ brings $N \log_2 p$ bits for the cost
+$C_{\mathrm{mod}} + C_{\mathrm{lift}}(N)$.
+
+\paragraph{Choice of the precision and decision.} \msolve takes the $N$, a
+power of $2$ between $2$ and $1024$, which maximizes the number of bits per
+cost $N / (C_{\mathrm{mod}} + C_{\mathrm{lift}}(N))$; it also chooses how
+many of the last steps skip the update of the inverse of the Jacobian
+matrix. The predicted gain is the ratio of this number of bits per cost to
+that of the multi-modular lifting, $1 / C_{\mathrm{mod}}$, with $N$ bounded
+by the memory limit below at the start. The $p$-adic lifting is used when
+this gain is at least $1.2$.
+
+\paragraph{Memory limit.} The precision of a prime is bounded by a memory
+limit, which estimates the memory of the multi-modular computation: 8
+bytes per term of the largest F4 matrix, plus the $28 D^2$ bytes that the
+multi-modular lifting preallocates, plus twice the size of the residues of
+the parametrization at the estimated number of bits of its coefficients
+(at least 32 megabytes). The precision of a prime is the largest one at
+which the data of Newton's iteration (the values of the monomials of the
+system, the coordinates, the Jacobian matrix and its inverse) fit within
+this limit. The estimated number of bits is bounded by twice the bits
+already obtained, so that the limit grows as the lifting proceeds.
+
+\paragraph{During the lifting.} The number of bits needed is not known in
+advance. \msolve attempts the rational reconstruction as the precision
+grows, each time the modulus has grown by $10\%$. From the fraction of the
+coefficients of the eliminating polynomial reconstructed at each attempt,
+it estimates the number of bits needed. The next precision spreads the
+bits still missing over the primes being lifted, without exceeding $p^N$
+nor the memory limit, and at least doubles the current precision. When
+the primes being lifted reach these bounds, new modular computations
+provide new primes. The result is checked by evaluating the input system
+at it modulo a prime that was not used.
+
+The cost model and the memory limit depend only on operation counts and on
+sizes of the computation, not on timings or on the memory of the machine,
+so that the choices, hence the computation, do not depend on the machine.
+With \verb+-v 1+, \msolve prints the predicted gain (line \verb+cost model+),
+the memory limit and, at each attempt, the precision, the number of bits and
+the estimate of the bits needed.
+
+\begin{itemize}
+\item The flag \verb+--lifting <int>+ chooses the method: \verb+0+ lets the
+  cost model choose, \verb+1+ enforces the multi-modular lifting, \verb+2+
+  enforces the $p$-adic lifting when it applies. With the probabilistic
+  linear algebra (\verb+-l 42+ or \verb+44+), the cost model has
+  no measure of the work of $F_4$, so \verb+0+ uses the multi-modular
+  lifting.
+
+  \hfill \verb+Default value:0+
+\end{itemize}
+
+By default, \msolve sets the parameters of the $p$-adic lifting
+automatically: the precision $p^N$ is chosen by the cost model, the memory
+limit is computed from the size of the modular computations, and the cost
+model is calibrated so that no setting is needed. The following flags
+override these choices; they are intended for experiments only.
+
+\begin{itemize}
+\item The flag \verb+--hensel-precision <int>+ fixes the precision $p^N$
+  reached at each prime; \verb+0+ lets the cost model choose it. With
+  \verb+--lifting 0+, the cost model still decides whether the $p$-adic
+  lifting is used.
+
+  \hfill \verb+Default value:0+
+
+\item The flag \verb+--hensel-cost-scale <float>+ multiplies the cost of a
+  modular computation in the cost model: above \verb+1+, the $p$-adic lifting
+  is chosen more often, below \verb+1+, less often. This is meant to
+  recalibrate the model, e.g. on another machine.
+
+  \hfill \verb+Default value:1+
+
+\item The flag \verb+--hensel-memory <float>+ sets the memory limit of the
+  $p$-adic lifting, in megabytes, which bounds the precision $p^N$ at each
+  prime; \verb+0+ means that it is computed from the size of the modular
+  computations.
+
+  \hfill \verb+Default value:0+
+\end{itemize}
+
 \subsection{Separating elements and splitting of the solutions}\label{sec:separating}
 
 The rational parametrization computed by \msolve expresses the coordinates

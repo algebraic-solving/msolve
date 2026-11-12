@@ -57,6 +57,7 @@ void free_rrec_data(rrec_data_t recdata);
 #include "lifting-gb.c"
 #include "separating.c"
 #include "splitting.c"
+#include "hensel.c"
 #include "streams.h"
 
 #ifndef MAX
@@ -287,6 +288,10 @@ data_gens_ff_t *allocate_data_gens() {
   gens->sep_search = 1;
   gens->sep_dense = 0;
   gens->split_mode = 0;
+  gens->lifting = 0;
+  gens->hensel_prec = 0;
+  gens->hensel_cost_scale = 1.0;
+  gens->hensel_memory = 0;
 
   gens->elim = 0;
   return gens;
@@ -891,14 +896,16 @@ static inline void print_msolve_message(FILE *file, int n) {
   }
 }
 
-static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam) {
+/* the coefficients of elim and denom are preallocated with 64 bits per
+ * solution if prealloc is set */
+static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam,
+                                        const int prealloc) {
 
+  const long nbits = prealloc ? 2 * 32 * (bparam->elim->length) : 0;
   param->nvars = bparam->nvars;
   param->nsols = bparam->elim->length - 1;
-  mpz_upoly_init2(param->elim, bparam->elim->alloc,
-                  2 * 32 * (bparam->elim->length));
-  mpz_upoly_init2(param->denom, bparam->elim->alloc - 1,
-                  2 * 32 * (bparam->elim->length));
+  mpz_upoly_init2(param->elim, bparam->elim->alloc, nbits);
+  mpz_upoly_init2(param->denom, bparam->elim->alloc - 1, nbits);
   param->elim->length = bparam->elim->length;
 
   param->coords =
@@ -921,6 +928,23 @@ static inline void initialize_mpz_param(mpz_param_t param, param_t *bparam) {
   } else {
     fprintf(ERRSTREAM, "Error when allocating cfs\n");
     exit(1);
+  }
+}
+
+/* preallocates the buffers of the usual lifting as initialize_mpz_param
+ * and the initializations of numer and denom do when prealloc is set */
+static inline void prealloc_mpz_param(mpz_param_t param, mpz_upoly_t numer,
+                                      mpz_upoly_t denom) {
+  const long nsols = param->nsols;
+  for (deg_t i = 0; i < param->elim->alloc; i++) {
+    mpz_realloc2(param->elim->coeffs[i], 2 * 32 * (nsols + 1));
+  }
+  for (deg_t i = 0; i < param->denom->alloc; i++) {
+    mpz_realloc2(param->denom->coeffs[i], 2 * 32 * (nsols + 1));
+  }
+  for (deg_t i = 0; i < numer->alloc; i++) {
+    mpz_realloc2(numer->coeffs[i], 32 * (nsols + 1));
+    mpz_realloc2(denom->coeffs[i], 64 * (nsols + 1));
   }
 }
 
@@ -2435,7 +2459,9 @@ static int64_t sep_dense_init(sep_dense_t *sd, data_gens_ff_t *gens,
   st->print_gb = 0;
   st->f4_qq_round = 1;
   int32_t error = 0;
+  const double rt = realtime();
   bs_t *bs = core_gba(sd->bs_qq, st, &error, prime);
+  st->learning_rtime = realtime() - rt;
   if (bs == NULL || error > 0) {
     free(bs);
     sep_dense_clear(sd);
@@ -2724,6 +2750,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
                     files_gb *files,
                     int round){
 
+  const double rtstart = realtime();
   const int32_t *lens = gens->lens;
   const int32_t *exps = gens->exps;
   uint32_t field_char = gens->field_char;
@@ -3100,7 +3127,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   normalize_nmod_param(nmod_params[0]);
 
 
-  initialize_mpz_param(*mpz_paramp, nmod_params[0]);
+  /* the p-adic lifting (see hensel.c) does not use the buffers of the
+   * usual lifting, which are then not preallocated: 28 D^2 bytes, 470 MB
+   * on katsura 13 */
+  const int prealloc = gens->lifting == 1 || gens->ngens < gens->nvars;
+  initialize_mpz_param(*mpz_paramp, nmod_params[0], prealloc);
 
   // attention les longueurs des mpz_param sont fixees par nmod_params[0]
   // dans des cas exceptionnels, ca peut augmenter avec un autre premier.
@@ -3150,11 +3181,11 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   deg_t nsols = (*mpz_paramp)->nsols;
 
   mpz_upoly_t numer;
-  mpz_upoly_init2(numer, (nsols + 1), 32 * (nsols + 1));
+  mpz_upoly_init2(numer, (nsols + 1), prealloc ? 32 * (nsols + 1) : 0);
   numer->length = nsols + 1;
 
   mpz_upoly_t denom;
-  mpz_upoly_init2(denom, (nsols + 1), 64 * (nsols + 1));
+  mpz_upoly_init2(denom, (nsols + 1), prealloc ? 64 * (nsols + 1) : 0);
   denom->length = nsols + 1;
 
   int16_t *check_lift = calloc(nsols+1, sizeof(int16_t));
@@ -3191,8 +3222,15 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   rrec_data_t recdata;
   initialize_rrec_data(recdata);
 
-  /* measures time spent in rational reconstruction */
-  double strat = 0;
+  /* elapsed times of the CRT and rational reconstruction, of the modular
+   * runs (tmm, of which tmmf4 for F4), of Newton's iteration of the p-adic
+   * lifting and of the checks */
+  double strat = 0, tmm = 0, tmmf4 = 0, tnewton = 0, tchk = 0;
+  /* number of primes of the modular runs */
+  long nmm = 0;
+  /* the timings of one modular run are printed once; header is 1 once
+   * the multi-modular steps are announced, 2 for the p-adic ones */
+  int shown = 0, header = 0;
 
   /* splitting of the solutions along equalities of coordinates, see
      splitting.c: the components are then lifted separately */
@@ -3201,6 +3239,58 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   int split = split_start(&sp, nmod_params[0], gens->split_mode, info_level);
   int nmismatch = 0;
 
+  /* p-adic lifting (see hensel.c): batches of hensel_T primes, one per
+   * thread, the first one made of the first prime and of the images of
+   * the first multi-modular step, until the parametrization is checked */
+  hensel_data_t hd, hc;
+  hensel_data_init(&hd);
+  /* the images computed beyond the batch: the first batch holds the first
+   * prime, which leaves one */
+  hensel_data_init(&hc);
+  hensel_state_t hst;
+  long hensel_T = gens->lifting != 1 && gens->ngens >= gens->nvars
+    ? st->nthrds : 0;
+  int hensel_chosen = 0;
+  /* with probabilistic linear algebra (-l 42 or 44), F4 learns no
+   * trace, so the cost model has no measure of the work of F4: the usual
+   * lifting is used unless the p-adic one is forced */
+  if (hensel_T > 0 && gens->lifting != 2 && st->laopt >= 40) {
+    if (info_level) {
+      fprintf(VERBSTREAM, "p-adic lifting not used: probabilistic linear "
+              "algebra (option -l %d)\n", (int)st->laopt);
+    }
+    hensel_T = 0;
+  }
+  /* Newton's iteration needs simple roots: the parametrization, of the
+   * radical, has degree the dimension of the quotient only when the ideal
+   * is radical */
+  const int nonradical = hensel_T > 0 && !split
+    && nmod_params[0]->elim->length - 1 < *dquot_ptr;
+  if (nonradical) {
+    if (info_level) {
+      fprintf(VERBSTREAM, "p-adic lifting not used: the ideal is not "
+              "radical (%ld solutions, quotient of dimension %ld)\n",
+              (long)(nmod_params[0]->elim->length - 1), *dquot_ptr);
+    }
+    hensel_T = 0;
+  }
+  /* the splitting along equalities of coordinates is preferred when it
+   * applies */
+  if (hensel_T > 0 && !split
+      && hensel_state_init(&hst, gens, nmod_params[0])) {
+    hensel_add_param(&hd, nmod_params[0]);
+  } else {
+    if (gens->lifting == 2 && !nonradical && info_level) {
+      fprintf(VERBSTREAM, "p-adic lifting not applicable, usual lifting\n");
+    }
+    hensel_T = 0;
+    if (!prealloc) {
+      prealloc_mpz_param(*mpz_paramp, numer, denom);
+    }
+  }
+
+  /* the first prime: learning F4, FGLM and setup of the lifting */
+  const double tinit = realtime() - rtstart;
   while (rerun == 1 || mcheck == 1) {
     /* controls call to rational reconstruction */
     doit = ((prdone % nbdoit) == 0);
@@ -3248,6 +3338,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 
     double ca0 = realtime();
     double stf4 = 0;
+    /* meta data of the F4 runs applying the trace, whose work is recorded
+     * in the trace, for the cost model of hensel.c */
+    md_t *const f4md = dense ? sd.st : st;
     if (dense) {
       sep_dense_modular_steps(&sd, nmod_params, lp, bad_primes, st->nprimes,
                               &stf4);
@@ -3280,8 +3373,12 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 			    gens, &stf4, nsols, bad_primes,
                 trace_det);
     double ca1 = realtime() - ca0;
+    tmm += ca1;
+    tmmf4 += stf4;
+    nmm += st->nthrds;
 
-    if (nprimes == 1) {
+    if (!shown) {
+      shown = 1;
       if(info_level){
 	    fprintf(VERBSTREAM,
 		    "\n---------------- TIMINGS ----------------\n");
@@ -3295,29 +3392,126 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 		    "multi-mod FGLM             %9.2f sec\n",
 		    ca1-stf4);
 	    /* no trace is learned with probabilistic linear algebra */
-	    if (info_level > 1 && st->tr != NULL){
+	    if (info_level > 1 && f4md->tr != NULL){
 	      /* multiply-adds by the known pivots, recorded in the trace,
 	       * for the st->nthrds primes of this step */
 	      fprintf(VERBSTREAM,
 		      "application phase          %9.2f Gops/sec\n",
-		      2.0*st->tr->nmadd*st->nthrds/1000.0/1000.0/1000.0/(stf4));
+		      2.0*f4md->tr->nmadd*st->nthrds/1000.0/1000.0/1000.0/(stf4));
 	    }
 	    fprintf(VERBSTREAM,
 		    "-----------------------------------------\n");
         fflush(VERBSTREAM);
       }
-      if (info_level) {
-	  fprintf(VERBSTREAM,
-		  "\nmulti-modular steps\n");
-	  fprintf(VERBSTREAM, "-------------------------------------------------\
------------------------------------------------------\n");
-      }
-
     }
     for (int i = 0; i < st->nthrds; i++) {
       if (bad_primes[i] == 0) {
         normalize_nmod_param(nmod_params[i]);
       }
+    }
+    if (hensel_T > 0) {
+      for (len_t i = 0; i < st->nthrds; i++) {
+        if (bad_primes[i] == 0) {
+          hensel_add_param(hd.nprimes < hensel_T ? &hd : &hc, nmod_params[i]);
+        }
+      }
+      if (hd.nprimes < hensel_T) {
+        continue;
+      }
+      if (!hensel_chosen) {
+        /* operations of one modular run: F4, recorded in the trace when it
+         * was learned, then FGLM (2 D matrix-vector products by the dense
+         * rows of the multiplication matrix), or on the dense route the
+         * 2 D products by the dense D x D matrix of the multiplication by
+         * the separating form (see sep_dense_param) */
+        const double D = *dquot_ptr;
+        const trace_t *const f4tr = f4md->tr;
+        /* with probabilistic linear algebra no trace is learned, which
+         * happens here only when the p-adic lifting is forced: only the
+         * terms of the matrices of the last run are known */
+        const double f4ops = f4tr != NULL ? (double)f4tr->nmadd : 0;
+        const double f4new = f4tr != NULL ? (double)f4tr->nmadd_new : 0;
+        const double f4terms = f4tr != NULL ? (double)f4tr->nterms
+          : (double)f4md->mat_nterms;
+        const double fglmops = dense ? 0
+          : 2.0 * D * bmatrix[0]->nrows * bmatrix[0]->ncols;
+        const double denseops = dense ? 2.0 * D * D * D : 0;
+        hensel_set_memref(&hst, MAX(st->max_mat_nterms,
+                                    dense ? sd.st->max_mat_nterms : 0),
+                          *dquot_ptr, st->nthrds);
+        hensel_choose(&hst, *dquot_ptr, log2((double)lp->p[0]), f4ops, f4new,
+                      f4terms, fglmops, denseops, info_level);
+        hensel_chosen = 1;
+        if (gens->lifting != 2 && hst.hs.gain < HENSEL_MIN_GAIN) {
+          if (info_level) {
+            fprintf(VERBSTREAM, "p-adic lifting not used: gain %.2f "
+                    "predicted\n", hst.hs.gain);
+          }
+          hensel_data_clear(&hd, gens->nvars);
+          hensel_data_clear(&hc, gens->nvars);
+          hensel_state_clear(&hst, 0);
+          hensel_T = 0;
+          if (!prealloc) {
+            prealloc_mpz_param(*mpz_paramp, numer, denom);
+          }
+          continue;
+        }
+      }
+      if (info_level && header != 2) {
+        hensel_print_legend();
+        header = 2;
+      }
+      int res;
+      for (;;) {
+        res = hensel_state_step(&hst, &hd, st->nthrds, &tnewton, &strat,
+                                &tchk, info_level);
+        hensel_data_clear(&hd, gens->nvars);
+        /* with one thread, the image left by the first batch is the next
+         * one, without a modular run */
+        if (res != 0 || hc.nprimes < st->nthrds) {
+          break;
+        }
+        hd = hc;
+        hensel_data_init(&hc);
+      }
+      hensel_data_clear(&hc, gens->nvars);
+      if (res == 1) {
+        /* the primes at which the parametrization was lifted */
+        nprimes = hst.nused;
+        /* with one group, the real roots are isolated from *mpz_paramp
+         * when it is built, instead of a copy of it; the reconstructed
+         * values are freed by the last of them */
+        const int setp = hst.sp.ngroups > 1 || !gens->split_global;
+        if (gens->split_global) {
+          split_recombine(*mpz_paramp, &hst.sp, !setp);
+        }
+        if (setp) {
+          split_set_params(&(gens->split_params), &hst.sp, 1);
+        }
+        hensel_state_clear(&hst, 1);
+        hensel_T = 0;
+        rerun = 0;
+        mcheck = 0;
+      } else if (res < 0) {
+        if (info_level) {
+          fprintf(VERBSTREAM, "p-adic lifting failed, usual lifting\n");
+        }
+        hensel_state_clear(&hst, 1);
+        hensel_T = 0;
+        if (!prealloc) {
+          prealloc_mpz_param(*mpz_paramp, numer, denom);
+        }
+      } else {
+        /* next batch: one prime per thread */
+        hensel_T = st->nthrds;
+      }
+      continue;
+    }
+    if (info_level && header != 1) {
+      fprintf(VERBSTREAM, "\nmulti-modular steps\n");
+      fprintf(VERBSTREAM, "-------------------------------------------------\
+-----------------------------------------------------\n");
+      header = 1;
     }
     if (split) {
       double crr = realtime();
@@ -3339,9 +3533,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         /* the parametrization of the whole solution set is only built
          * when it is returned */
         if (gens->split_global) {
-          split_recombine(*mpz_paramp, &sp);
+          split_recombine(*mpz_paramp, &sp, 0);
         }
-        split_set_params(&(gens->split_params), &sp);
+        split_set_params(&(gens->split_params), &sp, 0);
         rerun = 0;
         mcheck = 0;
       }
@@ -3374,6 +3568,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     }
     for (len_t i = 0; i < st->nthrds; i++) {
       if (bad_primes[i] == 0) {
+        double cch = realtime();
         if (rerun == 0) {
           mcheck = check_param_modular(*mpz_paramp, nmod_params[i], lp->p[i],
                                        is_lifted, check_lift, trace_det, info_level);
@@ -3386,6 +3581,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         else{
             check_elim_poly(nmod_params[i]->elim, lp->p[i], numer->coeffs, denom->coeffs, check_lift);
         }
+        tchk += realtime() - cch;
         crr = realtime();
         if (mcheck == 1) {
           br = rational_reconstruction_param(
@@ -3484,12 +3680,36 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     fprintf(VERBSTREAM, "#primes            %16lu\n", (unsigned long) nprimes);
     fprintf(VERBSTREAM, "#bad primes        %16lu\n", (unsigned long) nbadprimes);
     fprintf(VERBSTREAM, "-----------------------------------------\n");
+    const double tlearn = st->learning_rtime
+      + (dense ? sd.st->learning_rtime : 0);
+    const double ttot = realtime() - rtstart;
     fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
-    fprintf(VERBSTREAM, "CRT and ratrecon(elapsed) %10.2f sec\n", strat);
+    /* the modular runs: number of primes x elapsed time of one run, the
+     * runs being made by st->nthrds threads at once */
+    const double nm = MAX(nmm, 1) / (double)st->nthrds;
+    char sthr[32] = "";
+    if (st->nthrds > 1) {
+      snprintf(sthr, sizeof(sthr), " / %d threads", (int)st->nthrds);
+    }
+    fprintf(VERBSTREAM, "learning F4(elapsed)      %28.2f sec\n", tlearn);
+    fprintf(VERBSTREAM, "first FGLM, setup(elapsed)%28.2f sec\n",
+            tinit - tlearn);
+    fprintf(VERBSTREAM, "multi-mod F4(elapsed)     %6ld x %9.3f sec%s = "
+            "%7.2f sec\n", nmm, tmmf4 / nm, sthr, tmmf4);
+    fprintf(VERBSTREAM, "multi-mod FGLM(elapsed)   %6ld x %9.3f sec%s = "
+            "%7.2f sec\n", nmm, (tmm - tmmf4) / nm, sthr, tmm - tmmf4);
+    if (tnewton > 0) {
+      fprintf(VERBSTREAM, "p-adic Newton(elapsed)    %28.2f sec\n", tnewton);
+    }
+    fprintf(VERBSTREAM, "CRT and ratrecon(elapsed) %28.2f sec\n", strat);
     if (vec_wit->ntries > 0) {
-      fprintf(VERBSTREAM, "  incl. LLL, %4d calls   %10.2f sec\n",
+      fprintf(VERBSTREAM, "  incl. LLL, %4d calls   %28.2f sec\n",
               vec_wit->ntries, vec_wit->rtime);
     }
+    fprintf(VERBSTREAM, "checks(elapsed)           %28.2f sec\n", tchk);
+    fprintf(VERBSTREAM, "other(elapsed)            %28.2f sec\n",
+            ttot - tinit - tmm - tnewton - strat - tchk);
+    fprintf(VERBSTREAM, "total(elapsed)            %28.2f sec\n", ttot);
     fprintf(VERBSTREAM, "-----------------------------------------\n");
     fflush(VERBSTREAM);
   }
@@ -4485,8 +4705,14 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
   real_point_t **lpts = malloc(nc * sizeof(real_point_t *));
   long nb = 0;
   for (long i = 0; i < nc; i++) {
+    if (info_level && nc > 1) {
+      fprintf(VERBSTREAM, "\ncomponent %ld of %ld: degree %ld\n", i + 1, nc,
+              (long)params->params[i]->elim->length - 1);
+      fflush(VERBSTREAM);
+    }
     lpts[i] = isolate_real_roots_param(params->params[i], lnb + i, lroots + i,
-                                       precision, nr_threads, to_split, 0);
+                                       precision, nr_threads, to_split,
+                                       info_level);
     nb += lnb[i];
   }
   interval *roots = malloc(MAX(nb, 1) * sizeof(interval));
@@ -4521,8 +4747,8 @@ static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *para
   free(lnb);
   free(lroots);
   free(lpts);
-  if (info_level) {
-    fprintf(VERBSTREAM, "Real roots of the %ld components: %ld real roots "
+  if (info_level && nc > 1) {
+    fprintf(VERBSTREAM, "\nReal roots of the %ld components: %ld real roots "
             "(%.2f sec)\n", nc, nb, realtime() - rt);
   }
   *nb_real_roots_ptr = nb;

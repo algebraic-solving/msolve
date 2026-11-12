@@ -135,6 +135,16 @@ typedef struct{
   int32_t sep_search;
   int32_t sep_dense;
   int32_t split_mode;
+  /* lifting of the parametrization over the rationals: 0 chooses between
+   * the p-adic lifting (see hensel.c) and the multi-modular one, 1 enforces
+   * the multi-modular lifting and 2 the p-adic lifting */
+  int32_t lifting;
+  /* options of the p-adic lifting: precision p^N per prime (0: chosen by
+   * the cost model), factor on the cost of a modular run in the cost model
+   * (1 by default) and memory limit in megabytes (0: computed) */
+  int32_t hensel_prec;
+  double hensel_cost_scale;
+  double hensel_memory;
   char **vnames;
   int32_t *lens;
   int32_t *exps;

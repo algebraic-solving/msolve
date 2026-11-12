@@ -69,7 +69,10 @@ typedef struct {
   uint64_t *sig;
   long n;             /* number of lifted values: deg * (nc + 1) */
   fmpz *crt;          /* g (deg coefficients, monic), then the B_v */
-  fmpq *rec;          /* reconstructed values */
+  fmpz *num;          /* reconstructed values, num[i] / den[i / deg]: a
+                         common denominator for g and for each B_v, which
+                         one rational number per value would repeat */
+  fmpz *den;
   int state;          /* 0: not reconstructed, 1: reconstructed, 2: checked */
 } split_group_t;
 
@@ -199,7 +202,8 @@ static void split_data_clear(split_data_t *sp) {
     split_group_t *G = sp->groups + i;
     free(G->sig);
     _fmpz_vec_clear(G->crt, G->n);
-    _fmpq_vec_clear(G->rec, G->n);
+    _fmpz_vec_clear(G->num, G->n);
+    _fmpz_vec_clear(G->den, sp->nc + 1);
   }
   free(sp->groups);
   fmpz_clear(sp->modulus);
@@ -229,7 +233,8 @@ static int split_data_init(split_data_t *sp, const param_t *param) {
     parts[i].sig = NULL;
     G->n = G->deg * (sp->nc + 1);
     G->crt = _fmpz_vec_init(G->n);
-    G->rec = _fmpq_vec_init(G->n);
+    G->num = _fmpz_vec_init(G->n);
+    G->den = _fmpz_vec_init(sp->nc + 1);
     G->state = 0;
   }
   split_parts_clear(parts, n);
@@ -239,21 +244,43 @@ static int split_data_init(split_data_t *sp, const param_t *param) {
   return 1;
 }
 
-static int split_check_rec(const fmpq *rec, const mp_limb_t *val, long n,
+static int split_check_rec(const split_group_t *G, const mp_limb_t *val,
                            mp_limb_t p) {
   nmod_t mod;
   nmod_init(&mod, p);
-  for (long i = 0; i < n; i++) {
-    mp_limb_t den = fmpz_fdiv_ui(fmpq_denref(rec + i), p);
-    if (den == 0) {
-      return 0;
+  mp_limb_t id = 0;
+  for (long i = 0; i < G->n; i++) {
+    if (i % G->deg == 0) {
+      const mp_limb_t den = fmpz_fdiv_ui(G->den + i / G->deg, p);
+      if (den == 0) {
+        return 0;
+      }
+      id = nmod_inv(den, mod);
     }
-    mp_limb_t num = fmpz_fdiv_ui(fmpq_numref(rec + i), p);
-    if (nmod_mul(num, nmod_inv(den, mod), mod) != val[i]) {
+    if (nmod_mul(fmpz_fdiv_ui(G->num + i, p), id, mod) != val[i]) {
       return 0;
     }
   }
   return 1;
+}
+
+/* num[i] / den[b] = r for the value i of the block b, the numerators of
+ * the block before i being brought to the new common denominator */
+static void split_set_rec(split_group_t *G, const long i, const fmpq_t r,
+                          fmpz_t t) {
+  const long b = i / G->deg, i0 = b * G->deg;
+  fmpz *d = G->den + b;
+  if (i == i0) {
+    fmpz_one(d);
+  }
+  if (!fmpz_divisible(d, fmpq_denref(r))) {
+    fmpz_lcm(t, d, fmpq_denref(r));
+    fmpz_divexact(d, t, d);
+    _fmpz_vec_scalar_mul_fmpz(G->num + i0, G->num + i0, i - i0, d);
+    fmpz_swap(d, t);
+  }
+  fmpz_divexact(t, d, fmpq_denref(r));
+  fmpz_mul(G->num + i, fmpq_numref(r), t);
 }
 
 /* adds the image of the parametrization modulo a new prime; returns 0 if
@@ -279,7 +306,7 @@ static int split_add_image(split_data_t *sp, const param_t *param) {
     mp_limb_t *val = malloc(G->n * sizeof(mp_limb_t));
     split_part_values(val, parts + i, param, sp->nc);
     if (G->state == 1) {
-      if (split_check_rec(G->rec, val, G->n, p)) {
+      if (split_check_rec(G, val, p)) {
         G->state = 2;
         sp->ndone++;
         free(val);
@@ -309,11 +336,17 @@ static void split_reconstruct(split_data_t *sp) {
     if (G->state != 0) {
       continue;
     }
+    fmpq_t r;
+    fmpz_t t;
+    fmpq_init(r);
+    fmpz_init(t);
     long k = 0;
-    while (k < G->n && fmpq_reconstruct_fmpz(G->rec + k, G->crt + k,
-                                             sp->modulus)) {
+    while (k < G->n && fmpq_reconstruct_fmpz(r, G->crt + k, sp->modulus)) {
+      split_set_rec(G, k, r, t);
       k++;
     }
+    fmpq_clear(r);
+    fmpz_clear(t);
     if (k == G->n) {
       G->state = 1;
     }
@@ -354,23 +387,38 @@ static int split_start(split_data_t *sp, const param_t *param,
   return 1;
 }
 
-/* P = product of the g's of groups lo..hi-1, S[v] = sum of B_v P / g */
+/* P = product of the g's of groups lo..hi-1, S[v] = sum of B_v P / g;
+ * the reconstructed values are freed as they are read if free_rec is set,
+ * so that they are not held together with the polynomials (random2_10_10:
+ * 547 MB at the end instead of 473 MB) */
 static void split_combine(fmpq_poly_t P, fmpq_poly_struct *S,
-                          const split_data_t *sp, long lo, long hi) {
+                          const split_data_t *sp, long lo, long hi,
+                          const int free_rec) {
   const long nc = sp->nc;
   if (hi - lo == 1) {
     const split_group_t *G = sp->groups + lo;
-    fmpq_poly_zero(P);
-    for (long i = 0; i < G->deg; i++) {
-      fmpq_poly_set_coeff_fmpq(P, i, G->rec + i);
-    }
-    fmpq_poly_set_coeff_ui(P, G->deg, 1);
-    for (long v = 0; v < nc; v++) {
-      fmpq_poly_zero(S + v);
-      for (long i = 0; i < G->deg; i++) {
-        fmpq_poly_set_coeff_fmpq(S + v, i, G->rec + (v + 1) * G->deg + i);
+    const long deg = G->deg;
+    /* g = (sum num_i t^i + den t^deg) / den */
+    fmpz_poly_t q;
+    fmpz_poly_init2(q, deg + 1);
+    for (long b = 0; b <= nc; b++) {
+      fmpz_poly_zero(q);
+      for (long i = 0; i < deg; i++) {
+        fmpz_poly_set_coeff_fmpz(q, i, G->num + b * deg + i);
+      }
+      if (b == 0) {
+        fmpz_poly_set_coeff_fmpz(q, deg, G->den);
+      }
+      fmpq_poly_struct *R = b == 0 ? P : S + b - 1;
+      fmpq_poly_set_fmpz_poly(R, q);
+      fmpq_poly_scalar_div_fmpz(R, R, G->den + b);
+      if (free_rec) {
+        for (long i = 0; i < deg; i++) {
+          fmpz_zero(G->num + b * deg + i);
+        }
       }
     }
+    fmpz_poly_clear(q);
     return;
   }
   const long mid = (lo + hi) / 2;
@@ -381,8 +429,8 @@ static void split_combine(fmpq_poly_t P, fmpq_poly_struct *S,
   for (long v = 0; v < nc; v++) {
     fmpq_poly_init(SR + v);
   }
-  split_combine(P, S, sp, lo, mid);
-  split_combine(PR, SR, sp, mid, hi);
+  split_combine(P, S, sp, lo, mid, free_rec);
+  split_combine(PR, SR, sp, mid, hi, free_rec);
   for (long v = 0; v < nc; v++) {
     fmpq_poly_mul(tmp, SR + v, P);
     fmpq_poly_mul(S + v, S + v, PR);
@@ -417,9 +465,10 @@ static void split_set_mpz_upoly(mpz_upoly_t out, const fmpz_poly_t in,
 }
 
 /* the parametrization of the solutions of groups lo..hi-1, with its
- * denominator elim' */
+ * denominator elim'; their reconstructed values are freed if free_rec is
+ * set */
 static void split_param_range(mpz_param_t mpz_param, const split_data_t *sp,
-                              long lo, long hi) {
+                              long lo, long hi, const int free_rec) {
   const long nc = sp->nc;
   fmpq_poly_t E;
   fmpq_poly_init(E);
@@ -427,7 +476,7 @@ static void split_param_range(mpz_param_t mpz_param, const split_data_t *sp,
   for (long v = 0; v < nc; v++) {
     fmpq_poly_init(S + v);
   }
-  split_combine(E, S, sp, lo, hi);
+  split_combine(E, S, sp, lo, hi, free_rec);
 
   /* integer primitive eliminating polynomial lambda E, with lambda > 0 */
   fmpz_poly_t num;
@@ -462,9 +511,11 @@ static void split_param_range(mpz_param_t mpz_param, const split_data_t *sp,
   fmpq_poly_clear(E);
 }
 
-/* the parametrization of the whole solution set, from the groups */
-static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp) {
-  split_param_range(mpz_param, sp, 0, sp->ngroups);
+/* the parametrization of the whole solution set, from the groups, whose
+ * reconstructed values are freed if free_rec is set */
+static void split_recombine(mpz_param_t mpz_param, const split_data_t *sp,
+                            const int free_rec) {
+  split_param_range(mpz_param, sp, 0, sp->ngroups, free_rec);
 }
 
 static void split_params_clear(mpz_param_array_struct *params) {
@@ -476,9 +527,10 @@ static void split_params_clear(mpz_param_array_struct *params) {
   params->nb = 0;
 }
 
-/* the parametrizations of the groups, one by one */
+/* the parametrizations of the groups, one by one, whose reconstructed
+ * values are freed if free_rec is set */
 static void split_set_params(mpz_param_array_struct *params,
-                             const split_data_t *sp) {
+                             const split_data_t *sp, const int free_rec) {
   const long nc = sp->nc;
   split_params_clear(params);
   params->nb = sp->ngroups;
@@ -498,6 +550,6 @@ static void split_set_params(mpz_param_array_struct *params,
       P->coords[v]->length = 0;
       mpz_init(P->cfs[v]);
     }
-    split_param_range(P, sp, i, i + 1);
+    split_param_range(P, sp, i, i + 1, free_rec);
   }
 }

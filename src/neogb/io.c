@@ -74,7 +74,7 @@ void sort_terms_ff_8(
   cf8_t tmpcf = 0;
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -100,6 +100,8 @@ void sort_terms_ff_8(
     }
   }
 
+  free(phm);
+
   *cfp  = cf;
   *hmp  = hm;
 }
@@ -122,7 +124,7 @@ void sort_terms_ff_16(
   cf16_t tmpcf  = 0;
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -147,6 +149,8 @@ void sort_terms_ff_16(
       phm[k]  = &hmo[k];
     }
   }
+
+  free(phm);
 
   *cfp  = cf;
   *hmp  = hm;
@@ -170,7 +174,7 @@ void sort_terms_ff_32(
   cf32_t tmpcf  = 0;
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -195,6 +199,8 @@ void sort_terms_ff_32(
       phm[k]  = &hmo[k];
     }
   }
+
+  free(phm);
 
   *cfp  = cf;
   *hmp  = hm;
@@ -218,7 +224,7 @@ void sort_terms_ff_64(
   cf64_t tmpcf  = 0;
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -243,6 +249,8 @@ void sort_terms_ff_64(
       phm[k]  = &hmo[k];
     }
   }
+
+  free(phm);
 
   *cfp  = cf;
   *hmp  = hm;
@@ -267,7 +275,7 @@ void sort_terms_qq(
   mpz_init(tmpcf);
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -292,6 +300,8 @@ void sort_terms_qq(
       phm[k]  = &hmo[k];
     }
   }
+
+  free(phm);
 
   *cfp  = cf;
   *hmp  = hm;

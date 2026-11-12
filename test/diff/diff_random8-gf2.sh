@@ -7,7 +7,7 @@ file=random8-gf2
 
 source test/diff/diff_source.sh
 
-for t in 1 4; do
+for t in 1 2; do
     $(pwd)/msolve -f input_files/$file.ms -o test/diff/$file.$t.res \
           --random-seed $seed \
           -g 2 -t $t

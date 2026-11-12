@@ -96,6 +96,7 @@ static inline void bz_zeta_rows(
     for (j = 0; j < nr; j += 2 * h) {
       uint64_t *restrict r        = b + (j + h) * cl;
       const uint64_t *restrict q  = b + j * cl;
+      #pragma omp simd
       for (l = 0; l < hl; ++l) {
         r[l] ^= q[l];
       }
@@ -161,6 +162,7 @@ static void bz_zeta_pass(
         for (j = 0; j < nr; ++j) {
           const uint64_t *restrict r  = b + j * cl;
           uint64_t *restrict y        = z + o + (j << k0);
+          #pragma omp simd
           for (l = 0; l < cl; ++l) {
             y[l] &= ~r[l];
           }
@@ -387,17 +389,21 @@ static inline void bz_reduce(
     const uint64_t r1
     )
 {
-  uint64_t *c = v + mw;
+  /* the values and the sums do not overlap */
+  uint64_t *restrict e  = v;
+  uint64_t *restrict c  = v + mw;
   uint64_t i, r;
 
   for (r = r0; r < r1; ++r) {
     const uint32_t p  = piv[r];
-    if ((v[p / 64] >> (p % 64)) & 1) {
-      const uint64_t *row = red + 2 * r * mw;
+    if ((e[p / 64] >> (p % 64)) & 1) {
+      const uint64_t *restrict row  = red + 2 * r * mw;
+      #pragma omp simd
       for (i = p / 64; i < mw; ++i) {
-        v[i] ^= row[i];
+        e[i] ^= row[i];
       }
       const uint64_t cw = r / 64 + 1;
+      #pragma omp simd
       for (i = 0; i < cw; ++i) {
         c[i] ^= row[mw + i];
       }
@@ -693,6 +699,7 @@ static int boolean_zeros_gb(
         for (int32_t x = 0; x < nv; ++x) {
           if ((bt[b] >> x) & 1) {
             const uint64_t *vx  = xv + (uint64_t)x * mw;
+            #pragma omp simd
             for (l = 0; l < mw; ++l) {
               e[l] &= vx[l];
             }

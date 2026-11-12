@@ -62,6 +62,9 @@ ht_t *initialize_basis_hash_table(
     ht->nv    = nv;
     ht->mo    = st->mo;
     ht->boolean = st->boolean;
+    ht->bvm   = NULL;
+    ht->bvl   = 0;
+    ht->bvsz  = 0;
     /* generate map */
     ht->bpv = (len_t)((CHAR_BIT * sizeof(sdm_t)) / (unsigned long)nv);
     if (ht->bpv == 0) {
@@ -147,6 +150,9 @@ ht_t *copy_hash_table(
     ht->nv    = bht->nv;
     ht->mo    = bht->mo;
     ht->boolean = bht->boolean;
+    ht->bvm   = NULL;
+    ht->bvl   = 0;
+    ht->bvsz  = 0;
     ht->evl   = bht->evl;
     ht->ebl   = bht->ebl;
     ht->hsz   = bht->hsz;
@@ -203,6 +209,9 @@ ht_t *initialize_secondary_hash_table(
     ht->nv    = bht->nv;
     ht->mo    = bht->mo;
     ht->boolean = bht->boolean;
+    ht->bvm   = NULL;
+    ht->bvl   = 0;
+    ht->bvsz  = 0;
     ht->evl   = bht->evl;
     ht->ebl   = bht->ebl;
 
@@ -283,6 +292,7 @@ void free_hash_table(
         free(ht->ev);
         ht->ev  = NULL;
     }
+    free(ht->bvm);
     free(ht);
     ht    = NULL;
     *htp  = ht;
@@ -322,6 +332,7 @@ void full_free_hash_table(
       ht->dm = NULL;
     }
   }
+  free(ht->bvm);
   free(ht);
   ht    = NULL;
   *htp  = ht;
@@ -931,6 +942,7 @@ static inline void reinitialize_hash_table(
     memset(ht->hmap, 0, ht->hsz * sizeof(hi_t));
 
     ht->eld  = 1;
+    ht->bvl  = 0;
 }
 
 static inline void clean_hash_table(
@@ -941,6 +953,7 @@ static inline void clean_hash_table(
     memset(ht->hmap, 0, ht->hsz * sizeof(hi_t));
 
     ht->eld  = 1;
+    ht->bvl  = 0;
 }
 
 static inline int prime_monomials(
@@ -1546,6 +1559,7 @@ static void reset_hash_table(
         ht->ev[k]  = tmp + k*evl;
     }
     ht->eld = 1;
+    ht->bvl = 0;
     memset(ht->hmap, 0, ht->hsz * sizeof(hi_t));
     memset(ht->hd, 0, esz * sizeof(hd_t));
 
@@ -1677,7 +1691,11 @@ typedef struct {
     exp_t *vm;      /* 0xFFFF for the variables, 0 for the degree entries */
     val_t *h;       /* hash values of the terms */
     len_t *rep;     /* first appearance of equal terms */
-    len_t *tab;     /* hash table for finding equal terms */
+    uint64_t *tab;  /* hash table for finding equal terms, an entry is
+                     * stamp << 32 | (index + 1), entries with another
+                     * stamp are empty, so tab need not be cleared */
+    uint64_t *key;  /* keys of the terms if the masks of bht are used */
+    uint32_t stamp; /* stamp of the current row in tab, nonzero */
     int8_t *ov;     /* has the term a common variable with the multiplier */
     exp_t *me;      /* exponent vectors of the terms missing in sht */
     val_t *mh;      /* hash values of the terms missing in sht */
@@ -1771,6 +1789,41 @@ static inline void boolean_term_exponents(
     }
 }
 
+/* Boolean ring: fills the variable masks of the monomials of ht which
+ * are not handled yet, if the exponent vectors have at most 64 entries.
+ * The masks only cache data of the exponent vectors, thus ht is changed
+ * only there. */
+static void update_boolean_masks(
+    const ht_t * const cht
+    )
+{
+    hl_t k;
+    len_t j;
+    ht_t *ht        = (ht_t *)cht;
+    const len_t evl = ht->evl;
+    const len_t ebl = ht->ebl;
+
+    if (evl > 64) {
+        return;
+    }
+    if (ht->bvsz < ht->esz) {
+        ht->bvm   = (uint64_t *)realloc(ht->bvm,
+                (uint64_t)ht->esz * sizeof(uint64_t));
+        ht->bvsz  = ht->esz;
+    }
+    for (k = ht->bvl; k < ht->eld; ++k) {
+        const exp_t * const e = ht->ev[0] + (uint64_t)k * evl;
+        uint64_t m  = 0;
+        for (j = 1; j < evl; ++j) {
+            if (j != ebl && e[j] != 0) {
+                m |= (uint64_t)1 << j;
+            }
+        }
+        ht->bvm[k]  = m;
+    }
+    ht->bvl = ht->eld;
+}
+
 /* Boolean ring: writes the terms of the product of the monomial with
  * exponents em and hash value hm with poly to row, using x^2 = x for all
  * variables x. Equal terms cancel in pairs, the order of the remaining
@@ -1785,7 +1838,9 @@ static inline void boolean_term_exponents(
  * hash values of the common variables, their exponent vectors are only
  * computed when needed. Two terms with the usual product are different,
  * so only the other terms are stored in a hash table for finding equal
- * terms. */
+ * terms. If bht has variable masks, the terms are squarefree, so two
+ * products are equal iff the masks of the factors without the variables
+ * of the multiplier, their keys, are equal. */
 static len_t boolean_multiplied_row(
     hm_t *row,
     len_t *nm,
@@ -1809,11 +1864,17 @@ static len_t boolean_multiplied_row(
     len_t tv[evl];
     val_t cr[evl];
     len_t nt  = 0;
+    /* mask of the multiplier if bht has variable masks */
+    const uint64_t * const bvm  = evl <= 64 ? bht->bvm : NULL;
+    uint64_t mm = 0;
     for (j = 1; j < evl; ++j) {
         if (j != ebl && em[j] != 0) {
             tv[nt]  = j;
             cr[nt]  = bht->rn[j] + bht->rn[(ebl > 0 && j > ebl) ? ebl : 0];
             nt++;
+            if (bvm != NULL) {
+                mm  |=  (uint64_t)1 << j;
+            }
         }
     }
     len_t nov = 0;
@@ -1821,16 +1882,32 @@ static len_t boolean_multiplied_row(
         /* prefetching as in prefetch_multiplied_terms() */
         if (i + MUL_PF_DIST < len) {
             __builtin_prefetch(hdb + poly[OFFSET+i+MUL_PF_DIST]);
-            __builtin_prefetch(evb + (uint64_t)poly[OFFSET+i+MUL_PF_DIST] * evl);
-        }
-        const exp_t * const eb  = evb + (uint64_t)poly[OFFSET+i] * evl;
-        val_t c = 0;
-        int8_t o  = 0;
-        for (q = 0; q < nt; ++q) {
-            if (eb[tv[q]] != 0) {
-                c += cr[q];
-                o  = 1;
+            if (bvm != NULL) {
+                __builtin_prefetch(bvm + poly[OFFSET+i+MUL_PF_DIST]);
+            } else {
+                __builtin_prefetch(evb + (uint64_t)poly[OFFSET+i+MUL_PF_DIST] * evl);
             }
+        }
+        /* the common variables are found without branches, they depend
+         * on the terms and are hard to predict */
+        val_t c = 0;
+        int8_t o;
+        if (bvm != NULL) {
+            const uint64_t tm = bvm[poly[OFFSET+i]];
+            for (q = 0; q < nt; ++q) {
+                c += cr[q] & (val_t)-(val_t)((tm >> tv[q]) & 1);
+            }
+            o           = (tm & mm) != 0;
+            br->key[i]  = tm & ~mm;
+        } else {
+            const exp_t * const eb  = evb + (uint64_t)poly[OFFSET+i] * evl;
+            val_t b = 0;
+            for (q = 0; q < nt; ++q) {
+                const val_t v = eb[tv[q]] != 0;
+                c += cr[q] & (val_t)-v;
+                b |= v;
+            }
+            o = (int8_t)b;
         }
         br->h[i]  = hm + hdb[poly[OFFSET+i]].val - c;
         br->ov[i] = o;
@@ -1848,7 +1925,13 @@ static len_t boolean_multiplied_row(
          * is kept */
         const len_t odd = (len_t)1 << 31;
         const len_t msk = br->tsz - 1;
-        len_t *tab      = br->tab;
+        uint64_t *tab   = br->tab;
+        const uint32_t stamp  = br->stamp;
+        const uint64_t sb     = (uint64_t)stamp << 32;
+#define BOOLEAN_EQUAL_TERMS(t, i) (bvm != NULL ? br->key[t] == br->key[i] \
+        : (br->h[t] == br->h[i] && boolean_same_key( \
+                evb + (uint64_t)poly[OFFSET+(t)] * evl, \
+                evb + (uint64_t)poly[OFFSET+(i)] * evl, em, br->vm, evl)))
         for (i = 0; i < len; ++i) {
             rep[i]  = i | odd;
         }
@@ -1857,16 +1940,14 @@ static len_t boolean_multiplied_row(
                 continue;
             }
             for (k = (len_t)br->h[i] & msk; ; k = (k+1) & msk) {
-                const len_t t = tab[k];
-                if (t == 0) {
-                    tab[k]  = i + 1;
+                if ((uint32_t)(tab[k] >> 32) != stamp) {
+                    tab[k]  = sb | (i + 1);
                     break;
                 }
-                if (br->h[t-1] == br->h[i] && boolean_same_key(
-                            evb + (uint64_t)poly[OFFSET+t-1] * evl,
-                            evb + (uint64_t)poly[OFFSET+i] * evl, em, br->vm, evl)) {
-                    rep[t-1] ^= odd;
-                    rep[i]    = t-1;
+                const len_t t = (len_t)tab[k] - 1;
+                if (BOOLEAN_EQUAL_TERMS(t, i)) {
+                    rep[t] ^= odd;
+                    rep[i]  = t;
                     break;
                 }
             }
@@ -1877,18 +1958,17 @@ static len_t boolean_multiplied_row(
             if (br->ov[i]) {
                 continue;
             }
-            for (k = (len_t)br->h[i] & msk; tab[k] != 0; k = (k+1) & msk) {
-                const len_t t = tab[k] - 1;
-                if (br->h[t] == br->h[i] && boolean_same_key(
-                            evb + (uint64_t)poly[OFFSET+t] * evl,
-                            evb + (uint64_t)poly[OFFSET+i] * evl, em, br->vm, evl)) {
+            for (k = (len_t)br->h[i] & msk; (uint32_t)(tab[k] >> 32) == stamp;
+                    k = (k+1) & msk) {
+                const len_t t = (len_t)tab[k] - 1;
+                if (BOOLEAN_EQUAL_TERMS(t, i)) {
                     const len_t p = rep[t] & ~odd;
                     rep[p] ^= odd;
                     if (i < p) {
                         /* term i becomes the first appearance */
                         rep[i]  = (rep[p] & odd) | i;
                         rep[p]  = i;
-                        tab[k]  = i + 1;
+                        tab[k]  = sb | (i + 1);
                     } else {
                         rep[i]  = p;
                     }
@@ -1896,17 +1976,21 @@ static len_t boolean_multiplied_row(
                 }
             }
         }
-        for (i = 0; i < len; ++i) {
-            if (br->ov[i]) {
-                for (k = (len_t)br->h[i] & msk; tab[k] != 0; k = (k+1) & msk) {
-                    tab[k] = 0;
-                }
-            }
+#undef BOOLEAN_EQUAL_TERMS
+        /* a new stamp empties tab, it is cleared only if the stamps
+         * wrap around */
+        br->stamp++;
+        if (br->stamp == 0) {
+            memset(tab, 0, (uint64_t)br->tsz * sizeof(uint64_t));
+            br->stamp = 1;
         }
+        /* rep[i] is read before rep[n] with n <= i is written, the
+         * remaining terms depend on the cancellations and are hard to
+         * predict, so there are no branches */
         for (i = 0, n = 0; i < len; ++i) {
-            if (rep[i] == (i | odd)) {
-                rep[n++] = i;
-            }
+            const len_t r = rep[i];
+            rep[n]  = i;
+            n       += r == (i | odd);
         }
     } else {
         for (i = 0; i < len; ++i) {
@@ -1972,6 +2056,8 @@ static void boolean_multiplied_polys_to_matrix_rows(
     const len_t evl = bht->evl;
     const len_t ebl = bht->ebl;
 
+    update_boolean_masks(bht);
+
     exp_t vm[evl];
     for (l = 0; l < evl; ++l) {
         vm[l] = (l != 0 && l != ebl) ? (exp_t)0xFFFF : 0;
@@ -2004,7 +2090,9 @@ static void boolean_multiplied_polys_to_matrix_rows(
         boolean_row_t br;
         br.h    = (val_t *)malloc((uint64_t)mlen * sizeof(val_t));
         br.rep  = (len_t *)malloc((uint64_t)mlen * sizeof(len_t));
-        br.tab  = (len_t *)calloc((uint64_t)tsz, sizeof(len_t));
+        br.tab  = (uint64_t *)calloc((uint64_t)tsz, sizeof(uint64_t));
+        br.key  = (uint64_t *)malloc((uint64_t)mlen * sizeof(uint64_t));
+        br.stamp  = 1;
         br.ov   = (int8_t *)malloc((uint64_t)mlen * sizeof(int8_t));
         br.me   = (exp_t *)malloc((uint64_t)mlen * evl * sizeof(exp_t));
         br.mh   = (val_t *)malloc((uint64_t)mlen * sizeof(val_t));
@@ -2026,6 +2114,7 @@ static void boolean_multiplied_polys_to_matrix_rows(
         free(br.h);
         free(br.rep);
         free(br.tab);
+        free(br.key);
         free(br.ov);
         free(br.me);
         free(br.mh);

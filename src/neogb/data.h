@@ -145,6 +145,12 @@ struct ht_t
     len_t bpv;    /* bits per variable in divmask */
     val_t *rn;    /* random numbers for hash generation */
     uint32_t rsd; /* seed for random number generator */
+    uint64_t *bvm; /* Boolean ring: bit j of bvm[k] is set iff entry j of
+                    * the exponent vector of monomial k is a nonzero
+                    * variable entry, a cache of the monomials 0, ...,
+                    * bvl-1, see update_boolean_masks() */
+    hl_t bvl;     /* number of valid entries of bvm */
+    hl_t bvsz;    /* size of bvm */
 };
 
 /* S-pair types */

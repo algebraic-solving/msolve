@@ -947,7 +947,12 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   ok = fglmc_lu_init(&E, D, p);
   E.nthr = Mt->nthreads > 1 ? Mt->nthreads : 1;
   /* D + FGLMC_KMAX rows: rows t, t+1, ... are buffers */
-  CF_t *Vs    = malloc((uint64_t)(D + FGLMC_KMAX + 1) * D * sizeof(CF_t));
+  /* Vs: row s = NF(s_s) for the first elements of the chains only (parents
+   * of the next candidates); the other rows are never touched. Vc: the other
+   * elements of the current chain (rows 0, 1: alternately; row 2: copy of
+   * the last one; rows 3..: block of vectors). */
+  CF_t *Vs    = malloc(((uint64_t)D * D + 1) * sizeof(CF_t));
+  CF_t *Vc    = malloc((uint64_t)(FGLMC_KMAX + 3) * D * sizeof(CF_t));
   int32_t *S  = malloc((uint64_t)D * nv * sizeof(int32_t));
   int32_t *pool = malloc(maxc * nv * sizeof(int32_t));
   uint64_t *acc = malloc(D * sizeof(uint64_t));
@@ -990,7 +995,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
           ok = 0;
       }
   }
-  if(!ok || !Vs || !S || !pool || !acc || !wl || !al || !coeffs || !H.a
+  if(!ok || !Vs || !Vc || !S || !pool || !acc || !wl || !al || !coeffs || !H.a
      || !lex->g_lm || !lex->g_ntail || !clen || !Q.c || !Q.off || !Q.len
      || !Q.V || !Q.Cb || !Q.Bb || !Q.uidx || !Q.vp || !Q.wp
      || !R.A || !R.X || !R.off || !R.len){
@@ -1070,15 +1075,17 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
 
     const szmat_t t_head = t;
     uint64_t k = 0;
-    slong K = FGLMC_VLEN;
+    slong K = (FGLMC_VLEN < FGLMC_KMAX) ? FGLMC_VLEN : FGLMC_KMAX;
     int chain_done = 0;
+    const CF_t *last = NULL;   /* NF of the last element of the chain */
     while(!chain_done && ok){
       if(k < FGLMC_VLEN){
         if(t >= D + 1){
             ok = 0;
             break;
         }
-        CF_t *row = Vs + (uint64_t)t * D;
+        CF_t *row = (k > 0) ? Vc + (k & 1) * (uint64_t)D
+                  : (t < D) ? Vs + (uint64_t)t * D : Vc + 2 * (uint64_t)D;
         int zero;
         if(qi >= 0 && k < Q.len[qi]){
           /* vector reduced ahead against the rows 0..Q.r0-1 */
@@ -1110,8 +1117,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
                            acc, NULL);
           }
         } else {
-          fglmc_mulvec(row, Mt, xn, Vs + (uint64_t)(t - 1) * D,
-                       acc, NULL);
+          fglmc_mulvec(row, Mt, xn, last, acc, NULL);
         }
         for(szmat_t l = 0; l < D; l++){
             wl[l] = row[l];
@@ -1140,6 +1146,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
               fglmc_set_parent(tr->s_parent + t, tr->s_var + t, &u, k, t, xn);
           }
           fglmc_new_stair(u.e, (int32_t)k, nv, S, &t);
+          last = row;
           k++;
           if(k >= kmax) {
               chain_done = 1;          /* multiple of a lm */
@@ -1150,14 +1157,19 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
       if((uint64_t)K > kmax - k) {
           K = (slong)(kmax - k);
       }
-      for(slong i = 0; i < K; i++){
-          fglmc_mulvec(Vs + (uint64_t)(t + i) * D, Mt, xn,
-                       Vs + (uint64_t)(t + i - 1) * D, acc, NULL);
+      CF_t *V0 = Vc + 2 * (uint64_t)D, *Vb = Vc + 3 * (uint64_t)D;
+      if(last != V0){
+          memcpy(V0, last, D * sizeof(CF_t));
       }
+      for(slong i = 0; i < K; i++){
+          fglmc_mulvec(Vb + (uint64_t)i * D, Mt, xn,
+                       i ? Vb + (uint64_t)(i - 1) * D : V0, acc, NULL);
+      }
+      last = Vb + (uint64_t)(K - 1) * D;  /* used only if the chain goes on */
       nmod_mat_t B, C;
       nmod_mat_init(B, K, D, p);
       for(slong i = 0; i < K; i++){
-        const CF_t *row = Vs + (uint64_t)(t + i) * D;
+        const CF_t *row = Vb + (uint64_t)i * D;
         for(szmat_t l = 0; l < D; l++){
             nmod_mat_entry(B, i, l) = row[l];
         }
@@ -1295,6 +1307,7 @@ done:
   }
   fglmc_lu_clear(&E);
   free(Vs);
+  free(Vc);
   free(S);
   free(pool);
   free(acc);

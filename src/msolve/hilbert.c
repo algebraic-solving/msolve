@@ -4036,7 +4036,10 @@ static void mm_fill_dense(sp_multimatfglm_t *M, const long *lm_of,
     fprintf(ERRSTREAM, "Problem when allocating dense_mat\n");
     exit(1);
   }
-  memset(M->dense_mat, 0, sizeof(CF_t) * ((uint64_t)nb * D + 1));
+  /* rows are zeroed when they are filled: the rows which are never computed
+   * (normal forms on demand) are never touched (dense rows are read only if
+   * M->have_row says they are computed) */
+  M->dense_mat[(uint64_t)nb * D] = 0;
   /* fake sp_matfglm_t to use msolve copy functions */
   sp_matfglm_t view;
   memset(&view, 0, sizeof(view));
@@ -4048,6 +4051,7 @@ static void mm_fill_dense(sp_multimatfglm_t *M, const long *lm_of,
     if(!M->is_lm[r]) continue;
     const long g = lm_of[r];
     const long len = bs->hm[bs->lmps[g]][LENGTH];
+    memset(M->dense_mat + r * D, 0, D * sizeof(CF_t));
     if(len > 1){
       copy_poly_in_matrix_from_bs(&view, (long)r, bs, ht, g, len, 0, len,
                                   lmb, nv, fc);
@@ -4110,6 +4114,7 @@ static void mm_compute_nf_rows(sp_multimatfglm_t *M, int32_t nnf,
     exit(1);
   }
   for(int32_t q = 0; q < nnf; q++){
+    memset(M->dense_mat + (uint64_t)row_nf[q] * D, 0, D * sizeof(CF_t));
     copy_nf_in_matrix_from_bs(&view, row_nf[q], q, lmb, tbr, ht, evi, st, nv);
   }
   free_basis_without_hash_table(&tbr);

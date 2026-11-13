@@ -55,7 +55,9 @@
  * pivots lets the entries of the rows it reduces grow fast. So each column
  * stores the generation in which its pivot was set, each new pivot the
  * generation in which its reduction started, and a pivot with an entry in
- * a column with a newer pivot is reduced again before it is used.
+ * a column with a newer pivot is reduced again before it is used. The new
+ * pivot of a gcd step is reduced right away: the entries of the row right
+ * of its lead column are not reduced yet when the gcd step is done.
  *
  * The reducer rows from the basis must have positive lead coefficients.
  * A reducer row replaced by a gcd step stays in the basis, the new pivot
@@ -772,6 +774,17 @@ static int zz_gcd_step(
     zz_addmul_mpz(d->dp, d->u, p, 0);
     zz_row_t *np = zz_new_row(NULL, d->dp, 1, c, nc);
     np->gen      = d->g0;
+    /* the entries of the row right of c are not reduced yet, so the new
+     * pivot is reduced there before it is used */
+    zz_dense_t *x = d->aux;
+    if (x != NULL) {
+        zz_dense_load(x, np->row, np->c32, np->cf);
+        zz_row_free(np);
+        zz_reduce_dense_row(x, pivs, c+1, c, nc);
+        np      = zz_new_row(x->d64, x->dz, x->big, c, nc);
+        x->big  = 0;
+        np->gen = x->g0;
+    }
     if (!zz_cas_piv(pivs, c, p, np)) {
         zz_row_free(np);
         return 0;

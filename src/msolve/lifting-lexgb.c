@@ -86,6 +86,225 @@ static void lexgb_modpoly_add(gb_modpoly_t modgbs, const fglm_lex_staircase_t *l
   modgbs->nprimes++;
 }
 
+/* -L: lifting of the multiplication matrices. All the T_i share dense_mat
+ * and rowsel, which does not depend on the prime: the rows of dense_mat
+ * computed on the first prime (tails of the DRL Gb, normal forms) are lifted
+ * over Q, each one seen as the monic polynomial m_r - NF(m_r) with D
+ * coefficients, with the machinery used for the lex Gb. Once lifted, the
+ * matrices modulo a new prime are obtained by reduction: neither F4 nor
+ * core_nf is needed any more. */
+#define LEXGB_MATB 32           // primes per batch once the matrices are lifted
+#define LEXGB_MATBUF (1 << 24)  // max. coefficients of these batches
+
+typedef struct {
+  int lifted;
+  szmat_t D, nnfs;    // columns, rows of the full dense_mat
+  szmat_t nrows;      // lifted rows
+  szmat_t *rows;      // their indices in dense_mat
+  gb_modpoly_t mod;   // residues and lifting (ratrecon_gb)
+  data_lift_t dl;
+  rrec_data_t rd1, rd2;
+  mpz_t mod_p, prod_p;
+  double st_crt, st_rrec, st_wit;
+  uint32_t nprimes;   // primes used to lift them
+  fmpz *num;          // once lifted: nrows * D numerators
+  fmpz *den;          // and one denominator per row
+} lexgb_matlift_t;
+
+static void lexgb_matlift_init(lexgb_matlift_t *ML, const fglm_trace_t *tr){
+  memset(ML, 0, sizeof(*ML));
+  ML->D = tr->D;
+  ML->nnfs = tr->nnfs;
+  ML->rows = malloc(((uint64_t)tr->nnfs + 1) * sizeof(szmat_t));
+  for(szmat_t r = 0; r < tr->nnfs; r++){
+    if(tr->have_row == NULL || tr->have_row[r]) ML->rows[ML->nrows++] = r;
+  }
+  gb_modpoly_array_struct *m = ML->mod;
+  const uint32_t ld = ML->nrows, alloc = 2;
+  m->alloc = alloc;
+  m->nprimes = 0;
+  m->primes = calloc(alloc, sizeof(mp_limb_t));
+  m->cf_64 = calloc(alloc, sizeof(mp_limb_t));
+  m->ld = ld;
+  m->nv = tr->nvars;
+  m->modpolys = malloc(sizeof(modpolys_t) * (ld + 1));
+  m->ldm = calloc((uint64_t)tr->nvars * ld + 1, sizeof(int32_t));
+  m->bht = NULL;
+  m->hm = calloc(ld + 1, sizeof(hm_t *));
+  m->lmps = calloc(ld + 1, sizeof(bl_t));
+  for(uint32_t i = 0; i < ld; i++){
+    m->modpolys[i]->len = ML->D;
+    m->modpolys[i]->cf_32 = calloc((size_t)ML->D * alloc + 1, sizeof(uint32_t));
+    m->modpolys[i]->cf_qq = malloc(sizeof(mpz_t) * (ML->D + 1));
+    for(szmat_t j = 0; j < ML->D; j++) mpz_init(m->modpolys[i]->cf_qq[j]);
+    mpz_init_set_ui(m->modpolys[i]->lm, 1);
+  }
+  int32_t step = ld;
+  data_lift_init(ML->dl, ld, &step, 1);
+  initialize_rrec_data(ML->rd1);
+  initialize_rrec_data(ML->rd2);
+  mpz_init_set_ui(ML->mod_p, 1);
+  mpz_init(ML->prod_p);
+}
+
+static void lexgb_matlift_clear(lexgb_matlift_t *ML){
+  if(ML->num != NULL){
+    _fmpz_vec_clear(ML->num, (slong)ML->nrows * ML->D + 1);
+    _fmpz_vec_clear(ML->den, (slong)ML->nrows + 1);
+  }
+  data_lift_clear(ML->dl);
+  gb_modpoly_without_hash_table_clear(ML->mod);
+  free_rrec_data(ML->rd1);
+  free_rrec_data(ML->rd2);
+  mpz_clear(ML->mod_p);
+  mpz_clear(ML->prod_p);
+  free(ML->rows);
+}
+
+/* Lifted rows: row r of dense_mat is num[r] / den[r] (den[r] = lm) */
+static void lexgb_matlift_finalize(lexgb_matlift_t *ML){
+  const szmat_t D = ML->D;
+  ML->num = _fmpz_vec_init((slong)ML->nrows * D + 1);
+  ML->den = _fmpz_vec_init((slong)ML->nrows + 1);
+  for(szmat_t i = 0; i < ML->nrows; i++){
+    const modpolys_struct *P = ML->mod->modpolys[i];
+    fmpz_set_mpz(ML->den + i, P->lm);
+    for(szmat_t k = 0; k < D; k++){
+      fmpz_set_mpz(ML->num + (uint64_t)i * D + k, P->cf_qq[k]);
+    }
+  }
+  ML->nprimes = ML->mod->nprimes;
+  ML->lifted = 1;
+}
+
+/* Rows of dm (full dense_mat modulo p) for the lifting; returns 1 once the
+ * rows are lifted and checked (as for the lex Gb: NBCHECK primes) */
+static int lexgb_matlift_add(lexgb_matlift_t *ML, const CF_t *dm, uint32_t p){
+  if(ML->lifted) return 1;
+  gb_modpoly_array_struct *m = ML->mod;
+  const uint32_t np = m->nprimes;
+  if(m->alloc <= np + 2){
+    gb_modpoly_realloc(m, MAX(4, np / 16));
+  }
+  m->primes[np] = p;
+  for(szmat_t i = 0; i < ML->nrows; i++){
+    /* residues freed by ratrecon_gb once the row is lifted and checked */
+    if(m->modpolys[i]->cf_32 == NULL) continue;
+    const CF_t *row = dm + (uint64_t)ML->rows[i] * ML->D;
+    for(szmat_t k = 0; k < ML->D; k++){
+      MODCF(m->modpolys[i], k, np) = row[k];
+    }
+  }
+  m->nprimes++;
+  if(np == 0){
+    choose_coef_to_lift(m, ML->dl);
+    return 0;
+  }
+  ratrecon_gb(m, ML->dl, ML->mod_p, ML->prod_p, ML->rd1, ML->rd2, 1,
+              &ML->st_crt, &ML->st_rrec, &ML->st_wit);
+  int32_t rr = 1;
+  while(2 * rr <= (int32_t)m->nprimes / RR_PERIOD_DIV){
+    rr *= 2;
+  }
+  ML->dl->rr = rr;
+  for(szmat_t j = 0; j < ML->nrows; j++){
+    if(ML->dl->check2[j] < NBCHECK) return 0;
+  }
+  lexgb_matlift_finalize(ML);
+  return 1;
+}
+
+/* Lifted rows modulo primes[0..K): row ML->rows[r] of the dense_mat of
+ * prime k is written in out + k * stride (stride = nnfs * D + 1, the other
+ * rows are not written); bad[k] = 1 if primes[k] divides a denominator. */
+static void lexgb_matlift_residues(CF_t *out, const uint64_t stride, int *bad,
+                                   const lexgb_matlift_t *ML,
+                                   const mp_limb_t *primes, const slong K,
+                                   const int nthr){
+  const szmat_t D = ML->D, nr = ML->nrows;
+  fmpz_comb_t comb;
+  fmpz_comb_init(comb, primes, K);
+  mp_limb_t *inv = malloc(((uint64_t)nr * K + 1) * sizeof(mp_limb_t));
+  for(slong k = 0; k < K; k++) bad[k] = 0;
+  fmpz_comb_temp_t temp0;
+  fmpz_comb_temp_init(temp0, comb);
+  fmpz_t a0;
+  fmpz_init(a0);
+  for(szmat_t r = 0; r < nr; r++){
+    mp_limb_t *iv = inv + (uint64_t)r * K;
+    /* residues of |x|, then sign (as for the numerators below) */
+    fmpz_abs(a0, ML->den + r);
+    fmpz_multi_mod_ui(iv, a0, comb, temp0);
+    const int neg = fmpz_sgn(ML->den + r) < 0;
+    for(slong k = 0; k < K; k++){
+      if(iv[k] == 0){
+        bad[k] = 1;
+      } else {
+        iv[k] = n_invmod(neg ? primes[k] - iv[k] : iv[k], primes[k]);
+      }
+    }
+  }
+  fmpz_clear(a0);
+  fmpz_comb_temp_clear(temp0);
+#pragma omp parallel num_threads(nthr)
+  {
+    fmpz_comb_temp_t temp;
+    fmpz_comb_temp_init(temp, comb);
+    mp_limb_t *res = malloc((K + 1) * sizeof(mp_limb_t));
+    fmpz_t a;
+    fmpz_init(a);
+#pragma omp for schedule(dynamic)
+    for(slong r = 0; r < (slong)nr; r++){
+      const mp_limb_t *iv = inv + (uint64_t)r * K;
+      const uint64_t pos = (uint64_t)ML->rows[r] * D;
+      for(szmat_t l = 0; l < D; l++){
+        const fmpz *x = ML->num + (uint64_t)r * D + l;
+        if(fmpz_is_zero(x)){
+          for(slong k = 0; k < K; k++) out[k * stride + pos + l] = 0;
+          continue;
+        }
+        fmpz_abs(a, x);
+        fmpz_multi_mod_ui(res, a, comb, temp);
+        const int neg = fmpz_sgn(x) < 0;
+        for(slong k = 0; k < K; k++){
+          const mp_limb_t v = (neg && res[k]) ? primes[k] - res[k] : res[k];
+          out[k * stride + pos + l] =
+              bad[k] ? 0 : (CF_t)(((uint64_t)v * iv[k]) % primes[k]);
+        }
+      }
+    }
+    fmpz_clear(a);
+    free(res);
+    fmpz_comb_temp_clear(temp);
+  }
+  free(inv);
+  fmpz_comb_clear(comb);
+}
+
+/* Matrices modulo p with the dense array dm (not copied: the caller sets
+ * dense_mat to NULL before free_sp_multimat_fglm) */
+static sp_multimatfglm_t *lexgb_matrices_view(const fglm_trace_t *tr, CF_t *dm,
+                                              const uint32_t p){
+  const szmat_t D = tr->D;
+  sp_multimatfglm_t *M = calloc(1, sizeof(sp_multimatfglm_t));
+  M->charac = p;
+  M->nvars = tr->nvars;
+  M->ncols = D;
+  M->nnfs = tr->nnfs;
+  M->nlms = tr->nnfs - tr->nnf;
+  M->one = 0;
+  M->dense_mat = dm;
+  M->rowsel = malloc((uint64_t)tr->nvars * D * sizeof(szmat_t));
+  memcpy(M->rowsel, tr->rowsel, (uint64_t)tr->nvars * D * sizeof(szmat_t));
+  M->is_lm = malloc(tr->nnfs + 1);
+  memcpy(M->is_lm, tr->is_lm, tr->nnfs + 1);
+  if(tr->have_row != NULL){
+    M->have_row = malloc(tr->nnfs + 1);
+    memcpy(M->have_row, tr->have_row, tr->nnfs + 1);
+  }
+  return M;
+}
+
 /* Output in the format of print_fglm_gb, with integer coefficients
  * (denominators cleared polynomial by polynomial) */
 static void lexgb_print_term(FILE *f, const fmpz_t c, const int32_t *e,
@@ -303,6 +522,13 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
               (unsigned long) tr.lex.ngens);
       fprintf(VERBSTREAM, "-----------------------------------------\n");
     }
+    /* -L: the rows of dense_mat computed on p0 are lifted too */
+    const int use_ml = flags->lift_matrix && ok;
+    lexgb_matlift_t ML;
+    if(use_ml){
+      lexgb_matlift_init(&ML, &tr);
+      lexgb_matlift_add(&ML, M->dense_mat, p0);
+    }
     free_sp_multimat_fglm(M);
     free_basis_without_hash_table(&bsp);
 
@@ -331,9 +557,23 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     const int nthr = md->nthrds > 0 ? md->nthrds : 1;
     md->nthrds = 1;
     md->f4_qq_round = 2;
-    uint32_t *bprimes = malloc(nthr * sizeof(uint32_t));
-    int *bbad = malloc(nthr * sizeof(int));
-    CF_t *bres = malloc((uint64_t)nthr * (tr.lex.ncoeffs + 1) * sizeof(CF_t));
+    /* -L: rows of dense_mat of each prime of a batch (before the lifting of
+     * the matrices) or lifted matrices modulo the primes of a batch (after:
+     * batches of up to LEXGB_MATB primes) */
+    const uint64_t mstride = (uint64_t)tr.nnfs * tr.D + 1;
+    int Kmax = nthr;
+    if(use_ml){
+      uint64_t kb = LEXGB_MATBUF / mstride;
+      if(kb > LEXGB_MATB) kb = LEXGB_MATB;
+      if(kb > (uint64_t)Kmax) Kmax = (int)kb;
+    }
+    uint32_t *bprimes = malloc(Kmax * sizeof(uint32_t));
+    mp_limb_t *lprimes = malloc(Kmax * sizeof(mp_limb_t));
+    int *bbad = malloc(Kmax * sizeof(int));
+    int *pbad = malloc(Kmax * sizeof(int));
+    CF_t *bres = malloc((uint64_t)Kmax * (tr.lex.ncoeffs + 1) * sizeof(CF_t));
+    CF_t *bmat = use_ml ? malloc((uint64_t)Kmax * mstride * sizeof(CF_t)) : NULL;
+    uint32_t nskip = 0, nf4 = 0;
     uint32_t prime = rand() % (1303905301 - (1 << 30) + 1) + (1 << 30);
     int consec_bad = 0;
     uint32_t nbad = 0;
@@ -344,16 +584,40 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
      * parametrizations (msolve_trace_qq) */
     int32_t lstart = dl->lstart;
     while(ok && !done && consec_bad < LEXGB_MAX_BAD){
-      for(int i = 0; i < nthr; i++){
+      const int lifted = use_ml && ML.lifted;
+      const int K = lifted ? Kmax : nthr;
+      for(int i = 0; i < K; i++){
         prime = lexgb_next_prime(prime, bs, p0);
         bprimes[i] = prime;
+        lprimes[i] = prime;
+      }
+      if(lifted){
+        lexgb_matlift_residues(bmat, mstride, pbad, &ML, lprimes, K, nthr);
+      } else {
+        nf4 += K;
       }
       if(info_level && first_batch){
         fprintf(VERBSTREAM, "New prime = %u\n", bprimes[0]);
       }
 #pragma omp parallel for num_threads(nthr) schedule(dynamic)
-      for(int i = 0; i < nthr; i++){
+      for(int i = 0; i < K; i++){
         CF_t *ri = bres + (uint64_t)i * (tr.lex.ncoeffs + 1);
+        if(lifted){
+          /* lifted matrices: neither F4 nor core_nf */
+          int bad = 0;
+          if(pbad[i]){
+            bad = 3;                   /* p divides a denominator */
+          } else {
+            sp_multimatfglm_t *Mq =
+                lexgb_matrices_view(&tr, bmat + (uint64_t)i * mstride,
+                                    bprimes[i]);
+            if(fglm_classic_apply(ri, Mq, &tr)) bad = 1;
+            Mq->dense_mat = NULL;
+            free_sp_multimat_fglm(Mq);
+          }
+          bbad[i] = bad;
+          continue;
+        }
         const int timed = (first_batch && i == 0);
         double rt_p = timed ? realtime() : 0;
         int32_t lerr = 0;
@@ -377,6 +641,14 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
               build_multiplication_matrices_from_trace(&tr, lmb, bsq, bsq->ht,
                                                        md, bprimes[i]);
           if(fglm_classic_apply(ri, Mq, &tr)) bad = 1;
+          if(use_ml && !bad){
+            /* rows for the lifting of the matrices */
+            CF_t *bm = bmat + (uint64_t)i * mstride;
+            for(szmat_t q = 0; q < ML.nrows; q++){
+              const uint64_t o = (uint64_t)ML.rows[q] * tr.D;
+              memcpy(bm + o, Mq->dense_mat + o, tr.D * sizeof(CF_t));
+            }
+          }
           free_sp_multimat_fglm(Mq);
           if(timed) st_fglm = realtime() - rt_f;
         }
@@ -400,8 +672,12 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         }
       }
       first_batch = 0;
-      for(int i = 0; i < nthr && !done; i++){
+      for(int i = 0; i < K && !done; i++){
         const CF_t *ri = bres + (uint64_t)i * (tr.lex.ncoeffs + 1);
+        if(bbad[i] == 3){
+          nskip++;
+          continue;
+        }
         if(bbad[i]){
           nbad++;
           consec_bad++;
@@ -412,6 +688,13 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
           continue;
         }
         consec_bad = 0;
+        if(use_ml && !lifted && !ML.lifted){
+          if(lexgb_matlift_add(&ML, bmat + (uint64_t)i * mstride, bprimes[i])
+             && info_level > 1){
+            fprintf(VERBSTREAM, "[L]");
+            fflush(VERBSTREAM);
+          }
+        }
         lexgb_modpoly_add(modgbs, &tr.lex, ri, bprimes[i]);
         /* one new prime: the checks use the last prime only (thrds = 1) */
         ratrecon_gb(modgbs, dl, mod_p, prod_p, rd1, rd2, 1,
@@ -452,6 +735,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     }
     md->nthrds = nthr;
     free(bprimes); free(bbad); free(bres);
+    free(lprimes); free(pbad); free(bmat);
     md->info_level = info_level;
 
     if(done){
@@ -461,6 +745,17 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
                 (unsigned long)max_bit_size_gb(modgbs));
         fprintf(VERBSTREAM, "#primes            %16lu\n", (unsigned long) modgbs->nprimes);
         fprintf(VERBSTREAM, "#bad primes        %16lu\n", (unsigned long) nbad);
+        if(use_ml){
+          fprintf(VERBSTREAM, "#primes with F4    %16lu\n", (unsigned long) nf4 + 1);
+          if(ML.lifted){
+            fprintf(VERBSTREAM, "#primes matrices   %16lu\n",
+                    (unsigned long) ML.nprimes);
+            fprintf(VERBSTREAM, "matrices bitsize   %16lu\n",
+                    (unsigned long)FLINT_ABS(_fmpz_vec_max_bits(ML.num,
+                                                  (slong)ML.nrows * ML.D)));
+          }
+          fprintf(VERBSTREAM, "#skipped primes    %16lu\n", (unsigned long) nskip);
+        }
         fprintf(VERBSTREAM, "-----------------------------------------\n");
         fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
         fprintf(VERBSTREAM, "CRT     (elapsed)         %10.2f sec\n", st_crt);
@@ -475,6 +770,9 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
               "unlucky), computation restarts.\n", p0);
     }
     data_lift_clear(dl);
+    if(use_ml){
+      lexgb_matlift_clear(&ML);
+    }
     gb_modpoly_without_hash_table_clear(modgbs);
     free_rrec_data(rd1);
     free_rrec_data(rd2);

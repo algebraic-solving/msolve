@@ -475,6 +475,8 @@ typedef struct{
   int32_t print_gb;
   int32_t truncate_lifting;
   int32_t pbm_file;
+  int32_t lift_matrix; /* -L: -g 3 over Q also lifts the multiplication
+                          matrices (then no F4 on the next primes) */
   files_gb *files;
 } msolveflags_struct;
 typedef msolveflags_struct msflags_t[1];

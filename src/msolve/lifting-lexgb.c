@@ -413,7 +413,8 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         }
         consec_bad = 0;
         lexgb_modpoly_add(modgbs, &tr.lex, ri, bprimes[i]);
-        ratrecon_gb(modgbs, dl, mod_p, prod_p, rd1, rd2, nthr,
+        /* one new prime: the checks use the last prime only (thrds = 1) */
+        ratrecon_gb(modgbs, dl, mod_p, prod_p, rd1, rd2, 1,
                     &st_crt, &st_rrec, &st_wit);
         /* same period of reconstruction attempts as in lifting-gb.c */
         int32_t rr = 1;

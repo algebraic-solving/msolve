@@ -501,6 +501,12 @@ struct md_t
     int32_t nf;
     int32_t f4_qq_round;
     int32_t zz; /* 1 for strong Groebner bases over the integers */
+    int32_t zz_unit; /* 1 if the computation modulo a prime has to be the image
+                        of an integer computation, i.e. all new pivots must
+                        have lead coefficients +-1 */
+    int32_t zz_nonunit; /* set if a lead coefficient other than +-1 occurred */
+    int32_t zz_rd; /* number of F4 rounds done before zz_nonunit was set */
+    int32_t zz_max_rd; /* if > 0, F4 stops after this number of rounds */
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,
                                1=SCHREYER,

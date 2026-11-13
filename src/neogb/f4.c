@@ -573,6 +573,21 @@ static int32_t compute_new_elements(
         free(zr);
     }
 
+    /* a lead coefficient other than +-1 ends a computation which has to be
+     * the image of an integer computation, see md->zz_unit */
+    if (md->zz_unit != 0 && md->zz_nonunit != 0) {
+        /* the linear algebra has stored this round in the trace, it is
+         * freed with the trace */
+        if (md->trace_level == LEARN_TRACER) {
+            md->tr->ltd++;
+        }
+        free_new_matrix_rows(mat, md);
+        clear_matrix(mat);
+        md->tc_state = 0;
+        *errp = 3;
+        return 1;
+    }
+
     /* check for bad prime */
     if (md->trace_level == APPLY_TRACER) {
         if (mat->np != md->tr->td[md->trace_rd].nlm) {
@@ -880,6 +895,8 @@ static bs_t *run_f4(
 
     /* reset error */
     *errp = 0;
+    /* number of rounds done, see md->zz_max_rd */
+    int32_t rd = 0;
     while (!done) {
         rrt = realtime();
         crt = cputime();
@@ -893,12 +910,30 @@ static bs_t *run_f4(
         }
         if (!done && md->trace_level != APPLY_TRACER) {
             done = update(bs, md);
+            rd++;
+            if (md->zz_max_rd > 0 && rd >= md->zz_max_rd) {
+                done = 1;
+            }
         }
 
         print_round_timings(VERBSTREAM, md, rrt, crt);
     }
+    if (md->zz_nonunit != 0) {
+        gmd->zz_nonunit = 1;
+        gmd->zz_rd      = rd;
+    }
     if (*errp > 0) {
-        free_basis_and_only_local_hash_table_data(&bs);
+        /* when learning the trace the basis shares the hash table of the
+         * global basis, see copy_basis_mod_p */
+        if (bs->ht == gbs->ht) {
+            free_basis_without_hash_table(&bs);
+        } else {
+            free_basis_and_only_local_hash_table_data(&bs);
+        }
+        /* a trace learnt so far is not used */
+        if (md->trace_level == LEARN_TRACER) {
+            free_trace(&md->tr);
+        }
         /* also release the local meta data (symbolic hash table, pair
          * set, ...) and the matrix: finalize_f4 is not called here */
         free_local_data(&mat, &md);

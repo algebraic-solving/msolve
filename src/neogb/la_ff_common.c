@@ -1445,6 +1445,20 @@ static hm_t *LA_FF(reduce_sparse_row_by_pivots)(
     return row;
 }
 
+/* For strong Groebner bases over the integers the computation modulo a
+ * prime is the image of the integer computation as long as all pivots have
+ * lead coefficients +-1, see st->zz_unit. lc is the lead coefficient of a
+ * new pivot before its normalization. */
+static inline void LA_FF(check_unit_lead_coefficient)(
+        md_t *st,
+        const LA_CF_T lc
+        )
+{
+    if (st->zz_unit != 0 && lc != 1 && (uint64_t)lc != st->fc - 1) {
+        __atomic_store_n(&st->zz_nonunit, 1, __ATOMIC_RELAXED);
+    }
+}
+
 static void LA_FF(exact_sparse_reduced_echelon_form)(
         mat_t *mat,
         const bs_t * const tbr,
@@ -1691,6 +1705,8 @@ static void LA_FF(exact_sparse_reduced_echelon_form)(
                      * NOTE: this has to be done here, otherwise the reduction may
                      * lead to wrong results in a parallel computation since other
                      * threads might directly use the new pivot once it is synced. */
+                    LA_FF(check_unit_lead_coefficient)(
+                            st, mat->LA_CF[npiv[COEFFS]][0]);
                     if (mat->LA_CF[npiv[COEFFS]][0] != 1) {
                         LA_FF(normalize_sparse_matrix_row)(
                                 mat->LA_CF[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
@@ -2028,6 +2044,8 @@ static int LA_FF(exact_application_sparse_reduced_echelon_form)(
                  * NOTE: this has to be done here, otherwise the reduction may
                  * lead to wrong results in a parallel computation since other
                  * threads might directly use the new pivot once it is synced. */
+                LA_FF(check_unit_lead_coefficient)(
+                        st, mat->LA_CF[npiv[COEFFS]][0]);
                 if (mat->LA_CF[npiv[COEFFS]][0] != 1) {
                     LA_FF(normalize_sparse_matrix_row)(
                             mat->LA_CF[npiv[COEFFS]], npiv[PRELOOP], npiv[LENGTH], st->fc);
@@ -2874,7 +2892,10 @@ static void LA_FF(exact_sparse_linear_algebra)(
     for (len_t i = 0; i < mat->nrl; ++i) {
         nnz += mat->tr[i][LENGTH];
     }
+    /* the dense path does not check the lead coefficients of the new
+     * pivots, see LA_FF(check_unit_lead_coefficient) */
     if (st->nf == 0 && st->in_final_reduction_step == 0 && mat->nrl > 0
+            && st->zz_unit == 0
             && 2 * nnz >= (uint64_t)mat->nrl * mat->ncr) {
         /* when learning the trace we need to know which rows of mat->tr
          * reduce to new pivots and which known pivots they used */

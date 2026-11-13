@@ -34,6 +34,7 @@ md_t *copy_meta_data(
     md->application_nr_mult = 0;
     md->application_nr_add  = 0;
     md->application_nr_red  = 0;
+    md->zz_nonunit = 0;
     md->zz_roff = NULL;
     md->zz_rbi  = NULL;
 

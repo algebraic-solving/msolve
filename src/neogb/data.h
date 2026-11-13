@@ -445,6 +445,7 @@ struct md_t
     int64_t num_rht;
     int64_t num_rowsred;
     int64_t num_zerored;
+    int64_t num_gcdred; /* gcd steps in the linear algebra over ZZ */
     int64_t mat_max_nrows;
     int64_t mat_max_ncols;
     double  mat_max_density;
@@ -494,6 +495,7 @@ struct md_t
     int32_t ff_bits;
     int32_t nf;
     int32_t f4_qq_round;
+    int32_t zz; /* 1 for strong Groebner bases over the integers */
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,
                                1=SCHREYER,

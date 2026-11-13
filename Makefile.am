@@ -12,6 +12,7 @@ check_PROGRAMS  = \
 			  neogb_f4_52_bit \
 			  neogb_gf2_ext \
 			  neogb_gf2 \
+			  neogb_zz \
 			  fglm_build_matrixn_radical-shape-31 \
 			  fglm_build_matrixn_nonradical-shape-31 \
 			  fglm_build_matrixn_nonradical-radicalshape-31 \
@@ -113,6 +114,7 @@ neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c
 neogb_f4_52_bit_SOURCES = test/neogb/f4/f4_52_bit.c
 neogb_gf2_ext_SOURCES 	= test/neogb/la/gf2_ext.c
 neogb_gf2_SOURCES 	= test/neogb/la/gf2.c
+neogb_zz_SOURCES 	= test/neogb/la/zz.c
 fglm_build_matrixn_radical_shape_31_SOURCES = test/fglm/build_matrixn_radical-shape-31.c
 fglm_build_matrixn_nonradical_shape_31_SOURCES = test/fglm/build_matrixn_nonradical-shape-31.c
 fglm_build_matrixn_nonradical_radicalshape_31_SOURCES = test/fglm/build_matrixn_nonradical-radicalshape-31.c

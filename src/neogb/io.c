@@ -1112,6 +1112,10 @@ void linear_algebra(
 {
     switch (st->ff_bits) {
         case 0:
+            if (st->zz != 0) {
+                exact_sparse_linear_algebra_zz(mat, tbr, bs, st);
+                return;
+            }
             if (st->laopt == 1) {
                 exact_sparse_linear_algebra_ab_first_qq(mat, tbr, bs, st);
             } else {
@@ -1223,6 +1227,10 @@ void exact_linear_algebra(
 {
     switch (st->ff_bits) {
         case 0:
+            if (st->zz != 0) {
+                exact_sparse_linear_algebra_zz(mat, tbr, bs, st);
+                return;
+            }
             exact_sparse_linear_algebra_qq(mat, tbr, bs, st);
             return;
         case 8:
@@ -1306,6 +1314,10 @@ void interreduce_matrix_rows(
 {
     switch (st->ff_bits) {
         case 0:
+            if (st->zz != 0) {
+                interreduce_matrix_rows_zz(mat, bs, st, free_basis);
+                return;
+            }
             interreduce_matrix_rows_qq(mat, bs, st, free_basis);
             return;
         case 8:

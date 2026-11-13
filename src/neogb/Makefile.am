@@ -40,6 +40,7 @@ EXTRA_DIST	=		basis.h \
 								la_gf2_ext.c \
 								la_gf2.c \
 								la_qq.c \
+								la_zz.c \
 								modular.c \
 								nf.c \
 								order.c \

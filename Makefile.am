@@ -61,6 +61,7 @@ checkdiff       = \
 			  test/diff/diff_kat6-52.sh \
 			  test/diff/diff_kat6-gf16.sh \
 			  test/diff/diff_kat6-gf256.sh \
+			  test/diff/diff_kat6sq-qq.sh \
 			  test/diff/diff_kat7-30.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_kat8-qq-truncate.sh \

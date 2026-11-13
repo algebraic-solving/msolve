@@ -6503,6 +6503,7 @@ restart:
               flags->info_level = info_level;
               flags->pbm_file = generate_pbm;
               flags->print_gb = print_gb;
+              flags->lift_matrix = lift_matrix;
               flags->files = files;
 
               int ret_gb = 0;

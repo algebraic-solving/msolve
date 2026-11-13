@@ -107,6 +107,15 @@ struct zz_dense_t
     uint64_t *cgen;     /* generations in which the pivots were set */
     uint64_t g0;        /* generation when the current reduction started */
     struct zz_dense_t *aux; /* for reducing pivots again, NULL if not */
+    /* very sparse rows with 64 bit entries (sp = 1): the columns of
+     * possibly nonzero entries are kept in the heap hp of size nh, mk marks
+     * them, the columns which stay nonzero are collected in rem */
+    int sp;
+    hm_t *hp;
+    len_t nh;
+    uint8_t *mk;
+    hm_t *rem;
+    len_t nrem;
 };
 
 static inline zz_row_t *zz_load_piv(
@@ -161,6 +170,12 @@ static void zz_dense_init(
     d->cgen = NULL;
     d->g0   = 0;
     d->aux  = NULL;
+    d->sp   = 0;
+    d->nh   = 0;
+    d->nrem = 0;
+    d->hp   = (hm_t *)malloc((unsigned long)nc * sizeof(hm_t));
+    d->mk   = (uint8_t *)calloc((unsigned long)nc, sizeof(uint8_t));
+    d->rem  = (hm_t *)malloc((unsigned long)nc * sizeof(hm_t));
 }
 
 static void zz_row_free(
@@ -201,7 +216,69 @@ static void zz_dense_free(
     free(d->dz);
     free(d->dp);
     free(d->d64);
+    free(d->hp);
+    free(d->mk);
+    free(d->rem);
     mpz_clears(d->a, d->q, d->g, d->u, d->v, d->s, d->t, NULL);
+}
+
+/* adds the column c to the heap of a sparse dense row */
+static inline void zz_heap_push(
+        zz_dense_t *d,
+        const hm_t c
+        )
+{
+    if (d->mk[c] != 0) {
+        return;
+    }
+    d->mk[c] = 1;
+    hm_t *hp = d->hp;
+    len_t k  = d->nh++;
+    while (k > 0 && hp[(k-1)/2] > c) {
+        hp[k] = hp[(k-1)/2];
+        k     = (k-1)/2;
+    }
+    hp[k] = c;
+}
+
+/* removes and returns the smallest column of the heap */
+static inline hm_t zz_heap_pop(
+        zz_dense_t *d
+        )
+{
+    hm_t *hp = d->hp;
+    const hm_t c = hp[0];
+    const hm_t x = hp[--d->nh];
+    const len_t n = d->nh;
+    len_t k = 0;
+    for (;;) {
+        len_t m = 2*k+1;
+        if (m >= n) {
+            break;
+        }
+        if (m+1 < n && hp[m+1] < hp[m]) {
+            m++;
+        }
+        if (hp[m] >= x) {
+            break;
+        }
+        hp[k] = hp[m];
+        k     = m;
+    }
+    hp[k]    = x;
+    d->mk[c] = 0;
+    return c;
+}
+
+/* back to scanning all columns of the dense row */
+static inline void zz_leave_sparse(
+        zz_dense_t *d
+        )
+{
+    while (d->nh > 0) {
+        d->mk[d->hp[--d->nh]] = 0;
+    }
+    d->sp = 0;
 }
 
 static void zz_retire(
@@ -414,6 +491,7 @@ static void zz_promote(
 {
     len_t j;
 
+    zz_leave_sparse(d);
     for (j = d->lo; j < nc; ++j) {
         if (d->d64[j] != 0) {
             mpz_set_si(d->dz[j], d->d64[j]);
@@ -437,6 +515,7 @@ static void zz_dense_load(
     const len_t len       = row[LENGTH];
     const hm_t * const ds = row + OFFSET;
     d->lo = ds[0];
+    d->sp = 0;
     if (c32 != NULL) {
         uint64_t m = 0;
         for (j = 0; j < len; ++j) {
@@ -563,6 +642,53 @@ static zz_row_t *zz_new_row(
     return r;
 }
 
+/* the new row of a sparse dense row, its entries are in the columns rem,
+ * the dense entries are zero afterwards */
+static zz_row_t *zz_new_row_sparse(
+        zz_dense_t *d
+        )
+{
+    len_t i;
+    int fits = 1;
+
+    int64_t *d64 = d->d64;
+    const len_t len = d->nrem;
+    const hm_t * const rem = d->rem;
+    for (i = 0; i < len; ++i) {
+        fits &= d64[rem[i]] >= -INT32_MAX && d64[rem[i]] <= INT32_MAX;
+    }
+    zz_row_t *r = (zz_row_t *)malloc(sizeof(zz_row_t));
+    r->row = (hm_t *)malloc((unsigned long)(len+OFFSET) * sizeof(hm_t));
+    r->own = 1;
+    r->gen = 0;
+    r->mx  = 0;
+    r->c32 = NULL;
+    r->cf  = NULL;
+    const int neg = d64[rem[0]] < 0;
+    if (fits != 0) {
+        r->c32 = (int32_t *)malloc((unsigned long)len * sizeof(int32_t));
+    } else {
+        r->cf  = (mpz_t *)malloc((unsigned long)len * sizeof(mpz_t));
+    }
+    for (i = 0; i < len; ++i) {
+        const int64_t e = neg != 0 ? -d64[rem[i]] : d64[rem[i]];
+        if (fits != 0) {
+            r->c32[i] = (int32_t)e;
+            const uint32_t a = (uint32_t)abs(r->c32[i]);
+            r->mx = a > r->mx ? a : r->mx;
+        } else {
+            mpz_init_set_si(r->cf[i], e);
+        }
+        d64[rem[i]] = 0;
+        r->row[OFFSET+i] = rem[i];
+    }
+    r->row[PRELOOP] = len % UNROLL;
+    r->row[LENGTH]  = len;
+    d->nrem = 0;
+    d->sp   = 0;
+    return r;
+}
+
 /* the pivot of column c was set, rows with entries in c are reduced again
  * before they are used as pivots */
 static inline void zz_new_generation(
@@ -680,24 +806,34 @@ static int64_t zz_reduce_dense_row(
 {
     len_t i;
 
-    d->g0 = __atomic_load_n(d->gen, __ATOMIC_ACQUIRE);
-    for (i = sc; i < nc; ++i) {
+    d->g0   = __atomic_load_n(d->gen, __ATOMIC_ACQUIRE);
+    d->nrem = 0;
+    /* a sparse row takes its columns from the heap, it may become dense */
+    i = sc;
+    for (;;) {
+        if (d->sp != 0) {
+            if (d->nh == 0) {
+                break;
+            }
+            i = zz_heap_pop(d);
+        } else if (i >= nc) {
+            break;
+        }
         if (d->big == 0 ? d->d64[i] == 0 : mpz_sgn(d->dz[i]) == 0) {
-            continue;
+            goto next;
         }
         zz_row_t *p = zz_load_piv(pivs, i);
         if (p == NULL) {
             if (lc == -1) {
                 lc = i;
             }
-            continue;
+            goto next;
         }
         if (d->aux != NULL && p->own != 0 && zz_stale(d, p)) {
             p = zz_refresh_pivot(d, pivs, p, i, nc);
             if (p == NULL) {
                 /* the pivot changed, redo this column */
-                i--;
-                continue;
+                goto redo;
             }
         }
         if (d->big == 0) {
@@ -710,12 +846,19 @@ static int64_t zz_reduce_dense_row(
                 } else {
                     q = zz_quotient_64(b, a);
                     if (q == 0) {
-                        continue;
+                        goto next;
                     }
                 }
                 if (q != 0 && zz_room(d, q, p->mx, nc)) {
                     zz_submul_64(d->d64, q, p->row, p->c32);
-                    continue;
+                    if (d->sp != 0) {
+                        const len_t len = p->row[LENGTH];
+                        const hm_t * const ds = p->row + OFFSET;
+                        for (len_t j = 1; j < len; ++j) {
+                            zz_heap_push(d, ds[j]);
+                        }
+                    }
+                    goto next;
                 }
             }
             zz_promote(d, nc);
@@ -728,7 +871,7 @@ static int64_t zz_reduce_dense_row(
             } else {
                 if (!zz_gcd_step(d, pivs, p, i, nc)) {
                     /* the pivot changed, redo this column */
-                    i--;
+                    goto redo;
                 }
             }
         } else {
@@ -736,6 +879,19 @@ static int64_t zz_reduce_dense_row(
             if (mpz_sgn(d->q) != 0) {
                 zz_addmul_mpz(d->dz, d->q, p, 1);
             }
+        }
+next:
+        if (d->sp != 0) {
+            if (d->d64[i] != 0) {
+                d->rem[d->nrem++] = i;
+            }
+        } else {
+            i++;
+        }
+        continue;
+redo:
+        if (d->sp != 0) {
+            zz_heap_push(d, i);
         }
     }
     return lc;
@@ -755,9 +911,11 @@ static int zz_insert_dense_row(
         const int64_t lc = zz_reduce_dense_row(d, pivs, sc, -1, nc);
         if (lc == -1) {
             d->big = 0;
+            d->sp  = 0;
             return 0;
         }
-        zz_row_t *r = zz_new_row(d->d64, d->dz, d->big, lc, nc);
+        zz_row_t *r = d->sp != 0 ? zz_new_row_sparse(d)
+            : zz_new_row(d->d64, d->dz, d->big, lc, nc);
         d->big = 0;
         r->gen = d->g0;
         if (zz_cas_piv(pivs, lc, NULL, r)) {
@@ -851,6 +1009,7 @@ static len_t zz_reduce_rows(
         const bs_t * const bs,
         zz_dense_t *ds,
         const len_t nc,
+        const uint64_t apl,
         const int nthrds
         )
 {
@@ -862,6 +1021,17 @@ static len_t zz_reduce_rows(
     for (i = 0; i < nr; ++i) {
         zz_dense_t *d = ds + 2 * omp_get_thread_num();
         zz_dense_load_basis_row(d, rows[i], bs->cf_qq[rows[i][COEFFS]]);
+        /* very sparse rows are reduced via a heap of their columns, as
+         * over prime fields */
+        const len_t len   = rows[i][LENGTH];
+        const uint64_t rc = nc - rows[i][OFFSET];
+        if (d->big == 0 && (uint64_t)len * 32 < rc
+                && (uint64_t)len * apl * 64 < rc) {
+            d->sp = 1;
+            for (len_t j = 0; j < len; ++j) {
+                zz_heap_push(d, rows[i][OFFSET+j]);
+            }
+        }
         free(rows[i]);
         rows[i] = NULL;
         if (zz_insert_dense_row(d, pivs, nc) == 0) {
@@ -939,8 +1109,16 @@ static len_t exact_sparse_reduced_echelon_form_zz(
     uint64_t *cgen  = (uint64_t *)calloc((unsigned long)ncols, sizeof(uint64_t));
     zz_dense_t *ds  = zz_init_dense_rows(&gen, cgen, ncols, nthrds);
 
+    /* average length of the known pivots */
+    uint64_t apl = 1;
+    if (nru > 0) {
+        for (i = 0; i < nru; ++i) {
+            apl += mat->rr[i][LENGTH];
+        }
+        apl = apl / nru + 1;
+    }
     const len_t nzero = zz_reduce_rows(pivs, mat->tr, mat->nrl, bs, ds,
-            ncols, nthrds);
+            ncols, apl, nthrds);
     zz_interreduce_new_pivots(ds, pivs, ncols);
     zz_collect_new_pivots(mat, pivs, ncols, 0);
 
@@ -1011,7 +1189,15 @@ static void interreduce_matrix_rows_zz(
     uint64_t gen    = 0;
     uint64_t *cgen  = (uint64_t *)calloc((unsigned long)ncols, sizeof(uint64_t));
     zz_dense_t *ds  = zz_init_dense_rows(&gen, cgen, ncols, nthrds);
-    zz_reduce_rows(pivs, mat->rr, mat->nr, bs, ds, ncols, nthrds);
+    /* average length of the rows */
+    uint64_t apl = 1;
+    if (mat->nr > 0) {
+        for (len_t i = 0; i < mat->nr; ++i) {
+            apl += mat->rr[i][LENGTH];
+        }
+        apl = apl / mat->nr + 1;
+    }
+    zz_reduce_rows(pivs, mat->rr, mat->nr, bs, ds, ncols, apl, nthrds);
     zz_interreduce_new_pivots(ds, pivs, ncols);
 
     if (free_basis != 0) {

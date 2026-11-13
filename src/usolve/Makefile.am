@@ -9,7 +9,6 @@ EXTRA_DIST = 		libusolve.h \
 								data_usolve.c \
 								descartes.c \
 								evaluate.c \
-								print_usolve.c \
 								refine.c \
 								refine_arb.c \
 								taylor_shift.c \

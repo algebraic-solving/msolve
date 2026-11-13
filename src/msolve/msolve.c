@@ -4824,36 +4824,6 @@ static real_point_t *real_roots_params(mpz_param_struct **params,
   return pts;
 }
 
-real_point_t *isolate_real_roots_param(mpz_param_t param, long *nb_real_roots_ptr,
-                         interval **real_roots_ptr, int32_t precision,
-                         int32_t nr_threads, int32_t info_level) {
-  mpz_param_struct *p = param;
-  return real_roots_params(&p, 1, nb_real_roots_ptr, real_roots_ptr,
-                           precision, nr_threads, info_level, NULL);
-}
-
-void isolate_real_roots_lparam(mpz_param_array_t lparams, long **lnbr_ptr,
-                               interval ***lreal_roots_ptr,
-                               real_point_t ***lreal_pts_ptr, int32_t precision,
-                               int32_t nr_threads, int32_t info_level) {
-  long *lnbr = malloc(sizeof(long) * lparams->nb);
-  interval **lreal_roots = malloc(sizeof(interval *) * lparams->nb);
-  real_point_t **lreal_pts = malloc(sizeof(real_point_t *) * lparams->nb);
-  for (int i = 0; i < lparams->nb; i++) {
-    lreal_roots[i] = NULL;
-    lreal_pts[i] = NULL;
-  }
-
-  for (int i = 0; i < lparams->nb; i++) {
-    lreal_pts[i] =
-        isolate_real_roots_param(lparams->params[i], lnbr + i, lreal_roots + i,
-                                 precision, nr_threads, info_level);
-  }
-  (*lnbr_ptr) = lnbr;
-  (*lreal_roots_ptr) = lreal_roots;
-  (*lreal_pts_ptr) = lreal_pts;
-}
-
 /* isolates the real roots of the components of the solution set (see
  * splitting.c) */
 static real_point_t *split_isolate_real_roots(const mpz_param_array_struct *params,
@@ -5007,29 +4977,6 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
     }
   }
   return b;
-}
-
-void display_arrays_of_real_roots(files_gb *files, int32_t len,
-                                  real_point_t **lreal_pts, long *lnbr) {
-  if (files->out_file != NULL) {
-    FILE *ofile = fopen(files->out_file, "ab+");
-    fprintf(ofile, "[");
-    for (int i = 0; i < len - 1; i++) {
-      display_real_points(ofile, lreal_pts[i], lnbr[i]);
-      fprintf(ofile, ", \n");
-    }
-    display_real_points(ofile, lreal_pts[len - 1], lnbr[len - 1]);
-    fprintf(ofile, "];\n");
-    fclose(ofile);
-  } else {
-    fprintf(VERBSTREAM, "[");
-    for (int i = 0; i < len - 1; i++) {
-      display_real_points(VERBSTREAM, lreal_pts[i], lnbr[i]);
-      fprintf(VERBSTREAM, ", \n");
-    }
-    display_real_points(VERBSTREAM, lreal_pts[len - 1], lnbr[len - 1]);
-    fprintf(VERBSTREAM, "];\n");
-  }
 }
 
 void display_output(int b, int dim, int dquot, files_gb *files,

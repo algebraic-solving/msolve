@@ -65,6 +65,9 @@
  * coefficients are handled by the exact fallback. */
 
 #include <math.h>
+#if defined(__GLIBC__)
+#include <malloc.h>
+#endif
 #include <sys/resource.h>
 #include <unistd.h>
 #if defined(__APPLE__)
@@ -1151,6 +1154,11 @@ static void usolve_bal_run(usolve_bal_t *B){
   const slong w0 = B->w;
   /* the work space of FLINT's products in the exact bisection */
   flint_cleanup();
+#if defined(__GLIBC__)
+  /* the memory freed so far is given back to the system, so that the
+   * resident memory measures what is used */
+  malloc_trim(0);
+#endif
   const double thr = USOLVE_BAL_THRMEM * (double)(n + 1) * w0 / 8;
   double peak, cur, room;
   if(usolve_bal_rss(&peak, &cur)){

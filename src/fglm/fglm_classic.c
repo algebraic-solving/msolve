@@ -34,11 +34,20 @@ void print_fglm_classic_data(
     fprintf(file, "\n---------------- TIMINGS ----------------\n");
     fprintf(file, "overall(elapsed) %11.2f sec\n", st->fglm_rtime);
     fprintf(file, "overall(cpu) %15.2f sec\n", st->fglm_ctime);
+    fprintf(file, "normal forms(elapsed) %6.2f sec\n", matrix->nf_rtime);
     fprintf(file, "-----------------------------------------\n");
+    /* normal forms computed (on demand included) which are not lm of the
+     * DRL Gb */
+    unsigned long nfc = 0;
+    for(szmat_t r = 0; r < matrix->nnfs; r++){
+      if(!matrix->is_lm[r] && (matrix->have_row == NULL || matrix->have_row[r])){
+        nfc++;
+      }
+    }
     fprintf(file, "\n---------- COMPUTATIONAL DATA -----------\n");
     fprintf(file, "degree of ideal    %16lu\n", (unsigned long)matrix->ncols);
     fprintf(file, "#dense rows        %16lu\n", (unsigned long)matrix->nnfs);
-    fprintf(file, "#normal forms      %16lu\n", (unsigned long)(matrix->nnfs - matrix->nlms));
+    fprintf(file, "#normal forms      %16lu\n", nfc);
     /* fprintf(file, "total density                   %5.1f%%\n", 100*matrix->totaldensity); */
     /* fprintf(file, "density of the free part        %5.1f%%\n", 100*matrix->freepartdensity); */
     /* if(matrix->nnfs){ */

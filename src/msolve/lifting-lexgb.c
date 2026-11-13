@@ -189,7 +189,6 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
   const int32_t info_level = flags->info_level;
 
   for(int attempt = 0; attempt < LEXGB_MAX_ATTEMPTS; attempt++){
-    double rt0 = realtime();
     bs_t *bs  = NULL;
     ht_t *bht = NULL;
     md_t *md  = NULL;
@@ -336,12 +335,8 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     int *bbad = malloc(nthr * sizeof(int));
     CF_t *bres = malloc((uint64_t)nthr * (tr.lex.ncoeffs + 1) * sizeof(CF_t));
     uint32_t prime = rand() % (1303905301 - (1 << 30) + 1) + (1 << 30);
-    if(info_level){
-        fprintf(VERBSTREAM, "New prime = %d\n", prime);
-    }
     int consec_bad = 0;
     uint32_t nbad = 0;
-    double rt_app = realtime();
     /* timings of the second prime (first prime of the first batch) */
     double st_f4 = 0, st_fglm = 0, st_prime2 = 0;
     int first_batch = 1;
@@ -352,6 +347,9 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
       for(int i = 0; i < nthr; i++){
         prime = lexgb_next_prime(prime, bs, p0);
         bprimes[i] = prime;
+      }
+      if(info_level && first_batch){
+        fprintf(VERBSTREAM, "New prime = %u\n", bprimes[0]);
       }
 #pragma omp parallel for num_threads(nthr) schedule(dynamic)
       for(int i = 0; i < nthr; i++){
@@ -457,10 +455,6 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
 
     if(done){
       if(info_level){
-        fprintf(VERBSTREAM, "multi-modular steps: %u primes used, %u bad, "
-                "%lu bits, %d thread(s), %.2f sec (overall %.2f sec)\n",
-                modgbs->nprimes, nbad, (unsigned long)mpz_sizeinbase(mod_p, 2),
-                nthr, realtime() - rt_app, realtime() - rt0);
         fprintf(VERBSTREAM,"\n\n---------- COMPUTATIONAL DATA -----------\n");
         fprintf(VERBSTREAM, "Max coeff. bitsize %16lu\n",
                 (unsigned long)max_bit_size_gb(modgbs));

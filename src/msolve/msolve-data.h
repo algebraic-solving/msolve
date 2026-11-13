@@ -244,6 +244,7 @@ typedef struct{
   char *is_lm;        // nnfs
   int nthreads;       // number of threads for FGLM, for the future over QQ
   char *have_row;     // nnfs: computed dense rows (NULL: all of them)
+  double nf_rtime;    // elapsed time in the normal forms (mm_compute_nf_rows)
 } sp_multimatfglm_t;
 
 /* Reduced lex Gb by FGLM (monic polynomials)

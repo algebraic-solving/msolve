@@ -62,8 +62,8 @@ void print_fglm_classic_data(
 }
 
 
-/* Threshold on D for parallelism in fglmc_mulvec and fglmc_lu_reduce:
- * below it, the sequential path is used. Not tuned yet. */
+/* Threshold on D for parallelism in fglmc_mulvec: below it, the sequential
+ * path is used (fglmc_gemm_sub has its own threshold). */
 #define FGLMC_PAR_MIN 256
 
 /* Threads for FLINT (products, echelon form, block solving) :
@@ -104,10 +104,22 @@ static int fglmc_cmp(const int32_t *a, const int32_t *b, int32_t nv, int ord){
   return 0;
 }
 
+/* Factor of the 64-bit products in the delayed accumulations: with
+ * AVX-512DQ, 64 x 64 bit products are vectorized (vpmullq) and are faster
+ * here than 32 x 32 -> 64 bit ones; without it (AVX2), 64-bit products are
+ * emulated, so 32-bit factors (vpmuludq) are used. */
+#if defined(__AVX512DQ__)
+typedef uint64_t fglmc_fac_t;
+#else
+typedef uint32_t fglmc_fac_t;
+#endif
+
 /* At -O2, GCC leaves the inner loops of fglmc_mulvec scalar (very cheap cost
- * model); this cost model lets it vectorize them. */
+ * model); this cost model lets it vectorize them. GCC < 12 does not
+ * vectorize at -O2: tree-vectorize. */
 #if defined(__GNUC__) && !defined(__clang__)
-#define FGLMC_VECTORIZE __attribute__((optimize("vect-cost-model=dynamic")))
+#define FGLMC_VECTORIZE \
+  __attribute__((optimize("tree-vectorize", "vect-cost-model=dynamic")))
 #else
 #define FGLMC_VECTORIZE
 #endif
@@ -139,7 +151,7 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
       memset(acc + l0, 0, (l1 - l0) * sizeof(uint64_t));
       uint32_t nd = 0;
       for(szmat_t k = 0; k < D; k++){
-        const uint64_t a = v[k];
+        const fglmc_fac_t a = (fglmc_fac_t)v[k];
         if(!a) continue;
         const szmat_t s = sel[k];
         if(s < D){
@@ -156,7 +168,7 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
             continue;
           }
           const CF_t *row = M->dense_mat + (uint64_t)(s - D) * D;
-          for(szmat_t l = l0; l < l1; l++) acc[l] += a * row[l];
+          for(szmat_t l = l0; l < l1; l++) acc[l] += (uint64_t)a * row[l];
           if(++nd == m){
             for(szmat_t l = l0; l < l1; l++) acc[l] -= Mred & -(acc[l] >> 63);
             nd = 0;
@@ -171,7 +183,7 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
   memset(acc, 0, D * sizeof(uint64_t));
   uint32_t nd = 0;
   for(szmat_t k = 0; k < D; k++){
-    const uint64_t a = v[k];
+    const fglmc_fac_t a = (fglmc_fac_t)v[k];
     if(!a) continue;
     const szmat_t s = sel[k];
     if(s < D){
@@ -183,7 +195,7 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
         continue;
       }
       const CF_t *row = M->dense_mat + (uint64_t)(s - D) * D;
-      for(szmat_t l = 0; l < D; l++) acc[l] += a * row[l];
+      for(szmat_t l = 0; l < D; l++) acc[l] += (uint64_t)a * row[l];
       if(++nd == m){
         for(szmat_t l = 0; l < D; l++) acc[l] -= Mred & -(acc[l] >> 63);
         nd = 0;
@@ -243,64 +255,31 @@ static int fglmc_lu_reduce(fglmc_lu_t *E, mp_limb_t *w, slong j0, mp_limb_t *a){
   const mp_limb_t p = E->p;
   const uint64_t pp = (uint64_t)p * p;
   const uint64_t Mred = ((UINT64_C(1) << 63) / pp) * pp;
-#ifdef _OPENMP
-  const int par = E->nthr > 1 && D >= FGLMC_PAR_MIN && r - j0 > 1;
-#else
-  const int par = 0;
-#endif
-  if(par){
-    for(slong j = j0; j < r; j++){
-      uint64_t t = w[E->piv[j]];
-      for(slong i = j0; i < j; i++){
-        const mp_limb_t ai = a[i - j0];
-        const mp_limb_t pji = E->PtT[(uint64_t)i * D + j];
-        if(ai && pji){
-            t += (uint64_t)(p - ai) * pji;
-            t -= Mred & -(t >> 63);
-        }
-      }
-      a[j - j0] = (mp_limb_t)(t % p);
+  /* coefficients: forward substitution on the pivots, PtT row by row
+   * (t_i = w[piv_i] - sum_{j<i} a_j U_j[piv_i]), delayed reduction */
+  const slong n = r - j0;
+  const uint64_t q = (uint64_t)(p - 1) * (p - 1);
+  uint32_t m = (uint32_t)(((UINT64_C(1) << 63) - 1) / (q ? q : 1));
+  if(m < 1) m = 1;
+  if(m > 8) m = 8;
+  uint64_t *t = E->tmp;
+  for(slong i = 0; i < n; i++) t[i] = w[E->piv[j0 + i]];
+  uint32_t nd = 0;
+  for(slong j = 0; j < n; j++){
+    const mp_limb_t aj = (mp_limb_t)(t[j] % p);
+    a[j] = aj;
+    if(!aj) continue;
+    const fglmc_fac_t na = (fglmc_fac_t)(p - aj);
+    const CF_t *Pj = E->PtT + (uint64_t)(j0 + j) * D + j0;
+    for(slong i = j + 1; i < n; i++) t[i] += (uint64_t)na * Pj[i];
+    if(++nd == m){
+      for(slong i = j + 1; i < n; i++) t[i] -= Mred & -(t[i] >> 63);
+      nd = 0;
     }
-#pragma omp parallel for num_threads(E->nthr) schedule(static)
-    for(slong l = 0; l < D; l++){
-      uint64_t t = w[l];
-      for(slong j = j0; j < r; j++){
-        const mp_limb_t aj = a[j - j0];
-        const mp_limb_t x = E->U[(uint64_t)j * D + l];
-        if(aj && x){
-            t += (uint64_t)(p - aj) * x;
-            t -= Mred & -(t >> 63);
-        }
-      }
-      w[l] = (mp_limb_t)(t % p);
-    }
-  } else {
-    /* coefficients: forward substitution on the pivots, PtT row by row
-     * (t_i = w[piv_i] - sum_{j<i} a_j U_j[piv_i]), delayed reduction */
-    const slong n = r - j0;
-    const uint64_t q = (uint64_t)(p - 1) * (p - 1);
-    uint32_t m = (uint32_t)(((UINT64_C(1) << 63) - 1) / (q ? q : 1));
-    if(m < 1) m = 1;
-    if(m > 8) m = 8;
-    uint64_t *t = E->tmp;
-    for(slong i = 0; i < n; i++) t[i] = w[E->piv[j0 + i]];
-    uint32_t nd = 0;
-    for(slong j = 0; j < n; j++){
-      const mp_limb_t aj = (mp_limb_t)(t[j] % p);
-      a[j] = aj;
-      if(!aj) continue;
-      const uint64_t na = p - aj;
-      const CF_t *Pj = E->PtT + (uint64_t)(j0 + j) * D + j0;
-      for(slong i = j + 1; i < n; i++) t[i] += na * Pj[i];
-      if(++nd == m){
-        for(slong i = j + 1; i < n; i++) t[i] -= Mred & -(t[i] >> 63);
-        nd = 0;
-      }
-    }
-    /* w -= a U[j0..r) */
-    fglmc_gemm_sub(w, D, a, n, E->U + (uint64_t)j0 * D, D, 1, n, D, p, 1,
-                   NULL);
   }
+  /* w -= a U[j0..r) (in parallel above the threshold of fglmc_gemm_sub) */
+  fglmc_gemm_sub(w, D, a, n, E->U + (uint64_t)j0 * D, D, 1, n, D, p,
+                 E->nthr, NULL);
   for(slong l = 0; l < D; l++){
       if(w[l]){
           return 0;
@@ -349,6 +328,9 @@ static void fglmc_lu_insert(fglmc_lu_t *E, const mp_limb_t *w, const mp_limb_t *
 #ifndef FGLMC_WB
 #define FGLMC_WB 512
 #endif
+#ifndef FGLMC_GEMM_PAR
+#define FGLMC_GEMM_PAR (UINT64_C(1) << 18) // min. K n w for threads
+#endif
 FGLMC_VECTORIZE
 static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
                            const mp_limb_t *C, const slong ldc,
@@ -367,7 +349,7 @@ static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
   /* column tiles in parallel; in a column tile, the rows j0..j1-1 of U are
    * used by FGLMC_RB rows of C */
 #pragma omp parallel for num_threads(nthr) schedule(static) \
-  if(nthr > 1 && (uint64_t)K * n * w >= (UINT64_C(1) << 20))
+  if(nthr > 1 && (uint64_t)K * n * w >= FGLMC_GEMM_PAR)
   for(slong l0 = 0; l0 < w; l0 += FGLMC_WB){
     const slong wl = (w - l0 < FGLMC_WB) ? w - l0 : FGLMC_WB;
     uint64_t acc[FGLMC_RB][FGLMC_WB];
@@ -380,12 +362,12 @@ static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
           /* the (at most m) nonzero terms of the group in one pass, padded
            * with zero coefficients to 4 or 8 terms */
           const mp_limb_t *cr = C + (uint64_t)(i0 + a) * ldc;
-          uint64_t c[8];
+          fglmc_fac_t c[8];
           const CF_t *u[8];
           int nz = 0;
           for(slong j = j0; j < j1; j++){
             if(cr[j]){
-              c[nz] = cr[j];
+              c[nz] = (fglmc_fac_t)cr[j];
               u[nz] = U + (uint64_t)(uidx ? uidx[j] : j) * ldu + l0;
               nz++;
             }
@@ -397,22 +379,22 @@ static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
             u[z] = u[0];
           }
           uint64_t *ac = acc[a];
-          const uint64_t c0 = c[0], c1 = c[1], c2 = c[2], c3 = c[3];
+          const fglmc_fac_t c0 = c[0], c1 = c[1], c2 = c[2], c3 = c[3];
           const CF_t *u0 = u[0], *u1 = u[1], *u2 = u[2], *u3 = u[3];
           if(nt == 4){
             for(slong l = 0; l < wl; l++){
-              const uint64_t t = ac[l] + c0 * u0[l] + c1 * u1[l]
-                                       + c2 * u2[l] + c3 * u3[l];
+              const uint64_t t = ac[l] + (uint64_t)c0 * u0[l] + (uint64_t)c1 * u1[l]
+                                       + (uint64_t)c2 * u2[l] + (uint64_t)c3 * u3[l];
               ac[l] = t - (Mred & -(t >> 63));
             }
           } else {
-            const uint64_t c4 = c[4], c5 = c[5], c6 = c[6], c7 = c[7];
+            const fglmc_fac_t c4 = c[4], c5 = c[5], c6 = c[6], c7 = c[7];
             const CF_t *u4 = u[4], *u5 = u[5], *u6 = u[6], *u7 = u[7];
             for(slong l = 0; l < wl; l++){
-              const uint64_t t = ac[l] + c0 * u0[l] + c1 * u1[l]
-                                       + c2 * u2[l] + c3 * u3[l]
-                                       + c4 * u4[l] + c5 * u5[l]
-                                       + c6 * u6[l] + c7 * u7[l];
+              const uint64_t t = ac[l] + (uint64_t)c0 * u0[l] + (uint64_t)c1 * u1[l]
+                                       + (uint64_t)c2 * u2[l] + (uint64_t)c3 * u3[l]
+                                       + (uint64_t)c4 * u4[l] + (uint64_t)c5 * u5[l]
+                                       + (uint64_t)c6 * u6[l] + (uint64_t)c7 * u7[l];
               ac[l] = t - (Mred & -(t >> 63));
             }
           }
@@ -618,9 +600,9 @@ static void fglmc_rel_flush(fglmc_lu_t *E, fglmc_rel_t *R, CF_t *coeffs){
         const mp_limb_t xm = (mp_limb_t)((a[m] % p) * E->dinv[m] % p);
         x[m] = xm;
         if(!xm) continue;
-        const uint64_t nx = p - xm;
+        const fglmc_fac_t nx = (fglmc_fac_t)(p - xm);
         const CF_t *Lm = E->L + (uint64_t)m * D;
-        for(slong k = m0; k < m; k++) a[k] += nx * Lm[k];
+        for(slong k = m0; k < m; k++) a[k] += (uint64_t)nx * Lm[k];
         if(++nd == nf){
           for(slong k = m0; k < m; k++) a[k] -= Mred & -(a[k] >> 63);
           nd = 0;

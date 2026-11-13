@@ -46,9 +46,13 @@
  * entries stays below 2^62; these reductions use AVX512, AVX2 or NEON.
  * Otherwise, and for gcd steps, GMP integers are used.
  *
- * Parallelization: the rows are reduced in parallel, new pivots and the
- * pivots of gcd steps are set by compare and swap. A replaced pivot may
- * still be read by other threads, it is freed after the reduction.
+ * Parallelization: the rows are reduced in chunks, first in parallel by
+ * the pivots present, without changing any pivot. Then they are reduced
+ * further and become new pivots one after the other. When the rows change
+ * the pivots concurrently, the new pivots of different threads are not
+ * reduced by each other and the coefficients blow up, by far more than
+ * the parallelization gains. The pivots are still set by compare and
+ * swap, a replaced pivot is freed after the reduction.
  *
  * Coefficient growth: a new pivot is reduced by the pivots present when it
  * is created. A pivot with unreduced entries in the columns of later
@@ -118,6 +122,10 @@ struct zz_dense_t
     uint8_t *mk;
     hm_t *rem;
     len_t nrem;
+    /* 1 if the pivots must not be changed: no gcd steps and no reductions
+     * of pivots again, a lead coefficient which is not divisible by the
+     * one of the pivot ends the elimination as a column without pivot */
+    int ro;
 };
 
 static inline zz_row_t *zz_load_piv(
@@ -173,6 +181,7 @@ static void zz_dense_init(
     d->g0   = 0;
     d->aux  = NULL;
     d->sp   = 0;
+    d->ro   = 0;
     d->nh   = 0;
     d->nrem = 0;
     d->hp   = (hm_t *)malloc((unsigned long)nc * sizeof(hm_t));
@@ -839,8 +848,18 @@ static int64_t zz_reduce_dense_row(
         if (p == NULL) {
             if (lc == -1) {
                 lc = i;
+                if (d->ro != 0) {
+                    goto stop;
+                }
             }
             goto next;
+        }
+        if (d->ro != 0 && p->own != 0 && zz_stale(d, p)) {
+            /* a pivot is only reduced again when it may be changed */
+            if (lc == -1) {
+                lc = i;
+            }
+            goto stop;
         }
         if (d->aux != NULL && p->own != 0 && zz_stale(d, p)) {
             p = zz_refresh_pivot(d, pivs, p, i, nc);
@@ -855,6 +874,10 @@ static int64_t zz_reduce_dense_row(
                 const int64_t b = d->d64[i];
                 int64_t q;
                 if (lc == -1) {
+                    if (b % a != 0 && d->ro != 0) {
+                        lc = i;
+                        goto stop;
+                    }
                     q = b % a == 0 ? b / a : 0;
                 } else {
                     q = zz_quotient_64(b, a);
@@ -881,6 +904,9 @@ static int64_t zz_reduce_dense_row(
             if (mpz_divisible_p(d->dz[i], d->a) != 0) {
                 mpz_divexact(d->q, d->dz[i], d->a);
                 zz_addmul_mpz(d->dz, d->q, p, 1);
+            } else if (d->ro != 0) {
+                lc = i;
+                goto stop;
             } else {
                 if (!zz_gcd_step(d, pivs, p, i, nc)) {
                     /* the pivot changed, redo this column */
@@ -905,6 +931,18 @@ next:
 redo:
         if (d->sp != 0) {
             zz_heap_push(d, i);
+        }
+    }
+    return lc;
+stop:
+    /* the remaining entries of a sparse row are collected */
+    if (d->sp != 0) {
+        d->rem[d->nrem++] = i;
+        while (d->nh > 0) {
+            const hm_t c = zz_heap_pop(d);
+            if (d->d64[c] != 0) {
+                d->rem[d->nrem++] = c;
+            }
         }
     }
     return lc;
@@ -1012,9 +1050,37 @@ static len_t zz_collect_new_pivots(
     return np;
 }
 
+/* the dense row d has just been loaded with the row row: if it is very
+ * sparse and has 64 bit entries, it is reduced via a heap of its columns,
+ * as over prime fields */
+static void zz_dense_check_sparse(
+        zz_dense_t *d,
+        const hm_t * const row,
+        const uint64_t apl,
+        const len_t nc
+        )
+{
+    const len_t len   = row[LENGTH];
+    const uint64_t rc = nc - row[OFFSET];
+    if (d->big == 0 && (uint64_t)len * 32 < rc
+            && (uint64_t)len * apl * 64 < rc) {
+        d->sp = 1;
+        for (len_t j = 0; j < len; ++j) {
+            zz_heap_push(d, row[OFFSET+j]);
+        }
+    }
+}
+
 /* reduces the rows rows[0], ..., rows[nr-1] with coefficients from the
- * basis by the pivots and among each other, in parallel; frees the rows;
- * returns the number of rows reduced to zero */
+ * basis by the pivots and among each other; frees the rows; returns the
+ * number of rows reduced to zero.
+ * The rows are handled in chunks: the rows of a chunk are reduced in
+ * parallel by the pivots present without changing them, up to their first
+ * column which has no pivot, needs a gcd step or a pivot which has to be
+ * reduced again. Then they are reduced
+ * further and inserted one after the other: when rows change the pivots
+ * concurrently, the new pivots of different threads are not reduced by
+ * each other and their coefficients blow up. */
 static len_t zz_reduce_rows(
         zz_row_t **pivs,
         hm_t **rows,
@@ -1029,28 +1095,45 @@ static len_t zz_reduce_rows(
     len_t i;
     len_t nzero = 0;
 
+    zz_row_t **red = (zz_row_t **)malloc((unsigned long)nr * sizeof(zz_row_t *));
+    const len_t cs = 8 * (len_t)nthrds;
+    for (len_t c0 = 0; c0 < nr; c0 += cs) {
+        const len_t c1 = c0 + cs < nr ? c0 + cs : nr;
 #pragma omp parallel for num_threads(nthrds) schedule(dynamic) \
     reduction(+:nzero)
-    for (i = 0; i < nr; ++i) {
-        zz_dense_t *d = ds + 2 * omp_get_thread_num();
-        zz_dense_load_basis_row(d, rows[i], bs->cf_qq[rows[i][COEFFS]]);
-        /* very sparse rows are reduced via a heap of their columns, as
-         * over prime fields */
-        const len_t len   = rows[i][LENGTH];
-        const uint64_t rc = nc - rows[i][OFFSET];
-        if (d->big == 0 && (uint64_t)len * 32 < rc
-                && (uint64_t)len * apl * 64 < rc) {
-            d->sp = 1;
-            for (len_t j = 0; j < len; ++j) {
-                zz_heap_push(d, rows[i][OFFSET+j]);
+        for (i = c0; i < c1; ++i) {
+            zz_dense_t *d = ds + 2 * omp_get_thread_num();
+            zz_dense_load_basis_row(d, rows[i], bs->cf_qq[rows[i][COEFFS]]);
+            zz_dense_check_sparse(d, rows[i], apl, nc);
+            free(rows[i]);
+            rows[i] = NULL;
+            d->ro = 1;
+            const int64_t lc = zz_reduce_dense_row(d, pivs, d->lo, -1, nc);
+            d->ro = 0;
+            if (lc == -1) {
+                d->big = 0;
+                d->sp  = 0;
+                red[i] = NULL;
+                nzero++;
+                continue;
+            }
+            red[i] = d->sp != 0 ? zz_new_row_sparse(d)
+                : zz_new_row(d->d64, d->dz, d->big, lc, nc);
+            d->big = 0;
+        }
+        for (i = c0; i < c1; ++i) {
+            if (red[i] == NULL) {
+                continue;
+            }
+            zz_dense_load(ds, red[i]->row, red[i]->c32, red[i]->cf);
+            zz_dense_check_sparse(ds, red[i]->row, apl, nc);
+            zz_row_free(red[i]);
+            if (zz_insert_dense_row(ds, pivs, nc) == 0) {
+                nzero++;
             }
         }
-        free(rows[i]);
-        rows[i] = NULL;
-        if (zz_insert_dense_row(d, pivs, nc) == 0) {
-            nzero++;
-        }
     }
+    free(red);
     return nzero;
 }
 

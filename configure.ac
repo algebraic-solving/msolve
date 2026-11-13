@@ -168,6 +168,12 @@ AC_CONFIG_LINKS([
  input_files/quadrics3-zz.ms:input_files/quadrics3-zz.ms
  output_files/quadrics3-zz.g2.res:output_files/quadrics3-zz.g2.res
  test/diff/diff_quadrics3-zz.sh:test/diff/diff_quadrics3-zz.sh
+ input_files/binomial7-zz.ms:input_files/binomial7-zz.ms
+ output_files/binomial7-zz.g2.res:output_files/binomial7-zz.g2.res
+ test/diff/diff_binomial7-zz.sh:test/diff/diff_binomial7-zz.sh
+ input_files/cyclic5-zz.ms:input_files/cyclic5-zz.ms
+ output_files/cyclic5-zz.g2.res:output_files/cyclic5-zz.g2.res
+ test/diff/diff_cyclic5-zz.sh:test/diff/diff_cyclic5-zz.sh
  input_files/eco10-31.ms:input_files/eco10-31.ms
  output_files/eco10-31.P2.d0.res:output_files/eco10-31.P2.d0.res
  test/diff/diff_eco10-31.sh:test/diff/diff_eco10-31.sh

@@ -223,7 +223,8 @@ static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
                            const mp_limb_t *C, const slong ldc,
                            const CF_t *U, const slong ldu,
                            const slong K, const slong n, const slong w,
-                           const mp_limb_t p, const int nthr);
+                           const mp_limb_t p, const int nthr,
+                           const szmat_t *uidx);
 
 /* Reduce w by the rows U_j, j0 <= j < r.
  * Returns 1 if w becomes 0 */
@@ -288,7 +289,8 @@ static int fglmc_lu_reduce(fglmc_lu_t *E, mp_limb_t *w, slong j0, mp_limb_t *a){
       }
     }
     /* w -= a U[j0..r) */
-    fglmc_gemm_sub(w, D, a, n, E->U + (uint64_t)j0 * D, D, 1, n, D, p, 1);
+    fglmc_gemm_sub(w, D, a, n, E->U + (uint64_t)j0 * D, D, 1, n, D, p, 1,
+                   NULL);
   }
   for(slong l = 0; l < D; l++){
       if(w[l]){
@@ -360,17 +362,21 @@ static void fglmc_lu_relation(fglmc_lu_t *E, const mp_limb_t *a, CF_t *c){
  * entry and their row strides; entries of B and C are reduced modulo p, U
  * has 32-bit entries. Tiles of FGLMC_RB rows and FGLMC_WB columns; the
  * products are accumulated in 64-bit integers kept below 2^63, m at a time
- * before folding (m depends on p: 8 for p < 2^30). */
+ * before folding (m depends on p: 8 for p < 2^30).
+ * If uidx != NULL, the row j of U is the row uidx[j] of the array U. */
 #ifndef FGLMC_RB
 #define FGLMC_RB 32
 #endif
-#define FGLMC_WB 256
+#ifndef FGLMC_WB
+#define FGLMC_WB 512
+#endif
 FGLMC_VECTORIZE
 static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
                            const mp_limb_t *C, const slong ldc,
                            const CF_t *U, const slong ldu,
                            const slong K, const slong n, const slong w,
-                           const mp_limb_t p, const int nthr){
+                           const mp_limb_t p, const int nthr,
+                           const szmat_t *uidx){
   if(K == 0 || n == 0 || w == 0) return;
   const uint64_t pp = (uint64_t)p * p;
   const uint64_t Mred = ((UINT64_C(1) << 63) / pp) * pp;
@@ -392,15 +398,45 @@ static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
       for(slong j0 = 0; j0 < n; j0 += m){
         const slong j1 = (j0 + m < n) ? j0 + m : n;
         for(slong a = 0; a < nr; a++){
-          uint64_t *ac = acc[a];
+          /* the (at most m) nonzero terms of the group in one pass, padded
+           * with zero coefficients to 4 or 8 terms */
           const mp_limb_t *cr = C + (uint64_t)(i0 + a) * ldc;
+          uint64_t c[8];
+          const CF_t *u[8];
+          int nz = 0;
           for(slong j = j0; j < j1; j++){
-            const uint64_t c = cr[j];
-            if(!c) continue;
-            const CF_t *u = U + (uint64_t)j * ldu + l0;
-            for(slong l = 0; l < wl; l++) ac[l] += c * u[l];
+            if(cr[j]){
+              c[nz] = cr[j];
+              u[nz] = U + (uint64_t)(uidx ? uidx[j] : j) * ldu + l0;
+              nz++;
+            }
           }
-          for(slong l = 0; l < wl; l++) ac[l] -= Mred & -(ac[l] >> 63);
+          if(!nz) continue;
+          const int nt = (nz <= 4) ? 4 : 8;
+          for(int z = nz; z < nt; z++){
+            c[z] = 0;
+            u[z] = u[0];
+          }
+          uint64_t *ac = acc[a];
+          const uint64_t c0 = c[0], c1 = c[1], c2 = c[2], c3 = c[3];
+          const CF_t *u0 = u[0], *u1 = u[1], *u2 = u[2], *u3 = u[3];
+          if(nt == 4){
+            for(slong l = 0; l < wl; l++){
+              const uint64_t t = ac[l] + c0 * u0[l] + c1 * u1[l]
+                                       + c2 * u2[l] + c3 * u3[l];
+              ac[l] = t - (Mred & -(t >> 63));
+            }
+          } else {
+            const uint64_t c4 = c[4], c5 = c[5], c6 = c[6], c7 = c[7];
+            const CF_t *u4 = u[4], *u5 = u[5], *u6 = u[6], *u7 = u[7];
+            for(slong l = 0; l < wl; l++){
+              const uint64_t t = ac[l] + c0 * u0[l] + c1 * u1[l]
+                                       + c2 * u2[l] + c3 * u3[l]
+                                       + c4 * u4[l] + c5 * u5[l]
+                                       + c6 * u6[l] + c7 * u7[l];
+              ac[l] = t - (Mred & -(t >> 63));
+            }
+          }
         }
       }
       for(slong a = 0; a < nr; a++){
@@ -461,13 +497,13 @@ static void fglmc_lu_reduce_range(fglmc_lu_t *E, nmod_mat_t B, nmod_mat_t C,
     }
     if(je < n){
       fglmc_gemm_sub(Bp + je, n, Cp + jb, ldc, T + (uint64_t)jb * D + je, D,
-                     K, je - jb, n - je, p, E->nthr);
+                     K, je - jb, n - je, p, E->nthr, NULL);
     }
   }
   free(Bp);
   /* B -= C U[a..b) */
   fglmc_gemm_sub(nmod_mat_entry_ptr(B, 0, 0), ldb, Cp, ldc,
-                 E->U + (uint64_t)a * D, D, K, n, D, p, E->nthr);
+                 E->U + (uint64_t)a * D, D, K, n, D, p, E->nthr, NULL);
 }
 
 /* Candidates */
@@ -673,6 +709,11 @@ typedef struct {
   uint32_t n, h;     // number of candidates, next one
   CF_t *V;           // FGLMC_PRE x D: vectors, not reduced
   nmod_mat_t B, C;   // reduced vectors, coefficients (K x r0)
+  /* buffers of fglmc_mulvec_multi */
+  mp_limb_t *Cb, *Bb;  // FGLMC_PRE x D
+  szmat_t *uidx;       // D
+  const CF_t **vp;     // FGLMC_PRE
+  CF_t **wp;           // FGLMC_PRE
   slong r0;
   int init;
 } fglmc_pre_t;
@@ -700,6 +741,51 @@ static uint64_t fglmc_predict(const uint32_t *h, const uint64_t b){
     if(2 * s >= n) return a < b ? a : b;
   }
   return 1;
+}
+
+/* W[i] = V[i] T_var for i < K: the dense rows of T_var used by one of the
+ * V[i] are read once (kernel of fglmc_gemm_sub). These rows must be
+ * computed. Buffers: Cb, Bb (K x D), uidx (D). */
+static void fglmc_mulvec_multi(CF_t *const *W, const CF_t *const *V,
+                               const slong K, const sp_multimatfglm_t *M,
+                               const int32_t var, mp_limb_t *Cb,
+                               mp_limb_t *Bb, szmat_t *uidx, const int nthr){
+  const szmat_t D = M->ncols;
+  const mp_limb_t p = M->charac;
+  const szmat_t *sel = M->rowsel + (uint64_t)var * D;
+  /* columns k of V whose row of T_var is dense and used */
+  slong nd = 0;
+  for(szmat_t k = 0; k < D; k++){
+    if(sel[k] < D) continue;
+    for(slong i = 0; i < K; i++){
+      if(V[i][k]){
+        uidx[nd++] = k;
+        break;
+      }
+    }
+  }
+  /* B = trivial rows part, C = -V on the dense columns */
+  memset(Bb, 0, (uint64_t)K * D * sizeof(mp_limb_t));
+  for(slong i = 0; i < K; i++){
+    const CF_t *v = V[i];
+    mp_limb_t *b = Bb + (uint64_t)i * D;
+    mp_limb_t *c = Cb + (uint64_t)i * nd;
+    for(szmat_t k = 0; k < D; k++){
+      if(v[k] && sel[k] < D) b[sel[k]] = fglmc_addmod(b[sel[k]], v[k], p);
+    }
+    for(slong j = 0; j < nd; j++){
+      c[j] = fglmc_negmod(v[uidx[j]], p);
+    }
+  }
+  for(slong j = 0; j < nd; j++){
+    uidx[j] = sel[uidx[j]] - D;
+  }
+  /* B -= C N = B + V N */
+  fglmc_gemm_sub(Bb, D, Cb, nd, M->dense_mat, D, K, nd, D, p, nthr, uidx);
+  for(slong i = 0; i < K; i++){
+    const mp_limb_t *b = Bb + (uint64_t)i * D;
+    for(szmat_t l = 0; l < D; l++) W[i][l] = (CF_t)b[l];
+  }
 }
 
 /* Fills Q with the next candidates of H (the unused ones of Q go back to
@@ -754,20 +840,30 @@ static void fglmc_prefetch(fglmc_pre_t *Q, fglmc_heap_t *H, fglmc_lu_t *E,
     Q->n++;
     K += (uint32_t)c;
   }
-  /* vectors NF(e x_n^k), k < len */
+  /* vectors NF(e x_n^k), k < len: first ones by variable, then level by
+   * level (products by x_n) */
   K = 0;
   for(uint32_t i = 0; i < Q->n; i++){
-    const fglmc_cand_t *u = Q->c + i;
     Q->off[i] = K;
-    for(uint32_t k = 0; k < Q->len[i]; k++){
-      CF_t *row = Q->V + (uint64_t)(K + k) * D;
-      if(k == 0){
-        fglmc_mulvec(row, Mt, u->var, Vs + (uint64_t)u->parent * D, acc, NULL);
-      } else {
-        fglmc_mulvec(row, Mt, xn, row - D, acc, NULL);
-      }
-    }
     K += Q->len[i];
+  }
+  for(int32_t var = 0; var <= FGLMC_VLEN + xn; var++){
+    const uint32_t k = (var < xn) ? 0 : (uint32_t)(var - xn + 1);
+    if(k >= FGLMC_VLEN) break;
+    slong nk = 0;
+    for(uint32_t i = 0; i < Q->n; i++){
+      if(Q->len[i] <= k || (k == 0 && Q->c[i].var != var)) continue;
+      CF_t *row = Q->V + (uint64_t)(Q->off[i] + k) * D;
+      Q->vp[nk] = (k == 0) ? Vs + (uint64_t)Q->c[i].parent * D : row - D;
+      Q->wp[nk] = row;
+      nk++;
+    }
+    if(nk == 1){
+      fglmc_mulvec(Q->wp[0], Mt, k ? xn : var, Q->vp[0], acc, NULL);
+    } else if(nk > 1){
+      fglmc_mulvec_multi(Q->wp, Q->vp, nk, Mt, k ? xn : var, Q->Cb, Q->Bb,
+                         Q->uidx, E->nthr);
+    }
   }
   Q->r0 = E->r;
   if(K){
@@ -819,6 +915,11 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   Q.off = malloc(FGLMC_PRE * sizeof(uint32_t));
   Q.len = malloc(FGLMC_PRE * sizeof(uint32_t));
   Q.V   = malloc((uint64_t)FGLMC_PRE * D * sizeof(CF_t));
+  Q.Cb  = malloc((uint64_t)FGLMC_PRE * D * sizeof(mp_limb_t));
+  Q.Bb  = malloc((uint64_t)FGLMC_PRE * D * sizeof(mp_limb_t));
+  Q.uidx = malloc((D + 1) * sizeof(szmat_t));
+  Q.vp  = malloc(FGLMC_PRE * sizeof(CF_t *));
+  Q.wp  = malloc(FGLMC_PRE * sizeof(CF_t *));
   lex->g_lm     = malloc(maxc * nv * sizeof(int32_t));
   lex->g_ntail  = malloc(maxc * sizeof(szmat_t));
   lex->ngens = 0;
@@ -834,7 +935,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   }
   if(!ok || !Vs || !S || !pool || !acc || !wl || !al || !coeffs || !H.a
      || !lex->g_lm || !lex->g_ntail || !clen || !Q.c || !Q.off || !Q.len
-     || !Q.V){
+     || !Q.V || !Q.Cb || !Q.Bb || !Q.uidx || !Q.vp || !Q.wp){
       ok = 0;
       goto done;
   }
@@ -1145,6 +1246,11 @@ done:
   free(Q.off);
   free(Q.len);
   free(Q.V);
+  free(Q.Cb);
+  free(Q.Bb);
+  free(Q.uidx);
+  free(Q.vp);
+  free(Q.wp);
   free(clen);
   if (st->info_level > 1){
       fprintf(VERBSTREAM,

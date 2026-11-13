@@ -5085,6 +5085,452 @@ void manage_output(int b, int dim, int dquot, files_gb *files,
   }
 }
 
+/* prints the reduced strong Groebner basis over the integers computed by
+ * zz_modular_groebner_basis in the format of print_msolve_polynomials_ff */
+static void print_zz_modular_basis(
+        FILE *file,
+        gb_modpoly_t modgbs,
+        const data_gens_ff_t *gens
+        )
+{
+    len_t i, j, k;
+
+    const ht_t * const ht = modgbs->bht;
+    const len_t nv  = ht->nv;
+    const len_t ebl = ht->ebl;
+    const len_t evl = ht->evl;
+
+    fprintf(file, "#Reduced strong Groebner basis data\n");
+    fprintf(file, "#---\n");
+    fprintf(file, "#coefficient ring:     integers\n");
+    fprintf(file, "#variable order:       ");
+    for (i = 0; i < nv-1; ++i) {
+        fprintf(file, "%s, ", gens->vnames[i]);
+    }
+    fprintf(file, "%s\n", gens->vnames[nv-1]);
+    fprintf(file, "#monomial order:       graded reverse lexicographical\n");
+    if (modgbs->ld == 1) {
+        fprintf(file, "#length of basis:      1 element\n");
+    } else {
+        fprintf(file, "#length of basis:      %u elements sorted by increasing leading monomials\n", modgbs->ld);
+    }
+    fprintf(file, "#---\n");
+
+    int *evi    =   (int *)malloc((unsigned long)nv * sizeof(int));
+    if (ebl == 0) {
+        for (i = 1; i < evl; ++i) {
+            evi[i-1]    =   i;
+        }
+    } else {
+        for (i = 1; i < ebl; ++i) {
+            evi[i-1]    =   i;
+        }
+        for (i = ebl+1; i < evl; ++i) {
+            evi[i-2]    =   i;
+        }
+    }
+    fprintf(file, "[");
+    for (i = 0; i < modgbs->ld; ++i) {
+        /* the lead coefficient is 1, the coefficient of the j-th term
+         * after the lead term is cf_qq[len-j] */
+        const len_t len         = modgbs->modpolys[i]->len;
+        const hm_t * const hm   = modgbs->hm[i] + OFFSET;
+        const mpz_t * const cf  = modgbs->modpolys[i]->cf_qq;
+        fprintf(file, "1");
+        for (k = 0; k < nv; ++k) {
+            if (modgbs->ldm[i*nv+k] > 0) {
+                fprintf(file, "*%s^%u", gens->vnames[k], modgbs->ldm[i*nv+k]);
+            }
+        }
+        for (j = 1; j <= len; ++j) {
+            const mpz_t *c = &(cf[len-j]);
+            if (mpz_sgn(*c) == 0) {
+                continue;
+            }
+            gmp_fprintf(file, mpz_sgn(*c) < 0 ? "%Zd" : "+%Zd", *c);
+            for (k = 0; k < nv; ++k) {
+                if (ht->ev[hm[j]][evi[k]] > 0) {
+                    fprintf(file, "*%s^%u", gens->vnames[k], ht->ev[hm[j]][evi[k]]);
+                }
+            }
+        }
+        if (i < modgbs->ld-1) {
+            fprintf(file, ",\n");
+        } else {
+            fprintf(file, "]:\n");
+        }
+    }
+    free(evi);
+}
+
+/* intermediate basis over the integers, lifted by zz_lift_intermediate_basis,
+ * in the input format of initialize_gba_input_data_zz */
+typedef struct {
+    int32_t ngens;
+    int32_t *lens;
+    int32_t *exps;
+    mpz_t **cfs;  /* numerator and denominator of each term */
+    mpz_t *num;   /* the numerators */
+    mpz_t one;    /* the common denominator */
+    int64_t nterms;
+} zz_lifted_t;
+
+static void free_zz_lifted(
+        zz_lifted_t *lb
+        )
+{
+    for (int64_t i = 0; i < lb->nterms; ++i) {
+        mpz_clear(lb->num[i]);
+    }
+    mpz_clear(lb->one);
+    free(lb->num);
+    free(lb->cfs);
+    free(lb->exps);
+    free(lb->lens);
+}
+
+/* After rounds rounds of F4 over the integers all pivots have had lead
+ * coefficients +-1, so the basis at this point is the integer lift of the
+ * one computed modulo a prime. We compute it modulo primes, stopping F4
+ * after rounds rounds and keeping all elements, also the redundant ones,
+ * and lift its coefficients via the Chinese remainder theorem until the
+ * lift does not change for two more primes. If some lead coefficient
+ * other than +-1 occurs modulo a prime before, rounds is decreased.
+ * Returns the number of rounds of the lifted basis, 0 if nothing has been
+ * lifted. */
+static int32_t zz_lift_intermediate_basis(
+        zz_lifted_t *lb,
+        bs_t *bs,
+        md_t *st,
+        int32_t rounds,
+        const int32_t info_level
+        )
+{
+    len_t i, j;
+
+    const ht_t * const ht = bs->ht;
+    const len_t nv  = ht->nv;
+    const len_t ebl = ht->ebl;
+    const len_t evl = ht->evl;
+
+    /* lifted elements: lengths, monomials and coefficients */
+    len_t nel   = 0;
+    len_t *len  = NULL;
+    hm_t **mon  = NULL;
+    mpz_t **cf  = NULL;
+    mpz_t m, t;
+    mpz_inits(m, t, NULL);
+
+    const int32_t info = st->info_level;
+    st->info_level = 0;
+    st->reduce_gb  = 0;
+
+    uint32_t prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+    int32_t nprimes = 0, stable = 0, nbad = 0;
+    while (rounds > 0 && stable < 2) {
+        prime = next_prime(prime);
+        if (prime >= 1303905299) {
+            prime = next_prime(1<<30);
+        }
+        if (is_lucky_prime_ui(prime, bs)) {
+            continue;
+        }
+        st->zz_max_rd   = rounds;
+        st->zz_nonunit  = 0;
+        st->f4_qq_round = 1;
+        st->trace_level = NO_TRACER;
+        int32_t err = 0;
+        bs_t *lbs   = core_gba(bs, st, &err, prime);
+        if (st->tr != NULL) {
+            free_trace(&st->tr);
+        }
+        st->trace_level = NO_TRACER;
+        int bad = err != 0 || lbs == NULL;
+        if (st->zz_nonunit != 0) {
+            /* the lift so far is not valid anymore */
+            rounds = st->zz_rd;
+            bad    = 1;
+            for (i = 0; i < nel; ++i) {
+                for (j = 0; j < len[i]; ++j) {
+                    mpz_clear(cf[i][j]);
+                }
+                free(cf[i]);
+                free(mon[i]);
+            }
+            nel = nprimes = stable = 0;
+        }
+        if (bad == 0 && nprimes > 0) {
+            /* the elements must be the same modulo all primes */
+            len_t k = 0;
+            for (i = 0; bad == 0 && i < lbs->ld; ++i) {
+                const hm_t * const row = lbs->hm[i];
+                if (row == NULL) {
+                    continue;
+                }
+                if (k >= nel || row[LENGTH] != len[k]
+                        || memcmp(row + OFFSET, mon[k],
+                            (uint64_t)len[k] * sizeof(hm_t)) != 0) {
+                    bad = 1;
+                }
+                k++;
+            }
+            if (k != nel) {
+                bad = 1;
+            }
+        }
+        if (bad == 0 && nprimes == 0) {
+            nel = 0;
+            for (i = 0; i < lbs->ld; ++i) {
+                nel += lbs->hm[i] != NULL;
+            }
+            len = realloc(len, (uint64_t)nel * sizeof(len_t));
+            mon = realloc(mon, (uint64_t)nel * sizeof(hm_t *));
+            cf  = realloc(cf, (uint64_t)nel * sizeof(mpz_t *));
+            len_t k = 0;
+            for (i = 0; i < lbs->ld; ++i) {
+                const hm_t * const row = lbs->hm[i];
+                if (row == NULL) {
+                    continue;
+                }
+                len[k] = row[LENGTH];
+                mon[k] = malloc((uint64_t)len[k] * sizeof(hm_t));
+                memcpy(mon[k], row + OFFSET, (uint64_t)len[k] * sizeof(hm_t));
+                cf[k]  = malloc((uint64_t)len[k] * sizeof(mpz_t));
+                const cf32_t * const c = lbs->cf_32[row[COEFFS]];
+                for (j = 0; j < len[k]; ++j) {
+                    mpz_init_set_ui(cf[k][j], c[j]);
+                    if (c[j] > prime / 2) {
+                        mpz_sub_ui(cf[k][j], cf[k][j], prime);
+                    }
+                }
+                k++;
+            }
+            mpz_set_ui(m, prime);
+            nprimes = 1;
+        } else if (bad == 0) {
+            /* x + m * ((c - x) / m mod p), in the symmetric range */
+            int changed = 0;
+            const uint64_t mi = mpz_fdiv_ui(m, prime);
+            const uint64_t inv = mod_p_inverse_32((uint32_t)mi, prime);
+            len_t k = 0;
+            for (i = 0; i < lbs->ld; ++i) {
+                const hm_t * const row = lbs->hm[i];
+                if (row == NULL) {
+                    continue;
+                }
+                const cf32_t * const c = lbs->cf_32[row[COEFFS]];
+                for (j = 0; j < len[k]; ++j) {
+                    const uint64_t x = mpz_fdiv_ui(cf[k][j], prime);
+                    if (x == c[j]) {
+                        continue;
+                    }
+                    changed = 1;
+                    const uint64_t d = ((uint64_t)c[j] + prime - x) % prime;
+                    mpz_addmul_ui(cf[k][j], m, (d * inv) % prime);
+                }
+                k++;
+            }
+            mpz_mul_ui(m, m, prime);
+            if (changed != 0) {
+                mpz_fdiv_q_2exp(t, m, 1);
+                for (k = 0; k < nel; ++k) {
+                    for (j = 0; j < len[k]; ++j) {
+                        if (mpz_cmp(cf[k][j], t) > 0) {
+                            mpz_sub(cf[k][j], cf[k][j], m);
+                        }
+                    }
+                }
+            }
+            nprimes++;
+            stable = changed ? 0 : stable + 1;
+        }
+        if (lbs != NULL) {
+            free_basis_without_hash_table(&lbs);
+        }
+        if (bad != 0 && ++nbad > 10) {
+            rounds = 0;
+        }
+    }
+    st->info_level = info;
+    if (rounds > 0) {
+        int *evi = (int *)malloc((unsigned long)nv * sizeof(int));
+        if (ebl == 0) {
+            for (i = 1; i < evl; ++i) {
+                evi[i-1] = i;
+            }
+        } else {
+            for (i = 1; i < ebl; ++i) {
+                evi[i-1] = i;
+            }
+            for (i = ebl+1; i < evl; ++i) {
+                evi[i-2] = i;
+            }
+        }
+        lb->ngens  = nel;
+        lb->nterms = 0;
+        for (i = 0; i < nel; ++i) {
+            lb->nterms += len[i];
+        }
+        lb->lens = malloc((uint64_t)nel * sizeof(int32_t));
+        lb->exps = malloc((uint64_t)lb->nterms * nv * sizeof(int32_t));
+        lb->cfs  = malloc((uint64_t)lb->nterms * 2 * sizeof(mpz_t *));
+        lb->num  = malloc((uint64_t)lb->nterms * sizeof(mpz_t));
+        mpz_init_set_ui(lb->one, 1);
+        int64_t l = 0;
+        for (i = 0; i < nel; ++i) {
+            lb->lens[i] = len[i];
+            for (j = 0; j < len[i]; ++j) {
+                for (len_t k = 0; k < nv; ++k) {
+                    lb->exps[l*nv+k] = ht->ev[mon[i][j]][evi[k]];
+                }
+                mpz_init_set(lb->num[l], cf[i][j]);
+                lb->cfs[2*l]   = &(lb->num[l]);
+                lb->cfs[2*l+1] = &(lb->one);
+                l++;
+            }
+        }
+        free(evi);
+        if (info_level > 0) {
+            fprintf(VERBSTREAM, "Lifted the basis after %d rounds, ", rounds);
+            fprintf(VERBSTREAM, "%u elements, %d primes.\n", nel, nprimes);
+        }
+    }
+    for (i = 0; i < nel; ++i) {
+        for (j = 0; j < len[i]; ++j) {
+            mpz_clear(cf[i][j]);
+        }
+        free(cf[i]);
+        free(mon[i]);
+    }
+    free(cf);
+    free(mon);
+    free(len);
+    mpz_clears(m, t, NULL);
+
+    return rounds;
+}
+
+/* As long as all pivots have lead coefficients +-1, F4 over the integers
+ * does no gcd steps, and its computation modulo a prime is the image of the
+ * integer computation. Its reduced basis is then monic and integral, and it
+ * is the reduced strong Groebner basis. So we first try the multi-modular
+ * computation over the rationals, checking modulo every prime used that all
+ * new pivots have lead coefficients +-1, see st->zz_unit.
+ * bs, bht and st are the input data initialized for the integers, they are
+ * freed. Returns 1 if the basis has been computed and printed, 0 if some
+ * lead coefficient is not +-1 and F4 over the integers has to be used.
+ * If this happens only after some rounds, the basis after these rounds is
+ * lifted to lb, then 2 is returned and F4 over the integers starts with
+ * the elements of lb. */
+static int zz_modular_groebner_basis(
+        zz_lifted_t *lb,
+        bs_t *bs,
+        ht_t *bht,
+        md_t *st,
+        const files_gb * const files,
+        data_gens_ff_t *gens,
+        const int32_t info_level
+        )
+{
+    len_t i, j;
+    int ok = 1;
+
+    /* the input elements need lead coefficients +-1, they are made
+     * positive during the initialization */
+    for (i = 0; i < bs->ld; ++i) {
+        if (mpz_cmp_ui(bs->cf_qq[bs->hm[i][COEFFS]][0], 1) != 0) {
+            ok = 0;
+            break;
+        }
+    }
+    gb_modpoly_t *modgbsp = NULL;
+    mstrace_t msd;
+    if (ok == 1) {
+        if (info_level > 0) {
+            fprintf(VERBSTREAM, "\nAll input lead coefficients are +-1, ");
+            fprintf(VERBSTREAM, "trying a multi-modular computation.\n");
+        }
+        st->zz         = 0;
+        st->zz_unit    = 1;
+        st->zz_nonunit = 0;
+        st->zz_rd      = 0;
+        st->zz_max_rd  = 0;
+        /* the check needs the exact sparse linear algebra */
+        st->laopt      = 2;
+        initialize_mstrace(msd, st, bs);
+        int32_t err = 0;
+        modgbsp = calloc(1, sizeof(gb_modpoly_t));
+        modgbsp = core_groebner_qq(modgbsp, bs, msd, st, &err, 0, 2);
+        if (err == 3 || st->zz_nonunit != 0) {
+            ok = 0;
+            if (st->zz_rd > 0) {
+                if (info_level > 0) {
+                    fprintf(VERBSTREAM, "\nSome lead coefficient is not +-1 ");
+                    fprintf(VERBSTREAM, "after %d rounds.\n", st->zz_rd);
+                }
+                free_mstrace(msd, st);
+                free_trace(&st->tr);
+                if ((*modgbsp)->modpolys != NULL) {
+                    gb_modpoly_without_hash_table_clear((*modgbsp));
+                }
+                free(modgbsp);
+                modgbsp = NULL;
+                st->trace_level = NO_TRACER;
+                if (zz_lift_intermediate_basis(lb, bs, st, st->zz_rd,
+                            info_level) > 0) {
+                    ok = 2;
+                }
+            }
+        } else {
+            if (err) {
+                fprintf(ERRSTREAM,"Problem with groebner_qq, stopped computation (%d).\n", err);
+                exit(1);
+            }
+            /* the basis is monic and integral, the common denominator is
+             * stored in lm */
+            gb_modpoly_array_struct *gb = (*modgbsp);
+            for (i = 0; ok == 1 && i < gb->ld; ++i) {
+                for (j = 0; j < gb->modpolys[i]->len; ++j) {
+                    if (!mpz_divisible_p(gb->modpolys[i]->cf_qq[j],
+                                gb->modpolys[i]->lm)) {
+                        ok = 0;
+                        break;
+                    }
+                    mpz_divexact(gb->modpolys[i]->cf_qq[j],
+                            gb->modpolys[i]->cf_qq[j], gb->modpolys[i]->lm);
+                }
+                mpz_set_ui(gb->modpolys[i]->lm, 1);
+            }
+        }
+        if (ok != 1 && info_level > 0) {
+            fprintf(VERBSTREAM, "\nSome lead coefficient is not +-1, ");
+            fprintf(VERBSTREAM, "switching to F4 over the integers.\n");
+        }
+        if (ok == 1) {
+            if (files->out_file != NULL) {
+                FILE *ofile = fopen(files->out_file, "ab");
+                print_zz_modular_basis(ofile, (*modgbsp), gens);
+                fclose(ofile);
+            } else {
+                print_zz_modular_basis(OUTSTREAM, (*modgbsp), gens);
+            }
+        }
+        if (modgbsp != NULL) {
+            free_mstrace(msd, st);
+            free_trace(&st->tr);
+            if ((*modgbsp)->modpolys != NULL) {
+                gb_modpoly_without_hash_table_clear((*modgbsp));
+            }
+            free(modgbsp);
+        }
+    }
+    free_shared_hash_data(bht);
+    free_basis(&bs);
+    free(st);
+
+    return ok;
+}
+
 int core_msolve(
   int32_t la_option,
   int32_t use_signatures,
@@ -5181,6 +5627,37 @@ restart:
         if (success != 1) {
             fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
             exit(1);
+        }
+        if (print_gb == 2 && elim_block_len == 0) {
+            zz_lifted_t lb;
+            const int mod = zz_modular_groebner_basis(&lb, bs, bht, st,
+                    files, gens, info_level);
+            if (mod == 1) {
+                free(bld);
+                free(blen);
+                free(bexp);
+                free(bcf);
+                return 0;
+            }
+            /* F4 over the integers starts with the lifted basis or with
+             * the input generators */
+            success = initialize_gba_input_data_zz(&bs, &bht, &st,
+                    mod == 2 ? lb.lens : gens->lens,
+                    mod == 2 ? lb.exps : gens->exps,
+                    mod == 2 ? (void *)lb.cfs : (void *)gens->mpz_cfs,
+                    0, 0 /* DRL order */, elim_block_len,
+                    gens->nvars, mod == 2 ? lb.ngens : gens->ngens,
+                    0 /* # normal forms */,
+                    initial_hts, nr_threads, max_pairs, update_ht, la_option,
+                    0 /* use_signatures */, 1 /* reduce_gb */, 0,
+                    0 /* truncate_lifting */, info_level);
+            if (mod == 2) {
+                free_zz_lifted(&lb);
+            }
+            if (success != 1) {
+                fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
+                exit(1);
+            }
         }
         bs = core_gba(bs, st, &err, 0);
         if (err) {

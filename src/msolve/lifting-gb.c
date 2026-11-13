@@ -769,6 +769,11 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     int32_t err     = 0;
     st->f4_qq_round = 1;
     bs = core_gba(bs_qq, st, &err, fc);
+    /* over the integers a lead coefficient other than +-1 ends the
+     * modular computation, see st->zz_unit */
+    if (st->zz_nonunit != 0) {
+      return 0;
+    }
     if (err) {
       fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
       exit(1);
@@ -1576,6 +1581,15 @@ restart:
                                                  0,
                                                  maxbitsize,
                                                  &success);
+    if(st->zz_nonunit != 0){
+      if(dlinit){
+        data_lift_clear(dlift);
+      }
+      free_rrec_data(recdata1);
+      free_rrec_data(recdata2);
+      *errp = 3;
+      return modgbsp;
+    }
     if(is_empty == 1 || print_gb == 1 || (*modgbsp)->ld == 0){
       if(dlinit){
         data_lift_clear(dlift);
@@ -1699,6 +1713,16 @@ restart:
                                    0, /* info_level, */
                                    msd->lp,
                                    dlift->S, &stf4, msd->bad_primes);
+
+      if(st->zz_nonunit != 0){
+        data_lift_clear(dlift);
+        gb_modpoly_without_hash_table_clear((*modgbsp));
+        free_rrec_data(recdata1);
+        free_rrec_data(recdata2);
+        st->info_level = info_level;
+        *errp = 3;
+        return modgbsp;
+      }
 
       /* nprimes += st->nthrds; */
       nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */

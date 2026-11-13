@@ -62,6 +62,9 @@ checkdiff       = \
 			  test/diff/diff_kat7-30.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_kat8-qq-truncate.sh \
+			  test/diff/diff_lexgb-longchain-31.sh \
+			  test/diff/diff_lexgb-lowerset-31.sh \
+			  test/diff/diff_lexgb-lowerset-qq.sh \
 			  test/diff/diff_lexgb-nonradical-31.sh \
 			  test/diff/diff_lexgb-nonradical-qq.sh \
 			  test/diff/diff_lexgb-nonshape-31.sh \

@@ -260,6 +260,15 @@ AC_CONFIG_LINKS([
  input_files/kat8-qq-truncate.ms:input_files/kat8-qq-truncate.ms
  output_files/kat8-qq-truncate.res:output_files/kat8-qq-truncate.res
  test/diff/diff_kat8-qq-truncate.sh:test/diff/diff_kat8-qq-truncate.sh
+ input_files/lexgb-longchain-31.ms:input_files/lexgb-longchain-31.ms
+ output_files/lexgb-longchain-31.g3.res:output_files/lexgb-longchain-31.g3.res
+ test/diff/diff_lexgb-longchain-31.sh:test/diff/diff_lexgb-longchain-31.sh
+ input_files/lexgb-lowerset-31.ms:input_files/lexgb-lowerset-31.ms
+ output_files/lexgb-lowerset-31.g3.res:output_files/lexgb-lowerset-31.g3.res
+ test/diff/diff_lexgb-lowerset-31.sh:test/diff/diff_lexgb-lowerset-31.sh
+ input_files/lexgb-lowerset-qq.ms:input_files/lexgb-lowerset-qq.ms
+ output_files/lexgb-lowerset-qq.g3.res:output_files/lexgb-lowerset-qq.g3.res
+ test/diff/diff_lexgb-lowerset-qq.sh:test/diff/diff_lexgb-lowerset-qq.sh
  input_files/lexgb-nonradical-31.ms:input_files/lexgb-nonradical-31.ms
  output_files/lexgb-nonradical-31.g3.res:output_files/lexgb-nonradical-31.g3.res
  test/diff/diff_lexgb-nonradical-31.sh:test/diff/diff_lexgb-nonradical-31.sh

@@ -5193,8 +5193,10 @@ restart:
          * computed, F4 works with 64 bit coefficients then. The same
          * holds for GF(16) and GF(256) given by the field characteristics
          * 16 and 256, and for the Boolean ring over GF(2). */
-        if (print_gb == 0 || use_signatures > 0 || saturate > 0
-                || colon > 0 || normal_form > 0) {
+        /* no change of order (-g 3) either: FGLM needs a prime field of
+         * characteristic < 2^31 */
+        if (print_gb == 0 || print_gb == 3 || use_signatures > 0
+                || saturate > 0 || colon > 0 || normal_form > 0) {
             if (gens->boolean) {
                 fprintf(ERRSTREAM, "In the boolean ring msolve ");
             } else if (is_gf2_ext(gens->field_char)) {
@@ -5202,7 +5204,7 @@ restart:
             } else {
                 fprintf(ERRSTREAM, "For field characteristics >= 2^31 msolve ");
             }
-            fprintf(ERRSTREAM, "only computes Groebner bases (option -g).\n");
+            fprintf(ERRSTREAM, "only computes Groebner bases (option -g 1 or -g 2).\n");
             free(bld);
             free(blen);
             free(bexp);

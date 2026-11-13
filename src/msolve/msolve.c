@@ -5142,6 +5142,64 @@ restart:
     bcf   = malloc(sizeof(void *));
     b     = 0;
 
+    if (gens->zz != 0) {
+        /* strong Groebner bases over the integers are computed directly by
+         * F4 with integer coefficients */
+        int ok = 1;
+        if (print_gb == 0 || use_signatures > 0 || saturate > 0
+                || colon > 0 || normal_form > 0) {
+            fprintf(ERRSTREAM, "Over the integers msolve only computes ");
+            fprintf(ERRSTREAM, "strong Groebner bases (option -g).\n");
+            ok = 0;
+        }
+        for (int64_t i = 0; ok && i < gens->nterms; ++i) {
+            if (mpz_cmp_ui(*(gens->mpz_cfs[2*i+1]), 1) != 0) {
+                fprintf(ERRSTREAM, "Over the integers all coefficients ");
+                fprintf(ERRSTREAM, "must be integers.\n");
+                ok = 0;
+            }
+        }
+        if (ok == 0) {
+            free(bld);
+            free(blen);
+            free(bexp);
+            free(bcf);
+            return -1;
+        }
+        bs_t *bs    = NULL;
+        ht_t *bht   = NULL;
+        md_t *st    = NULL;
+        int32_t err = 0;
+
+        int success = initialize_gba_input_data_zz(&bs, &bht, &st,
+                gens->lens, gens->exps, (void *)gens->mpz_cfs,
+                0, 0 /* DRL order */, elim_block_len,
+                gens->nvars, gens->ngens, 0 /* # normal forms */,
+                initial_hts, nr_threads, max_pairs, update_ht, la_option,
+                0 /* use_signatures */, 1 /* reduce_gb */, 0,
+                0 /* truncate_lifting */, info_level);
+        if (success != 1) {
+            fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
+            exit(1);
+        }
+        bs = core_gba(bs, st, &err, 0);
+        if (err) {
+            fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");
+            exit(1);
+        }
+        print_ff_basis_data(files->out_file, "ab", bs, bs->ht, st, gens,
+                print_gb);
+
+        free_shared_hash_data(bht);
+        free_basis(&bs);
+        free(st);
+        free(bld);
+        free(blen);
+        free(bexp);
+        free(bcf);
+        return 0;
+    }
+
     if(gens->field_char > INT32_MAX || is_gf2_ext(gens->field_char)
             || gens->boolean){
         /* for field characteristics >= 2^31 only Groebner bases can be

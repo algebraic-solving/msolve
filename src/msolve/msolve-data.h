@@ -113,6 +113,8 @@ typedef struct{
   int32_t linear_form_base_coef;
   /* set to 1 if a linear form is chosen randomly */
   int32_t rand_linear;
+  /* set to 1 for strong Groebner bases over the integers */
+  int32_t zz;
   int32_t *random_linear_form;
   /* separating element found from the multiplication matrices modulo
    * a prime, see separating.c: SEP_NONE (not searched yet), SEP_FAILED,

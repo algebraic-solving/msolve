@@ -513,6 +513,23 @@ bs_t *copy_basis_mod_p(
     return bs;
 }
 
+/* over the integers the elements are only normalized by their sign */
+void make_lead_coefficients_positive(
+        bs_t *bs
+        )
+{
+    len_t i, j;
+
+    for (i = 0; i < bs->ld; ++i) {
+        mpz_t *cf = bs->cf_qq[bs->hm[i][COEFFS]];
+        if (mpz_sgn(cf[0]) < 0) {
+            for (j = 0; j < bs->hm[i][LENGTH]; ++j) {
+                mpz_neg(cf[j], cf[j]);
+            }
+        }
+    }
+}
+
 void remove_content_of_initial_basis(
         bs_t *bs
         )

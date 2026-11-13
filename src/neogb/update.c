@@ -767,12 +767,199 @@ static void update_basis_f4(
     st->update_rtime  +=  rt1 - rt0;
 }
 
+/* lead coefficient of the i-th basis element over the integers */
+static inline mpz_t *zz_lc(
+        const bs_t * const bs,
+        const bl_t i
+        )
+{
+    return &(bs->cf_qq[bs->hm[i][COEFFS]][0]);
+}
+
+/* 1 if the lead term of the basis element a divides the one of b over the
+ * integers, i.e. lead monomial and lead coefficient */
+static inline int zz_lt_divides(
+        const bs_t * const bs,
+        const bl_t a,
+        const bl_t b,
+        const ht_t * const ht
+        )
+{
+    return check_monomial_division(bs->hm[b][OFFSET], bs->hm[a][OFFSET], ht)
+        && mpz_divisible_p(*zz_lc(bs, b), *zz_lc(bs, a)) != 0;
+}
+
+/* total degree of the lcm of the lead monomials of the basis elements a
+ * and b */
+static inline deg_t zz_lcm_degree(
+        const bs_t * const bs,
+        const bl_t a,
+        const bl_t b,
+        const ht_t * const ht
+        )
+{
+    const exp_t * const ea = ht->ev[bs->hm[a][OFFSET]];
+    const exp_t * const eb = ht->ev[bs->hm[b][OFFSET]];
+    return total_degree(ea, ht) + total_degree(eb, ht) - gcd_degree(ea, eb, ht);
+}
+
+/* Update of the pairs and the basis for strong Groebner bases over the
+ * integers. A pair (f, g) stands for its S- and its G-polynomial: both
+ * multiplied elements become rows of the same matrix and the linear
+ * algebra over the integers computes both. The new elements are added one
+ * after the other, with lead terms a * m, criteria:
+ * - the G-polynomial is not needed if one lead coefficient divides the
+ *   other one, the S-polynomial not if the lead monomials and the lead
+ *   coefficients are coprime (product criterion); a pair is only removed
+ *   if neither is needed,
+ * - chain criterion: the new element h removes the pair (f, g) if lm(h)
+ *   divides lcm(lm(f), lm(g)), lc(h) divides gcd(lc(f), lc(g)) and both
+ *   lcm(lm(f), lm(h)) and lcm(lm(g), lm(h)) differ from lcm(lm(f), lm(g)).
+ *   Then the pairs (f, h) and (g, h) are S-pairs only, and the S- and the
+ *   G-polynomial of (f, g) are combinations of their S-polynomials and a
+ *   multiple of h with integer coefficients,
+ * - an element is redundant if the lead term of a new element divides its
+ *   lead term, including the coefficient. */
+static void update_basis_zz(
+        ps_t *psl,
+        bs_t *bs,
+        ht_t *bht,
+        md_t *st,
+        const len_t npivs
+        )
+{
+    len_t i, k;
+    uint64_t j;
+
+    /* timings */
+    double ct0, ct1, rt0, rt1;
+    ct0 = cputime();
+    rt0 = realtime();
+
+    len_t np  = bs->ld * npivs;
+    for (i = 1; i < npivs; ++i) {
+        np  = np + i;
+    }
+    check_enlarge_pairset(psl, np);
+
+    mpz_t g;
+    mpz_init(g);
+    spair_t *ps = psl->p;
+    for (k = 0; k < npivs; ++k) {
+        const bl_t n    = bs->ld;
+        const hm_t lmn  = bs->hm[n][OFFSET];
+        const deg_t dn  = bs->hm[n][DEG];
+        mpz_t * const an = zz_lc(bs, n);
+        bs->mltdeg  = bs->mltdeg > dn ? bs->mltdeg : dn;
+        bs->ld++;
+
+        /* chain criterion for the old pairs */
+        const len_t pl = psl->ld;
+        for (j = 0; j < pl; ++j) {
+            const bl_t g1 = ps[j].gen1;
+            const bl_t g2 = ps[j].gen2;
+            if (ps[j].deg < 0
+                    || !check_monomial_division(ps[j].lcm, lmn, bht)) {
+                continue;
+            }
+            mpz_gcd(g, *zz_lc(bs, g1), *zz_lc(bs, g2));
+            if (mpz_divisible_p(g, *an) == 0) {
+                continue;
+            }
+            const deg_t ld = bht->hd[ps[j].lcm].deg;
+            if (zz_lcm_degree(bs, g1, n, bht) != ld
+                    && zz_lcm_degree(bs, g2, n, bht) != ld) {
+                ps[j].deg = -1;
+                st->num_gb_crit++;
+            }
+        }
+
+        /* new pairs */
+        for (i = 0; i < n; ++i) {
+            if (bs->red[i] != 0) {
+                continue;
+            }
+            mpz_t * const ai = zz_lc(bs, i);
+            const int gneed = mpz_divisible_p(*ai, *an) == 0
+                && mpz_divisible_p(*an, *ai) == 0;
+            const exp_t * const ea = bht->ev[bs->hm[i][OFFSET]];
+            const exp_t * const eb = bht->ev[lmn];
+            mpz_gcd(g, *ai, *an);
+            const int sneed = gcd_degree(ea, eb, bht) != 0
+                || mpz_cmp_ui(g, 1) != 0;
+            if (gneed == 0 && sneed == 0) {
+                st->num_gb_crit++;
+                continue;
+            }
+            if (bht->esz - bht->eld <= 1) {
+                enlarge_hash_table(bht);
+            }
+            spair_t *p = ps + psl->ld;
+            p->lcm  = get_lcm(bs->hm[i][OFFSET], lmn, bht, bht);
+            p->gen1 = i;
+            p->gen2 = n;
+            p->type = gneed != 0 ? GCD_PAIR : S_PAIR;
+            if (st->nev == 0) {
+                p->deg = bht->hd[p->lcm].deg;
+            } else {
+                const deg_t ld    = bht->hd[p->lcm].deg;
+                const deg_t deg1  = ld - bht->hd[bs->hm[i][OFFSET]].deg
+                    + bs->hm[i][DEG];
+                const deg_t deg2  = ld - bht->hd[lmn].deg + dn;
+                p->deg = deg1 > deg2 ? deg1 : deg2;
+            }
+            psl->ld++;
+        }
+
+        /* older elements made redundant by the new one */
+        for (i = 0; i < n; ++i) {
+            if (bs->red[i] == 0 && zz_lt_divides(bs, n, i, bht)) {
+                bs->red[i] = 1;
+                st->num_redundant++;
+            }
+        }
+    }
+    mpz_clear(g);
+
+    /* remove useless pairs */
+    j = 0;
+    for (i = 0; i < psl->ld; ++i) {
+        if (ps[i].deg >= 0) {
+            ps[j++] = ps[i];
+        }
+    }
+    psl->ld = j;
+
+    /* non-redundant lead monomials */
+    k = 0;
+    for (i = 0; i < bs->ld; ++i) {
+        if (bs->red[i] == 0) {
+            bs->lm[k]   = bht->hd[bs->hm[i][OFFSET]].sdm;
+            bs->lmps[k] = i;
+            k++;
+        }
+    }
+    bs->lml = k;
+    bs->lo  = bs->ld;
+    st->num_redundant_old = st->num_redundant;
+
+    /* timings */
+    ct1 = cputime();
+    rt1 = realtime();
+    st->update_ctime  +=  ct1 - ct0;
+    st->update_rtime  +=  rt1 - rt0;
+}
+
 static int32_t update(
         bs_t *bs,
         md_t *md
         )
 {
-        update_basis_f4(md->ps, bs, bs->ht, md, md->np);
+        if (md->zz != 0) {
+            update_basis_zz(md->ps, bs, bs->ht, md, md->np);
+        } else {
+            update_basis_f4(md->ps, bs, bs->ht, md, md->np);
+        }
         if (bs->constant) {
             return 1;
         } else {

@@ -562,6 +562,8 @@ static void process_redundant_elements(
             for (j = 0; j < i; ++j) {
                 if (bs->red[bs->lmps[j]] == 0
                         && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
+                        && (md->zz == 0
+                            || zz_lt_divides(bs, bs->lmps[j], bs->lmps[i], ht))
                         ) {
                     bs->red[bs->lmps[i]]  =   1;
                     md->num_redundant++;
@@ -571,6 +573,8 @@ static void process_redundant_elements(
             for (j = i+1; j < bs->lml; ++j) {
                 if (bs->red[bs->lmps[j]] == 0
                         && check_monomial_division(nch, bs->hm[bs->lmps[j]][OFFSET], ht)
+                        && (md->zz == 0
+                            || zz_lt_divides(bs, bs->lmps[j], bs->lmps[i], ht))
                         ) {
                     bs->red[bs->lmps[i]]  =   1;
                     md->num_redundant++;
@@ -682,8 +686,9 @@ static void reduce_final_basis(
          * elements are the rows to be reduced. They are reduced by the
          * known pivots in parallel, afterwards the interreduction of the
          * new pivots reduces them by each other. The rational linear
-         * algebra needs mat->ncl = 0, so we set all indices to 1. */
-        if (md->ff_bits == 0) {
+         * algebra needs mat->ncl = 0, so we set all indices to 1. The
+         * integer linear algebra uses the known pivots as well. */
+        if (md->ff_bits == 0 && md->zz == 0) {
             for (i = 0; i < sht->eld; ++i) {
                 sht->hd[i].idx = 1;
             }

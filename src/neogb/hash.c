@@ -1193,27 +1193,32 @@ static void insert_in_hash_table_parallel(
     free(hv);
 }
 
+/* maps the columns of the new rows to the basis hash table; these are the
+ * right columns, over the integers also the left ones (all != 0) since a
+ * gcd step may give a new row whose lead column has a known pivot */
 static inline void switch_hcm_data_to_basis_hash_table(
     hi_t *hcm,
     ht_t *bht,
     const mat_t *mat,
     const ht_t * const sht,
-    const int32_t nthrds
+    const int32_t nthrds,
+    const int all
     )
 {
-    const len_t start = mat->ncl;
+    const len_t start = all != 0 ? 0 : mat->ncl;
     const len_t end   = mat->nc;
+    const len_t n     = end - start;
 
-    while (bht->esz - bht->eld < mat->ncr) {
+    while (bht->esz - bht->eld < n) {
         enlarge_hash_table(bht);
     }
 
     const exp_t **evs = (const exp_t **)malloc(
-            (unsigned long)mat->ncr * sizeof(exp_t *));
+            (unsigned long)n * sizeof(exp_t *));
     for (len_t i = start; i < end; ++i) {
         evs[i-start] = sht->ev[hcm[i]];
     }
-    insert_in_hash_table_parallel(hcm+start, evs, mat->ncr, bht, nthrds);
+    insert_in_hash_table_parallel(hcm+start, evs, n, bht, nthrds);
     free(evs);
 }
 

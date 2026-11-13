@@ -397,6 +397,12 @@ static void convert_hashes_to_columns(
         if (hi == 2) {
             k++;
         }
+        /* over the integers new rows keep reduced entries in the columns
+         * of known pivots, so the first nonzero column of a row has to be
+         * its lead term: all columns are sorted by the monomial order */
+        if (st->zz != 0) {
+            hds[i].idx = 1;
+        }
     }
     sort_columns(hcm, (len_t)j, sht, st->nthrds);
 
@@ -766,7 +772,8 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         st->hcm = hcm;
     } else {
         pairs_deg = sht->hd[hcm[0]].deg;
-        switch_hcm_data_to_basis_hash_table(hcm, bht, mat, sht, st->nthrds);
+        switch_hcm_data_to_basis_hash_table(hcm, bht, mat, sht, st->nthrds,
+                st->zz);
     }
 #pragma omp parallel for num_threads(st->nthrds) \
     private(i, j, k)
@@ -827,7 +834,9 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         rows[i][COEFFS]   = bl+k;
         bs->hm[bl+k]      = rows[i];
         bs->hm[bl+k][DEG] = deg;
-        if (bht->hd[rows[i][OFFSET]].deg == 0) {
+        /* over the integers only 1 generates the whole ring */
+        if (bht->hd[rows[i][OFFSET]].deg == 0 && (st->zz == 0
+                    || mpz_cmp_ui(bs->cf_qq[bl+k][0], 1) == 0)) {
             bs->constant  = 1;
         }
 #if 0
@@ -965,7 +974,9 @@ static void convert_sparse_matrix_rows_to_basis_elements_use_sht(
         rows[i][COEFFS]   = bl+k;
         bs->hm[bl+k]      = rows[i];
         bs->hm[bl+k][DEG] = deg;
-        if (deg == 0) {
+        /* over the integers only 1 generates the whole ring */
+        if (deg == 0 && (st->zz == 0
+                    || mpz_cmp_ui(bs->cf_qq[bl+k][0], 1) == 0)) {
             bs->constant  = 1;
         }
 #if 0

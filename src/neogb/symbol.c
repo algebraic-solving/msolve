@@ -326,8 +326,10 @@ static int32_t select_spairs_by_minimal_degree(
         const int fp  = ps[i].type == FIELD_PAIR;
         /* ncols initially counts number of different lcms, the rows of
          * field pairs are only rows to be reduced, their lead terms are
-         * not known */
-        if (!fp) {
+         * not known; over the integers the reducer of an lcm is chosen in
+         * the symbolic preprocessing, by its lead coefficient, and all
+         * rows of the pairs are reduced */
+        if (!fp && md->zz == 0) {
             mat->nc++;
         }
         load  = 0;
@@ -361,7 +363,7 @@ static int32_t select_spairs_by_minimal_degree(
             hs[nr]    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             polys[nr] = b;
             bis[nr]   = gens[k];
-            isrr[nr]  = fp ? 2 : (k == 0);
+            isrr[nr]  = fp ? 2 : (k == 0 && md->zz == 0);
             /* track trace information ? */
             if (md->trace_level == LEARN_TRACER) {
                 if (bs->ht->eld == bs->ht->esz-1) {
@@ -399,7 +401,9 @@ static int32_t select_spairs_by_minimal_degree(
             continue;
         }
         /* mark lcm column as lead term column */
-        sht->hd[rows[k][OFFSET]].idx = 2;
+        if (md->zz == 0) {
+            sht->hd[rows[k][OFFSET]].idx = 2;
+        }
         if (isrr[k]) {
             rrows[nrr++]  = rows[k];
         } else {
@@ -567,6 +571,7 @@ typedef struct
     len_t *pos;         /* positions of the lead monomials in bs->lm */
     len_t *len;         /* lengths of the corresponding basis elements */
     exp_t *ev;          /* exponent vectors of the lead monomials */
+    mpz_t **lc;         /* lead coefficients over the integers, else NULL */
     red_node_t *nd;     /* nodes of the trie, nd[0] is the root */
     len_t nnd;
     len_t snd;
@@ -628,7 +633,8 @@ static len_t add_reducer_index_node(
 
 static void initialize_reducer_index(
         red_idx_t *ri,
-        const bs_t * const bs
+        const bs_t * const bs,
+        const int zz
         )
 {
     len_t i;
@@ -638,6 +644,7 @@ static void initialize_reducer_index(
     ri->pos = (len_t *)malloc((unsigned long)n * sizeof(len_t));
     ri->len = NULL;
     ri->ev  = NULL;
+    ri->lc  = NULL;
     ri->nnd = 0;
     ri->snd = 64;
     ri->nd  = (red_node_t *)malloc((unsigned long)ri->snd * sizeof(red_node_t));
@@ -652,11 +659,17 @@ static void initialize_reducer_index(
     const len_t evl = bs->ht->evl;
     ri->len = (len_t *)malloc((unsigned long)n * sizeof(len_t));
     ri->ev  = (exp_t *)malloc((unsigned long)n * evl * sizeof(exp_t));
+    if (zz != 0) {
+        ri->lc  = (mpz_t **)malloc((unsigned long)n * sizeof(mpz_t *));
+    }
     for (i = 0; i < n; ++i) {
         ri->sdm[i]      = (sdm_t)(tmp[i] >> 32);
         ri->pos[i]      = (len_t)(tmp[i] & 0xFFFFFFFF);
         const hm_t *b   = bs->hm[bs->lmps[ri->pos[i]]];
         ri->len[i]      = b[LENGTH];
+        if (zz != 0) {
+            ri->lc[i]   = &(bs->cf_qq[b[COEFFS]][0]);
+        }
         memcpy(ri->ev + (unsigned long)i * evl, bs->ht->ev[b[OFFSET]],
                 (unsigned long)evl * sizeof(exp_t));
     }
@@ -673,6 +686,8 @@ static void free_reducer_index(
     free(ri->nd);
     free(ri->len);
     free(ri->ev);
+    free(ri->lc);
+    ri->lc  = NULL;
     ri->len = NULL;
     ri->ev  = NULL;
     ri->sdm = NULL;
@@ -684,8 +699,10 @@ static void free_reducer_index(
 /* Among all reducers of the monomial e with short divisor mask ms we
  * choose the shortest one and among those the newest one, i.e. the
  * result does not depend on the order in which the lead monomials are
- * checked. Returns the position of the reducer in bs->lm + 1, 0 if
- * there is no reducer. */
+ * checked. Over the integers the lead coefficient with the smallest
+ * absolute value comes first: it divides those of the other reducers
+ * in a strong Groebner basis. Returns the position of the reducer in
+ * bs->lm + 1, 0 if there is no reducer. */
 static len_t search_reducer(
         const red_idx_t * const ri,
         const sdm_t ms,
@@ -702,6 +719,7 @@ static len_t search_reducer(
     const red_node_t * const nd = ri->nd;
 
     len_t bi    = 0;
+    len_t bli   = 0;
     len_t blen  = 0;
     len_t ns_   = 0;
     if (ri->nnd > 0) {
@@ -722,7 +740,14 @@ static len_t search_reducer(
                 continue;
             }
             const len_t bl = ri->len[l];
-            if (blen != 0 && bl > blen) {
+            int lcc = 0;
+            if (blen != 0 && ri->lc != NULL) {
+                lcc = mpz_cmpabs(*(ri->lc[l]), *(ri->lc[bli]));
+                if (lcc > 0) {
+                    continue;
+                }
+            }
+            if (blen != 0 && lcc == 0 && bl > blen) {
                 continue;
             }
             const exp_t * const f = ri->ev + (unsigned long)l * evl;
@@ -732,9 +757,10 @@ static len_t search_reducer(
                 }
             }
             i = ri->pos[l];
-            if (k == evl
-                    && (blen == 0 || bl < blen || lmps[i] > lmps[bi])) {
+            if (k == evl && (blen == 0 || lcc < 0 || bl < blen
+                        || lmps[i] > lmps[bi])) {
                 bi    = i;
+                bli   = l;
                 blen  = bl;
             }
         }
@@ -806,7 +832,7 @@ static void symbolic_preprocessing(
     exp_t *ems    = NULL;
 
     red_idx_t ri;
-    initialize_reducer_index(&ri, bs);
+    initialize_reducer_index(&ri, bs, md->zz);
 
     hl_t lo = 1;
     while (lo < sht->eld) {

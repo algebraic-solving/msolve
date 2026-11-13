@@ -324,14 +324,6 @@ static int32_t select_spairs_by_minimal_degree(
     while (i < nps) {
         /* the pairs with an lcm are all field pairs or none of them */
         const int fp  = ps[i].type == FIELD_PAIR;
-        /* ncols initially counts number of different lcms, the rows of
-         * field pairs are only rows to be reduced, their lead terms are
-         * not known; over the integers the reducer of an lcm is chosen in
-         * the symbolic preprocessing, by its lead coefficient, and all
-         * rows of the pairs are reduced */
-        if (!fp && md->zz == 0) {
-            mat->nc++;
-        }
         load  = 0;
         lcm   = ps[i].lcm;
         j = i;
@@ -345,7 +337,24 @@ static int32_t select_spairs_by_minimal_degree(
         qsort(gens, (unsigned long)load, sizeof(len_t), gens_cmp);
 
         /* first element with given lcm goes into reducer part of matrix,
-         * all remaining ones go to to be reduced part */
+         * all remaining ones go to to be reduced part. Over the integers
+         * this is the first one with lead coefficient +-1, which is the
+         * best reducer. Without one the reducer of the lcm is chosen in
+         * the symbolic preprocessing, by its lead coefficient, and all
+         * rows of the pairs are reduced. ncols initially counts the number
+         * of reducers of the lcms, the rows of field pairs are only rows
+         * to be reduced, their lead terms are not known. */
+        len_t ur = 0;
+        if (md->zz != 0) {
+            for (ur = 0; ur < load; ++ur) {
+                if (mpz_cmpabs_ui(bs->cf_qq[bs->hm[gens[ur]][COEFFS]][0], 1) == 0) {
+                    break;
+                }
+            }
+        }
+        if (!fp && ur < load) {
+            mat->nc++;
+        }
         for (k = 0; k < load; ++k) {
             /* check sorted list for doubles */
             if (k > 0 && gens[k] == gens[k-1]) {
@@ -363,7 +372,7 @@ static int32_t select_spairs_by_minimal_degree(
             hs[nr]    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             polys[nr] = b;
             bis[nr]   = gens[k];
-            isrr[nr]  = fp ? 2 : (k == 0 && md->zz == 0);
+            isrr[nr]  = fp ? 2 : k == ur;
             /* track trace information ? */
             if (md->trace_level == LEARN_TRACER) {
                 if (bs->ht->eld == bs->ht->esz-1) {
@@ -400,8 +409,9 @@ static int32_t select_spairs_by_minimal_degree(
             mat->nr++;
             continue;
         }
-        /* mark lcm column as lead term column */
-        if (md->zz == 0) {
+        /* mark lcm column as lead term column, over the integers only if
+         * it has a reducer */
+        if (md->zz == 0 || isrr[k]) {
             sht->hd[rows[k][OFFSET]].idx = 2;
         }
         if (isrr[k]) {

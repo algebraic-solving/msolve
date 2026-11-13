@@ -111,6 +111,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_line-endings.sh:test/diff/diff_line-endings.sh
  test/diff/diff_source.sh:test/diff/diff_source.sh
  test/diff/diff_source-fglm.sh:test/diff/diff_source-fglm.sh
+ test/diff/diff_source-fglm-qq.sh:test/diff/diff_source-fglm-qq.sh
  test/diff/diff_source-gb-lm.sh:test/diff/diff_source-gb-lm.sh
  test/diff/diff_source-gb-red.sh:test/diff/diff_source-gb-red.sh
  test/diff/diff_source-gb-elim-red.sh:test/diff/diff_source-gb-elim-red.sh
@@ -358,6 +359,7 @@ AC_CONFIG_LINKS([
  input_files/one-qq.ms:input_files/one-qq.ms
  output_files/one-qq.res:output_files/one-qq.res
  output_files/one-qq.g2.res:output_files/one-qq.g2.res
+ output_files/one-qq.g3.res:output_files/one-qq.g3.res
  test/diff/diff_one-qq.sh:test/diff/diff_one-qq.sh
  input_files/quadratic-nonradical-qq.ms:input_files/quadratic-nonradical-qq.ms
  output_files/quadratic-nonradical-qq.P2.d0.res:output_files/quadratic-nonradical-qq.P2.d0.res

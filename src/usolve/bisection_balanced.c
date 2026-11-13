@@ -108,7 +108,7 @@ typedef struct {
   long n;
 } usolve_bal_cache_t;
 
-typedef struct {
+typedef struct usolve_bal_s {
   slong n;
   /* F(y) = 2^d g(s 2^b y), with g = f, or f / x when the root 0 of the
    * input f was divided out (o = 1), and s = -1 for the negative roots;
@@ -138,6 +138,9 @@ typedef struct {
   long nodes;           /* nodes investigated here */
   long recent_nodes;    /* nodes and fallbacks since w last changed */
   long recent_fallbacks;
+  /* in usolve_bal_run: the state where the tasks add their counters */
+  struct usolve_bal_s *top;
+  long tasks;           /* right halves investigated in their own task */
 } usolve_bal_t;
 
 static void usolve_bal_node_init(usolve_bal_node_t *a, const slong n){
@@ -592,16 +595,20 @@ static void usolve_bal_root(usolve_bal_t *B, const fmpz_t c, const slong k,
   mpz_t z;
   mpz_init(z);
   fmpz_get_mpz(z, c);
-  merge_root(B->roots, z, k, isexact, sgnlft, *(B->nbr),
-             flags->bound_pos, flags->bound_neg, flags->sign);
-  mpz_clear(z);
-  (*(B->nbr))++;
-  if(flags->verbose >= 1){
-    fprintf(VERBSTREAM, "+");
-    if((*(B->nbr)) % 100 == 0){
-      fprintf(VERBSTREAM, "[%lu]", *(B->nbr));
+  /* the tasks of usolve_bal_run share the array of the roots */
+#pragma omp critical(usolve_bal_root)
+  {
+    merge_root(B->roots, z, k, isexact, sgnlft, *(B->nbr),
+               flags->bound_pos, flags->bound_neg, flags->sign);
+    (*(B->nbr))++;
+    if(flags->verbose >= 1){
+      fprintf(VERBSTREAM, "+");
+      if((*(B->nbr)) % 100 == 0){
+        fprintf(VERBSTREAM, "[%lu]", *(B->nbr));
+      }
     }
   }
+  mpz_clear(z);
   if(flags->hasrealroots == 1){
     B->stop = 1;
   }
@@ -708,6 +715,91 @@ static int usolve_bal_grid(usolve_bal_t *B, const fmpz_t c, const slong k,
   return ok;
 }
 
+/* state of a task of usolve_bal_run: that of P (working precision, recent
+ * nodes and fallbacks, ...), with its own flags fl (copied from pf) and its
+ * own counters */
+static void usolve_bal_task_init(usolve_bal_t *T, const usolve_bal_t *P,
+                                 const usolve_flags *pf, usolve_flags *fl){
+  *fl = *pf;
+  fl->node_looked = 0;
+  fl->half_done = 0;
+  fl->skipped = 0;
+  fl->transl = 0;
+  fl->time_desc = 0;
+  fl->time_shift = 0;
+  *T = *P;
+  T->flags = fl;
+  T->nodes = 0;
+  T->fallbacks = 0;
+  T->grids = 0;
+  T->grids_ok = 0;
+  T->grid_signs = 0;
+  T->tasks = 0;
+}
+
+/* adds the counters of the task T to T->top */
+static void usolve_bal_task_done(const usolve_bal_t *T){
+  usolve_bal_t *B = T->top;
+  usolve_flags *flags = B->flags;
+  const usolve_flags *fl = T->flags;
+#pragma omp critical(usolve_bal_run)
+  {
+    B->w = FLINT_MAX(B->w, T->w);
+    B->nodes += T->nodes;
+    B->fallbacks += T->fallbacks;
+    B->grids += T->grids;
+    B->grids_ok += T->grids_ok;
+    B->grid_signs += T->grid_signs;
+    B->tasks += T->tasks;
+    flags->node_looked += fl->node_looked;
+    flags->half_done += fl->half_done;
+    flags->skipped += fl->skipped;
+    flags->transl += fl->transl;
+    flags->time_desc += fl->time_desc;
+    flags->time_shift += fl->time_shift;
+  }
+}
+
+static long usolve_bal_node(usolve_bal_t *B, const usolve_bal_node_t *a0,
+                            const fmpz_t c, const slong k);
+
+/* investigates the right half (c2, k + 1) of a node (c, k) of polynomial
+ * a, with c2 = 2 c + 1 */
+static void usolve_bal_right(usolve_bal_t *B, const usolve_bal_node_t *a,
+                             const fmpz_t c2, const slong k){
+  const slong n = B->n;
+  usolve_flags *flags = B->flags;
+  usolve_bal_node_t R;
+  usolve_bal_node_init(&R, n);
+  usolve_bal_node_set(&R, a, n);
+  double e_time = realtime();
+  if(flags->verbose >= 1){
+    fprintf(VERBSTREAM, "*");
+  }
+  if(a->exact){
+    for(slong i = 0; i <= n; i++){
+      fmpz_mul_2exp(R.v + i, a->v + i, n - i);
+    }
+    fmpz_t one;
+    fmpz_init_set_ui(one, 1);
+    _fmpz_poly_taylor_shift(R.v, one, n + 1);
+    fmpz_clear(one);
+    usolve_bal_remove_2content(R.v, n);
+  }
+  else{
+    fmpz_t tmp;
+    fmpz_init(tmp);
+    R.s = a->s + 1;
+    usolve_bal_shift(B, R.v, R.e, n + 1, R.s, tmp);
+    fmpz_clear(tmp);
+    usolve_bal_rebalance(B, &R);
+  }
+  flags->time_shift += (realtime() - e_time);
+  (flags->transl)++;
+  usolve_bal_node(B, &R, c2, k + 1);
+  usolve_bal_node_clear(&R, n);
+}
+
 /* investigates the node (c, k) of polynomial a0, which is not modified
  * (so that the left half can share it); returns its number of sign
  * variations (3 for 3 or more) */
@@ -767,8 +859,10 @@ static long usolve_bal_node(usolve_bal_t *B, const usolve_bal_node_t *a0,
   }
   const int sbot = usolve_bal_sign(a->v + 0, a->e + 0);
 
-  fmpz_t c2;
+  fmpz_t c2, cr;
   fmpz_init(c2);
+  fmpz_init(cr);
+  int spawn = 0;
   fmpz_mul_2exp(c2, c, 1);
   if(nb == 2 && sbot * half < 0 && top * half < 0){
     /* one root in each half */
@@ -799,6 +893,27 @@ static long usolve_bal_node(usolve_bal_t *B, const usolve_bal_node_t *a0,
     usolve_bal_rebalance(B, &own);
     own.exact = 0;
     a = &own;
+  }
+
+  /* in usolve_bal_run, the right half of a node with at least 3 sign
+   * variations, always investigated, is given to a task, which starts from
+   * the state of B at this node: the result does not depend on the number
+   * of threads */
+  if(B->top != NULL && nb >= 3){
+    spawn = 1;
+    B->tasks++;
+    fmpz_mul_2exp(cr, c, 1);
+    fmpz_add_ui(cr, cr, 1);
+    usolve_bal_t P = *B;
+    usolve_flags pf = *flags;
+#pragma omp task firstprivate(P, pf, a) shared(cr)
+    {
+      usolve_flags fl;
+      usolve_bal_t T;
+      usolve_bal_task_init(&T, &P, &pf, &fl);
+      usolve_bal_right(&T, a, cr, k);
+      usolve_bal_task_done(&T);
+    }
   }
 
   /* left half: the same data with slope s + 1, or, for an exact node,
@@ -833,6 +948,10 @@ static long usolve_bal_node(usolve_bal_t *B, const usolve_bal_node_t *a0,
     }
   }
 
+  if(spawn){
+    goto clear;
+  }
+
   if(nb <= 2 && nbleft == nb){
     (flags->skipped)++;
     if(flags->verbose >= 1){
@@ -841,38 +960,14 @@ static long usolve_bal_node(usolve_bal_t *B, const usolve_bal_node_t *a0,
     goto clear;
   }
 
-  /* right half */
-  usolve_bal_node_t R;
-  usolve_bal_node_init(&R, n);
-  usolve_bal_node_set(&R, a, n);
-  e_time = realtime();
-  if(flags->verbose >= 1){
-    fprintf(VERBSTREAM, "*");
-  }
-  if(a->exact){
-    for(slong i = 0; i <= n; i++){
-      fmpz_mul_2exp(R.v + i, a->v + i, n - i);
-    }
-    fmpz_t one;
-    fmpz_init_set_ui(one, 1);
-    _fmpz_poly_taylor_shift(R.v, one, n + 1);
-    fmpz_clear(one);
-    usolve_bal_remove_2content(R.v, n);
-  }
-  else{
-    fmpz_t tmp;
-    fmpz_init(tmp);
-    R.s = a->s + 1;
-    usolve_bal_shift(B, R.v, R.e, n + 1, R.s, tmp);
-    fmpz_clear(tmp);
-    usolve_bal_rebalance(B, &R);
-  }
-  flags->time_shift += (realtime() - e_time);
-  (flags->transl)++;
-  usolve_bal_node(B, &R, c2, k + 1);
-  usolve_bal_node_clear(&R, n);
+  usolve_bal_right(B, a, c2, k);
 clear:
+  if(spawn){
+    /* the task reads a and cr */
+#pragma omp taskwait
+  }
   fmpz_clear(c2);
+  fmpz_clear(cr);
   if(owned){
     usolve_bal_node_clear(&own, n);
   }
@@ -925,15 +1020,17 @@ static void usolve_bal_init(usolve_bal_t *B, mpz_t *upol0,
   B->grids = 0;
   B->grids_ok = 0;
   B->grid_signs = 0;
+  B->top = NULL;
+  B->tasks = 0;
 }
 
 static void usolve_bal_clear(usolve_bal_t *B){
   if(B->flags->verbose >= 1){
     fprintf(VERBSTREAM, "\n%ld subtrees in fixed point (%ld nodes), %ld "
             "exact node polynomials computed again, final precision %ld "
-            "bits; %ld of %ld grids conclusive (%ld signs)\n",
+            "bits; %ld of %ld grids conclusive (%ld signs); %ld tasks\n",
             B->subtrees, B->nodes, B->fallbacks, (long)B->w, B->grids_ok,
-            B->grids, B->grid_signs);
+            B->grids, B->grid_signs, B->tasks);
   }
   for(long i = 0; i < B->powers->n; i++){
     fmpz_poly_clear(B->powers->p[i].c);
@@ -1139,11 +1236,11 @@ static int usolve_bal_cmp_roots(const void *x, const void *y){
  * (that of the exact bisection, or of earlier computations, such as the
  * parametrization in msolve), or, when the memory of the process cannot be
  * read, below the memory used by the exact bisection. Each one starts from
- * the state of B (working precision, ...),
- * learns on its own and writes its roots in its own array, so that the
- * output does not depend on the number of threads; the roots are then
- * sorted back in the order of the sequential bisection (by increasing x
- * for the positive roots, by decreasing x for the negative ones) */
+ * the state of B (working precision, ...) and learns on its own, as does
+ * each task of usolve_bal_node, so that the output does not depend on the
+ * number of threads; the roots are then sorted back in the order of the
+ * sequential bisection (by increasing x for the positive roots, by
+ * decreasing x for the negative ones) */
 static void usolve_bal_run(usolve_bal_t *B){
   const long nq = B->nqueue;
   if(nq == 0){
@@ -1175,30 +1272,19 @@ static void usolve_bal_run(usolve_bal_t *B){
             "(%.0f MB available below the peak memory, about %.0f MB per "
             "thread)\n", nq, nthreads, room / 1e6, thr / 1e6);
   }
+  /* the state each subtree starts from; B only receives the counters */
+  usolve_bal_t S = *B;
+  S.top = B;
+  S.recent_nodes = 0;
+  S.recent_fallbacks = 0;
+  const usolve_flags sf = *flags;
 #pragma omp parallel num_threads(nthreads)
   {
 #pragma omp for schedule(dynamic, 1)
     for(long j = 0; j < nq; j++){
-      usolve_flags fl = *flags;
-      fl.node_looked = 0;
-      fl.half_done = 0;
-      fl.skipped = 0;
-      fl.transl = 0;
-      fl.time_desc = 0;
-      fl.time_shift = 0;
-      unsigned long int nbr = 0;
-      usolve_bal_t T = *B;
-      T.flags = &fl;
-      T.roots = malloc((n + 1) * sizeof(interval));
-      T.nbr = &nbr;
-      T.w = w0;
-      T.nodes = 0;
-      T.fallbacks = 0;
-      T.grids = 0;
-      T.grids_ok = 0;
-      T.grid_signs = 0;
-      T.recent_nodes = 0;
-      T.recent_fallbacks = 0;
+      usolve_flags fl;
+      usolve_bal_t T;
+      usolve_bal_task_init(&T, &S, &sf, &fl);
       usolve_bal_node_t a;
       usolve_bal_node_init(&a, n);
       usolve_bal_unpack(&a, B->queue[j], n);
@@ -1206,27 +1292,7 @@ static void usolve_bal_run(usolve_bal_t *B){
       B->queue[j] = NULL;
       usolve_bal_node(&T, &a, B->qc + j, B->qk[j]);
       usolve_bal_node_clear(&a, n);
-#pragma omp critical(usolve_bal_run)
-      {
-        /* the intervals are moved (their numerators are not copied) */
-        for(unsigned long int i = 0; i < nbr; i++){
-          B->roots[*(B->nbr) + i] = T.roots[i];
-        }
-        *(B->nbr) += nbr;
-        B->w = FLINT_MAX(B->w, T.w);
-        B->nodes += T.nodes;
-        B->fallbacks += T.fallbacks;
-        B->grids += T.grids;
-        B->grids_ok += T.grids_ok;
-        B->grid_signs += T.grid_signs;
-        flags->node_looked += fl.node_looked;
-        flags->half_done += fl.half_done;
-        flags->skipped += fl.skipped;
-        flags->transl += fl.transl;
-        flags->time_desc += fl.time_desc;
-        flags->time_shift += fl.time_shift;
-      }
-      free(T.roots);
+      usolve_bal_task_done(&T);
     }
     flint_cleanup();
   }

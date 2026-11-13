@@ -328,36 +328,6 @@ static void fglmc_lu_insert(fglmc_lu_t *E, const mp_limb_t *w, const mp_limb_t *
   E->r++;
 }
 
-FGLMC_VECTORIZE
-static void fglmc_lu_relation(fglmc_lu_t *E, const mp_limb_t *a, CF_t *c){
-  const slong r = E->r, D = E->D;
-  const mp_limb_t p = E->p;
-  const uint64_t pp = (uint64_t)p * p;
-  const uint64_t Mred = ((UINT64_C(1) << 63) / pp) * pp;
-  const uint64_t q = (uint64_t)(p - 1) * (p - 1);
-  uint32_t nf = (uint32_t)(((UINT64_C(1) << 63) - 1) / (q ? q : 1));
-  if(nf < 1) nf = 1;
-  if(nf > 8) nf = 8;
-  /* back substitution in L, delayed reduction */
-  uint64_t *res = E->tmp;
-  for(slong k = 0; k < r; k++){
-      res[k] = a[k];
-  }
-  uint32_t nd = 0;
-  for(slong m = r - 1; m >= 0; m--){
-    const mp_limb_t xm = (mp_limb_t)((res[m] % p) * (uint64_t)E->dinv[m] % p);
-    c[m] = xm ? (CF_t)(p - xm) : 0;
-    if(!xm) continue;
-    const uint64_t nx = p - xm;
-    const CF_t *Lm = E->L + (uint64_t)m * D;
-    for(slong k = 0; k < m; k++) res[k] += nx * Lm[k];
-    if(++nd == nf){
-      for(slong k = 0; k < m; k++) res[k] -= Mred & -(res[k] >> 63);
-      nd = 0;
-    }
-  }
-}
-
 /* B -= C U mod p, with B (K x w), C (K x n) and U (n x w) given by their first
  * entry and their row strides; entries of B and C are reduced modulo p, U
  * has 32-bit entries. Tiles of FGLMC_RB rows and FGLMC_WB columns; the
@@ -592,10 +562,85 @@ static inline void fglmc_new_head(fglm_lex_staircase_t *lex,
     lex->ngens++;
 }
 
+#ifndef FGLMC_NREL
+#define FGLMC_NREL 32    // relations solved together
+#endif
+
+/* Relations waiting for their coefficients */
+typedef struct {
+  mp_limb_t *A;     // FGLMC_NREL x D: coefficients a against the rows of U
+  mp_limb_t *X;     // FGLMC_NREL x D
+  uint64_t *off;    // offset of the relation in coeffs
+  szmat_t *len;     // number of coefficients (t)
+  uint32_t n;
+} fglmc_rel_t;
+
+/* Coefficients of the pending relations: X Lt = A, Lt lower triangular
+ * (row m: L_m[0..m), diagonal L[m][m]), by panels of FGLMC_NB rows from the
+ * last one, the other rows being updated by fglmc_gemm_sub (L read once for
+ * all the relations); c = -X. */
+FGLMC_VECTORIZE
+static void fglmc_rel_flush(fglmc_lu_t *E, fglmc_rel_t *R, CF_t *coeffs){
+  const slong K = R->n, D = E->D;
+  const mp_limb_t p = E->p;
+  if(K == 0) return;
+  slong r = 0;
+  for(slong i = 0; i < K; i++){
+      if((slong)R->len[i] > r) r = R->len[i];
+  }
+  for(slong i = 0; i < K; i++){
+      mp_limb_t *a = R->A + (uint64_t)i * D;
+      for(slong m = R->len[i]; m < r; m++) a[m] = 0;
+  }
+  const uint64_t pp = (uint64_t)p * p;
+  const uint64_t Mred = ((UINT64_C(1) << 63) / pp) * pp;
+  const uint64_t q = (uint64_t)(p - 1) * (p - 1);
+  uint32_t nf = (uint32_t)(((UINT64_C(1) << 63) - 1) / (q ? q : 1));
+  if(nf < 1) nf = 1;
+  if(nf > 8) nf = 8;
+  for(slong m1 = r; m1 > 0;){
+    const slong m0 = (m1 > FGLMC_NB) ? m1 - FGLMC_NB : 0;
+    for(slong i = 0; i < K; i++){
+      /* inside the panel: delayed reduction of a[m0..m) */
+      mp_limb_t *a = R->A + (uint64_t)i * D;
+      mp_limb_t *x = R->X + (uint64_t)i * D;
+      uint32_t nd = 0;
+      for(slong m = m1 - 1; m >= m0; m--){
+        const mp_limb_t xm = (mp_limb_t)((a[m] % p) * E->dinv[m] % p);
+        x[m] = xm;
+        if(!xm) continue;
+        const uint64_t nx = p - xm;
+        const CF_t *Lm = E->L + (uint64_t)m * D;
+        for(slong k = m0; k < m; k++) a[k] += nx * Lm[k];
+        if(++nd == nf){
+          for(slong k = m0; k < m; k++) a[k] -= Mred & -(a[k] >> 63);
+          nd = 0;
+        }
+      }
+    }
+    if(m0 > 0){
+      /* A[:, 0..m0) -= X[:, m0..m1) L[m0..m1, 0..m0) */
+      fglmc_gemm_sub(R->A, D, R->X + m0, D, E->L + (uint64_t)m0 * D, D,
+                     K, m1 - m0, m0, p, E->nthr, NULL);
+    }
+    m1 = m0;
+  }
+  for(slong i = 0; i < K; i++){
+      const mp_limb_t *x = R->X + (uint64_t)i * D;
+      CF_t *c = coeffs + R->off[i];
+      for(slong m = 0; m < (slong)R->len[i]; m++){
+          c[m] = x[m] ? (CF_t)(p - x[m]) : 0;
+      }
+  }
+  R->n = 0;
+}
+
 /* Relation for the current leading monomial: its coefficients against
- * s_0, ..., s_{t-1} are written in coeffs[lex->ncoeffs .. lex->ncoeffs + t),
- * coeffs being enlarged if needed. Returns 0 if the allocation fails. */
-static int fglmc_push_relation(fglmc_lu_t *E, const mp_limb_t *al,
+ * s_0, ..., s_{t-1} go to coeffs[lex->ncoeffs .. lex->ncoeffs + t) (when R
+ * is flushed), coeffs being enlarged if needed. Returns 0 if the allocation
+ * fails. */
+static int fglmc_push_relation(fglmc_lu_t *E, fglmc_rel_t *R,
+                               const mp_limb_t *al,
                                const fglm_lex_staircase_t *lex,
                                const szmat_t t,
                                CF_t **coeffs, uint64_t *cap_c){
@@ -607,7 +652,13 @@ static int fglmc_push_relation(fglmc_lu_t *E, const mp_limb_t *al,
         *coeffs = nc;
         *cap_c = c;
     }
-    fglmc_lu_relation(E, al, *coeffs + lex->ncoeffs);
+    const uint32_t i = R->n++;
+    memcpy(R->A + (uint64_t)i * E->D, al, t * sizeof(mp_limb_t));
+    R->off[i] = lex->ncoeffs;
+    R->len[i] = t;
+    if(R->n == FGLMC_NREL){
+        fglmc_rel_flush(E, R, *coeffs);
+    }
     return 1;
 }
 
@@ -906,6 +957,12 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   CF_t *coeffs = malloc(cap_c * sizeof(CF_t));
   fglmc_heap_t H = { malloc(maxc * sizeof(fglmc_cand_t)), 0, nv, ord };
   uint32_t *clen = malloc((D + 1) * sizeof(uint32_t));
+  fglmc_rel_t R;
+  R.A   = malloc((uint64_t)FGLMC_NREL * D * sizeof(mp_limb_t));
+  R.X   = malloc((uint64_t)FGLMC_NREL * D * sizeof(mp_limb_t));
+  R.off = malloc(FGLMC_NREL * sizeof(uint64_t));
+  R.len = malloc(FGLMC_NREL * sizeof(szmat_t));
+  R.n   = 0;
   /* chist[b][a]: chains with bound b (see fglmc_predict) using a vectors */
   uint32_t chist[FGLMC_VLEN + 1][FGLMC_VLEN + 1];
   memset(chist, 0, sizeof(chist));
@@ -935,7 +992,8 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   }
   if(!ok || !Vs || !S || !pool || !acc || !wl || !al || !coeffs || !H.a
      || !lex->g_lm || !lex->g_ntail || !clen || !Q.c || !Q.off || !Q.len
-     || !Q.V || !Q.Cb || !Q.Bb || !Q.uidx || !Q.vp || !Q.wp){
+     || !Q.V || !Q.Cb || !Q.Bb || !Q.uidx || !Q.vp || !Q.wp
+     || !R.A || !R.X || !R.off || !R.len){
       ok = 0;
       goto done;
   }
@@ -1061,7 +1119,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
         zero = fglmc_lu_reduce(&E, wl, 0, al);
         }
         if(zero){
-            if(!fglmc_push_relation(&E, al, lex, t, &coeffs, &cap_c)){
+            if(!fglmc_push_relation(&E, &R, al, lex, t, &coeffs, &cap_c)){
                 ok = 0;
                 break;
             }
@@ -1140,7 +1198,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
                   }
                   fglmc_new_stair(u.e, (int32_t)(k + i), nv, S, &t);
               } else {
-                  if(!fglmc_push_relation(&E, al, lex, t, &coeffs, &cap_c)){
+                  if(!fglmc_push_relation(&E, &R, al, lex, t, &coeffs, &cap_c)){
                       ok = 0;
                       break;
                   }
@@ -1213,6 +1271,9 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   if(t != D) {
       ok = 0;
   }
+  if(ok){
+      fglmc_rel_flush(&E, &R, coeffs);
+  }
 
 done:
   if(ok){
@@ -1251,6 +1312,10 @@ done:
   free(Q.uidx);
   free(Q.vp);
   free(Q.wp);
+  free(R.A);
+  free(R.X);
+  free(R.off);
+  free(R.len);
   free(clen);
   if (st->info_level > 1){
       fprintf(VERBSTREAM,

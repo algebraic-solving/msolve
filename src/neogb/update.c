@@ -803,6 +803,14 @@ static inline deg_t zz_lcm_degree(
     return total_degree(ea, ht) + total_degree(eb, ht) - gcd_degree(ea, eb, ht);
 }
 
+/* candidate for a new pair (i, n) in update_basis_zz */
+typedef struct {
+    bl_t i;
+    deg_t deg;  /* total degree of the lcm of the lead monomials */
+    int prod;   /* 1 if removed by the product criterion */
+    int gcd;    /* 1 if its G-polynomial is needed */
+} zz_cand_t;
+
 /* Update of the pairs and the basis for strong Groebner bases over the
  * integers. A pair (f, g) stands for its S- and its G-polynomial: both
  * multiplied elements become rows of the same matrix and the linear
@@ -812,6 +820,7 @@ static inline deg_t zz_lcm_degree(
  *   other one, the S-polynomial not if the lead monomials and the lead
  *   coefficients are coprime (product criterion); a pair is only removed
  *   if neither is needed,
+ * - the criterion of Gebauer and Moeller for the new pairs, see below,
  * - chain criterion: the new element h removes the pair (f, g) if lm(h)
  *   divides lcm(lm(f), lm(g)), lc(h) divides gcd(lc(f), lc(g)) and both
  *   lcm(lm(f), lm(h)) and lcm(lm(g), lm(h)) differ from lcm(lm(f), lm(g)).
@@ -845,6 +854,31 @@ static void update_basis_zz(
     mpz_t g;
     mpz_init(g);
     spair_t *ps = psl->p;
+    /* candidates for the new pairs of one element and the remaining ones,
+     * with the exponents and short divisor masks of their lcms */
+    const len_t evl = bht->evl;
+    const len_t ebl = bht->ebl;
+    const len_t mx  = bs->ld + npivs;
+    zz_cand_t *cd   = (zz_cand_t *)malloc((uint64_t)mx * sizeof(zz_cand_t));
+    exp_t *eb       = (exp_t *)malloc((uint64_t)evl * sizeof(exp_t));
+    exp_t *kx       = (exp_t *)malloc((uint64_t)mx * evl * sizeof(exp_t));
+    len_t *kv       = (len_t *)malloc((uint64_t)mx * evl * sizeof(len_t));
+    len_t *koff     = (len_t *)malloc((uint64_t)(mx+1) * sizeof(len_t));
+    uint64_t *km    = (uint64_t *)malloc((uint64_t)mx * sizeof(uint64_t));
+    sdm_t *ksdm     = (sdm_t *)malloc((uint64_t)mx * sizeof(sdm_t));
+    bl_t *kc        = (bl_t *)malloc((uint64_t)mx * sizeof(bl_t));
+    zz_cand_t *cs   = (zz_cand_t *)malloc((uint64_t)mx * sizeof(zz_cand_t));
+    len_t *cnt      = NULL;
+    len_t scnt      = 0;
+    /* variable masks of the lead monomials and if the lead coefficients
+     * are +-1 */
+    uint64_t *vm    = (uint64_t *)malloc((uint64_t)mx * sizeof(uint64_t));
+    int8_t *un      = (int8_t *)malloc((uint64_t)mx * sizeof(int8_t));
+    for (i = 0; i < mx; ++i) {
+        vm[i] = variable_mask(bht->ev[bs->hm[i][OFFSET]], bht);
+        un[i] = mpz_cmpabs_ui(*zz_lc(bs, i), 1) == 0;
+    }
+    len_t l;
     for (k = 0; k < npivs; ++k) {
         const bl_t n    = bs->ld;
         const hm_t lmn  = bs->hm[n][OFFSET];
@@ -874,20 +908,119 @@ static void update_basis_zz(
             }
         }
 
-        /* new pairs */
+        /* new pairs, removed by the criterion of Gebauer and Moeller:
+         * (i, n) is not needed if the lcm of a remaining pair (j, n)
+         * divides its lcm, the first one of the pairs with equal lcms
+         * remains, and lc(j) divides gcd(lc(i), lc(n)). Then the lead term
+         * of j divides the ones of the S- and the G-polynomial of (i, n),
+         * which are combinations of the S-polynomials of (i, j) and (j, n)
+         * and a multiple of j with integer coefficients. As over fields
+         * the pairs removed by the product criterion take part in this. */
+        /* a copy, inserting lcms may move the exponents in the hash table */
+        memcpy(eb, bht->ev[lmn], (uint64_t)evl * sizeof(exp_t));
+        const sdm_t bsdm = bht->hd[lmn].sdm;
+        len_t nc = 0;
         for (i = 0; i < n; ++i) {
             if (bs->red[i] != 0) {
                 continue;
             }
+            /* a lead coefficient +-1 divides the other one and is coprime
+             * to it */
             mpz_t * const ai = zz_lc(bs, i);
-            const int gneed = mpz_divisible_p(*ai, *an) == 0
+            const int unit  = un[i] != 0 || un[n] != 0;
+            const int gneed = unit == 0
+                && mpz_divisible_p(*ai, *an) == 0
                 && mpz_divisible_p(*an, *ai) == 0;
             const exp_t * const ea = bht->ev[bs->hm[i][OFFSET]];
-            const exp_t * const eb = bht->ev[lmn];
-            mpz_gcd(g, *ai, *an);
-            const int sneed = gcd_degree(ea, eb, bht) != 0
-                || mpz_cmp_ui(g, 1) != 0;
-            if (gneed == 0 && sneed == 0) {
+            const deg_t gd = gcd_degree(ea, eb, bht);
+            int sneed = gd != 0;
+            if (sneed == 0 && unit == 0) {
+                mpz_gcd(g, *ai, *an);
+                sneed = mpz_cmp_ui(g, 1) != 0;
+            }
+            cd[nc].i    = i;
+            cd[nc].deg  = total_degree(ea, bht) + total_degree(eb, bht) - gd;
+            cd[nc].prod = gneed == 0 && sneed == 0;
+            cd[nc].gcd  = gneed;
+            nc++;
+        }
+        /* sort the candidates by increasing degree of the lcm, the ones
+         * removed by the product criterion first, then by increasing i:
+         * counting sort by the key 2 * degree + 1 - prod */
+        deg_t dmax = 0;
+        for (l = 0; l < nc; ++l) {
+            dmax = cd[l].deg > dmax ? cd[l].deg : dmax;
+        }
+        const len_t nkey = 2 * (len_t)dmax + 2;
+        if (nkey + 1 > scnt) {
+            scnt = nkey + 1;
+            cnt  = realloc(cnt, (uint64_t)scnt * sizeof(len_t));
+        }
+        memset(cnt, 0, (uint64_t)(nkey + 1) * sizeof(len_t));
+        for (l = 0; l < nc; ++l) {
+            cnt[2 * cd[l].deg + 1 - cd[l].prod + 1]++;
+        }
+        for (l = 0; l < nkey; ++l) {
+            cnt[l+1] += cnt[l];
+        }
+        for (l = 0; l < nc; ++l) {
+            cs[cnt[2 * cd[l].deg + 1 - cd[l].prod]++] = cd[l];
+        }
+        memcpy(cd, cs, (uint64_t)nc * sizeof(zz_cand_t));
+        /* the lcm of a remaining pair (j, n) divides the one of (i, n) iff
+         * the exponents of i are at least the ones of j in the variables
+         * where the exponent of j is larger than the one of n, these are
+         * stored in kx and kv in the range given by koff, the mask of
+         * these variables in km */
+        len_t nk = 0;
+        koff[0]  = 0;
+        for (l = 0; l < nc; ++l) {
+            const bl_t ci = cd[l].i;
+            const exp_t * const ea = bht->ev[bs->hm[ci][OFFSET]];
+            const sdm_t sx  = bht->hd[bs->hm[ci][OFFSET]].sdm | bsdm;
+            const uint64_t nvx = ~vm[ci];
+            len_t t;
+            for (t = 0; t < nk; ++t) {
+                if ((km[t] & nvx) != 0 || (ksdm[t] & ~sx) != 0) {
+                    continue;
+                }
+                len_t u;
+                for (u = koff[t]; u < koff[t+1]; ++u) {
+                    if (ea[kv[u]] < kx[u]) {
+                        break;
+                    }
+                }
+                if (u < koff[t+1]) {
+                    continue;
+                }
+                if (un[kc[t]] != 0) {
+                    break;
+                }
+                mpz_t * const aj = zz_lc(bs, kc[t]);
+                mpz_gcd(g, *zz_lc(bs, ci), *an);
+                if (mpz_divisible_p(g, *aj) != 0) {
+                    break;
+                }
+            }
+            if (t < nk) {
+                st->num_gb_crit++;
+                continue;
+            }
+            len_t u  = koff[nk];
+            km[nk]   = 0;
+            for (len_t v = 1; v < evl; ++v) {
+                if (ea[v] > eb[v] && v != ebl) {
+                    kx[u] = ea[v];
+                    kv[u] = v;
+                    km[nk] |= (uint64_t)1 << (v & 63);
+                    u++;
+                }
+            }
+            koff[nk+1] = u;
+            ksdm[nk]   = sx;
+            kc[nk]     = ci;
+            nk++;
+            if (cd[l].prod != 0) {
                 st->num_gb_crit++;
                 continue;
             }
@@ -895,16 +1028,16 @@ static void update_basis_zz(
                 enlarge_hash_table(bht);
             }
             spair_t *p = ps + psl->ld;
-            p->lcm  = get_lcm(bs->hm[i][OFFSET], lmn, bht, bht);
-            p->gen1 = i;
+            p->lcm  = get_lcm(bs->hm[ci][OFFSET], lmn, bht, bht);
+            p->gen1 = ci;
             p->gen2 = n;
-            p->type = gneed != 0 ? GCD_PAIR : S_PAIR;
+            p->type = cd[l].gcd != 0 ? GCD_PAIR : S_PAIR;
             if (st->nev == 0) {
                 p->deg = bht->hd[p->lcm].deg;
             } else {
                 const deg_t ld    = bht->hd[p->lcm].deg;
-                const deg_t deg1  = ld - bht->hd[bs->hm[i][OFFSET]].deg
-                    + bs->hm[i][DEG];
+                const deg_t deg1  = ld - bht->hd[bs->hm[ci][OFFSET]].deg
+                    + bs->hm[ci][DEG];
                 const deg_t deg2  = ld - bht->hd[lmn].deg + dn;
                 p->deg = deg1 > deg2 ? deg1 : deg2;
             }
@@ -920,6 +1053,18 @@ static void update_basis_zz(
         }
     }
     mpz_clear(g);
+    free(cd);
+    free(eb);
+    free(kx);
+    free(kv);
+    free(koff);
+    free(km);
+    free(ksdm);
+    free(kc);
+    free(vm);
+    free(un);
+    free(cs);
+    free(cnt);
 
     /* remove useless pairs */
     j = 0;

@@ -4070,6 +4070,7 @@ static void mm_compute_nf_rows(sp_multimatfglm_t *M, int32_t nnf,
                                int32_t *lmb, bs_t *bs, ht_t *ht, md_t *st,
                                const int nv, const long fc,
                                const int info_level){
+  const double rt = realtime();
   const szmat_t D = M->ncols;
   sp_matfglm_t view;
   memset(&view, 0, sizeof(view));
@@ -4123,6 +4124,7 @@ static void mm_compute_nf_rows(sp_multimatfglm_t *M, int32_t nnf,
   free(evi);
   free(lens_nf);
   free(cfs_nf);
+  M->nf_rtime += realtime() - rt;
 }
 
 /* Context for the dense rows computed on demand during FGLM */

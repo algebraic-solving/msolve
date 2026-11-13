@@ -1642,7 +1642,7 @@ restart:
     learn = 0;
     prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
     if(info_level){
-        fprintf(VERBSTREAM, "New prime = %d\n", prime);
+        fprintf(VERBSTREAM, "New prime = %u\n", prime);
     }
     while(apply){
 

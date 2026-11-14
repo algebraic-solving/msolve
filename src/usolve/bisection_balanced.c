@@ -87,6 +87,10 @@
  * times the size of its largest node polynomial */
 #define USOLVE_BAL_THRMEM 55
 #define USOLVE_BAL_TOPMEM 18
+/* the threads may always use USOLVE_BAL_INMEM times the size of F, about
+ * twice the memory reached by the exact bisection on katsura-12 and
+ * katsura-13: with a univariate input, nothing else is computed before */
+#define USOLVE_BAL_INMEM 64
 
 typedef struct {
   fmpz *v;    /* coefficients */
@@ -1235,7 +1239,11 @@ static int usolve_bal_cmp_roots(const void *x, const void *y){
  * B->flags, as many as fit below the peak memory of the process so far
  * (that of the exact bisection, or of earlier computations, such as the
  * parametrization in msolve), or, when the memory of the process cannot be
- * read, below the memory used by the exact bisection. Each one starts from
+ * read, below the memory used by the exact bisection, and at least in
+ * USOLVE_BAL_INMEM (n + 1) tau bits, tau being the largest bit size of the
+ * coefficients of F: since the memory of a thread grows as n^2, this
+ * allows about USOLVE_BAL_INMEM tau / (1.5 USOLVE_BAL_THRMEM n) threads
+ * whatever the memory used before. Each one starts from
  * the state of B (working precision, ...) and learns on its own, as does
  * each task of usolve_bal_node, so that the output does not depend on the
  * number of threads; the roots are then sorted back in the order of the
@@ -1264,13 +1272,15 @@ static void usolve_bal_run(usolve_bal_t *B){
   else{
     room = USOLVE_BAL_TOPMEM * B->smax + thr;
   }
+  const double tau = FLINT_ABS(_fmpz_vec_max_bits(B->f, B->fl));
+  room = FLINT_MAX(room, USOLVE_BAL_INMEM * (double)(n + 1) * tau / 8);
   /* the main thread counts too: its work space was freed above */
   int nthreads = (int)FLINT_MIN((double)flags->nthreads, room / thr);
   nthreads = FLINT_MAX(nthreads, 1);
   if(flags->verbose >= 1){
     fprintf(VERBSTREAM, "\n%ld subtrees in fixed point on %d threads "
-            "(%.0f MB available below the peak memory, about %.0f MB per "
-            "thread)\n", nq, nthreads, room / 1e6, thr / 1e6);
+            "(%.0f MB available, about %.0f MB per thread)\n", nq, nthreads,
+            room / 1e6, thr / 1e6);
   }
   /* the state each subtree starts from; B only receives the counters */
   usolve_bal_t S = *B;

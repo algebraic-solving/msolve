@@ -100,7 +100,8 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_univariate-cubic-close-roots.sh \
 			  test/diff/diff_univariate-middle-root.sh \
 			  test/diff/diff_univariate-wilkinson-both-signs.sh \
-			  test/diff/diff_univariate-sgn.sh
+			  test/diff/diff_univariate-sgn.sh \
+			  test/diff/diff_univariate-gcd.sh
 
 # dist_check_DATA         = test/input_files
 neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c

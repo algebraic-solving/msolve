@@ -60,6 +60,7 @@ void free_rrec_data(rrec_data_t recdata);
 #include "separating.c"
 #include "splitting.c"
 #include "relations.c"
+#include "univariate.c"
 #include "hensel.c"
 #include "boolean-zeros.c"
 #include "streams.h"
@@ -4880,7 +4881,13 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
   double ct0 = cputime();
   double rt0 = realtime();
   int to_split = 0;
-  int b = msolve_trace_qq(mpz_paramp,
+  int b;
+  /* one variable: gcd and squarefree part, see univariate.c */
+  if (gens->nvars == 1 && gens->field_char == 0 && print_gb == 0) {
+    univariate_param_qq(*mpz_paramp, dim_ptr, dquot_ptr, gens, info_level);
+    b = 0;
+  } else {
+  b = msolve_trace_qq(mpz_paramp,
                           nmod_param,
                           dim_ptr,
                           dquot_ptr,
@@ -4903,6 +4910,7 @@ int real_msolve_qq(mpz_param_t *mpz_paramp, param_t **nmod_param, int *dim_ptr,
                           pbm_file,
                           files,
                           round);
+  }
   double ct1 = cputime();
   double rt1 = realtime();
 
@@ -6608,7 +6616,10 @@ restart:
         free(blen);
         free(bexp);
         free(bcf);
-        free_lucky_primes(&init_primes);
+        /* none with a univariate input, see univariate.c */
+        if (init_primes != NULL) {
+            free_lucky_primes(&init_primes);
+        }
 
         /* get parametrization */
         *paramp     = param;

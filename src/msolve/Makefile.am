@@ -19,6 +19,7 @@ EXTRA_DIST	=	  msolve-data.h \
 								separating.c \
 								splitting.c \
 								relations.c \
+								univariate.c \
 								hensel.c \
 								boolean-zeros.c \
 								iofiles.c \

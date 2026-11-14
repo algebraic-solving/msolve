@@ -1247,9 +1247,9 @@ the memory limit and, at each attempt, the precision, the number of bits and
 the estimate of the bits needed.
 
 \begin{itemize}
-\item The flag \verb+--lifting <int>+ chooses the method: \verb+0+ lets the
-  cost model choose, \verb+1+ enforces the multi-modular lifting, \verb+2+
-  enforces the $p$-adic lifting when it applies. With the probabilistic
+\item The flag \verb+--lifting-param <int>+ chooses the method: \verb+0+
+  lets the cost model choose, \verb+1+ enforces the multi-modular lifting,
+  \verb+2+ enforces the $p$-adic lifting when it applies. With the probabilistic
   linear algebra (\verb+-l 42+ or \verb+44+), the cost model has
   no measure of the work of $F_4$, so \verb+0+ uses the multi-modular
   lifting.
@@ -1266,8 +1266,8 @@ override these choices; they are intended for experiments only.
 \begin{itemize}
 \item The flag \verb+--hensel-precision <int>+ fixes the precision $p^N$
   reached at each prime; \verb+0+ lets the cost model choose it. With
-  \verb+--lifting 0+, the cost model still decides whether the $p$-adic
-  lifting is used.
+  \verb+--lifting-param 0+, the cost model still decides whether the
+  $p$-adic lifting is used.
 
   \hfill \verb+Default value:0+
 

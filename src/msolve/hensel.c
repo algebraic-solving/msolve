@@ -36,9 +36,10 @@
 
    A cost model, fed by the first modular runs, chooses N and decides
    whether this lifting is used instead of the multi-modular one (option
-   --lifting of msolve). The options --hensel-precision, --hensel-cost-scale
-   and --hensel-memory (fields hensel_* of data_gens_ff_t) fix N, scale the
-   cost of the modular runs and fix the memory limit. */
+   --lifting-param of msolve). The options --hensel-precision,
+   --hensel-cost-scale and --hensel-memory (fields hensel_* of
+   data_gens_ff_t) fix N, scale the cost of the modular runs and fix the
+   memory limit. */
 
 #include <flint/fmpz_mod.h>
 #include <flint/fmpz_mod_poly.h>

@@ -402,5 +402,9 @@ AC_CONFIG_LINKS([
  output_files/univariate-wilkinson-both-signs.p128.res:output_files/univariate-wilkinson-both-signs.p128.res
  output_files/univariate-wilkinson-both-signs.p1024.res:output_files/univariate-wilkinson-both-signs.p1024.res
  test/diff/diff_univariate-wilkinson-both-signs.sh:test/diff/diff_univariate-wilkinson-both-signs.sh
+ input_files/univariate-gcd.ms:input_files/univariate-gcd.ms
+ output_files/univariate-gcd.p128.res:output_files/univariate-gcd.p128.res
+ output_files/univariate-gcd.p1024.res:output_files/univariate-gcd.p1024.res
+ test/diff/diff_univariate-gcd.sh:test/diff/diff_univariate-gcd.sh
 ])
 AC_OUTPUT

@@ -2172,11 +2172,7 @@ static int32_t *initial_modular_step(
             } else {
                 FILE *of = (files->out_file != NULL) ?
                     fopen(files->out_file, "ab") : OUTSTREAM;
-                if(print_gb == 3){
-                    print_fglm_lm(of, lexgb, gens->vnames);
-                } else {
-                    print_fglm_gb(of, lexgb, gens->vnames, FGLM_ORDER_LEX);
-                }
+                print_fglm_gb(of, lexgb, gens->vnames, print_gb == 3);
                 if(files->out_file != NULL){
                     fclose(of);
                 }

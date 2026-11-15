@@ -1,4 +1,4 @@
-#Reduced Groebner basis data (change of order by FGLM)
+#Reduced Groebner basis data
 #---
 #field characteristic: 0
 #variable order:       x, y, z

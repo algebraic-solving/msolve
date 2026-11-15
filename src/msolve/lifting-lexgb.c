@@ -345,7 +345,7 @@ static void lexgb_print_term(FILE *f, const fmpz_t c, const int32_t *e,
 static void lexgb_print(FILE *file, const fglm_lex_staircase_t *lex,
                         const gb_modpoly_t modgbs, char **vnames){
   const int nv = lex->nvars;
-  fprintf(file, "#Reduced Groebner basis data (change of order by FGLM)\n");
+  fprintf(file, "#Reduced Groebner basis data\n");
   fprintf(file, "#---\n");
   fprintf(file, "#field characteristic: 0\n");
   fprintf(file, "#variable order:       ");

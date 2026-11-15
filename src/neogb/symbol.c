@@ -193,6 +193,89 @@ static void select_all_spairs(
 }
 #endif
 
+/* Over the integers: the selected pairs ps[i], ..., ps[j-1] have the same
+ * lcm t. Let h be one of their generators with a smallest lead
+ * coefficient c, up to sign. A pair (f, g) of them with f, g != h is not
+ * needed if c divides a = lc(f) and b = lc(g) and for both f and g the
+ * pair with h is one of them or has an lcm properly dividing t: with
+ * L = lcm(a, b), u * a + v * b = gcd(a, b), f' = t/lm(f) * f and
+ * S(g, h) the S-polynomial of g and h at t, a multiple of the one at
+ * lcm(lm(g), lm(h)),
+ *   S(f, g) = L/a * S(f, h) - L/b * S(g, h),
+ *   G(f, g) = u * S(f, h) + v * S(g, h) + gcd(a, b)/c * t/lm(h) * h,
+ * where S(f, h) = f' - a/c * t/lm(h) * h. The pairs with h are reduced in
+ * this matrix, the ones with a smaller lcm in an earlier one or removed
+ * by a criterion: all pairs of lower degree are done. The chain criterion
+ * of the update misses these pairs, it needs both lcms with h to differ
+ * from t. Removed pairs get degree -1; returns their number. */
+static len_t zz_equal_lcm_criterion(
+        spair_t *ps,
+        const len_t i,
+        const len_t j,
+        const bs_t * const bs,
+        const ht_t * const bht
+        )
+{
+    len_t k, l;
+    bl_t h = ps[i].gen1;
+
+    for (k = i; k < j; ++k) {
+        const bl_t g[2] = {ps[k].gen1, ps[k].gen2};
+        for (l = 0; l < 2; ++l) {
+            const int c = mpz_cmpabs(bs->cf_qq[bs->hm[g[l]][COEFFS]][0],
+                    bs->cf_qq[bs->hm[h][COEFFS]][0]);
+            if (c < 0 || (c == 0 && g[l] < h)) {
+                h = g[l];
+            }
+        }
+    }
+    const mpz_t * const ah = &(bs->cf_qq[bs->hm[h][COEFFS]][0]);
+    const len_t evl = bht->evl;
+    const len_t ebl = bht->ebl;
+    const exp_t * const et = bht->ev[ps[i].lcm];
+    const exp_t * const eh = bht->ev[bs->hm[h][OFFSET]];
+    len_t nrm = 0;
+    for (k = i; k < j; ++k) {
+        if (ps[k].gen1 == h || ps[k].gen2 == h) {
+            continue;
+        }
+        const bl_t g[2] = {ps[k].gen1, ps[k].gen2};
+        if (mpz_divisible_p(bs->cf_qq[bs->hm[g[0]][COEFFS]][0], *ah) == 0
+                || mpz_divisible_p(bs->cf_qq[bs->hm[g[1]][COEFFS]][0], *ah) == 0) {
+            continue;
+        }
+        for (l = 0; l < 2; ++l) {
+            /* is the lcm of lm(g[l]) and lm(h) equal to t? */
+            const exp_t * const eg = bht->ev[bs->hm[g[l]][OFFSET]];
+            len_t v;
+            for (v = 1; v < evl; ++v) {
+                if (v != ebl && (eg[v] > eh[v] ? eg[v] : eh[v]) != et[v]) {
+                    break;
+                }
+            }
+            if (v < evl) {
+                continue;
+            }
+            /* then the pair (g[l], h) must be one of the selected ones */
+            len_t m;
+            for (m = i; m < j; ++m) {
+                if ((ps[m].gen1 == h && ps[m].gen2 == g[l])
+                        || (ps[m].gen2 == h && ps[m].gen1 == g[l])) {
+                    break;
+                }
+            }
+            if (m == j) {
+                break;
+            }
+        }
+        if (l == 2) {
+            ps[k].deg = -1;
+            nrm++;
+        }
+    }
+    return nrm;
+}
+
 /* selection of spairs, at the moment only selection
 by minial degree of the spairs is supported
 
@@ -329,9 +412,19 @@ static int32_t select_spairs_by_minimal_degree(
         j = i;
 
         while (j < nps && ps[j].lcm == lcm) {
-            gens[load++] = ps[j].gen1;
-            gens[load++] = ps[j].gen2;
             ++j;
+        }
+        if (md->zz != 0) {
+            const len_t nrm = zz_equal_lcm_criterion(ps, i, j, bs, bht);
+            md->num_gb_crit  += nrm;
+            md->num_pairsred -= nrm;
+        }
+        for (k = i; k < j; ++k) {
+            if (ps[k].deg < 0) {
+                continue;
+            }
+            gens[load++] = ps[k].gen1;
+            gens[load++] = ps[k].gen2;
         }
         /* sort gens set */
         qsort(gens, (unsigned long)load, sizeof(len_t), gens_cmp);

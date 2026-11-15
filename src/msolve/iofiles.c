@@ -1340,25 +1340,27 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
 /* Same display as print_msolve_polynomials_ff */
 /* Lex Gb computed by FGLM; if lead_ideal_only, only its leading ideal is
  * printed (-x 1), in the format of -g 1 */
-static void print_fglm_gb(FILE *file,
-                          const fglm_gb_t *G,
-                          char **vnames,
-                          const int lead_ideal_only){
-  const int32_t nv = G->nvars;
+/* G == NULL: unit ideal, the basis is {1} (nv and charac are then needed) */
+static void print_lex_basis(FILE *file,
+                            const fglm_gb_t *G,
+                            const int32_t nv,
+                            const uint32_t charac,
+                            char **vnames,
+                            const int lead_ideal_only){
   if (lead_ideal_only != 0) {
       fprintf(file, "#Leading ideal data\n");
   } else {
       fprintf(file, "#Reduced Groebner basis data\n");
   }
   fprintf(file, "#---\n");
-  fprintf(file, "#field characteristic: %u\n", G->charac);
+  fprintf(file, "#field characteristic: %u\n", charac);
   fprintf(file, "#variable order:       ");
   for (int32_t i = 0; i < nv-1; ++i) {
       fprintf(file, "%s, ", vnames[i]);
   }
   fprintf(file, "%s\n", vnames[nv-1]);
   fprintf(file, "#monomial order:       lexicographical\n");
-  if(G->ngens == 1) {
+  if(G == NULL || G->ngens == 1) {
       fprintf(file, "#length of basis:      1 element\n");
   } else {
       fprintf(file, "#length of basis:      %d elements ",
@@ -1368,39 +1370,43 @@ static void print_fglm_gb(FILE *file,
 
   fprintf(file, "#---\n");
   fprintf(file, "[");
-  uint64_t pos = 0;
-  for(int32_t i = 0; i < G->ngens; i++){
-    if(lead_ideal_only){
-      /* the first term of each polynomial is its leading term */
-      const int32_t *e = G->exps + pos * nv;
-      int first = 1;
-      for(int32_t k = 0; k < nv; k++){
-        if(e[k]){
-          fprintf(file, "%s%s^%d", first ? "" : "*", vnames[k], e[k]);
-          first = 0;
-        }
+  if (G == NULL) {
+      fprintf(file, "1");
+  } else {
+      uint64_t pos = 0;
+      for(int32_t i = 0; i < G->ngens; i++){
+          if(lead_ideal_only){
+              /* the first term of each polynomial is its leading term */
+              const int32_t *e = G->exps + pos * nv;
+              int first = 1;
+              for(int32_t k = 0; k < nv; k++){
+                  if(e[k]){
+                      fprintf(file, "%s%s^%d", first ? "" : "*", vnames[k], e[k]);
+                      first = 0;
+                  }
+              }
+              if(first) {
+                  fprintf(file, "1");
+              }
+              pos += G->lens[i];
+          } else {
+              for(int32_t j = 0; j < G->lens[i]; j++, pos++){
+                  const int32_t *e = G->exps + pos * nv;
+                  if(j) {
+                      fprintf(file, "+");
+                  }
+                  fprintf(file, "%u", G->cfs[pos]);
+                  for(int32_t k = 0; k < nv; k++) {
+                      if(e[k]) {
+                          fprintf(file, "*%s^%d", vnames[k], e[k]);
+                      }
+                  }
+              }
+          }
+          if (i < G->ngens - 1) {
+              fprintf(file, ",\n");
+          }
       }
-      if(first) {
-          fprintf(file, "1");
-      }
-      pos += G->lens[i];
-    } else {
-      for(int32_t j = 0; j < G->lens[i]; j++, pos++){
-        const int32_t *e = G->exps + pos * nv;
-        if(j) {
-            fprintf(file, "+");
-        }
-        fprintf(file, "%u", G->cfs[pos]);
-        for(int32_t k = 0; k < nv; k++) {
-            if(e[k]) {
-                fprintf(file, "*%s^%d", vnames[k], e[k]);
-            }
-        }
-      }
-    }
-    if (i < G->ngens - 1) {
-        fprintf(file, ",\n");
-    }
   }
   fprintf(file, "]:\n");
 }

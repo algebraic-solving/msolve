@@ -2128,10 +2128,14 @@ static int32_t *initial_modular_step(
     if (empty_solution_set == 1) {
         if (PRINT_LEX_GB(print_gb)) {
             /* the reduced Gb is {1} for any order */
-            int32_t pgb = md->print_gb;
-            md->print_gb -= 2;
-            print_groebner_basis(files, gens, bs, md, fc);
-            md->print_gb = pgb;
+            /* print_groebner_basis(files, gens, bs, md, fc); */
+            FILE *of = (files->out_file != NULL) ?
+                fopen(files->out_file, "ab") : OUTSTREAM;
+            print_lex_basis(of, NULL, gens->nvars, fc, gens->vnames,
+                            print_gb == 3);
+            if(files->out_file != NULL){
+                fclose(of);
+            }
         }
         free_basis_without_hash_table(&(bs));
         free(bs);
@@ -2172,7 +2176,8 @@ static int32_t *initial_modular_step(
             } else {
                 FILE *of = (files->out_file != NULL) ?
                     fopen(files->out_file, "ab") : OUTSTREAM;
-                print_fglm_gb(of, lexgb, gens->vnames, print_gb == 3);
+                print_lex_basis(of, lexgb, lexgb->nvars, lexgb->charac,
+                                gens->vnames, print_gb == 3);
                 if(files->out_file != NULL){
                     fclose(of);
                 }

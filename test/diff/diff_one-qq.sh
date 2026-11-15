@@ -8,8 +8,8 @@ source test/diff/diff_source-noarg.sh
 
 source test/diff/diff_source-gb-red.sh
 
-source test/diff/diff_source-fglm.sh
+source test/diff/diff_source-gb-lex-red.sh
 
-source test/diff/diff_source-fglm-qq.sh
+source test/diff/diff_source-gb-lex-red-qq.sh
 
 normal_exit

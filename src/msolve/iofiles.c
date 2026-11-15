@@ -1394,6 +1394,48 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
 }
 
 /* Same display as print_msolve_polynomials_ff */
+/* Leading ideal of the lex Gb (-x 1), in the format of -g 1 */
+static void print_fglm_lm(FILE *file, const fglm_gb_t *G, char **vnames){
+  const int32_t nv = G->nvars;
+  fprintf(file, "#Leading ideal data\n");
+  fprintf(file, "#---\n");
+  fprintf(file, "#field characteristic: %u\n", G->charac);
+  fprintf(file, "#variable order:       ");
+  for (int32_t i = 0; i < nv-1; ++i) {
+      fprintf(file, "%s, ", vnames[i]);
+  }
+  fprintf(file, "%s\n", vnames[nv-1]);
+  fprintf(file, "#monomial order:       lexicographical\n");
+  if(G->ngens == 1) {
+      fprintf(file, "#length of basis:      1 element\n");
+  } else {
+      fprintf(file, "#length of basis:      %d elements ", G->ngens);
+      fprintf(file, "sorted by increasing leading monomials\n");
+  }
+  fprintf(file, "#---\n");
+  fprintf(file, "[");
+  uint64_t pos = 0;
+  for(int32_t i = 0; i < G->ngens; i++){
+    /* the first term of each polynomial is its leading term */
+    const int32_t *e = G->exps + pos * nv;
+    int first = 1;
+    for(int32_t k = 0; k < nv; k++){
+      if(e[k]){
+        fprintf(file, "%s%s^%d", first ? "" : "*", vnames[k], e[k]);
+        first = 0;
+      }
+    }
+    if(first) {
+        fprintf(file, "1");
+    }
+    pos += G->lens[i];
+    if (i < G->ngens - 1) {
+        fprintf(file, ",\n");
+    }
+  }
+  fprintf(file, "]:\n");
+}
+
 static void print_fglm_gb(FILE *file,
                           const fglm_gb_t *G,
                           char **vnames,

@@ -630,14 +630,13 @@ static void fglmc_rel_flush(fglmc_lu_t *E, fglmc_rel_t *R, CF_t *coeffs){
  * s_0, ..., s_{t-1} go to coeffs[lex->ncoeffs .. lex->ncoeffs + t) (when R
  * is flushed), coeffs being enlarged if needed. Returns 0 if the allocation
  * fails. */
-static int fglmc_push_relation(fglmc_lu_t *E, fglmc_rel_t *R,
-                               const mp_limb_t *al,
-                               const fglm_lex_staircase_t *lex,
-                               const szmat_t t,
-                               CF_t **coeffs, uint64_t *cap_c){
-    if(lex->ncoeffs + t > *cap_c){
+static int fglmc_push_relation_at(fglmc_lu_t *E, fglmc_rel_t *R,
+                                  const mp_limb_t *al, const uint64_t off,
+                                  const szmat_t t,
+                                  CF_t **coeffs, uint64_t *cap_c){
+    if(off + t > *cap_c){
         uint64_t c = *cap_c;
-        while(lex->ncoeffs + t > c) c *= 2;
+        while(off + t > c) c *= 2;
         CF_t *nc = realloc(*coeffs, c * sizeof(CF_t));
         if(nc == NULL) return 0;
         *coeffs = nc;
@@ -645,12 +644,20 @@ static int fglmc_push_relation(fglmc_lu_t *E, fglmc_rel_t *R,
     }
     const uint32_t i = R->n++;
     memcpy(R->A + (uint64_t)i * E->D, al, t * sizeof(mp_limb_t));
-    R->off[i] = lex->ncoeffs;
+    R->off[i] = off;
     R->len[i] = t;
     if(R->n == FGLMC_NREL){
         fglmc_rel_flush(E, R, *coeffs);
     }
     return 1;
+}
+
+static int fglmc_push_relation(fglmc_lu_t *E, fglmc_rel_t *R,
+                               const mp_limb_t *al,
+                               const fglm_lex_staircase_t *lex,
+                               const szmat_t t,
+                               CF_t **coeffs, uint64_t *cap_c){
+    return fglmc_push_relation_at(E, R, al, lex->ncoeffs, t, coeffs, cap_c);
 }
 
 /* Parent of a new element m x_n^k of the staircase or of a new lm (trace
@@ -868,6 +875,8 @@ static void fglmc_prefetch(fglmc_pre_t *Q, fglmc_heap_t *H, fglmc_lu_t *E,
       c = fglmc_kmax(lex, u.e, nv, D);
       if(c > (uint64_t)clen[u.parent] + 1) c = clen[u.parent] + 1;
       if(c > FGLMC_VLEN) c = FGLMC_VLEN;
+      /* at most D - r new elements of the staircase, then a relation */
+      if(c > (uint64_t)(D - E->r) + 1) c = (uint64_t)(D - E->r) + 1;
       if(c) c = fglmc_predict(chist[c], c);
       if(c > FGLMC_PRE) c = FGLMC_PRE;
       /* normal forms are left to the main loop (computed only if needed) */
@@ -920,6 +929,101 @@ static void fglmc_prefetch(fglmc_pre_t *Q, fglmc_heap_t *H, fglmc_lu_t *E,
   }
 }
 
+/* Relations of the leading monomials fin[0..nfin) found once the staircase
+ * is complete: their coefficients go to coeffs + fin_off[i] (D of them).
+ * By groups of FGLMC_PRE: the missing dense rows are computed at once, the
+ * products by variable (fglmc_mulvec_multi), the vectors reduced together
+ * against the D rows of the LU. Returns 0 on failure. */
+static int fglmc_last_relations(fglmc_lu_t *E, fglmc_rel_t *R, fglmc_pre_t *Q,
+                                sp_multimatfglm_t *Mt, const fglmc_rows_t *rp,
+                                const CF_t *Vs, const fglmc_cand_t *fin,
+                                const uint64_t *fin_off, const uint64_t nfin,
+                                uint64_t *acc, CF_t **coeffs, uint64_t *cap_c,
+                                const int info_level){
+  const szmat_t D = Mt->ncols;
+  const int32_t xn = Mt->nvars - 1;
+  int ok = 1;
+  char *mark = NULL;
+  szmat_t *rows = NULL;
+  if(rp != NULL && rp->fill != NULL && Mt->have_row != NULL){
+      mark = calloc((uint64_t)Mt->nnfs + 1, 1);
+      rows = malloc(((uint64_t)Mt->nnfs + 1) * sizeof(szmat_t));
+      if(mark == NULL || rows == NULL) ok = 0;
+  }
+  mp_limb_t *al = malloc((D + 1) * sizeof(mp_limb_t));
+  if(al == NULL) ok = 0;
+  for(uint64_t i0 = 0; i0 < nfin && ok; i0 += FGLMC_PRE){
+    const slong n = (nfin - i0 < FGLMC_PRE) ? (slong)(nfin - i0) : FGLMC_PRE;
+    /* dense rows needed by these products and not computed yet */
+    if(mark != NULL){
+      szmat_t nr = 0;
+      for(slong j = 0; j < n; j++){
+        const fglmc_cand_t *u = fin + i0 + j;
+        const szmat_t *sel = Mt->rowsel + (uint64_t)u->var * D;
+        const CF_t *v = Vs + (uint64_t)u->parent * D;
+        for(szmat_t k = 0; k < D; k++){
+          if(v[k] && sel[k] >= D){
+            const szmat_t r = sel[k] - D;
+            if(!Mt->have_row[r] && !mark[r]){
+              mark[r] = 1;
+              rows[nr++] = r;
+            }
+          }
+        }
+      }
+      if(nr > 0 && !rp->fill(rp->ctx, Mt, rows, nr, info_level)){
+        ok = 0;
+        break;
+      }
+    }
+    /* products, grouped by variable */
+    for(int32_t var = 0; var < xn; var++){
+      slong nk = 0;
+      for(slong j = 0; j < n; j++){
+        if(fin[i0 + j].var != var) continue;
+        Q->vp[nk] = Vs + (uint64_t)fin[i0 + j].parent * D;
+        Q->wp[nk] = Q->V + (uint64_t)j * D;
+        nk++;
+      }
+      if(nk == 1){
+        fglmc_mulvec(Q->wp[0], Mt, var, Q->vp[0], acc, NULL);
+      } else if(nk > 1){
+        fglmc_mulvec_multi(Q->wp, Q->vp, nk, Mt, var, Q->Cb, Q->Bb,
+                           Q->uidx, E->nthr);
+      }
+    }
+    /* reduction against the D rows of the LU: each vector reduces to 0 */
+    nmod_mat_t B, C;
+    nmod_mat_init(B, n, D, E->p);
+    for(slong j = 0; j < n; j++){
+      const CF_t *row = Q->V + (uint64_t)j * D;
+      mp_limb_t *b = nmod_mat_entry_ptr(B, j, 0);
+      for(szmat_t l = 0; l < D; l++) b[l] = row[l];
+    }
+    fglmc_lu_reduce_range(E, B, C, 0, E->r);
+    for(slong j = 0; j < n && ok; j++){
+      const mp_limb_t *b = nmod_mat_entry_ptr(B, j, 0);
+      for(szmat_t l = 0; l < D; l++){
+        if(b[l]){
+          ok = 0;
+          break;
+        }
+      }
+      if(!ok) break;
+      for(szmat_t l = 0; l < D; l++) al[l] = nmod_mat_entry(C, j, l);
+      if(!fglmc_push_relation_at(E, R, al, fin_off[i0 + j], D, coeffs, cap_c)){
+        ok = 0;
+      }
+    }
+    nmod_mat_clear(B);
+    nmod_mat_clear(C);
+  }
+  free(al);
+  free(mark);
+  free(rows);
+  return ok;
+}
+
 /* If rp != NULL, the dense rows which are not computed yet are computed on
  * demand (only the rows of the matrix of x_n are needed beforehand). */
 static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
@@ -953,6 +1057,11 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   CF_t *coeffs = malloc(cap_c * sizeof(CF_t));
   fglmc_heap_t H = { malloc(maxc * sizeof(fglmc_cand_t)), 0, nv, ord };
   uint32_t *clen = malloc((D + 1) * sizeof(uint32_t));
+  /* leading monomials found once the staircase is complete (t = D) and the
+   * offsets of their coefficients */
+  fglmc_cand_t *fin = malloc(maxc * sizeof(fglmc_cand_t));
+  uint64_t *fin_off = malloc(maxc * sizeof(uint64_t));
+  uint64_t nfin = 0;
   fglmc_rel_t R;
   R.A   = malloc((uint64_t)FGLMC_NREL * D * sizeof(mp_limb_t));
   R.X   = malloc((uint64_t)FGLMC_NREL * D * sizeof(mp_limb_t));
@@ -989,7 +1098,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   if(!ok || !Vs || !Vc || !S || !pool || !acc || !wl || !al || !coeffs || !H.a
      || !lex->g_lm || !lex->g_ntail || !clen || !Q.c || !Q.off || !Q.len
      || !Q.V || !Q.Cb || !Q.Bb || !Q.uidx || !Q.vp || !Q.wp
-     || !R.A || !R.X || !R.off || !R.len){
+     || !R.A || !R.X || !R.off || !R.len || !fin || !fin_off){
       ok = 0;
       goto done;
   }
@@ -1019,7 +1128,7 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   while((H.n || Q.h < Q.n) && ok){
     /* new candidates ahead when Q is empty or when too many rows were
      * inserted since its reduction */
-    if(Q.h == Q.n || E.r - Q.r0 >= FGLMC_PRE){
+    if(t < D && (Q.h == Q.n || E.r - Q.r0 >= FGLMC_PRE)){
         fglmc_prefetch(&Q, &H, &E, Mt, lex, Vs, clen,
                        (const uint32_t (*)[FGLMC_VLEN + 1])chist, last, acc);
     }
@@ -1060,8 +1169,24 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
         npols = 0;
     }
     /* is it a multiple of a lm? if not bound kmax */
-    const uint64_t kmax = fglmc_kmax(lex, u.e, nv, D);
+    uint64_t kmax = fglmc_kmax(lex, u.e, nv, D);
     if(kmax == 0) continue;
+    if(t == D){
+        /* staircase complete: u is a leading monomial (k = 0); its relation
+         * is computed at the end with the other ones (fglmc_last_relations) */
+        fin[nfin] = u;
+        fin_off[nfin] = lex->ncoeffs;
+        nfin++;
+        if(tr != NULL){
+            fglmc_set_parent(tr->g_parent + lex->ngens,
+                             tr->g_var + lex->ngens, &u, 0, t, xn);
+        }
+        fglmc_new_head(lex, u.e, 0, nv, t);
+        npols++;
+        continue;
+    }
+    /* at most D - t new elements of the staircase, then a relation */
+    if(kmax > (uint64_t)(D - t) + 1) kmax = (uint64_t)(D - t) + 1;
     const int32_t ng0 = lex->ngens;
 
     const szmat_t t_head = t;
@@ -1255,6 +1380,10 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
         }
     }
   }
+  if(ok && nfin > 0){
+      ok = fglmc_last_relations(&E, &R, &Q, Mt, rp, Vs, fin, fin_off, nfin,
+                                acc, &coeffs, &cap_c, st->info_level);
+  }
   // largest variable is done
   rt = realtime() - rt;
   ct = cputime() - ct;
@@ -1320,6 +1449,8 @@ done:
   free(R.X);
   free(R.off);
   free(R.len);
+  free(fin);
+  free(fin_off);
   free(clen);
   if (st->info_level > 1){
       fprintf(VERBSTREAM,

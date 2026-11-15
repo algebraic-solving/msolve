@@ -120,10 +120,14 @@ static inline void display_help(char *str){
   display_option_help_noopt("    system.\n");
   display_option_help_noopt("2 - output is the full reduced Groebner basis of\n");
   display_option_help_noopt("    the input system.\n");
-  display_option_help_noopt("3 - output is the reduced Groebner basis w.r.t.\n");
-  display_option_help_noopt("    the lexicographical ordering, by classical\n");
-  display_option_help_noopt("    FGLM (zero-dimensional ideals; over Q,\n");
-  display_option_help_noopt("    multi-modular FGLM with a tracer).\n");
+  display_option_help('x', "lex-groebner-basis", "LEX", "Outputs the reduced Groebner basis of a\n");
+  display_option_help_noopt("zero-dimensional ideal w.r.t. the\n");
+  display_option_help_noopt("lexicographical ordering, by classical FGLM\n");
+  display_option_help_noopt("(over Q: multi-modular FGLM with a tracer).\n");
+  display_option_help_noopt("Cannot be used together with option -g.\n");
+  display_option_help_noopt("0 - nothing is printed (default).\n");
+  display_option_help_noopt("1 - output is the leading ideal.\n");
+  display_option_help_noopt("2 - output is the full reduced Groebner basis.\n");
   display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
   display_option_help_noopt("blocks of variables, each block using the degree\n");
   display_option_help_noopt("reverse lexicographical monomial order. ELIM has\n");
@@ -321,7 +325,8 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char short_options[] = "c:Cd:e:f:g:hil:L:m:M:n:N:o:p:P:q:r:s:St:u:v:V";
+  char short_options[] = "c:Cd:e:f:g:hil:L:m:M:n:N:o:p:P:q:r:s:St:u:v:Vx:";
+  int32_t lex_gb = 0;
 
   /* For long options that have no equivalent short option, use a
      non-character as a pseudo short option, starting with CHAR_MAX + 1.
@@ -350,6 +355,7 @@ static void getoptions(
     {"elim-drl", required_argument, NULL, ELIM_DRL_OPTION},
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
+    {"lex-groebner-basis", required_argument, NULL, 'x'},
     {"help", no_argument, NULL, 'h'},
     {"lex", no_argument, NULL, LEX_OPTION},
     {"linear-algebra", required_argument, NULL, 'l'},
@@ -530,8 +536,17 @@ static void getoptions(
       if (*print_gb < 0) {
           *print_gb = 0;
       }
-      if (*print_gb > 3) {
-          *print_gb = 3;
+      if (*print_gb > 2) {
+          *print_gb = 2;
+      }
+      break;
+    case 'x':
+      lex_gb = strtol(optarg, NULL, 10);
+      if (lex_gb < 0) {
+          lex_gb = 0;
+      }
+      if (lex_gb > 2) {
+          lex_gb = 2;
       }
       break;
     case 'c':
@@ -585,6 +600,19 @@ static void getoptions(
     fprintf(ERRSTREAM, "Invalid usage\n");
     display_help(argv[0]);
     exit(1);
+  }
+  /* lex Gb: internal values of print_gb, 3 (leading ideal)
+   * or 4 (full basis) */
+  if(lex_gb > 0){
+    if(*print_gb > 0){
+      fprintf(ERRSTREAM, "Options -g and -x cannot be used together.\n");
+      exit(1);
+    }
+    if(*saturate || *colon || *normal_form){
+      fprintf(ERRSTREAM, "Option -x cannot be used together with -S, -C or -n.\n");
+      exit(1);
+    }
+    *print_gb = lex_gb + 2;
   }
   files->in_file = filename;
   files->out_file = out_fname;

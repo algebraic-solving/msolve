@@ -383,6 +383,47 @@ static void lexgb_print(FILE *file, const fglm_lex_staircase_t *lex,
   fmpz_clear(c);
 }
 
+/* Leading ideal of the lex Gb (-x 1), in the format of -g 1 over Q */
+static void lexgb_print_lm(FILE *file, const fglm_lex_staircase_t *lex,
+                           char **vnames){
+  const int nv = lex->nvars;
+  fprintf(file, "#Leading ideal data\n");
+  fprintf(file, "#---\n");
+  fprintf(file, "#field characteristic: 0\n");
+  fprintf(file, "#variable order:       ");
+  for(int i = 0; i < nv - 1; i++) {
+      fprintf(file, "%s, ", vnames[i]);
+  }
+  fprintf(file, "%s\n", vnames[nv - 1]);
+  fprintf(file, "#monomial order:       lexicographical\n");
+  if(lex->ngens == 1){
+    fprintf(file, "#length of basis:      1 element\n");
+  } else {
+    fprintf(file, "#length of basis:      %d elements ", lex->ngens);
+    fprintf(file, "sorted by increasing leading monomials\n");
+  }
+  fprintf(file, "#---\n");
+  fprintf(file, "[");
+  for(int32_t j = 0; j < lex->ngens; j++){
+    const int32_t *e = lex->g_lm + (uint64_t)j * nv;
+    int first = 1;
+    for(int i = 0; i < nv; i++){
+      if(!e[i]) continue;
+      if(!first) fprintf(file, "*");
+      if(e[i] == 1) fprintf(file, "%s", vnames[i]);
+      else fprintf(file, "%s^%d", vnames[i], e[i]);
+      first = 0;
+    }
+    if(first) {
+        fprintf(file, "1");
+    }
+    if (j < lex->ngens - 1) {
+        fprintf(file, ", \n");
+    }
+  }
+  fprintf(file, "]:\n");
+}
+
 static FILE *lexgb_open_output(const files_gb *files){
   if(files->out_file != NULL) return fopen(files->out_file, "wb+");
   return OUTSTREAM;
@@ -521,6 +562,25 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
               "#polynomials to lift %14lu\n",
               (unsigned long) tr.lex.ngens);
       fprintf(VERBSTREAM, "-----------------------------------------\n");
+    }
+    /* -x 1: leading ideal of the lex Gb from the first prime only, as -g 1
+     * over Q (no lifting) */
+    if(flags->print_gb == 3 && ok){
+      free_sp_multimat_fglm(M);
+      free_basis_without_hash_table(&bsp);
+      FILE *f = lexgb_open_output(flags->files);
+      lexgb_print_lm(f, &tr.lex, gens->vnames);
+      lexgb_close_output(f, flags->files);
+      free(res);
+      free_fglm_trace(&tr);
+      free(lmb);
+      free(lm0);
+      free_basis_without_hash_table(&bs);
+      free_shared_hash_data(bht);
+      free_hash_table(&bht);
+      free_trace(&md->tr);
+      free(md);
+      return 0;
     }
     /* -L: the rows of dense_mat computed on p0 are lifted too */
     const int use_ml = flags->lift_matrix && ok;

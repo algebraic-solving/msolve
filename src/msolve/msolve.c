@@ -66,6 +66,11 @@ void free_rrec_data(rrec_data_t recdata);
 #include "lifting-lexgb.c"
 #include "streams.h"
 
+/* internal values of print_gb for option -x (lex Gb by FGLM):
+ * 3, leading ideal only
+ * 4, full basis;  */
+#define PRINT_LEX_GB(pg) ((pg) == 3 || (pg) == 4)
+
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 #endif
@@ -2125,10 +2130,10 @@ static int32_t *initial_modular_step(
                                                                  md);
 
     if (empty_solution_set == 1) {
-        if (print_gb == 3) {
+        if (PRINT_LEX_GB(print_gb)) {
             /* the reduced Gb is {1} for any order */
             int32_t pgb = md->print_gb;
-            md->print_gb = 2;
+            md->print_gb -= 2;
             print_groebner_basis(files, gens, bs, md, fc);
             md->print_gb = pgb;
         }
@@ -2147,7 +2152,7 @@ static int32_t *initial_modular_step(
         /* if(md->info_level){ */
         /*     fprintf(ERRSTREAM, "Dimension of quotient: %ld\n", dquot); */
         /* } */
-        if(print_gb == 3){
+        if(PRINT_LEX_GB(print_gb)){
             md->fglm_rtime = realtime();
             md->fglm_ctime = cputime();
             print_fglm_header(VERBSTREAM,md);
@@ -2169,12 +2174,15 @@ static int32_t *initial_modular_step(
                 fprintf(ERRSTREAM, "FGLM failed.\n");
                 *success = 0;
             } else {
-                if(files->out_file != NULL){
-                    FILE *of = fopen(files->out_file, "ab");
-                    print_fglm_gb(of, lexgb, gens->vnames, FGLM_ORDER_LEX);
-                    fclose(of);
+                FILE *of = (files->out_file != NULL) ?
+                    fopen(files->out_file, "ab") : OUTSTREAM;
+                if(print_gb == 3){
+                    print_fglm_lm(of, lexgb, gens->vnames);
                 } else {
-                    print_fglm_gb(OUTSTREAM, lexgb, gens->vnames, FGLM_ORDER_LEX);
+                    print_fglm_gb(of, lexgb, gens->vnames, FGLM_ORDER_LEX);
+                }
+                if(files->out_file != NULL){
+                    fclose(of);
                 }
             }
             free_fglm_gb(lexgb);
@@ -2309,7 +2317,7 @@ static int32_t *initial_modular_step(
         return lmb;
     }
     else{
-        if(print_gb == 3){
+        if(PRINT_LEX_GB(print_gb)){
             fprintf(ERRSTREAM, "The ideal is not zero-dimensional: "
                     "no change of order performed.\n");
         }
@@ -5195,7 +5203,7 @@ restart:
          * 16 and 256, and for the Boolean ring over GF(2). */
         /* no change of order (-g 3) either: FGLM needs a prime field of
          * characteristic < 2^31 */
-        if (print_gb == 0 || print_gb == 3 || use_signatures > 0
+        if (print_gb == 0 || PRINT_LEX_GB(print_gb) || use_signatures > 0
                 || saturate > 0 || colon > 0 || normal_form > 0) {
             if (gens->boolean) {
                 fprintf(ERRSTREAM, "In the boolean ring msolve ");
@@ -5787,15 +5795,15 @@ restart:
 	  int dim = - 2;
 	  long dquot = -1;
 
-      if(elim_block_len && (print_gb == 0 || print_gb == 3)){
+      if(elim_block_len && (print_gb == 0 || PRINT_LEX_GB(print_gb))){
           fprintf(ERRSTREAM, "Warning: elim order not available for ");
           if(print_gb == 0){
               fprintf(ERRSTREAM, "rational parametrizations\n");
-          } else if(print_gb == 3){
+          } else {
               fprintf(ERRSTREAM, "lexicographic Groebner basis\n");
           }
           fprintf(ERRSTREAM, "Computing Groebner basis\n");
-          print_gb=2;
+          print_gb = (print_gb == 3) ? 1 : 2;
       }
 	  b = real_msolve_qq(mpz_paramp,
                        paramp,
@@ -6477,7 +6485,7 @@ restart:
             int dim = - 2;
             long dquot = -1;
 
-            if(elim_block_len && (print_gb == 0 || print_gb == 3)){
+            if(elim_block_len && (print_gb == 0 || PRINT_LEX_GB(print_gb))){
                 fprintf(ERRSTREAM, "Warning: elim order not available for ");
                 if(print_gb == 0){
                     fprintf(ERRSTREAM, "rational parametrizations\n");
@@ -6485,7 +6493,7 @@ restart:
                     fprintf(ERRSTREAM, "lexicographic Groebner basis\n");
                 }
                 fprintf(ERRSTREAM, "Computing Groebner basis\n");
-                print_gb=2;
+                print_gb -= 2;
             }
 
             if(print_gb){
@@ -6507,8 +6515,9 @@ restart:
               flags->files = files;
 
               int ret_gb = 0;
-              if(print_gb == 3){
-                  /* lex Gb by multi-modular FGLM */
+              if(PRINT_LEX_GB(print_gb)){
+                  /* lex Gb by multi-modular FGLM (-x 1: leading ideal
+                   * computed on one prime, as -g 1) */
                   ret_gb = print_msolve_lexgb_qq(gens, flags);
               } else {
                   print_msolve_gbtrace_qq(gens, flags);

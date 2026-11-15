@@ -305,7 +305,7 @@ static sp_multimatfglm_t *lexgb_matrices_view(const fglm_trace_t *tr, CF_t *dm,
   return M;
 }
 
-/* Output in the format of print_fglm_gb, with integer coefficients
+/* Output in the format of print_lex_basis, with integer coefficients
  * (denominators cleared polynomial by polynomial) */
 static void lexgb_print_term(FILE *f, const fmpz_t c, const int32_t *e,
                              const int nv, char **vnames, const int first){
@@ -342,10 +342,17 @@ static void lexgb_print_term(FILE *f, const fmpz_t c, const int32_t *e,
   fmpz_clear(a);
 }
 
+/* Lex Gb over Q; if lead_ideal_only, only its leading ideal is printed
+ * (-x 1, modgbs may be NULL), in the format of -g 1 over Q */
 static void lexgb_print(FILE *file, const fglm_lex_staircase_t *lex,
-                        const gb_modpoly_t modgbs, char **vnames){
+                        const gb_modpoly_t modgbs, char **vnames,
+                        const int lead_ideal_only){
   const int nv = lex->nvars;
-  fprintf(file, "#Reduced Groebner basis data\n");
+  if (lead_ideal_only) {
+      fprintf(file, "#Leading ideal data\n");
+  } else {
+      fprintf(file, "#Reduced Groebner basis data\n");
+  }
   fprintf(file, "#---\n");
   fprintf(file, "#field characteristic: 0\n");
   fprintf(file, "#variable order:       ");
@@ -362,6 +369,28 @@ static void lexgb_print(FILE *file, const fglm_lex_staircase_t *lex,
     fprintf(file, "sorted by increasing leading monomials\n");
   }
   fprintf(file, "#---\n");
+  if(lead_ideal_only){
+    fprintf(file, "[");
+    for(int32_t j = 0; j < lex->ngens; j++){
+      const int32_t *e = lex->g_lm + (uint64_t)j * nv;
+      int first = 1;
+      for(int i = 0; i < nv; i++){
+        if(!e[i]) continue;
+        if(!first) fprintf(file, "*");
+        if(e[i] == 1) fprintf(file, "%s", vnames[i]);
+        else fprintf(file, "%s^%d", vnames[i], e[i]);
+        first = 0;
+      }
+      if(first) {
+          fprintf(file, "1");
+      }
+      if (j < lex->ngens - 1) {
+          fprintf(file, ", \n");
+      }
+    }
+    fprintf(file, "]:\n");
+    return;
+  }
   fmpz_t c;
   fmpz_init(c);
   fprintf(file, "[");
@@ -381,47 +410,6 @@ static void lexgb_print(FILE *file, const fglm_lex_staircase_t *lex,
   }
   fprintf(file, "]:\n");
   fmpz_clear(c);
-}
-
-/* Leading ideal of the lex Gb (-x 1), in the format of -g 1 over Q */
-static void lexgb_print_lm(FILE *file, const fglm_lex_staircase_t *lex,
-                           char **vnames){
-  const int nv = lex->nvars;
-  fprintf(file, "#Leading ideal data\n");
-  fprintf(file, "#---\n");
-  fprintf(file, "#field characteristic: 0\n");
-  fprintf(file, "#variable order:       ");
-  for(int i = 0; i < nv - 1; i++) {
-      fprintf(file, "%s, ", vnames[i]);
-  }
-  fprintf(file, "%s\n", vnames[nv - 1]);
-  fprintf(file, "#monomial order:       lexicographical\n");
-  if(lex->ngens == 1){
-    fprintf(file, "#length of basis:      1 element\n");
-  } else {
-    fprintf(file, "#length of basis:      %d elements ", lex->ngens);
-    fprintf(file, "sorted by increasing leading monomials\n");
-  }
-  fprintf(file, "#---\n");
-  fprintf(file, "[");
-  for(int32_t j = 0; j < lex->ngens; j++){
-    const int32_t *e = lex->g_lm + (uint64_t)j * nv;
-    int first = 1;
-    for(int i = 0; i < nv; i++){
-      if(!e[i]) continue;
-      if(!first) fprintf(file, "*");
-      if(e[i] == 1) fprintf(file, "%s", vnames[i]);
-      else fprintf(file, "%s^%d", vnames[i], e[i]);
-      first = 0;
-    }
-    if(first) {
-        fprintf(file, "1");
-    }
-    if (j < lex->ngens - 1) {
-        fprintf(file, ", \n");
-    }
-  }
-  fprintf(file, "]:\n");
 }
 
 static FILE *lexgb_open_output(const files_gb *files){
@@ -495,9 +483,12 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     if(unit || !has_dimension_zero(nlm0, nv, lm0)){
       FILE *file = lexgb_open_output(flags->files);
       if(unit){
-        /* the reduced Gb of the unit ideal is {1} for any order; same
-         * output as over a prime field */
-        fprintf(file, "#Reduced Groebner basis data\n#---\n");
+        if (flags->print_gb == 3) {
+          fprintf(file, "#Leading ideal data\n");
+        } else {
+          fprintf(file, "#Reduced Groebner basis data\n");
+        }
+        fprintf(file,"#---\n");
         fprintf(file, "#field characteristic: 0\n");
         fprintf(file, "#variable order:       ");
         for(int i = 0; i < nv - 1; i++) fprintf(file, "%s, ", gens->vnames[i]);
@@ -569,7 +560,8 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
       free_sp_multimat_fglm(M);
       free_basis_without_hash_table(&bsp);
       FILE *f = lexgb_open_output(flags->files);
-      lexgb_print_lm(f, &tr.lex, gens->vnames);
+      lexgb_print(f, &tr.lex, NULL, gens->vnames,
+                  flags->print_gb == 3);
       lexgb_close_output(f, flags->files);
       free(res);
       free_fglm_trace(&tr);
@@ -823,7 +815,8 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         fprintf(VERBSTREAM, "-----------------------------------------\n");
       }
       FILE *f = lexgb_open_output(flags->files);
-      lexgb_print(f, &tr.lex, modgbs, gens->vnames);
+      lexgb_print(f, &tr.lex, modgbs, gens->vnames,
+                  flags->print_gb == 3);
       lexgb_close_output(f, flags->files);
     } else if(info_level){
       fprintf(VERBSTREAM, "Too many bad primes (learning prime %u is probably "

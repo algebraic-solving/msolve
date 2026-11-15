@@ -189,7 +189,7 @@ static int is_kernel_trivial(
     /* fill random value array */
     for (i = 0; i < ncr; ++i) {
         do {
-            mull[j] = (int64_t)rand() % fc;
+            mull[j] = (int64_t)msolve_rand() % fc;
         } while (mull[j] == 0);
     }
     for (i = 0; i < sat->ld; ++i) {
@@ -1997,7 +1997,8 @@ static cf32_t *reduce_dense_row_by_dense_new_pivots_31_bit(
 #define LA_FF(name) name##_ff_32
 /* restrict random multipliers to < 2^15, see
  * probabilistic_sparse_reduced_echelon_form_ff_32() */
-#define LA_RANDOM_MULTIPLIER(fc) ((int64_t)rand() & ((1 << 15) - 1))
+#define LA_RANDOM_MULTIPLIER(rng, fc) \
+    ((int64_t)msolve_rng_rand(rng) & ((1 << 15) - 1))
 
 #define LA_SMALL(name) name##_17_bit
 #include "la_ff_small_prime.c"

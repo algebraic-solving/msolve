@@ -29,6 +29,8 @@
 #include "libneogb.h"
 #include "data.c"
 #include "meta_data.c"/* computational meta data */
+#include "mt.c"       /* MT19937 from GSL 1.9 */
+#include "rng.c"      /* platform independent pseudo-random numbers */
 #include "tools.c"    /* tools like inversion mod p,
                        * tracer construction, timings etc. */
 #include "sort_r.h"   /* special quicksort implementation */

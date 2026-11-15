@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-# With this seed and glibc's rand(), the Hankel matrix used to compute the
+# With this seed, the Hankel matrix used to compute the
 # parametrizations has a singular sub-block of size dim - 1, so that the
 # computation must fall back to another method.
 
 file=cyclic5-16
 
-SEED=1790795968
+SEED=37892
 
 source test/diff/diff_source.sh
 

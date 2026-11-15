@@ -566,7 +566,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
 #define LA_CF_T cf8_t
 #define LA_CF cf_8
 #define LA_FF(name) name##_ff_8
-#define LA_RANDOM_MULTIPLIER(fc) ((int64_t)rand() % (fc))
+#define LA_RANDOM_MULTIPLIER(rng, fc) ((int64_t)msolve_rng_rand(rng) % (fc))
 
 #define LA_SMALL(name) name##_ff_8
 #include "la_ff_small_prime.c"

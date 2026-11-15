@@ -1183,8 +1183,15 @@ static cf64_t *reduce_dense_row_by_all_pivots_ff_64(
 #define LA_CF_T cf64_t
 #define LA_CF cf_64
 #define LA_FF(name) name##_ff_64
-#define LA_RANDOM_MULTIPLIER(fc) \
-    ((int64_t)((((uint64_t)rand() << 31) ^ (uint64_t)rand()) % (fc)))
+/* the two draws are sequenced so that the multiplier does not depend on
+ * the evaluation order chosen by the compiler */
+static inline int64_t random_multiplier_ff_64(msolve_rng_t *rng, uint64_t fc)
+{
+    const uint64_t hi = (uint64_t)msolve_rng_rand(rng);
+    const uint64_t lo = (uint64_t)msolve_rng_rand(rng);
+    return (int64_t)(((hi << 31) ^ lo) % fc);
+}
+#define LA_RANDOM_MULTIPLIER(rng, fc) random_multiplier_ff_64((rng), (fc))
 
 /* maximal number of rows reduced together by the known pivots, see
  * LA_FF(reduce_dense_rows_by_known_pivots) in la_ff_common.c */

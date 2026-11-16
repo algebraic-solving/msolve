@@ -370,5 +370,9 @@ AC_CONFIG_LINKS([
  output_files/univariate-sgn.p128.res:output_files/univariate-sgn.p128.res
  output_files/univariate-sgn.p1024.res:output_files/univariate-sgn.p1024.res
  test/diff/diff_univariate-sgn.sh:test/diff/diff_univariate-sgn.sh
+ input_files/lifting-single-point.ms:input_files/lifting-single-point.ms
+ output_files/lifting-single-point.p128.res:output_files/lifting-single-point.p128.res
+ output_files/lifting-single-point.p1024.res:output_files/lifting-single-point.p1024.res
+ test/diff/diff_lifting-single-point.sh:test/diff/diff_lifting-single-point.sh
 ])
 AC_OUTPUT

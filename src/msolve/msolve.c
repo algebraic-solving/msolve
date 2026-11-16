@@ -2135,7 +2135,11 @@ static int32_t *initial_modular_step(
             /* print_groebner_basis(files, gens, bs, md, fc); */
             FILE *of = (files->out_file != NULL) ?
                 fopen(files->out_file, "ab") : OUTSTREAM;
-            print_lex_basis(of, NULL, gens->nvars, fc, gens->vnames,
+            fglm_gb_t *one= malloc(sizeof(fglm_gb_t));
+            one->nvars = gens->nvars;
+            one->ngens = 1;
+            one->charac = fc;
+            print_lex_basis(of, one, gens->vnames,
                             print_gb == 3);
             if(files->out_file != NULL){
                 fclose(of);
@@ -2180,8 +2184,7 @@ static int32_t *initial_modular_step(
             } else {
                 FILE *of = (files->out_file != NULL) ?
                     fopen(files->out_file, "ab") : OUTSTREAM;
-                print_lex_basis(of, lexgb, lexgb->nvars, lexgb->charac,
-                                gens->vnames, print_gb == 3);
+                print_lex_basis(of, lexgb, gens->vnames, print_gb == 3);
                 if(files->out_file != NULL){
                     fclose(of);
                 }

@@ -2131,14 +2131,20 @@ static int32_t *initial_modular_step(
 
     if (empty_solution_set == 1) {
         if (PRINT_LEX_GB(print_gb)) {
-            /* the reduced Gb is {1} for any order */
-            /* print_groebner_basis(files, gens, bs, md, fc); */
+            /* create the lex Gb [1] */
             FILE *of = (files->out_file != NULL) ?
                 fopen(files->out_file, "ab") : OUTSTREAM;
             fglm_gb_t *one= malloc(sizeof(fglm_gb_t));
-            one->nvars = gens->nvars;
-            one->ngens = 1;
+            const int32_t nv = gens->nvars;
             one->charac = fc;
+            one->nvars = nv;
+            one->ngens = 1;
+            one->nterms = 1;
+            one->lens = malloc(1 * sizeof(CF_t));
+            one->exps = calloc(1 * nv, sizeof(int32_t)); //all exponents to 0
+            one->cfs  = malloc(1 * sizeof(CF_t));
+            one->lens[0] = 1;
+            one->cfs[0] = 1;
             print_lex_basis(of, one, gens->vnames,
                             print_gb == 3);
             if(files->out_file != NULL){

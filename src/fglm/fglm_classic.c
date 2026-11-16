@@ -1388,8 +1388,10 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   rt = realtime() - rt;
   ct = cputime() - ct;
   if(st->info_level > 1) {
-      fprintf(VERBSTREAM,
-              "variable %3d                            ", curvar);
+      if (nv != 1) {// univariate, no need to print the variable index
+          fprintf(VERBSTREAM,
+                  "variable %3d                            ", curvar);
+      }
       fprintf(VERBSTREAM,
               "%16lu new           ",npols);
       fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt,ct);

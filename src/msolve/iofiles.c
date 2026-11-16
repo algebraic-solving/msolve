@@ -1340,20 +1340,18 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
 /* Same display as print_msolve_polynomials_ff */
 /* Lex Gb computed by FGLM; if lead_ideal_only, only its leading ideal is
  * printed (-x 1), in the format of -g 1 */
-/* G == NULL: unit ideal, the basis is {1} (nv and charac are then needed) */
 static void print_lex_basis(FILE *file,
                             const fglm_gb_t *G,
-                            const int32_t nv,
-                            const uint32_t charac,
                             char **vnames,
                             const int lead_ideal_only){
+  const int32_t nv = G->nvars;
   if (lead_ideal_only != 0) {
       fprintf(file, "#Leading ideal data\n");
   } else {
       fprintf(file, "#Reduced Groebner basis data\n");
   }
   fprintf(file, "#---\n");
-  fprintf(file, "#field characteristic: %u\n", charac);
+  fprintf(file, "#field characteristic: %u\n", G->charac);
   fprintf(file, "#variable order:       ");
   for (int32_t i = 0; i < nv-1; ++i) {
       fprintf(file, "%s, ", vnames[i]);
@@ -1370,7 +1368,9 @@ static void print_lex_basis(FILE *file,
 
   fprintf(file, "#---\n");
   fprintf(file, "[");
-  if (G == NULL) {
+  if (G->cfs == NULL) {
+      /* not instanciated so reached from ideal [1] in
+         initial_modular_step */
       fprintf(file, "1");
   } else {
       uint64_t pos = 0;

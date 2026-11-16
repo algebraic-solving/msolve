@@ -549,7 +549,7 @@ command:
     ./msolve -g 2 -f in.ms -o out.ms
   \end{verbatim}
 \end{tcolorbox}
-where the \verb+-g+ flag indicates that one aims at computing a Gr\"obner
+where the \verb+-g+ flag indicates that one aims to compute a Gr\"obner
 basis. The value \verb+2+ tells \msolve to compute the Gr\"obner basis for the
 \emph{grevlex order} with $z_1\succ z_2 \succ z_3 $. The computed Gr\"obner basis
 is then printed in the file \verb+out.ms+ as follows.
@@ -883,6 +883,78 @@ The call \verb+./msolve -P 2 -f in.ms+ then outputs
   \end{lstlisting}
 \end{tcolorbox}
 
+\section{Computing Lexicographic Gröbner bases}\label{sec:lexgb}
+\msolve provides Gr\"obner basis computations for the \emph{lex} ordering
+as well (see e.g.~\cite{CLO}) when the coefficients either lie in the field of
+rational numbers or when they lie in the prime field case. For instance, assume
+the file \verb+in.ms+ contains the following:
+\msolveinput{examples/lex_char1073741827.ms} Now, typing the following
+command:
+\begin{tcolorbox} % examples/lex_char1073741827.sh
+  \begin{verbatim}
+    ./msolve -x 2 -f in.ms -o out.ms
+  \end{verbatim}
+\end{tcolorbox}
+where the \verb+-x+ flag indicates that one aims to compute a lexicographic Gr\"obner
+basis. The value \verb+2+ tells \msolve to compute the full Gr\"obner basis for the
+\emph{lex order} with $z_1\succ z_2 \succ z_3 $. The computed Gr\"obner basis
+is then printed in the file \verb+out.ms+ as follows.
+\begin{tcolorbox} % examples/lex_char1073741827.res
+  \begin{lstlisting}
+#Reduced Groebner basis data
+#---
+#field characteristic: 1073741827
+#variable order:       z1, z2, z3
+#monomial order:       lexicographical
+#length of basis:      7 elements sorted by increasing leading monomials
+#---
+[1*z3^10+1073741822*z3^9+715827893*z3^8+357913939*z3^7+238609291*z3^6+715827887*z3^5+278377512*z3^4+994205395*z3^3+1007461467*z3^2+1060485755*z3^1+786526935,
+1*z2^1*z3^6+1073741824*z2^1*z3^5+2*z2^1*z3^4+1*z2^1*z3^3+715827884*z2^1*z3^2+357913942*z2^1*z3^1+636291453*z2^1+1020054737*z3^9+161061267*z3^8+322122560*z3^7+107374180*z3^6+483183811*z3^5+483183829*z3^4+250539763*z3^3+202817899*z3^2+932564660*z3^1+65617556,
+1*z2^2*z3^4+1073741825*z2^2*z3^3+715827885*z2^2*z3^2+357913943*z2^2*z3^1+238609295*z2^2+1073741825*z2^1*z3^5+8*z2^1*z3^4+715827876*z2^1*z3^3+954437182*z2^1*z3^1+954437180*z2^1+493921237*z3^9+450971586*z3^8+472446368*z3^7+944892832*z3^6+279172877*z3^5+780252395*z3^4+773094105*z3^3+973525924*z3^2+789796769*z3^1+692762320,
+1*z2^3+214748360*z2^2*z3^3+9*z2^2*z3^2+429496726*z2^2*z3^1+644245101*z2^2+128849016*z2^1*z3^5+85899371*z2^1*z3^4+429496675*z2^1*z3^3+558345793*z2^1*z3^2+601295411*z2^1*z3^1+515396085*z2^1+355709174*z3^9+537472306*z3^8+487392707*z3^7+34188067*z3^6+160717675*z3^5+399517883*z3^4+5325663*z3^3+47588290*z3^2+107631877*z3^1+98011159,
+1*z1^1*z3^4+1073741825*z1^1*z3^3+715827885*z1^1*z3^2+357913943*z1^1*z3^1+238609295*z1^1+944892808*z2^2*z3^3+314964269*z2^2*z3^2+930576250*z2^2*z3^1+653789468*z2^2+128849019*z2^1*z3^5+171798692*z2^1*z3^4+701511329*z2^1*z3^3+973525922*z2^1*z3^2+396091429*z2^1*z3^1+606067609*z2^1+353046315*z3^9+856416470*z3^8+3435992*z3^7+865865403*z3^6+851262512*z3^5+934298557*z3^4+373948493*z3^3+48294520*z3^2+240231837*z3^1+381679428,
+1*z1^1*z2^1+429496729*z1^1*z3^3+3*z1^1*z3^2+858993460*z1^1*z3^1+214748367*z1^1+1005022350*z2^2*z3^3+463856469*z2^2*z3^2+107374183*z2^2*z3^1+90194313*z2^2+1030792155*z2^1*z3^5+747324309*z2^1*z3^4+584115556*z2^1*z3^3+970662610*z2^1*z3^2+712964576*z2^1*z3^1+695784702*z2^1+886893570*z3^9+343992517*z3^8+82222864*z3^7+958155659*z3^6+568550593*z3^5+646633096*z3^4+930599163*z3^3+405547988*z3^2+300510277*z3^1+274860726,
+1*z1^2+858993458*z1^1*z3^3+6*z1^1*z3^2+644245097*z1^1*z3^1+429496730*z1^1+936302873*z2^2*z3^3+927712938*z2^2*z3^2+214748366*z2^2*z3^1+180388627*z2^2+987842483*z2^1*z3^5+420906791*z2^1*z3^4+94489285*z2^1*z3^3+867583393*z2^1*z3^2+352187321*z2^1*z3^1+317827581*z2^1+700045313*z3^9+687985034*z3^8+164445728*z3^7+842569491*z3^6+63359359*z3^5+219524365*z3^4+787456499*z3^3+811095980*z3^2+601020546*z3^1+549721456]:
+  \end{lstlisting}
+\end{tcolorbox}
+When one is interested only in the leading monomials of the lexicographic Gr\"obner basis
+(which is a way smaller output), one simply uses the \verb+-x 1+ flag as follows
+\begin{tcolorbox} % examples/lex_lm_char1073741827.sh
+  \begin{verbatim}
+    ./msolve -x 1 -f in.ms -o out.ms
+  \end{verbatim}
+\end{tcolorbox}
+and we obtain:
+\begin{tcolorbox} % examples/lex_lm_char1073741827.res
+  \begin{lstlisting}
+#Leading ideal data
+#---
+#field characteristic: 1073741827
+#variable order:       z1, z2, z3
+#monomial order:       lexicographical
+#length of basis:      7 elements sorted by increasing leading monomials
+#---
+[z3^10,
+z2^1*z3^6,
+z2^2*z3^4,
+z2^3,
+z1^1*z3^4,
+z1^1*z2^1,
+z1^2]:
+  \end{lstlisting}
+\end{tcolorbox}
+Note that when the \verb+-x 1+ flag is used in characteristic $0$, the result is
+always probabilistic: the leading monomials are deduced from two computations
+over a prime field, the first prime being chosen randomly.
+
+For instance, in the above example, one can deduce that the ideal has dimension
+$0$ (finitely many solutions with coordinates in an algebraic closure of
+$\frac{\mathbb{Z}}{1073741827\mathbb{Z}}$) since the basis of leading monomials
+contain pure powers of all variables. The degree of the ideal is also $8$ since
+there are $8$ monomials in $z_1, z_2, z_3$ which are not divisible by the above
+leading monomials.
+
+
 \section{Saturation and colon ideals}\label{sec:f4sat}
 \msolve also proposes algorithms for computing Gr\"obner bases of
 saturation and colon ideals. Given $m+1$ polynomials
@@ -1119,14 +1191,21 @@ will display in the \verb+out.ms+ file the following content.
   precision of the output of the
   univariate real root
   solver (default value may be automatically increased by \msolve when needed).
-  
+
   \hfill \verb+Default value:128+
 \item The flag \verb+-g <int>+ or \verb+--groebner-basis+ tells \msolve to output
   the leading monomial of
   the ideal generated by the input polynomials (when \verb+<int>+ is \verb+1+)
-  or the minimal reduced Gr\"obner basis (when \verb+<int>+ is \verb+2+ and
-  a prime characteristic is indicated).
-  
+  or the minimal reduced Gr\"obner basis (when \verb+<int>+ is \verb+2+).
+
+  \hfill \verb+Default value:0+
+
+\item The flag \verb+-x <int>+ or \verb+--lex-groebner-basis+ tells \msolve to output
+  the leading monomial of
+  the ideal generated by the input polynomials (when \verb+<int>+ is \verb+1+)
+  or the minimal reduced lexicographic
+  Gr\"obner basis (when \verb+<int>+ is \verb+2+).
+
   \hfill \verb+Default value:0+
 
 \item The flag \verb+-P <int>+ or \verb+--precision <int>+ tells \msolve to output the
@@ -1136,9 +1215,8 @@ will display in the \verb+out.ms+ file the following content.
   set, the parametrization is returned and, in the characteristic zero case (rational
   coefficients), real solutions are returned, when \verb+-P 2+ is set, only the
   rational parametrization is returned.
-  
-  \hfill \verb+Default value:0+
 
+  \hfill \verb+Default value:0+
 
 \item The flag \verb+-c <int>+ tells \msolve how to handle genericity
   requirements: when \verb+<int>+ is \verb+0+ \msolve quits when these

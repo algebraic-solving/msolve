@@ -68,8 +68,10 @@
 #if defined(__GLIBC__)
 #include <malloc.h>
 #endif
+#if defined(__APPLE__) || defined(__linux__)
 #include <sys/resource.h>
 #include <unistd.h>
+#endif
 #if defined(__APPLE__)
 #include <mach/mach.h>
 #endif
@@ -1177,12 +1179,15 @@ static int usolve_bal_subtree(usolve_bal_t *B, mpz_t *upol,
 }
 
 /* peak and current resident memory of the process, in bytes; returns 0
- * if the current one cannot be read */
+ * if the current one cannot be read (always on systems other than Linux
+ * and macOS) */
 static int usolve_bal_rss(double *peak, double *cur){
+#if defined(__APPLE__) || defined(__linux__)
   struct rusage ru;
   if(getrusage(RUSAGE_SELF, &ru)){
     return 0;
   }
+#endif
 #if defined(__APPLE__)
   *peak = (double)ru.ru_maxrss;
   struct mach_task_basic_info info;
@@ -1205,6 +1210,8 @@ static int usolve_bal_rss(double *peak, double *cur){
   *cur = (double)res * sysconf(_SC_PAGESIZE);
   return ok;
 #else
+  (void)peak;
+  (void)cur;
   return 0;
 #endif
 }

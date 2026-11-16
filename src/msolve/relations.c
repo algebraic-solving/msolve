@@ -92,11 +92,21 @@ static inline void rel_set(uint64_t *s, const long e) {
   s[e / 64] |= UINT64_C(1) << (e % 64);
 }
 
+/* a mod p, in [0, p); mpz_fdiv_ui takes an unsigned long, which has 32
+ * bits on Windows, and p has 63 */
+static mp_limb_t rel_mpz_mod(const mpz_t a, const mp_limb_t p) {
+  if (mpz_sgn(a) == 0) {
+    return 0;
+  }
+  const mp_limb_t r = mpn_mod_1(mpz_limbs_read(a), mpz_size(a), p);
+  return (mpz_sgn(a) < 0 && r != 0) ? p - r : r;
+}
+
 static void rel_mpz_to_nmod(nmod_poly_t r, const mpz_upoly_t u) {
   const mp_limb_t p = r->mod.n;
   nmod_poly_fit_length(r, u->length);
   for (long i = 0; i < u->length; i++) {
-    r->coeffs[i] = mpz_fdiv_ui(u->coeffs[i], p);
+    r->coeffs[i] = rel_mpz_mod(u->coeffs[i], p);
   }
   _nmod_poly_set_length(r, u->length);
   _nmod_poly_normalise(r);
@@ -123,7 +133,7 @@ static void rel_mod_init(rel_mod_t *m, const mpz_param_t param,
   for (long v = 0; v < nc; v++) {
     nmod_poly_init(m->C + v, p);
     rel_mpz_to_nmod(m->C + v, param->coords[v]);
-    m->c[v] = mpz_fdiv_ui(param->cfs[v], p);
+    m->c[v] = rel_mpz_mod(param->cfs[v], p);
   }
 }
 

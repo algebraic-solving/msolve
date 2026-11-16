@@ -1549,9 +1549,9 @@ static fglm_gb_t *fglm_gb_from_staircase(const fglm_lex_staircase_t *lex,
   G->nvars = nv;
   G->ngens = lex->ngens;
   G->nterms = lex->nterms;
-  G->lens = malloc((lex->ngens + 1) * sizeof(int32_t));
-  G->exps = malloc((lex->nterms + 1) * nv * sizeof(int32_t));
-  G->cfs  = malloc((lex->nterms + 1) * sizeof(CF_t));
+  G->lens = malloc((lex->ngens) * sizeof(int32_t));
+  G->exps = malloc((lex->nterms) * nv * sizeof(int32_t));
+  G->cfs  = malloc((lex->nterms) * sizeof(CF_t));
   uint64_t off = 0, pos = 0;
   for(int32_t j = 0; j < lex->ngens; j++){
       const szmat_t nt = lex->g_ntail[j];

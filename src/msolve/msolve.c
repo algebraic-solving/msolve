@@ -2140,7 +2140,7 @@ static int32_t *initial_modular_step(
             one->nvars = nv;
             one->ngens = 1;
             one->nterms = 1;
-            one->lens = malloc(1 * sizeof(CF_t));
+            one->lens = malloc(1 * sizeof(int32_t));
             one->exps = calloc(1 * nv, sizeof(int32_t)); //all exponents to 0
             one->cfs  = malloc(1 * sizeof(CF_t));
             one->lens[0] = 1;

@@ -81,6 +81,7 @@ is doing. Try this.
 or a prime field
 (characteristic should be less than 2^52; for characteristics of at least 2^31
 only Groebner bases can be computed), or GF(16) resp. GF(256), see below.
+It also computes Groebner bases in the boolean ring over GF(2), see below.
 
 
 The following command
@@ -123,6 +124,26 @@ characteristic 2. For example, `0x1b*x1^2+3*x2+x3` has the coefficients
 `t^4+t^3+t+1`, `1` and `1`. The Groebner basis is printed with hexadecimal 
 coefficients. If all coefficients lie in GF(2), e.g. if they are all 
 integers, the Groebner basis is computed over GF(2), which is faster. 
+
+Groebner bases (options `-g 1` and `-g 2`) can also be computed in the 
+boolean ring over GF(2), i.e. with `x^2 = x` for all variables `x`, the 
+2nd line of the input file is then `boolean`. Alternatively, the option 
+`--boolean` computes in the boolean ring for an input file over GF(2). 
+Powers of variables in the input are reduced, e.g. `x1^3*x2^2+x1*x2` is 
+`0`. The reduced Groebner basis of the ideal in the boolean ring is the 
+one of the ideal with the field equations `x^2+x` added, without the 
+field equations themselves. 
+
+For input systems in few variables (at most 32), e.g. a single polynomial 
+describing a set of points, the option `--boolean-zeros` computes the 
+reduced Groebner basis in the boolean ring via the common zeros of the input 
+polynomials: the ideal in the boolean ring consists of all polynomials 
+vanishing on these zeros, its Groebner basis is computed by the 
+Buchberger-Moeller algorithm. All 2^n points are evaluated, so the time and 
+memory needed grow with 2^n and with the square of the number of common 
+zeros. With the option `--lex` the basis is computed w.r.t. the 
+lexicographical order instead of the graded reverse lexicographical one, 
+only together with `--boolean-zeros`. 
 
 # Solving over the real numbers
 

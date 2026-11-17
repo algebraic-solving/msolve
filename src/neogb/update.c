@@ -171,6 +171,53 @@ static int spair_cmp_update_local(
     return 0;
 }
 
+/* Boolean ring: writes the field pairs of the basis element g to p and
+ * returns their number, i.e. the pairs of g with the field equations
+ * x^2 + x of the variables x of its lead monomial. The polynomial of such
+ * a pair is x * g in the Boolean ring, its lead term is not known before
+ * it is computed. Its lcm x times the lead monomial of g is inserted in
+ * bht, which must have enough space. */
+static len_t field_pairs(
+        spair_t *p,
+        const bi_t g,
+        const bs_t * const bs,
+        ht_t *bht,
+        const md_t * const st
+        )
+{
+    len_t i, np = 0;
+    const len_t evl = bht->evl;
+    const len_t ebl = bht->ebl;
+    const hm_t lm   = bs->hm[g][OFFSET];
+    exp_t etmp[evl];
+
+    for (i = 1; i < evl; ++i) {
+        if (i == ebl || bht->ev[lm][i] == 0) {
+            continue;
+        }
+        memcpy(etmp, bht->ev[lm], (uint64_t)evl * sizeof(exp_t));
+        etmp[i]++;
+        if (ebl > 0 && i > ebl) {
+            etmp[ebl]++;
+        } else {
+            etmp[0]++;
+        }
+        const deg_t ldeg  = total_degree(etmp, bht);
+        p[np].lcm   = insert_in_hash_table(etmp, bht);
+        p[np].gen1  = g;
+        p[np].gen2  = g;
+        p[np].type  = FIELD_PAIR;
+        /* degree of the pair, not trivial if block order is chosen */
+        if (st->nev == 0) {
+            p[np].deg = ldeg;
+        } else {
+            p[np].deg = ldeg - bht->hd[lm].deg + bs->hm[g][DEG];
+        }
+        np++;
+    }
+    return np;
+}
+
 /* Adds the pairs of the npivs new basis elements bs->hm[bs->ld], ...,
  * bs->hm[bs->ld+npivs-1] to the pairset and applies the Gebauer-Moeller
  * criteria. The result is the same as adding the new elements one after
@@ -484,27 +531,50 @@ static void insert_and_update_spairs(
         }
     }
 
+    /* in the Boolean ring each new element f also gets the pairs with the
+     * field equations x^2 + x of the variables x of its lead monomial,
+     * their lcm is x times the lead monomial of f; they come after the
+     * other new pairs of f, so the criteria for the pairs of the earlier
+     * new elements below apply to them, too */
+    uint64_t nfp  = 0;
+    if (st->boolean) {
+        for (k = 0; k < npivs; ++k) {
+            if (bs->red[bl+k] == 0) {
+                nfp += total_degree(bht->ev[nch[k]], bht);
+            }
+        }
+    }
     /* remove the useless new pairs, soff[k] is the number of remaining
      * pairs of the first k new elements */
     uint64_t *soff  = (uint64_t *)malloc((uint64_t)(npivs+1) * sizeof(uint64_t));
+    uint64_t nrem   = 0;
+    for (j = 0; j < np; ++j) {
+        nrem  += pp[j].deg >= 0;
+    }
+    spair_t *pq     = (spair_t *)malloc((nrem + nfp) * sizeof(spair_t));
+    /* the lcms of the remaining pairs are inserted in bht */
+    while (bht->esz - bht->eld < nrem + nfp) {
+        enlarge_hash_table(bht);
+    }
     j = 0;
     soff[0] = 0;
     for (k = 0; k < npivs; ++k) {
         for (i = 0; i < bl+k; ++i) {
             if (pp[off[k]+i].deg >= 0) {
-                pp[j++] = pp[off[k]+i];
+                pq[j] = pp[off[k]+i];
+                /* insert the lcm of the remaining new pair */
+                pq[j].lcm = get_lcm(bs->hm[pq[j].gen1][OFFSET],
+                        bs->hm[pq[j].gen2][OFFSET], bht, bht);
+                j++;
             }
+        }
+        if (st->boolean && bs->red[bl+k] == 0) {
+            j += field_pairs(pq + j, bl+k, bs, bht, st);
         }
         soff[k+1] = j;
     }
-    /* insert the lcms of the remaining new pairs */
-    while (bht->esz - bht->eld < soff[npivs]) {
-        enlarge_hash_table(bht);
-    }
-    for (j = 0; j < soff[npivs]; ++j) {
-        pp[j].lcm = get_lcm(bs->hm[pp[j].gen1][OFFSET],
-                bs->hm[pp[j].gen2][OFFSET], bht, bht);
-    }
+    free(pp);
+    pp  = pq;
 
     /* Gebauer-Moeller: the old pair check of the later new elements for
      * the pairs of the earlier ones, the lcms are compared as above */
@@ -528,6 +598,8 @@ static void insert_and_update_spairs(
 
     /* remove useless pairs from pairset, old ones first, then the new
      * ones in the order of the new elements */
+    check_enlarge_pairset(psl, (len_t)soff[npivs]);
+    ps  = psl->p;
     j = 0;
     for (i = 0; i < pl; ++i) {
         if (ps[i].deg >= 0) {
@@ -548,7 +620,7 @@ static void insert_and_update_spairs(
         }
     }
 
-    st->num_gb_crit +=  pl + np - psl->ld;
+    st->num_gb_crit +=  pl + np + nfp - psl->ld;
 
     bs->ld += npivs;
 

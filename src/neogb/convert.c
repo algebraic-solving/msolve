@@ -459,6 +459,26 @@ static void convert_hashes_to_columns(
     for (k = 0; k < mat->nrl; ++k) {
         nterms  +=  trows[k][LENGTH];
     }
+    /* in the Boolean ring the rows of field pairs may have their lead term
+     * anywhere and further terms in the columns of the known pivots, the
+     * linear algebra starts the reduction of a row at its first column,
+     * so we move the smallest column to the front */
+    if (sht->boolean) {
+#pragma omp parallel for num_threads(st->nthrds) private(k, j, row)
+        for (k = 0; k < mat->nrl; ++k) {
+            row = trows[k] + OFFSET;
+            const len_t len = trows[k][LENGTH];
+            len_t m = 0;
+            for (j = 1; j < len; ++j) {
+                if (row[j] < row[m]) {
+                    m = j;
+                }
+            }
+            const hm_t t  = row[m];
+            row[m]  = row[0];
+            row[0]  = t;
+        }
+    }
 
     /* next we sort each row by the new colum order due
      * to known / unkown pivots */

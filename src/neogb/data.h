@@ -133,6 +133,8 @@ struct ht_t
                    * degree + #elimination variables,
                    * 0 if no elimination order */
     int32_t mo;   /* monomial ordering: 0=DRL, 1=LEX */
+    int32_t boolean; /* 1 if the monomials are those of the Boolean ring,
+                      * i.e. squarefree with x^2 = x, 0 otherwise */
     len_t nv;     /* number of variables */
     len_t evl;    /* real length of exponent vector,
                    * includes degree (or two degrees
@@ -143,10 +145,19 @@ struct ht_t
     len_t bpv;    /* bits per variable in divmask */
     val_t *rn;    /* random numbers for hash generation */
     uint32_t rsd; /* seed for random number generator */
+    uint64_t *bvm; /* Boolean ring: bit j of bvm[k] is set iff entry j of
+                    * the exponent vector of monomial k is a nonzero
+                    * variable entry, a cache of the monomials 0, ...,
+                    * bvl-1, see update_boolean_masks() */
+    hl_t bvl;     /* number of valid entries of bvm */
+    hl_t bvsz;    /* size of bvm */
 };
 
 /* S-pair types */
-typedef enum {S_PAIR, GCD_PAIR, GEN_PAIR} spt_t;
+/* S-pair types, FIELD_PAIR is the pair of gen1 = gen2 with the field
+ * equation x^2 + x of a variable x of its lead monomial in the Boolean
+ * ring, its lcm is x times the lead monomial */
+typedef enum {S_PAIR, GCD_PAIR, GEN_PAIR, FIELD_PAIR} spt_t;
 typedef struct spair_t spair_t;
 struct spair_t
 {
@@ -443,6 +454,7 @@ struct md_t
     uint32_t gfc; /* global field characteristic */
     uint64_t fc;
     int32_t nev; /* number of elimination variables */
+    int32_t boolean; /* computation in the Boolean ring over GF(2) */
     int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
     int32_t laopt;
     int32_t init_hts;

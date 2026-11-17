@@ -58,6 +58,7 @@ void free_rrec_data(rrec_data_t recdata);
 #include "separating.c"
 #include "splitting.c"
 #include "hensel.c"
+#include "boolean-zeros.c"
 #include "streams.h"
 
 #ifndef MAX
@@ -268,6 +269,72 @@ static inline void mpz_param_out_str_maple(FILE *file,
   fprintf(file, "]");
 }
 
+/* number of variables for comparing exponent vectors in
+ * make_input_boolean() */
+static int32_t boolean_nvars = 0;
+
+static int boolean_exps_cmp(const void *a, const void *b)
+{
+  const int32_t *ea = *((const int32_t **)a);
+  const int32_t *eb = *((const int32_t **)b);
+  for (int32_t i = 0; i < boolean_nvars; ++i) {
+    if (ea[i] != eb[i]) {
+      return ea[i] < eb[i] ? -1 : 1;
+    }
+  }
+  return ea < eb ? -1 : (ea > eb);
+}
+
+/* Boolean ring over GF(2): makes the input polynomials squarefree using
+ * x^2 = x for all variables x, terms that become equal cancel in pairs
+ * and polynomials that vanish are removed. Over GF(2) all coefficients
+ * read are 1. */
+static void make_input_boolean(data_gens_ff_t *gens)
+{
+  const int32_t nv  = gens->nvars;
+  int64_t i, j, k, pos = 0, npos = 0;
+  int32_t ng = 0;
+
+  boolean_nvars = nv;
+  for (i = 0; i < (int64_t)gens->nterms * nv; ++i) {
+    gens->exps[i] = gens->exps[i] != 0;
+  }
+  for (i = 0; i < gens->ngens; ++i) {
+    const int32_t len = gens->lens[i];
+    int32_t **t = (int32_t **)malloc((uint64_t)len * sizeof(int32_t *));
+    for (j = 0; j < len; ++j) {
+      t[j] = gens->exps + (pos + j) * nv;
+    }
+    qsort(t, (size_t)len, sizeof(int32_t *), boolean_exps_cmp);
+    /* the remaining terms, first in a temporary array since they may
+     * overlap with the terms not handled yet */
+    int32_t *e  = (int32_t *)malloc((uint64_t)len * nv * sizeof(int32_t));
+    int32_t nl  = 0;
+    for (j = 0; j < len; j = k) {
+      for (k = j+1; k < len
+          && memcmp(t[j], t[k], (uint64_t)nv * sizeof(int32_t)) == 0; ++k) {
+      }
+      if ((k - j) % 2 == 1) {
+        memcpy(e + (int64_t)nl * nv, t[j], (uint64_t)nv * sizeof(int32_t));
+        nl++;
+      }
+    }
+    if (nl > 0) {
+      memcpy(gens->exps + npos * nv, e, (uint64_t)nl * nv * sizeof(int32_t));
+      for (j = 0; j < nl; ++j) {
+        gens->cfs[npos + j] = 1;
+      }
+      gens->lens[ng++] = nl;
+      npos += nl;
+    }
+    pos += len;
+    free(e);
+    free(t);
+  }
+  gens->ngens   = ng;
+  gens->nterms  = npos;
+}
+
 data_gens_ff_t *allocate_data_gens() {
   data_gens_ff_t *gens = (data_gens_ff_t *)(malloc(sizeof(data_gens_ff_t)));
   gens->lens = NULL;
@@ -292,6 +359,9 @@ data_gens_ff_t *allocate_data_gens() {
   gens->hensel_prec = 0;
   gens->hensel_cost_scale = 1.0;
   gens->hensel_memory = 0;
+  gens->boolean = 0;
+  gens->boolean_zeros = 0;
+  gens->lex = 0;
 
   gens->elim = 0;
   return gens;
@@ -5051,14 +5121,17 @@ restart:
     bcf   = malloc(sizeof(void *));
     b     = 0;
 
-    if(gens->field_char > INT32_MAX || is_gf2_ext(gens->field_char)){
+    if(gens->field_char > INT32_MAX || is_gf2_ext(gens->field_char)
+            || gens->boolean){
         /* for field characteristics >= 2^31 only Groebner bases can be
          * computed, F4 works with 64 bit coefficients then. The same
          * holds for GF(16) and GF(256) given by the field characteristics
-         * 16 and 256. */
+         * 16 and 256, and for the Boolean ring over GF(2). */
         if (print_gb == 0 || use_signatures > 0 || saturate > 0
                 || colon > 0 || normal_form > 0) {
-            if (is_gf2_ext(gens->field_char)) {
+            if (gens->boolean) {
+                fprintf(ERRSTREAM, "In the boolean ring msolve ");
+            } else if (is_gf2_ext(gens->field_char)) {
                 fprintf(ERRSTREAM, "Over GF(16) and GF(256) msolve ");
             } else {
                 fprintf(ERRSTREAM, "For field characteristics >= 2^31 msolve ");
@@ -5077,6 +5150,42 @@ restart:
 
         void *cfs = (void *)gens->cfs_64;
         uint64_t fc = gens->field_char;
+        if (gens->boolean) {
+            cfs = (void *)gens->cfs;
+            make_input_boolean(gens);
+            if (gens->ngens == 0) {
+                /* all input polynomials vanish in the Boolean ring */
+                FILE *ofile = files->out_file != NULL ?
+                    fopen(files->out_file, "ab") : stdout;
+                fprintf(ofile, "[0]:\n");
+                if (ofile != stdout) {
+                    fclose(ofile);
+                }
+                free(bld);
+                free(blen);
+                free(bexp);
+                free(bcf);
+                return 0;
+            }
+            if (gens->boolean_zeros) {
+                /* special handling via the common zeros */
+                int ret = -1;
+                if (elim_block_len > 0) {
+                    fprintf(ERRSTREAM, "The computation via the common ");
+                    fprintf(ERRSTREAM, "zeros (option --boolean-zeros) ");
+                    fprintf(ERRSTREAM, "does not support elimination ");
+                    fprintf(ERRSTREAM, "orders.\n");
+                } else {
+                    ret = boolean_zeros_gb(gens, files->out_file, gens->lex,
+                            print_gb, nr_threads, info_level);
+                }
+                free(bld);
+                free(blen);
+                free(bexp);
+                free(bcf);
+                return ret;
+            }
+        }
         if (is_gf2_ext(fc)) {
             /* the import of the data removes terms with zero coefficient,
              * e.g. from even integer coefficients */
@@ -5095,17 +5204,26 @@ restart:
                 }
             }
         }
+        /* in the Boolean ring the input statistics are printed below,
+         * once st knows that it computes in the Boolean ring */
         int success = initialize_gba_input_data(&bs, &bht, &st,
                 gens->lens, gens->exps, cfs,
                 fc, 0 /* DRL order */, elim_block_len,
                 gens->nvars, gens->ngens, 0 /* # normal forms */,
                 initial_hts, nr_threads, max_pairs, update_ht, la_option,
                 0 /* use_signatures */, 1 /* reduce_gb */, 0,
-                0 /* truncate_lifting */, info_level);
+                0 /* truncate_lifting */, gens->boolean ? 0 : info_level);
 
         if (success != 1) {
             fprintf(ERRSTREAM,"Bad input data, stopped computation.\n");
             exit(1);
+        }
+        if (gens->boolean) {
+            st->boolean     = 1;
+            bht->boolean    = 1;
+            bs->ht->boolean = 1;
+            st->info_level  = info_level;
+            print_initial_statistics(VERBSTREAM, st);
         }
         bs = core_gba(bs, st, &err, fc);
         if (err) {
@@ -5115,6 +5233,9 @@ restart:
         /* a basis computed over GF(2) has only coefficients 1, these
          * are printed as elements of the given field */
         st->fc = gens->field_char;
+        if (gens->field_char <= UINT32_MAX) {
+            st->gfc = (uint32_t)gens->field_char;
+        }
         print_ff_basis_data(files->out_file, "ab", bs, bs->ht, st, gens,
                 print_gb);
 

@@ -314,15 +314,22 @@ static int32_t select_spairs_by_minimal_degree(
     exp_t *ems    = (exp_t *)malloc((unsigned long)mnr * evl * sizeof(exp_t));
     len_t *bis    = (len_t *)malloc((unsigned long)mnr * sizeof(len_t));
     hi_t *mhs     = (hi_t *)malloc((unsigned long)mnr * sizeof(hi_t));
-    /* is the row the first one of its lcm, i.e. a reducer row? */
+    /* is the row the first one of its lcm, i.e. a reducer row? 2 marks
+     * the rows of field pairs */
     int8_t *isrr  = (int8_t *)malloc((unsigned long)mnr * sizeof(int8_t));
     len_t nr      = 0;
 
     i = 0;
 
     while (i < nps) {
-        /* ncols initially counts number of different lcms */
-        mat->nc++;
+        /* the pairs with an lcm are all field pairs or none of them */
+        const int fp  = ps[i].type == FIELD_PAIR;
+        /* ncols initially counts number of different lcms, the rows of
+         * field pairs are only rows to be reduced, their lead terms are
+         * not known */
+        if (!fp) {
+            mat->nc++;
+        }
         load  = 0;
         lcm   = ps[i].lcm;
         j = i;
@@ -354,7 +361,7 @@ static int32_t select_spairs_by_minimal_degree(
             hs[nr]    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             polys[nr] = b;
             bis[nr]   = gens[k];
-            isrr[nr]  = (k == 0);
+            isrr[nr]  = fp ? 2 : (k == 0);
             /* track trace information ? */
             if (md->trace_level == LEARN_TRACER) {
                 if (bs->ht->eld == bs->ht->esz-1) {
@@ -378,6 +385,18 @@ static int32_t select_spairs_by_minimal_degree(
         if (md->trace_level == LEARN_TRACER) {
             rows[k][BINDEX] = bis[k];
             rows[k][MULT]   = mhs[k];
+        }
+        if (isrr[k] == 2) {
+            /* the row of a field pair x * f in the Boolean ring, its
+             * terms may cancel, its lead term need not be the first one,
+             * see convert_hashes_to_columns() */
+            if (rows[k][LENGTH] == 0) {
+                free(rows[k]);
+                continue;
+            }
+            trows[ntr++]  = rows[k];
+            mat->nr++;
+            continue;
         }
         /* mark lcm column as lead term column */
         sht->hd[rows[k][OFFSET]].idx = 2;
@@ -408,6 +427,18 @@ static int32_t select_spairs_by_minimal_degree(
     /* remove selected spairs from pairset */
     memmove(ps, ps+nps, (unsigned long)(psl->ld-nps) * sizeof(spair_t));
     psl->ld -=  nps;
+
+    /* in the Boolean ring all selected pairs may be field pairs whose
+     * rows vanish, then we continue with the next pairs */
+    if (mat->nr == 0 && psl->ld > 0) {
+        free(mat->rr);
+        free(mat->tr);
+        mat->rr = mat->tr = NULL;
+        if (md->info_level > 1) {
+            fprintf(VERBSTREAM, "    all rows vanish\n");
+        }
+        return select_spairs_by_minimal_degree(mat, bs, md);
+    }
 
     /* timings */
     ct1 = cputime();

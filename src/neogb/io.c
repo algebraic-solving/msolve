@@ -74,7 +74,7 @@ void sort_terms_ff_8(
   cf8_t tmpcf = 0;
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -100,6 +100,8 @@ void sort_terms_ff_8(
     }
   }
 
+  free(phm);
+
   *cfp  = cf;
   *hmp  = hm;
 }
@@ -122,7 +124,7 @@ void sort_terms_ff_16(
   cf16_t tmpcf  = 0;
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -147,6 +149,8 @@ void sort_terms_ff_16(
       phm[k]  = &hmo[k];
     }
   }
+
+  free(phm);
 
   *cfp  = cf;
   *hmp  = hm;
@@ -170,7 +174,7 @@ void sort_terms_ff_32(
   cf32_t tmpcf  = 0;
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -195,6 +199,8 @@ void sort_terms_ff_32(
       phm[k]  = &hmo[k];
     }
   }
+
+  free(phm);
 
   *cfp  = cf;
   *hmp  = hm;
@@ -218,7 +224,7 @@ void sort_terms_ff_64(
   cf64_t tmpcf  = 0;
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -243,6 +249,8 @@ void sort_terms_ff_64(
       phm[k]  = &hmo[k];
     }
   }
+
+  free(phm);
 
   *cfp  = cf;
   *hmp  = hm;
@@ -267,7 +275,7 @@ void sort_terms_qq(
   mpz_init(tmpcf);
 
   /* generate array of pointers to hm entries */
-  hm_t *phm[len];
+  hm_t **phm = (hm_t **)malloc((unsigned long)len * sizeof(hm_t *));
   for (i = 0; i < len; ++i) {
     phm[i]  = &hmo[i];
   }
@@ -292,6 +300,8 @@ void sort_terms_qq(
       phm[k]  = &hmo[k];
     }
   }
+
+  free(phm);
 
   *cfp  = cf;
   *hmp  = hm;
@@ -501,10 +511,12 @@ void import_input_data(
                 if (invalid_gens == NULL || invalid_gens[i] == 0) {
                     mpz_set_si(prod_den, 1);
 
+                    /* the denominators are cleared by their lcm, their
+                     * product grows with the number of terms */
                     for (j = off; j < off+lens[i]; ++j) {
-                        /* printf("i %u | j %u\n", i, j);
-                         * gmp_printf("%Zd\n", *(cfs[2*j+1])); */
-                        mpz_mul(prod_den, prod_den, *(cfs_qq[2*j+1]));
+                        if (mpz_cmp_ui(*(cfs_qq[2*j+1]), 1) != 0) {
+                            mpz_lcm(prod_den, prod_den, *(cfs_qq[2*j+1]));
+                        }
                     }
                     cfq = (mpz_t *)malloc((unsigned long)(lens[i]) * sizeof(mpz_t));
 

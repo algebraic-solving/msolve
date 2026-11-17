@@ -18,6 +18,35 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+/* Classical FGLM, from DRL to lex, over a prime field.
+ *
+ * Reference: J.-C. Faugère, P. Gianni, D. Lazard, T. Mora, Efficient
+ * computation of zero-dimensional Gröbner bases by change of ordering,
+ * J. Symbolic Comput. 16(4), 1993.
+ *
+ * Input: the multiplication matrices T_1, ..., T_n of the quotient algebra
+ * (dimension D) in the DRL basis, x_n being the smallest variable.
+ * Monomials m without x_n are scanned in increasing lex order (heap H); for
+ * each one, the chain m, m x_n, m x_n^2, ... is followed, with
+ * NF(m x_n^{k+1}) = T_n NF(m x_n^k), NF(x_i m') = T_i NF(m') for its first
+ * element. Each normal form is reduced against the previous ones, kept in an
+ * incremental LU decomposition (U, PtT, L):
+ *  - if it is independent, the monomial is a new element of the lex staircase;
+ *  - otherwise, the monomial is a leading monomial of the reduced lex Gb, the
+ *    dependency gives its tail and the chain stops.
+ * Candidates x_i m, i < n, multiples of a leading monomial are skipped.
+ *
+ * Efficiency: long chains are computed by blocks of vectors reduced together
+ * by matrix products (fglmc_gemm_sub); the next candidates are reduced ahead
+ * in batches (fglmc_prefetch); the triangular systems giving the tails are
+ * solved in batches (fglmc_rel_flush), and the relations found once the
+ * staircase is complete are computed at the end (fglmc_last_relations).
+ * Products mod p use a delayed 64-bit accumulation.
+ *
+ * Over Q, the first prime records a trace (parents of the elements of the
+ * staircase and of the leading monomials); fglm_classic_apply replays it
+ * on the next primes by solving one linear system. */
+
 #include <flint/nmod_mat.h>
 #ifdef _OPENMP
 #include <omp.h>

@@ -809,6 +809,36 @@ static inline void compute_minpoly(param_t *param,
   make_square_free_elim_poly(param, data_bms, dimquot);
 }
 
+/* Univariate case: the minimal polynomial of the multiplication matrix by x
+ * is the polynomial f = x^D - NF(x^D) of the Gb itself, NF(x^D) being the
+ * only dense row (the one of x^(D-1)): no scalar sequence, no
+ * Berlekamp-Massey. f is put where Berlekamp-Massey puts the minimal
+ * polynomial, then the square-free part is computed as usual. */
+static inline void univariate_elim_poly(param_t *param,
+                                        const sp_matfglm_t *matrix,
+                                        fglm_bms_data_t *data_bms,
+                                        const long dimquot)
+{
+  const szmat_t D = matrix->ncols;
+  const mp_limb_t p = param->charac;
+  nmod_poly_struct *f = data_bms->BMS->V1;
+  nmod_poly_fit_length(f, D + 1);
+  for(szmat_t k = 0; k < D; k++){
+    f->coeffs[k] = 0;
+  }
+  for(szmat_t r = 0; r < matrix->nrows; r++){
+    if(matrix->dense_idx[r] != D - 1) continue;
+    const CF_t *row = matrix->dense_mat + (uint64_t)r * D;
+    for(szmat_t k = 0; k < D; k++){
+      f->coeffs[k] = row[k] ? p - row[k] : 0;
+    }
+  }
+  f->coeffs[D] = 1;
+  _nmod_poly_set_length(f, D + 1);
+  _nmod_poly_normalise(f);
+  make_square_free_elim_poly(param, data_bms, dimquot);
+}
+
 static void set_param_linear_vars(param_t *param,
                                   szmat_t nlins,
                                   nvars_t *linvars,
@@ -1366,6 +1396,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                       nvars_t *linvars,
                                       uint32_t *lineqs,
                                       nvars_t *squvars,
+                                      szmat_t dmin,
                                       int info_level,
                                       fglm_data_t **bdata,
                                       fglm_bms_data_t **bdata_bms,
@@ -1393,7 +1424,34 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   param_t *param = allocate_fglm_param(prime, nvars);
 
+  if(nvars == 1){
+    /* univariate: the elimination polynomial is the polynomial itself */
+    double st_univ = realtime(), cst_univ = cputime();
+    if (info_level > 1) {
+      fprintf(VERBSTREAM, "elimination polynomial");
+      fprintf(VERBSTREAM, "                                 ");
+    }
+    *bdata_bms = allocate_fglm_bms_data(matrix->ncols, prime);
+    univariate_elim_poly(param, matrix, *bdata_bms, matrix->ncols);
+    if (info_level > 1){
+      fprintf(VERBSTREAM, "1 new           ");
+      fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - st_univ,
+              cputime() - cst_univ);
+      fprintf(VERBSTREAM,
+              "-------------------------------------------------\
+-----------------------------------------------------\n");
+    }
+    st->fglm_rtime = realtime() - st->fglm_rtime;
+    st->fglm_ctime = cputime() - st->fglm_ctime;
+    print_fglm_data (VERBSTREAM, st, matrix, param);
+    return param;
+  }
+
   szmat_t sz = matrix->ncols * matrix->nrows;
+  /* x_n^dmin is a DRL leading monomial, so 1, ..., x_n^(dmin-1) are standard
+   * and the elimination polynomial has degree >= dmin: a smaller degree means
+   * an unlucky random vector */
+  int nrestart = 0;
 
  restart:
   initialize_fglm_data(matrix, *bdata, prime, sz, block_size);
@@ -1459,11 +1517,26 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     fprintf(VERBSTREAM, "1 new           ");
     fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
-  if (param->degelimpol < 1) {
-      if (info_level > 1) {
-          fprintf(VERBSTREAM, "Constant polynomial, computation will restart\n");
+  if (param->degelimpol < (long)dmin) {
+      if (nrestart < 10) {
+          if (info_level > 1) {
+              fprintf(VERBSTREAM, "elimination polynomial of degree %ld < %u, "
+                      "new random vector\n", (long)param->degelimpol, dmin);
+          }
+          nrestart++;
+          free_fglm_bms_data(*bdata_bms);
+          *bdata_bms = NULL;
           goto restart;
       }
+      /* the result would be wrong: reject the prime */
+      if (info_level) {
+          fprintf(VERBSTREAM, "elimination polynomial of degree %ld < %u "
+                  "after %d random vectors, prime rejected\n",
+                  (long)param->degelimpol, dmin, nrestart + 1);
+      }
+      *success = 0;
+      free_fglm_param(param);
+      return NULL;
   }
   if (dimquot == param->degelimpol) {
 
@@ -1601,6 +1674,13 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
 
   fglm_param_set_prime(param, prime);
+
+  if(nvars == 1){
+    /* univariate: the elimination polynomial is the polynomial itself */
+    fglm_bms_data_set_prime(data_bms, prime);
+    univariate_elim_poly(param, matrix, data_bms, matrix->ncols);
+    return (param->elim->length - 1 != deg_init);
+  }
 
   const long sz = matrix->ncols * matrix->nrows;
   const long nb = initialize_fglm_data(matrix, data_fglm, prime, sz, block_size);

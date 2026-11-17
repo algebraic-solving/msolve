@@ -1114,13 +1114,115 @@ static int fglmc_last_relations(fglmc_lu_t *E, fglmc_rel_t *R, fglmc_pre_t *Q,
   return ok;
 }
 
+/* Univariate case: the staircase is 1, x, ..., x^(D-1) (index k of the basis
+ * is x^k) and the lex Gb is {x^D - NF(x^D)}, NF(x^D) being the product of
+ * x^(D-1) by T_x, i.e. the tail of the DRL Gb: no linear algebra.
+ * c[k] receives the coefficient of x^k; returns 1 if a row of T_x which
+ * is not computed is needed (on demand rows: rp, computed first). */
+static int fglmc_univariate_relation(sp_multimatfglm_t *Mt,
+                                    const fglmc_rows_t *rp, CF_t *c,
+                                    const int info_level){
+  const szmat_t D = Mt->ncols;
+  const CF_t p = Mt->charac;
+  CF_t *v = calloc((uint64_t)D + 1, sizeof(CF_t));
+  CF_t *w = malloc(((uint64_t)D + 1) * sizeof(CF_t));
+  uint64_t *acc = malloc(((uint64_t)D + 1) * sizeof(uint64_t));
+  int missing = (v == NULL || w == NULL || acc == NULL);
+  if(!missing){
+    v[D - 1] = 1;
+    if(rp != NULL && !fglmc_need_rows(rp, Mt, 0, v, info_level)){
+      missing = 1;
+    } else {
+      fglmc_mulvec(w, Mt, 0, v, acc, &missing);
+      for(szmat_t k = 0; k < D; k++){
+        c[k] = w[k] ? p - w[k] : 0;
+      }
+    }
+  }
+  free(v);
+  free(w);
+  free(acc);
+  return missing;
+}
+
+/* fglm_classic_learn in the univariate case: same outputs (staircase,
+ * leading monomial, trace, coefficients) without the greedy phase */
+static int fglmc_learn_univariate(sp_multimatfglm_t *Mt,
+                                  fglm_lex_staircase_t *lex,
+                                  fglm_trace_t *tr, const fglmc_rows_t *rp,
+                                  CF_t **coeffs_out, md_t *st){
+  const szmat_t D = Mt->ncols;
+  double rt = realtime(), ct = cputime();
+  if(st->info_level > 1){
+    fprintf(VERBSTREAM, "elimination polynomial                  ");
+  }
+  CF_t *coeffs = malloc(((uint64_t)D + 1) * sizeof(CF_t));
+  lex->S = malloc(((uint64_t)D + 1) * sizeof(int32_t));
+  lex->g_lm = malloc(sizeof(int32_t));
+  lex->g_ntail = malloc(sizeof(szmat_t));
+  lex->npols = calloc(1, sizeof(uint64_t));
+  int ok = coeffs && lex->S && lex->g_lm && lex->g_ntail && lex->npols;
+  if(ok && tr != NULL){
+    tr->s_parent = malloc(((uint64_t)D + 1) * sizeof(szmat_t));
+    tr->s_var    = malloc(((uint64_t)D + 1) * sizeof(int32_t));
+    tr->g_parent = malloc(sizeof(szmat_t));
+    tr->g_var    = malloc(sizeof(int32_t));
+    ok = tr->s_parent && tr->s_var && tr->g_parent && tr->g_var;
+  }
+  if(ok){
+    ok = !fglmc_univariate_relation(Mt, rp, coeffs, st->info_level);
+  }
+  if(ok){
+    for(szmat_t k = 0; k < D; k++){
+      lex->S[k] = (int32_t)k;
+    }
+    lex->g_lm[0] = (int32_t)D;
+    lex->g_ntail[0] = D;
+    lex->ngens = 1;
+    lex->ncoeffs = D;
+    lex->D = D;
+    lex->nvars = 1;
+    lex->npols[0] = 1;
+    lex->nterms = 1;
+    for(szmat_t k = 0; k < D; k++){
+      if(coeffs[k]) lex->nterms++;
+    }
+    if(tr != NULL){
+      /* s_0 = 1, s_k = x s_{k-1}, g_0 = x s_{D-1} */
+      tr->s_parent[0] = UINT32_MAX;
+      tr->s_var[0] = -1;
+      for(szmat_t k = 1; k < D; k++){
+        tr->s_parent[k] = k - 1;
+        tr->s_var[k] = 0;
+      }
+      tr->g_parent[0] = D - 1;
+      tr->g_var[0] = 0;
+    }
+  }
+  if(ok && coeffs_out != NULL){
+    *coeffs_out = coeffs;
+    coeffs = NULL;
+  }
+  free(coeffs);
+  if(st->info_level > 1){
+    fprintf(VERBSTREAM, "%16lu new           ", (unsigned long)1);
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt, cputime() - ct);
+    fprintf(VERBSTREAM, "-------------------------------------------------\
+-----------------------------------------------------\n");
+  }
+  return ok;
+}
+
 /* If rp != NULL, the dense rows which are not computed yet are computed on
  * demand (only the rows of the matrix of x_n are needed beforehand). */
 static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
                               fglm_lex_staircase_t *lex, fglm_trace_t *tr,
-                              const fglmc_rows_t *rp, CF_t **coeffs_out,
-                              md_t * st){
+                              const fglmc_rows_t *rp, const szmat_t dmin,
+                              CF_t **coeffs_out, md_t * st){
   if(ord != FGLM_ORDER_LEX) return 0;
+  if(Mt->nvars == 1){
+      return fglmc_learn_univariate(Mt, lex, tr, rp, coeffs_out, st);
+  }
   const szmat_t D = Mt->ncols;
   const int32_t nv = Mt->nvars;
   const int32_t xn = nv - 1;
@@ -1284,6 +1386,34 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
     slong K = (FGLMC_VLEN < FGLMC_KMAX) ? FGLMC_VLEN : FGLMC_KMAX;
     int chain_done = 0;
     const CF_t *last = NULL;   /* NF of the last element of the chain */
+    if(u.parent == UINT32_MAX){
+      /* chain of 1: 1, x_n, ..., x_n^(dmin-1) are standard monomials of the
+       * DRL Gb (x_n^dmin is a leading monomial), their normal forms are
+       * distinct unit vectors: inserted in the LU without products nor
+       * reductions (the reduction would not change them). */
+      const szmat_t *seln = Mt->rowsel + (uint64_t)xn * D;
+      szmat_t j = Mt->one;
+      while(ok && k < dmin && k + 1 < kmax && t < D){
+        CF_t *row = (k == 0) ? Vs + (uint64_t)t * D : Vc + (k & 1) * (uint64_t)D;
+        memset(row, 0, D * sizeof(CF_t));
+        row[j] = 1;
+        for(szmat_t l = 0; l < D; l++){
+            wl[l] = 0;
+        }
+        wl[j] = 1;
+        for(szmat_t l = 0; l < t; l++){
+            al[l] = 0;
+        }
+        fglmc_lu_insert(&E, wl, al);
+        if(tr != NULL){
+            fglmc_set_parent(tr->s_parent + t, tr->s_var + t, &u, k, t, xn);
+        }
+        fglmc_new_stair(u.e, (int32_t)k, nv, S, &t);
+        last = row;
+        k++;
+        j = seln[j];   /* position of x_n^k if k < dmin */
+      }
+    }
     while(!chain_done && ok){
       if(k < FGLMC_VLEN){
         if(t >= D + 1){
@@ -1565,6 +1695,11 @@ done:
  * a dense row not computed on the first prime is needed. */
 static int fglm_classic_apply(CF_t *coeffs, const sp_multimatfglm_t *Mt,
                               const fglm_trace_t *tr){
+  if(Mt->nvars == 1){
+      /* univariate: the relation is read from T_x */
+      return fglmc_univariate_relation((sp_multimatfglm_t *)Mt, NULL, coeffs, 0)
+          ? 3 : 0;
+  }
   const szmat_t D = Mt->ncols;
   const CF_t p = Mt->charac;
   const fglm_lex_staircase_t *lex = &tr->lex;
@@ -1664,13 +1799,14 @@ static fglm_gb_t *fglm_gb_from_staircase(const fglm_lex_staircase_t *lex,
 /* FGLM over a prime field: the greedy phase (LU elimination) gives at once the
  * staircase, the leading monomials and the relations. */
 static fglm_gb_t *fglm_classic(sp_multimatfglm_t *Mt, const int ord,
-                               const fglmc_rows_t *rp, md_t * st){
+                               const fglmc_rows_t *rp, const szmat_t dmin,
+                               md_t * st){
   fglm_lex_staircase_t lex;
   memset(&lex, 0, sizeof(lex));
   fglm_gb_t *G = NULL;
   CF_t *coeffs = NULL;
   const int old_thr = fglmc_flint_threads_push(Mt->nthreads);
-  if(fglm_classic_learn(Mt, ord, &lex, NULL, rp, &coeffs, st)){
+  if(fglm_classic_learn(Mt, ord, &lex, NULL, rp, dmin, &coeffs, st)){
       G = fglm_gb_from_staircase(&lex, coeffs, Mt->charac);
   }
   st->fglm_rtime = realtime() - st->fglm_rtime;

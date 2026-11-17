@@ -2170,16 +2170,18 @@ static int32_t *initial_modular_step(
             /* LEX basis by classical FGLM */
             fglmc_rows_t rp;
             memset(&rp, 0, sizeof(rp));
+            szmat_t dmin = 0;
             sp_multimatfglm_t *mm =
                 build_multiplication_matrices_from_bs(lmb, dquot, bs, bs->ht,
                                                       leadmons[0], md,
                                                       bs->ht->nv, fc,
-                                                      md->info_level, NULL, &rp);
+                                                      md->info_level, NULL, &rp,
+                                                      &dmin);
             /* if(md->info_level){ */
             /*     fprintf(VERBSTREAM, "Mul Mat    %.2f sec\n", realtime() - rt_fglm); */
             /* } */
             mm->nthreads = md->nthrds;   /* all threads are used */
-            fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX, &rp, md);
+            fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX, &rp, dmin, md);
             mm_rows_clear(&rp);
             if(lexgb == NULL){
                 fprintf(ERRSTREAM, "FGLM failed.\n");
@@ -2206,6 +2208,7 @@ static int32_t *initial_modular_step(
             md->fglm_rtime = realtime();
             md->fglm_ctime = cputime();
             print_fglm_header(VERBSTREAM,md);
+            szmat_t dmin = 0;
             *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
                                                             blen_gb_xn,
                                                             bstart_cf_gb_xn,
@@ -2218,7 +2221,7 @@ static int32_t *initial_modular_step(
                                                             bs->ht->nv,
                                                             fc, unstable_staircase,
                                                             md->info_level,
-                                                            files);
+                                                            files, &dmin);
 
             if(*bmatrix == NULL){
                 *success = 0;
@@ -2240,7 +2243,7 @@ static int32_t *initial_modular_step(
             *bparam = nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
                                                    *bsz, *nlins_ptr, linvars,
                                                    lineqs_ptr[0], squvars,
-                                                   md->info_level, bdata_fglm,
+                                                   dmin, md->info_level, bdata_fglm,
                                                    bdata_bms, success, md);
             if (*bparam == NULL) {
                 *success = 0;
@@ -2267,7 +2270,7 @@ static int32_t *initial_modular_step(
                     nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
                                                  *bsz, *nlins_ptr, linvars,
                                                  lineqs_ptr[0], squvars,
-                                                 0, bdata_fglm, bdata_bms,
+                                                 dmin, 0, bdata_fglm, bdata_bms,
                                                  success, md);
                 if(*test_nmod_param == NULL){
                     *success = 0;

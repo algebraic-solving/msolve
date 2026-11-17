@@ -2143,6 +2143,7 @@ static int32_t *initial_modular_step(
             one->cfs[0] = 1;
             print_lex_basis(of, one, gens->vnames,
                             print_gb == 3);
+            free_fglm_gb(one);
             if(files->out_file != NULL){
                 fclose(of);
             }
@@ -6485,7 +6486,7 @@ restart:
                     fprintf(ERRSTREAM, "lexicographic Groebner basis\n");
                 }
                 fprintf(ERRSTREAM, "Computing Groebner basis\n");
-                print_gb -= 2;
+                print_gb = (print_gb == 3) ? 1 : 2;
             }
 
             if(print_gb){

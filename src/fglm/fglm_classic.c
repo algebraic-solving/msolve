@@ -442,8 +442,14 @@ static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
 
 /* row stride of a FLINT matrix (windows included) */
 static inline slong fglmc_stride(const nmod_mat_t A){
+#if __FLINT_RELEASE >= 30300
+  return A->stride;
+#else
+  /* rows pointers: valid as long as the rows are not permuted (no
+   * nmod_mat_swap_rows, LU or rref on A) */
   return (A->r > 1) ? (slong)(nmod_mat_entry_ptr(A, 1, 0) - nmod_mat_entry_ptr(A, 0, 0))
                     : A->c;
+#endif
 }
 
 #define FGLMC_NB 64      // panel width of the triangular solve

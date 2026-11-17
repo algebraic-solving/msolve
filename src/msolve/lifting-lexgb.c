@@ -522,14 +522,17 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     fglmc_rows_t rp;
     memset(&rp, 0, sizeof(rp));
     print_fglm_header(VERBSTREAM,md);
+    szmat_t dmin = 0;
     sp_multimatfglm_t *M =
         build_multiplication_matrices_from_bs(lmb, dquot, bsp, bsp->ht, lm0,
-                                              md, nv, p0, info_level, &tr, &rp);
+                                              md, nv, p0, info_level, &tr, &rp,
+                                              &dmin);
     /* p0 uses all the threads, each next prime only one */
     M->nthreads = md->nthrds;
     const int old_flint = fglmc_flint_threads_push(md->nthrds);
     CF_t *res = NULL;
-    int ok = fglm_classic_learn(M, FGLM_ORDER_LEX, &tr.lex, &tr, &rp, &res, md);
+    int ok = fglm_classic_learn(M, FGLM_ORDER_LEX, &tr.lex, &tr, &rp, dmin, &res,
+                                md);
     /* the next primes only compute the rows computed on p0 */
     mm_trace_keep_computed_rows(&tr, M);
     mm_rows_clear(&rp);

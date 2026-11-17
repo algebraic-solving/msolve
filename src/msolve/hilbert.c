@@ -486,16 +486,34 @@ static inline int32_t *monomial_basis_colon_no_zero(long length, long nvars,
 }
 
 
+/* if dmin != NULL, *dmin is the degree d of the leading monomial x_n^d
+ * (0 if there is none) */
 static inline long get_div_xn(int32_t *bexp_lm, long length, long nvars,
-                             int32_t *div_xn){
+                              int32_t *div_xn, szmat_t *dmin){
   long l = 0;
+  if(dmin != NULL) *dmin = 0;
   for(long i = 0; i < length; i++){
     if(bexp_lm[i*nvars + (nvars-1)]!=0){
       div_xn[l] = i;
       l++;
+      if(dmin != NULL && is_pure_power(bexp_lm + i*nvars, nvars)){
+        *dmin = bexp_lm[i*nvars + (nvars-1)];
+      }
     }
   }
   return l;
+}
+
+/* degree d of the leading monomial x_n^d (0 if there is none), searched from
+ * the largest leading monomial */
+static inline szmat_t get_dmin(const int32_t *bexp_lm, long length, long nvars){
+  for(long i = length - 1; i >= 0; i--){
+    const int32_t *e = bexp_lm + i*nvars;
+    if(e[nvars-1] != 0 && is_pure_power(e, nvars)){
+      return e[nvars-1];
+    }
+  }
+  return 0;
 }
 
 static inline long get_div_xn_bounded(int32_t *bexp_lm, long length, long nvars,
@@ -1464,7 +1482,7 @@ static inline sp_matfglm_t * build_matrixn(int32_t *lmb, long dquot, int32_t bld
   int32_t *div_xn = calloc(bld, sizeof(int32_t));
 
   /* len_xn is the number of those monomials. */
-  long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn);
+  long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn, NULL);
 
 #if DEBUGBUILDMATRIX>0
   fprintf(ERRSTREAM, "\n");
@@ -2518,7 +2536,7 @@ static inline sp_matfglm_t * build_matrixn_trace(int32_t **bdiv_xn,
   *bdiv_xn = calloc((unsigned long)bld, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
 
-  long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn);
+  long len_xn = get_div_xn(bexp_lm, bld, nv, div_xn, NULL);
 
 #if DEBUGBUILDMATRIX>0
   fprintf(ERRSTREAM, "\n");
@@ -2717,7 +2735,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs(int32_t *lmb, long dquot,
 
   int32_t *div_xn = calloc(bs->lml, sizeof(int32_t));
 
-  long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
+  long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn, NULL);
 
 #if DEBUGBUILDMATRIX>0
   fprintf(ERRSTREAM, "\n");
@@ -3136,7 +3154,7 @@ static inline void build_matrixn_unstable_from_bs_trace_application(sp_matfglm_t
     free(md);
   }
   long len0 = matrix->nrows;
-  long len_xn = len0-count_not_lm; //get_div_xn(bexp_lm, bs->lml, nv, div_xn);
+  long len_xn = len0-count_not_lm; //get_div_xn(bexp_lm, bs->lml, nv, div_xn, NULL);
 
   matrix->charac = fc;
   long len1 = dquot * len0;
@@ -3322,7 +3340,7 @@ static inline sp_matfglm_t * build_matrixn_from_bs_trace(int32_t **bdiv_xn,
   *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
 
-  long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
+  long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn, NULL);
 
 
 #if DEBUGBUILDMATRIX>0
@@ -3503,12 +3521,13 @@ static inline sp_matfglm_t * build_matrixn_unstable_from_bs_trace(int32_t **bdiv
 								  const long fc,
 								  const int32_t unstable_staircase,
 								  const int info_level,
-                                  files_gb* files){
+                                  files_gb* files,
+                                  szmat_t *dmin){
   double st_fglm = realtime();
   double cst_fglm = cputime();
   *bdiv_xn = calloc((unsigned long)bs->lml, sizeof(int32_t));
   int32_t *div_xn = *bdiv_xn;
-  long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn);
+  long len_xn = get_div_xn(bexp_lm, bs->lml, nv, div_xn, dmin);
 
 #if DEBUGBUILDMATRIX>0
   fprintf(ERRSTREAM, "\n");
@@ -4190,11 +4209,13 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
                                                                 const long fc,
                                                                 const int info_level,
                                                                 fglm_trace_t *tr,
-                                                                fglmc_rows_t *rp){
+                                                                fglmc_rows_t *rp,
+                                                                szmat_t *dmin){
   double st_fglm = realtime();
   double cst_fglm = cputime();
   const szmat_t D = (szmat_t)dquot;
   const long nlm = bs->lml;
+  *dmin = get_dmin(bexp_lm, nlm, nv);
 
   szmat_t *bidx = mm_sorted_index(lmb, D, nv);
   szmat_t *lidx = mm_sorted_index(bexp_lm, (szmat_t)nlm, nv);

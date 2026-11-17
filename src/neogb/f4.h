@@ -95,11 +95,21 @@ int64_t export_results_from_f4(
     md_t **stp
     );
 
+/* Computes the Groebner basis of gbs, for an elimination order possibly
+ * via a DRL Groebner basis, see md_t->elim_drl. Over the rationals
+ * (gmd->fc != fc) the DRL data is kept in gmd for the next primes and
+ * has to be freed by free_elim_drl_data. */
 bs_t *core_f4(
         bs_t *gbs,
         md_t *gmd,
         int32_t *errp,
         const uint64_t fc
+        );
+
+/* frees the data of the DRL Groebner basis computation kept in md
+ * for an elimination order, see core_f4 */
+void free_elim_drl_data(
+        md_t *md
         );
 
 bs_t *modular_f4(

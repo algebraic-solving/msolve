@@ -368,6 +368,7 @@ data_gens_ff_t *allocate_data_gens() {
   gens->lex = 0;
 
   gens->elim = 0;
+  gens->elim_drl = 2;
   return gens;
 }
 
@@ -2872,6 +2873,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
     free(invalid_gens);
     return -3;
   }
+  st->elim_drl = gens->elim_drl;
 
   /* lucky primes */
   primes_t *lp = (primes_t *)calloc(st->nthrds, sizeof(primes_t));
@@ -5238,6 +5240,7 @@ restart:
             st->info_level  = info_level;
             print_initial_statistics(VERBSTREAM, st);
         }
+        st->elim_drl = gens->elim_drl;
         bs = core_gba(bs, st, &err, fc);
         if (err) {
             fprintf(ERRSTREAM,"Problem with F4, stopped computation.\n");

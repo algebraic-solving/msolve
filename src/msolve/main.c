@@ -195,6 +195,15 @@ static inline void display_help(char *str){
   display_option_help_noopt("1 - on the system with the extra variable.\n");
   display_option_help_noopt("2 - on the original system, parametrizations\n");
   display_option_help_noopt("    from its multiplication matrix.\n");
+  display_option_help(0, "elim-drl", "EDRL", "With option -e: compute a Groebner basis\n");
+  display_option_help_noopt("w.r.t. the degree reverse lexicographical order\n");
+  display_option_help_noopt("first and the one w.r.t. the elimination order\n");
+  display_option_help_noopt("from it.\n");
+  display_option_help_noopt("0 - never.\n");
+  display_option_help_noopt("1 - always.\n");
+  display_option_help_noopt("2 - if there are at least as many equations as\n");
+  display_option_help_noopt("    variables and more than one variable is\n");
+  display_option_help_noopt("    eliminated (default).\n");
   display_option_help('i', "", "", "Assume that the first input generators already\n");
   display_option_help_noopt("form a degree reverse lexicographical Groebner\n");
   display_option_help_noopt("basis and skip its computation. Only with -n\n");
@@ -301,6 +310,7 @@ static void getoptions(
         int32_t *boolean,
         int32_t *boolean_zeros,
         int32_t *lex,
+        int32_t *elim_drl,
         int32_t *info_level,
         files_gb *files){
   int opt, errflag = 0, fflag = 1;
@@ -324,6 +334,7 @@ static void getoptions(
     BOOLEAN_OPTION,
     BOOLEAN_ZEROS_OPTION,
     LEX_OPTION,
+    ELIM_DRL_OPTION,
     /* Below is the template for the next long option with
      * no equivalent short option */
     /* NEXT_OPTION */
@@ -332,6 +343,7 @@ static void getoptions(
     {"boolean", no_argument, NULL, BOOLEAN_OPTION},
     {"boolean-zeros", no_argument, NULL, BOOLEAN_ZEROS_OPTION},
     {"elimination", required_argument, NULL, 'e'},
+    {"elim-drl", required_argument, NULL, ELIM_DRL_OPTION},
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
     {"help", no_argument, NULL, 'h'},
@@ -378,6 +390,12 @@ static void getoptions(
       break;
     case LEX_OPTION:
       *lex = 1;
+      break;
+    case ELIM_DRL_OPTION:
+      *elim_drl = strtol(optarg, NULL, 10);
+      if (*elim_drl < 0 || *elim_drl > 2) {
+          *elim_drl = 2;
+      }
       break;
     case 'N':
       *truncate_lifting = strtol(optarg, NULL, 10);
@@ -669,6 +687,7 @@ int main(int argc, char **argv){
     int32_t boolean               = 0;
     int32_t boolean_zeros         = 0;
     int32_t lex                   = 0;
+    int32_t elim_drl              = 2;
 
     files_gb *files = malloc(sizeof(files_gb));
     if(files == NULL) exit(1);
@@ -682,7 +701,8 @@ int main(int argc, char **argv){
                &sep_search, &sep_dense, &split_mode,
                &lifting, &hensel_prec, &hensel_cost_scale,
                &hensel_memory, &precision, &generate_pbm,
-	       &seed, &boolean, &boolean_zeros, &lex, &info_level, files);
+	       &seed, &boolean, &boolean_zeros, &lex, &elim_drl, &info_level,
+               files);
 
     /* srand initialization */
     uint32_t true_seed;
@@ -752,6 +772,7 @@ int main(int argc, char **argv){
     gens->rand_linear           = 0;
     gens->random_linear_form = malloc(sizeof(int32_t)*(nr_vars));
     gens->elim = elim_block_len;
+    gens->elim_drl = elim_drl;
     /* the parametrization of the whole solution set is not built from
      * its components when it is not printed */
     gens->split_global = get_param > 0;

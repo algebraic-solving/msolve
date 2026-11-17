@@ -786,10 +786,22 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         }
         deg = bht->hd[rows[i][OFFSET]].deg;
         if (st->nev > 0) {
-            const len_t len = rows[i][LENGTH]+OFFSET;
-            for (j = OFFSET+1; j < len; ++j) {
-                if (deg < bht->hd[rows[i][j]].deg) {
-                    deg = bht->hd[rows[i][j]].deg;
+            if (st->round_deg && !st->in_final_reduction_step) {
+                /* for elimination orders the tails may have a much
+                 * higher degree than the leading term, so the maximal
+                 * degree of the terms would delay the pairs of this
+                 * element, take the degree of the round instead. This
+                 * may even be lower than the degree of the leading term
+                 * if the reduction made a tail term the leading one;
+                 * the degree is only used for the pair selection and
+                 * the criteria stay correct. */
+                deg = mat->cd;
+            } else {
+                const len_t len = rows[i][LENGTH]+OFFSET;
+                for (j = OFFSET+1; j < len; ++j) {
+                    if (deg < bht->hd[rows[i][j]].deg) {
+                        deg = bht->hd[rows[i][j]].deg;
+                    }
                 }
             }
         }
@@ -816,7 +828,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         rows[i][COEFFS]   = bl+k;
         bs->hm[bl+k]      = rows[i];
         bs->hm[bl+k][DEG] = deg;
-        if (deg == 0) {
+        if (bht->hd[rows[i][OFFSET]].deg == 0) {
             bs->constant  = 1;
         }
 #if 0

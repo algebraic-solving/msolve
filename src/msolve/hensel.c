@@ -1052,6 +1052,8 @@ static void hensel_add_param(hensel_data_t *hd, const param_t *param) {
   }
   nmod_poly_init(P->X + nv - 1, p);
   nmod_poly_set_coeff_ui(P->X + nv - 1, 1, 1);
+  /* X = t is not reduced when w has degree 1 */
+  nmod_poly_rem(P->X + nv - 1, P->X + nv - 1, P->w);
   nmod_poly_clear(inv);
   hd->nprimes++;
 }
@@ -1717,6 +1719,10 @@ static void hensel_step(hensel_lift_t *L, const hensel_sys_t *hs,
   fmpz_mod_poly_set_coeff_ui(Delta, 1, 1, ctx);
   fmpz_mod_poly_sub(Delta, Delta, L->X + nv - 1, ctx);
   fmpz_mod_poly_add(Delta, Delta, dX + nv - 1, ctx);
+  if (Delta->length >= L->f->length) {
+    /* deg w = 1: t - X_t is not reduced modulo w */
+    fmpz_mod_poly_rem(Delta, Delta, L->f, ctx);
+  }
   for (long i = 0; i < nv; i++) {
     fmpz_mod_poly_derivative(fd, L->X + i, ctx);
     HENSEL_MULMOD(tmp, fd, Delta, L, ctx);

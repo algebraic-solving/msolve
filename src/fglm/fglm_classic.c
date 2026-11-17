@@ -86,9 +86,6 @@ static inline CF_t fglmc_addmod(CF_t a, CF_t b, CF_t p){
   CF_t s = a + b; return s >= p ? s - p : s;          /* p < 2^31 */
 }
 static inline CF_t fglmc_negmod(CF_t a, CF_t p){ return a ? p - a : 0; }
-static inline CF_t fglmc_mulmod(CF_t a, CF_t b, CF_t p){
-  return (CF_t)(((uint64_t)a * b) % p);
-}
 
 static int fglmc_cmp(const int32_t *a, const int32_t *b, int32_t nv, int ord){
   if(ord == FGLM_ORDER_LEX){
@@ -104,10 +101,13 @@ static int fglmc_cmp(const int32_t *a, const int32_t *b, int32_t nv, int ord){
   return 0;
 }
 
-/* Factor of the 64-bit products in the delayed accumulations: with
- * AVX-512DQ, 64 x 64 bit products are vectorized (vpmullq) and are faster
- * here than 32 x 32 -> 64 bit ones; without it (AVX2), 64-bit products are
- * emulated, so 32-bit factors (vpmuludq) are used. */
+/* Factor of the 64-bit products in the delayed accumulations. With
+ * AVX-512DQ, 64-bit factors give vpmullq; with 32-bit ones, GCC widens them
+ * (vpmuludq plus shuffles). Measured on the FGLM of a 12-variable example
+ * (D = 4096): about 10% faster with 64-bit factors on AMD Zen 4, same time
+ * on Intel Cascade Lake, where vpmullq is slow but the kernel is not limited
+ * by the products. Without AVX-512DQ, 64-bit products are emulated, so
+ * 32-bit factors are used. */
 #if defined(__AVX512DQ__)
 typedef uint64_t fglmc_fac_t;
 #else

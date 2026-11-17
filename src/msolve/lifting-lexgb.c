@@ -668,58 +668,59 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
             free_sp_multimat_fglm(Mq);
           }
           bbad[i] = bad;
-          continue;
-        }
-        const int timed = (first_batch && i == 0);
-        double rt_p = timed ? realtime() : 0;
-        int32_t lerr = 0;
-        bs_t *bsq = core_gba(bs, md, &lerr, bprimes[i]);
-        double rt_f = 0;
-        if(timed){
-          rt_f = realtime();
-          st_f4 = rt_f - rt_p;
-        }
-        int bad = (lerr != 0 || bsq == NULL);
-        if(!bad && bsq->lml != nlm0){
-            bad = 1;
-        }
-        if(!bad){
-          int32_t *lm = get_lm_from_bs(bsq, bsq->ht);
-          if(memcmp(lm, lm0, (uint64_t)nlm0 * nv * sizeof(int32_t))) bad = 1;
-          free(lm);
-        }
-        if(!bad){
-          sp_multimatfglm_t *Mq =
-              build_multiplication_matrices_from_trace(&tr, lmb, bsq, bsq->ht,
-                                                       md, bprimes[i]);
-          if(fglm_classic_apply(ri, Mq, &tr)) bad = 1;
-          if(use_ml && !bad){
-            /* rows for the lifting of the matrices */
-            CF_t *bm = bmat + (uint64_t)i * mstride;
-            for(szmat_t q = 0; q < ML.nrows; q++){
-              const uint64_t o = (uint64_t)ML.rows[q] * tr.D;
-              memcpy(bm + o, Mq->dense_mat + o, tr.D * sizeof(CF_t));
-            }
+        } else {
+          /* matrices not lifted (yet): F4 and normal forms on this prime */
+          const int timed = (first_batch && i == 0);
+          double rt_p = timed ? realtime() : 0;
+          int32_t lerr = 0;
+          bs_t *bsq = core_gba(bs, md, &lerr, bprimes[i]);
+          double rt_f = 0;
+          if(timed){
+            rt_f = realtime();
+            st_f4 = rt_f - rt_p;
           }
-          free_sp_multimat_fglm(Mq);
-          if(timed) st_fglm = realtime() - rt_f;
-        }
-        if(bsq != NULL){
+          int bad = (lerr != 0 || bsq == NULL);
+          if(!bad && bsq->lml != nlm0){
+            bad = 1;
+          }
+          if(!bad){
+            int32_t *lm = get_lm_from_bs(bsq, bsq->ht);
+            if(memcmp(lm, lm0, (uint64_t)nlm0 * nv * sizeof(int32_t))) bad = 1;
+            free(lm);
+          }
+          if(!bad){
+            sp_multimatfglm_t *Mq =
+              build_multiplication_matrices_from_trace(&tr, lmb, bsq, bsq->ht,
+                                                         md, bprimes[i]);
+            if(fglm_classic_apply(ri, Mq, &tr)) bad = 1;
+            if(use_ml && !bad){
+              /* rows for the lifting of the matrices */
+              CF_t *bm = bmat + (uint64_t)i * mstride;
+              for(szmat_t q = 0; q < ML.nrows; q++){
+                const uint64_t o = (uint64_t)ML.rows[q] * tr.D;
+                memcpy(bm + o, Mq->dense_mat + o, tr.D * sizeof(CF_t));
+              }
+            }
+            free_sp_multimat_fglm(Mq);
+            if(timed) st_fglm = realtime() - rt_f;
+          }
+          if(bsq != NULL){
             free_basis_and_only_local_hash_table_data(&bsq);
-        }
-        bbad[i] = bad;
-        if(timed){
-          st_prime2 = realtime() - rt_p;
-          if(info_level){
-            fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
-            fprintf(VERBSTREAM, "multi-mod overall(elapsed) %9.2f sec\n", st_prime2);
-            fprintf(VERBSTREAM, "multi-mod F4               %9.2f sec\n", st_f4);
-            fprintf(VERBSTREAM, "multi-mod FGLM             %9.2f sec\n", st_fglm);
-            fprintf(VERBSTREAM, "-----------------------------------------\n");
-            fprintf(VERBSTREAM, "\nmulti-modular steps\n");
-            fprintf(VERBSTREAM, "-------------------------------------------------\
+          }
+          bbad[i] = bad;
+          if(timed){
+            st_prime2 = realtime() - rt_p;
+            if(info_level){
+              fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
+              fprintf(VERBSTREAM, "multi-mod overall(elapsed) %9.2f sec\n", st_prime2);
+              fprintf(VERBSTREAM, "multi-mod F4               %9.2f sec\n", st_f4);
+              fprintf(VERBSTREAM, "multi-mod FGLM             %9.2f sec\n", st_fglm);
+              fprintf(VERBSTREAM, "-----------------------------------------\n");
+              fprintf(VERBSTREAM, "\nmulti-modular steps\n");
+              fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------------------------\n");
-            fflush(VERBSTREAM);
+              fflush(VERBSTREAM);
+            }
           }
         }
       }

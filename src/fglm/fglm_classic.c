@@ -360,6 +360,55 @@ static void fglmc_lu_insert(fglmc_lu_t *E, const mp_limb_t *w, const mp_limb_t *
 #ifndef FGLMC_GEMM_PAR
 #define FGLMC_GEMM_PAR (UINT64_C(1) << 18) // min. K n w for threads
 #endif
+
+/* _nmod_mat_mul_u32 (FLINT >= 3.7, not released yet: enabled with
+ * -DFGLMC_MUL_U32). It is used for p > 2^30 + 1, where the kernel below
+ * folds every m < 8 products: FGLM of a 12-variable example (D = 4096, -t 1)
+ * is 30% (Zen 4) to 42% (Cascade Lake) faster for m = 6 and 45% to 54% for
+ * m = 2. For p < 2^30 (m = 8), it is a few % slower, the kernel below
+ * skipping the zero entries of C. It is slower for K = 4, and for K = 8 with
+ * large n. */
+#if defined(FGLMC_MUL_U32) && __FLINT_RELEASE >= 30700
+#include <flint/nmod.h>
+#define FGLMC_USE_MUL_U32 1
+#ifndef FGLMC_MUL_U32_MIN
+#define FGLMC_MUL_U32_MIN 12   // min. K for _nmod_mat_mul_u32
+#endif
+/* B -= C U as above (uidx == NULL) with _nmod_mat_mul_u32. Returns 0 if
+ * FLINT does not handle it (B unchanged). */
+static int fglmc_gemm_sub_u32(mp_limb_t *B, const slong ldb,
+                              const mp_limb_t *C, const slong ldc,
+                              const CF_t *U, const slong ldu,
+                              const slong K, const slong n, const slong w,
+                              const mp_limb_t p){
+  uint32_t *C32 = malloc((uint64_t)K * n * sizeof(uint32_t));
+  uint32_t *T = malloc((uint64_t)K * w * sizeof(uint32_t));
+  int ok = (C32 != NULL && T != NULL);
+  if(ok){
+    for(slong i = 0; i < K; i++){
+      for(slong j = 0; j < n; j++){
+        C32[(uint64_t)i * n + j] = (uint32_t)C[(uint64_t)i * ldc + j];
+      }
+    }
+    nmod_t mod;
+    nmod_init(&mod, p);
+    ok = _nmod_mat_mul_u32(T, w, C32, n, U, ldu, K, n, w, mod);
+  }
+  if(ok){
+    for(slong i = 0; i < K; i++){
+      mp_limb_t *b = B + (uint64_t)i * ldb;
+      const uint32_t *t = T + (uint64_t)i * w;
+      for(slong l = 0; l < w; l++){
+        b[l] = (b[l] >= t[l]) ? b[l] - t[l] : b[l] + p - t[l];
+      }
+    }
+  }
+  free(C32);
+  free(T);
+  return ok;
+}
+#endif
+
 FGLMC_VECTORIZE
 static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
                            const mp_limb_t *C, const slong ldc,
@@ -374,6 +423,12 @@ static void fglmc_gemm_sub(mp_limb_t *B, const slong ldb,
   slong m = (slong)(((UINT64_C(1) << 63) - 1) / (q ? q : 1));
   if(m < 1) m = 1;
   if(m > 8) m = 8;
+#ifdef FGLMC_USE_MUL_U32
+  if(m < 8 && K >= FGLMC_MUL_U32_MIN && uidx == NULL
+     && fglmc_gemm_sub_u32(B, ldb, C, ldc, U, ldu, K, n, w, p)){
+    return;
+  }
+#endif
   (void)nthr;
   /* column tiles in parallel; in a column tile, the rows j0..j1-1 of U are
    * used by FGLMC_RB rows of C */

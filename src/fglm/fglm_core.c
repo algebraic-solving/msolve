@@ -660,16 +660,19 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
 #endif
 
 /* Early termination of Berlekamp-Massey: adds s_i to B (npts = i + 1 points);
- * every 16 points, returns 1 if the linear complexity L of the points is < D
- * and npts >= 2 L + 32, i.e. the minimal generator predicts the last 32
- * points: very likely, the minimal polynomial has degree L < D. */
+ * when npts reaches *next, returns 1 if the linear complexity L of the points
+ * is < D and npts >= 2 L + 32, i.e. the minimal generator predicts the last 32
+ * points: very likely, the minimal polynomial has degree L < D. The next
+ * check is max(16, npts / 8) points later: O(log D) calls to the half-gcd of
+ * FLINT (quasi-linear), at most 1/8 more points than needed. */
 static inline int fglm_seq_early_stop(nmod_berlekamp_massey_struct *B,
                                       const CF_t s, const szmat_t npts,
-                                      const szmat_t D){
+                                      const szmat_t D, szmat_t *next){
   nmod_berlekamp_massey_add_point(B, s);
-  if(npts % 16){
+  if(npts < *next){
     return 0;
   }
+  *next = npts + (npts / 8 > 16 ? npts / 8 : 16);
   nmod_berlekamp_massey_reduce(B);
   const slong L = nmod_berlekamp_massey_V_poly(B)->length - 1;
   return L < (slong)D && (slong)npts >= 2 * L + 32;
@@ -687,7 +690,8 @@ static int generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
                                     md_t *st,
                                     nmod_berlekamp_massey_struct *et)
 {
-  if(et != NULL && fglm_seq_early_stop(et, data->res[0], 1, dimquot)){
+  szmat_t next = 16;   /* next check of the early termination */
+  if(et != NULL && fglm_seq_early_stop(et, data->res[0], 1, dimquot, &next)){
     return 0;
   }
   int dec= 0;
@@ -712,7 +716,8 @@ static int generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
     data->vvec = tmp;
     data->res[i*block_size] = data->vecinit[0];
     if(et != NULL
-       && fglm_seq_early_stop(et, data->res[i*block_size], i + 1, dimquot)){
+       && fglm_seq_early_stop(et, data->res[i*block_size], i + 1, dimquot,
+                              &next)){
       return 0;
     }
 
@@ -749,7 +754,8 @@ static int generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
     data->vvec = tmp;
     data->res[i*block_size] = data->vecinit[0];
     if(et != NULL
-       && fglm_seq_early_stop(et, data->res[i*block_size], i + 1, dimquot)){
+       && fglm_seq_early_stop(et, data->res[i*block_size], i + 1, dimquot,
+                              &next)){
       return 0;
     }
 

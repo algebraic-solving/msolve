@@ -77,13 +77,7 @@ void print_fglm_classic_data(
     fprintf(file, "degree of ideal    %16lu\n", (unsigned long)matrix->ncols);
     fprintf(file, "#dense rows        %16lu\n", (unsigned long)matrix->nnfs);
     fprintf(file, "#normal forms      %16lu\n", nfc);
-    /* fprintf(file, "total density                   %5.1f%%\n", 100*matrix->totaldensity); */
-    /* fprintf(file, "density of the free part        %5.1f%%\n", 100*matrix->freepartdensity); */
-    /* if(matrix->nnfs){ */
-    /*   fprintf(file, "density of the nonfree part     %5.1f%%\n", 100*matrix->nonfreepartdensity); */
-    /* } */
-    /* fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol); */
-    /* fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol); */
+    fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)(lex->g_lm[lex->nvars-1]));
     fprintf(file, "size of basis      %16lu\n", (unsigned long)(lex->ngens));
     fprintf(file, "#terms in basis    %16lu\n", (unsigned long)(lex->nterms));
     fprintf(file, "-----------------------------------------\n\n");

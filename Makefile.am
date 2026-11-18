@@ -50,6 +50,7 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_issue-310-bivariate.sh \
 			  test/diff/diff_kat6-31.sh \
 			  test/diff/diff_kat6-32.sh \
+			  test/diff/diff_kat7-30.sh \
 			  test/diff/diff_kat6-52.sh \
 			  test/diff/diff_kat6-gf16.sh \
 			  test/diff/diff_kat6-gf256.sh \

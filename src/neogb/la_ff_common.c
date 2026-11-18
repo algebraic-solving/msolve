@@ -55,8 +55,9 @@
  * LA_FF(reduce_dense_rows_by_known_pivots), LA_ACC_T is their type:
  * 16 bits in la_ff_8.c and 32 bits in la_ff_16.c, i.e. p^2 <
  * 2^LA_ACC_BITS, and 32 bits in la_ff_32.c, where p < 2^31 and
- * LA_ACC_REDUCED is defined: the entries are kept reduced in [0,p) and
- * the products are reduced with Shoup's method. Otherwise (la_ff_64.c)
+ * LA_ACC_REDUCED is defined: the entries are kept in [0,p), or in [0,2p)
+ * if p < 2^30, and the products are reduced with Shoup's method.
+ * Otherwise (la_ff_64.c)
  * the entries have 64 bits.
  *
  * All macros are undefined at the end of this file. */
@@ -136,6 +137,21 @@ static inline uint64_t LA_FF(shoup_pinv)(
 #endif
 }
 
+/* Returns 1 if the entries of the interleaved rows are kept in [0,2p)
+ * instead of [0,p), see LA_FF(reduce_dense_rows_by_known_pivots): this
+ * needs 4p <= 2^32, i.e. p < 2^30. */
+static inline int LA_FF(acc_lazy)(
+        const uint64_t fc
+        )
+{
+#if defined LA_ACC_REDUCED
+    return fc < ((uint64_t)1 << 30);
+#else
+    (void)fc;
+    return 0;
+#endif
+}
+
 /* Zeroed buffer of n entries for interleaved rows, aligned to 64 bytes so
  * that the LA_NR entries of one column (32 or 64 bytes with AVX2 resp.
  * AVX-512) do not cross a cache line. calloc returns blocks that are only
@@ -176,7 +192,9 @@ static inline void LA_FF(free_rows)(
  * 0 <= mlt[r] < fc. The entries stay in the range described at
  * LA_FF(reduce_dense_rows_by_known_pivots); a row with mlt[r] = 0 does
  * not change modulo fc. All multipliers are read before the first entry
- * is updated, so mlt may point into dr. pinv is LA_FF(shoup_pinv)(fc). */
+ * is updated, so mlt may point into dr. pinv is LA_FF(shoup_pinv)(fc) and
+ * lazy is LA_FF(acc_lazy)(fc); call it with a constant lazy, so that the
+ * compiler generates one loop for each case. */
 static inline void LA_FF(submul_interleaved_rows)(
         LA_ACC_T *dr,
         const LA_ACC_T * const mlt,
@@ -184,25 +202,32 @@ static inline void LA_FF(submul_interleaved_rows)(
         const hm_t * const ds,
         const len_t len,
         const uint64_t fc,
-        const uint64_t pinv
+        const uint64_t pinv,
+        const int lazy
         )
 {
     len_t j, r;
 #ifndef LA_ACC_REDUCED
     const int64_t mod2  = (int64_t)fc * fc;
     (void)pinv;
+    (void)lazy;
 #endif
 #if defined LA_ACC_REDUCED
+    /* a borrow in t - (m*c - q*p) is corrected by adding pt */
+    const uint32_t pt = (uint32_t)(lazy ? 2*fc : fc);
 #if defined HAVE_AVX512_F
     const __m512i pv = _mm512_set1_epi32((int32_t)fc);
+    const __m512i ptv = _mm512_set1_epi32((int32_t)pt);
     /* for gathering the high halves of the products of the even and of
      * the odd lanes, see below */
     const __m512i qi = _mm512_setr_epi32(1, 17, 3, 19, 5, 21, 7, 23,
             9, 25, 11, 27, 13, 29, 15, 31);
 #elif defined HAVE_AVX2
     const __m256i pv = _mm256_set1_epi32((int32_t)fc);
+    const __m256i ptv = _mm256_set1_epi32((int32_t)pt);
 #elif defined __aarch64__
     const uint32x4_t pv = vdupq_n_u32((uint32_t)fc);
+    const uint32x4_t ptv = vdupq_n_u32(pt);
 #endif
 #elif LA_ACC_BITS == 16
 #if defined HAVE_AVX512_BW
@@ -260,10 +285,12 @@ static inline void LA_FF(submul_interleaved_rows)(
             __m512i prodv     = _mm512_sub_epi32(
                     _mm512_mullo_epi32(mulv[r], cfv),
                     _mm512_mullo_epi32(qv, pv));
-            prodv = _mm512_min_epu32(prodv, _mm512_sub_epi32(prodv, pv));
+            if (!lazy) {
+                prodv = _mm512_min_epu32(prodv, _mm512_sub_epi32(prodv, pv));
+            }
             __m512i tv        = _mm512_sub_epi32(
                     _mm512_loadu_si512((void *)(t+16*r)), prodv);
-            tv    = _mm512_min_epu32(tv, _mm512_add_epi32(tv, pv));
+            tv    = _mm512_min_epu32(tv, _mm512_add_epi32(tv, ptv));
             _mm512_storeu_si512((void *)(t+16*r), tv);
         }
     }
@@ -285,10 +312,12 @@ static inline void LA_FF(submul_interleaved_rows)(
             __m256i prodv     = _mm256_sub_epi32(
                     _mm256_mullo_epi32(mulv[r], cfv),
                     _mm256_mullo_epi32(qv, pv));
-            prodv = _mm256_min_epu32(prodv, _mm256_sub_epi32(prodv, pv));
+            if (!lazy) {
+                prodv = _mm256_min_epu32(prodv, _mm256_sub_epi32(prodv, pv));
+            }
             __m256i tv        = _mm256_sub_epi32(
                     _mm256_loadu_si256((__m256i *)(t+8*r)), prodv);
-            tv    = _mm256_min_epu32(tv, _mm256_add_epi32(tv, pv));
+            tv    = _mm256_min_epu32(tv, _mm256_add_epi32(tv, ptv));
             _mm256_storeu_si256((__m256i *)(t+8*r), tv);
         }
     }
@@ -308,9 +337,11 @@ static inline void LA_FF(submul_interleaved_rows)(
             const uint32x4_t qv = vreinterpretq_u32_s32(vqdmulhq_s32(
                         mpv[r], vreinterpretq_s32_u32(cfv)));
             uint32x4_t prodv    = vmlsq_u32(vmulq_u32(mulv[r], cfv), qv, pv);
-            prodv = vminq_u32(prodv, vsubq_u32(prodv, pv));
+            if (!lazy) {
+                prodv = vminq_u32(prodv, vsubq_u32(prodv, pv));
+            }
             uint32x4_t tv       = vsubq_u32(vld1q_u32(t+4*r), prodv);
-            tv    = vminq_u32(tv, vaddq_u32(tv, pv));
+            tv    = vminq_u32(tv, vaddq_u32(tv, ptv));
             vst1q_u32(t+4*r, tv);
         }
     }
@@ -326,8 +357,10 @@ static inline void LA_FF(submul_interleaved_rows)(
         for (r = 0; r < LA_NR; ++r) {
             const uint32_t q  = (uint32_t)(((uint64_t)mp[r] * c) >> 32);
             uint32_t prod     = mul[r] * c - q * p32;
-            prod  -=  prod >= p32 ? p32 : 0;
-            t[r]  =   t[r] - prod + (t[r] < prod ? p32 : 0);
+            if (!lazy) {
+                prod  -=  prod >= p32 ? p32 : 0;
+            }
+            t[r]  =   t[r] - prod + (t[r] < prod ? pt : 0);
         }
     }
 #elif LA_ACC_BITS == 16 && defined HAVE_AVX512_BW
@@ -527,7 +560,12 @@ static inline void LA_FF(submul_interleaved_rows)(
  * in t - m*c, i.e. t <= m*c, is corrected by adding p^2. With
  * LA_ACC_REDUCED they are kept in [0,p): with s = LA_MP_SHIFT,
  * m' = floor(m*2^s/p) and q = floor(m'*c/2^s) we get m*c - q*p in [0,2p),
- * see V. Shoup, NTL. */
+ * see V. Shoup, NTL, which is reduced to [0,p) before it is subtracted.
+ * If p < 2^30 (LA_FF(acc_lazy)), the entries are kept in [0,2p) instead:
+ * m*c - q*p is subtracted without that reduction and a borrow is
+ * corrected by adding 2p, this needs 4p <= 2^32. The multipliers are
+ * reduced to [0,p) when their column is reached, as they are without
+ * LA_ACC_REDUCED. */
 static void LA_FF(reduce_dense_rows_by_known_pivots)(
         LA_ACC_T *dr,
         LA_CF_T **drs,
@@ -546,6 +584,7 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
     LA_CF_T * const * const mcf = mat->LA_CF;
     /* floor(2^64/p) up to one, for computing the m' (0 if unused) */
     const uint64_t pinv = LA_FF(shoup_pinv)(fc);
+    const int lazy      = LA_FF(acc_lazy)(fc);
 
     for (i = sc; i < ncl; ++i) {
         LA_ACC_T *d = dr + (uint64_t)LA_NR * i;
@@ -576,7 +615,11 @@ static void LA_FF(reduce_dense_rows_by_known_pivots)(
         const LA_CF_T * const cfs = mcf[piv[COEFFS]];
         const len_t len         = piv[LENGTH];
         const hm_t * const ds   = piv + OFFSET;
-        LA_FF(submul_interleaved_rows)(dr, d, cfs, ds, len, fc, pinv);
+        if (lazy) {
+            LA_FF(submul_interleaved_rows)(dr, d, cfs, ds, len, fc, pinv, 1);
+        } else {
+            LA_FF(submul_interleaved_rows)(dr, d, cfs, ds, len, fc, pinv, 0);
+        }
         for (r = 0; r < LA_NR; ++r) {
             d[r] = 0;
         }
@@ -1115,6 +1158,7 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
                 LA_ACC_T *dm = drm[tid];
 #ifndef LA_WIDE
                 const uint64_t pinv = LA_FF(shoup_pinv)(fc);
+                const int lazy      = LA_FF(acc_lazy)(fc);
 #endif
                 while (bctr < (len_t)nrbl) {
                     const len_t nl = (len_t)nrbl - bctr < LA_NR
@@ -1153,8 +1197,13 @@ static void LA_FF(probabilistic_sparse_reduced_echelon_form)(
                             } while (c == 0);
                             mc[j] = (LA_ACC_T)c;
                         }
-                        LA_FF(submul_interleaved_rows)(
-                                dm, mc, cfs, ds, len, fc, pinv);
+                        if (lazy) {
+                            LA_FF(submul_interleaved_rows)(
+                                    dm, mc, cfs, ds, len, fc, pinv, 1);
+                        } else {
+                            LA_FF(submul_interleaved_rows)(
+                                    dm, mc, cfs, ds, len, fc, pinv, 0);
+                        }
 #endif
                     }
                     /* the remainders are taken out of the lanes in one

@@ -77,7 +77,8 @@ void print_fglm_data(
         FILE *file,
         const md_t * const st,
         sp_matfglm_t *matrix,
-        param_t *param
+        param_t *param,
+        const int print_degsqfr
                      )
 {
   if (st->info_level > 0) {
@@ -95,7 +96,9 @@ void print_fglm_data(
       fprintf(file, "density of the nonfree part     %5.1f%%\n", 100*matrix->nonfreepartdensity);
     }
     fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol);
-    fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol);
+    if(print_degsqfr) {
+      fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol);
+    }
     fprintf(file, "-----------------------------------------\n\n");
   }
 }
@@ -1480,7 +1483,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     }
     st->fglm_rtime = realtime() - st->fglm_rtime;
     st->fglm_ctime = cputime() - st->fglm_ctime;
-    print_fglm_data (VERBSTREAM, st, matrix, param);
+    print_fglm_data (VERBSTREAM, st, matrix, param, 1);
     return param;
   }
 
@@ -1663,7 +1666,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   }
   st->fglm_rtime = realtime() - st->fglm_rtime;
   st->fglm_ctime = cputime() - st->fglm_ctime;
-  print_fglm_data (VERBSTREAM, st, matrix, param);
+  print_fglm_data (VERBSTREAM, st, matrix, param, 1);
   return param;
 }
 
@@ -1690,41 +1693,49 @@ param_t *nmod_fglm_shape(sp_matfglm_t *matrix, mod_t prime,
 
   double rt = realtime(), ct = cputime();
   if(info_level > 1){
-    fprintf(VERBSTREAM, "scalar sequence (shape position test)");
-    fprintf(VERBSTREAM, "                                  ");
+    /* fprintf(VERBSTREAM, "scalar sequence (shape position test)"); */
+    /* fprintf(VERBSTREAM, "                                  "); */
+    fprintf(VERBSTREAM, "scalar sequence       ");
+    fprintf(VERBSTREAM, "                                                 ");
     fflush(VERBSTREAM);
   }
   const int full = generate_sequence_verif(matrix, data, block_size, D,
                                            squvars, linvars, nvars, prime,
                                            st, bms->BMS);
+  if (info_level > 1) {
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt, cputime() - ct);
+  }
+
+  /* not in shape position: classical FGLM prints its own lines from the
+   * elimination polynomial on */
+  rt = realtime();
+  ct = cputime();
   if(full){
     nmod_berlekamp_massey_reduce(bms->BMS);
   }
   const slong deg = nmod_berlekamp_massey_V_poly(bms->BMS)->length - 1;
-  if(info_level > 1){
-    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt, cputime() - ct);
-  }
   if(!full || deg < (slong)D){
-    if(info_level > 1){
-      fprintf(VERBSTREAM, "elimination polynomial of degree %s%ld < %u: ",
-              full ? "" : "likely ", (long)deg, D);
-      fprintf(VERBSTREAM, "not in shape position, classical FGLM\n");
-    }
     goto end;
   }
   param = allocate_fglm_param(prime, nvars);
   nmod_poly_make_monic(param->elim, bms->BMS->V1);
   nmod_poly_one(param->denom);
   param->degelimpol = D;
-  param->degsqfrelimpol = D;
-  if(!lead_only){
-    rt = realtime();
-    ct = cputime();
-    if(info_level > 1){
+  param->degsqfrelimpol = D; /* not printed anyway by the call below */
+  if (info_level > 1) {
+    fprintf(VERBSTREAM, "elimination polynomial");
+    fprintf(VERBSTREAM, "                                 ");
+    fprintf(VERBSTREAM, "1 new           ");
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt, cputime() - ct);
+  }
+  rt = realtime();
+  ct = cputime();
+  if(info_level > 1){
       fprintf(VERBSTREAM, "parametrizations");
       fprintf(VERBSTREAM, "                        ");
       fflush(VERBSTREAM);
-    }
+  }
+  if(!lead_only){
     /* f has degree D, so the Hankel matrix of size D is invertible */
     if(compute_parametrizations(param, data, bms, D, block_size, nlins,
                                 linvars, lineqs, nvars) == 0){
@@ -1732,12 +1743,17 @@ param_t *nmod_fglm_shape(sp_matfglm_t *matrix, mod_t prime,
       param = NULL;
       goto end;
     }
-    if(info_level > 1){
+  }
+  if(info_level > 1){
       fprintf(VERBSTREAM, "%16lu new           ", (unsigned long)(nvars - 1));
       fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt,
               cputime() - ct);
-    }
+      fprintf(VERBSTREAM, "-------------------------------------------------"
+              "-----------------------------------------------------\n");
   }
+  st->fglm_rtime = realtime() - st->fglm_rtime;
+  st->fglm_ctime = cputime() - st->fglm_ctime;
+  print_fglm_data(VERBSTREAM, st, matrix, param, 0);
  end:
   free_fglm_data(data);
   free_fglm_bms_data(bms);

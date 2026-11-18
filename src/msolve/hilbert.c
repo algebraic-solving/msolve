@@ -4352,6 +4352,72 @@ static sp_multimatfglm_t *build_multiplication_matrices_from_bs(int32_t *lmb,
   return M;
 }
 
+/* Matrix of the multiplication by x_n in the sparse-FGLM format, from the
+ * matrices of classical FGLM (all rows of T_n are computed when they are
+ * built): row k of T_n is the row rowsel[(nv-1) D + k] of [Id ; dense_mat]. */
+static sp_matfglm_t *matrixn_from_multimat(const sp_multimatfglm_t *M){
+  const szmat_t D = M->ncols;
+  const szmat_t *sel = M->rowsel + (uint64_t)(M->nvars - 1) * D;
+  szmat_t nd = 0, nnf = 0;
+  for(szmat_t k = 0; k < D; k++){
+    if(sel[k] >= D){
+      nd++;
+      nnf += !M->is_lm[sel[k] - D];
+    }
+  }
+  sp_matfglm_t *A = calloc(1, sizeof(sp_matfglm_t));
+  A->charac = M->charac;
+  A->ncols = D;
+  A->nrows = nd;
+  A->nnfs = nnf;
+  if(posix_memalign((void **)&A->dense_mat, 32, sizeof(CF_t) * (uint64_t)nd * D)
+     || posix_memalign((void **)&A->triv_idx, 32, sizeof(szmat_t) * (D - nd))
+     || posix_memalign((void **)&A->triv_pos, 32, sizeof(szmat_t) * (D - nd))
+     || posix_memalign((void **)&A->dense_idx, 32, sizeof(szmat_t) * nd)
+     || posix_memalign((void **)&A->dst, 32, sizeof(szmat_t) * nd)){
+    fprintf(ERRSTREAM, "posix_memalign failed\n");
+    exit(1);
+  }
+  uint64_t nz_lm = 0, nz_nf = 0;
+  szmat_t lt = 0, ld = 0;
+  for(szmat_t k = 0; k < D; k++){
+    const szmat_t s = sel[k];
+    if(s < D){
+      A->triv_idx[lt] = k;
+      A->triv_pos[lt++] = s;
+      continue;
+    }
+    const CF_t *src = M->dense_mat + (uint64_t)(s - D) * D;
+    CF_t *row = A->dense_mat + (uint64_t)ld * D;
+    memcpy(row, src, D * sizeof(CF_t));
+    szmat_t z = 0;
+    while(z < D && row[D - 1 - z] == 0){
+      z++;
+    }
+    A->dst[ld] = z;
+    A->dense_idx[ld++] = k;
+    uint64_t nz = 0;
+    for(szmat_t j = 0; j < D - z; j++){
+      nz += (row[j] != 0);
+    }
+    if(M->is_lm[s - D]){
+      nz_lm += nz;
+    } else {
+      nz_nf += nz;
+    }
+  }
+  if(nd > nnf){
+    A->freepartdensity = (double)nz_lm / ((double)D * (nd - nnf));
+  }
+  if(nnf){
+    A->nonfreepartdensity = (double)nz_nf / ((double)D * nnf);
+  }
+  if(nd){
+    A->totaldensity = (double)(nz_lm + nz_nf) / ((double)D * nd);
+  }
+  return A;
+}
+
 /* Multiplication matrices on a new prime from the trace: only the
  * coefficients are computed. The Gb bs must have the same leading monomials
  * as on the first prime (checked by the caller). */

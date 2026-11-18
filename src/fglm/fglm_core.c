@@ -659,14 +659,37 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
 }
 #endif
 
-static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
+/* Early termination of Berlekamp-Massey: adds s_i to B (npts = i + 1 points);
+ * every 16 points, returns 1 if the linear complexity L of the points is < D
+ * and npts >= 2 L + 32, i.e. the minimal generator predicts the last 32
+ * points: very likely, the minimal polynomial has degree L < D. */
+static inline int fglm_seq_early_stop(nmod_berlekamp_massey_struct *B,
+                                      const CF_t s, const szmat_t npts,
+                                      const szmat_t D){
+  nmod_berlekamp_massey_add_point(B, s);
+  if(npts % 16){
+    return 0;
+  }
+  nmod_berlekamp_massey_reduce(B);
+  const slong L = nmod_berlekamp_massey_V_poly(B)->length - 1;
+  return L < (slong)D && (slong)npts >= 2 * L + 32;
+}
+
+/* If et != NULL, the scalar sequence is also added to et, and the
+ * computation stops (returns 0) on early termination (fglm_seq_early_stop).
+ * Returns 1 if the whole sequence is computed. */
+static int generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
                                     szmat_t block_size, szmat_t dimquot,
                                     nvars_t* squvars,
                                     nvars_t* linvars,
                                     nvars_t nvars,
                                     mod_t prime,
-                                    md_t *st)
+                                    md_t *st,
+                                    nmod_berlekamp_massey_struct *et)
 {
+  if(et != NULL && fglm_seq_early_stop(et, data->res[0], 1, dimquot)){
+    return 0;
+  }
   int dec= 0;
   for(szmat_t j = 1; j < block_size; j++){
     while (nvars-1-j-dec > 0 && linvars[nvars-1-j-dec] != 0) {
@@ -688,6 +711,10 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
     data->vecinit = data->vvec;
     data->vvec = tmp;
     data->res[i*block_size] = data->vecinit[0];
+    if(et != NULL
+       && fglm_seq_early_stop(et, data->res[i*block_size], i + 1, dimquot)){
+      return 0;
+    }
 
     dec = 0;
     for(szmat_t j = 1; j < block_size; j++){
@@ -721,6 +748,10 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
     data->vecinit = data->vvec;
     data->vvec = tmp;
     data->res[i*block_size] = data->vecinit[0];
+    if(et != NULL
+       && fglm_seq_early_stop(et, data->res[i*block_size], i + 1, dimquot)){
+      return 0;
+    }
 
 #if DEBUGFGLM > 1
     print_vec(VERBSTREAM, data->res, 2*block_size * matrix->ncols);
@@ -737,7 +768,7 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
   for(ulong i = 0; i < 2 * dimquot; i++){
     data->pts[i] = data->res[i*block_size];
   }
-
+  return 1;
 }
 
 
@@ -1486,7 +1517,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     fflush(VERBSTREAM);
   }
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
-                          squvars, linvars, nvars, prime, st);
+                          squvars, linvars, nvars, prime, st, NULL);
 #endif
 
   if(info_level > 1){
@@ -1630,6 +1661,83 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   return param;
 }
 
+/* Lex Gb in shape position (option -x). If the elimination polynomial f, the
+ * minimal polynomial of the multiplication by x_n, has degree D, then
+ * 1, x_n, ..., x_n^(D-1) is a basis of the quotient and the lex Gb is
+ * {f(x_n), x_i - R_i(x_n)}, f not necessarily square-free. Sparse-FGLM with
+ * early termination of Berlekamp-Massey: returns NULL as soon as deg f < D is
+ * very likely, or if the prime is too large; classical FGLM is used then.
+ * Otherwise, param->elim = f (monic, degree D), param->denom = 1 and
+ * x_i = -param->coords[i] mod f; the coords are not computed if lead_only. */
+param_t *nmod_fglm_shape(sp_matfglm_t *matrix, mod_t prime,
+                         szmat_t nvars, szmat_t block_size, szmat_t nlins,
+                         nvars_t *linvars, uint32_t *lineqs, nvars_t *squvars,
+                         int lead_only, int info_level, md_t *st){
+  const szmat_t D = matrix->ncols;
+  if(prime >= 1518500213 || nvars < 2 || D < 2){
+    return NULL;
+  }
+  fglm_data_t *data = allocate_fglm_data(matrix->nrows, D, nvars);
+  fglm_bms_data_t *bms = allocate_fglm_bms_data(D, prime);
+  param_t *param = NULL;
+  initialize_fglm_data(matrix, data, prime, D * matrix->nrows, block_size);
+
+  double rt = realtime(), ct = cputime();
+  if(info_level > 1){
+    fprintf(VERBSTREAM, "scalar sequence (shape position test)");
+    fprintf(VERBSTREAM, "                                  ");
+    fflush(VERBSTREAM);
+  }
+  const int full = generate_sequence_verif(matrix, data, block_size, D,
+                                           squvars, linvars, nvars, prime,
+                                           st, bms->BMS);
+  if(full){
+    nmod_berlekamp_massey_reduce(bms->BMS);
+  }
+  const slong deg = nmod_berlekamp_massey_V_poly(bms->BMS)->length - 1;
+  if(info_level > 1){
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt, cputime() - ct);
+  }
+  if(!full || deg < (slong)D){
+    if(info_level > 1){
+      fprintf(VERBSTREAM, "elimination polynomial of degree %s%ld < %u: ",
+              full ? "" : "likely ", (long)deg, D);
+      fprintf(VERBSTREAM, "not in shape position, classical FGLM\n");
+    }
+    goto end;
+  }
+  param = allocate_fglm_param(prime, nvars);
+  nmod_poly_make_monic(param->elim, bms->BMS->V1);
+  nmod_poly_one(param->denom);
+  param->degelimpol = D;
+  param->degsqfrelimpol = D;
+  if(!lead_only){
+    rt = realtime();
+    ct = cputime();
+    if(info_level > 1){
+      fprintf(VERBSTREAM, "parametrizations");
+      fprintf(VERBSTREAM, "                        ");
+      fflush(VERBSTREAM);
+    }
+    /* f has degree D, so the Hankel matrix of size D is invertible */
+    if(compute_parametrizations(param, data, bms, D, block_size, nlins,
+                                linvars, lineqs, nvars) == 0){
+      free_fglm_param(param);
+      param = NULL;
+      goto end;
+    }
+    if(info_level > 1){
+      fprintf(VERBSTREAM, "%16lu new           ", (unsigned long)(nvars - 1));
+      fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt,
+              cputime() - ct);
+    }
+  }
+ end:
+  free_fglm_data(data);
+  free_fglm_bms_data(bms);
+  return param;
+}
+
 /*
 
   Fonction qui applique sparse FGLM apres le premier round dans
@@ -1707,7 +1815,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
   /* generate_sequence(matrix, data_fglm, block_size, dimquot, prime, st); */
   generate_sequence_verif(matrix, data_fglm, block_size, dimquot,
-                          squvars, linvars, nvars, prime, st);
+                          squvars, linvars, nvars, prime, st, NULL);
   //////////////////////////////////////////////////////////////////
 
   if(info_level){

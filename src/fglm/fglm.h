@@ -20,6 +20,9 @@
  * Mohab Safey El Din */
 
 
+/* sparse-FGLM needs primes below this bound (classical FGLM: p < 2^31) */
+#define FGLM_SPARSE_MAX_PRIME 1518500213
+
 param_t *nmod_fglm_compute(sp_matfglm_t *, mod_t, nvars_t,
                            szmat_t, nvars_t *, uint32_t *, nvars_t*, int, md_t *);
 param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *, const mod_t,

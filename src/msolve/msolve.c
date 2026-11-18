@@ -2134,9 +2134,6 @@ static fglm_gb_t *shape_lexgb(const sp_multimatfglm_t *mm, int32_t *lmb,
                               uint32_t *lineqs, nvars_t *squvars,
                               const int lead_only){
     const int nv = mm->nvars;
-    if (fc >= 1518500213 || nv < 2 || dquot < 2) {
-        return NULL;
-    }
     sp_matfglm_t *mat = matrixn_from_multimat(mm);
     check_and_set_vars_squared_in_monomial_basis(squvars, lmb, dquot, nv);
     param_t *par = nmod_fglm_shape(mat, fc, nv, nv - nlins, nlins, linvars,

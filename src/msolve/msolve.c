@@ -2074,6 +2074,105 @@ static int equal_param(param_t *param, param_t *test_param){
   return 1;
 }
 
+/* Lex Gb in shape position from nmod_fglm_shape: f(x_n), then
+ * x_i + coords_i(x_n) for i = n-2, ..., 0 (increasing leading monomials,
+ * terms by decreasing lex order, zero terms skipped). If lead_only, only the
+ * leading terms. */
+static fglm_gb_t *shape_lexgb_from_param(const param_t *par, const int32_t nv,
+                                         const int lead_only){
+    const nmod_poly_struct *f = par->elim;
+    const slong D = f->length - 1;
+    int32_t nterms = 0;
+    for (slong k = 0; k <= D; k++) {
+        nterms += (f->coeffs[k] != 0 && (!lead_only || k == D));
+    }
+    for (int32_t i = 0; i < nv - 1; i++) {
+        nterms++;
+        if (!lead_only) {
+            for (slong k = 0; k < par->coords[i]->length; k++) {
+                nterms += (par->coords[i]->coeffs[k] != 0);
+            }
+        }
+    }
+    fglm_gb_t *G = malloc(sizeof(fglm_gb_t));
+    G->charac = par->charac;
+    G->nvars  = nv;
+    G->ngens  = nv;
+    G->nterms = nterms;
+    G->lens   = malloc(nv * sizeof(int32_t));
+    G->exps   = calloc((uint64_t)nterms * nv, sizeof(int32_t));
+    G->cfs    = malloc((uint64_t)nterms * sizeof(CF_t));
+    int32_t pos = 0;
+    for (slong k = D; k >= 0; k--) {
+        if (f->coeffs[k] != 0 && (!lead_only || k == D)) {
+            G->exps[(uint64_t)pos * nv + nv - 1] = k;
+            G->cfs[pos++] = f->coeffs[k];
+        }
+    }
+    G->lens[0] = pos;
+    for (int32_t i = nv - 2; i >= 0; i--) {
+        const int32_t start = pos;
+        G->exps[(uint64_t)pos * nv + i] = 1;
+        G->cfs[pos++] = 1;
+        const nmod_poly_struct *c = par->coords[i];
+        for (slong k = lead_only ? -1 : c->length - 1; k >= 0; k--) {
+            if (c->coeffs[k] != 0) {
+                G->exps[(uint64_t)pos * nv + nv - 1] = k;
+                G->cfs[pos++] = c->coeffs[k];
+            }
+        }
+        G->lens[nv - 1 - i] = pos - start;
+    }
+    return G;
+}
+
+/* Lex Gb by sparse-FGLM if the ideal is in shape position, NULL otherwise
+ * (classical FGLM is used then). */
+static fglm_gb_t *shape_lexgb(int32_t *lmb, const long dquot, bs_t *bs,
+                              int32_t *bexp_lm, md_t *md, const uint32_t fc,
+                              const int32_t unstable_staircase,
+                              const nvars_t nlins, nvars_t *linvars,
+                              uint32_t *lineqs, nvars_t *squvars,
+                              files_gb *files, const int lead_only){
+    int32_t *div_xn = NULL, *len_gb_xn = NULL, *start_cf_gb_xn = NULL;
+    long *extra_nf = NULL;
+    int32_t *lens_extra_nf = NULL, *exps_extra_nf = NULL;
+    int32_t *cfs_extra_nf = NULL;
+    szmat_t dmin = 0;
+    const int nv = bs->ht->nv;
+    fglm_gb_t *G = NULL;
+    if (fc >= 1518500213 || nv < 2 || dquot < 2) {
+        return NULL;
+    }
+    sp_matfglm_t *mat =
+        build_matrixn_unstable_from_bs_trace(&div_xn, &len_gb_xn,
+                                             &start_cf_gb_xn, &extra_nf,
+                                             &lens_extra_nf, &exps_extra_nf,
+                                             &cfs_extra_nf, lmb, dquot, bs,
+                                             bs->ht, bexp_lm, md, nv, fc,
+                                             unstable_staircase,
+                                             md->info_level, files, &dmin);
+    if (mat != NULL) {
+        check_and_set_vars_squared_in_monomial_basis(squvars, lmb, dquot, nv);
+        param_t *par = nmod_fglm_shape(mat, fc, nv, nv - nlins, nlins,
+                                       linvars, lineqs, squvars, lead_only,
+                                       md->info_level, md);
+        if (par != NULL) {
+            G = shape_lexgb_from_param(par, nv, lead_only);
+            free_fglm_param(par);
+        }
+        free_sp_mat_fglm(mat);
+    }
+    free(div_xn);
+    free(len_gb_xn);
+    free(start_cf_gb_xn);
+    free(extra_nf);
+    free(lens_extra_nf);
+    free(exps_extra_nf);
+    free(cfs_extra_nf);
+    return G;
+}
+
 static int32_t *initial_modular_step(
                                      sp_matfglm_t **bmatrix,
                                      int32_t **bdiv_xn,
@@ -2167,22 +2266,29 @@ static int32_t *initial_modular_step(
             md->fglm_rtime = realtime();
             md->fglm_ctime = cputime();
             print_fglm_header(VERBSTREAM,md);
-            /* LEX basis by classical FGLM */
-            fglmc_rows_t rp;
-            memset(&rp, 0, sizeof(rp));
-            szmat_t dmin = 0;
-            sp_multimatfglm_t *mm =
-                build_multiplication_matrices_from_bs(lmb, dquot, bs, bs->ht,
-                                                      leadmons[0], md,
-                                                      bs->ht->nv, fc,
-                                                      md->info_level, NULL, &rp,
-                                                      &dmin);
-            /* if(md->info_level){ */
-            /*     fprintf(VERBSTREAM, "Mul Mat    %.2f sec\n", realtime() - rt_fglm); */
-            /* } */
-            mm->nthreads = md->nthrds;   /* all threads are used */
-            fglm_gb_t *lexgb = fglm_classic(mm, FGLM_ORDER_LEX, &rp, dmin, md);
-            mm_rows_clear(&rp);
+            /* LEX basis by sparse-FGLM in shape position, else by
+             * classical FGLM */
+            fglm_gb_t *lexgb = shape_lexgb(lmb, dquot, bs, leadmons[0], md, fc,
+                                           unstable_staircase, *nlins_ptr,
+                                           linvars, lineqs_ptr[0], squvars,
+                                           files, print_gb == 3);
+            sp_multimatfglm_t *mm = NULL;
+            if (lexgb == NULL) {
+                fglmc_rows_t rp;
+                memset(&rp, 0, sizeof(rp));
+                szmat_t dmin = 0;
+                mm = build_multiplication_matrices_from_bs(lmb, dquot, bs,
+                                                           bs->ht, leadmons[0],
+                                                           md, bs->ht->nv, fc,
+                                                           md->info_level, NULL,
+                                                           &rp, &dmin);
+                /* if(md->info_level){ */
+                /*     fprintf(VERBSTREAM, "Mul Mat    %.2f sec\n", realtime() - rt_fglm); */
+                /* } */
+                mm->nthreads = md->nthrds;   /* all threads are used */
+                lexgb = fglm_classic(mm, FGLM_ORDER_LEX, &rp, dmin, md);
+                mm_rows_clear(&rp);
+            }
             if(lexgb == NULL){
                 fprintf(ERRSTREAM, "FGLM failed.\n");
                 *success = 0;
@@ -2195,7 +2301,9 @@ static int32_t *initial_modular_step(
                 }
             }
             free_fglm_gb(lexgb);
-            free_sp_multimat_fglm(mm);
+            if (mm != NULL) {
+                free_sp_multimat_fglm(mm);
+            }
         }
         if(print_gb==0){
             /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */

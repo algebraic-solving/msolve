@@ -38,6 +38,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *, mod_t, szmat_t,
                                       fglm_bms_data_t **,
                                       int *,
 				      md_t *);
+param_t *nmod_fglm_shape(sp_matfglm_t *, mod_t, szmat_t, szmat_t, szmat_t,
+                         nvars_t *, uint32_t *, nvars_t *, int, int, md_t *);
 int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *,
                                        const mod_t,
                                        param_t *,

@@ -408,6 +408,11 @@ struct md_t
 
     hi_t *hcm;
     ps_t *ps;
+    /* over the integers: for the k-th new element of a round, the basis
+     * indices of the rows of its matrix with its lead monomial are
+     * zz_rbi[zz_roff[k]], ..., zz_rbi[zz_roff[k+1]-1] */
+    len_t *zz_roff;
+    bl_t *zz_rbi;
 
     double round_ctime;
     double select_ctime;

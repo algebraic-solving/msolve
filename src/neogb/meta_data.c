@@ -34,6 +34,8 @@ md_t *copy_meta_data(
     md->application_nr_mult = 0;
     md->application_nr_add  = 0;
     md->application_nr_red  = 0;
+    md->zz_roff = NULL;
+    md->zz_rbi  = NULL;
 
     if (md->fc < (uint32_t)(1u) << 8) {
         md->ff_bits = 8;
@@ -61,6 +63,8 @@ void free_meta_data(
     }
     free(md->hcm);
     free(md->tcok);
+    free(md->zz_roff);
+    free(md->zz_rbi);
 
     ht_t *ht = md->ht;
     if (ht != NULL) {

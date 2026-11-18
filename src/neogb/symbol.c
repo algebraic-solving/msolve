@@ -486,8 +486,10 @@ static int32_t select_spairs_by_minimal_degree(
             md->nthrds);
 
     for (k = 0; k < nr; ++k) {
-        if (md->trace_level == LEARN_TRACER) {
+        if (md->trace_level == LEARN_TRACER || md->zz != 0) {
             rows[k][BINDEX] = bis[k];
+        }
+        if (md->trace_level == LEARN_TRACER) {
             rows[k][MULT]   = mhs[k];
         }
         if (isrr[k] == 2) {
@@ -1009,6 +1011,11 @@ static void symbolic_preprocessing(
         }
         multiplied_polys_to_matrix_rows(mat->rr + nrr, nr, hs, ems, polys,
                 sht, bht, md->nthrds);
+        if (md->zz != 0) {
+            for (j = 0; j < nr; ++j) {
+                mat->rr[nrr+j][BINDEX]  = red[j];
+            }
+        }
         if (md->trace_level == LEARN_TRACER) {
             for (j = 0; j < nr; ++j) {
                 mat->rr[nrr+j][BINDEX]  = red[j];

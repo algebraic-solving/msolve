@@ -471,6 +471,71 @@ static void free_new_matrix_rows(
     mat->np = 0;
 }
 
+/* Over the integers the rows of a matrix generate a lattice which the
+ * linear algebra keeps, see la_zz.c. Returns the lead columns and basis
+ * indices of the rows of mat, sorted, as (column << 32) | index. */
+static uint64_t *zz_matrix_rows(
+    const mat_t * const mat,
+    len_t *nrp
+    )
+{
+    len_t i;
+
+    const len_t nr = mat->nru + mat->nrl;
+    uint64_t *r = (uint64_t *)malloc((unsigned long)(nr+1) * sizeof(uint64_t));
+    for (i = 0; i < mat->nru; ++i) {
+        r[i] = ((uint64_t)mat->rr[i][OFFSET] << 32) | mat->rr[i][BINDEX];
+    }
+    for (i = 0; i < mat->nrl; ++i) {
+        r[mat->nru+i] = ((uint64_t)mat->tr[i][OFFSET] << 32) | mat->tr[i][BINDEX];
+    }
+    qsort(r, (unsigned long)nr, sizeof(uint64_t), cmp_uint64);
+    *nrp = nr;
+    return r;
+}
+
+/* stores in md->zz_roff and md->zz_rbi for each new pivot of mat the basis
+ * indices of the rows r of the matrix with its lead column; the new
+ * elements become basis elements in the order of decreasing positions in
+ * mat->tr, see convert_sparse_matrix_rows_to_basis_elements */
+static void zz_rows_of_new_elements(
+    md_t *md,
+    const mat_t * const mat,
+    const uint64_t * const r,
+    const len_t nr
+    )
+{
+    len_t i, k;
+
+    const len_t np = mat->np;
+    md->zz_roff = (len_t *)malloc((unsigned long)(np+1) * sizeof(len_t));
+    len_t *lo = (len_t *)malloc((unsigned long)(np+1) * sizeof(len_t));
+    md->zz_roff[0] = 0;
+    for (k = 0; k < np; ++k) {
+        const uint64_t c = (uint64_t)mat->tr[np-1-k][OFFSET];
+        /* first row with column c */
+        len_t a = 0, b = nr;
+        while (a < b) {
+            const len_t m = a + (b - a) / 2;
+            if ((r[m] >> 32) < c) {
+                a = m + 1;
+            } else {
+                b = m;
+            }
+        }
+        lo[k] = a;
+        for (i = a; i < nr && (r[i] >> 32) == c; ++i);
+        md->zz_roff[k+1] = md->zz_roff[k] + (i - a);
+    }
+    md->zz_rbi = (bl_t *)malloc((unsigned long)(md->zz_roff[np]+1) * sizeof(bl_t));
+    for (k = 0; k < np; ++k) {
+        for (i = 0; i < md->zz_roff[k+1] - md->zz_roff[k]; ++i) {
+            md->zz_rbi[md->zz_roff[k]+i] = (bl_t)(r[lo[k]+i] & 0xFFFFFFFF);
+        }
+    }
+    free(lo);
+}
+
 static int32_t compute_new_elements(
     mat_t *mat,
     bs_t *bs,
@@ -491,7 +556,22 @@ static int32_t compute_new_elements(
                     mat, sht, md->hcm);
         }
     }
+    /* the rows of the matrix with the lead monomials of the new elements,
+     * see update_basis_zz */
+    uint64_t *zr = NULL;
+    len_t nzr    = 0;
+    free(md->zz_roff);
+    free(md->zz_rbi);
+    md->zz_roff = NULL;
+    md->zz_rbi  = NULL;
+    if (md->zz != 0 && md->tc_state != 1) {
+        zr = zz_matrix_rows(mat, &nzr);
+    }
     linear_algebra(mat, bs, bs, md);
+    if (zr != NULL) {
+        zz_rows_of_new_elements(md, mat, zr, nzr);
+        free(zr);
+    }
 
     /* check for bad prime */
     if (md->trace_level == APPLY_TRACER) {

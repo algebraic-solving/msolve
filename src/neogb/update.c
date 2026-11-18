@@ -828,7 +828,21 @@ typedef struct {
  *   G-polynomial of (f, g) are combinations of their S-polynomials and a
  *   multiple of h with integer coefficients,
  * - an element is redundant if the lead term of a new element divides its
- *   lead term, including the coefficient. */
+ *   lead term, including the coefficient,
+ * - pairs handled by the matrix of a new element n: its rows generate a
+ *   lattice M which the linear algebra keeps and whose elements reduce to
+ *   zero by its pivots, n is one of them. Let m = lm(n). If the matrix has
+ *   the row m/lm(f) * f of an element f, the S- and the G-polynomial of
+ *   (f, n) are in M, the pair is not needed. Otherwise, for an old element
+ *   f with lm(f) | m, let r be an element with a row m/lm(r) * r =: r' in
+ *   the matrix, lc(r) | lc(f) =: a and lcm(lm(f), lm(r)) a proper divisor
+ *   of m. With b = lc(n), L = lcm(a, b), L' = lcm(lc(r), b) and the
+ *   S-polynomial S(f, r) at m, a multiple of the one at the lcm,
+ *     S(f, n) = L/a * S(f, r) + L/L' * S(r, n),
+ *     G(f, n) = u * S(f, r) + (u * a/lc(r) * r' + v * n),
+ *   with u * a + v * b = gcd(a, b), the last summand is in M. The pair
+ *   (r, n) is handled by the matrix, (f, r) has a lower degree, so it was
+ *   reduced or removed in an earlier round, independently of n. */
 static void update_basis_zz(
         ps_t *psl,
         bs_t *bs,
@@ -878,6 +892,10 @@ static void update_basis_zz(
         vm[i] = variable_mask(bht->ev[bs->hm[i][OFFSET]], bht);
         un[i] = mpz_cmpabs_ui(*zz_lc(bs, i), 1) == 0;
     }
+    /* rw[i] = n+1 if a row of the matrix of the new element n is a
+     * multiple of i with the lead monomial of n */
+    bl_t *rw = st->zz_roff != NULL
+        ? (bl_t *)calloc((uint64_t)mx, sizeof(bl_t)) : NULL;
     len_t l;
     for (k = 0; k < npivs; ++k) {
         const bl_t n    = bs->ld;
@@ -886,6 +904,11 @@ static void update_basis_zz(
         mpz_t * const an = zz_lc(bs, n);
         bs->mltdeg  = bs->mltdeg > dn ? bs->mltdeg : dn;
         bs->ld++;
+        if (rw != NULL) {
+            for (l = st->zz_roff[k]; l < st->zz_roff[k+1]; ++l) {
+                rw[st->zz_rbi[l]] = n + 1;
+            }
+        }
 
         /* chain criterion for the old pairs */
         const len_t pl = psl->ld;
@@ -941,6 +964,33 @@ static void update_basis_zz(
             cd[nc].i    = i;
             cd[nc].deg  = total_degree(ea, bht) + total_degree(eb, bht) - gd;
             cd[nc].prod = gneed == 0 && sneed == 0;
+            /* pairs handled by the matrix of n, see above, they take
+             * part in the criterion of Gebauer and Moeller as the ones
+             * removed by the product criterion */
+            if (cd[nc].prod == 0 && rw != NULL && rw[i] == n + 1) {
+                cd[nc].prod = 1;
+            }
+            if (cd[nc].prod == 0 && rw != NULL && i < bs->lo
+                    && cd[nc].deg == total_degree(eb, bht)) {
+                len_t q;
+                for (q = st->zz_roff[k]; q < st->zz_roff[k+1]; ++q) {
+                    const bl_t r = st->zz_rbi[q];
+                    if (mpz_divisible_p(*ai, *zz_lc(bs, r)) == 0) {
+                        continue;
+                    }
+                    const exp_t * const er = bht->ev[bs->hm[r][OFFSET]];
+                    len_t v;
+                    for (v = 1; v < evl; ++v) {
+                        if (v != ebl && (ea[v] > er[v] ? ea[v] : er[v]) < eb[v]) {
+                            break;
+                        }
+                    }
+                    if (v < evl) {
+                        break;
+                    }
+                }
+                cd[nc].prod = q < st->zz_roff[k+1];
+            }
             cd[nc].gcd  = gneed;
             nc++;
         }
@@ -1052,6 +1102,12 @@ static void update_basis_zz(
             }
         }
     }
+    /* the rows belong to this matrix only */
+    free(rw);
+    free(st->zz_roff);
+    free(st->zz_rbi);
+    st->zz_roff = NULL;
+    st->zz_rbi  = NULL;
     mpz_clear(g);
     free(cd);
     free(eb);

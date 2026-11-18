@@ -1444,7 +1444,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 #endif
 
   /* 1147878294 */
-  if(prime>=1518500213){
+  if(prime >= FGLM_SPARSE_MAX_PRIME){
     fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
     fprintf(ERRSTREAM, "One needs to use updated linear algebra fglm functions\n");
     return NULL;
@@ -1674,7 +1674,7 @@ param_t *nmod_fglm_shape(sp_matfglm_t *matrix, mod_t prime,
                          nvars_t *linvars, uint32_t *lineqs, nvars_t *squvars,
                          int lead_only, int info_level, md_t *st){
   const szmat_t D = matrix->ncols;
-  if(prime >= 1518500213 || nvars < 2 || D < 2){
+  if(prime >= FGLM_SPARSE_MAX_PRIME || nvars < 2 || D < 2){
     return NULL;
   }
   fglm_data_t *data = allocate_fglm_data(matrix->nrows, D, nvars);
@@ -1770,7 +1770,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   fclose(fmat);
 #endif
 
-  if(prime>=1518500213){
+  if(prime >= FGLM_SPARSE_MAX_PRIME){
     fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
     fprintf(ERRSTREAM, "One needs to use update linear algebra fglm functions\n");
     exit(1);
@@ -1996,7 +1996,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   fclose(fmat);
 #endif
   /* 1147878294 */
-  if(prime>=1518500213){
+  if(prime >= FGLM_SPARSE_MAX_PRIME){
     fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
     fprintf(ERRSTREAM, "One needs to use update linear algebra fglm functions\n");
     return NULL;

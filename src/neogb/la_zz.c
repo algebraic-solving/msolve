@@ -1080,7 +1080,10 @@ static void zz_dense_check_sparse(
  * reduced again. Then they are reduced
  * further and inserted one after the other: when rows change the pivots
  * concurrently, the new pivots of different threads are not reduced by
- * each other and their coefficients blow up. */
+ * each other and their coefficients blow up.
+ * Before each chunk, the new pivots which have to be reduced again are
+ * reduced, from the right to the left, so that the rows of the chunk do
+ * not stop at them. */
 static len_t zz_reduce_rows(
         zz_row_t **pivs,
         hm_t **rows,
@@ -1099,6 +1102,12 @@ static len_t zz_reduce_rows(
     const len_t cs = 8 * (len_t)nthrds;
     for (len_t c0 = 0; c0 < nr; c0 += cs) {
         const len_t c1 = c0 + cs < nr ? c0 + cs : nr;
+        for (len_t c = nc; c-- > 0;) {
+            zz_row_t *p = pivs[c];
+            if (p != NULL && p->own != 0 && zz_stale(ds, p)) {
+                zz_refresh_pivot(ds, pivs, p, c, nc);
+            }
+        }
 #pragma omp parallel for num_threads(nthrds) schedule(dynamic) \
     reduction(+:nzero)
         for (i = c0; i < c1; ++i) {

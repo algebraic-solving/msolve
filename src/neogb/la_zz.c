@@ -124,7 +124,8 @@ struct zz_dense_t
     len_t nrem;
     /* 1 if the pivots must not be changed: no gcd steps and no reductions
      * of pivots again, a lead coefficient which is not divisible by the
-     * one of the pivot ends the elimination as a column without pivot */
+     * one of the pivot becomes the lead column, the entries right of it
+     * are still reduced into the residue systems of the pivots */
     int ro;
 };
 
@@ -875,8 +876,10 @@ static int64_t zz_reduce_dense_row(
                 int64_t q;
                 if (lc == -1) {
                     if (b % a != 0 && d->ro != 0) {
+                        /* the gcd step is left for later, the entries
+                         * right of it are reduced already */
                         lc = i;
-                        goto stop;
+                        goto next;
                     }
                     q = b % a == 0 ? b / a : 0;
                 } else {
@@ -906,7 +909,7 @@ static int64_t zz_reduce_dense_row(
                 zz_addmul_mpz(d->dz, d->q, p, 1);
             } else if (d->ro != 0) {
                 lc = i;
-                goto stop;
+                goto next;
             } else {
                 if (!zz_gcd_step(d, pivs, p, i, nc)) {
                     /* the pivot changed, redo this column */
@@ -1076,8 +1079,10 @@ static void zz_dense_check_sparse(
  * number of rows reduced to zero.
  * The rows are handled in chunks: the rows of a chunk are reduced in
  * parallel by the pivots present without changing them, up to their first
- * column which has no pivot, needs a gcd step or a pivot which has to be
- * reduced again. Then they are reduced
+ * column which has no pivot or a pivot which has to be reduced again. A
+ * column which needs a gcd step does not stop a row: the entries right of
+ * it are reduced in parallel, so that the new pivot of the gcd step is
+ * small and cheap to reduce. Then the rows are reduced
  * further and inserted one after the other: when rows change the pivots
  * concurrently, the new pivots of different threads are not reduced by
  * each other and their coefficients blow up.

@@ -86,6 +86,152 @@ static void lexgb_modpoly_add(gb_modpoly_t modgbs, const fglm_lex_staircase_t *l
   modgbs->nprimes++;
 }
 
+/* Staircase of a lex Gb in shape position: 1 < x_n < ... < x_n^(D-1),
+ * leading monomials x_n^D < x_{n-1} < ... < x_1, tails of length D (order of
+ * the coefficients given by lexgb_shape_mod) */
+static void lexgb_shape_staircase(fglm_lex_staircase_t *lex, const int nv,
+                                  const szmat_t D){
+  memset(lex, 0, sizeof(fglm_lex_staircase_t));
+  lex->nvars = nv;
+  lex->D = D;
+  lex->S = calloc((uint64_t)D * nv, sizeof(int32_t));
+  for(szmat_t k = 0; k < D; k++){
+    lex->S[(uint64_t)k * nv + nv - 1] = k;
+  }
+  lex->ngens = nv;
+  lex->g_lm = calloc((uint64_t)nv * nv, sizeof(int32_t));
+  lex->g_ntail = malloc(nv * sizeof(szmat_t));
+  lex->g_lm[nv - 1] = D;
+  for(int j = 0; j < nv; j++){
+    lex->g_ntail[j] = D;
+    if(j > 0){
+      lex->g_lm[(uint64_t)j * nv + nv - 1 - j] = 1;
+    }
+  }
+  lex->ncoeffs = (uint64_t)nv * D;
+  lex->nterms = lex->ncoeffs;
+}
+
+/* x_i = NF(x_i) for the variables which are leading monomials of linear
+ * polynomials of the DRL Gb (not in the staircase lmb): NF(x_i), row of T_i
+ * at 1, involves 1 and variables of the staircase, whose coordinates are
+ * known (x_k = -coords_k). Returns 0 if a row is missing or not linear. */
+static int lexgb_shape_linear(param_t *par, const sp_multimatfglm_t *M,
+                              const int32_t *lmb){
+  const int nv = M->nvars;
+  const szmat_t D = M->ncols;
+  const uint32_t p = par->charac;
+  nmod_poly_t X;
+  nmod_poly_init(X, p);
+  int ok = 1;
+  for (int i = 0; i < nv - 1 && ok; i++) {
+    const szmat_t s = M->rowsel[(uint64_t)i * D + M->one];
+    if (s < D) {
+      continue;
+    }
+    if (M->have_row != NULL && !M->have_row[s - D]) {
+      ok = 0;
+      break;
+    }
+    const CF_t *row = M->dense_mat + (uint64_t)(s - D) * D;
+    nmod_poly_zero(X);
+    for (szmat_t j = 0; j < D && ok; j++) {
+      if (row[j] == 0) {
+        continue;
+      }
+      const int32_t *e = lmb + (uint64_t)j * nv;
+      int deg = 0, k = -1;
+      for (int v = 0; v < nv; v++) {
+        deg += e[v];
+        if (e[v]) {
+          k = v;
+        }
+      }
+      if (deg == 0) {
+        nmod_poly_set_coeff_ui(X, 0, nmod_add(nmod_poly_get_coeff_ui(X, 0),
+                                              row[j], X->mod));
+      } else if (deg == 1 && k == nv - 1) {
+        nmod_poly_set_coeff_ui(X, 1, nmod_add(nmod_poly_get_coeff_ui(X, 1),
+                                              row[j], X->mod));
+      } else if (deg == 1) {
+        nmod_poly_scalar_addmul_nmod(X, par->coords[k],
+                                     nmod_neg(row[j], X->mod));
+      } else {
+        ok = 0;
+      }
+    }
+    if (ok) {
+      nmod_poly_rem(X, X, par->elim);
+      nmod_poly_neg(par->coords[i], X);
+    }
+  }
+  nmod_poly_clear(X);
+  return ok;
+}
+
+/* Lex Gb modulo p in shape position by sparse-FGLM (as shape_lexgb), over Q:
+ * the tails of f(x_n), then of x_i + coords_i(x_n) for i = n-2, ..., 0, D
+ * coefficients each, in res (not set if lead_only). Returns 0 if not in
+ * shape position. The variables not in the staircase are set apart
+ * (linvars), as in shape_lexgb; their coordinates are computed by
+ * lexgb_shape_linear (lineqs is not used). No check of the radical:
+ * squvars is zero. md is copied: several primes may be handled at once. */
+static int lexgb_shape_mod(CF_t *res, const sp_multimatfglm_t *M,
+                           const int32_t *lmb, const md_t *md,
+                           const uint32_t p, const int lead_only){
+  const int nv = M->nvars;
+  const szmat_t D = M->ncols;
+  md_t *lmd = malloc(sizeof(md_t));
+  memcpy(lmd, md, sizeof(md_t));
+  nvars_t *linvars = calloc(nv, sizeof(nvars_t));
+  nvars_t *squvars = calloc(nv, sizeof(nvars_t));
+  nvars_t nlins = 0;
+  for (int i = 0; i < nv - 1; i++) {
+    if (M->rowsel[(uint64_t)i * D + M->one] >= D) {
+      linvars[i] = 1;
+      nlins++;
+    }
+  }
+  uint32_t *lineqs = calloc((uint64_t)nlins * (nv + 1) + 1, sizeof(uint32_t));
+  sp_matfglm_t *mat = matrixn_from_multimat(M);
+  param_t *par = nmod_fglm_shape(mat, p, nv, nv - nlins, nlins, linvars,
+                                 lineqs, squvars, lead_only,
+                                 lmd->info_level, lmd);
+  const int ok = (par != NULL)
+    && (lead_only || lexgb_shape_linear(par, M, lmb));
+  if (ok && !lead_only) {
+    for (szmat_t k = 0; k < D; k++) {
+      res[k] = nmod_poly_get_coeff_ui(par->elim, k);
+    }
+    for (int j = 1; j < nv; j++) {
+      const nmod_poly_struct *c = par->coords[nv - 1 - j];
+      for (szmat_t k = 0; k < D; k++) {
+        res[(uint64_t)j * D + k] = nmod_poly_get_coeff_ui(c, k);
+      }
+    }
+  }
+  if (par != NULL) {
+    free_fglm_param(par);
+  }
+  free_sp_mat_fglm(mat);
+  free(linvars);
+  free(squvars);
+  free(lineqs);
+  free(lmd);
+  return ok;
+}
+
+/* lex Gb modulo p from the matrices Mq: sparse-FGLM in shape position, else
+ * the trace of classical FGLM. Returns nonzero if p is bad. */
+static int lexgb_apply(CF_t *res, sp_multimatfglm_t *Mq, fglm_trace_t *tr,
+                       const int32_t *lmb, const int shape, const md_t *md,
+                       const uint32_t p){
+  if(shape){
+    return !lexgb_shape_mod(res, Mq, lmb, md, p, 0);
+  }
+  return fglm_classic_apply(res, Mq, tr);
+}
+
 /* -L: lifting of the multiplication matrices. All the T_i share dense_mat
  * and rowsel, which does not depend on the prime: the rows of dense_mat
  * computed on the first prime (tails of the DRL Gb, normal forms) are lifted
@@ -530,9 +676,22 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     /* p0 uses all the threads, each next prime only one */
     M->nthreads = md->nthrds;
     const int old_flint = fglmc_flint_threads_push(md->nthrds);
-    CF_t *res = NULL;
-    int ok = fglm_classic_learn(M, FGLM_ORDER_LEX, &tr.lex, &tr, &rp, dmin, &res,
-                                md);
+    /* shape position modulo p0: sparse-FGLM on all the primes, else
+     * classical FGLM */
+    CF_t *res = malloc(((uint64_t)nv * dquot + 1) * sizeof(CF_t));
+    int ok = lexgb_shape_mod(res, M, lmb, md, p0, flags->print_gb == 3);
+    const int shape = ok;
+    if(ok){
+      lexgb_shape_staircase(&tr.lex, nv, dquot);
+      if(info_level){
+        fprintf(VERBSTREAM, "Shape position: lex Gb by sparse-FGLM\n");
+      }
+    } else {
+      free(res);
+      res = NULL;
+      ok = fglm_classic_learn(M, FGLM_ORDER_LEX, &tr.lex, &tr, &rp, dmin,
+                              &res, md);
+    }
     /* the next primes only compute the rows computed on p0 */
     mm_trace_keep_computed_rows(&tr, M);
     mm_rows_clear(&rp);
@@ -543,7 +702,9 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     md->fglm_rtime = realtime() - md->fglm_rtime;
     md->fglm_ctime = cputime() - md->fglm_ctime;
     md->learning_rtime = realtime()-ca0;
-    print_fglm_classic_data(VERBSTREAM, md, M, &tr.lex);
+    if(!shape){
+      print_fglm_classic_data(VERBSTREAM, md, M, &tr.lex);
+    }
     if(info_level){
       fprintf(VERBSTREAM,"\n---------- COMPUTATIONAL DATA -----------\n");
       if(tr.lex.npols != NULL){
@@ -666,7 +827,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
             sp_multimatfglm_t *Mq =
                 lexgb_matrices_view(&tr, bmat + (uint64_t)i * mstride,
                                     bprimes[i]);
-            if(fglm_classic_apply(ri, Mq, &tr)) bad = 1;
+            if(lexgb_apply(ri, Mq, &tr, lmb, shape, md, bprimes[i])) bad = 1;
             Mq->dense_mat = NULL;
             free_sp_multimat_fglm(Mq);
           }
@@ -695,7 +856,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
             sp_multimatfglm_t *Mq =
               build_multiplication_matrices_from_trace(&tr, lmb, bsq, bsq->ht,
                                                          md, bprimes[i]);
-            if(fglm_classic_apply(ri, Mq, &tr)) bad = 1;
+            if(lexgb_apply(ri, Mq, &tr, lmb, shape, md, bprimes[i])) bad = 1;
             if(use_ml && !bad){
               /* rows for the lifting of the matrices */
               CF_t *bm = bmat + (uint64_t)i * mstride;

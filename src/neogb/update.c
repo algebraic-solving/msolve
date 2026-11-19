@@ -822,13 +822,25 @@ typedef struct {
  *   if neither is needed,
  * - the criterion of Gebauer and Moeller for the new pairs, see below,
  * - chain criterion: the new element h removes the pair (f, g) if lm(h)
- *   divides lcm(lm(f), lm(g)), lc(h) divides gcd(lc(f), lc(g)) and both
- *   lcm(lm(f), lm(h)) and lcm(lm(g), lm(h)) differ from lcm(lm(f), lm(g)).
- *   Then the pairs (f, h) and (g, h) are S-pairs only, and the S- and the
- *   G-polynomial of (f, g) are combinations of their S-polynomials and a
- *   multiple of h with integer coefficients,
+ *   divides L = lcm(lm(f), lm(g)), c = lc(h) divides a = lc(f) (or lc(g),
+ *   symmetrically) and both lcm(lm(f), lm(h)) and lcm(lm(g), lm(h)) differ
+ *   from L. With b = lc(g), u * a + v * b = gcd(a, b), the S-polynomials
+ *   S(., .)_L at L, multiples of the ones at the lcms, and the
+ *   G-polynomial G(h, g)_L at L,
+ *     S(f, g) = lcm(a, b)/a * S(f, h)_L + k * S(h, g)_L,
+ *     G(f, g) = u * S(f, h)_L + gcd(a, b)/gcd(c, b) * G(h, g)_L
+ *               + k' * S(h, g)_L
+ *   for integers k, k': as c divides a, f' = L/lm(f) * f is
+ *   S(f, h)_L + a/c * h', and the combinations of h' and g' with lead
+ *   coefficient zero are the multiples of S(h, g)_L. The pairs (f, h) and
+ *   (h, g) have smaller lcms,
  * - an element is redundant if the lead term of a new element divides its
- *   lead term, including the coefficient,
+ *   lead term, including the coefficient. If n makes f redundant, the
+ *   same holds for an old pair (f, g) with lcm(lm(g), lm(n)) = L != lm(f):
+ *   (f, n) has the smaller lcm lm(f) and (g, n) the same lcm L. Then (g, n)
+ *   must be reduced in a matrix or handled by the product criterion or
+ *   the matrix of n, without the old pairs; the criterion of Gebauer and
+ *   Moeller may rely on (f, g),
  * - pairs handled by the matrix of a new element n: its rows generate a
  *   lattice M which the linear algebra keeps and whose elements reduce to
  *   zero by its pivots, n is one of them. Let m = lm(n). If the matrix has
@@ -896,6 +908,11 @@ static void update_basis_zz(
      * multiple of i with the lead monomial of n */
     bl_t *rw = st->zz_roff != NULL
         ? (bl_t *)calloc((uint64_t)mx, sizeof(bl_t)) : NULL;
+    /* hn[i] = n+1 if the pair (i, n) of the new element n is kept or
+     * handled by the product criterion or the matrix of n, rn[i] = n+1 if
+     * n makes i redundant */
+    bl_t *hn = (bl_t *)calloc((uint64_t)mx, sizeof(bl_t));
+    bl_t *rn = (bl_t *)calloc((uint64_t)mx, sizeof(bl_t));
     len_t l;
     for (k = 0; k < npivs; ++k) {
         const bl_t n    = bs->ld;
@@ -919,8 +936,8 @@ static void update_basis_zz(
                     || !check_monomial_division(ps[j].lcm, lmn, bht)) {
                 continue;
             }
-            mpz_gcd(g, *zz_lc(bs, g1), *zz_lc(bs, g2));
-            if (mpz_divisible_p(g, *an) == 0) {
+            if (mpz_divisible_p(*zz_lc(bs, g1), *an) == 0
+                    && mpz_divisible_p(*zz_lc(bs, g2), *an) == 0) {
                 continue;
             }
             const deg_t ld = bht->hd[ps[j].lcm].deg;
@@ -1070,6 +1087,7 @@ static void update_basis_zz(
             ksdm[nk]   = sx;
             kc[nk]     = ci;
             nk++;
+            hn[ci] = n + 1;
             if (cd[l].prod != 0) {
                 st->num_gb_crit++;
                 continue;
@@ -1095,13 +1113,42 @@ static void update_basis_zz(
         }
 
         /* older elements made redundant by the new one */
+        len_t nrd = 0;
         for (i = 0; i < n; ++i) {
             if (bs->red[i] == 0 && zz_lt_divides(bs, n, i, bht)) {
                 bs->red[i] = 1;
+                rn[i] = n + 1;
+                nrd++;
                 st->num_redundant++;
             }
         }
+        /* and their old pairs (f, g) with lcm(lm(g), lm(n)) = L */
+        for (j = 0; nrd > 0 && j < pl; ++j) {
+            if (ps[j].deg < 0) {
+                continue;
+            }
+            bl_t f  = ps[j].gen1;
+            bl_t g2 = ps[j].gen2;
+            if (rn[f] != n + 1) {
+                f  = ps[j].gen2;
+                g2 = ps[j].gen1;
+                if (rn[f] != n + 1) {
+                    continue;
+                }
+            }
+            if (hn[g2] != n + 1) {
+                continue;
+            }
+            const deg_t ld = bht->hd[ps[j].lcm].deg;
+            if (bht->hd[bs->hm[f][OFFSET]].deg < ld
+                    && zz_lcm_degree(bs, g2, n, bht) == ld) {
+                ps[j].deg = -1;
+                st->num_gb_crit++;
+            }
+        }
     }
+    free(hn);
+    free(rn);
     /* the rows belong to this matrix only */
     free(rw);
     free(st->zz_roff);

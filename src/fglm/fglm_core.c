@@ -666,8 +666,8 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
  * when npts reaches *next, returns 1 if the linear complexity L of the points
  * is < D and npts >= 2 L + 32, i.e. the minimal generator predicts the last 32
  * points: very likely, the minimal polynomial has degree L < D. The next
- * check is max(16, npts / 8) points later: O(log D) calls to the half-gcd of
- * FLINT (quasi-linear), at most 1/8 more points than needed. */
+ * check is max(16, npts / 64) points later: O(log D) calls to the half-gcd of
+ * FLINT (quasi-linear), at most 1/64 more points than needed. */
 static inline int fglm_seq_early_stop(nmod_berlekamp_massey_struct *B,
                                       const CF_t s, const szmat_t npts,
                                       const szmat_t D, szmat_t *next){
@@ -675,7 +675,7 @@ static inline int fglm_seq_early_stop(nmod_berlekamp_massey_struct *B,
   if(npts < *next){
     return 0;
   }
-  *next = npts + (npts / 8 > 16 ? npts / 8 : 16);
+  *next = npts + (npts / 64 > 16 ? npts / 64 : 16);
   nmod_berlekamp_massey_reduce(B);
   const slong L = nmod_berlekamp_massey_V_poly(B)->length - 1;
   return L < (slong)D && (slong)npts >= 2 * L + 32;

@@ -78,7 +78,9 @@ void print_fglm_data(
         const md_t * const st,
         sp_matfglm_t *matrix,
         param_t *param,
-        const int print_degsqfr
+        const int print_degsqfr,
+        const uint64_t ngens,
+        const uint64_t nterms
                      )
 {
   if (st->info_level > 0) {
@@ -98,6 +100,10 @@ void print_fglm_data(
     fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol);
     if(print_degsqfr) {
       fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol);
+    }
+    if(ngens) {
+      fprintf(file, "size of basis      %16lu\n", (unsigned long)ngens);
+      fprintf(file, "#terms in basis    %16lu\n", (unsigned long)nterms);
     }
     fprintf(file, "-----------------------------------------\n\n");
   }
@@ -1483,7 +1489,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     }
     st->fglm_rtime = realtime() - st->fglm_rtime;
     st->fglm_ctime = cputime() - st->fglm_ctime;
-    print_fglm_data (VERBSTREAM, st, matrix, param, 1);
+    print_fglm_data (VERBSTREAM, st, matrix, param, 1, 0, 0);
     return param;
   }
 
@@ -1666,7 +1672,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   }
   st->fglm_rtime = realtime() - st->fglm_rtime;
   st->fglm_ctime = cputime() - st->fglm_ctime;
-  print_fglm_data (VERBSTREAM, st, matrix, param, 1);
+  print_fglm_data (VERBSTREAM, st, matrix, param, 1, 0, 0);
   return param;
 }
 
@@ -1677,7 +1683,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
  * early termination of Berlekamp-Massey: returns NULL as soon as deg f < D is
  * very likely, or if the prime is too large; classical FGLM is used then.
  * Otherwise, param->elim = f (monic, degree D), param->denom = 1 and
- * x_i = -param->coords[i] mod f; the coords are not computed if lead_only. */
+ * x_i = -param->coords[i] mod f; the coords are not computed if lead_only.
+ * The caller prints the data (print_fglm_data) with the size of the lex Gb. */
 param_t *nmod_fglm_shape(sp_matfglm_t *matrix, mod_t prime,
                          szmat_t nvars, szmat_t block_size, szmat_t nlins,
                          nvars_t *linvars, uint32_t *lineqs, nvars_t *squvars,
@@ -1753,7 +1760,6 @@ param_t *nmod_fglm_shape(sp_matfglm_t *matrix, mod_t prime,
   }
   st->fglm_rtime = realtime() - st->fglm_rtime;
   st->fglm_ctime = cputime() - st->fglm_ctime;
-  print_fglm_data(VERBSTREAM, st, matrix, param, 0);
  end:
   free_fglm_data(data);
   free_fglm_bms_data(bms);

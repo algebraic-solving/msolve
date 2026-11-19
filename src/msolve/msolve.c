@@ -2142,6 +2142,7 @@ static fglm_gb_t *shape_lexgb(const sp_multimatfglm_t *mm, int32_t *lmb,
     fglm_gb_t *G = NULL;
     if (par != NULL) {
         G = shape_lexgb_from_param(par, nv, lead_only);
+        print_fglm_data(VERBSTREAM, md, mat, par, 0, G->ngens, G->nterms);
         free_fglm_param(par);
     }
     free_sp_mat_fglm(mat);

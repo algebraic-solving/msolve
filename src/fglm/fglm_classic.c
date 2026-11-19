@@ -147,6 +147,109 @@ typedef uint32_t fglmc_fac_t;
 #define FGLMC_VECTORIZE
 #endif
 
+/* Products by x_n with dot products: the dense rows of T_n (NF(x_n b_k)) are
+ * the columns of the multiplication matrix; stored transposed (row l: the
+ * coefficients of b_l in these rows), the dense part of the product is D dot
+ * products of length tn_nd instead of tn_nd combinations of rows of length D:
+ * about 1.6-2x faster (D = 4096 to 16384). Dot products of linalg-fglm.c
+ * (libfglm), which need p <= 1515531528 (DOT2_ACC8_MAX_MODULUS there). */
+#if defined(HAVE_AVX512_F) || defined(HAVE_AVX2)
+#ifdef HAVE_FLINT_NMOD_H
+#include <flint/nmod.h>
+#endif
+#define FGLMC_TN 1
+#define FGLMC_TN_MAX_PRIME 1515531528
+#define FGLMC_TN_SPLIT_BITS 56   // __DOT_SPLIT_BITS of linalg-fglm.c
+#if defined(HAVE_AVX512_F)
+#define FGLMC_DOT _nmod32_vec_dot_split_avx512
+#define FGLMC_DOT3 _nmod32_vec_dot3_split_avx512
+#else
+#define FGLMC_DOT _nmod32_vec_dot_split_avx2
+#define FGLMC_DOT3 _nmod32_vec_dot3_split_avx2
+#endif
+uint32_t FGLMC_DOT(const uint32_t *, const uint32_t *, int64_t, nmod_t,
+                   uint64_t);
+void FGLMC_DOT3(uint32_t *, const uint32_t *, const uint32_t *,
+                const uint32_t *, const uint32_t *, int64_t, nmod_t, uint64_t);
+
+/* M->tn_t and M->tn_rows, if all the rows of T_n are computed and p is small
+ * enough */
+static void fglmc_tn_init(sp_multimatfglm_t *M){
+  const szmat_t D = M->ncols;
+  if(M->tn_t != NULL || M->nvars < 1 || M->charac > FGLMC_TN_MAX_PRIME){
+    return;
+  }
+  const szmat_t *sel = M->rowsel + (uint64_t)(M->nvars - 1) * D;
+  szmat_t nd = 0;
+  for(szmat_t k = 0; k < D; k++){
+    if(sel[k] >= D){
+      if(M->have_row != NULL && !M->have_row[sel[k] - D]){
+        return;
+      }
+      nd++;
+    }
+  }
+  if(nd == 0){
+    return;
+  }
+  CF_t *T = malloc((uint64_t)D * nd * sizeof(CF_t));
+  szmat_t *rows = malloc(nd * sizeof(szmat_t));
+  if(T == NULL || rows == NULL){
+    free(T);
+    free(rows);
+    return;
+  }
+  szmat_t r = 0;
+  for(szmat_t k = 0; k < D; k++){
+    if(sel[k] < D){
+      continue;
+    }
+    const CF_t *row = M->dense_mat + (uint64_t)(sel[k] - D) * D;
+    for(szmat_t l = 0; l < D; l++){
+      T[(uint64_t)l * nd + r] = row[l];
+    }
+    rows[r++] = k;
+  }
+  M->tn_t = T;
+  M->tn_rows = rows;
+  M->tn_nd = nd;
+}
+
+/* w = NF(x_n m), v = NF(m), with M->tn_t; vd: tn_nd entries of workspace */
+static void fglmc_mulvec_tn(CF_t *w, const sp_multimatfglm_t *M,
+                            const CF_t *v, CF_t *vd){
+  const szmat_t D = M->ncols, nd = M->tn_nd;
+  const CF_t p = M->charac;
+  const szmat_t *sel = M->rowsel + (uint64_t)(M->nvars - 1) * D;
+  for(szmat_t r = 0; r < nd; r++){
+    vd[r] = v[M->tn_rows[r]];
+  }
+  nmod_t mod;
+  nmod_init(&mod, p);
+  uint64_t pw;
+  NMOD_RED(pw, UINT64_C(1) << FGLMC_TN_SPLIT_BITS, mod);
+  const CF_t *T = M->tn_t;
+  const slong n3 = (slong)(D / 3) * 3;
+  const int nth = (M->nthreads > 1 && D >= FGLMC_PAR_MIN) ? M->nthreads : 1;
+#pragma omp parallel for num_threads(nth) if(nth > 1)
+  for(slong l = 0; l < n3; l += 3){
+    FGLMC_DOT3(w + l, vd, T + (uint64_t)l * nd, T + (uint64_t)(l + 1) * nd,
+               T + (uint64_t)(l + 2) * nd, nd, mod, pw);
+  }
+  for(slong l = n3; l < (slong)D; l++){
+    w[l] = FGLMC_DOT(vd, T + (uint64_t)l * nd, nd, mod, pw);
+  }
+  /* trivial rows: NF(x_n b_k) = b_s */
+  for(szmat_t k = 0; k < D; k++){
+    const szmat_t s = sel[k];
+    if(s < D && v[k]){
+      const CF_t t = w[s] + v[k] - p;   /* p < 2^31: no overflow */
+      w[s] = (t >> 31) ? t + p : t;
+    }
+  }
+}
+#endif
+
 /* delayed accumulation on 64 bits; if a dense row which is not computed
  * (M->have_row) is needed, *missing is set to 1 (if missing != NULL) */
 FGLMC_VECTORIZE
@@ -162,6 +265,13 @@ static void fglmc_mulvec(CF_t *w, const sp_multimatfglm_t *M, int32_t i,
   uint32_t m = (uint32_t)(((UINT64_C(1) << 63) - 1) / (q ? q : 1));
   if(m < 1) m = 1;
   if(m > 8) m = 8;
+#ifdef FGLMC_TN
+  if(i == M->nvars - 1 && M->tn_t != NULL){
+    /* acc: at least D >= tn_nd entries */
+    fglmc_mulvec_tn(w, M, v, (CF_t *)acc);
+    return;
+  }
+#endif
   const szmat_t *sel = M->rowsel + (uint64_t)i * D;
 #ifdef _OPENMP
   if(M->nthreads > 1 && D >= FGLMC_PAR_MIN){
@@ -1217,6 +1327,9 @@ static int fglm_classic_learn(sp_multimatfglm_t *Mt, const int ord,
   if(Mt->nvars == 1){
       return fglmc_learn_univariate(Mt, lex, tr, rp, coeffs_out, st);
   }
+#ifdef FGLMC_TN
+  fglmc_tn_init(Mt);
+#endif
   const szmat_t D = Mt->ncols;
   const int32_t nv = Mt->nvars;
   const int32_t xn = nv - 1;
@@ -1694,6 +1807,9 @@ static int fglm_classic_apply(CF_t *coeffs, const sp_multimatfglm_t *Mt,
       return fglmc_univariate_relation((sp_multimatfglm_t *)Mt, NULL, coeffs, 0)
           ? 3 : 0;
   }
+#ifdef FGLMC_TN
+  fglmc_tn_init((sp_multimatfglm_t *)Mt);
+#endif
   const szmat_t D = Mt->ncols;
   const CF_t p = Mt->charac;
   const fglm_lex_staircase_t *lex = &tr->lex;

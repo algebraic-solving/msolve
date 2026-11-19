@@ -47,6 +47,8 @@ static inline void free_sp_multimat_fglm(sp_multimatfglm_t *mat){
         free(mat->border);
         free(mat->is_lm);
         free(mat->have_row);
+        free(mat->tn_t);
+        free(mat->tn_rows);
         free(mat);
     }
 }

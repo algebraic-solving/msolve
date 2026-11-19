@@ -1,8 +1,0 @@
-#Reduced Groebner basis data
-#---
-#field characteristic: 1073741827
-#variable order:       x, y, z
-#monomial order:       lexicographical
-#length of basis:      1 element
-#---
-[1]:

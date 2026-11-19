@@ -102,9 +102,10 @@ static inline void display_help(char *str){
   display_option_help_noopt("    algorithm, e.g. matrix sizes, #pairs, ...\n");
   fprintf(OUTSTREAM, "\nAdvanced options affecting the output:\n\n");
   display_option_help('P', "parametrization", "PAR", "Also outputs the rational parametrization of the\n");
-  display_option_help_noopt("solution set.\n");
+  display_option_help_noopt("solution set, only affects systems with rational coefficients.\n");
   display_option_help_noopt("0 - output is as above (default).\n");
-  display_option_help_noopt("1 - outputs the rational parametrization.\n");
+  display_option_help_noopt("1 - outputs the rational parametrization in addition to the real solutions.\n");
+  display_option_help_noopt("2 - outputs only the rational parametrization.\n");
   display_option_help('p', "precision", "PRE", "Precision (in bits) on the output of real root\n");
   display_option_help_noopt("isolation.\n");
   display_option_help_noopt("128 (default).\n");

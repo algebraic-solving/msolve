@@ -2396,4 +2396,6 @@ static void compute_kernel_sat_ff_32(
     st->la_rtime  +=  rt1 - rt0;
 }
 
+#define LA_ACC_BITS 32
+#define LA_ACC_REDUCED
 #include "la_ff_common.c"

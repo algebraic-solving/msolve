@@ -199,6 +199,19 @@ static int lexgb_shape_mod(CF_t *res, const sp_multimatfglm_t *M,
                                  lmd->info_level, lmd);
   const int ok = (par != NULL)
     && (lead_only || lexgb_shape_linear(par, M, lmb));
+  if (ok && lmd->info_level > 0) {
+    /* size of the lex Gb modulo p, as in shape_lexgb_from_param */
+    uint64_t nterms = nv;
+    for (slong k = 0; !lead_only && k < par->elim->length - 1; k++) {
+      nterms += (par->elim->coeffs[k] != 0);
+    }
+    for (int i = 0; !lead_only && i < nv - 1; i++) {
+      for (slong k = 0; k < par->coords[i]->length; k++) {
+        nterms += (par->coords[i]->coeffs[k] != 0);
+      }
+    }
+    print_fglm_data(VERBSTREAM, lmd, mat, par, 0, nv, nterms);
+  }
   if (ok && !lead_only) {
     for (szmat_t k = 0; k < D; k++) {
       res[k] = nmod_poly_get_coeff_ui(par->elim, k);
@@ -683,9 +696,9 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     const int shape = ok;
     if(ok){
       lexgb_shape_staircase(&tr.lex, nv, dquot);
-      if(info_level){
-        fprintf(VERBSTREAM, "Shape position: lex Gb by sparse-FGLM\n");
-      }
+      /* if(info_level){ */
+      /*   fprintf(VERBSTREAM, "Shape position: lex Gb by sparse-FGLM\n"); */
+      /* } */
     } else {
       free(res);
       res = NULL;

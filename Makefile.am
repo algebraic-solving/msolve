@@ -38,6 +38,8 @@ checkdiff       = \
 			  test/diff/diff_eco6-qq.sh \
 			  test/diff/diff_elim-31.sh \
 			  test/diff/diff_elim-qq.sh \
+			  test/diff/diff_elim-drl-31.sh \
+			  test/diff/diff_elim-drl-qq.sh \
 			  test/diff/diff_empty-elim-qq.sh \
 			  test/diff/diff_f4sat-31.sh \
 			  test/diff/diff_f4sat-byone-31.sh \

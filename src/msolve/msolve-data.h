@@ -164,6 +164,8 @@ typedef struct{
                           * Boolean ring via the common zeros, see
                           * boolean-zeros.c */
   int32_t lex;     /* 1 for LEX instead of DRL, only with boolean_zeros */
+  int32_t elim_drl; /* DRL Groebner basis first for elimination orders,
+                     * see md_t in neogb/data.h */
 } data_gens_ff_t;
 
 typedef uint32_t szmat_t;

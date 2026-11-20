@@ -375,6 +375,10 @@ AC_CONFIG_LINKS([
  output_files/reals-dim0-swapvar.p128.res:output_files/reals-dim0-swapvar.p128.res
  output_files/reals-dim0-swapvar.p1024.res:output_files/reals-dim0-swapvar.p1024.res
  test/diff/diff_reals-dim0-swapvar.sh:test/diff/diff_reals-dim0-swapvar.sh
+ input_files/reals-exact-left-end.ms:input_files/reals-exact-left-end.ms
+ output_files/reals-exact-left-end.p128.res:output_files/reals-exact-left-end.p128.res
+ output_files/reals-exact-left-end.p1024.res:output_files/reals-exact-left-end.p1024.res
+ test/diff/diff_reals-exact-left-end.sh:test/diff/diff_reals-exact-left-end.sh
  input_files/reals-zero-equal.ms:input_files/reals-zero-equal.ms
  output_files/reals-zero-equal.p128.res:output_files/reals-zero-equal.p128.res
  output_files/reals-zero-equal.p1024.res:output_files/reals-zero-equal.p1024.res

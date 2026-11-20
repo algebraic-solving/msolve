@@ -26,6 +26,9 @@ void usolve_refine_root_arb(interval *, const fmpz_poly_t, const fmpz_poly_t,
 int usolve_sign_2exp_arb(const fmpz_poly_t, const fmpz_t, const slong,
                          slong *);
 
+int usolve_sign_right_2exp_arb(const fmpz_poly_t, const fmpz_poly_t,
+                               const fmpz_t, const slong, slong *);
+
 interval *real_roots(mpz_t *, unsigned long,
                      unsigned long int *,
                      unsigned long int *,

@@ -96,6 +96,7 @@ checkdiff       = \
 			  test/diff/diff_reals-dim0-extract.sh \
 			  test/diff/diff_reals-dim0.sh \
 			  test/diff/diff_reals-dim0-swapvar.sh \
+			  test/diff/diff_reals-exact-left-end.sh \
 			  test/diff/diff_reals-zero-equal.sh \
 			  test/diff/diff_test-lifting2.sh \
 			  test/diff/diff_univariate-assign-left.sh \

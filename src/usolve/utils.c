@@ -104,29 +104,6 @@ static inline void USOLVEmpz_restore_content(mpz_t *upol, unsigned long int deg,
 }
 
 
-/* computed the numerator of the quotient of the division of upol by (x-c/2^k) */
-static void USOLVEnumer_quotient(mpz_t *upol, unsigned long int *deg, mpz_t c, unsigned long int k){
-
-  for(unsigned long int i = 0; i <= *deg; i++){
-    mpz_mul_2exp(upol[i], upol[i], (*deg - 1) * k );
-  }
-  mpz_t tmp;
-  mpz_init(tmp);
-
-  for(long int i = *deg-1; i >=1; i--){
-    mpz_div_2exp(tmp, upol[i+1], k);
-    mpz_mul(tmp, tmp, c);
-    mpz_add(upol[i], upol[i], tmp);
-  }
-
-  for(unsigned long int i = 0 ; i <= *deg - 1; i++){
-    mpz_set(upol[i], upol[i+1]);
-  }
-  mpz_poly_remove_binary_content(upol, *deg - 1);
-  *deg = *deg - 1;
-  mpz_clear(tmp);
-}
-
 /* prints coefficients of pol in increasing degree order */
 static inline void USOLVEmpz_poly_print(mpz_t *upol, unsigned long int deg){
   for(unsigned long int i=0; i<=deg; i++) {
@@ -213,19 +190,6 @@ static inline int USOLVEmpz_poly_rescale_normalize_2exp_th_long(mpz_t *upol,
   }
   mpz_clear(coef);
   return mpz_poly_remove_binary_content(upol, deg);
-}
-
-unsigned long int mpz_poly_min_bsize_coeffs(mpz_t *upol,
-                                            long int deg){
-  if(deg < 0) return 1;
-  unsigned long int min = ilog2_mpz(upol[deg]), bs;
-  for(long i = deg ; i >= 0; i--){
-    bs = ilog2_mpz(upol[i]);
-    if(bs<min && mpz_cmp_ui(upol[i], 0) != 0){
-      min = bs;
-    }
-  }
-  return min;
 }
 
 

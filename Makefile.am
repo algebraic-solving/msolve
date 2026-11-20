@@ -7,7 +7,8 @@ LDADD 		= src/neogb/libneogb.la src/fglm/libfglm.la src/usolve/libusolve.la
 bin_PROGRAMS	= msolve
 msolve_SOURCES 	= src/msolve/main.c
 
-check_PROGRAMS		= neogb_io \
+check_PROGRAMS  = \
+			  neogb_io \
 			  neogb_f4_52_bit \
 			  neogb_gf2_ext \
 			  neogb_gf2 \
@@ -17,7 +18,12 @@ check_PROGRAMS		= neogb_io \
 			  line_endings_support \
 			  hensel_lifting
 
-checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
+checkdiff       = \
+			  test/diff/diff_boolean-elim10.sh \
+			  test/diff/diff_boolean-random12.sh \
+			  test/diff/diff_boolean-zeros-random12.sh \
+			  test/diff/diff_boolean-zeros-lex-random12.sh \
+			  test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_bug-68.sh \
 			  test/diff/diff_bug-empty-tracer.sh \
 			  test/diff/diff_bug-prob-sparse-dense-la.sh \
@@ -50,18 +56,13 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_issue-310-bivariate.sh \
 			  test/diff/diff_kat6-31.sh \
 			  test/diff/diff_kat6-32.sh \
-			  test/diff/diff_kat7-30.sh \
 			  test/diff/diff_kat6-52.sh \
 			  test/diff/diff_kat6-gf16.sh \
 			  test/diff/diff_kat6-gf256.sh \
-			  test/diff/diff_random6-gf256-int.sh \
-			  test/diff/diff_random8-gf2.sh \
-			  test/diff/diff_boolean-random12.sh \
-			  test/diff/diff_boolean-elim10.sh \
-			  test/diff/diff_boolean-zeros-random12.sh \
-			  test/diff/diff_boolean-zeros-lex-random12.sh \
+			  test/diff/diff_kat7-30.sh \
 			  test/diff/diff_kat7-qq.sh \
 			  test/diff/diff_kat8-qq-truncate.sh \
+			  test/diff/diff_lifting-single-point.sh \
 			  test/diff/diff_line-endings.sh \
 			  test/diff/diff_linear0-qq.sh \
 			  test/diff/diff_linear1-qq.sh \
@@ -86,17 +87,23 @@ checkdiff               = test/diff/diff_bug-2nd-prime-bad.sh \
 			  test/diff/diff_quadratic-nonradical-qq.sh \
 			  test/diff/diff_radical-shape-31.sh \
 			  test/diff/diff_radical-shape-qq.sh \
+			  test/diff/diff_random6-gf256-int.sh \
+			  test/diff/diff_random8-gf2.sh \
 			  test/diff/diff_realroot1.sh \
 			  test/diff/diff_realroot-extraction-exact-root.sh \
 			  test/diff/diff_reals-dim0-chgvar.sh \
 			  test/diff/diff_reals-dim0-extract.sh \
 			  test/diff/diff_reals-dim0.sh \
 			  test/diff/diff_reals-dim0-swapvar.sh \
+			  test/diff/diff_reals-close-components.sh \
+			  test/diff/diff_reals-zero-equal.sh \
 			  test/diff/diff_test-lifting2.sh \
-			  test/diff/diff_lifting-single-point.sh \
 			  test/diff/diff_univariate-assign-left.sh \
 			  test/diff/diff_univariate-cubic-close-roots.sh \
-			  test/diff/diff_univariate-sgn.sh
+			  test/diff/diff_univariate-gcd.sh \
+			  test/diff/diff_univariate-middle-root.sh \
+			  test/diff/diff_univariate-sgn.sh \
+			  test/diff/diff_univariate-wilkinson-both-signs.sh
 
 # dist_check_DATA         = test/input_files
 neogb_io_SOURCES 	= test/neogb/io/validate_input_data.c

@@ -48,6 +48,14 @@ typedef struct
   int sign_left;
 } interval;
 
+/* statistics of real_roots */
+typedef struct {
+  double isolation, refinement; /* elapsed times */
+  double descartes, shifts;     /* elapsed times of the isolation in Descartes'
+                                   rule of signs and in Taylor shifts */
+  unsigned long nodes, transl, half_splits, skipped;
+} usolve_stats_t;
+
 typedef len_t nelts_t;
 typedef int32_t nvars_t;
 typedef int64_t bits_t;

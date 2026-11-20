@@ -1,12 +1,8 @@
-[0, [251, 
-1, 
-1, 
-['x'],
-[1],
-[1,
-[[1,
-[159, 1]],
-[0,
-[1]],
-[
-]]]]]:
+#Reduced Groebner basis data
+#---
+#field characteristic: 251
+#variable order:       x
+#monomial order:       lexicographical
+#length of basis:      1 element
+#---
+[1*x^1+159]:

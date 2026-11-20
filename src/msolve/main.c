@@ -77,16 +77,21 @@ static inline void display_help(char *str){
   fprintf(OUTSTREAM, "    boolean ring over GF(2), i.e. x^2 = x for all variables x (only option -g)\n");
   fprintf(OUTSTREAM, "  - next lines provide the polynomials (one per line), separated by a comma (no\n");
   fprintf(OUTSTREAM, "    comma after the last polynomial)\n");
-  fprintf(OUTSTREAM, "\nDefault output file format (changed by some command line options, see below):\n\n");
+    fprintf(OUTSTREAM, "\nDefault output file format (changed by some command line options, see below):\n\n");
   fprintf(OUTSTREAM, "  - When there is no solution in an algebraic closure of the base field:\n");
-  fprintf(OUTSTREAM, "      [-1]:\n");
+  fprintf(OUTSTREAM, "      [1]: over prime fields of characteristic less than 2^15,\n");
+  fprintf(OUTSTREAM, "      [-1]: otherwise.\n");
   fprintf(OUTSTREAM, "  - When there are infinitely many solutions in an algebraic closure of the\n");
   fprintf(OUTSTREAM, "    base field:\n");
   fprintf(OUTSTREAM, "      [1, nvars, -1, []]:\n");
-  fprintf(OUTSTREAM, "  - Else, over prime fields: a rational parametrization of the solutions. When\n");
-  fprintf(OUTSTREAM, "    input coefficients are rational numbers: real solutions to the input system\n");
-  fprintf(OUTSTREAM, "    (see the -P flag to recover a parametrization of the solutions).\n");
-  fprintf(OUTSTREAM, "\n");
+  fprintf(OUTSTREAM, "  - When there are finitely many solutions in an algebraic closure of the base\n");
+  fprintf(OUTSTREAM, "    field:\n");
+  fprintf(OUTSTREAM, "      - over prime fields of characteristic less than 2^15: the reduced\n");
+  fprintf(OUTSTREAM, "        Groebner basis w.r.t. the lexicographical ordering;\n");
+  fprintf(OUTSTREAM, "      - over prime fields of characteristic at least 2^15: a rational\n");
+  fprintf(OUTSTREAM, "        parametrization of the solutions;\n");
+  fprintf(OUTSTREAM, "      - over the rationals: real solutions to the input system (see the -P\n");
+  fprintf(OUTSTREAM, "        flag to recover a parametrization of the solutions).\n");
   fprintf(OUTSTREAM, "  See the msolve tutorial for more details (https://msolve.lip6.fr).\n");
   fprintf(OUTSTREAM, "\nStandard options:\n\n");
   display_option_help('f', "file", "FILE", "File name (mandatory).\n");
@@ -120,6 +125,18 @@ static inline void display_help(char *str){
   display_option_help_noopt("    system.\n");
   display_option_help_noopt("2 - output is the full reduced Groebner basis of\n");
   display_option_help_noopt("    the input system.\n");
+  display_option_help('x', "lex-groebner-basis", "LEX", "Outputs the reduced Groebner basis of a\n");
+  display_option_help_noopt("zero-dimensional ideal w.r.t. the\n");
+  display_option_help_noopt("lexicographical ordering, by sparse-FGLM in\n");
+  display_option_help_noopt("case of shape position and then classical FGLM\n");
+  display_option_help_noopt("otherwise (over Q: multi-modular FGLM with a\n");
+  display_option_help_noopt("tracer).\n");
+  display_option_help_noopt("Cannot be used together with option -g.\n");
+  display_option_help_noopt("0 - output is as above (default).\n");
+  display_option_help_noopt("1 - output is the lex leading ideal of the input\n");
+  display_option_help_noopt("    system.\n");
+  display_option_help_noopt("2 - output is the full lex reduced Groebner\n");
+  display_option_help_noopt("    basis of the input system.\n");
   display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
   display_option_help_noopt("blocks of variables, each block using the degree\n");
   display_option_help_noopt("reverse lexicographical monomial order. ELIM has\n");
@@ -307,7 +324,8 @@ static void getoptions(
   char *filename = NULL;
   char *out_fname = NULL;
   opterr = 1;
-  char short_options[] = "c:Cd:e:f:g:hil:L:m:M:n:N:o:p:P:q:r:s:St:u:v:V";
+  char short_options[] = "c:Cd:e:f:g:hil:L:m:M:n:N:o:p:P:q:r:s:St:u:v:Vx:";
+  int32_t lex_gb = 0;
 
   /* For long options that have no equivalent short option, use a
      non-character as a pseudo short option, starting with CHAR_MAX + 1.
@@ -334,6 +352,7 @@ static void getoptions(
     {"elimination", required_argument, NULL, 'e'},
     {"file", required_argument, NULL, 'f'},
     {"groebner-basis", required_argument, NULL, 'g'},
+    {"lex-groebner-basis", required_argument, NULL, 'x'},
     {"help", no_argument, NULL, 'h'},
     {"lex", no_argument, NULL, LEX_OPTION},
     {"linear-algebra", required_argument, NULL, 'l'},
@@ -512,6 +531,15 @@ static void getoptions(
           *print_gb = 2;
       }
       break;
+    case 'x':
+      lex_gb = strtol(optarg, NULL, 10);
+      if (lex_gb < 0) {
+          lex_gb = 0;
+      }
+      if (lex_gb > 2) {
+          lex_gb = 2;
+      }
+      break;
     case 'c':
       *genericity_handling = strtol(optarg, NULL, 10);
       if (*genericity_handling < 0) {
@@ -563,6 +591,19 @@ static void getoptions(
     fprintf(ERRSTREAM, "Invalid usage\n");
     display_help(argv[0]);
     exit(1);
+  }
+  /* lex Gb: internal values of print_gb, 3 (leading ideal)
+   * or 4 (full basis) */
+  if(lex_gb > 0){
+    if(*print_gb > 0){
+      fprintf(ERRSTREAM, "Options -g and -x cannot be used together.\n");
+      exit(1);
+    }
+    if(*saturate || *colon || *normal_form){
+      fprintf(ERRSTREAM, "Option -x cannot be used together with -S, -C or -n.\n");
+      exit(1);
+    }
+    *print_gb = lex_gb + 2;
   }
   files->in_file = filename;
   files->out_file = out_fname;
@@ -763,12 +804,21 @@ int main(int argc, char **argv){
     gens->hensel_cost_scale = hensel_cost_scale;
     gens->hensel_memory = hensel_memory;
 
-    if(0 < field_char && field_char < pow(2, 15) && la_option > 2){
-        if(info_level){
-            fprintf(ERRSTREAM, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
-            fprintf(ERRSTREAM, "\t linear algebra option set to 2\n");
+    if(0 < field_char && field_char < pow(2, 15)){
+        if(la_option > 2){
+            if(info_level){
+                fprintf(ERRSTREAM, "Warning: characteristic is too low for choosing \nprobabilistic linear algebra\n");
+                fprintf(ERRSTREAM, "\t linear algebra option set to 2\n");
+            }
+            la_option = 2;
         }
-        la_option = 2;
+        if(get_param == 0 && print_gb == 0 && elim_block_len == 0
+           && !saturate && !colon && !normal_form && !boolean
+           && !boolean_zeros && !is_gf2_ext(field_char)){
+            /* user did not request a specific call,
+             * make -x 2 default */
+            print_gb = 4;
+        }
     }
 
     /* data structures for parametrization */

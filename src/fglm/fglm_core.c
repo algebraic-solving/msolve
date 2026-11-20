@@ -76,9 +76,12 @@ double omp_get_wtime(void) { return realtime();}
 void print_fglm_data(
         FILE *file,
         const md_t * const st,
-	sp_matfglm_t *matrix,
-	param_t *param
-		     )
+        sp_matfglm_t *matrix,
+        param_t *param,
+        const int print_degsqfr,
+        const uint64_t ngens,
+        const uint64_t nterms
+                     )
 {
   if (st->info_level > 0) {
     fprintf(file, "\n---------------- TIMINGS ----------------\n");
@@ -95,7 +98,13 @@ void print_fglm_data(
       fprintf(file, "density of the nonfree part     %5.1f%%\n", 100*matrix->nonfreepartdensity);
     }
     fprintf(file, "deg. elim. pol.    %16lu\n", (unsigned long)param->degelimpol);
-    fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol);
+    if(print_degsqfr) {
+      fprintf(file, "deg. sqfr. elim. pol. %13lu\n", (unsigned long)param->degsqfrelimpol);
+    }
+    if(ngens) {
+      fprintf(file, "size of basis      %16lu\n", (unsigned long)ngens);
+      fprintf(file, "#terms in basis    %16lu\n", (unsigned long)nterms);
+    }
     fprintf(file, "-----------------------------------------\n\n");
   }
 }
@@ -659,14 +668,41 @@ static void generate_matrix_sequence(sp_matfglm_t *matxn, fglm_data_t *data,
 }
 #endif
 
-static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
+/* Early termination of Berlekamp-Massey: adds s_i to B (npts = i + 1 points);
+ * when npts reaches *next, returns 1 if the linear complexity L of the points
+ * is < D and npts >= 2 L + 32, i.e. the minimal generator predicts the last 32
+ * points: very likely, the minimal polynomial has degree L < D. The next
+ * check is max(16, npts / 64) points later: O(log D) calls to the half-gcd of
+ * FLINT (quasi-linear), at most 1/64 more points than needed. */
+static inline int fglm_seq_early_stop(nmod_berlekamp_massey_struct *B,
+                                      const CF_t s, const szmat_t npts,
+                                      const szmat_t D, szmat_t *next){
+  nmod_berlekamp_massey_add_point(B, s);
+  if(npts < *next){
+    return 0;
+  }
+  *next = npts + (npts / 64 > 16 ? npts / 64 : 16);
+  nmod_berlekamp_massey_reduce(B);
+  const slong L = nmod_berlekamp_massey_V_poly(B)->length - 1;
+  return L < (slong)D && (slong)npts >= 2 * L + 32;
+}
+
+/* If et != NULL, the scalar sequence is also added to et, and the
+ * computation stops (returns 0) on early termination (fglm_seq_early_stop).
+ * Returns 1 if the whole sequence is computed. */
+static int generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
                                     szmat_t block_size, szmat_t dimquot,
                                     nvars_t* squvars,
                                     nvars_t* linvars,
                                     nvars_t nvars,
                                     mod_t prime,
-                                    md_t *st)
+                                    md_t *st,
+                                    nmod_berlekamp_massey_struct *et)
 {
+  szmat_t next = 16;   /* next check of the early termination */
+  if(et != NULL && fglm_seq_early_stop(et, data->res[0], 1, dimquot, &next)){
+    return 0;
+  }
   int dec= 0;
   for(szmat_t j = 1; j < block_size; j++){
     while (nvars-1-j-dec > 0 && linvars[nvars-1-j-dec] != 0) {
@@ -688,6 +724,11 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
     data->vecinit = data->vvec;
     data->vvec = tmp;
     data->res[i*block_size] = data->vecinit[0];
+    if(et != NULL
+       && fglm_seq_early_stop(et, data->res[i*block_size], i + 1, dimquot,
+                              &next)){
+      return 0;
+    }
 
     dec = 0;
     for(szmat_t j = 1; j < block_size; j++){
@@ -721,6 +762,11 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
     data->vecinit = data->vvec;
     data->vvec = tmp;
     data->res[i*block_size] = data->vecinit[0];
+    if(et != NULL
+       && fglm_seq_early_stop(et, data->res[i*block_size], i + 1, dimquot,
+                              &next)){
+      return 0;
+    }
 
 #if DEBUGFGLM > 1
     print_vec(VERBSTREAM, data->res, 2*block_size * matrix->ncols);
@@ -737,7 +783,7 @@ static void generate_sequence_verif(sp_matfglm_t *matrix, fglm_data_t * data,
   for(ulong i = 0; i < 2 * dimquot; i++){
     data->pts[i] = data->res[i*block_size];
   }
-
+  return 1;
 }
 
 
@@ -806,6 +852,36 @@ static inline void compute_minpoly(param_t *param,
                                    long dimquot)
 {
   compute_elim_poly(data, data_bms, dimquot);
+  make_square_free_elim_poly(param, data_bms, dimquot);
+}
+
+/* Univariate case: the minimal polynomial of the multiplication matrix by x
+ * is the polynomial f = x^D - NF(x^D) of the Gb itself, NF(x^D) being the
+ * only dense row (the one of x^(D-1)): no scalar sequence, no
+ * Berlekamp-Massey. f is put where Berlekamp-Massey puts the minimal
+ * polynomial, then the square-free part is computed as usual. */
+static inline void univariate_elim_poly(param_t *param,
+                                        const sp_matfglm_t *matrix,
+                                        fglm_bms_data_t *data_bms,
+                                        const long dimquot)
+{
+  const szmat_t D = matrix->ncols;
+  const mp_limb_t p = param->charac;
+  nmod_poly_struct *f = data_bms->BMS->V1;
+  nmod_poly_fit_length(f, D + 1);
+  for(szmat_t k = 0; k < D; k++){
+    f->coeffs[k] = 0;
+  }
+  for(szmat_t r = 0; r < matrix->nrows; r++){
+    if(matrix->dense_idx[r] != D - 1) continue;
+    const CF_t *row = matrix->dense_mat + (uint64_t)r * D;
+    for(szmat_t k = 0; k < D; k++){
+      f->coeffs[k] = row[k] ? p - row[k] : 0;
+    }
+  }
+  f->coeffs[D] = 1;
+  _nmod_poly_set_length(f, D + 1);
+  _nmod_poly_normalise(f);
   make_square_free_elim_poly(param, data_bms, dimquot);
 }
 
@@ -1096,10 +1172,10 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
   if (invert_table_polynomial (param, data, data_bms, block_size,
                                prime, 0, 0)) {
 #if DEBUGFGLM > 0
-    fprintf (VERBSTREAM,"C1=");
-    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+    fprintf(VERBSTREAM,"C1=");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf(VERBSTREAM,"\n");
     fprintf(VERBSTREAM, "invC1=");
-    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf(VERBSTREAM,"\n");
 #endif
 
     long dec = 0;
@@ -1156,10 +1232,10 @@ int compute_parametrizations_non_shape_position_case(param_t *param,
           invert_table_polynomial (param, data, data_bms, block_size,
                                    prime, nc+1-dec, lambda);
 #if DEBUGFGLM > 1
-          fprintf (VERBSTREAM,"C2=");
-          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+          fprintf(VERBSTREAM,"C2=");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf(VERBSTREAM,"\n");
           fprintf(VERBSTREAM, "invC2=");
-          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf(VERBSTREAM,"\n");
 #endif
 
           divide_table_polynomials(param,data,data_bms, dimquot, block_size,
@@ -1229,10 +1305,10 @@ static int compute_parametrizations_colon(param_t *param,
   if (invert_table_polynomial (param, data, data_bms, block_size,
                                prime, 0, 0)) {
 #if DEBUGFGLM > 0
-    fprintf (VERBSTREAM,"C1=");
-    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+    fprintf(VERBSTREAM,"C1=");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf(VERBSTREAM,"\n");
     fprintf(VERBSTREAM, "invC1=");
-    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
+    nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf(VERBSTREAM,"\n");
 #endif
     long dec = 0;
     for(long nc = 0; nc < nvars - 1 ; nc++){
@@ -1263,10 +1339,10 @@ static int compute_parametrizations_colon(param_t *param,
           invert_table_polynomial (param, data, data_bms, block_size,
                                    prime, nc+1-dec, lambda);
 #if DEBUGFGLM > 1
-          fprintf (VERBSTREAM,"C2=");
-          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf (VERBSTREAM,"\n");
+          fprintf(VERBSTREAM,"C2=");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z1, "x"); fprintf(VERBSTREAM,"\n");
           fprintf(VERBSTREAM, "invC2=");
-          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf (VERBSTREAM,"\n");
+          nmod_poly_fprint_pretty (VERBSTREAM, data_bms->Z2, "x"); fprintf(VERBSTREAM,"\n");
 #endif
 
           divide_table_polynomials_colon(param,data,data_bms, block_size,
@@ -1366,6 +1442,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
                                       nvars_t *linvars,
                                       uint32_t *lineqs,
                                       nvars_t *squvars,
+                                      szmat_t dmin,
                                       int info_level,
                                       fglm_data_t **bdata,
                                       fglm_bms_data_t **bdata_bms,
@@ -1382,7 +1459,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 #endif
 
   /* 1147878294 */
-  if(prime>=1518500213){
+  if(prime >= FGLM_SPARSE_MAX_PRIME){
     fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
     fprintf(ERRSTREAM, "One needs to use updated linear algebra fglm functions\n");
     return NULL;
@@ -1393,7 +1470,34 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   param_t *param = allocate_fglm_param(prime, nvars);
 
+  if(nvars == 1){
+    /* univariate: the elimination polynomial is the polynomial itself */
+    double st_univ = realtime(), cst_univ = cputime();
+    if (info_level > 1) {
+      fprintf(VERBSTREAM, "elimination polynomial");
+      fprintf(VERBSTREAM, "                                 ");
+    }
+    *bdata_bms = allocate_fglm_bms_data(matrix->ncols, prime);
+    univariate_elim_poly(param, matrix, *bdata_bms, matrix->ncols);
+    if (info_level > 1){
+      fprintf(VERBSTREAM, "1 new           ");
+      fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - st_univ,
+              cputime() - cst_univ);
+      fprintf(VERBSTREAM,
+              "-------------------------------------------------\
+-----------------------------------------------------\n");
+    }
+    st->fglm_rtime = realtime() - st->fglm_rtime;
+    st->fglm_ctime = cputime() - st->fglm_ctime;
+    print_fglm_data (VERBSTREAM, st, matrix, param, 1, 0, 0);
+    return param;
+  }
+
   szmat_t sz = matrix->ncols * matrix->nrows;
+  /* x_n^dmin is a DRL leading monomial, so 1, ..., x_n^(dmin-1) are standard
+   * and the elimination polynomial has degree >= dmin: a smaller degree means
+   * an unlucky random vector */
+  int nrestart = 0;
 
  restart:
   initialize_fglm_data(matrix, *bdata, prime, sz, block_size);
@@ -1423,26 +1527,26 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   exit(1);
 #else
   if (info_level > 1) {
-    fprintf(VERBSTREAM,
-	    "scalar sequence                                     ");
+    fprintf(VERBSTREAM, "scalar sequence       ");
+    fprintf(VERBSTREAM, "                                                 ");
     fflush(VERBSTREAM);
   }
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
-                          squvars, linvars, nvars, prime, st);
+                          squvars, linvars, nvars, prime, st, NULL);
 #endif
 
   if(info_level > 1){
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
     /* fprintf(ERRSTREAM, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm); */
-    fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
 
   st_fglm = realtime();
   cst_fglm = cputime();
   if (info_level > 1) {
-    fprintf(VERBSTREAM,
-	    "elimination polynomial                              ");
+    fprintf(VERBSTREAM, "elimination polynomial");
+    fprintf(VERBSTREAM, "                                 ");
     fflush(VERBSTREAM);
   }
 
@@ -1456,21 +1560,37 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     /*         realtime()-st_fglm); */
     double rt_fglm = realtime()-st_fglm;
     double crt_fglm = cputime()-cst_fglm;
-    fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+    fprintf(VERBSTREAM, "1 new           ");
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
-  if (param->degelimpol < 1) {
-      if (info_level > 1) {
-          fprintf (VERBSTREAM, "Constant polynomial, computation will restart\n");
+  if (param->degelimpol < (long)dmin) {
+      if (nrestart < 10) {
+          if (info_level > 1) {
+              fprintf(VERBSTREAM, "elimination polynomial of degree %ld < %u, "
+                      "new random vector\n", (long)param->degelimpol, dmin);
+          }
+          nrestart++;
+          free_fglm_bms_data(*bdata_bms);
+          *bdata_bms = NULL;
           goto restart;
       }
+      /* the result would be wrong: reject the prime */
+      if (info_level) {
+          fprintf(VERBSTREAM, "elimination polynomial of degree %ld < %u "
+                  "after %d random vectors, prime rejected\n",
+                  (long)param->degelimpol, dmin, nrestart + 1);
+      }
+      *success = 0;
+      free_fglm_param(param);
+      return NULL;
   }
   if (dimquot == param->degelimpol) {
 
     st_fglm = realtime();
     cst_fglm = cputime();
     if (info_level > 1){
-      fprintf(VERBSTREAM,
-	      "parametrizations                                    ");
+      fprintf(VERBSTREAM, "parametrizations");
+      fprintf(VERBSTREAM, "                        ");
       fflush(VERBSTREAM);
     }
 
@@ -1487,10 +1607,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
     if (info_level > 1){
       double rt_fglm = realtime()-st_fglm;
       double crt_fglm = cputime()-cst_fglm;
+      fprintf(VERBSTREAM, "%16lu new           ",(unsigned long) (nvars-1));
       fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
-      fprintf(VERBSTREAM,
-	      "-------------------------------------------------\
------------------------------------------------------\n");
     }
   }
   else {
@@ -1501,8 +1619,8 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
     st_fglm = realtime();
     if (info_level > 1){
-      fprintf (VERBSTREAM,
-	       "parametrizations                                               ");
+      fprintf(VERBSTREAM, "parametrizations");
+      fprintf(VERBSTREAM, "                        ");
     }
     int right_param= compute_parametrizations_non_shape_position_case(param,
                                                                       *bdata,
@@ -1517,10 +1635,10 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
     if (info_level > 1){
       double rt_fglm = realtime()-st_fglm;
-      fprintf(VERBSTREAM, "%.2f\n",rt_fglm);
-      fprintf(VERBSTREAM,
-	      "-------------------------------------------------\
------------------------------------------------------\n");
+      double crt_fglm = cputime()-cst_fglm;
+      fprintf(VERBSTREAM, "%16lu new           ",(unsigned long) (nvars-1));
+      fprintf(VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
+      /* fprintf(VERBSTREAM, "%.2f\n",rt_fglm); */
     }
     if (right_param == 0) {
       if(info_level){
@@ -1547,9 +1665,106 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
     }
   }
+  if (info_level > 1){
+      fprintf(VERBSTREAM,
+              "-------------------------------------------------\
+-----------------------------------------------------\n");
+  }
   st->fglm_rtime = realtime() - st->fglm_rtime;
   st->fglm_ctime = cputime() - st->fglm_ctime;
-  print_fglm_data (VERBSTREAM, st, matrix, param);
+  print_fglm_data (VERBSTREAM, st, matrix, param, 1, 0, 0);
+  return param;
+}
+
+/* Lex Gb in shape position (option -x). If the elimination polynomial f, the
+ * minimal polynomial of the multiplication by x_n, has degree D, then
+ * 1, x_n, ..., x_n^(D-1) is a basis of the quotient and the lex Gb is
+ * {f(x_n), x_i - R_i(x_n)}, f not necessarily square-free. Sparse-FGLM with
+ * early termination of Berlekamp-Massey: returns NULL as soon as deg f < D is
+ * very likely, or if the prime is too large; classical FGLM is used then.
+ * Otherwise, param->elim = f (monic, degree D), param->denom = 1 and
+ * x_i = -param->coords[i] mod f; the coords are not computed if lead_only.
+ * The caller prints the data (print_fglm_data) with the size of the lex Gb. */
+param_t *nmod_fglm_shape(sp_matfglm_t *matrix, mod_t prime,
+                         szmat_t nvars, szmat_t block_size, szmat_t nlins,
+                         nvars_t *linvars, uint32_t *lineqs, nvars_t *squvars,
+                         int lead_only, int info_level, md_t *st){
+  const szmat_t D = matrix->ncols;
+  /* initialize_fglm_data reads vecinit[block_size]: block_size >= D only if
+   * x_n is linear, then not in shape position */
+  if(prime >= FGLM_SPARSE_MAX_PRIME || nvars < 2 || D < 2 || block_size >= D){
+    return NULL;
+  }
+  fglm_data_t *data = allocate_fglm_data(matrix->nrows, D, nvars);
+  fglm_bms_data_t *bms = allocate_fglm_bms_data(D, prime);
+  param_t *param = NULL;
+  initialize_fglm_data(matrix, data, prime, D * matrix->nrows, block_size);
+
+  double rt = realtime(), ct = cputime();
+  if(info_level > 1){
+    /* fprintf(VERBSTREAM, "scalar sequence (shape position test)"); */
+    /* fprintf(VERBSTREAM, "                                  "); */
+    fprintf(VERBSTREAM, "scalar sequence       ");
+    fprintf(VERBSTREAM, "                                                 ");
+    fflush(VERBSTREAM);
+  }
+  const int full = generate_sequence_verif(matrix, data, block_size, D,
+                                           squvars, linvars, nvars, prime,
+                                           st, bms->BMS);
+  if (info_level > 1) {
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt, cputime() - ct);
+  }
+
+  /* not in shape position: classical FGLM prints its own lines from the
+   * elimination polynomial on */
+  rt = realtime();
+  ct = cputime();
+  if(full){
+    nmod_berlekamp_massey_reduce(bms->BMS);
+  }
+  const slong deg = nmod_berlekamp_massey_V_poly(bms->BMS)->length - 1;
+  if(!full || deg < (slong)D){
+    goto end;
+  }
+  param = allocate_fglm_param(prime, nvars);
+  nmod_poly_make_monic(param->elim, bms->BMS->V1);
+  nmod_poly_one(param->denom);
+  param->degelimpol = D;
+  param->degsqfrelimpol = D; /* not printed anyway by the call below */
+  if (info_level > 1) {
+    fprintf(VERBSTREAM, "elimination polynomial");
+    fprintf(VERBSTREAM, "                                 ");
+    fprintf(VERBSTREAM, "1 new           ");
+    fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt, cputime() - ct);
+  }
+  rt = realtime();
+  ct = cputime();
+  if(info_level > 1){
+      fprintf(VERBSTREAM, "parametrizations");
+      fprintf(VERBSTREAM, "                        ");
+      fflush(VERBSTREAM);
+  }
+  if(!lead_only){
+    /* f has degree D, so the Hankel matrix of size D is invertible */
+    if(compute_parametrizations(param, data, bms, D, block_size, nlins,
+                                linvars, lineqs, nvars) == 0){
+      free_fglm_param(param);
+      param = NULL;
+      goto end;
+    }
+  }
+  if(info_level > 1){
+      fprintf(VERBSTREAM, "%16lu new           ", (unsigned long)(nvars - 1));
+      fprintf(VERBSTREAM, "%15.2f | %-13.2f\n", realtime() - rt,
+              cputime() - ct);
+      fprintf(VERBSTREAM, "-------------------------------------------------"
+              "-----------------------------------------------------\n");
+  }
+  st->fglm_rtime = realtime() - st->fglm_rtime;
+  st->fglm_ctime = cputime() - st->fglm_ctime;
+ end:
+  free_fglm_data(data);
+  free_fglm_bms_data(bms);
   return param;
 }
 
@@ -1585,7 +1800,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
   fclose(fmat);
 #endif
 
-  if(prime>=1518500213){
+  if(prime >= FGLM_SPARSE_MAX_PRIME){
     fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
     fprintf(ERRSTREAM, "One needs to use update linear algebra fglm functions\n");
     exit(1);
@@ -1597,6 +1812,13 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
 
   fglm_param_set_prime(param, prime);
+
+  if(nvars == 1){
+    /* univariate: the elimination polynomial is the polynomial itself */
+    fglm_bms_data_set_prime(data_bms, prime);
+    univariate_elim_poly(param, matrix, data_bms, matrix->ncols);
+    return (param->elim->length - 1 != deg_init);
+  }
 
   const long sz = matrix->ncols * matrix->nrows;
   const long nb = initialize_fglm_data(matrix, data_fglm, prime, sz, block_size);
@@ -1623,7 +1845,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
 
   /* generate_sequence(matrix, data_fglm, block_size, dimquot, prime, st); */
   generate_sequence_verif(matrix, data_fglm, block_size, dimquot,
-                          squvars, linvars, nvars, prime, st);
+                          squvars, linvars, nvars, prime, st, NULL);
   //////////////////////////////////////////////////////////////////
 
   if(info_level){
@@ -1804,7 +2026,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
   fclose(fmat);
 #endif
   /* 1147878294 */
-  if(prime>=1518500213){
+  if(prime >= FGLM_SPARSE_MAX_PRIME){
     fprintf(ERRSTREAM, "Prime %u is too large.\n", prime);
     fprintf(ERRSTREAM, "One needs to use update linear algebra fglm functions\n");
     return NULL;
@@ -1858,7 +2080,7 @@ param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *matrix,
     fprintf(VERBSTREAM, "Elimination done.\n");
   }
 
-  /* nmod_poly_fprint_pretty(ERRSTREAM, param->elim, "x"); fprintf (VERBSTREAM,"\n"); */
+  /* nmod_poly_fprint_pretty(ERRSTREAM, param->elim, "x"); fprintf(VERBSTREAM,"\n"); */
 
   //////////////////////////////////////////////////////////////////
 

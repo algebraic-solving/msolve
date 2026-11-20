@@ -40,7 +40,8 @@ bs_t *core_nf(
         md_t *md,
         const exp_t * const mul,
         bs_t *bs,
-        int32_t *errp
+        int32_t *errp,
+        const int header_footer
         );
 
 int64_t export_nf(

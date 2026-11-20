@@ -94,10 +94,10 @@ int usolve_sign_2exp_arb(const fmpz_poly_t f, const fmpz_t n,
   return s;
 }
 
-/* sign of f just right of n / 2^K */
-static int usolve_sign_right_2exp_arb(const fmpz_poly_t f, const fmpz_poly_t df,
-                                      const fmpz_t n, const slong K,
-                                      slong *extra){
+/* sign of f just right of n / 2^K (K >= 0), f being square-free and df
+ * its derivative */
+int usolve_sign_right_2exp_arb(const fmpz_poly_t f, const fmpz_poly_t df,
+                               const fmpz_t n, const slong K, slong *extra){
   int s = usolve_sign_2exp_arb(f, n, K, extra);
   if (s) {
     return s;

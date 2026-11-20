@@ -4246,8 +4246,8 @@ static void real_coords_point(real_coords_t *rc, mpz_param_t param,
         break;
       }
       if (r == 1) {
-        usolve_refine_root_arb(rt, &rc->elim, rc->delim, 2 * rt->k,
-                               &rc->extra);
+        usolve_refine_root_arb(rt, &rc->elim, rc->delim,
+                               MAX(2 * rt->k, rt->k + 1), &rc->extra);
         rc->nref++;
       } else {
         rc->wprec *= 2;
@@ -4555,12 +4555,22 @@ static int real_overlap(const interval *r, const interval *s) {
   return c;
 }
 
-/* halves the isolating interval r of a root of f, with k >= 0 */
+/* halves the isolating interval r of a root of the square-free polynomial
+ * f, with k >= 0 */
 static void real_bisect(interval *r, const fmpz_poly_t f, slong *extra) {
   fmpz_t a;
   fmpz_init(a);
   fmpz_set_mpz(a, r->numer);
-  const int sl = usolve_sign_2exp_arb(f, a, r->k, extra);
+  /* the left end may be a root of f outside the interval: the sign of f
+   * is taken just right of it */
+  int sl = usolve_sign_2exp_arb(f, a, r->k, extra);
+  if (sl == 0) {
+    fmpz_poly_t df;
+    fmpz_poly_init(df);
+    fmpz_poly_derivative(df, f);
+    sl = usolve_sign_right_2exp_arb(f, df, a, r->k, extra);
+    fmpz_poly_clear(df);
+  }
   fmpz_mul_2exp(a, a, 1);
   fmpz_add_ui(a, a, 1);
   const int sm = usolve_sign_2exp_arb(f, a, r->k + 1, extra);

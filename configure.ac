@@ -348,6 +348,7 @@ AC_CONFIG_LINKS([
  output_files/random8-gf2.g2.res:output_files/random8-gf2.g2.res
  test/diff/diff_random8-gf2.sh:test/diff/diff_random8-gf2.sh
  input_files/realroot1.ms:input_files/realroot1.ms
+ output_files/realroot1.p0.res:output_files/realroot1.p0.res
  output_files/realroot1.p128.res:output_files/realroot1.p128.res
  output_files/realroot1.p1024.res:output_files/realroot1.p1024.res
  test/diff/diff_realroot1.sh:test/diff/diff_realroot1.sh
@@ -355,6 +356,10 @@ AC_CONFIG_LINKS([
  output_files/realroot-extraction-exact-root.p128.res:output_files/realroot-extraction-exact-root.p128.res
  output_files/realroot-extraction-exact-root.p1024.res:output_files/realroot-extraction-exact-root.p1024.res
  test/diff/diff_realroot-extraction-exact-root.sh:test/diff/diff_realroot-extraction-exact-root.sh
+ input_files/reals-close-components.ms:input_files/reals-close-components.ms
+ output_files/reals-close-components.p128.res:output_files/reals-close-components.p128.res
+ output_files/reals-close-components.p1024.res:output_files/reals-close-components.p1024.res
+ test/diff/diff_reals-close-components.sh:test/diff/diff_reals-close-components.sh
  input_files/reals-dim0-chgvar.ms:input_files/reals-dim0-chgvar.ms
  output_files/reals-dim0-chgvar.p128.res:output_files/reals-dim0-chgvar.p128.res
  output_files/reals-dim0-chgvar.p1024.res:output_files/reals-dim0-chgvar.p1024.res
@@ -371,10 +376,10 @@ AC_CONFIG_LINKS([
  output_files/reals-dim0-swapvar.p128.res:output_files/reals-dim0-swapvar.p128.res
  output_files/reals-dim0-swapvar.p1024.res:output_files/reals-dim0-swapvar.p1024.res
  test/diff/diff_reals-dim0-swapvar.sh:test/diff/diff_reals-dim0-swapvar.sh
- input_files/reals-close-components.ms:input_files/reals-close-components.ms
- output_files/reals-close-components.p128.res:output_files/reals-close-components.p128.res
- output_files/reals-close-components.p1024.res:output_files/reals-close-components.p1024.res
- test/diff/diff_reals-close-components.sh:test/diff/diff_reals-close-components.sh
+ input_files/reals-exact-left-end.ms:input_files/reals-exact-left-end.ms
+ output_files/reals-exact-left-end.p128.res:output_files/reals-exact-left-end.p128.res
+ output_files/reals-exact-left-end.p1024.res:output_files/reals-exact-left-end.p1024.res
+ test/diff/diff_reals-exact-left-end.sh:test/diff/diff_reals-exact-left-end.sh
  input_files/reals-zero-equal.ms:input_files/reals-zero-equal.ms
  output_files/reals-zero-equal.p128.res:output_files/reals-zero-equal.p128.res
  output_files/reals-zero-equal.p1024.res:output_files/reals-zero-equal.p1024.res

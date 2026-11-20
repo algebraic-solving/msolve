@@ -4393,7 +4393,7 @@ static void real_components_print(const long *deg, const long n) {
     while (j < n && d[j] == d[i]) {
       j++;
     }
-    fprintf(VERBSTREAM, "#components of degree %-6ld%11ld\n", d[i], j - i);
+    fprintf(VERBSTREAM, "#components of degree %-6ld %11ld\n", d[i], j - i);
     i = j;
   }
   fprintf(VERBSTREAM, "-----------------------------------------\n");

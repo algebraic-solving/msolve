@@ -4246,8 +4246,8 @@ static void real_coords_point(real_coords_t *rc, mpz_param_t param,
         break;
       }
       if (r == 1) {
-        usolve_refine_root_arb(rt, &rc->elim, rc->delim, 2 * rt->k,
-                               &rc->extra);
+        usolve_refine_root_arb(rt, &rc->elim, rc->delim,
+                               MAX(2 * rt->k, rt->k + 1), &rc->extra);
         rc->nref++;
       } else {
         rc->wprec *= 2;

@@ -112,6 +112,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_source.sh:test/diff/diff_source.sh
  test/diff/diff_source-gb-lm.sh:test/diff/diff_source-gb-lm.sh
  test/diff/diff_source-gb-red.sh:test/diff/diff_source-gb-red.sh
+ test/diff/diff_source-gb-elim-drl.sh:test/diff/diff_source-gb-elim-drl.sh
  test/diff/diff_source-gb-elim-red.sh:test/diff/diff_source-gb-elim-red.sh
  test/diff/diff_source-noarg.sh:test/diff/diff_source-noarg.sh
  test/diff/diff_source-param-fullnf-qq.sh:test/diff/diff_source-param-fullnf-qq.sh
@@ -181,6 +182,16 @@ AC_CONFIG_LINKS([
  output_files/elim-qq.g2.e1.res:output_files/elim-qq.g2.e1.res
  output_files/elim-qq.g2.e2.res:output_files/elim-qq.g2.e2.res
  test/diff/diff_elim-qq.sh:test/diff/diff_elim-qq.sh
+ input_files/elim-drl-31.ms:input_files/elim-drl-31.ms
+ output_files/elim-drl-31.g2.e1.res:output_files/elim-drl-31.g2.e1.res
+ output_files/elim-drl-31.g2.e4.res:output_files/elim-drl-31.g2.e4.res
+ output_files/elim-drl-31.g2.e5.res:output_files/elim-drl-31.g2.e5.res
+ test/diff/diff_elim-drl-31.sh:test/diff/diff_elim-drl-31.sh
+ input_files/elim-drl-qq.ms:input_files/elim-drl-qq.ms
+ output_files/elim-drl-qq.g2.e1.res:output_files/elim-drl-qq.g2.e1.res
+ output_files/elim-drl-qq.g2.e4.res:output_files/elim-drl-qq.g2.e4.res
+ output_files/elim-drl-qq.g2.e5.res:output_files/elim-drl-qq.g2.e5.res
+ test/diff/diff_elim-drl-qq.sh:test/diff/diff_elim-drl-qq.sh
  input_files/empty-elim-qq.ms:input_files/empty-elim-qq.ms
  output_files/empty-elim-qq.g2.e1.res:output_files/empty-elim-qq.g2.e1.res
  output_files/empty-elim-qq.g2.e2.res:output_files/empty-elim-qq.g2.e2.res

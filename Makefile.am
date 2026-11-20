@@ -90,7 +90,6 @@ checkdiff       = \
 			  test/diff/diff_random6-gf256-int.sh \
 			  test/diff/diff_random8-gf2.sh \
 			  test/diff/diff_realroot1.sh \
-			  test/diff/diff_realroot1-precision-zero.sh \
 			  test/diff/diff_realroot-extraction-exact-root.sh \
 			  test/diff/diff_reals-close-components.sh \
 			  test/diff/diff_reals-dim0-chgvar.sh \

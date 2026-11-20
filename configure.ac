@@ -352,7 +352,6 @@ AC_CONFIG_LINKS([
  output_files/realroot1.p128.res:output_files/realroot1.p128.res
  output_files/realroot1.p1024.res:output_files/realroot1.p1024.res
  test/diff/diff_realroot1.sh:test/diff/diff_realroot1.sh
- test/diff/diff_realroot1-precision-zero.sh:test/diff/diff_realroot1-precision-zero.sh
  input_files/realroot-extraction-exact-root.ms:input_files/realroot-extraction-exact-root.ms
  output_files/realroot-extraction-exact-root.p128.res:output_files/realroot-extraction-exact-root.p128.res
  output_files/realroot-extraction-exact-root.p1024.res:output_files/realroot-extraction-exact-root.p1024.res

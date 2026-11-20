@@ -91,11 +91,11 @@ checkdiff       = \
 			  test/diff/diff_random8-gf2.sh \
 			  test/diff/diff_realroot1.sh \
 			  test/diff/diff_realroot-extraction-exact-root.sh \
+			  test/diff/diff_reals-close-components.sh \
 			  test/diff/diff_reals-dim0-chgvar.sh \
 			  test/diff/diff_reals-dim0-extract.sh \
 			  test/diff/diff_reals-dim0.sh \
 			  test/diff/diff_reals-dim0-swapvar.sh \
-			  test/diff/diff_reals-close-components.sh \
 			  test/diff/diff_reals-zero-equal.sh \
 			  test/diff/diff_test-lifting2.sh \
 			  test/diff/diff_univariate-assign-left.sh \

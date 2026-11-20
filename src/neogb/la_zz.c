@@ -51,8 +51,11 @@
  * further and become new pivots one after the other. When the rows change
  * the pivots concurrently, the new pivots of different threads are not
  * reduced by each other and the coefficients blow up, by far more than
- * the parallelization gains. The pivots are still set by compare and
- * swap, a replaced pivot is freed after the reduction.
+ * the parallelization gains. Before a row becomes a pivot, the pivots
+ * which have to be reduced again (see below) are reduced in parallel
+ * when there are several threads. The
+ * pivots are still set by compare and swap, a replaced pivot is freed
+ * after the reduction.
  *
  * Coefficient growth: a new pivot is reduced by the pivots present when it
  * is created. A pivot with unreduced entries in the columns of later
@@ -127,6 +130,9 @@ struct zz_dense_t
      * one of the pivot becomes the lead column, the entries right of it
      * are still reduced into the residue systems of the pivots */
     int ro;
+    /* pend[c] = 1 while another thread reduces the pivot of column c
+     * again, NULL if no pivots are reduced in parallel */
+    uint8_t *pend;
 };
 
 static inline zz_row_t *zz_load_piv(
@@ -183,6 +189,7 @@ static void zz_dense_init(
     d->aux  = NULL;
     d->sp   = 0;
     d->ro   = 0;
+    d->pend = NULL;
     d->nh   = 0;
     d->nrem = 0;
     d->hp   = (hm_t *)malloc((unsigned long)nc * sizeof(hm_t));
@@ -845,6 +852,13 @@ static int64_t zz_reduce_dense_row(
         if (d->big == 0 ? d->d64[i] == 0 : mpz_sgn(d->dz[i]) == 0) {
             goto next;
         }
+        if (d->pend != NULL) {
+            while (__atomic_load_n(d->pend + i, __ATOMIC_ACQUIRE) != 0) {
+#if defined __x86_64__
+                __builtin_ia32_pause();
+#endif
+            }
+        }
         zz_row_t *p = zz_load_piv(pivs, i);
         if (p == NULL) {
             if (lc == -1) {
@@ -1074,6 +1088,49 @@ static void zz_dense_check_sparse(
     }
 }
 
+/* reduces the new pivots from column lo on which have to be reduced again.
+ * They are handed out to the threads from the right to the left, and the
+ * reduction of a pivot waits at the columns whose pivots are still being
+ * reduced, so the result is the same as reducing them one after the other
+ * from the right to the left. lst and pend have nc entries, pend is zero
+ * before and after. */
+static void zz_refresh_stale_pivots(
+        zz_row_t **pivs,
+        zz_dense_t *ds,
+        const len_t lo,
+        const len_t nc,
+        const int nthrds,
+        uint8_t *pend,
+        len_t *lst
+        )
+{
+    len_t k, n = 0;
+
+    for (len_t c = nc; c-- > lo;) {
+        zz_row_t *p = pivs[c];
+        if (p != NULL && p->own != 0 && zz_stale(ds, p)) {
+            lst[n++] = c;
+            pend[c]  = 1;
+        }
+    }
+    if (n < 2 || nthrds < 2) {
+        for (k = 0; k < n; ++k) {
+            zz_refresh_pivot(ds, pivs, pivs[lst[k]], lst[k], nc);
+            pend[lst[k]] = 0;
+        }
+        return;
+    }
+#pragma omp parallel for num_threads(nthrds) schedule(dynamic, 1)
+    for (k = 0; k < n; ++k) {
+        zz_dense_t *d = ds + 2 * omp_get_thread_num();
+        const len_t c = lst[k];
+        d->aux->pend  = pend;
+        zz_refresh_pivot(d, pivs, pivs[c], c, nc);
+        d->aux->pend  = NULL;
+        __atomic_store_n(pend + c, 0, __ATOMIC_RELEASE);
+    }
+}
+
 /* reduces the rows rows[0], ..., rows[nr-1] with coefficients from the
  * basis by the pivots and among each other; frees the rows; returns the
  * number of rows reduced to zero.
@@ -1088,7 +1145,11 @@ static void zz_dense_check_sparse(
  * each other and their coefficients blow up.
  * Before each chunk, the new pivots which have to be reduced again are
  * reduced, from the right to the left, so that the rows of the chunk do
- * not stop at them. */
+ * not stop at them. The same is done before each row is inserted, for the
+ * pivots right of its first column: each new pivot makes the pivots with
+ * an entry in its column stale, and reducing them in parallel there is
+ * faster than reducing them one by one when the row meets them. With one
+ * thread, only the pivots the row meets are reduced again. */
 static len_t zz_reduce_rows(
         zz_row_t **pivs,
         hm_t **rows,
@@ -1104,15 +1165,12 @@ static len_t zz_reduce_rows(
     len_t nzero = 0;
 
     zz_row_t **red = (zz_row_t **)malloc((unsigned long)nr * sizeof(zz_row_t *));
+    uint8_t *pend = (uint8_t *)calloc((unsigned long)nc, sizeof(uint8_t));
+    len_t *lst    = (len_t *)malloc((unsigned long)nc * sizeof(len_t));
     const len_t cs = 8 * (len_t)nthrds;
     for (len_t c0 = 0; c0 < nr; c0 += cs) {
         const len_t c1 = c0 + cs < nr ? c0 + cs : nr;
-        for (len_t c = nc; c-- > 0;) {
-            zz_row_t *p = pivs[c];
-            if (p != NULL && p->own != 0 && zz_stale(ds, p)) {
-                zz_refresh_pivot(ds, pivs, p, c, nc);
-            }
-        }
+        zz_refresh_stale_pivots(pivs, ds, 0, nc, nthrds, pend, lst);
 #pragma omp parallel for num_threads(nthrds) schedule(dynamic) \
     reduction(+:nzero)
         for (i = c0; i < c1; ++i) {
@@ -1139,6 +1197,10 @@ static len_t zz_reduce_rows(
             if (red[i] == NULL) {
                 continue;
             }
+            if (nthrds > 1) {
+                zz_refresh_stale_pivots(pivs, ds, red[i]->row[OFFSET], nc,
+                        nthrds, pend, lst);
+            }
             zz_dense_load(ds, red[i]->row, red[i]->c32, red[i]->cf);
             zz_dense_check_sparse(ds, red[i]->row, apl, nc);
             zz_row_free(red[i]);
@@ -1147,6 +1209,8 @@ static len_t zz_reduce_rows(
             }
         }
     }
+    free(lst);
+    free(pend);
     free(red);
     return nzero;
 }

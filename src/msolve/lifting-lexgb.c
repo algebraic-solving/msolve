@@ -661,11 +661,11 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         fprintf(file, "#---\n");
         fprintf(file, "[1]:\n");
       }
-      lexgb_close_output(file, flags->files);
       if(!unit){
-        fprintf(ERRSTREAM, "The ideal is not zero-dimensional: "
-                "no change of order performed.\n");
+        /* positive dimension: same output as the default call */
+        fprintf(file, "[1, %d, -1, []]:\n", gens->nvars);
       }
+      lexgb_close_output(file, flags->files);
       free(lm0);
       free_basis_without_hash_table(&bsp);
       free_basis_without_hash_table(&bs);
@@ -673,7 +673,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
       free_hash_table(&bht);
       free_trace(&md->tr);
       free(md);
-      return unit ? 0 : -1;
+      return 0;
     }
 
     md->fglm_rtime = realtime();

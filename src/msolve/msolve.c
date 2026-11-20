@@ -2409,8 +2409,13 @@ static int32_t *initial_modular_step(
     }
     else{
         if(PRINT_LEX_GB(print_gb)){
-            fprintf(ERRSTREAM, "The ideal is not zero-dimensional: "
-                    "no change of order performed.\n");
+            /* positive dimension: same output as the default call */
+            FILE *of = (files->out_file != NULL) ?
+                fopen(files->out_file, "ab") : OUTSTREAM;
+            fprintf(of, "[1, %d, -1, []]:\n", gens->nvars);
+            if(files->out_file != NULL){
+                fclose(of);
+            }
         }
         *dim  = 1;
         *dquot_ori = -1;

@@ -151,6 +151,11 @@ struct ht_t
                     * bvl-1, see update_boolean_masks() */
     hl_t bvl;     /* number of valid entries of bvm */
     hl_t bvsz;    /* size of bvm */
+    ht_t *orig;   /* for a copy: the hash table it is a copy of, the copy
+                   * is kept in orig->spare for reuse when it is freed */
+    ht_t *spare;  /* list of freed copies of this hash table which are
+                   * reused by copy_hash_table, linked via next */
+    ht_t *next;   /* next copy in the list orig->spare */
 };
 
 /* S-pair types */

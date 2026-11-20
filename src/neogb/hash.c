@@ -136,16 +136,101 @@ ht_t *initialize_basis_hash_table(
         ht->ev[j]  = tmp + (j*ht->evl);
     }
     st->max_bht_size  = ht->esz;
+    ht->orig  = NULL;
+    ht->spare = NULL;
+    ht->next  = NULL;
     return ht;
 }
 
+/* frees the data of ht which is not shared with other hash tables */
+static void free_local_hash_table_data(
+    ht_t *ht
+    )
+{
+    if (ht->hmap) {
+        free(ht->hmap);
+        ht->hmap = NULL;
+    }
+    if (ht->hd) {
+        free(ht->hd);
+        ht->hd  = NULL;
+    }
+    if (ht->ev) {
+        /* note: memory is allocated as one big block,
+            *       so freeing ev[0] is enough */
+        free(ht->ev[0]);
+        free(ht->ev);
+        ht->ev  = NULL;
+    }
+    free(ht->bvm);
+    ht->bvm = NULL;
+}
+
+/* frees the copies of ht kept for reuse */
+static void free_spare_copies(
+    ht_t *ht
+    )
+{
+    while (ht->spare != NULL) {
+        ht_t *c   = ht->spare;
+        ht->spare = c->next;
+        free_spare_copies(c);
+        free_local_hash_table_data(c);
+        free(c);
+    }
+}
+
 ht_t *copy_hash_table(
-    const ht_t *bht
+    ht_t *bht
     )
 {
     hl_t j;
 
-    ht_t *ht  = (ht_t *)malloc(sizeof(ht_t));
+    ht_t *ht  = NULL;
+
+    /* reuse a freed copy: over the rationals a copy is made and freed
+     * for each prime, allocating it anew each time is expensive for
+     * large hash tables */
+#pragma omp critical (hash_table_copies)
+    {
+        ht = bht->spare;
+        if (ht != NULL) {
+            bht->spare = ht->next;
+            ht->next   = NULL;
+        }
+    }
+    if (ht != NULL) {
+        if (ht->hsz == bht->hsz && ht->esz == bht->esz
+                && ht->evl == bht->evl) {
+            memcpy(ht->hmap, bht->hmap, (unsigned long)ht->hsz * sizeof(hi_t));
+            /* the entries beyond eld have to be zero as for a new copy */
+            if (ht->eld > bht->eld) {
+                memset(ht->hd+bht->eld, 0,
+                        (unsigned long)(ht->eld - bht->eld) * sizeof(hd_t));
+            }
+            memcpy(ht->hd, bht->hd, (unsigned long)bht->eld * sizeof(hd_t));
+            memcpy(ht->ev[0], bht->ev[0],
+                    (unsigned long)ht->evl * bht->eld * sizeof(exp_t));
+            ht->eld = bht->eld;
+            ht->nv      = bht->nv;
+            ht->mo      = bht->mo;
+            ht->boolean = bht->boolean;
+            ht->ebl     = bht->ebl;
+            ht->ndv     = bht->ndv;
+            ht->bpv     = bht->bpv;
+            ht->dm      = bht->dm;
+            ht->rn      = bht->rn;
+            ht->dv      = bht->dv;
+            ht->bvl     = 0;
+            ht->bvsz    = 0;
+            return ht;
+        }
+        /* bht has been enlarged since */
+        free_local_hash_table_data(ht);
+        free(ht);
+    }
+
+    ht  = (ht_t *)malloc(sizeof(ht_t));
 
     ht->nv    = bht->nv;
     ht->mo    = bht->mo;
@@ -194,6 +279,9 @@ ht_t *copy_hash_table(
     for (j = 0; j < esz; ++j) {
         ht->ev[j]  = tmp + (j*ht->evl);
     }
+    ht->orig  = bht;
+    ht->spare = NULL;
+    ht->next  = NULL;
     return ht;
 }
 
@@ -249,6 +337,9 @@ ht_t *initialize_secondary_hash_table(
     for (j = 0; j < esz; ++j) {
         ht->ev[j]  = tmp + (j*ht->evl);
     }
+    ht->orig  = NULL;
+    ht->spare = NULL;
+    ht->next  = NULL;
     return ht;
 }
 
@@ -277,25 +368,19 @@ void free_hash_table(
     )
 {
     ht_t *ht  = *htp;
-    if (ht->hmap) {
-        free(ht->hmap);
-        ht->hmap = NULL;
+    free_spare_copies(ht);
+    if (ht->orig != NULL && ht->bvm == NULL) {
+        /* keep the copy for the next copy of ht->orig */
+#pragma omp critical (hash_table_copies)
+        {
+            ht->next        = ht->orig->spare;
+            ht->orig->spare = ht;
+        }
+    } else {
+        free_local_hash_table_data(ht);
+        free(ht);
     }
-    if (ht->hd) {
-        free(ht->hd);
-        ht->hd  = NULL;
-    }
-    if (ht->ev) {
-        /* note: memory is allocated as one big block,
-            *       so freeing ev[0] is enough */
-        free(ht->ev[0]);
-        free(ht->ev);
-        ht->ev  = NULL;
-    }
-    free(ht->bvm);
-    free(ht);
-    ht    = NULL;
-    *htp  = ht;
+    *htp  = NULL;
 }
 
 void full_free_hash_table(
@@ -303,39 +388,11 @@ void full_free_hash_table(
                      )
 {
   ht_t *ht  = *htp;
-  if (ht->hmap) {
-    free(ht->hmap);
-    ht->hmap = NULL;
-  }
-  if (ht->hd) {
-    free(ht->hd);
-    ht->hd  = NULL;
-  }
-  if (ht->ev) {
-    /* note: memory is allocated as one big block,
-     *       so freeing ev[0] is enough */
-    free(ht->ev[0]);
-    free(ht->ev);
-    ht->ev  = NULL;
-  }
-  if (ht != NULL) {
-    if (ht->rn) {
-      free(ht->rn);
-      ht->rn = NULL;
-    }
-    if (ht->dv) {
-      free(ht->dv);
-      ht->dv = NULL;
-    }
-    if (ht->dm) {
-      free(ht->dm);
-      ht->dm = NULL;
-    }
-  }
-  free(ht->bvm);
+  free_spare_copies(ht);
+  free_local_hash_table_data(ht);
+  free_shared_hash_data(ht);
   free(ht);
-  ht    = NULL;
-  *htp  = ht;
+  *htp  = NULL;
 }
 
 /* we just double the hash table size */

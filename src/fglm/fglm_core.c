@@ -1690,7 +1690,9 @@ param_t *nmod_fglm_shape(sp_matfglm_t *matrix, mod_t prime,
                          nvars_t *linvars, uint32_t *lineqs, nvars_t *squvars,
                          int lead_only, int info_level, md_t *st){
   const szmat_t D = matrix->ncols;
-  if(prime >= FGLM_SPARSE_MAX_PRIME || nvars < 2 || D < 2){
+  /* initialize_fglm_data reads vecinit[block_size]: block_size >= D only if
+   * x_n is linear, then not in shape position */
+  if(prime >= FGLM_SPARSE_MAX_PRIME || nvars < 2 || D < 2 || block_size >= D){
     return NULL;
   }
   fglm_data_t *data = allocate_fglm_data(matrix->nrows, D, nvars);

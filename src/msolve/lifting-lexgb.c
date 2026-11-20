@@ -181,6 +181,10 @@ static int lexgb_shape_mod(CF_t *res, const sp_multimatfglm_t *M,
                            const uint32_t p, const int lead_only){
   const int nv = M->nvars;
   const szmat_t D = M->ncols;
+  /* x_n linear: its minimal polynomial has degree 1 < D */
+  if (M->rowsel[(uint64_t)(nv - 1) * D + M->one] >= D) {
+    return 0;
+  }
   md_t *lmd = malloc(sizeof(md_t));
   memcpy(lmd, md, sizeof(md_t));
   nvars_t *linvars = calloc(nv, sizeof(nvars_t));

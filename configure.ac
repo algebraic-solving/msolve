@@ -454,6 +454,7 @@ AC_CONFIG_LINKS([
  input_files/univariate-sgn.ms:input_files/univariate-sgn.ms
  output_files/univariate-sgn.p128.res:output_files/univariate-sgn.p128.res
  output_files/univariate-sgn.p1024.res:output_files/univariate-sgn.p1024.res
+ output_files/univariate-sgn.x2.res:output_files/univariate-sgn.x2.res
  test/diff/diff_univariate-sgn.sh:test/diff/diff_univariate-sgn.sh
  input_files/univariate-wilkinson-both-signs.ms:input_files/univariate-wilkinson-both-signs.ms
  output_files/univariate-wilkinson-both-signs.p128.res:output_files/univariate-wilkinson-both-signs.p128.res

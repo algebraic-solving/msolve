@@ -466,6 +466,10 @@ struct md_t
                         * DRL Groebner basis for an elimination order */
     md_t *drl_md; /* meta data of the DRL Groebner basis computation */
     bs_t *drl_bs; /* input generators w.r.t. DRL for elim_drl */
+    md_t *elim_md; /* meta data of the elimination Groebner basis
+                    * computation from the DRL one, holds its tracer */
+    bs_t *elim_bs; /* its input learnt with the first prime, for
+                    * checking the input of the next primes */
     int32_t boolean; /* computation in the Boolean ring over GF(2) */
     int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
     int32_t laopt;

@@ -878,18 +878,38 @@ static inline void drl_to_block_exponents(
     }
 }
 
+/* index of the monomial a in ht, 0 if it is not contained in ht */
+static inline hi_t find_in_hash_table(
+        const exp_t * const a,
+        const ht_t * const ht
+        )
+{
+    len_t j;
+    hi_t k;
+    val_t h = 0;
+
+    for (j = 0; j < ht->evl; ++j) {
+        h +=  ht->rn[j] * a[j];
+    }
+    return is_contained_in_hash_table(a, ht, h, &k) ? k : 0;
+}
+
 /* Copies the elements src->hm[idx[0]], ..., src->hm[idx[n-1]] to the
  * empty basis dst whose hash table may use another monomial order,
  * nev is the number of eliminated variables of the elimination order
  * of src resp. dst. The terms are sorted w.r.t. the order of dst, the
- * coefficients are not normalized. */
-static void copy_basis_to_other_order(
+ * coefficients are not normalized. If lookup is set the hash table of
+ * dst is not changed: the terms are only looked up, if one of them is
+ * missing 0 is returned and dst holds the elements copied so far
+ * (without coefficients). Otherwise 1 is returned. */
+static int copy_basis_to_other_order(
         bs_t *dst,
         const bs_t * const src,
         const bl_t * const idx,
         const len_t n,
         const len_t nev,
-        const md_t * const md
+        const md_t * const md,
+        const int lookup
         )
 {
     len_t i, j;
@@ -906,7 +926,7 @@ static void copy_basis_to_other_order(
     for (i = 0; i < n; ++i) {
         const hm_t * const s = src->hm[idx[i]];
         const len_t len      = s[LENGTH];
-        while (len >= dht->esz - dht->eld) {
+        while (!lookup && len >= dht->esz - dht->eld) {
             enlarge_hash_table(dht);
         }
         hm_t *d     = (hm_t *)malloc(((unsigned long)len+OFFSET) * sizeof(hm_t));
@@ -919,16 +939,34 @@ static void copy_basis_to_other_order(
             } else {
                 drl_to_block_exponents(e, sht->ev[s[OFFSET+j]], nev, nv);
             }
-            d[OFFSET+j] = insert_in_hash_table(e, dht);
+            if (!lookup) {
+                d[OFFSET+j] = insert_in_hash_table(e, dht);
+            } else if ((d[OFFSET+j] = find_in_hash_table(e, dht)) == 0) {
+                free(d);
+                dst->ld = i;
+                free(e);
+                return 0;
+            }
         }
         dst->hm[i]  = d;
         dst->red[i] = 0;
 
         switch (md->ff_bits) {
             case 0:
+                /* the source may also be a basis over a prime field */
                 dst->cf_qq[i] = (mpz_t *)malloc((unsigned long)len * sizeof(mpz_t));
                 for (j = 0; j < len; ++j) {
-                    mpz_init_set(dst->cf_qq[i][j], src->cf_qq[s[COEFFS]][j]);
+                    if (src->cf_qq != NULL) {
+                        mpz_init_set(dst->cf_qq[i][j], src->cf_qq[s[COEFFS]][j]);
+                    } else if (src->cf_32 != NULL) {
+                        mpz_init_set_ui(dst->cf_qq[i][j], src->cf_32[s[COEFFS]][j]);
+                    } else if (src->cf_16 != NULL) {
+                        mpz_init_set_ui(dst->cf_qq[i][j], src->cf_16[s[COEFFS]][j]);
+                    } else if (src->cf_8 != NULL) {
+                        mpz_init_set_ui(dst->cf_qq[i][j], src->cf_8[s[COEFFS]][j]);
+                    } else {
+                        mpz_init_set_ui(dst->cf_qq[i][j], src->cf_64[s[COEFFS]][j]);
+                    }
                 }
                 sort_terms_qq(&(dst->cf_qq[i]), &(dst->hm[i]), dht);
                 break;
@@ -974,6 +1012,7 @@ static void copy_basis_to_other_order(
     dst->ld = n;
 
     free(e);
+    return 1;
 }
 
 /* Do we compute a DRL Groebner basis first and the Groebner basis w.r.t.
@@ -1026,8 +1065,39 @@ static md_t *initialize_drl_meta_data(
     md->ht          = NULL;
     md->hcm         = NULL;
     md->ps          = NULL;
+    md->elim_md     = NULL;
+    md->elim_bs     = NULL;
 
     return md;
+}
+
+/* A basis hash table for the terms of the elements bs->hm[idx[0]], ...,
+ * bs->hm[idx[n-1]], at most of the initial size given by md. Over the
+ * rationals it is copied for each prime, so it should not be much larger
+ * than needed, it is enlarged during the computation if necessary. */
+static ht_t *initialize_small_basis_hash_table(
+        md_t *md,
+        const bs_t * const bs,
+        const bl_t * const idx,
+        const len_t n
+        )
+{
+    len_t i;
+    int64_t nterms = 0;
+
+    for (i = 0; i < n; ++i) {
+        nterms += bs->hm[idx[i]][LENGTH];
+    }
+    const int32_t hts = md->init_hts;
+    int32_t sz = 10;
+    while (sz < hts && ((int64_t)1 << sz) < 8 * nterms) {
+        sz++;
+    }
+    md->init_hts = sz < hts ? sz : hts;
+    ht_t *ht = initialize_basis_hash_table(md);
+    md->init_hts = hts;
+
+    return ht;
 }
 
 /* the input generators gbs w.r.t. DRL, using the new hash table of
@@ -1040,13 +1110,13 @@ static bs_t *initialize_drl_basis(
 {
     len_t i;
 
-    bs_t *bs = initialize_basis(md, NULL);
-
     bl_t *idx = (bl_t *)malloc((unsigned long)gbs->ld * sizeof(bl_t));
     for (i = 0; i < gbs->ld; ++i) {
         idx[i] = i;
     }
-    copy_basis_to_other_order(bs, gbs, idx, gbs->ld, nev, md);
+    bs_t *bs = initialize_basis(md,
+            initialize_small_basis_hash_table(md, gbs, idx, gbs->ld));
+    copy_basis_to_other_order(bs, gbs, idx, gbs->ld, nev, md, 0);
     free(idx);
 
     calculate_divmask(bs->ht);
@@ -1070,6 +1140,39 @@ void free_elim_drl_data(
         free(md->drl_md);
         md->drl_md = NULL;
     }
+    if (md->elim_bs != NULL) {
+        /* its hash table is the one of the input */
+        free_basis_without_hash_table(&(md->elim_bs));
+    }
+    if (md->elim_md != NULL) {
+        if (md->elim_md->tr != NULL) {
+            free_trace(&(md->elim_md->tr));
+        }
+        free(md->elim_md);
+        md->elim_md = NULL;
+    }
+}
+
+/* do the elements of a and b have the same terms? */
+static int same_supports(
+        const bs_t * const a,
+        const bs_t * const b
+        )
+{
+    len_t i;
+
+    if (a->ld != b->ld) {
+        return 0;
+    }
+    for (i = 0; i < a->ld; ++i) {
+        const len_t len = a->hm[i][LENGTH];
+        if (len != b->hm[i][LENGTH]
+                || memcmp(a->hm[i]+OFFSET, b->hm[i]+OFFSET,
+                    (unsigned long)len * sizeof(hm_t)) != 0) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
 /* Computes the Groebner basis of gbs w.r.t. the elimination order of
@@ -1112,26 +1215,46 @@ static bs_t *core_f4_elim_via_drl(
         return NULL;
     }
 
-    /* its elements are the input w.r.t. the elimination order, the
-     * hash table is handled as in copy_basis_mod_p */
-    md_t *emd = initialize_drl_meta_data(gmd);
-    emd->nev       = gmd->nev;
-    emd->round_deg = 1;
-    emd->reduce_gb = gmd->reduce_gb;
-    emd->fc        = fc;
-    set_ff_bits(emd, fc);
-
-    ht_t *eht = gbs->ht;
-    if (modular && gmd->f4_qq_round != 1) {
-        eht = copy_hash_table(gbs->ht);
+    /* its elements are the input w.r.t. the elimination order */
+    md_t *emd = NULL;
+    if (modular) {
+        /* over the rationals the elimination step is traced with the
+         * first prime and the tracer is applied for the next ones, so
+         * the input is given with integer coefficients */
+        if (gmd->elim_md == NULL) {
+            gmd->elim_md = initialize_drl_meta_data(gmd);
+            gmd->elim_md->nev       = gmd->nev;
+            gmd->elim_md->round_deg = 1;
+            gmd->elim_md->reduce_gb = gmd->reduce_gb;
+        }
+        emd = gmd->elim_md;
+        emd->f4_qq_round = gmd->f4_qq_round;
+        emd->info_level  = gmd->info_level;
+        emd->nthrds      = gmd->nthrds;
+    } else {
+        emd = initialize_drl_meta_data(gmd);
+        emd->nev       = gmd->nev;
+        emd->round_deg = 1;
+        emd->reduce_gb = gmd->reduce_gb;
+        emd->fc        = fc;
+        set_ff_bits(emd, fc);
     }
-    bs_t *ebs = initialize_basis(emd, eht);
-    copy_basis_to_other_order(ebs, dbs, dbs->lmps, dbs->lml, gmd->nev, emd);
-    sort_r(ebs->hm, (unsigned long)ebs->ld, sizeof(hm_t *),
-            initial_input_cmp, ebs->ht);
-    emd->ngens = ebs->ld;
-    for (i = 0; i < ebs->ld; ++i) {
-        ebs->lmps[i] = i;
+
+    /* over the rationals the terms are already in the hash table of
+     * gbs after the first prime if the prime is good, they are only
+     * looked up, so this hash table is not changed when applying the
+     * tracer. It cannot be replaced by a smaller one: the hash table of
+     * the basis of the first prime is used by the caller. */
+    const int lookup = modular && gmd->elim_bs != NULL;
+    bs_t *ebs = initialize_basis(emd, gbs->ht);
+    int ok = copy_basis_to_other_order(ebs, dbs, dbs->lmps, dbs->lml,
+            gmd->nev, emd, lookup);
+    if (ok) {
+        sort_r(ebs->hm, (unsigned long)ebs->ld, sizeof(hm_t *),
+                initial_input_cmp, ebs->ht);
+        for (i = 0; i < ebs->ld; ++i) {
+            ebs->lmps[i] = i;
+        }
     }
 
     if (!modular) {
@@ -1145,13 +1268,37 @@ static bs_t *core_f4_elim_via_drl(
         }
     }
 
-    /* Groebner basis w.r.t. the elimination order */
-    bs_t *bs = run_f4(ebs, emd, errp, fc);
-    free(emd);
+    if (!modular) {
+        emd->ngens = ebs->ld;
+        /* Groebner basis w.r.t. the elimination order */
+        bs_t *bs = run_f4(ebs, emd, errp, fc);
+        free(emd);
 
-    if (!modular && bs != NULL) {
-        /* as run_f4 the basis is returned instead of the input */
-        free_basis_without_hash_table(&gbs);
+        if (bs != NULL) {
+            /* as run_f4 the basis is returned instead of the input */
+            free_basis_without_hash_table(&gbs);
+        }
+        return bs;
+    }
+
+    if (gmd->elim_bs == NULL) {
+        emd->ngens = ebs->ld;
+    } else if (!ok || !same_supports(ebs, gmd->elim_bs)) {
+        /* the DRL Groebner basis differs from the one of the first
+         * prime, so the tracer cannot be applied: bad prime */
+        free_basis_without_hash_table(&ebs);
+        *errp = 1;
+        return NULL;
+    }
+
+    /* Groebner basis w.r.t. the elimination order, ebs uses the hash
+     * table of gbs */
+    bs_t *bs = run_f4(ebs, emd, errp, fc);
+
+    if (gmd->elim_bs == NULL) {
+        gmd->elim_bs = ebs;
+    } else {
+        free_basis_without_hash_table(&ebs);
     }
     return bs;
 }

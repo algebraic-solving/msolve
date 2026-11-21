@@ -39,6 +39,10 @@
 /* number of witnesses when no denominator is guessed: LLL is much more
    expensive on these lattices, whose first column is not scaled */
 #define LLL_WIT_K1 4
+/* LLL without guess is only tried when, for some lifted polynomial, at
+   least this share of the bits of the denominator of the previous one does
+   not divide its own */
+#define LLL_WIT_INFL 0.125
 /* the estimated cost of the calls to LLL is kept below LLL_WIT_BUDGET
    percent of the estimated cost of the primes used */
 #define LLL_WIT_BUDGET 10
@@ -131,11 +135,15 @@ typedef struct{
   int32_t *lwit; /* indices of the LLL witnesses, LLL_WIT_K per polynomial */
   int *nlwit; /* number of LLL witnesses of each polynomial */
   int32_t lll_next; /* number of primes of the next LLL attempt */
+  int32_t lll_fnext; /* same for the full lifting (see lll_full_block) */
   int32_t lll_ntries; /* number of calls to LLL */
   int32_t lll_nsucc; /* number of candidates found by LLL */
   double lll_time; /* elapsed time spent in lll_witnesses */
   double lll_cost; /* estimated cost of the calls to LLL (see
                       lll_witnesses_cost) */
+  double infl; /* largest share of the bits of the denominator of a lifted
+                  polynomial which do not divide the denominator of the
+                  next one (see lll_update_inflation) */
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
@@ -201,10 +209,12 @@ static inline void data_lift_init(data_lift_t dl,
   dl->lwit = calloc((size_t)npol * LLL_WIT_K, sizeof(int32_t));
   dl->nlwit = calloc(npol, sizeof(int));
   dl->lll_next = LLL_WIT_START;
+  dl->lll_fnext = LLL_WIT_START;
   dl->lll_ntries = 0;
   dl->lll_nsucc = 0;
   dl->lll_time = 0;
   dl->lll_cost = 0;
+  dl->infl = 0;
 }
 
 static inline void data_lift_clear(data_lift_t dl){
@@ -1142,10 +1152,85 @@ static inline void set_recdata_guess(rrec_data_t rd, const mpz_t mod_p,
   returns the index of the poly if some of its coeff could not be lifted
   else returns end
  */
+static int lll_common_den(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
+                          const int32_t *w, const int k, const uint32_t np,
+                          const mpz_t mod_p, const mpz_t guess,
+                          mpz_t den, mpz_t *num);
+static inline double lll_guess_cost(const int k, const double bits);
+static inline int32_t lll_next_attempt(const int32_t nprimes,
+                                       const double cost, const double pcost);
+
+/*
+  Coefficients of the k-th polynomial whose rational reconstruction failed
+  with the guessed denominator dl->tmp (at most LLL_WIT_K of them, of
+  indices fail[0], .., fail[nfail-1], with CRT images zf[0], ..): they are
+  reconstructed simultaneously by LLL (see lll_common_den) with this guess,
+  together with already reconstructed coefficients (indices in done[0],
+  .., done[ndone-1]) when there are less than LLL_WIT_K failing ones. On
+  success the guess is multiplied by the common factor found and they are
+  reconstructed again with it, else 0 is returned.
+
+  The guess is wrong if LLL returned a spurious vector: the lifted
+  polynomial is then rejected by verif_lifted_basis.
+ */
+static int lll_full_block(gb_modpoly_t modgbs, data_lift_t dl, int32_t k,
+                          int32_t *fail, int nfail, mpz_t *zf,
+                          const int32_t *done, int32_t ndone,
+                          mpz_t mod_p, rrec_data_t rd1, mpz_t rden,
+                          mpz_t *dens, const double pcost){
+  modpolys_t *polys = modgbs->modpolys;
+  const uint32_t np = modgbs->nprimes - 1;
+  const double bits = mpz_sizeinbase(mod_p, 2);
+  int32_t w[LLL_WIT_K];
+  int kk = 0;
+  for(int j = 0; j < nfail; j++){
+    w[kk++] = fail[j];
+  }
+  for(int32_t j = ndone - 1; j >= 0 && kk < LLL_WIT_K; j--){
+    w[kk++] = done[j];
+  }
+  const double cost = lll_guess_cost(kk, bits);
+  if(kk < 2 || (int32_t)np < dl->lll_fnext
+     || (pcost > 0 && dl->lll_cost + cost
+         > LLL_WIT_BUDGET / 100.0 * modgbs->nprimes * pcost)){
+    return 0;
+  }
+  dl->lll_cost += cost;
+  mpz_t d, num[LLL_WIT_K];
+  mpz_init(d);
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_init(num[j]);
+  }
+  int ok = lll_common_den(modgbs, dl, k, w, kk, np, mod_p, dl->tmp, d, num);
+  dl->lll_fnext = ok ? (int32_t)np : lll_next_attempt(np, cost, pcost);
+  if(ok){
+    mpz_mul(dl->tmp, dl->tmp, d);
+    set_recdata_guess(rd1, mod_p, dl->tmp);
+    for(int j = 0; j < nfail && ok; j++){
+      const int32_t l = fail[j];
+      ok = lift_ratreconwden(polys[k]->cf_qq[l], rden, zf[j], mod_p,
+                             dl->tmp, rd1);
+      if(ok){
+        mpz_mul(dens[l], rden, dl->tmp);
+        if(mpz_cmp_ui(rden, 1)){
+          mpz_mul(dl->tmp, dl->tmp, rden);
+          set_recdata_guess(rd1, mod_p, dl->tmp);
+        }
+      }
+    }
+  }
+  mpz_clear(d);
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_clear(num[j]);
+  }
+  return ok;
+}
+
 static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
                                            int32_t start, int32_t end,
                                            mpz_t mod_p, rrec_data_t rd1, rrec_data_t rd2,
-                                           double *st_crt, double *st_rrec){
+                                           double *st_crt, double *st_rrec,
+                                           const double pcost){
 
   modpolys_t *polys = modgbs->modpolys;
 
@@ -1160,11 +1245,19 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   mpz_init(rden);
   mpz_init(zz);
   mpz_t *dens = NULL;
+  int32_t *done = NULL;
   if(maxlen > 0){
     dens = (mpz_t *)malloc(sizeof(mpz_t) * maxlen);
     for(uint32_t l = 0; l < maxlen; l++){
       mpz_init(dens[l]);
     }
+    done = (int32_t *)malloc(sizeof(int32_t) * maxlen);
+  }
+  /* coefficients whose reconstruction failed, see lll_full_block */
+  int32_t fail[LLL_WIT_K];
+  mpz_t zf[LLL_WIT_K];
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_init(zf[j]);
   }
 
   /* Data needed by multi CRT functions */
@@ -1190,6 +1283,9 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
       mpz_set(dl->tmp, dl->cden[k]);
       set_recdata_guess(rd1, mod_p, dl->tmp);
       int ok = 1;
+      int nfail = 0;
+      int32_t ndone = 0;
+      int used_lll = 0;
       for(int32_t l = 0; l < polys[k]->len; l++){
         rt = realtime();
         for(uint32_t i = 0; i < modgbs->nprimes-1; i++){
@@ -1200,16 +1296,38 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         fmpz_get_mpz(zz, y);
         *st_crt += realtime() - rt;
         rt = realtime();
-        if(lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p, dl->tmp, rd1)){
+        int b = lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p,
+                                  dl->tmp, rd1);
+        if(b){
           mpz_mul(dens[l], rden, dl->tmp);
           if(mpz_cmp_ui(rden, 1)){
             mpz_mul(dl->tmp, dl->tmp, rden);
             set_recdata_guess(rd1, mod_p, dl->tmp);
           }
-          *st_rrec += realtime() - rt;
+          if(mpz_sgn(polys[k]->cf_qq[l])){
+            done[ndone++] = l;
+          }
         }
         else{
-          *st_rrec += realtime() - rt;
+          /* kept for a simultaneous reconstruction by LLL */
+          mpz_set(zf[nfail], zz);
+          fail[nfail++] = l;
+          b = 1;
+        }
+        if(nfail == LLL_WIT_K
+           || (nfail > 0 && l == (int32_t)polys[k]->len - 1)){
+          b = lll_full_block(modgbs, dl, k, fail, nfail, zf, done, ndone,
+                             mod_p, rd1, rden, dens, pcost);
+          used_lll = 1;
+          for(int j = 0; j < nfail && b; j++){
+            if(mpz_sgn(polys[k]->cf_qq[fail[j]])){
+              done[ndone++] = fail[j];
+            }
+          }
+          nfail = 0;
+        }
+        *st_rrec += realtime() - rt;
+        if(!b){
           /* the witnesses of this poly are still valid: their common
              denominator remains the best guess for reconstructing them */
           mpz_set(dl->gden, dl->cden[k]);
@@ -1232,6 +1350,28 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         mpz_divexact(dens[l], dl->tmp, dens[l]);
         mpz_mul(polys[k]->cf_qq[l], polys[k]->cf_qq[l], dens[l]);
       }
+      if(k > 0 && polys[k - 1]->len > 0 && mpz_cmp_ui(polys[k - 1]->lm, 1)){
+        /* share of the denominator of the previous polynomial, which is
+           the guess for this one, not dividing its denominator */
+        mpz_gcd(rden, polys[k - 1]->lm, dl->tmp);
+        const double b = mpz_sizeinbase(polys[k - 1]->lm, 2);
+        const double f = (b - mpz_sizeinbase(rden, 2)) / b;
+        dl->infl = MAX(dl->infl, f);
+      }
+      if(used_lll){
+        /* the factor found by LLL may be a multiple of the missing part of
+           the denominator: the content is removed */
+        mpz_set(rden, polys[k]->lm);
+        for(int32_t l = 0; l < polys[k]->len && mpz_cmp_ui(rden, 1); l++){
+          mpz_gcd(rden, rden, polys[k]->cf_qq[l]);
+        }
+        if(mpz_cmp_ui(rden, 1)){
+          mpz_divexact(polys[k]->lm, polys[k]->lm, rden);
+          for(int32_t l = 0; l < polys[k]->len; l++){
+            mpz_divexact(polys[k]->cf_qq[l], polys[k]->cf_qq[l], rden);
+          }
+        }
+      }
       dl->check2[k] += 1;
     }
     if(dl->check1[k] < 1 && polys[k]->len > 0){
@@ -1251,6 +1391,10 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
       mpz_clear(dens[l]);
     }
     free(dens);
+    free(done);
+  }
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_clear(zf[j]);
   }
   mpz_clear(zz);
   mpz_clear(rden);
@@ -1439,39 +1583,37 @@ static inline void set_reduced_fraction(mpz_t num, mpz_t den,
 }
 
 /*
-  Reconstructs simultaneously the LLL witnesses of the i-th polynomial,
-  which share the denominator g * d, where g is the denominator guessed
-  from the previous polynomial (dl->pgden) and d is unknown.
+  Reconstructs simultaneously the k coefficients of index w[0], .., w[k-1]
+  of the i-th polynomial, which share the denominator g * d, where g is a
+  guessed denominator and d is unknown, from their images modulo the np
+  first primes, whose product is mod_p.
 
-  With u_1, .., u_k the CRT images of the witnesses modulo m, the vector
+  With u_1, .., u_k the CRT images of the coefficients modulo m, the vector
   (2^s d, n_1, .., n_k) with n_j = g d u_j mod m is a short vector of the
   lattice spanned by (2^s, g u_1, .., g u_k) and m e_1, .., m e_k. Since
   n_j / (g d) is a coefficient of the polynomial, n_j has about the bitsize
   of g d times the size of the coefficient: the first column is scaled by
-  2^s, s = bits(g), so that all entries have about the same size. LLL then
-  finds this vector, heuristically, once bits(m) exceeds about
-  bits(n) + bits(d) / k, instead of bits(n) + 2 bits(d) when one witness
-  is reconstructed with the guess g. This matters for the polynomials
-  whose denominator has a large factor which is not in the previous
-  ones (e.g. the first polynomial, for which g = 1).
+  2^s, s = bits(g) - 1, so that all entries have about the same size. LLL
+  then finds this vector, heuristically, once bits(m) exceeds about
+  bits(n) + bits(d) / k, instead of bits(n) + 2 bits(d) when a single
+  coefficient is reconstructed with the guess g.
 
   A candidate is accepted when all entries of the reduced vector are at
-  most 2^((s + k bits(m)) / (k + 1) - RR_MARGIN). It is then stored as the
-  reconstructed values of the three RR witnesses (and their lcm in cden),
-  so that it is checked with the next prime as these.
+  most 2^((s + k bits(m)) / (k + 1) - RR_MARGIN); d (positive) and the
+  n_j are then stored in den and num[0], .., num[k-1], so that the j-th
+  coefficient is num[j] / (g den).
 
   returns 1 if a candidate has been found, else 0.
  */
-static int lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
-                         const mpz_t mod_p, const mpz_t guess, const int kmax){
-  const int k = MIN(dl->nlwit[i], kmax);
+static int lll_common_den(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
+                          const int32_t *w, const int k, const uint32_t np,
+                          const mpz_t mod_p, const mpz_t guess,
+                          mpz_t den, mpz_t *num){
   if(k < 2){
     return 0;
   }
   double rt = realtime();
-  const int32_t *w = dl->lwit + (size_t)i * LLL_WIT_K;
   modpolys_t *pol = modgbs->modpolys + i;
-  const uint32_t np = modgbs->nprimes;
 
   fmpz_comb_t comb;
   fmpz_comb_temp_t comb_temp;
@@ -1510,40 +1652,16 @@ static int lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
     ok = ((slong)fmpz_bits(fmpz_mat_entry(B, 0, j)) <= bits);
   }
   if(ok){
-    mpz_t den, n, gd;
-    mpz_init(den);
-    mpz_init(n);
-    mpz_init(gd);
     fmpz_fdiv_q_2exp(y, d, s);
     fmpz_get_mpz(den, y);
     const int neg = (mpz_sgn(den) < 0);
     mpz_abs(den, den);
-    mpz_mul(gd, den, guess);
-    mpz_set_ui(dl->cden[i], 1);
     for(int j = 0; j < k; j++){
-      fmpz_get_mpz(n, fmpz_mat_entry(B, 0, j + 1));
+      fmpz_get_mpz(num[j], fmpz_mat_entry(B, 0, j + 1));
       if(neg){
-        mpz_neg(n, n);
+        mpz_neg(num[j], num[j]);
       }
-      /* stores the witnesses used by rational reconstruction */
-      if(w[j] == dl->coef[i]){
-        set_reduced_fraction(dl->num[i], dl->den[i], n, gd, dl->tmp);
-      }
-      if(w[j] == dl->coef2[i]){
-        set_reduced_fraction(dl->num2[i], dl->den2[i], n, gd, dl->tmp);
-      }
-      if(w[j] == dl->coef3[i]){
-        set_reduced_fraction(dl->num3[i], dl->den3[i], n, gd, dl->tmp);
-      }
-      /* the denominator of n / (g d) */
-      mpz_gcd(dl->tmp, n, gd);
-      mpz_divexact(dl->tmp, gd, dl->tmp);
-      mpz_lcm(dl->cden[i], dl->cden[i], dl->tmp);
     }
-    mpz_set(dl->gden, dl->cden[i]);
-    mpz_clear(den);
-    mpz_clear(n);
-    mpz_clear(gd);
     dl->lll_nsucc++;
   }
 
@@ -1558,15 +1676,75 @@ static int lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
   return ok;
 }
 
-/* estimated elapsed time of the calls to LLL of one attempt of
-   lll_witnesses, with LLL_WIT_K witnesses and the guessed denominator, then
-   with LLL_WIT_K1 witnesses and none, modulo an integer of the given
-   bitsize (fitted with FLINT's fmpz_lll on random2_7_7, random2_8_8 and
+/*
+  Reconstructs simultaneously (see lll_common_den) the LLL witnesses of the
+  i-th polynomial, at most kmax of them, with the guessed denominator
+  guess. This matters for the polynomials whose denominator has a large
+  factor which is not in the previous ones (e.g. the first polynomial, for
+  which no denominator is guessed).
+
+  The candidate is stored as the reconstructed values of the three RR
+  witnesses (and their lcm in cden), so that it is checked with the next
+  prime as these.
+
+  returns 1 if a candidate has been found, else 0.
+ */
+static int lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
+                         const mpz_t mod_p, const mpz_t guess, const int kmax){
+  const int k = MIN(dl->nlwit[i], kmax);
+  const int32_t *w = dl->lwit + (size_t)i * LLL_WIT_K;
+  mpz_t den, gd, num[LLL_WIT_K];
+  mpz_init(den);
+  mpz_init(gd);
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_init(num[j]);
+  }
+  const int ok = lll_common_den(modgbs, dl, i, w, k, modgbs->nprimes,
+                                mod_p, guess, den, num);
+  if(ok){
+    mpz_mul(gd, den, guess);
+    mpz_set_ui(dl->cden[i], 1);
+    for(int j = 0; j < k; j++){
+      /* stores the witnesses used by rational reconstruction */
+      if(w[j] == dl->coef[i]){
+        set_reduced_fraction(dl->num[i], dl->den[i], num[j], gd, dl->tmp);
+      }
+      if(w[j] == dl->coef2[i]){
+        set_reduced_fraction(dl->num2[i], dl->den2[i], num[j], gd, dl->tmp);
+      }
+      if(w[j] == dl->coef3[i]){
+        set_reduced_fraction(dl->num3[i], dl->den3[i], num[j], gd, dl->tmp);
+      }
+      /* the denominator of num[j] / (g d) */
+      mpz_gcd(dl->tmp, num[j], gd);
+      mpz_divexact(dl->tmp, gd, dl->tmp);
+      mpz_lcm(dl->cden[i], dl->cden[i], dl->tmp);
+    }
+    mpz_set(dl->gden, dl->cden[i]);
+  }
+  mpz_clear(den);
+  mpz_clear(gd);
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_clear(num[j]);
+  }
+  return ok;
+}
+
+/* estimated elapsed time of a call to lll_common_den with k coefficients
+   and a guessed denominator, modulo an integer of the given bitsize
+   (fitted with FLINT's fmpz_lll on random2_7_7, random2_8_8 and
    minrank_d_2_p_3_q_7_r_3, 3000 to 72000 bits; the cost grows about as
    (k + 1)^2.37) */
-static inline double lll_witnesses_cost(const double bits){
-  return 7.6e-10 * pow(LLL_WIT_K + 1, 2.37) * pow(bits, 1.3)
-    + 5.0e-11 * pow(LLL_WIT_K1 + 1, 2.37) * pow(bits, 1.63);
+static inline double lll_guess_cost(const int k, const double bits){
+  return 7.6e-10 * pow(k + 1, 2.37) * pow(bits, 1.3);
+}
+
+/* same for an attempt of reconstructing the witnesses: LLL_WIT_K of them
+   with the guessed denominator, then, if noguess is nonzero, LLL_WIT_K1 of
+   them without guess, a lattice on which LLL is much slower */
+static inline double lll_witnesses_cost(const double bits, const int noguess){
+  return lll_guess_cost(LLL_WIT_K, bits)
+    + (noguess ? 5.0e-11 * pow(LLL_WIT_K1 + 1, 2.37) * pow(bits, 1.63) : 0);
 }
 
 /* estimated elapsed time of the application of the trace for one prime,
@@ -1588,10 +1766,10 @@ static inline double lll_prime_cost(const md_t *st){
    LLL_WIT_GROWTH percent. It only depends on the trace and on the number
    of primes, so that the number of primes used is reproducible. */
 static inline int32_t lll_next_attempt(const int32_t nprimes,
-                                       const double bits, const double pcost){
+                                       const double cost, const double pcost){
   double g = LLL_WIT_GROWTH / 100.0;
   if(pcost > 0){
-    const double A = lll_witnesses_cost(bits) / pcost;
+    const double A = cost / pcost;
     g = MAX(g, sqrt(2 * A / nprimes));
   }
   return MAX(nprimes + 1, (int32_t)(nprimes * (1 + g)));
@@ -1628,7 +1806,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   if(dl->lstart != dl->start){
     dl->start = crt_ratrecon_lift_modgbs(modgbs, dl, dl->lstart, dl->start,
                                          mod_p, recdata1, recdata2,
-                                         st_crt, st_rrec);
+                                         st_crt, st_rrec, pcost);
   }
   dl->lstart = dl->start;
 
@@ -1679,7 +1857,8 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
         /* the numerators found by LLL are multiples of the guess times
            the coefficients, hence LLL is not tried before the modulus has
            the bitsize of the guess */
-        const double lcost = lll_witnesses_cost(mpz_sizeinbase(mod_p, 2));
+        const double lcost = lll_witnesses_cost(mpz_sizeinbase(mod_p, 2),
+                                                dl->infl >= LLL_WIT_INFL);
         if(!b && (int32_t)modgbs->nprimes >= dl->lll_next
            && mpz_sizeinbase(mod_p, 2) >= mpz_sizeinbase(dl->pgden, 2) + RR_MARGIN
            && (pcost == 0 || dl->lll_cost + lcost
@@ -1689,15 +1868,18 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
              guess inflates the numerators when it shares little with the
              denominator of this polynomial */
           b = lll_witnesses(modgbs, dl, i, mod_p, dl->pgden, LLL_WIT_K);
-          if(!b && mpz_cmp_ui(dl->pgden, 1)){
+          /* the attempt without guess only pays when the guess carries
+             factors foreign to the denominator, which has not been seen
+             so far on many systems (all denominators then divide about
+             the same integer) */
+          if(!b && mpz_cmp_ui(dl->pgden, 1) && dl->infl >= LLL_WIT_INFL){
             mpz_t one;
             mpz_init_set_ui(one, 1);
             b = lll_witnesses(modgbs, dl, i, mod_p, one, LLL_WIT_K1);
             mpz_clear(one);
           }
           dl->lll_next = b ? (int32_t)modgbs->nprimes + 1
-            : lll_next_attempt(modgbs->nprimes, mpz_sizeinbase(mod_p, 2),
-                               pcost);
+            : lll_next_attempt(modgbs->nprimes, lcost, pcost);
         }
         if(!b){
           dl->check1[i] = 0;

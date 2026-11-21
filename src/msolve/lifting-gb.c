@@ -1260,14 +1260,21 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
     mpz_init(zf[j]);
   }
 
-  /* Data needed by multi CRT functions */
+  /* Data needed by multi CRT functions, mod_p is the product of the
+     np first primes (the last one is used for checking) */
+  const uint32_t np = modgbs->nprimes - 1;
   fmpz_comb_t comb;
   fmpz_comb_temp_t comb_temp;
   fmpz_t y;
+  /* the guess dl->tmp modulo the np first primes, see below */
+  mp_limb_t *gp = NULL;
+  int gvalid = 0;
+  const size_t mbits = mpz_sizeinbase(mod_p, 2);
   if(maxlen > 0){
-    fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
+    fmpz_comb_init(comb, modgbs->primes, np);
     fmpz_comb_temp_init(comb_temp, comb);
     fmpz_init(y);
+    gp = (mp_limb_t *)malloc(sizeof(mp_limb_t) * np);
   }
 
   set_recdata(rd2, mod_p);
@@ -1282,27 +1289,57 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
          coefficient, so that only the missing factor is reconstructed */
       mpz_set(dl->tmp, dl->cden[k]);
       set_recdata_guess(rd1, mod_p, dl->tmp);
+      gvalid = 0;
       int ok = 1;
       int nfail = 0;
       int32_t ndone = 0;
       int used_lll = 0;
       for(int32_t l = 0; l < polys[k]->len; l++){
         rt = realtime();
-        for(uint32_t i = 0; i < modgbs->nprimes-1; i++){
-          modgbs->cf_64[i] = MODCF(polys[k], l, i);
+        /* When the denominator of the coefficient u divides the guess g,
+           u g is an integer, given by the CRT of the residues of u g
+           modulo the primes (symmetric remainder modulo mod_p): it is
+           accepted when it has RR_MARGIN bits less than mod_p, which
+           avoids both the product u g and a rational reconstruction for
+           most coefficients. Else u is lifted by CRT and rationally
+           reconstructed with the guess g. A wrong integer (probability
+           about 2^(-RR_MARGIN)) is rejected when checking the lifted
+           polynomial with the next primes. */
+        if(!gvalid){
+          for(uint32_t i = 0; i < np; i++){
+            gp[i] = mpz_fdiv_ui(dl->tmp, modgbs->primes[i]);
+          }
+          gvalid = 1;
         }
-        fmpz_multi_CRT_ui(y, modgbs->cf_64,
-                          comb, comb_temp, 1);
-        fmpz_get_mpz(zz, y);
+        for(uint32_t i = 0; i < np; i++){
+          modgbs->cf_64[i] = ((uint64_t)MODCF(polys[k], l, i) * gp[i])
+            % modgbs->primes[i];
+        }
+        fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 1);
+        int b = (fmpz_bits(y) + 1 + RR_MARGIN <= mbits);
+        if(b){
+          fmpz_get_mpz(polys[k]->cf_qq[l], y);
+          mpz_set_ui(rden, 1);
+        }
+        else{
+          for(uint32_t i = 0; i < np; i++){
+            modgbs->cf_64[i] = MODCF(polys[k], l, i);
+          }
+          fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 1);
+          fmpz_get_mpz(zz, y);
+        }
         *st_crt += realtime() - rt;
         rt = realtime();
-        int b = lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p,
-                                  dl->tmp, rd1);
+        if(!b){
+          b = lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p,
+                                dl->tmp, rd1);
+        }
         if(b){
           mpz_mul(dens[l], rden, dl->tmp);
           if(mpz_cmp_ui(rden, 1)){
             mpz_mul(dl->tmp, dl->tmp, rden);
             set_recdata_guess(rd1, mod_p, dl->tmp);
+            gvalid = 0;
           }
           if(mpz_sgn(polys[k]->cf_qq[l])){
             done[ndone++] = l;
@@ -1319,6 +1356,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
           b = lll_full_block(modgbs, dl, k, fail, nfail, zf, done, ndone,
                              mod_p, rd1, rden, dens, pcost);
           used_lll = 1;
+          gvalid = 0;
           for(int j = 0; j < nfail && b; j++){
             if(mpz_sgn(polys[k]->cf_qq[fail[j]])){
               done[ndone++] = fail[j];
@@ -1384,6 +1422,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   }
 
   if(maxlen > 0){
+    free(gp);
     fmpz_clear(y);
     fmpz_comb_temp_clear(comb_temp);
     fmpz_comb_clear(comb);

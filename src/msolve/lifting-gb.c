@@ -19,6 +19,8 @@
  * Mohab Safey El Din */
 
 #include<flint/fmpz.h>
+#include<flint/fmpz_mat.h>
+#include<flint/fmpz_lll.h>
 #include "streams.h"
 
 #define NBCHECK 2
@@ -27,6 +29,19 @@
 /* witnesses are reconstructed every rr primes, rr being the largest
    power of 2 <= nprimes / RR_PERIOD_DIV */
 #define RR_PERIOD_DIV 128
+/* Witness coefficients of a polynomial reconstructed simultaneously by LLL
+   (see lll_witnesses): at most LLL_WIT_K of them, attempts are made once
+   at least LLL_WIT_START primes are used, then each time the number of
+   primes has grown by LLL_WIT_GROWTH percent */
+#define LLL_WIT_K 8
+#define LLL_WIT_START 8
+#define LLL_WIT_GROWTH 5
+/* number of witnesses when no denominator is guessed: LLL is much more
+   expensive on these lattices, whose first column is not scaled */
+#define LLL_WIT_K1 4
+/* the estimated cost of the calls to LLL is kept below LLL_WIT_BUDGET
+   percent of the estimated cost of the primes used */
+#define LLL_WIT_BUDGET 10
 #ifndef MIN
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #endif
@@ -113,6 +128,14 @@ typedef struct{
   mpz_t *crt3;
   mpz_t *num3;
   mpz_t *den3;
+  int32_t *lwit; /* indices of the LLL witnesses, LLL_WIT_K per polynomial */
+  int *nlwit; /* number of LLL witnesses of each polynomial */
+  int32_t lll_next; /* number of primes of the next LLL attempt */
+  int32_t lll_ntries; /* number of calls to LLL */
+  int32_t lll_nsucc; /* number of candidates found by LLL */
+  double lll_time; /* elapsed time spent in lll_witnesses */
+  double lll_cost; /* estimated cost of the calls to LLL (see
+                      lll_witnesses_cost) */
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
@@ -175,7 +198,13 @@ static inline void data_lift_init(data_lift_t dl,
     mpz_init(dl->num3[i]);
     mpz_init(dl->den3[i]);
   }
-
+  dl->lwit = calloc((size_t)npol * LLL_WIT_K, sizeof(int32_t));
+  dl->nlwit = calloc(npol, sizeof(int));
+  dl->lll_next = LLL_WIT_START;
+  dl->lll_ntries = 0;
+  dl->lll_nsucc = 0;
+  dl->lll_time = 0;
+  dl->lll_cost = 0;
 }
 
 static inline void data_lift_clear(data_lift_t dl){
@@ -220,6 +249,8 @@ static inline void data_lift_clear(data_lift_t dl){
   free(dl->num3);
   free(dl->den3);
   free(dl->coef3);
+  free(dl->lwit);
+  free(dl->nlwit);
 
 }
 
@@ -948,6 +979,52 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
 }
 
+/* LLL witnesses of the i-th polynomial: the three witnesses used for
+   rational reconstruction (so that the candidates found by LLL are checked
+   as the reconstructed ones), then nonzero coefficients spread over the
+   polynomial, all distinct and nonzero modulo the first prime */
+static inline void choose_lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl,
+                                        int32_t i){
+  int32_t *w = dl->lwit + (size_t)i * LLL_WIT_K;
+  const int32_t len = modgbs->modpolys[i]->len;
+  int n = 0;
+  int32_t nnz = 0;
+  for(int32_t l = 0; l < len; l++){
+    nnz += (MODCF(modgbs->modpolys[i], l, 0) != 0);
+  }
+  /* the j-th candidate is the first coefficient of the j-th group of
+     nonzero coefficients, the three first ones are the RR witnesses */
+  for(int32_t j = 0; j < LLL_WIT_K + 3 && n < LLL_WIT_K && nnz > 0; j++){
+    int32_t c;
+    if(j < 3){
+      c = (j == 0) ? dl->coef[i] : ((j == 1) ? dl->coef2[i] : dl->coef3[i]);
+      if(!MODCF(modgbs->modpolys[i], c, 0)){
+        continue;
+      }
+    }
+    else{
+      const int32_t target = ((int64_t)nnz * (j - 3)) / LLL_WIT_K;
+      int32_t cnt = -1;
+      c = -1;
+      for(int32_t l = 0; l < len; l++){
+        cnt += (MODCF(modgbs->modpolys[i], l, 0) != 0);
+        if(cnt == target){
+          c = l;
+          break;
+        }
+      }
+    }
+    int dup = (c < 0);
+    for(int m = 0; m < n && !dup; m++){
+      dup = (w[m] == c);
+    }
+    if(!dup){
+      w[n++] = c;
+    }
+  }
+  dl->nlwit[i] = n;
+}
+
 /* three witness coefficients are chosen per polynomial: the last nonzero
    one and the nonzero ones found scanning downwards from 2*len/3 and
    len/2 */
@@ -975,6 +1052,7 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
       d3--;
     }
     dlift->coef3[i] = d3;
+    choose_lll_witnesses(modgbs, dlift, i);
   }
 }
 
@@ -1351,10 +1429,179 @@ static inline int reconstructcoeff3(data_lift_t dl, int32_t i, mpz_t mod_p,
   return 1;
 }
 
+/* sets num / den to the reduced fraction n / d */
+static inline void set_reduced_fraction(mpz_t num, mpz_t den,
+                                        const mpz_t n, const mpz_t d,
+                                        mpz_t tmp){
+  mpz_gcd(tmp, n, d);
+  mpz_divexact(num, n, tmp);
+  mpz_divexact(den, d, tmp);
+}
+
+/*
+  Reconstructs simultaneously the LLL witnesses of the i-th polynomial,
+  which share the denominator g * d, where g is the denominator guessed
+  from the previous polynomial (dl->pgden) and d is unknown.
+
+  With u_1, .., u_k the CRT images of the witnesses modulo m, the vector
+  (2^s d, n_1, .., n_k) with n_j = g d u_j mod m is a short vector of the
+  lattice spanned by (2^s, g u_1, .., g u_k) and m e_1, .., m e_k. Since
+  n_j / (g d) is a coefficient of the polynomial, n_j has about the bitsize
+  of g d times the size of the coefficient: the first column is scaled by
+  2^s, s = bits(g), so that all entries have about the same size. LLL then
+  finds this vector, heuristically, once bits(m) exceeds about
+  bits(n) + bits(d) / k, instead of bits(n) + 2 bits(d) when one witness
+  is reconstructed with the guess g. This matters for the polynomials
+  whose denominator has a large factor which is not in the previous
+  ones (e.g. the first polynomial, for which g = 1).
+
+  A candidate is accepted when all entries of the reduced vector are at
+  most 2^((s + k bits(m)) / (k + 1) - RR_MARGIN). It is then stored as the
+  reconstructed values of the three RR witnesses (and their lcm in cden),
+  so that it is checked with the next prime as these.
+
+  returns 1 if a candidate has been found, else 0.
+ */
+static int lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
+                         const mpz_t mod_p, const mpz_t guess, const int kmax){
+  const int k = MIN(dl->nlwit[i], kmax);
+  if(k < 2){
+    return 0;
+  }
+  double rt = realtime();
+  const int32_t *w = dl->lwit + (size_t)i * LLL_WIT_K;
+  modpolys_t *pol = modgbs->modpolys + i;
+  const uint32_t np = modgbs->nprimes;
+
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t comb_temp;
+  fmpz_comb_init(comb, modgbs->primes, np);
+  fmpz_comb_temp_init(comb_temp, comb);
+  fmpz_t y, m, g;
+  fmpz_init(y);
+  fmpz_init(m);
+  fmpz_init(g);
+  fmpz_set_mpz(m, mod_p);
+  fmpz_set_mpz(g, guess);
+  const slong s = fmpz_bits(g) > 1 ? fmpz_bits(g) - 1 : 0;
+
+  fmpz_mat_t B;
+  fmpz_mat_init(B, k + 1, k + 1);
+  fmpz_one(fmpz_mat_entry(B, 0, 0));
+  fmpz_mul_2exp(fmpz_mat_entry(B, 0, 0), fmpz_mat_entry(B, 0, 0), s);
+  for(int j = 0; j < k; j++){
+    for(uint32_t l = 0; l < np; l++){
+      modgbs->cf_64[l] = MODCF(pol[0], w[j], l);
+    }
+    fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 0);
+    fmpz_mul(y, y, g);
+    fmpz_mod(fmpz_mat_entry(B, 0, j + 1), y, m);
+    fmpz_set(fmpz_mat_entry(B, j + 1, j + 1), m);
+  }
+  fmpz_lll_t fl;
+  fmpz_lll_context_init_default(fl);
+  fmpz_lll(B, NULL, fl);
+
+  const slong bits = (s + (slong)k * (slong)fmpz_bits(m)) / (k + 1) - RR_MARGIN;
+  fmpz *d = fmpz_mat_entry(B, 0, 0);
+  int ok = bits > 0 && !fmpz_is_zero(d)
+    && (slong)fmpz_val2(d) >= s;
+  for(int j = 0; j <= k && ok; j++){
+    ok = ((slong)fmpz_bits(fmpz_mat_entry(B, 0, j)) <= bits);
+  }
+  if(ok){
+    mpz_t den, n, gd;
+    mpz_init(den);
+    mpz_init(n);
+    mpz_init(gd);
+    fmpz_fdiv_q_2exp(y, d, s);
+    fmpz_get_mpz(den, y);
+    const int neg = (mpz_sgn(den) < 0);
+    mpz_abs(den, den);
+    mpz_mul(gd, den, guess);
+    mpz_set_ui(dl->cden[i], 1);
+    for(int j = 0; j < k; j++){
+      fmpz_get_mpz(n, fmpz_mat_entry(B, 0, j + 1));
+      if(neg){
+        mpz_neg(n, n);
+      }
+      /* stores the witnesses used by rational reconstruction */
+      if(w[j] == dl->coef[i]){
+        set_reduced_fraction(dl->num[i], dl->den[i], n, gd, dl->tmp);
+      }
+      if(w[j] == dl->coef2[i]){
+        set_reduced_fraction(dl->num2[i], dl->den2[i], n, gd, dl->tmp);
+      }
+      if(w[j] == dl->coef3[i]){
+        set_reduced_fraction(dl->num3[i], dl->den3[i], n, gd, dl->tmp);
+      }
+      /* the denominator of n / (g d) */
+      mpz_gcd(dl->tmp, n, gd);
+      mpz_divexact(dl->tmp, gd, dl->tmp);
+      mpz_lcm(dl->cden[i], dl->cden[i], dl->tmp);
+    }
+    mpz_set(dl->gden, dl->cden[i]);
+    mpz_clear(den);
+    mpz_clear(n);
+    mpz_clear(gd);
+    dl->lll_nsucc++;
+  }
+
+  fmpz_mat_clear(B);
+  fmpz_clear(y);
+  fmpz_clear(m);
+  fmpz_clear(g);
+  fmpz_comb_temp_clear(comb_temp);
+  fmpz_comb_clear(comb);
+  dl->lll_ntries++;
+  dl->lll_time += realtime() - rt;
+  return ok;
+}
+
+/* estimated elapsed time of the calls to LLL of one attempt of
+   lll_witnesses, with LLL_WIT_K witnesses and the guessed denominator, then
+   with LLL_WIT_K1 witnesses and none, modulo an integer of the given
+   bitsize (fitted with FLINT's fmpz_lll on random2_7_7, random2_8_8 and
+   minrank_d_2_p_3_q_7_r_3, 3000 to 72000 bits; the cost grows about as
+   (k + 1)^2.37) */
+static inline double lll_witnesses_cost(const double bits){
+  return 7.6e-10 * pow(LLL_WIT_K + 1, 2.37) * pow(bits, 1.3)
+    + 5.0e-11 * pow(LLL_WIT_K1 + 1, 2.37) * pow(bits, 1.63);
+}
+
+/* estimated elapsed time of the application of the trace for one prime,
+   from the operations recorded in the trace, with the weights of the cost
+   model of hensel.c (see HENSEL_KAPPA_F4); 0 if no trace is learned */
+static inline double lll_prime_cost(const md_t *st){
+  if(st == NULL || st->tr == NULL){
+    return 0;
+  }
+  return 1.5e-10 * (double)st->tr->nmadd + 2.6e-10 * (double)st->tr->nmadd_new
+    + 2.2e-9 * (double)st->tr->nterms;
+}
+
+/* number of primes of the next attempt of LLL after a failed one with
+   nprimes primes: LLL costs about A primes (A is the ratio of the cost of
+   the attempt to the cost of a prime), and trying again after a growth of
+   g percent of the number of primes loses up to g * nprimes primes when
+   LLL succeeds, hence the growth is about sqrt(2 A / nprimes), at least
+   LLL_WIT_GROWTH percent. It only depends on the trace and on the number
+   of primes, so that the number of primes used is reproducible. */
+static inline int32_t lll_next_attempt(const int32_t nprimes,
+                                       const double bits, const double pcost){
+  double g = LLL_WIT_GROWTH / 100.0;
+  if(pcost > 0){
+    const double A = lll_witnesses_cost(bits) / pcost;
+    g = MAX(g, sqrt(2 * A / nprimes));
+  }
+  return MAX(nprimes + 1, (int32_t)(nprimes * (1 + g)));
+}
+
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         mpz_t mod_p, mpz_t prod_p,
                         rrec_data_t recdata1, rrec_data_t recdata2,
-                        int thrds, double *st_crt, double *st_rrec, double *st_wit){
+                        int thrds, double *st_crt, double *st_rrec, double *st_wit,
+                        const double pcost){
 
   double st = realtime();
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
@@ -1428,6 +1675,29 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
         }
         if(b){
           b = reconstructcoeff3(dl, i, mod_p, recdata1, recdata2);
+        }
+        /* the numerators found by LLL are multiples of the guess times
+           the coefficients, hence LLL is not tried before the modulus has
+           the bitsize of the guess */
+        const double lcost = lll_witnesses_cost(mpz_sizeinbase(mod_p, 2));
+        if(!b && (int32_t)modgbs->nprimes >= dl->lll_next
+           && mpz_sizeinbase(mod_p, 2) >= mpz_sizeinbase(dl->pgden, 2) + RR_MARGIN
+           && (pcost == 0 || dl->lll_cost + lcost
+               <= LLL_WIT_BUDGET / 100.0 * modgbs->nprimes * pcost)){
+          dl->lll_cost += lcost;
+          /* with the guessed denominator, then without it, since the
+             guess inflates the numerators when it shares little with the
+             denominator of this polynomial */
+          b = lll_witnesses(modgbs, dl, i, mod_p, dl->pgden, LLL_WIT_K);
+          if(!b && mpz_cmp_ui(dl->pgden, 1)){
+            mpz_t one;
+            mpz_init_set_ui(one, 1);
+            b = lll_witnesses(modgbs, dl, i, mod_p, one, LLL_WIT_K1);
+            mpz_clear(one);
+          }
+          dl->lll_next = b ? (int32_t)modgbs->nprimes + 1
+            : lll_next_attempt(modgbs->nprimes, mpz_sizeinbase(mod_p, 2),
+                               pcost);
         }
         if(!b){
           dl->check1[i] = 0;
@@ -1779,7 +2049,8 @@ restart:
 
       if(!bad){
         ratrecon_gb((*modgbsp), dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
-                    nthrds/* st->nthrds */, &st_crt, &st_rrec, &st_wit);
+                    nthrds/* st->nthrds */, &st_crt, &st_rrec, &st_wit,
+                    lll_prime_cost(st));
       }
       /* the period depends only on the number of primes (not on timings)
          so that the number of primes used is reproducible */
@@ -1835,6 +2106,10 @@ restart:
     fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
     fprintf(VERBSTREAM, "CRT     (elapsed)         %10.2f sec\n", st_crt);
     fprintf(VERBSTREAM, "ratrecon(elapsed)         %10.2f sec\n", st_rrec);
+    if(dlinit && dlift->lll_ntries > 0){
+      fprintf(VERBSTREAM, "  incl. LLL, %4d calls (%d found) %6.2f sec\n",
+              dlift->lll_ntries, dlift->lll_nsucc, dlift->lll_time);
+    }
     fprintf(VERBSTREAM, "-----------------------------------------\n");
   }
 

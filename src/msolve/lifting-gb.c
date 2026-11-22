@@ -19,6 +19,7 @@
  * Mohab Safey El Din */
 
 #include<flint/fmpz.h>
+#include<flint/fmpz_vec.h>
 #include<flint/fmpz_mat.h>
 #include<flint/fmpz_lll.h>
 #include "streams.h"
@@ -46,6 +47,9 @@
 /* the estimated cost of the calls to LLL is kept below LLL_WIT_BUDGET
    percent of the estimated cost of the primes used */
 #define LLL_WIT_BUDGET 10
+/* bits kept below the guessed denominator in the lattices of
+   lll_common_den */
+#define LLL_TRUNC_SLACK 64
 #ifndef MIN
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #endif
@@ -1637,10 +1641,19 @@ static inline void set_reduced_fraction(mpz_t num, mpz_t den,
   bits(n) + bits(d) / k, instead of bits(n) + 2 bits(d) when a single
   coefficient is reconstructed with the guess g.
 
-  A candidate is accepted when all entries of the reduced vector are at
-  most 2^((s + k bits(m)) / (k + 1) - RR_MARGIN); d (positive) and the
-  n_j are then stored in den and num[0], .., num[k-1], so that the j-th
-  coefficient is num[j] / (g den).
+  Since n_j has about s + bits(d) bits, the t = s - LLL_TRUNC_SLACK lowest
+  bits of the entries are irrelevant: LLL is run on the lattice spanned by
+  (2^(s-t), x_1, .., x_k) and m' e_1, .., m' e_k, with x_j and m' the
+  entries g u_j mod m and m shifted right by t bits. It contains
+  (2^(s-t) d, n_1 / 2^t + e_1, ..), with |e_j| <= 2 d + 1, which is still the
+  short vector, while its entries have bits(m) - t bits instead of bits(m):
+  this makes LLL several times faster for a large guess.
+
+  The n_j are then recomputed from d as g d u_j mod m (symmetric remainder)
+  and a candidate is accepted when 2^s d and all the n_j are at most
+  2^((s + k bits(m)) / (k + 1) - RR_MARGIN); d (positive) and the n_j are
+  then stored in den and num[0], .., num[k-1], so that the j-th coefficient
+  is num[j] / (g den).
 
   returns 1 if a candidate has been found, else 0.
  */
@@ -1665,19 +1678,23 @@ static int lll_common_den(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
   fmpz_set_mpz(m, mod_p);
   fmpz_set_mpz(g, guess);
   const slong s = fmpz_bits(g) > 1 ? fmpz_bits(g) - 1 : 0;
+  const slong t = s > LLL_TRUNC_SLACK ? s - LLL_TRUNC_SLACK : 0;
 
+  /* x_j = g u_j mod m */
+  fmpz *x = _fmpz_vec_init(k);
   fmpz_mat_t B;
   fmpz_mat_init(B, k + 1, k + 1);
   fmpz_one(fmpz_mat_entry(B, 0, 0));
-  fmpz_mul_2exp(fmpz_mat_entry(B, 0, 0), fmpz_mat_entry(B, 0, 0), s);
+  fmpz_mul_2exp(fmpz_mat_entry(B, 0, 0), fmpz_mat_entry(B, 0, 0), s - t);
   for(int j = 0; j < k; j++){
     for(uint32_t l = 0; l < np; l++){
       modgbs->cf_64[l] = MODCF(pol[0], w[j], l);
     }
     fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 0);
     fmpz_mul(y, y, g);
-    fmpz_mod(fmpz_mat_entry(B, 0, j + 1), y, m);
-    fmpz_set(fmpz_mat_entry(B, j + 1, j + 1), m);
+    fmpz_mod(x + j, y, m);
+    fmpz_fdiv_q_2exp(fmpz_mat_entry(B, 0, j + 1), x + j, t);
+    fmpz_fdiv_q_2exp(fmpz_mat_entry(B, j + 1, j + 1), m, t);
   }
   fmpz_lll_t fl;
   fmpz_lll_context_init_default(fl);
@@ -1686,24 +1703,26 @@ static int lll_common_den(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
   const slong bits = (s + (slong)k * (slong)fmpz_bits(m)) / (k + 1) - RR_MARGIN;
   fmpz *d = fmpz_mat_entry(B, 0, 0);
   int ok = bits > 0 && !fmpz_is_zero(d)
-    && (slong)fmpz_val2(d) >= s;
-  for(int j = 0; j <= k && ok; j++){
-    ok = ((slong)fmpz_bits(fmpz_mat_entry(B, 0, j)) <= bits);
+    && (slong)fmpz_val2(d) >= s - t;
+  if(ok){
+    fmpz_fdiv_q_2exp(d, d, s - t);
+    fmpz_abs(d, d);
+    ok = ((slong)fmpz_bits(d) + s <= bits);
+  }
+  for(int j = 0; j < k && ok; j++){
+    fmpz_mul(y, d, x + j);
+    fmpz_smod(x + j, y, m);
+    ok = ((slong)fmpz_bits(x + j) <= bits);
   }
   if(ok){
-    fmpz_fdiv_q_2exp(y, d, s);
-    fmpz_get_mpz(den, y);
-    const int neg = (mpz_sgn(den) < 0);
-    mpz_abs(den, den);
+    fmpz_get_mpz(den, d);
     for(int j = 0; j < k; j++){
-      fmpz_get_mpz(num[j], fmpz_mat_entry(B, 0, j + 1));
-      if(neg){
-        mpz_neg(num[j], num[j]);
-      }
+      fmpz_get_mpz(num[j], x + j);
     }
     dl->lll_nsucc++;
   }
 
+  _fmpz_vec_clear(x, k);
   fmpz_mat_clear(B);
   fmpz_clear(y);
   fmpz_clear(m);
@@ -1773,7 +1792,10 @@ static int lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
    and a guessed denominator, modulo an integer of the given bitsize
    (fitted with FLINT's fmpz_lll on random2_7_7, random2_8_8 and
    minrank_d_2_p_3_q_7_r_3, 3000 to 72000 bits; the cost grows about as
-   (k + 1)^2.37) */
+   (k + 1)^2.37). It was fitted before the lattices were truncated (see
+   lll_common_den), which makes LLL 2 to 4 times faster for a large guess:
+   it is kept as an upper bound, so that the attempts, hence the number of
+   primes, do not change. */
 static inline double lll_guess_cost(const int k, const double bits){
   return 7.6e-10 * pow(k + 1, 2.37) * pow(bits, 1.3);
 }

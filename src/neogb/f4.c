@@ -1196,7 +1196,16 @@ static bs_t *core_f4_elim_via_drl(
         gmd->drl_md = initialize_drl_meta_data(gmd);
         gmd->drl_bs = initialize_drl_basis(gbs, gmd->drl_md, gmd->nev);
     }
+    /* Once the tracers are learnt, the meta data kept in gmd are only
+     * read, as for run_f4, so that the tracers can be applied for
+     * several primes at the same time: the fields below are then set on
+     * copies. */
+    md_t dmdc, emdc;
     md_t *dmd = gmd->drl_md;
+    if (dmd->trace_level == APPLY_TRACER) {
+        dmdc = *dmd;
+        dmd  = &dmdc;
+    }
     /* these may be changed by the multi-modular computation */
     dmd->f4_qq_round = gmd->f4_qq_round;
     dmd->info_level  = gmd->info_level;
@@ -1229,6 +1238,10 @@ static bs_t *core_f4_elim_via_drl(
             gmd->elim_md->reduce_gb = gmd->reduce_gb;
         }
         emd = gmd->elim_md;
+        if (emd->trace_level == APPLY_TRACER) {
+            emdc = *emd;
+            emd  = &emdc;
+        }
         emd->f4_qq_round = gmd->f4_qq_round;
         emd->info_level  = gmd->info_level;
         emd->nthrds      = gmd->nthrds;

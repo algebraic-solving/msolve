@@ -985,7 +985,8 @@ static int basis_supports_agree_with_trace(
         if (ok[bi] == 0) {
             const hm_t * const b = bs->hm[bi];
             const len_t len      = b[LENGTH];
-            hm_t *r              = tr->bsp[bi];
+            hm_t *r              = __atomic_load_n(tr->bsp + bi,
+                    __ATOMIC_ACQUIRE);
             if (r == NULL) {
                 r = (hm_t *)malloc((unsigned long)(len+2) * sizeof(hm_t));
                 r[0] = len;
@@ -997,7 +998,7 @@ static int basis_supports_agree_with_trace(
                 }
                 /* another prime was faster */
                 free(r);
-                r = tr->bsp[bi];
+                r = __atomic_load_n(tr->bsp + bi, __ATOMIC_ACQUIRE);
             }
             ok[bi] = (r[0] == len && r[1] == b[COEFFS]
                     && memcmp(r+2, b+OFFSET,

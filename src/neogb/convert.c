@@ -750,7 +750,8 @@ static void convert_sparse_matrix_rows_to_basis_elements(
     if (st->tc_state == 1) {
         /* the matrix is taken from the trace, the exponent vectors
          * of its columns are stored there */
-        const tc_t * const tc = st->tr->tc[st->trace_rd];
+        const tc_t * const tc = __atomic_load_n(st->tr->tc + st->trace_rd,
+                __ATOMIC_ACQUIRE);
         while (bht->esz - bht->eld < mat->ncr) {
             enlarge_hash_table(bht);
         }

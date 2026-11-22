@@ -154,6 +154,7 @@ typedef struct{
   mpz_t *den3;
   int32_t *lwit; /* indices of the LLL witnesses, LLL_WIT_K per polynomial */
   int *nlwit; /* number of LLL witnesses of each polynomial */
+  int nthreads; /* number of threads for the CRT of the coefficients */
   int32_t lll_next; /* number of primes of the next LLL attempt */
   int32_t lll_fnext; /* same for the full lifting (see lll_full_block) */
   int32_t lll_ntries; /* number of calls to LLL */
@@ -228,6 +229,7 @@ static inline void data_lift_init(data_lift_t dl,
   }
   dl->lwit = calloc((size_t)npol * LLL_WIT_K, sizeof(int32_t));
   dl->nlwit = calloc(npol, sizeof(int));
+  dl->nthreads = 1;
   dl->lll_next = LLL_WIT_START;
   dl->lll_fnext = LLL_WIT_START;
   dl->lll_ntries = 0;
@@ -466,17 +468,46 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
   fprintf(file, "]:\n");
 }
 
+/* decimal strings of the coefficients cf_qq[0], .., cf_qq[len-1] of the
+ * pos-th polynomial and of its leading coefficient lm (index len),
+ * converted by nthreads threads: the conversion is most of the time spent
+ * writing large bases */
+static char **modpoly_strings(gb_modpoly_t modgbs, const int32_t pos,
+                              const int nthreads){
+  modpolys_t *pol = modgbs->modpolys + pos;
+  const int64_t len = pol[0]->len;
+  char **str = (char **)malloc(sizeof(char *) * (len + 1));
+  /* FLINT's conversion, as mpz_out_str_10 (see iofiles.c) */
+#pragma omp parallel for num_threads(nthreads) schedule(dynamic, 16)
+  for(int64_t i = 0; i <= len; i++){
+    fmpz_t f;
+    fmpz_init_set_readonly(f, i < len ? pol[0]->cf_qq[i] : pol[0]->lm);
+    str[i] = fmpz_get_str(NULL, 10, f);
+    fmpz_clear_readonly(f);
+  }
+  return str;
+}
+
+static void modpoly_strings_clear(char **str, const int64_t len){
+  for(int64_t i = 0; i <= len; i++){
+    flint_free(str[i]);
+  }
+  free(str);
+}
+
+/* str holds the decimal strings of the coefficients (see modpoly_strings) */
 static inline void display_modpoly(FILE *file,
                                    gb_modpoly_t modgbs,
                                    int32_t pos,
-                                   data_gens_ff_t *gens){
+                                   data_gens_ff_t *gens,
+                                   char **str){
 
   if(modgbs->modpolys[pos]->len == 0){
     display_monomial_single(file, gens, pos, &modgbs->ldm);
     return;
   }
   if(mpz_cmp_ui(modgbs->modpolys[pos]->lm, 1) != 0){
-    mpz_out_str_10(file, modgbs->modpolys[pos]->lm);
+    fputs(str[modgbs->modpolys[pos]->len], file);
     fprintf(file, "*");
   }
   display_monomial_single(file, gens, pos, &modgbs->ldm);
@@ -520,7 +551,7 @@ static inline void display_modpoly(FILE *file,
     int star = 0;
     //coef is neither 1 nor -1
     if(mpz_cmp_ui(cf[i], 1) != 0 && mpz_cmp_si(cf[i], -1) != 0){
-        mpz_out_str_10(file, cf[i]);
+        fputs(str[i], file);
         fprintf(file, "*");
     }
     if(mpz_cmp_ui(cf[i], 0) != 0){
@@ -551,7 +582,7 @@ static inline void display_modpoly(FILE *file,
      deg += ht->ev[hm[len-1]][evi[k]];
   }
   if(deg == 0){
-    mpz_out_str_10(file, cf[0]);
+    fputs(str[0], file);
   }
   else{
     if(mpz_cmp_si(cf[0], -1) == 0){
@@ -560,7 +591,7 @@ static inline void display_modpoly(FILE *file,
     int star = 0;
     //coef is neither 1 nor -1
     if(mpz_cmp_ui(cf[0], 1) != 0 && mpz_cmp_si(cf[0], -1) != 0){
-        mpz_out_str_10(file, cf[0]);
+        fputs(str[0], file);
         fprintf(file, "*");
     }
     fflush(file);
@@ -589,19 +620,20 @@ static inline void display_modpoly(FILE *file,
 
 static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs,
-                                           data_gens_ff_t *gens){
+                                           data_gens_ff_t *gens,
+                                           const int nthreads){
   int32_t p = modgbs->ld ;
   if(p==0){
     fprintf(file, "[0]:\n");
     return;
   }
   fprintf(file, "[");
-  for(int i = 0; i < p-1; i++){
-    display_modpoly(file, modgbs, i, gens);
-    fprintf(file, ", \n");
+  for(int i = 0; i < p; i++){
+    char **str = modpoly_strings(modgbs, i, nthreads);
+    display_modpoly(file, modgbs, i, gens, str);
+    modpoly_strings_clear(str, modgbs->modpolys[i]->len);
+    fprintf(file, i < p - 1 ? ", \n" : "]:\n");
   }
-  display_modpoly(file, modgbs, p-1, gens);
-  fprintf(file, "]:\n");
 }
 
 static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
@@ -974,64 +1006,51 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
 }
 
 
-static void gb_modular_trace_application(gb_modpoly_t modgbs,
-                                         int32_t *mgb,
-                                         int32_t *num_gb,
-                                         int32_t **leadmons_ori,
-                                         int32_t **leadmons_current,
-                                         trace_t **btrace,
-                                         bs_t *bs_qq,
-                                         md_t *st,
-                                         int info_level,
-                                         const uint64_t prime,
-                                         int32_t start,
-                                         double *stf4,
-                                         int *bad_primes)
+/* Applies the trace modulo prime (F4 with the tracer learned on bs_qq)
+ * and checks that the basis has the shape of the learned one (lengths,
+ * leading monomials). Returns the basis modulo prime, or NULL with *bad set
+ * to 1 or 2 (see core_groebner_qq) when the prime is bad. Shared data are
+ * only read (st->nthrds must be 1), so that several primes can be handled
+ * at the same time by different threads, each with its own leadmons_cur. */
+static bs_t *gb_modular_trace_apply(gb_modpoly_t modgbs,
+                                    const int32_t num_gb,
+                                    const int32_t *leadmons_ori,
+                                    int32_t *leadmons_cur,
+                                    bs_t *bs_qq,
+                                    md_t *st,
+                                    const uint64_t prime,
+                                    int *bad)
 {
-
-  double rt = realtime();
-  st->info_level  = 0;
-  st->f4_qq_round = 2;
-  /* tracing phase */
-
-  /* F4 and FGLM are run using a single thread */
-  /* st->nthrds is reset to its original value afterwards */
-  /*at the moment multi-threading is not supprted here*/
-  memset(bad_primes, 0, (unsigned long)st->nprimes * sizeof(int));
-
-  /* current load of the hash table */
-  /* hl_t eld = bs_qq->ht->eld; */
-  bs_t *bs = NULL;
+  *bad = 0;
   int32_t error = 0;
-  bs = core_gba(bs_qq, st, &error, prime);
-  *stf4 = realtime()-rt;
+  bs_t *bs = core_gba(bs_qq, st, &error, prime);
   /* core_gba returns NULL (and has already free-ed its data) when the
    * prime has been detected as bad while applying the tracer */
   if (bs == NULL || error) {
-      bad_primes[0] = 1;
+      *bad = 1;
       if (bs != NULL) {
           free_basis_and_only_local_hash_table_data(&bs);
       }
-      return;
+      return NULL;
   }
-  ht_t **bht = &(bs->ht);
+  ht_t *bht = bs->ht;
   for(len_t i = 0; i < modgbs->ld; i++){
         if(modgbs->modpolys[i]->len < bs->hm[bs->lmps[i]][LENGTH]-1){
-            bad_primes[0] = 2;
+            *bad = 2;
             free_basis_and_only_local_hash_table_data(&bs);
-            return;
+            return NULL;
         }
         if(modgbs->modpolys[i]->len > bs->hm[bs->lmps[i]][LENGTH]-1){
-            bad_primes[0]=1;
+            *bad = 1;
             free_basis_and_only_local_hash_table_data(&bs);
-            return;
+            return NULL;
         }
   }
   int32_t lml = bs->lml;
   if (st->nev > 0) {
       int32_t j = 0;
       for (len_t i = 0; i < bs->lml; ++i) {
-          if ((*bht)->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
+          if (bht->ev[bs->hm[bs->lmps[i]][OFFSET]][0] == 0) {
               bs->lm[j]   = bs->lm[i];
               bs->lmps[j] = bs->lmps[i];
               ++j;
@@ -1039,35 +1058,26 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
       }
       lml = j;
   }
-  if (lml != num_gb[0]) {
-      if (bs != NULL) {
-          bad_primes[0] = 2;
-          free_basis_and_only_local_hash_table_data(&bs);
-      }
-      return;
+  if (lml != num_gb) {
+      *bad = 2;
+      free_basis_and_only_local_hash_table_data(&bs);
+      return NULL;
   }
 
   if(st->nev){
-    get_lm_from_bs_trace_elim(bs, bht[0], leadmons_current[0], num_gb[0]);
+    get_lm_from_bs_trace_elim(bs, bht, leadmons_cur, num_gb);
   }
   else{
-    get_lm_from_bs_trace(bs, bht[0], leadmons_current[0]);
+    get_lm_from_bs_trace(bs, bht, leadmons_cur);
   }
 
-  if(!equal_staircase(leadmons_current[0], leadmons_ori[0],
-                      num_gb[0], num_gb[0], bht[0]->nv - st->nev)){
-    bad_primes[0] = 1;
-  }
-
-  if(!bad_primes[0] && bs != NULL){
-    /* copy of data for multi-mod computation */
-    modpgbs_set(modgbs, bs, bht[0], prime, start, st->nev);
-  }
-
-  if (bs != NULL) {
+  if(!equal_staircase(leadmons_cur, (int32_t *)leadmons_ori,
+                      num_gb, num_gb, bht->nv - st->nev)){
+    *bad = 1;
     free_basis_and_only_local_hash_table_data(&bs);
+    return NULL;
   }
-
+  return bs;
 }
 
 /* LLL witnesses of the i-th polynomial: the three witnesses used for
@@ -1177,17 +1187,23 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
   mp_limb_t newprime = modgbs->primes[modgbs->nprimes - 1 ];
   /* all primes are assumed to be good primes */
   mpz_mul_u64(prod_p, mod_p, newprime);
+  /* inverse of mod_p modulo the new prime, the same for all the CRTs */
+  mp_limb_t c = n_invmod(mpz_fdiv_u64(mod_p, newprime), newprime);
+  const mp_limb_t ninv = n_preinvert_limb(newprime);
+  const uint32_t np = modgbs->nprimes - 1;
+  /* the polynomials are independent and split among the threads */
+#pragma omp parallel for num_threads(dl->nthreads) schedule(dynamic, 8)
   for(int32_t k = dl->S; k < dl->end; k++){
       if(modgbs->modpolys[k]->len){
-        uint64_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
-        mpz_CRT_ui(dl->crt[k], dl->crt[k], mod_p,
-                   c, newprime, prod_p, dl->tmp, 1);
-        c = MODCF(modgbs->modpolys[k], dl->coef2[k], modgbs->nprimes  - 1);
-        mpz_CRT_ui(dl->crt2[k], dl->crt2[k], mod_p,
-                   c, newprime, prod_p, dl->tmp, 1);
-        c = MODCF(modgbs->modpolys[k], dl->coef3[k], modgbs->nprimes  - 1);
-        mpz_CRT_ui(dl->crt3[k], dl->crt3[k], mod_p,
-                   c, newprime, prod_p, dl->tmp, 1);
+        uint64_t r = MODCF(modgbs->modpolys[k], coef[k], np);
+        _mpz_CRT_ui_precomp(dl->crt[k], dl->crt[k], mod_p,
+                            r, newprime, ninv, prod_p, c, 1);
+        r = MODCF(modgbs->modpolys[k], dl->coef2[k], np);
+        _mpz_CRT_ui_precomp(dl->crt2[k], dl->crt2[k], mod_p,
+                            r, newprime, ninv, prod_p, c, 1);
+        r = MODCF(modgbs->modpolys[k], dl->coef3[k], np);
+        _mpz_CRT_ui_precomp(dl->crt3[k], dl->crt3[k], mod_p,
+                            r, newprime, ninv, prod_p, c, 1);
       }
   }
   mpz_set(mod_p, prod_p);
@@ -1307,6 +1323,146 @@ static int lll_full_block(gb_modpoly_t modgbs, data_lift_t dl, int32_t k,
   return ok;
 }
 
+/* number of coefficients per thread in a chunk of crt_coefs_chunk */
+#define CRT_CHUNK 32
+/* number of consecutive coefficients whose residues are read together */
+#define CRT_BLOCK 4
+
+/* For the coefficients l0 <= l < l1 of the polynomial pol, CRT of the
+ * residues of u g, where gp holds the guess g modulo the np first primes,
+ * as a symmetric remainder modulo their product (of mbits bits): when it
+ * has RR_MARGIN bits less than the modulus, it is the integer u g, stored
+ * in cf_qq[l] (isint[l - l0] = 1), else the CRT of u itself is stored in
+ * zraw[l - l0] (isint[l - l0] = 0) for a rational reconstruction (see
+ * crt_ratrecon_lift_modgbs). The coefficients are independent: they are
+ * split among nthreads threads, each with its own CRT workspace. */
+/* workspace of a thread for crt_coefs_chunk, kept for all the chunks of a
+ * call to crt_ratrecon_lift_modgbs (allocating the CRT temporaries for each
+ * chunk would serialize the threads in the memory allocator) */
+typedef struct{
+  fmpz_comb_temp_t comb_temp;
+  fmpz_t y;
+  mp_limb_t *res; /* residues of CRT_BLOCK coefficients */
+  mp_limb_t *raw;
+} crt_ws_struct;
+
+static crt_ws_struct *crt_ws_init(const fmpz_comb_t comb, const uint32_t np,
+                                  const int nthreads){
+  crt_ws_struct *ws = (crt_ws_struct *)malloc(sizeof(crt_ws_struct) * nthreads);
+  for(int t = 0; t < nthreads; t++){
+    fmpz_comb_temp_init(ws[t].comb_temp, comb);
+    fmpz_init(ws[t].y);
+    ws[t].res = (mp_limb_t *)malloc(sizeof(mp_limb_t) * np * CRT_BLOCK);
+    ws[t].raw = (mp_limb_t *)malloc(sizeof(mp_limb_t) * np);
+  }
+  return ws;
+}
+
+static void crt_ws_clear(crt_ws_struct *ws, const int nthreads){
+  for(int t = 0; t < nthreads; t++){
+    fmpz_comb_temp_clear(ws[t].comb_temp);
+    fmpz_clear(ws[t].y);
+    free(ws[t].res);
+    free(ws[t].raw);
+  }
+  free(ws);
+}
+
+static void crt_coefs_chunk(gb_modpoly_t modgbs, modpolys_t *pol,
+                            const int32_t l0, const int32_t l1,
+                            const mp_limb_t *gp, const uint32_t np,
+                            const fmpz_comb_t comb, const size_t mbits,
+                            int *isint, mpz_t *zraw, crt_ws_struct *ws,
+                            const int nthreads){
+  /* the images are stored prime by prime: the residues of CRT_BLOCK
+     consecutive coefficients are read together */
+  const int32_t nblocks = (l1 - l0 + CRT_BLOCK - 1) / CRT_BLOCK;
+  const size_t len = pol[0]->len;
+#pragma omp parallel for num_threads(nthreads) schedule(dynamic, 1)
+  for(int32_t blk = 0; blk < nblocks; blk++){
+    crt_ws_struct *w = ws + omp_get_thread_num();
+    mp_limb_t *res = w->res;
+    const int32_t b0 = l0 + blk * CRT_BLOCK;
+    const int32_t nb = MIN(CRT_BLOCK, l1 - b0);
+    if(modgbs->wide){
+      for(uint32_t i = 0; i < np; i++){
+        const uint64_t *cf = pol[0]->cf_u64 + (size_t)i * len + b0;
+        for(int32_t j = 0; j < nb; j++){
+          res[(size_t)j * np + i] = n_mulmod2_preinv(cf[j], gp[i],
+                                                     modgbs->primes[i],
+                                                     modgbs->pinvs[i]);
+        }
+      }
+    }
+    else{
+      for(uint32_t i = 0; i < np; i++){
+        const uint32_t *cf = pol[0]->cf_32 + (size_t)i * len + b0;
+        for(int32_t j = 0; j < nb; j++){
+          res[(size_t)j * np + i] = ((uint64_t)cf[j] * gp[i]) % modgbs->primes[i];
+        }
+      }
+    }
+    for(int32_t j = 0; j < nb; j++){
+      const int32_t l = b0 + j;
+      fmpz_multi_CRT_ui(w->y, res + (size_t)j * np, comb, w->comb_temp, 1);
+      isint[l - l0] = (fmpz_bits(w->y) + 1 + RR_MARGIN <= mbits);
+      if(isint[l - l0]){
+        fmpz_get_mpz(pol[0]->cf_qq[l], w->y);
+      }
+      else{
+        for(uint32_t i = 0; i < np; i++){
+          w->raw[i] = MODCF(pol[0], l, i);
+        }
+        fmpz_multi_CRT_ui(w->y, w->raw, comb, w->comb_temp, 1);
+        fmpz_get_mpz(zraw[l - l0], w->y);
+      }
+    }
+  }
+}
+
+/* For the coefficients l0 <= l < l1 of the chunk starting at cl0 (see
+ * crt_coefs_chunk), computed with the guess g while the guess is now
+ * g' = g * ratio: symmetric remainder modulo mod_p (of mbits bits, half =
+ * mod_p / 2) of u g', obtained from u g when it is an integer (isint) or
+ * else from the CRT of u (zraw), stored in fixv; fixok tells whether it is
+ * an integer with RR_MARGIN bits less than mod_p, as the CRT of the
+ * residues of u g' would. When it is not and u g was an integer, the CRT
+ * of u is computed in zraw for the rational reconstruction. The
+ * coefficients are independent and split among nthreads threads. */
+static void crt_update_chunk(gb_modpoly_t modgbs, modpolys_t *pol,
+                             const int32_t l0, const int32_t l1,
+                             const int32_t cl0, const int *isint, mpz_t *zraw,
+                             mpz_t *fixv, int *fixok, const mpz_t ratio,
+                             const mpz_t guess, const mpz_t mod_p,
+                             const mpz_t half, const size_t mbits,
+                             const uint32_t np, const fmpz_comb_t comb,
+                             crt_ws_struct *ws, const int nthreads){
+#pragma omp parallel for num_threads(nthreads) schedule(dynamic, 1)
+  for(int32_t l = l0; l < l1; l++){
+    const int32_t j = l - cl0;
+    if(isint[j]){
+      mpz_mul(fixv[j], pol[0]->cf_qq[l], ratio);
+    }
+    else{
+      mpz_mul(fixv[j], zraw[j], guess);
+    }
+    mpz_mod(fixv[j], fixv[j], mod_p);
+    if(mpz_cmp(fixv[j], half) > 0){
+      mpz_sub(fixv[j], fixv[j], mod_p);
+    }
+    fixok[j] = (mpz_sizeinbase(fixv[j], 2) + 1 + RR_MARGIN <= mbits);
+    if(!fixok[j] && isint[j]){
+      /* CRT of u itself for the rational reconstruction */
+      crt_ws_struct *w = ws + omp_get_thread_num();
+      for(uint32_t i = 0; i < np; i++){
+        w->raw[i] = MODCF(pol[0], l, i);
+      }
+      fmpz_multi_CRT_ui(w->y, w->raw, comb, w->comb_temp, 1);
+      fmpz_get_mpz(zraw[j], w->y);
+    }
+  }
+}
+
 static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
                                            int32_t start, int32_t end,
                                            mpz_t mod_p, rrec_data_t rd1, rrec_data_t rd2,
@@ -1351,11 +1507,37 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   mp_limb_t *gp = NULL;
   int gvalid = 0;
   const size_t mbits = mpz_sizeinbase(mod_p, 2);
+  /* results of crt_coefs_chunk for the coefficients cl0 <= l < cl1 */
+  const int32_t chunk = CRT_CHUNK * dl->nthreads;
+  int *isint = NULL;
+  mpz_t *zraw = NULL;
+  crt_ws_struct *ws = NULL;
+  /* updates of the chunk for the guess of version fixver (see
+     crt_update_chunk); gver changes with the guess */
+  mpz_t *fixv = NULL;
+  int *fixok = NULL;
+  long gver = 0, fixver = -1;
+  int32_t cl0 = 0, cl1 = 0;
+  /* guess with which the chunk was computed, and current guess / it */
+  mpz_t gchunk, ratio, half;
+  mpz_init(gchunk);
+  mpz_init(ratio);
+  mpz_init(half);
+  mpz_fdiv_q_2exp(half, mod_p, 1);
   if(maxlen > 0){
     fmpz_comb_init(comb, modgbs->primes, np);
     fmpz_comb_temp_init(comb_temp, comb);
     fmpz_init(y);
     gp = (mp_limb_t *)malloc(sizeof(mp_limb_t) * np);
+    ws = crt_ws_init(comb, np, dl->nthreads);
+    isint = (int *)malloc(sizeof(int) * chunk);
+    fixok = (int *)malloc(sizeof(int) * chunk);
+    zraw = (mpz_t *)malloc(sizeof(mpz_t) * chunk);
+    fixv = (mpz_t *)malloc(sizeof(mpz_t) * chunk);
+    for(int32_t j = 0; j < chunk; j++){
+      mpz_init(zraw[j]);
+      mpz_init(fixv[j]);
+    }
   }
 
   set_recdata(rd2, mod_p);
@@ -1370,7 +1552,13 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
          coefficient, so that only the missing factor is reconstructed */
       mpz_set(dl->tmp, dl->cden[k]);
       set_recdata_guess(rd1, mod_p, dl->tmp);
-      gvalid = 0;
+      gvalid = 0; gver++;
+      cl0 = cl1 = 0;
+      /* the guess mostly changes at the first coefficients of a
+         polynomial: the chunks start with one coefficient per thread and
+         double up to their maximal size, so that few coefficients are
+         computed with a guess about to change */
+      int32_t csize = dl->nthreads;
       int ok = 1;
       int nfail = 0;
       int32_t ndone = 0;
@@ -1386,39 +1574,53 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
            reconstructed with the guess g. A wrong integer (probability
            about 2^(-RR_MARGIN)) is rejected when checking the lifted
            polynomial with the next primes. */
-        if(!gvalid){
-          for(uint32_t i = 0; i < np; i++){
-            gp[i] = mpz_fdiv_u64(dl->tmp, modgbs->primes[i]);
+        if(l >= cl1){
+          /* the CRT of the next chunk of coefficients with the current
+             guess g, in parallel */
+          if(!gvalid){
+#pragma omp parallel for num_threads(dl->nthreads) schedule(static)
+            for(uint32_t i = 0; i < np; i++){
+              gp[i] = mpz_fdiv_u64(dl->tmp, modgbs->primes[i]);
+            }
+            gvalid = 1;
           }
-          gvalid = 1;
+          mpz_set(gchunk, dl->tmp);
+          fixver = -1;
+          cl0 = l;
+          cl1 = MIN((int32_t)polys[k]->len, l + csize);
+          csize = MIN(2 * csize, chunk);
+          crt_coefs_chunk(modgbs, polys + k, cl0, cl1, gp, np, comb, mbits,
+                          isint, zraw, ws, dl->nthreads);
         }
-        if(modgbs->wide){
-          const uint64_t *cf = polys[k]->cf_u64 + MODCF_IDX(polys[k], l, 0);
-          const size_t len = polys[k]->len;
-          for(uint32_t i = 0; i < np; i++){
-            modgbs->cf_64[i] = n_mulmod2_preinv(cf[(size_t)i * len], gp[i],
-                                                modgbs->primes[i],
-                                                modgbs->pinvs[i]);
+        int b = isint[l - cl0];
+        if(mpz_cmp(dl->tmp, gchunk)){
+          /* the guess has become g' = g r since the chunk was computed:
+             the symmetric remainder of u g' modulo mod_p, which the CRT of
+             the residues of u g' would give, is obtained from u g (integer)
+             or from the CRT of u, so that the decisions are those of a
+             coefficient by coefficient loop */
+          if(fixver != gver){
+            /* all the remaining coefficients of the chunk are updated for
+               the current guess, in parallel */
+            mpz_divexact(ratio, dl->tmp, gchunk);
+            crt_update_chunk(modgbs, polys + k, l, cl1, cl0, isint, zraw,
+                             fixv, fixok, ratio, dl->tmp, mod_p, half, mbits,
+                             np, comb, ws, dl->nthreads);
+            fixver = gver;
+          }
+          b = fixok[l - cl0];
+          if(b){
+            mpz_swap(polys[k]->cf_qq[l], fixv[l - cl0]);
+          }
+          else{
+            mpz_set(zz, zraw[l - cl0]);
           }
         }
-        else{
-          for(uint32_t i = 0; i < np; i++){
-            modgbs->cf_64[i] = ((uint64_t)MODCF(polys[k], l, i) * gp[i])
-              % modgbs->primes[i];
-          }
+        else if(!b){
+          mpz_set(zz, zraw[l - cl0]);
         }
-        fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 1);
-        int b = (fmpz_bits(y) + 1 + RR_MARGIN <= mbits);
         if(b){
-          fmpz_get_mpz(polys[k]->cf_qq[l], y);
           mpz_set_ui(rden, 1);
-        }
-        else{
-          for(uint32_t i = 0; i < np; i++){
-            modgbs->cf_64[i] = MODCF(polys[k], l, i);
-          }
-          fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 1);
-          fmpz_get_mpz(zz, y);
         }
         *st_crt += realtime() - rt;
         rt = realtime();
@@ -1431,7 +1633,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
           if(mpz_cmp_ui(rden, 1)){
             mpz_mul(dl->tmp, dl->tmp, rden);
             set_recdata_guess(rd1, mod_p, dl->tmp);
-            gvalid = 0;
+            gvalid = 0; gver++;
           }
           if(mpz_sgn(polys[k]->cf_qq[l])){
             done[ndone++] = l;
@@ -1448,7 +1650,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
           b = lll_full_block(modgbs, dl, k, fail, nfail, zf, done, ndone,
                              mod_p, rd1, rden, dens, pcost);
           used_lll = 1;
-          gvalid = 0;
+          gvalid = 0; gver++;
           for(int j = 0; j < nfail && b; j++){
             if(mpz_sgn(polys[k]->cf_qq[fail[j]])){
               done[ndone++] = fail[j];
@@ -1517,6 +1719,15 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   }
 
   if(maxlen > 0){
+    for(int32_t j = 0; j < chunk; j++){
+      mpz_clear(zraw[j]);
+      mpz_clear(fixv[j]);
+    }
+    free(zraw);
+    free(fixv);
+    free(isint);
+    free(fixok);
+    crt_ws_clear(ws, dl->nthreads);
     free(gp);
     fmpz_clear(y);
     fmpz_comb_temp_clear(comb_temp);
@@ -1530,6 +1741,9 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   for(int j = 0; j < LLL_WIT_K; j++){
     mpz_clear(zf[j]);
   }
+  mpz_clear(gchunk);
+  mpz_clear(ratio);
+  mpz_clear(half);
   mpz_clear(zz);
   mpz_clear(rden);
 
@@ -2106,6 +2320,21 @@ static void reset_learning_data(mstrace_t msd, md_t *st){
   free_elim_drl_data(st);
 }
 
+/* frees the bases modulo the primes of the current batch which have not
+ * been used (see core_groebner_qq) and the arrays of the batch */
+static void gb_free_batch(bs_t **bbs, uint64_t *bprimes, int *bbad,
+                          double *bstf4, const int nthreads){
+  for(int i = 0; i < nthreads; i++){
+    if(bbs[i] != NULL){
+      free_basis_and_only_local_hash_table_data(&(bbs[i]));
+    }
+  }
+  free(bbs);
+  free(bprimes);
+  free(bbad);
+  free(bstf4);
+}
+
 /* default bitsize of the primes of the multi-modular computation of
    core_groebner_qq, 31 or 52 (F4 then computes with 64 bit integers, its
    vectorized kernels need primes below 2^52): with AVX-512 IFMA, F4 costs
@@ -2268,6 +2497,7 @@ restart:
       int32_t *ldeg = array_nbdegrees((*msd->leadmons_ori), msd->num_gb[0],
                                       bs->ht->nv - st->nev, &nb);
       data_lift_init(dlift, (*modgbsp)->ld, ldeg, nb);
+      dlift->nthreads = st->nthrds;
       choose_coef_to_lift((*modgbsp), dlift);
       free(ldeg);
       dlinit = 1;
@@ -2326,35 +2556,65 @@ restart:
     if(info_level){
         fprintf(VERBSTREAM, "New prime = %" PRIu64 "\n", (uint64_t)prime);
     }
+    /* The trace is applied to batches of nthreads primes in parallel (one
+     * prime per thread); the images are then copied and the lifting steps
+     * applied prime by prime, in the order of the primes, exactly as with
+     * one thread, so that the primes used and the output do not depend on
+     * the number of threads (only the end of the last batch is wasted). */
+    const int nthreads = st->nthrds;
+    uint64_t *bprimes = (uint64_t *)malloc(nthreads * sizeof(uint64_t));
+    bs_t **bbs = (bs_t **)calloc(nthreads, sizeof(bs_t *));
+    int *bbad = (int *)calloc(nthreads, sizeof(int));
+    double *bstf4 = (double *)calloc(nthreads, sizeof(double));
+    int bpos = nthreads;
     while(apply){
 
-      /* generate lucky prime numbers */
-      prime = gb_next_prime(prime, pbits);
-      while(gb_is_unlucky_prime(prime, bs) || prime==primeinit){
-        prime = gb_next_prime(prime, pbits);
+      if(bpos == nthreads){
+        /* generate lucky prime numbers */
+        for(int i = 0; i < nthreads; i++){
+          prime = gb_next_prime(prime, pbits);
+          while(gb_is_unlucky_prime(prime, bs) || prime==primeinit){
+            prime = gb_next_prime(prime, pbits);
+          }
+          bprimes[i] = prime;
+        }
+        /* F4 is run by each thread on a single thread */
+        st->info_level  = 0;
+        st->f4_qq_round = 2;
+        st->nthrds = 1;
+#pragma omp parallel for num_threads(nthreads) schedule(static, 1)
+        for(int i = 0; i < nthreads; i++){
+          const double rt = realtime();
+          bbs[i] = gb_modular_trace_apply((*modgbsp), msd->num_gb[i],
+                                          msd->leadmons_ori[i],
+                                          msd->leadmons_current[i],
+                                          bs, st, bprimes[i], bbad + i);
+          bstf4[i] = realtime() - rt;
+        }
+        st->nthrds = nthreads;
+        bpos = 0;
       }
-      int nthrds = 1; /* mono-threaded mult-mid comp */
+      const int bi = bpos++;
+      prime = bprimes[bi];
+      stf4 = bstf4[bi];
+      msd->bad_primes[0] = bbad[bi];
+      int nthrds = 1; /* the lifting steps are applied prime by prime */
 
       if((*modgbsp)->alloc <= nprimes + 2){
-        /* Room for the images modulo the next primes. The multi-modular
-         * computation is mono-threaded (one prime per step), so this must
-         * not scale with st->nthrds. The increment is kept small (at most
-         * ~1/16 of the current number of primes, but at least 4) since the
-         * unused slots are allocated for every term of the basis which is
-         * not lifted yet, i.e. for most of the basis at the end of the
+        /* Room for the images modulo the next primes, which are copied one
+         * prime at a time. The increment is kept small (at most ~1/16 of
+         * the current number of primes, but at least 4) since the unused
+         * slots are allocated for every term of the basis which is not
+         * lifted yet, i.e. for most of the basis at the end of the
          * computation, when memory consumption peaks. */
         gb_modpoly_realloc((*modgbsp), MAX(4, (uint32_t)nprimes / 16));
       }
 
-      gb_modular_trace_application((*modgbsp), msd->mgb,
-                                   msd->num_gb,
-                                   msd->leadmons_ori,
-                                   msd->leadmons_current,
-                                   msd->btrace,
-                                   bs,  st,
-                                   0, /* info_level, */
-                                   prime,
-                                   dlift->S, &stf4, msd->bad_primes);
+      if(bbs[bi] != NULL){
+        /* copy of data for multi-mod computation */
+        modpgbs_set((*modgbsp), bbs[bi], bbs[bi]->ht, prime, dlift->S, st->nev);
+        free_basis_and_only_local_hash_table_data(&(bbs[bi]));
+      }
 
       /* nprimes += st->nthrds; */
       nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */
@@ -2425,6 +2685,7 @@ restart:
         free_rrec_data(recdata2);
         /* reset info_level to previous setting */
         st->info_level = info_level;
+        gb_free_batch(bbs, bprimes, bbad, bstf4, nthreads);
         /* return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); */
         goto restart;
 
@@ -2477,6 +2738,7 @@ restart:
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
     }
+    gb_free_batch(bbs, bprimes, bbad, bstf4, nthreads);
     if (info_level){
       fprintf(VERBSTREAM, " \n-------------------------------------------------\
 -----------------------------------------------------\n");
@@ -2761,11 +3023,11 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
 
     if(flags->files->out_file != NULL){
       FILE *ofile = fopen(flags->files->out_file, "ab+");
-      display_gbmodpoly_cf_qq(ofile, (*modgbsp), gens);
+      display_gbmodpoly_cf_qq(ofile, (*modgbsp), gens, flags->nr_threads);
       fclose(ofile);
     }
     else{
-      display_gbmodpoly_cf_qq(OUTSTREAM, (*modgbsp), gens);
+      display_gbmodpoly_cf_qq(OUTSTREAM, (*modgbsp), gens, flags->nr_threads);
     }
   }
   if(flags->print_gb == 1){

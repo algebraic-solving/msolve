@@ -1191,8 +1191,9 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
   mp_limb_t c = n_invmod(mpz_fdiv_u64(mod_p, newprime), newprime);
   const mp_limb_t ninv = n_preinvert_limb(newprime);
   const uint32_t np = modgbs->nprimes - 1;
-  /* the polynomials are independent and split among the threads */
-#pragma omp parallel for num_threads(dl->nthreads) schedule(dynamic, 8)
+  /* these CRTs are cheap compared to moving their results between the
+     caches of several threads (the witnesses are then reconstructed by
+     this thread), hence they are not split among the threads */
   for(int32_t k = dl->S; k < dl->end; k++){
       if(modgbs->modpolys[k]->len){
         uint64_t r = MODCF(modgbs->modpolys[k], coef[k], np);

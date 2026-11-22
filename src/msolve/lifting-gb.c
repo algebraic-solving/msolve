@@ -1788,7 +1788,13 @@ static int lll_common_den(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
   }
   fmpz_lll_t fl;
   fmpz_lll_context_init_default(fl);
-  fmpz_lll(B, NULL, fl);
+  /* the reduction is not certified: on these small lattices, fmpz_lll
+     spends most of its time beyond the floating-point reduction (up to 10
+     times more with FLINT 3.1), while the candidates found are checked
+     anyway, by their sizes below and then with new primes */
+  if(fmpz_lll_d_heuristic(B, NULL, fl) == -1){
+    fmpz_lll(B, NULL, fl);
+  }
 
   const slong bits = (s + (slong)k * (slong)fmpz_bits(m)) / (k + 1) - RR_MARGIN;
   fmpz *d = fmpz_mat_entry(B, 0, 0);

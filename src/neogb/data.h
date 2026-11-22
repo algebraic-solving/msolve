@@ -151,6 +151,11 @@ struct ht_t
                     * bvl-1, see update_boolean_masks() */
     hl_t bvl;     /* number of valid entries of bvm */
     hl_t bvsz;    /* size of bvm */
+    ht_t *orig;   /* for a copy: the hash table it is a copy of, the copy
+                   * is kept in orig->spare for reuse when it is freed */
+    ht_t *spare;  /* list of freed copies of this hash table which are
+                   * reused by copy_hash_table, linked via next */
+    ht_t *next;   /* next copy in the list orig->spare */
 };
 
 /* S-pair types */
@@ -454,6 +459,22 @@ struct md_t
     uint32_t gfc; /* global field characteristic */
     uint64_t fc;
     int32_t nev; /* number of elimination variables */
+    int32_t elim_drl; /* for nev > 0, compute a DRL Groebner basis first and
+                       * the elimination basis from it:
+                       * 0 = never, 1 = always,
+                       * 2 = if there are at least as many generators as
+                       *     variables, i.e. the ideal may be 0-dimensional,
+                       *     and more than one variable is eliminated */
+    int32_t round_deg; /* 1: new basis elements get the degree of the
+                        * F4 round (sugar degree) instead of the maximal
+                        * degree of their terms, used when starting from a
+                        * DRL Groebner basis for an elimination order */
+    md_t *drl_md; /* meta data of the DRL Groebner basis computation */
+    bs_t *drl_bs; /* input generators w.r.t. DRL for elim_drl */
+    md_t *elim_md; /* meta data of the elimination Groebner basis
+                    * computation from the DRL one, holds its tracer */
+    bs_t *elim_bs; /* its input learnt with the first prime, for
+                    * checking the input of the next primes */
     int32_t boolean; /* computation in the Boolean ring over GF(2) */
     int32_t mo; /* monomial ordering: 0=DRL, 1=LEX*/
     int32_t laopt;

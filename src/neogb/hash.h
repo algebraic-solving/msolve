@@ -42,8 +42,11 @@ ht_t *initialize_basis_hash_table(
     md_t *st
     );
 
+/* The copy shares the data of bht for divisibility checks and hashing.
+ * When it is freed by free_hash_table it is kept for the next copy of
+ * bht, thus it has to be freed before bht. */
 ht_t *copy_hash_table(
-    const ht_t *bht
+    ht_t *bht
     );
 
 ht_t *initialize_secondary_hash_table(

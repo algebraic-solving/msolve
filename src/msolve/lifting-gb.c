@@ -1487,6 +1487,9 @@ static void reset_learning_data(mstrace_t msd, md_t *st){
     free_trace(&(st->tr));
   }
   st->trace_level = NO_TRACER;
+  /* the same holds for the DRL Groebner basis computed first for
+   * elimination orders */
+  free_elim_drl_data(st);
 }
 
 gb_modpoly_t *core_groebner_qq(
@@ -2012,6 +2015,7 @@ gb_modpoly_t *groebner_qq(
       exit(1);
   }
 
+  md->elim_drl = gens->elim_drl;
   initialize_mstrace(msd, md, bs);
   int err = 0;
 
@@ -2021,6 +2025,7 @@ gb_modpoly_t *groebner_qq(
       fprintf(ERRSTREAM,"Problem with groebner_qq, stopped computation (%d).\n", err);
       exit(1);
   }
+  free_elim_drl_data(md);
 
   /* timings */
   ct1 = cputime();

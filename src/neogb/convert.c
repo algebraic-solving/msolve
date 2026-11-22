@@ -732,7 +732,6 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         )
 {
     len_t i, j, k;
-    deg_t deg;
 
     const len_t bl = bs->ld;
     const len_t np = mat->np;
@@ -784,12 +783,24 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         for (j = OFFSET; j < len; ++j) {
             rows[i][j] = hcm[rows[i][j]];
         }
-        deg = bht->hd[rows[i][OFFSET]].deg;
+        deg_t deg = bht->hd[rows[i][OFFSET]].deg;
         if (st->nev > 0) {
-            const len_t len = rows[i][LENGTH]+OFFSET;
-            for (j = OFFSET+1; j < len; ++j) {
-                if (deg < bht->hd[rows[i][j]].deg) {
-                    deg = bht->hd[rows[i][j]].deg;
+            if (st->round_deg && !st->in_final_reduction_step) {
+                /* for elimination orders the tails may have a much
+                 * higher degree than the leading term, so the maximal
+                 * degree of the terms would delay the pairs of this
+                 * element, take the degree of the round instead. This
+                 * may even be lower than the degree of the leading term
+                 * if the reduction made a tail term the leading one;
+                 * the degree is only used for the pair selection and
+                 * the criteria stay correct. */
+                deg = mat->cd;
+            } else {
+                const len_t len = rows[i][LENGTH]+OFFSET;
+                for (j = OFFSET+1; j < len; ++j) {
+                    if (deg < bht->hd[rows[i][j]].deg) {
+                        deg = bht->hd[rows[i][j]].deg;
+                    }
                 }
             }
         }
@@ -816,7 +827,7 @@ static void convert_sparse_matrix_rows_to_basis_elements(
         rows[i][COEFFS]   = bl+k;
         bs->hm[bl+k]      = rows[i];
         bs->hm[bl+k][DEG] = deg;
-        if (deg == 0) {
+        if (bht->hd[rows[i][OFFSET]].deg == 0) {
             bs->constant  = 1;
         }
 #if 0
@@ -864,13 +875,14 @@ static void convert_sparse_matrix_rows_to_basis_elements(
     /* last element has smallest leading monomial, i.e. also the smallest
     possible degree, so check with this for a degree fall */
     if (
-            st->trace_level != APPLY_TRACER
+            np > 0
+            && st->trace_level != APPLY_TRACER
             && st->in_final_reduction_step != 1
             && st->homogeneous == 0
             && st->min_deg_in_first_deg_fall == INT32_MAX
-            && deg < pairs_deg
+            && bs->hm[bl+np-1][DEG] < pairs_deg
         ) {
-            st->min_deg_in_first_deg_fall = deg;
+            st->min_deg_in_first_deg_fall = bs->hm[bl+np-1][DEG];
     }
 
     /* timings */

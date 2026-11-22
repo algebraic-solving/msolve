@@ -125,10 +125,10 @@ static inline void mpz_upoly_out_str(FILE *file, mpz_upoly_t pol) {
     fprintf(file, "%d, ", pol->length - 1); // degree
     fprintf(file, "[");
     for (long i = 0; i < pol->length - 1; i++) {
-      mpz_out_str(file, 10, pol->coeffs[i]);
+      mpz_out_str_10(file, pol->coeffs[i]);
       fprintf(file, ", ");
     }
-    mpz_out_str(file, 10, pol->coeffs[pol->length - 1]);
+    mpz_out_str_10(file, pol->coeffs[pol->length - 1]);
     fprintf(file, "]");
   } else {
     fprintf(file, "-1, [0]");
@@ -251,7 +251,7 @@ static inline void mpz_param_out_str(FILE *file, const data_gens_ff_t *gens,
         fprintf(file, "[");
         mpz_upoly_out_str(file, param->coords[i]); // param. polys
         fprintf(file, ",\n");
-        mpz_out_str(file, 10, param->cfs[i]);
+        mpz_out_str_10(file, param->cfs[i]);
         if (i == param->nvars - 2) {
           fprintf(file, "]\n");
         } else {
@@ -3834,7 +3834,7 @@ void display_real_point(FILE *fstream, real_point_t pt) {
   fprintf(fstream, "[");
   for (long i = 0; i < pt->nvars - 1; i++) {
     fprintf(fstream, "[");
-    mpz_out_str(fstream, 10, pt->coords[i]->val_do);
+    mpz_out_str_10(fstream, pt->coords[i]->val_do);
     if (pt->coords[i]->k_do && mpz_sgn(pt->coords[i]->val_do)) {
       fprintf(fstream, " / ");
       fprintf(fstream, "2");
@@ -3843,7 +3843,7 @@ void display_real_point(FILE *fstream, real_point_t pt) {
       }
     }
     fprintf(fstream, ", ");
-    mpz_out_str(fstream, 10, pt->coords[i]->val_up);
+    mpz_out_str_10(fstream, pt->coords[i]->val_up);
     if (pt->coords[i]->k_up && mpz_sgn(pt->coords[i]->val_up)) {
       fprintf(fstream, " / ");
       fprintf(fstream, "2");
@@ -3854,7 +3854,7 @@ void display_real_point(FILE *fstream, real_point_t pt) {
     fprintf(fstream, "], ");
   }
   fprintf(fstream, "[");
-  mpz_out_str(fstream, 10, pt->coords[pt->nvars - 1]->val_do);
+  mpz_out_str_10(fstream, pt->coords[pt->nvars - 1]->val_do);
   if (pt->coords[pt->nvars - 1]->k_do &&
       mpz_sgn(pt->coords[pt->nvars - 1]->val_do)) {
     fprintf(fstream, " / ");
@@ -3865,7 +3865,7 @@ void display_real_point(FILE *fstream, real_point_t pt) {
   }
   fprintf(fstream, ", ");
 
-  mpz_out_str(fstream, 10, pt->coords[pt->nvars - 1]->val_up);
+  mpz_out_str_10(fstream, pt->coords[pt->nvars - 1]->val_up);
   if (pt->coords[pt->nvars - 1]->k_up &&
       mpz_sgn(pt->coords[pt->nvars - 1]->val_up)) {
     fprintf(fstream, " / ");

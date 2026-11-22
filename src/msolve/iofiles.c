@@ -26,6 +26,19 @@
 #include <errno.h>
 #include <limits.h>
 
+/* writes x in base 10 to file through FLINT's fmpz_get_str, which uses
+ * FLINT's radix conversion for small and large integers (below 40 and
+ * from 1400 limbs in builds with fft_small), faster than GMP's
+ * mpz_out_str there, and GMP's conversion in between */
+static inline void mpz_out_str_10(FILE *file, const mpz_t x){
+  fmpz_t f;
+  fmpz_init_set_readonly(f, x);
+  char *str = fmpz_get_str(NULL, 10, f);
+  fputs(str, file);
+  flint_free(str);
+  fmpz_clear_readonly(f);
+}
+
 /* start of an interval of time spent writing the output */
 typedef struct{
   double rt;

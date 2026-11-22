@@ -506,6 +506,17 @@ bs_t *copy_basis_mod_p(
                 }
             }
             break;
+        case 64:
+            bs->cf_64   = (cf64_t **)malloc((unsigned long)bs->sz * sizeof(cf64_t *));
+            for (i = 0; i < bs->ld; ++i) {
+                idx = gbs->hm[i][COEFFS];
+                bs->cf_64[idx]  =
+                    (cf64_t *)malloc((unsigned long)(gbs->hm[i][LENGTH]) * sizeof(cf64_t));
+                for (j = 0; j < gbs->hm[i][LENGTH]; ++j) {
+                    bs->cf_64[idx][j] = (cf64_t)mpz_fdiv_ui(gbs->cf_qq[idx][j], prime);
+                }
+            }
+            break;
         default:
             exit(1);
     }

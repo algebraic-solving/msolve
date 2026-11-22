@@ -153,6 +153,10 @@ typedef struct{
   int32_t hensel_prec;
   double hensel_cost_scale;
   double hensel_memory;
+  /* bitsize of the primes of the multi-modular computation of Groebner
+   * bases over the rationals (-g 2): 31 or 52, 0 for the default of the
+   * build (see GB_PRIME_BITS_DEFAULT in lifting-gb.c) */
+  int32_t gb_prime_bits;
   char **vnames;
   int32_t *lens;
   int32_t *exps;

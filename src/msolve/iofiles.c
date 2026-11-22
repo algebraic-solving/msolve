@@ -26,6 +26,39 @@
 #include <errno.h>
 #include <limits.h>
 
+/* start of an interval of time spent writing the output */
+typedef struct{
+  double rt;
+  double ct;
+} output_timer_t;
+
+static inline void output_timer_start(output_timer_t *t){
+  t->rt = realtime();
+  t->ct = cputime();
+}
+
+/* adds the time elapsed since output_timer_start(t) to the time spent
+ * writing the output, accumulated in files so that msolve can report the
+ * computation time apart from it (see print_overall_times) */
+static inline void output_timer_stop(files_gb *files, const output_timer_t *t){
+  files->output_rtime += realtime() - t->rt;
+  files->output_ctime += cputime() - t->ct;
+}
+
+/* prints the computation time, the time spent writing the output (stored
+ * in files) and the overall time since rt0 (elapsed) and st0 (cpu) */
+static inline void print_overall_times(const files_gb *files,
+                                       const double rt0, const double st0){
+  const double st1 = cputime();
+  const double rt1 = realtime();
+  fprintf(VERBSTREAM, "msolve computation time  %9.2f sec (elapsed) / %5.2f sec (cpu)\n",
+          rt1 - rt0 - files->output_rtime, st1 - st0 - files->output_ctime);
+  fprintf(VERBSTREAM, "msolve output time       %9.2f sec (elapsed) / %5.2f sec (cpu)\n",
+          files->output_rtime, files->output_ctime);
+  fprintf(VERBSTREAM, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
+          rt1 - rt0, st1 - st0);
+}
+
 /* over GF(16) and GF(256) coefficients may be given in hexadecimal
  * notation, e.g. 0x1b, returns the base of the integer str and sets
  * *digits to its first digit */

@@ -2057,6 +2057,8 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
 
   modgbsp = groebner_qq(gens, flags);
 
+  output_timer_t ot;
+  output_timer_start(&ot);
   FILE *ofile;
   if (flags->files->out_file != NULL) {
     ofile = fopen(flags->files->out_file, "wb+");
@@ -2114,6 +2116,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
       display_lm_gbmodpoly_cf_qq(OUTSTREAM, (*modgbsp), gens);
     }
   }
+  output_timer_stop(flags->files, &ot);
   gb_modpoly_clear((*modgbsp));
   free(modgbsp);
 }

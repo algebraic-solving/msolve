@@ -2020,8 +2020,11 @@ static inline void print_groebner_basis(files_gb *files,
   if (md->print_gb) {
     int32_t gfc = md->gfc;
     md->gfc = fc;
+    output_timer_t ot;
+    output_timer_start(&ot);
     print_ff_basis_data(files->out_file, "ab", bs, bs->ht, md, gens,
                         md->print_gb);
+    output_timer_stop(files, &ot);
     md->gfc = gfc;
   }
 }
@@ -5066,8 +5069,11 @@ void manage_output(int b, int dim, int dquot, files_gb *files,
                    long *nb_real_roots_ptr, interval **real_roots_ptr,
                    real_point_t **real_pts_ptr, int info_level) {
   if (b == 0) {
+    output_timer_t ot;
+    output_timer_start(&ot);
     display_output(b, dim, dquot, files, gens, param, mpz_paramp, get_param,
                    nb_real_roots_ptr, real_roots_ptr, real_pts_ptr, info_level);
+    output_timer_stop(files, &ot);
   }
   if (b == -2) {
     fprintf(ERRSTREAM, "Characteristic of the field here shouldn't be positive\n");
@@ -5252,8 +5258,11 @@ restart:
         if (gens->field_char <= UINT32_MAX) {
             st->gfc = (uint32_t)gens->field_char;
         }
+        output_timer_t ot;
+        output_timer_start(&ot);
         print_ff_basis_data(files->out_file, "ab", bs, bs->ht, st, gens,
                 print_gb);
+        output_timer_stop(files, &ot);
 
         free_shared_hash_data(bht);
         free_basis(&bs);
@@ -5418,8 +5427,11 @@ restart:
                     return -1;
                 }
                 if (print_gb) {
+		  output_timer_t ot;
+		  output_timer_start(&ot);
 		  print_ff_basis_data(files->out_file, "ab", bs, bht,
                     st, gens, print_gb);
+		  output_timer_stop(files, &ot);
 		}
             }
             return 0;
@@ -5929,7 +5941,10 @@ restart:
             }
             /* print all reduced elements in tbr, first normal_form ones
              * are the input elements */
+            output_timer_t ot;
+            output_timer_start(&ot);
             print_ff_nf_data(files->out_file, "ab", 0, normal_form, tbr, bht, st, gens, 2);
+            output_timer_stop(files, &ot);
             if (normal_form_matrix > 0) {
                 /* sht and hcm will store the union of the support
                  * of all normal forms in tbr. */
@@ -6904,8 +6919,6 @@ void msolve_julia(
     }
     mpz_param_clear(mpz_param);
 
-    free(files);
-
     *n_real_sols = nb_real_roots;
 
     free(real_roots);
@@ -6919,15 +6932,13 @@ void msolve_julia(
 
     /* timings */
     if (info_level > 0) {
-        double st1 = cputime();
-        double rt1 = realtime();
         fprintf(VERBSTREAM, "\n-------------------------------------------------\
 -----------------------------------\n");
-        fprintf(VERBSTREAM, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
-                rt1-rt0, st1-st0);
+        print_overall_times(files, rt0, st0);
         fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------\n");
     }
+    free(files);
 }
 
 

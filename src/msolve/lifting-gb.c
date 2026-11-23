@@ -142,6 +142,8 @@ typedef struct{
   int *check1; /* tells whether lifted data are ok with one more prime */
   int *check2; /* tells whether lifted data are ok with two more primes */
   int32_t S;
+  int32_t V; /* the CRTs of the witness coefficients are up to date for the
+                polynomials of index S <= k < V (see witness_crt_window) */
   int32_t *coef2; /* second witness coefficient */
   mpz_t *crt2;
   mpz_t *num2;
@@ -178,6 +180,7 @@ static inline void data_lift_init(data_lift_t dl,
   dl->lstart = 0;
   dl->nsteps = nsteps;
   dl->S = 0;
+  dl->V = 0;
   mpz_init_set_ui(dl->pgden, 1);
   int32_t i;
 
@@ -1191,10 +1194,14 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
   mp_limb_t c = n_invmod(mpz_fdiv_u64(mod_p, newprime), newprime);
   const mp_limb_t ninv = n_preinvert_limb(newprime);
   const uint32_t np = modgbs->nprimes - 1;
-  /* these CRTs are cheap compared to moving their results between the
-     caches of several threads (the witnesses are then reconstructed by
-     this thread), hence they are not split among the threads */
-  for(int32_t k = dl->S; k < dl->end; k++){
+  /* only the polynomials whose witnesses have already been reconstructed
+     once are kept up to date, the next ones are computed when they are
+     reached (see witness_crt_window); these CRTs are cheap compared to
+     moving their results between the caches of several threads (the
+     witnesses are then reconstructed by this thread), hence they are not
+     split among the threads */
+  dl->V = MAX(dl->V, dl->S);
+  for(int32_t k = dl->S; k < dl->V; k++){
       if(modgbs->modpolys[k]->len){
         uint64_t r = MODCF(modgbs->modpolys[k], coef[k], np);
         _mpz_CRT_ui_precomp(dl->crt[k], dl->crt[k], mod_p,
@@ -1208,6 +1215,58 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
       }
   }
   mpz_set(mod_p, prod_p);
+}
+
+/* The witness coefficients of the i-th polynomial are reconstructed while
+ * its CRTs are not up to date (i >= V): those of the polynomials of index
+ * V <= k < min(end, i + nthreads) are computed from their images modulo all
+ * the primes, in parallel, and then kept up to date prime by prime (see
+ * incremental_dlift_crt_full). The CRTs of the polynomials which are not
+ * reached yet are thus not updated with each new prime, the reconstruction
+ * of the witnesses stopping at the first failure. The results are the
+ * symmetric remainders modulo the product of the primes, as the
+ * incremental CRTs. */
+static void witness_crt_window(gb_modpoly_t modgbs, data_lift_t dl,
+                               const int32_t i, const int32_t end){
+  const int32_t v0 = MAX(dl->V, dl->S);
+  if(i < v0){
+    return;
+  }
+  const int32_t v1 = MIN(end, i + MAX(1, dl->nthreads));
+  const uint32_t np = modgbs->nprimes;
+  fmpz_comb_t comb;
+  fmpz_comb_init(comb, modgbs->primes, np);
+  /* the team keeps the size of the other parallel regions of the lifting:
+     changing it makes the OpenMP runtime rebuild it */
+#pragma omp parallel num_threads(dl->nthreads)
+  {
+    fmpz_comb_temp_t comb_temp;
+    fmpz_comb_temp_init(comb_temp, comb);
+    fmpz_t y;
+    fmpz_init(y);
+    mp_limb_t *res = (mp_limb_t *)malloc(sizeof(mp_limb_t) * np);
+#pragma omp for schedule(dynamic, 1)
+    for(int32_t k = v0; k < v1; k++){
+      modpolys_t *pol = modgbs->modpolys + k;
+      if(pol[0]->len == 0){
+        continue;
+      }
+      const int32_t c[3] = {dl->coef[k], dl->coef2[k], dl->coef3[k]};
+      mpz_t *z[3] = {dl->crt + k, dl->crt2 + k, dl->crt3 + k};
+      for(int j = 0; j < 3; j++){
+        for(uint32_t l = 0; l < np; l++){
+          res[l] = MODCF(pol[0], c[j], l);
+        }
+        fmpz_multi_CRT_ui(y, res, comb, comb_temp, 1);
+        fmpz_get_mpz(*z[j], y);
+      }
+    }
+    free(res);
+    fmpz_clear(y);
+    fmpz_comb_temp_clear(comb_temp);
+  }
+  fmpz_comb_clear(comb);
+  dl->V = v1;
 }
 
 
@@ -2223,6 +2282,11 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
           }
         }
         mpz_set(dl->pgden, dl->gden);
+        double rt = realtime();
+        witness_crt_window(modgbs, dl, i, dl->lend);
+        rt = realtime() - rt;
+        *st_crt += rt;
+        st += rt; /* not counted as reconstruction */
         int b = reconstructcoeff(dl, i, mod_p,
                                recdata1, recdata2);
         if(b){

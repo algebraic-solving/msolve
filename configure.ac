@@ -116,6 +116,39 @@ AX_GCC_BUILTIN([__builtin_constant_p])
 AX_GCC_BUILTIN([__builtin_clzll])
 AX_GCC_BUILTIN([__builtin_clzl])
 
+# FLINT's build configuration does not guarantee that its fft_small headers
+# are usable with our compiler target (for example, AVX2 also needs FMA).
+# Compile the vector operations used by Hensel lifting without adding flags.
+AC_CACHE_CHECK([whether FLINT fft_small is usable with the compiler target],
+    [msolve_cv_flint_fft_small], [
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+#include <flint/flint.h>
+#if __FLINT_RELEASE < 30200 || !defined(FLINT_HAVE_FFT_SMALL) \
+    || !FLINT_HAVE_FFT_SMALL
+#error FLINT fft_small is unavailable
+#else
+#include <flint/fft_small.h>
+
+/* External inputs and an observable result prevent constant folding from
+   hiding unsupported intrinsics in the inline vector operations. */
+void msolve_check_fft_small(double *out, const double *a, const double *b,
+                           double p, double pinv)
+{
+    vec4d va = vec4d_load_aligned(a), vb = vec4d_load_aligned(b);
+    vec4d vp = vec4d_set_d(p), vi = vec4d_set_d(pinv);
+    vec4d h = vec4d_mul(va, vb), l = vec4d_fmsub(va, vb, h);
+    vec4d r = vec4d_add(vec4d_fnmadd(vec4d_round(vec4d_mul(h, vi)), vp, h), l);
+    vec4d_store_aligned(out,
+        vec4d_fnmadd(vec4d_round(vec4d_mul(r, vi)), vp, r));
+}
+#endif
+  ]])], [msolve_cv_flint_fft_small=yes], [msolve_cv_flint_fft_small=no])
+])
+AS_IF([test "x$msolve_cv_flint_fft_small" = xyes], [
+  AC_DEFINE([HAVE_FLINT_FFT_SMALL], [1],
+      [Define if FLINT fft_small is usable with the compiler target])
+])
+
 # Checks for library functions.
 AC_CHECK_FUNCS([floor getdelim gettimeofday memmove memset malloc realloc pow sqrt strchr strstr strtol])
 

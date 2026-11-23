@@ -58,11 +58,10 @@ static void hensel_trim(void) {
 }
 
 /* the products of polynomial matrices by transforms (see hensel_ntt_mul)
- * use the interface of fft_small of FLINT 3.2.0 and later; HENSEL_NTT 0,
- * or older versions, keep the products of fmpz_poly_mul */
+ * use FLINT's fft_small interface when configure finds it usable with the
+ * compiler target; otherwise, or with HENSEL_NTT 0, keep fmpz_poly_mul */
 #ifndef HENSEL_NTT
-#if __FLINT_RELEASE >= 30200 && defined(FLINT_HAVE_FFT_SMALL) \
-  && FLINT_HAVE_FFT_SMALL
+#ifdef HAVE_FLINT_FFT_SMALL
 #define HENSEL_NTT 1
 #else
 #define HENSEL_NTT 0

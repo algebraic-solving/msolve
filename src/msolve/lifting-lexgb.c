@@ -470,7 +470,7 @@ static sp_multimatfglm_t *lexgb_matrices_view(const fglm_trace_t *tr, CF_t *dm,
 
 /* Output in the format of print_lex_basis, with integer coefficients
  * (denominators cleared polynomial by polynomial) */
-static void lexgb_print_term(FILE *f, const fmpz_t c, const int32_t *e,
+static void lexgb_print_term(FILE *f, const mpz_t c, const int32_t *e,
                              const int nv, char **vnames, const int first){
   int one = 1;
   for(int i = 0; i < nv; i++) {
@@ -478,22 +478,17 @@ static void lexgb_print_term(FILE *f, const fmpz_t c, const int32_t *e,
           one = 0;
       }
   }
-  fmpz_t a;
-  fmpz_init(a);
-  fmpz_abs(a, c);
-  if(fmpz_sgn(c) < 0) {
-      fprintf(f, "-");
-  } else if(!first) {
+  if(mpz_sgn(c) > 0 && !first) {
       fprintf(f, "+");
   }
-  if(one){
-    fmpz_fprint(f, a);
-  } else {
-    int star = 0;
-    if(!fmpz_is_one(a)){
-        fmpz_fprint(f, a);
-        star = 1;
-    }
+  int star = 0;
+  if(one || mpz_cmpabs_ui(c, 1) != 0){
+    mpz_out_str_10(f, c);
+    star = 1;
+  } else if(mpz_sgn(c) < 0) {
+    fprintf(f, "-");
+  }
+  if(!one){
     for(int i = 0; i < nv; i++){
       if(!e[i]) continue;
       if(star) fprintf(f, "*");
@@ -502,7 +497,6 @@ static void lexgb_print_term(FILE *f, const fmpz_t c, const int32_t *e,
       star = 1;
     }
   }
-  fmpz_clear(a);
 }
 
 /* Lex Gb over Q; if lead_ideal_only, only its leading ideal is printed
@@ -554,25 +548,20 @@ static void lexgb_print(FILE *file, const fglm_lex_staircase_t *lex,
     fprintf(file, "]:\n");
     return;
   }
-  fmpz_t c;
-  fmpz_init(c);
   fprintf(file, "[");
   for(int32_t j = 0; j < lex->ngens; j++){
     const modpolys_struct *P = modgbs->modpolys[j];
     /* lm * LM + sum cf_qq[k] s_k */
-    fmpz_set_mpz(c, P->lm);
-    lexgb_print_term(file, c, lex->g_lm + (uint64_t)j * nv, nv, vnames, 1);
+    lexgb_print_term(file, P->lm, lex->g_lm + (uint64_t)j * nv, nv, vnames, 1);
     for(szmat_t k = lex->g_ntail[j]; k-- > 0; ){
       if(mpz_sgn(P->cf_qq[k]) == 0) continue;
-      fmpz_set_mpz(c, P->cf_qq[k]);
-      lexgb_print_term(file, c, lex->S + (uint64_t)k * nv, nv, vnames, 0);
+      lexgb_print_term(file, P->cf_qq[k], lex->S + (uint64_t)k * nv, nv, vnames, 0);
     }
     if (j < lex->ngens -1) {
         fprintf(file, ",\n");
     }
   }
   fprintf(file, "]:\n");
-  fmpz_clear(c);
 }
 
 /* the time spent between open and close is counted as output time */

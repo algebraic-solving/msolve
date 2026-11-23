@@ -474,155 +474,150 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
   fprintf(file, "]:\n");
 }
 
-/* decimal strings of the coefficients cf_qq[0], .., cf_qq[len-1] of the
- * pos-th polynomial and of its leading coefficient lm (index len),
- * converted by nthreads threads: the conversion is most of the time spent
- * writing large bases */
-static char **modpoly_strings(gb_modpoly_t modgbs, const int32_t pos,
-                              const int nthreads){
-  modpolys_t *pol = modgbs->modpolys + pos;
-  const int64_t len = pol[0]->len;
-  char **str = (char **)malloc(sizeof(char *) * (len + 1));
-  /* FLINT's conversion, as mpz_out_str_10 (see iofiles.c) */
-#pragma omp parallel for num_threads(nthreads) schedule(dynamic, 16)
-  for(int64_t i = 0; i <= len; i++){
-    fmpz_t f;
-    fmpz_init_set_readonly(f, i < len ? pol[0]->cf_qq[i] : pol[0]->lm);
-    str[i] = fmpz_get_str(NULL, 10, f);
-    fmpz_clear_readonly(f);
+/* growable character buffer, used to format polynomials in memory */
+typedef struct{
+  char *s;
+  size_t len;
+  size_t cap;
+} strbuf_t;
+
+static inline void strbuf_put(strbuf_t *b, const char *s, const size_t n){
+  if(b->len + n > b->cap){
+    b->cap = MAX(2 * b->cap, b->len + n);
+    b->s = (char *)realloc(b->s, b->cap);
   }
-  return str;
+  memcpy(b->s + b->len, s, n);
+  b->len += n;
 }
 
-static void modpoly_strings_clear(char **str, const int64_t len){
-  for(int64_t i = 0; i <= len; i++){
-    flint_free(str[i]);
-  }
-  free(str);
+static inline void strbuf_puts(strbuf_t *b, const char *s){
+  strbuf_put(b, s, strlen(s));
 }
 
-/* str holds the decimal strings of the coefficients (see modpoly_strings) */
-static inline void display_modpoly(FILE *file,
-                                   gb_modpoly_t modgbs,
-                                   int32_t pos,
-                                   data_gens_ff_t *gens,
-                                   char **str){
-
-  if(modgbs->modpolys[pos]->len == 0){
-    display_monomial_single(file, gens, pos, &modgbs->ldm);
-    return;
+/* appends the monomial of exponent vector ev (variables separated by *) */
+static inline void strbuf_monomial(strbuf_t *b, const exp_t *ev,
+                                   const int *evi, const len_t nv,
+                                   const data_gens_ff_t *gens){
+  int star = 0;
+  for(len_t k = 0; k < nv; ++k){
+    if(ev[evi[k]] == 0){
+      continue;
+    }
+    if(star){
+      strbuf_put(b, "*", 1);
+    }
+    strbuf_puts(b, gens->vnames[k]);
+    if(ev[evi[k]] > 1){
+      char e[16];
+      strbuf_put(b, e, snprintf(e, sizeof(e), "^%u", (unsigned)ev[evi[k]]));
+    }
+    star = 1;
   }
-  if(mpz_cmp_ui(modgbs->modpolys[pos]->lm, 1) != 0){
-    fputs(str[modgbs->modpolys[pos]->len], file);
-    fprintf(file, "*");
-  }
-  display_monomial_single(file, gens, pos, &modgbs->ldm);
+}
 
-  len_t i, k;
-  hm_t *hm    = NULL;
-  /* modgbs->hm[pos] is the copy of the monomials of the pos-th element
-   * (see gb_modpoly_init), hence it is indexed by pos, not by lmps[pos] */
-  hm  = modgbs->hm[pos]+OFFSET;
+/* appends the decimal string of the coefficient c, converted by FLINT as
+ * mpz_out_str_10 (see iofiles.c) */
+static inline void strbuf_coef(strbuf_t *b, const mpz_t c){
+  fmpz_t f;
+  fmpz_init_set_readonly(f, c);
+  char *str = fmpz_get_str(NULL, 10, f);
+  fmpz_clear_readonly(f);
+  strbuf_puts(b, str);
+  flint_free(str);
+}
 
+/* appends the terms of index hi, hi-1, .., lo of the pos-th polynomial
+ * (the terms following its leading monomial have the indices len-1, .., 0,
+ * where len is the length of the polynomial) */
+static void format_modpoly_terms(strbuf_t *b, gb_modpoly_t modgbs,
+                                 const int32_t pos,
+                                 const data_gens_ff_t *gens,
+                                 const int64_t hi, const int64_t lo){
   ht_t *ht = modgbs->bht;
   const len_t nv  = ht->nv;
   const len_t ebl = ht->ebl;
   const len_t evl = ht->evl;
-
-  int *evi    =   (int *)malloc((unsigned long)(ht->nv + 1) * sizeof(int));
-  if (ebl == 0) {
-    for (i = 1; i < evl; ++i) {
-      evi[i-1]    =   i;
+  int evi[nv + 1];
+  len_t i;
+  if(ebl == 0){
+    for(i = 1; i < evl; ++i){
+      evi[i-1] = i;
     }
   } else {
-    for (i = 1; i < ebl; ++i) {
-      evi[i-1]    =   i;
+    for(i = 1; i < ebl; ++i){
+      evi[i-1] = i;
     }
-    for (i = ebl+1; i < evl; ++i) {
-      evi[i-2]    =   i;
+    for(i = ebl+1; i < evl; ++i){
+      evi[i-2] = i;
     }
   }
-  len_t len = modgbs->modpolys[pos]->len + 1;
+  /* modgbs->hm[pos] is the copy of the monomials of the pos-th element
+   * (see gb_modpoly_init), hence it is indexed by pos, not by lmps[pos] */
+  const hm_t *hm = modgbs->hm[pos] + OFFSET;
+  const int64_t len = modgbs->modpolys[pos]->len + 1;
   /* once lifted, all coefficients are integers (common denominator is
    * stored in lm), cf_qq[i] is the coefficient of index i */
   mpz_t *cf = modgbs->modpolys[pos]->cf_qq;
-  for(i = modgbs->modpolys[pos]->len-1; i > 0 ; i--){
-    if(mpz_cmp_ui(cf[i], 0)>0){
-      fprintf(file, "+");
+  for(int64_t i = hi; i >= lo; i--){
+    const exp_t *ev = ht->ev[hm[len - i - 1]];
+    const int sgn = mpz_sgn(cf[i]);
+    if(sgn > 0){
+      strbuf_put(b, "+", 1);
     }
-    //coef is -1
+    if(i == 0){
+      int deg = 0;
+      for(len_t k = 0; k < nv; ++k){
+        deg += ev[evi[k]];
+      }
+      if(deg == 0){
+        strbuf_coef(b, cf[0]);
+        break;
+      }
+    }
+    if(sgn == 0){
+      continue;
+    }
     if(mpz_cmp_si(cf[i], -1) == 0){
-        fprintf(file, "-");
+      strbuf_put(b, "-", 1);
     }
-    int star = 0;
-    //coef is neither 1 nor -1
-    if(mpz_cmp_ui(cf[i], 1) != 0 && mpz_cmp_si(cf[i], -1) != 0){
-        fputs(str[i], file);
-        fprintf(file, "*");
+    else if(mpz_cmp_ui(cf[i], 1) != 0){
+      strbuf_coef(b, cf[i]);
+      strbuf_put(b, "*", 1);
     }
-    if(mpz_cmp_ui(cf[i], 0) != 0){
-      for (k = 0; k < nv; ++k) {
-         if (ht->ev[hm[len-i-1]][evi[k]] == 1) {
-            if(star == 1){
-                fprintf(file, "*");
-            }
-            fprintf(file, "%s",gens->vnames[k]);
-            star = 1;
-         }
-         if (ht->ev[hm[len-i-1]][evi[k]] > 1) {
-            if(star == 1){
-                fprintf(file, "*");
-            }
-            fprintf(file, "%s^%u",gens->vnames[k], ht->ev[hm[len-i-1]][evi[k]]);
-            star = 1;
-         }
-     }
-    }
-    fflush(file);
+    strbuf_monomial(b, ev, evi, nv, gens);
   }
-  if(mpz_cmp_ui(cf[0], 0) > 0){
-    fprintf(file, "+");
-  }
-  int deg = 0;
-  for (k = 0; k < nv; ++k) {
-     deg += ht->ev[hm[len-1]][evi[k]];
-  }
-  if(deg == 0){
-    fputs(str[0], file);
-  }
-  else{
-    if(mpz_cmp_si(cf[0], -1) == 0){
-        fprintf(file, "-");
-    }
-    int star = 0;
-    //coef is neither 1 nor -1
-    if(mpz_cmp_ui(cf[0], 1) != 0 && mpz_cmp_si(cf[0], -1) != 0){
-        fputs(str[0], file);
-        fprintf(file, "*");
-    }
-    fflush(file);
-    if(mpz_cmp_ui(cf[0], 0) != 0){
-      for (k = 0; k < nv; ++k) {
-         if (ht->ev[hm[len-1]][evi[k]] == 1) {
-            if(star == 1){
-                fprintf(file, "*");
-            }
-            fprintf(file, "%s",gens->vnames[k]);
-            star = 1;
-         }
-         if (ht->ev[hm[len-1]][evi[k]] > 1) {
-            if(star == 1){
-                fprintf(file, "*");
-            }
-            fprintf(file, "%s^%u",gens->vnames[k], ht->ev[hm[len-1]][evi[k]]);
-            star = 1;
-         }
-     }
-    }
-  }
-
-  free(evi);
 }
+
+/* writes the leading coefficient and the leading monomial of the pos-th
+ * polynomial */
+static inline void display_modpoly_head(FILE *file, gb_modpoly_t modgbs,
+                                        const int32_t pos,
+                                        data_gens_ff_t *gens){
+  if(modgbs->modpolys[pos]->len > 0
+     && mpz_cmp_ui(modgbs->modpolys[pos]->lm, 1) != 0){
+    strbuf_t b = {NULL, 0, 0};
+    strbuf_coef(&b, modgbs->modpolys[pos]->lm);
+    fwrite(b.s, 1, b.len, file);
+    free(b.s);
+    fprintf(file, "*");
+  }
+  display_monomial_single(file, gens, pos, &modgbs->ldm);
+}
+
+/* the terms are formatted in memory by chunks of at most OUT_CHUNK terms
+ * of a polynomial and about OUT_CHUNK_BYTES characters, by nthreads
+ * threads, OUT_BLOCK * nthreads chunks at a time, which are then written
+ * in order: this works for bases with many small polynomials as well as
+ * for bases with few large ones, and with coefficients of any size */
+#define OUT_CHUNK 256
+#define OUT_CHUNK_BYTES (1 << 16)
+#define OUT_BLOCK 4
+
+typedef struct{
+  int32_t pos; /* index of the polynomial */
+  int64_t hi;  /* terms of index hi, .., lo (see format_modpoly_terms) */
+  int64_t lo;
+} out_chunk_t;
 
 static inline void display_gbmodpoly_cf_qq(FILE *file,
                                            gb_modpoly_t modgbs,
@@ -634,12 +629,59 @@ static inline void display_gbmodpoly_cf_qq(FILE *file,
     return;
   }
   fprintf(file, "[");
-  for(int i = 0; i < p; i++){
-    char **str = modpoly_strings(modgbs, i, nthreads);
-    display_modpoly(file, modgbs, i, gens, str);
-    modpoly_strings_clear(str, modgbs->modpolys[i]->len);
-    fprintf(file, i < p - 1 ? ", \n" : "]:\n");
+  const int32_t nb = OUT_BLOCK * MAX(1, nthreads);
+  out_chunk_t *c = (out_chunk_t *)malloc(nb * sizeof(out_chunk_t));
+  strbuf_t *b = (strbuf_t *)calloc(nb, sizeof(strbuf_t));
+  int32_t pos = 0;
+  int64_t hi = (int64_t)modgbs->modpolys[0]->len - 1;
+  while(pos < p){
+    int32_t n = 0;
+    while(n < nb && pos < p){
+      /* number of terms of the chunk, from the size of its first
+       * coefficient (about 19.3 decimal digits per 64-bit limb) */
+      int64_t nt = OUT_CHUNK;
+      if(hi >= 0){
+        const size_t d = 20 * mpz_size(modgbs->modpolys[pos]->cf_qq[hi]) + 16;
+        nt = MAX(1, MIN(OUT_CHUNK, (int64_t)(OUT_CHUNK_BYTES / d)));
+      }
+      const int64_t lo = MAX(0, hi - nt + 1);
+      c[n].pos = pos;
+      c[n].hi = hi;
+      c[n].lo = lo;
+      n++;
+      if(lo == 0){
+        pos++;
+        if(pos < p){
+          hi = (int64_t)modgbs->modpolys[pos]->len - 1;
+        }
+      }
+      else{
+        hi = lo - 1;
+      }
+    }
+#pragma omp parallel for num_threads(MAX(1, nthreads)) schedule(dynamic, 1)
+    for(int32_t k = 0; k < n; k++){
+      b[k].len = 0;
+      if(c[k].hi >= 0){
+        format_modpoly_terms(b + k, modgbs, c[k].pos, gens, c[k].hi, c[k].lo);
+      }
+    }
+    for(int32_t k = 0; k < n; k++){
+      const int32_t i = c[k].pos;
+      if(c[k].hi == (int64_t)modgbs->modpolys[i]->len - 1){
+        display_modpoly_head(file, modgbs, i, gens);
+      }
+      fwrite(b[k].s, 1, b[k].len, file);
+      if(c[k].lo == 0){
+        fprintf(file, i < p - 1 ? ", \n" : "]:\n");
+      }
+    }
   }
+  for(int32_t k = 0; k < nb; k++){
+    free(b[k].s);
+  }
+  free(b);
+  free(c);
 }
 
 static inline void display_lm_gbmodpoly_cf_qq(FILE *file,

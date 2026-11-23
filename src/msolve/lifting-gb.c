@@ -120,6 +120,8 @@ typedef gb_modpoly_array_struct gb_modpoly_t[1];
 typedef struct{
   int32_t npol; /* number of polynomials to be lifted */
   int32_t rr; /* number of primes before activating rational reconstruction */
+  int64_t nall; /* number of primes whose trace has been applied, bad ones
+                   included (see witness_attempt_due) */
   int32_t nsteps; /* number of steps for lifting GB (per degree) */
   int32_t *steps; /* array of length nsteps ; the sum of the entries should
                      equal npol */
@@ -177,6 +179,7 @@ static inline void data_lift_init(data_lift_t dl,
                                   int32_t *steps, int32_t nsteps){
   dl->npol = npol;
   dl->rr = 1;
+  dl->nall = 0;
   dl->lstart = 0;
   dl->nsteps = nsteps;
   dl->S = 0;
@@ -1315,7 +1318,8 @@ static int lll_common_den(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
                           mpz_t den, mpz_t *num);
 static inline double lll_guess_cost(const int k, const double bits);
 static inline int32_t lll_next_attempt(const int32_t nprimes,
-                                       const double cost, const double pcost);
+                                       const double cost, const double pcost,
+                                       const int nthreads);
 
 /*
   Coefficients of the k-th polynomial whose rational reconstruction failed
@@ -1359,7 +1363,8 @@ static int lll_full_block(gb_modpoly_t modgbs, data_lift_t dl, int32_t k,
     mpz_init(num[j]);
   }
   int ok = lll_common_den(modgbs, dl, k, w, kk, np, mod_p, dl->tmp, d, num);
-  dl->lll_fnext = ok ? (int32_t)np : lll_next_attempt(np, cost, pcost);
+  dl->lll_fnext = ok ? (int32_t)np
+    : lll_next_attempt(np, cost, pcost, dl->nthreads);
   if(ok){
     mpz_mul(dl->tmp, dl->tmp, d);
     set_recdata_guess(rd1, mod_p, dl->tmp);
@@ -2199,16 +2204,45 @@ static inline double lll_prime_cost(const md_t *st){
    the attempt to the cost of a prime), and trying again after a growth of
    g percent of the number of primes loses up to g * nprimes primes when
    LLL succeeds, hence the growth is about sqrt(2 A / nprimes), at least
-   LLL_WIT_GROWTH percent. It only depends on the trace and on the number
-   of primes, so that the number of primes used is reproducible. */
+   LLL_WIT_GROWTH percent. With nthreads threads, the trace is applied to
+   nthreads primes at once while LLL runs on one thread: in elapsed time,
+   an attempt then costs nthreads times more primes. It only depends on the
+   trace, on the number of primes and on the number of threads, so that the
+   number of primes used is reproducible for a given number of threads. */
 static inline int32_t lll_next_attempt(const int32_t nprimes,
-                                       const double cost, const double pcost){
+                                       const double cost, const double pcost,
+                                       const int nthreads){
   double g = LLL_WIT_GROWTH / 100.0;
   if(pcost > 0){
-    const double A = cost / pcost;
+    const double A = MAX(1, nthreads) * cost / pcost;
     g = MAX(g, sqrt(2 * A / nprimes));
   }
   return MAX(nprimes + 1, (int32_t)(nprimes * (1 + g)));
+}
+
+/* above this number of threads, the witnesses are reconstructed once per
+   batch of primes (see witness_attempt_due) */
+#define WIT_BATCH_MIN 4
+/* number of primes of a batch left after an attempt, see
+   witness_attempt_due */
+#define WIT_BATCH_SLACK 2
+
+/* whether the witnesses are reconstructed with the current prime: every
+   rr primes. With nthreads > WIT_BATCH_MIN threads, the trace is applied to
+   batches of nthreads primes at once, and an attempt in the middle of a
+   batch saves no time, since the whole batch is computed anyway: the
+   attempts are then made at most once per batch, with WIT_BATCH_SLACK
+   primes of the batch left to check a reconstruction found (see
+   verif_lifted_rational_wcoef and verif_lifted_basis), so that its
+   checks do not need another batch. Most attempts fail, and they are made
+   by a single thread while the others wait. */
+static inline int witness_attempt_due(const gb_modpoly_t modgbs,
+                                      const data_lift_t dl){
+  if(dl->nthreads <= WIT_BATCH_MIN){
+    return modgbs->nprimes % dl->rr == 0;
+  }
+  const int64_t period = MAX(dl->rr, dl->nthreads);
+  return (dl->nall + WIT_BATCH_SLACK) % period == 0;
 }
 
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
@@ -2263,7 +2297,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   set_recdata(recdata2, mod_p);
 
   st = realtime();
-  if(modgbs->nprimes % dl->rr == 0){
+  if(witness_attempt_due(modgbs, dl)){
     for(int32_t i = dl->lstart; i < dl->lend; i++){
       if(modgbs->modpolys[i]->len==0){
           dl->check1[i]++;
@@ -2320,7 +2354,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
             mpz_clear(one);
           }
           dl->lll_next = b ? (int32_t)modgbs->nprimes + 1
-            : lll_next_attempt(modgbs->nprimes, lcost, pcost);
+            : lll_next_attempt(modgbs->nprimes, lcost, pcost, dl->nthreads);
         }
         if(!b){
           dl->check1[i] = 0;
@@ -2683,6 +2717,7 @@ restart:
 
       /* nprimes += st->nthrds; */
       nprimes += 1; /* at the moment, multi-mod comp is mono-threaded */
+      dlift->nall = nprimes;
       if(nprimes == 1){
         /* if(info_level>1){ */
         /*   fprintf(ERRSTREAM, "Application phase %.2f Gops/sec\n", */

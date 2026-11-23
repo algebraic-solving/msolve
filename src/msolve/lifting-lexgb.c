@@ -575,12 +575,16 @@ static void lexgb_print(FILE *file, const fglm_lex_staircase_t *lex,
   fmpz_clear(c);
 }
 
-static FILE *lexgb_open_output(const files_gb *files){
+/* the time spent between open and close is counted as output time */
+static FILE *lexgb_open_output(const files_gb *files, output_timer_t *t){
+  output_timer_start(t);
   if(files->out_file != NULL) return fopen(files->out_file, "wb+");
   return OUTSTREAM;
 }
-static void lexgb_close_output(FILE *f, const files_gb *files){
+static void lexgb_close_output(FILE *f, files_gb *files,
+                               const output_timer_t *t){
   if(files->out_file != NULL) fclose(f);
+  output_timer_stop(files, t);
 }
 
 static uint32_t lexgb_next_prime(uint32_t prime, const bs_t *bs, uint32_t avoid){
@@ -644,7 +648,8 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         }
     }
     if(unit || !has_dimension_zero(nlm0, nv, lm0)){
-      FILE *file = lexgb_open_output(flags->files);
+      output_timer_t ot;
+      FILE *file = lexgb_open_output(flags->files, &ot);
       if(unit){
         if (flags->print_gb == 3) {
           fprintf(file, "#Leading ideal data\n");
@@ -665,7 +670,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         /* positive dimension: same output as the default call */
         fprintf(file, "[1, %d, -1, []]:\n", gens->nvars);
       }
-      lexgb_close_output(file, flags->files);
+      lexgb_close_output(file, flags->files, &ot);
       free(lm0);
       free_basis_without_hash_table(&bsp);
       free_basis_without_hash_table(&bs);
@@ -740,10 +745,11 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     if(flags->print_gb == 3 && ok){
       free_sp_multimat_fglm(M);
       free_basis_without_hash_table(&bsp);
-      FILE *f = lexgb_open_output(flags->files);
+      output_timer_t ot;
+      FILE *f = lexgb_open_output(flags->files, &ot);
       lexgb_print(f, &tr.lex, NULL, gens->vnames,
                   flags->print_gb == 3);
-      lexgb_close_output(f, flags->files);
+      lexgb_close_output(f, flags->files, &ot);
       free(res);
       free_fglm_trace(&tr);
       free(lmb);
@@ -996,10 +1002,11 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         fprintf(VERBSTREAM, "ratrecon(elapsed)         %10.2f sec\n", st_rrec);
         fprintf(VERBSTREAM, "-----------------------------------------\n");
       }
-      FILE *f = lexgb_open_output(flags->files);
+      output_timer_t ot;
+      FILE *f = lexgb_open_output(flags->files, &ot);
       lexgb_print(f, &tr.lex, modgbs, gens->vnames,
                   flags->print_gb == 3);
-      lexgb_close_output(f, flags->files);
+      lexgb_close_output(f, flags->files, &ot);
     } else if(info_level){
       fprintf(VERBSTREAM, "Too many bad primes (learning prime %u is probably "
               "unlucky), computation restarts.\n", p0);

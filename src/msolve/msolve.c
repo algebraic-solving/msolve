@@ -2207,6 +2207,8 @@ static int32_t *initial_modular_step(
     if (empty_solution_set == 1) {
         if (PRINT_LEX_GB(print_gb)) {
             /* create the lex Gb [1] */
+            output_timer_t ot;
+            output_timer_start(&ot);
             FILE *of = (files->out_file != NULL) ?
                 fopen(files->out_file, "ab") : OUTSTREAM;
             fglm_gb_t *one= malloc(sizeof(fglm_gb_t));
@@ -2226,6 +2228,7 @@ static int32_t *initial_modular_step(
             if(files->out_file != NULL){
                 fclose(of);
             }
+            output_timer_stop(files, &ot);
         }
         free_basis_without_hash_table(&(bs));
         free(bs);
@@ -2272,12 +2275,15 @@ static int32_t *initial_modular_step(
                 fprintf(ERRSTREAM, "FGLM failed.\n");
                 *success = 0;
             } else {
+                output_timer_t ot;
+                output_timer_start(&ot);
                 FILE *of = (files->out_file != NULL) ?
                     fopen(files->out_file, "ab") : OUTSTREAM;
                 print_lex_basis(of, lexgb, gens->vnames, print_gb == 3);
                 if(files->out_file != NULL){
                     fclose(of);
                 }
+                output_timer_stop(files, &ot);
             }
             free_fglm_gb(lexgb);
             free_sp_multimat_fglm(mm);
@@ -2414,12 +2420,15 @@ static int32_t *initial_modular_step(
     else{
         if(PRINT_LEX_GB(print_gb)){
             /* positive dimension: same output as the default call */
+            output_timer_t ot;
+            output_timer_start(&ot);
             FILE *of = (files->out_file != NULL) ?
                 fopen(files->out_file, "ab") : OUTSTREAM;
             fprintf(of, "[1, %d, -1, []]:\n", gens->nvars);
             if(files->out_file != NULL){
                 fclose(of);
             }
+            output_timer_stop(files, &ot);
         }
         *dim  = 1;
         *dquot_ori = -1;

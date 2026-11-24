@@ -672,14 +672,14 @@ typedef struct {
  * probability p^(2L - N). So a check with N >= 2 L + m stops wrongly with
  * probability about p^-m (own reasoning, heuristic when N > deg minpoly).
  * m >= 74 / log2(p): with at most 2^10 checks, total probability <= 2^-64;
- * at least 32 (cost: m products). */
+ * at least 64 (cost: m products). */
 static inline szmat_t fglm_et_margin(const mod_t p){
   szmat_t b = 1;            /* max(1, floor(log2(p))) */
   while(b < 31 && ((mod_t)2 << b) <= p){
     b++;
   }
   const szmat_t m = (74 + b - 1) / b;
-  return m > 32 ? m : 32;
+  return m > 64 ? m : 64;
 }
 
 /* Adds s_i to et->B (npts = i + 1 points); when npts reaches et->next,

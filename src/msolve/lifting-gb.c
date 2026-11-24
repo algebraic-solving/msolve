@@ -24,6 +24,9 @@
 #include<flint/fmpz_lll.h>
 #include "config.h"
 #include <inttypes.h>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 #include "streams.h"
 #include "../neogb/gmp_u64.h"
 
@@ -62,16 +65,18 @@
 
 typedef struct{
   uint32_t len; /* length of the encoded polynomial */
-  /* Coefficients modulo several primes, stored as one contiguous block of
-   * len * alloc entries in prime-major order: the coefficient of index j
-   * modulo the k-th prime is cf_32[k * len + j] (use MODCF below).
-   * Adding primes only grows the block at its end, and each new prime
-   * fills one contiguous row.
+  /* Coefficients modulo several primes, stored prime by prime: cf_32[k]
+   * is the row of the len coefficients modulo the k-th prime, so that the
+   * coefficient of index j modulo the k-th prime is cf_32[k][j] (use MODCF
+   * below). The rows of consecutive primes are allocated together, by
+   * blocks starting at the primes modgbs->blk[] (see gb_modpoly_realloc):
+   * adding primes allocates a new block and never copies the rows already
+   * stored.
    * Warning: this is free-ed dynamically (and set to NULL) as soon as the
-   * polynomial has been lifted and checked. */
-  uint32_t *cf_32;
+   * polynomial has been lifted and checked (see modpoly_free_images). */
+  uint32_t **cf_32;
   /* same, used instead of cf_32 when the primes have more than 32 bits */
-  uint64_t *cf_u64;
+  uint64_t **cf_u64;
   /* len integer numerators of the lifted coefficients; they all share the
    * common denominator lm (hence the polynomial is lm * LM + sum cf_qq[j]*m_j
    * up to the order of the terms). */
@@ -82,10 +87,9 @@ typedef struct{
 typedef modpolys_struct modpolys_t[1];
 
 /* coefficient of index j of polynomial p modulo the k-th prime */
-#define MODCF_IDX(p, j, k) ((size_t)(k) * (p)->len + (j))
 #define MODCF(p, j, k) ((p)->cf_u64 != NULL                         \
-                        ? (p)->cf_u64[MODCF_IDX(p, j, k)]            \
-                        : (uint64_t)(p)->cf_32[MODCF_IDX(p, j, k)])
+                        ? (p)->cf_u64[k][j]                          \
+                        : (uint64_t)(p)->cf_32[k][j])
 /* nonzero while the modular images of polynomial p are stored */
 #define HAS_MODCF(p) ((p)->cf_32 != NULL || (p)->cf_u64 != NULL)
 
@@ -96,6 +100,11 @@ typedef struct {
                        compatibility with flint */
   mp_limb_t *pinvs; /* their inverses for n_mulmod2_preinv */
   int wide; /* 1 if the primes have more than 32 bits (images in cf_u64) */
+  uint32_t *blk; /* the rows of the modular images are allocated by blocks of
+                    consecutive primes, starting at the primes blk[0] = 0 <
+                    blk[1] < .. < blk[nblk-1] (the same for all
+                    polynomials) */
+  uint32_t nblk;
   mp_limb_t *cf_64; /* array of length equal to number of primes which will be used
                     to copy coefficients (hence ensuring compatibility with
                     flint) */
@@ -293,6 +302,58 @@ static inline void data_lift_clear(data_lift_t dl){
 }
 
 
+/* allocates, as one block, the rows of the modular images of pol modulo
+ * the primes of index k0 <= k < k1, the arrays of rows having room for
+ * alloc primes */
+static inline void modpoly_alloc_rows(modpolys_struct *pol,
+                                      const uint32_t k0, const uint32_t k1,
+                                      const uint32_t alloc, const int wide){
+  const size_t len = pol->len;
+  if(wide){
+    pol->cf_u64 = (uint64_t **)realloc(pol->cf_u64, alloc * sizeof(uint64_t *));
+    uint64_t *b = (uint64_t *)malloc(len * (k1 - k0) * sizeof(uint64_t));
+    if(pol->cf_u64 == NULL || b == NULL){
+      fprintf(ERRSTREAM, "Problem when allocating modgbs (cfs_pol)\n");
+      exit(1);
+    }
+    for(uint32_t k = k0; k < k1; k++){
+      pol->cf_u64[k] = b + (k - k0) * len;
+    }
+  }
+  else{
+    pol->cf_32 = (uint32_t **)realloc(pol->cf_32, alloc * sizeof(uint32_t *));
+    uint32_t *b = (uint32_t *)malloc(len * (k1 - k0) * sizeof(uint32_t));
+    if(pol->cf_32 == NULL || b == NULL){
+      fprintf(ERRSTREAM, "Problem when allocating modgbs (cfs_pol)\n");
+      exit(1);
+    }
+    for(uint32_t k = k0; k < k1; k++){
+      pol->cf_32[k] = b + (k - k0) * len;
+    }
+  }
+}
+
+/* frees the modular images of pol, whose rows are allocated by the blocks
+ * starting at the primes blk[0], .., blk[nblk-1] */
+static inline void modpoly_free_images(modpolys_struct *pol,
+                                       const uint32_t *blk,
+                                       const uint32_t nblk){
+  if(pol->cf_32 != NULL){
+    for(uint32_t b = 0; b < nblk; b++){
+      free(pol->cf_32[blk[b]]);
+    }
+    free(pol->cf_32);
+    pol->cf_32 = NULL;
+  }
+  if(pol->cf_u64 != NULL){
+    for(uint32_t b = 0; b < nblk; b++){
+      free(pol->cf_u64[blk[b]]);
+    }
+    free(pol->cf_u64);
+    pol->cf_u64 = NULL;
+  }
+}
+
 static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    uint32_t alloc, int32_t *lens,
                                    bs_t *bs,
@@ -302,6 +363,9 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
   modgbs->wide = wide;
+  modgbs->blk = (uint32_t *)malloc(sizeof(uint32_t));
+  modgbs->blk[0] = 0;
+  modgbs->nblk = 1;
   modgbs->primes = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
   modgbs->pinvs = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
   modgbs->cf_64 = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
@@ -336,14 +400,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
     modgbs->modpolys[i]->cf_u64 = NULL;
     modgbs->modpolys[i]->cf_qq = NULL;
     if(lens[i] > 0){
-      if(wide){
-        modgbs->modpolys[i]->cf_u64 = (uint64_t *)calloc((size_t)lens[i] * alloc,
-                                                         sizeof(uint64_t));
-      }
-      else{
-        modgbs->modpolys[i]->cf_32 = (uint32_t *)calloc((size_t)lens[i] * alloc,
-                                                        sizeof(uint32_t));
-      }
+      modpoly_alloc_rows(modgbs->modpolys[i], 0, alloc, alloc, wide);
       modgbs->modpolys[i]->cf_qq = (mpz_t *)malloc(sizeof(mpz_t)*lens[i]);
     }
     for(uint32_t j = 0; j < lens[i]; j++){
@@ -392,28 +449,17 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   for(uint32_t i = oldalloc; i < modgbs->alloc; i++){
     modgbs->cf_64[i] = 0;
   }
+  /* the rows of the new primes are a new block: the rows already stored
+     are neither copied nor moved */
+  modgbs->blk = (uint32_t *)realloc(modgbs->blk,
+                                    (modgbs->nblk + 1) * sizeof(uint32_t));
+  modgbs->blk[modgbs->nblk++] = oldalloc;
   for(uint32_t i = 0; i < modgbs->ld; i++){
-    const size_t len = modgbs->modpolys[i]->len;
-    if(!HAS_MODCF(modgbs->modpolys[i]) || len == 0){
+    if(!HAS_MODCF(modgbs->modpolys[i]) || modgbs->modpolys[i]->len == 0){
       continue;
     }
-    const size_t sz = modgbs->wide ? sizeof(uint64_t) : sizeof(uint32_t);
-    void *old = modgbs->wide ? (void *)modgbs->modpolys[i]->cf_u64
-      : (void *)modgbs->modpolys[i]->cf_32;
-    char *newcfs_pol = (char *)realloc(old, len * modgbs->alloc * sz);
-    if(newcfs_pol == NULL){
-      fprintf(ERRSTREAM, "Problem when reallocating modgbs (cfs_pol)\n");
-      exit(1);
-    }
-    /* prime-major storage: the new primes are appended at the end */
-    memset(newcfs_pol + len * oldalloc * sz, 0,
-           len * (modgbs->alloc - oldalloc) * sz);
-    if(modgbs->wide){
-      modgbs->modpolys[i]->cf_u64 = (uint64_t *)newcfs_pol;
-    }
-    else{
-      modgbs->modpolys[i]->cf_32 = (uint32_t *)newcfs_pol;
-    }
+    modpoly_alloc_rows(modgbs->modpolys[i], oldalloc, modgbs->alloc,
+                       modgbs->alloc, modgbs->wide);
   }
 }
 
@@ -424,18 +470,24 @@ static inline void gb_modpoly_widen(gb_modpoly_t modgbs){
     return;
   }
   for(uint32_t i = 0; i < modgbs->ld; i++){
-    modpolys_t *pol = modgbs->modpolys + i;
-    if(pol[0]->cf_32 == NULL){
+    modpolys_struct *pol = modgbs->modpolys[i];
+    if(pol->cf_32 == NULL){
       continue;
     }
-    const size_t sz = (size_t)pol[0]->len * modgbs->alloc;
-    pol[0]->cf_u64 = (uint64_t *)malloc(sz * sizeof(uint64_t));
-    for(size_t j = 0; j < sz; j++){
-      pol[0]->cf_u64[j] = pol[0]->cf_32[j];
+    /* the images are copied into a single block */
+    modpoly_alloc_rows(pol, 0, modgbs->alloc, modgbs->alloc, 1);
+    for(uint32_t k = 0; k < modgbs->alloc; k++){
+      for(uint32_t j = 0; j < pol->len; j++){
+        pol->cf_u64[k][j] = pol->cf_32[k][j];
+      }
     }
-    free(pol[0]->cf_32);
-    pol[0]->cf_32 = NULL;
+    uint64_t **c = pol->cf_u64;
+    pol->cf_u64 = NULL;
+    modpoly_free_images(pol, modgbs->blk, modgbs->nblk);
+    pol->cf_u64 = c;
   }
+  modgbs->blk[0] = 0;
+  modgbs->nblk = 1;
   modgbs->wide = 1;
 }
 
@@ -715,10 +767,7 @@ static inline void gb_modpoly_without_hash_table_clear(gb_modpoly_t modgbs){
   modgbs->ldm = NULL;
   for(uint32_t i = 0; i < modgbs->ld; i++){
     /* cf_32 and cf_u64 are NULL if already free-ed after lifting */
-    free(modgbs->modpolys[i]->cf_32);
-    modgbs->modpolys[i]->cf_32 = NULL;
-    free(modgbs->modpolys[i]->cf_u64);
-    modgbs->modpolys[i]->cf_u64 = NULL;
+    modpoly_free_images(modgbs->modpolys[i], modgbs->blk, modgbs->nblk);
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
     }
@@ -729,6 +778,9 @@ static inline void gb_modpoly_without_hash_table_clear(gb_modpoly_t modgbs){
   }
   free(modgbs->lmps);
   modgbs->lmps = NULL;
+  free(modgbs->blk);
+  modgbs->blk = NULL;
+  modgbs->nblk = 0;
   free(modgbs->hm);
   modgbs->hm = NULL;
   free(modgbs->modpolys);
@@ -842,7 +894,8 @@ static inline int32_t *array_of_lengths(int32_t *bexp_lm, len_t len,
 static inline int modpgbs_set(gb_modpoly_t modgbs,
                               const bs_t *bs, const ht_t * const ht,
                               const uint64_t fc,
-                              int32_t start, const long elim){
+                              int32_t start, const long elim,
+                              const int nthreads){
   if(modgbs->nprimes >= modgbs->alloc-1){
     fprintf(ERRSTREAM, "Not enough space in modgbs\n");
     exit(1);
@@ -850,18 +903,17 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
   modgbs->primes[modgbs->nprimes] = fc;
   modgbs->pinvs[modgbs->nprimes] = n_preinvert_limb(fc);
 
-  len_t i, j, idx;
-
   /*****************************************************
    * It should be checked if modbgs->ht needs to be updated as well as
    * modgbs->lmps
    * *****************************************************/
 
-  len_t len   = 0;
-  /* hm_t *hm    = NULL; */
-
-  for(i = start; i < modgbs->ld; i++){
-    idx = bs->lmps[i];
+  /* the rows of a new block are written (hence mapped) for the first time
+     here, by several threads */
+#pragma omp parallel for num_threads(nthreads) schedule(dynamic, 16)
+  for(len_t i = start; i < modgbs->ld; i++){
+    const len_t idx = bs->lmps[i];
+    len_t len = 0;
     if (bs->hm[idx] == NULL) {
       fprintf(ERRSTREAM, " poly is 0\n");
       exit(1);
@@ -874,19 +926,18 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       continue;
     }
     int32_t bc = modgbs->modpolys[i]->len - 1;
-    const size_t off = MODCF_IDX(modgbs->modpolys[i], 0, modgbs->nprimes);
     if(modgbs->wide){
       const uint64_t * const cfs = bs->cf_64[bs->hm[idx][COEFFS]];
-      uint64_t *dst = modgbs->modpolys[i]->cf_u64 + off;
-      for (j = 1; j < len; ++j) {
+      uint64_t *dst = modgbs->modpolys[i]->cf_u64[modgbs->nprimes];
+      for (len_t j = 1; j < len; ++j) {
         dst[bc] = cfs[j];
         bc--;
       }
     }
     else{
       const uint32_t * const cfs = bs->cf_32[bs->hm[idx][COEFFS]];
-      uint32_t *dst = modgbs->modpolys[i]->cf_32 + off;
-      for (j = 1; j < len; ++j) {
+      uint32_t *dst = modgbs->modpolys[i]->cf_32[modgbs->nprimes];
+      for (len_t j = 1; j < len; ++j) {
         dst[bc] = cfs[j];
         bc--;
       }
@@ -1022,7 +1073,7 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
                       GB_PRIME_IS_WIDE(fc));
     }
     free(lens);
-    modpgbs_set(modgbs, bs, bht, fc, start, st->nev);
+    modpgbs_set(modgbs, bs, bht, fc, start, st->nev, st->nthrds);
     int is_empty = 0;
     if(bs->lml == 1){
         if(info_level){
@@ -1493,7 +1544,7 @@ static void crt_coefs_chunk(gb_modpoly_t modgbs, modpolys_t *pol,
     const int32_t nb = MIN(CRT_BLOCK, l1 - b0);
     if(modgbs->wide){
       for(uint32_t i = 0; i < np; i++){
-        const uint64_t *cf = pol[0]->cf_u64 + (size_t)i * len + b0;
+        const uint64_t *cf = pol[0]->cf_u64[i] + b0;
         for(int32_t j = 0; j < nb; j++){
           res[(size_t)j * np + i] = n_mulmod2_preinv(cf[j], gp[i],
                                                      modgbs->primes[i],
@@ -1503,7 +1554,7 @@ static void crt_coefs_chunk(gb_modpoly_t modgbs, modpolys_t *pol,
     }
     else{
       for(uint32_t i = 0; i < np; i++){
-        const uint32_t *cf = pol[0]->cf_32 + (size_t)i * len + b0;
+        const uint32_t *cf = pol[0]->cf_32[i] + b0;
         for(int32_t j = 0; j < nb; j++){
           res[(size_t)j * np + i] = ((uint64_t)cf[j] * gp[i]) % modgbs->primes[i];
         }
@@ -1569,6 +1620,11 @@ static void crt_update_chunk(gb_modpoly_t modgbs, modpolys_t *pol,
     }
   }
 }
+
+/* below this number of terms, the loops over the coefficients of a lifted
+   polynomial (verification, reduction to the common denominator) are run
+   by one thread: the parallel region would cost more than it saves */
+#define LIFT_PAR_MIN 512
 
 static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
                                            int32_t start, int32_t end,
@@ -1782,13 +1838,25 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         break;
       }
       mpz_set(polys[k]->lm, dl->tmp);
-      for(int32_t l = 0; l < polys[k]->len; l++){
-        /* num * (lcm / den) rather than (num * lcm) / den: same value, but
-         * the limb array of the (long-lived) result is not over-allocated
-         * by the size of lcm (mpz_divexact does not shrink its output) */
-        mpz_divexact(dens[l], dl->tmp, dens[l]);
-        mpz_mul(polys[k]->cf_qq[l], polys[k]->cf_qq[l], dens[l]);
+      rt = realtime();
+      /* num * (lcm / den) rather than (num * lcm) / den: same value, but
+       * the limb array of the (long-lived) result is not over-allocated
+       * by the size of lcm (mpz_divexact does not shrink its output) */
+      const int32_t len = polys[k]->len;
+      if(len >= LIFT_PAR_MIN){
+#pragma omp parallel for num_threads(dl->nthreads) schedule(static, 64)
+        for(int32_t l = 0; l < len; l++){
+          mpz_divexact(dens[l], dl->tmp, dens[l]);
+          mpz_mul(polys[k]->cf_qq[l], polys[k]->cf_qq[l], dens[l]);
+        }
       }
+      else{
+        for(int32_t l = 0; l < len; l++){
+          mpz_divexact(dens[l], dl->tmp, dens[l]);
+          mpz_mul(polys[k]->cf_qq[l], polys[k]->cf_qq[l], dens[l]);
+        }
+      }
+      *st_crt += realtime() - rt;
       if(k > 0 && polys[k - 1]->len > 0 && mpz_cmp_ui(polys[k - 1]->lm, 1)){
         /* share of the denominator of the previous polynomial, which is
            the guess for this one, not dividing its denominator */
@@ -1887,23 +1955,34 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
           /* all coefficients share the denominator lm */
           mp_limb_t ilc = mpz_fdiv_u64(pol[0]->lm, prime);
           ilc = n_invmod(ilc, prime);
-          for(int32_t c = 0; c < pol[0]->len; c++){
-            mp_limb_t v = mpz_fdiv_u64(pol[0]->cf_qq[c], prime);
-            v = n_mulmod2_preinv(v, ilc, prime, pinv);
-            if(v != MODCF(pol[0], c, np)){
-              dl->check2[k] = 0;
-              return 0;
+          int ok = 1;
+          const int32_t len = pol[0]->len;
+          if(len >= LIFT_PAR_MIN){
+#pragma omp parallel for num_threads(dl->nthreads) schedule(static, 64) \
+  reduction(&&:ok)
+            for(int32_t c = 0; c < len; c++){
+              mp_limb_t v = mpz_fdiv_u64(pol[0]->cf_qq[c], prime);
+              v = n_mulmod2_preinv(v, ilc, prime, pinv);
+              ok = ok && (v == MODCF(pol[0], c, np));
             }
+          }
+          else{
+            for(int32_t c = 0; c < len && ok; c++){
+              mp_limb_t v = mpz_fdiv_u64(pol[0]->cf_qq[c], prime);
+              v = n_mulmod2_preinv(v, ilc, prime, pinv);
+              ok = (v == MODCF(pol[0], c, np));
+            }
+          }
+          if(!ok){
+            dl->check2[k] = 0;
+            return 0;
           }
           dl->check2[k]++;
           if(dl->check2[k] >= NBCHECK){
             dl->S = k+1;
             dl->lstart = dl->S;
             /* modular images are no longer needed */
-            free(pol[0]->cf_32);
-            pol[0]->cf_32 = NULL;
-            free(pol[0]->cf_u64);
-            pol[0]->cf_u64 = NULL;
+            modpoly_free_images(pol[0], modgbs->blk, modgbs->nblk);
             break;
           }
         }
@@ -2708,9 +2787,22 @@ restart:
     int *bbad = (int *)calloc(nthreads, sizeof(int));
     double *bstf4 = (double *)calloc(nthreads, sizeof(double));
     int bpos = nthreads;
+    /* number of polynomials lifted when the free memory was last returned
+       to the system (see below) */
+    int32_t trimmed = 0;
     while(apply){
 
       if(bpos == nthreads){
+#ifdef __GLIBC__
+        if(dlift->S != trimmed){
+          /* the modular images of the polynomials lifted since then have
+             been free-ed: the blocks of rows have various sizes, so that
+             the freed ones are hardly reused for the next ones, and glibc
+             keeps them in its heaps */
+          malloc_trim(0);
+          trimmed = dlift->S;
+        }
+#endif
         /* generate lucky prime numbers */
         for(int i = 0; i < nthreads; i++){
           prime = gb_next_prime(prime, pbits);
@@ -2753,7 +2845,8 @@ restart:
 
       if(bbs[bi] != NULL){
         /* copy of data for multi-mod computation */
-        modpgbs_set((*modgbsp), bbs[bi], bbs[bi]->ht, prime, dlift->S, st->nev);
+        modpgbs_set((*modgbsp), bbs[bi], bbs[bi]->ht, prime, dlift->S, st->nev,
+                    nthreads);
         free_basis_and_only_local_hash_table_data(&(bbs[bi]));
       }
 

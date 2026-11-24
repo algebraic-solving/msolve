@@ -161,6 +161,25 @@ static inline int zz_fits32(
     return mpz_cmpabs_ui(x, INT32_MAX) <= 0;
 }
 
+/* z = v; GMP takes a long, which has only 32 bits on Windows */
+static inline void zz_set_i64(
+        mpz_t z,
+        const int64_t v
+        )
+{
+#if LONG_MAX >= INT64_MAX
+    mpz_set_si(z, (long)v);
+#else
+    const uint64_t a = v < 0 ? -(uint64_t)v : (uint64_t)v;
+    mpz_set_ui(z, (unsigned long)(a >> 32));
+    mpz_mul_2exp(z, z, 32);
+    mpz_add_ui(z, z, (unsigned long)(a & 0xffffffffu));
+    if (v < 0) {
+        mpz_neg(z, z);
+    }
+#endif
+}
+
 static void zz_dense_init(
         zz_dense_t *d,
         const len_t nc
@@ -513,7 +532,7 @@ static void zz_promote(
     zz_leave_sparse(d);
     for (j = d->lo; j < nc; ++j) {
         if (d->d64[j] != 0) {
-            mpz_set_si(d->dz[j], d->d64[j]);
+            zz_set_i64(d->dz[j], d->d64[j]);
             d->d64[j] = 0;
         }
     }
@@ -574,7 +593,8 @@ static void zz_dense_load_basis_row(
     d->lo = ds[0];
     for (j = 0; j < len; ++j) {
         d->d64[ds[j]] = mpz_get_si(cf[j]);
-        const uint64_t a = (uint64_t)labs(d->d64[ds[j]]);
+        const uint64_t a = d->d64[ds[j]] < 0 ? -(uint64_t)d->d64[ds[j]]
+            : (uint64_t)d->d64[ds[j]];
         m = a > m ? a : m;
     }
     d->bd  = m;
@@ -645,7 +665,8 @@ static zz_row_t *zz_new_row(
             if (fits != 0) {
                 r->c32[len] = (int32_t)e;
             } else {
-                mpz_init_set_si(r->cf[len], e);
+                mpz_init(r->cf[len]);
+                zz_set_i64(r->cf[len], e);
             }
             d64[i] = 0;
         }
@@ -696,7 +717,8 @@ static zz_row_t *zz_new_row_sparse(
             const uint32_t a = (uint32_t)abs(r->c32[i]);
             r->mx = a > r->mx ? a : r->mx;
         } else {
-            mpz_init_set_si(r->cf[i], e);
+            mpz_init(r->cf[i]);
+            zz_set_i64(r->cf[i], e);
         }
         d64[rem[i]] = 0;
         r->row[OFFSET+i] = rem[i];

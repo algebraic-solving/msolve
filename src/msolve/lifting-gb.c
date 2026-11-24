@@ -1485,6 +1485,8 @@ static int lll_full_block(gb_modpoly_t modgbs, data_lift_t dl, int32_t k,
 #define CRT_CHUNK 32
 /* number of consecutive coefficients whose residues are read together */
 #define CRT_BLOCK 4
+/* blocks of coefficients per thread aimed at in crt_coefs_chunk */
+#define CRT_BLOCKS_PER_THREAD 4
 
 /* For the coefficients l0 <= l < l1 of the polynomial pol, CRT of the
  * residues of u g, where gp holds the guess g modulo the np first primes,
@@ -1532,16 +1534,20 @@ static void crt_coefs_chunk(gb_modpoly_t modgbs, modpolys_t *pol,
                             const fmpz_comb_t comb, const size_t mbits,
                             int *isint, mpz_t *zraw, crt_ws_struct *ws,
                             const int nthreads){
-  /* the images are stored prime by prime: the residues of CRT_BLOCK
-     consecutive coefficients are read together */
-  const int32_t nblocks = (l1 - l0 + CRT_BLOCK - 1) / CRT_BLOCK;
-  const size_t len = pol[0]->len;
+  /* the images are stored prime by prime: the residues of up to CRT_BLOCK
+     consecutive coefficients are read together, but the blocks are made
+     smaller for small chunks (at the beginning of each polynomial, see
+     crt_ratrecon_lift_modgbs), so that each thread gets about
+     CRT_BLOCKS_PER_THREAD blocks */
+  const int32_t bsz = MAX(1, MIN(CRT_BLOCK,
+                                 (l1 - l0) / (CRT_BLOCKS_PER_THREAD * nthreads)));
+  const int32_t nblocks = (l1 - l0 + bsz - 1) / bsz;
 #pragma omp parallel for num_threads(nthreads) schedule(dynamic, 1)
   for(int32_t blk = 0; blk < nblocks; blk++){
     crt_ws_struct *w = ws + omp_get_thread_num();
     mp_limb_t *res = w->res;
-    const int32_t b0 = l0 + blk * CRT_BLOCK;
-    const int32_t nb = MIN(CRT_BLOCK, l1 - b0);
+    const int32_t b0 = l0 + blk * bsz;
+    const int32_t nb = MIN(bsz, l1 - b0);
     if(modgbs->wide){
       for(uint32_t i = 0; i < np; i++){
         const uint64_t *cf = pol[0]->cf_u64[i] + b0;

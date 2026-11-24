@@ -131,6 +131,9 @@ typedef struct{
   int32_t rr; /* number of primes before activating rational reconstruction */
   int64_t nall; /* number of primes whose trace has been applied, bad ones
                    included (see witness_attempt_due) */
+  int32_t rr_next; /* with batches of primes, number of primes of the next
+                      attempt of reconstructing the witnesses after an
+                      attempt without progress (see rr_next_attempt) */
   int32_t nsteps; /* number of steps for lifting GB (per degree) */
   int32_t *steps; /* array of length nsteps ; the sum of the entries should
                      equal npol */
@@ -189,6 +192,7 @@ static inline void data_lift_init(data_lift_t dl,
   dl->npol = npol;
   dl->rr = 1;
   dl->nall = 0;
+  dl->rr_next = 0;
   dl->lstart = 0;
   dl->nsteps = nsteps;
   dl->S = 0;
@@ -2369,7 +2373,41 @@ static inline int witness_attempt_due(const gb_modpoly_t modgbs,
     return modgbs->nprimes % dl->rr == 0;
   }
   const int64_t period = MAX(dl->rr, dl->nthreads);
-  return (dl->nall + WIT_BATCH_SLACK) % period == 0;
+  return (dl->nall + WIT_BATCH_SLACK) % period == 0
+    && (int32_t)modgbs->nprimes >= dl->rr_next;
+}
+
+/* estimated elapsed time (in seconds) of an attempt of reconstructing the
+   witnesses of a polynomial which fails, with a modulus of the given
+   bitsize (fitted on random2_10_10, 16000 to 460000 bits, where it
+   dominates the attempts) */
+static inline double rr_attempt_cost(const double bits){
+  return 1.1e-10 * pow(bits, 1.59);
+}
+
+/* number of primes of the next attempt of reconstructing the witnesses,
+   with batches of nthreads primes, after an attempt with nprimes primes
+   which reconstructed none: the polynomials are reconstructed in a few
+   attempts (by groups of polynomials with coefficients of about the same
+   size), the frontier polynomial failing in between. As for LLL (see
+   lll_next_attempt), an attempt costs about A primes of elapsed time, and
+   the next one is made after a growth of about sqrt(2 A / nprimes) of the
+   number of primes. Delaying the attempts costs primes only for the last
+   group of polynomials, but the cost of a prime (F4) does not include the
+   lifting steps applied to each prime: the growth is limited to
+   RR_MAX_GROWTH percent, which bounds the primes lost. It only depends on
+   the trace, on the number of primes and on the number of threads. */
+#define RR_MAX_GROWTH 3
+
+static inline int32_t rr_next_attempt(const int32_t nprimes,
+                                      const double cost, const double pcost,
+                                      const int nthreads){
+  if(pcost <= 0){
+    return 0;
+  }
+  const double A = MAX(1, nthreads) * cost / pcost;
+  const double g = MIN(RR_MAX_GROWTH / 100.0, sqrt(2 * A / nprimes));
+  return (int32_t)(nprimes * (1 + g));
 }
 
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
@@ -2425,6 +2463,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
 
   st = realtime();
   if(witness_attempt_due(modgbs, dl)){
+    int progress = 0;
     for(int32_t i = dl->lstart; i < dl->lend; i++){
       if(modgbs->modpolys[i]->len==0){
           dl->check1[i]++;
@@ -2488,9 +2527,16 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
           break;
         }
         else{
+          progress |= (dl->check1[i] == 0);
           dl->check1[i]++;
         }
       }
+    }
+    if(dl->nthreads > WIT_BATCH_MIN){
+      dl->rr_next = progress ? 0
+        : rr_next_attempt(modgbs->nprimes,
+                          rr_attempt_cost(mpz_sizeinbase(mod_p, 2)),
+                          pcost, dl->nthreads);
     }
   }
   *st_rrec += realtime()-st;

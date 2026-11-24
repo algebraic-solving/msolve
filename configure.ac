@@ -112,6 +112,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_source.sh:test/diff/diff_source.sh
  test/diff/diff_source-gb-lm.sh:test/diff/diff_source-gb-lm.sh
  test/diff/diff_source-gb-red.sh:test/diff/diff_source-gb-red.sh
+ test/diff/diff_source-gb-elim-drl.sh:test/diff/diff_source-gb-elim-drl.sh
  test/diff/diff_source-gb-elim-red.sh:test/diff/diff_source-gb-elim-red.sh
  test/diff/diff_source-noarg.sh:test/diff/diff_source-noarg.sh
  test/diff/diff_source-param-fullnf-qq.sh:test/diff/diff_source-param-fullnf-qq.sh
@@ -120,6 +121,15 @@ AC_CONFIG_LINKS([
  test/diff/diff_source-param-nonf.sh:test/diff/diff_source-param-nonf.sh
  test/diff/diff_source-real-param-nonf.sh:test/diff/diff_source-real-param-nonf.sh
  test/diff/diff_source-real.sh:test/diff/diff_source-real.sh
+ input_files/boolean-elim10.ms:input_files/boolean-elim10.ms
+ output_files/boolean-elim10.g2.res:output_files/boolean-elim10.g2.res
+ test/diff/diff_boolean-elim10.sh:test/diff/diff_boolean-elim10.sh
+ input_files/boolean-random12.ms:input_files/boolean-random12.ms
+ output_files/boolean-random12.g2.res:output_files/boolean-random12.g2.res
+ output_files/boolean-random12.lex.g2.res:output_files/boolean-random12.lex.g2.res
+ test/diff/diff_boolean-random12.sh:test/diff/diff_boolean-random12.sh
+ test/diff/diff_boolean-zeros-random12.sh:test/diff/diff_boolean-zeros-random12.sh
+ test/diff/diff_boolean-zeros-lex-random12.sh:test/diff/diff_boolean-zeros-lex-random12.sh
  input_files/bug-2nd-prime-bad.ms:input_files/bug-2nd-prime-bad.ms
  output_files/bug-2nd-prime-bad.g2.res:output_files/bug-2nd-prime-bad.g2.res
  test/diff/diff_bug-2nd-prime-bad.sh:test/diff/diff_bug-2nd-prime-bad.sh
@@ -172,6 +182,16 @@ AC_CONFIG_LINKS([
  output_files/elim-qq.g2.e1.res:output_files/elim-qq.g2.e1.res
  output_files/elim-qq.g2.e2.res:output_files/elim-qq.g2.e2.res
  test/diff/diff_elim-qq.sh:test/diff/diff_elim-qq.sh
+ input_files/elim-drl-31.ms:input_files/elim-drl-31.ms
+ output_files/elim-drl-31.g2.e1.res:output_files/elim-drl-31.g2.e1.res
+ output_files/elim-drl-31.g2.e4.res:output_files/elim-drl-31.g2.e4.res
+ output_files/elim-drl-31.g2.e5.res:output_files/elim-drl-31.g2.e5.res
+ test/diff/diff_elim-drl-31.sh:test/diff/diff_elim-drl-31.sh
+ input_files/elim-drl-qq.ms:input_files/elim-drl-qq.ms
+ output_files/elim-drl-qq.g2.e1.res:output_files/elim-drl-qq.g2.e1.res
+ output_files/elim-drl-qq.g2.e4.res:output_files/elim-drl-qq.g2.e4.res
+ output_files/elim-drl-qq.g2.e5.res:output_files/elim-drl-qq.g2.e5.res
+ test/diff/diff_elim-drl-qq.sh:test/diff/diff_elim-drl-qq.sh
  input_files/empty-elim-qq.ms:input_files/empty-elim-qq.ms
  output_files/empty-elim-qq.g2.e1.res:output_files/empty-elim-qq.g2.e1.res
  output_files/empty-elim-qq.g2.e2.res:output_files/empty-elim-qq.g2.e2.res
@@ -244,27 +264,16 @@ AC_CONFIG_LINKS([
  input_files/kat7-30.ms:input_files/kat7-30.ms
  output_files/kat7-30.P2.d0.res:output_files/kat7-30.P2.d0.res
  test/diff/diff_kat7-30.sh:test/diff/diff_kat7-30.sh
- input_files/random6-gf256-int.ms:input_files/random6-gf256-int.ms
- output_files/random6-gf256-int.g2.res:output_files/random6-gf256-int.g2.res
- test/diff/diff_random6-gf256-int.sh:test/diff/diff_random6-gf256-int.sh
- input_files/random8-gf2.ms:input_files/random8-gf2.ms
- output_files/random8-gf2.g2.res:output_files/random8-gf2.g2.res
- test/diff/diff_random8-gf2.sh:test/diff/diff_random8-gf2.sh
- input_files/boolean-random12.ms:input_files/boolean-random12.ms
- output_files/boolean-random12.g2.res:output_files/boolean-random12.g2.res
- test/diff/diff_boolean-random12.sh:test/diff/diff_boolean-random12.sh
- input_files/boolean-elim10.ms:input_files/boolean-elim10.ms
- output_files/boolean-elim10.g2.res:output_files/boolean-elim10.g2.res
- test/diff/diff_boolean-elim10.sh:test/diff/diff_boolean-elim10.sh
- test/diff/diff_boolean-zeros-random12.sh:test/diff/diff_boolean-zeros-random12.sh
- output_files/boolean-random12.lex.g2.res:output_files/boolean-random12.lex.g2.res
- test/diff/diff_boolean-zeros-lex-random12.sh:test/diff/diff_boolean-zeros-lex-random12.sh
  input_files/kat7-qq.ms:input_files/kat7-qq.ms
  output_files/kat7-qq.P2.d0.res:output_files/kat7-qq.P2.d0.res
  test/diff/diff_kat7-qq.sh:test/diff/diff_kat7-qq.sh
  input_files/kat8-qq-truncate.ms:input_files/kat8-qq-truncate.ms
  output_files/kat8-qq-truncate.res:output_files/kat8-qq-truncate.res
  test/diff/diff_kat8-qq-truncate.sh:test/diff/diff_kat8-qq-truncate.sh
+ input_files/lifting-single-point.ms:input_files/lifting-single-point.ms
+ output_files/lifting-single-point.p128.res:output_files/lifting-single-point.p128.res
+ output_files/lifting-single-point.p1024.res:output_files/lifting-single-point.p1024.res
+ test/diff/diff_lifting-single-point.sh:test/diff/diff_lifting-single-point.sh
  input_files/linear0-qq.ms:input_files/linear0-qq.ms
  output_files/linear0-qq.P2.d0.res:output_files/linear0-qq.P2.d0.res
  test/diff/diff_linear0-qq.sh:test/diff/diff_linear0-qq.sh
@@ -343,7 +352,14 @@ AC_CONFIG_LINKS([
  input_files/radical-shape-qq.ms:input_files/radical-shape-qq.ms
  output_files/radical-shape-qq.P2.d0.res:output_files/radical-shape-qq.P2.d0.res
  test/diff/diff_radical-shape-qq.sh:test/diff/diff_radical-shape-qq.sh
+ input_files/random6-gf256-int.ms:input_files/random6-gf256-int.ms
+ output_files/random6-gf256-int.g2.res:output_files/random6-gf256-int.g2.res
+ test/diff/diff_random6-gf256-int.sh:test/diff/diff_random6-gf256-int.sh
+ input_files/random8-gf2.ms:input_files/random8-gf2.ms
+ output_files/random8-gf2.g2.res:output_files/random8-gf2.g2.res
+ test/diff/diff_random8-gf2.sh:test/diff/diff_random8-gf2.sh
  input_files/realroot1.ms:input_files/realroot1.ms
+ output_files/realroot1.p0.res:output_files/realroot1.p0.res
  output_files/realroot1.p128.res:output_files/realroot1.p128.res
  output_files/realroot1.p1024.res:output_files/realroot1.p1024.res
  test/diff/diff_realroot1.sh:test/diff/diff_realroot1.sh
@@ -351,6 +367,10 @@ AC_CONFIG_LINKS([
  output_files/realroot-extraction-exact-root.p128.res:output_files/realroot-extraction-exact-root.p128.res
  output_files/realroot-extraction-exact-root.p1024.res:output_files/realroot-extraction-exact-root.p1024.res
  test/diff/diff_realroot-extraction-exact-root.sh:test/diff/diff_realroot-extraction-exact-root.sh
+ input_files/reals-close-components.ms:input_files/reals-close-components.ms
+ output_files/reals-close-components.p128.res:output_files/reals-close-components.p128.res
+ output_files/reals-close-components.p1024.res:output_files/reals-close-components.p1024.res
+ test/diff/diff_reals-close-components.sh:test/diff/diff_reals-close-components.sh
  input_files/reals-dim0-chgvar.ms:input_files/reals-dim0-chgvar.ms
  output_files/reals-dim0-chgvar.p128.res:output_files/reals-dim0-chgvar.p128.res
  output_files/reals-dim0-chgvar.p1024.res:output_files/reals-dim0-chgvar.p1024.res
@@ -367,6 +387,14 @@ AC_CONFIG_LINKS([
  output_files/reals-dim0-swapvar.p128.res:output_files/reals-dim0-swapvar.p128.res
  output_files/reals-dim0-swapvar.p1024.res:output_files/reals-dim0-swapvar.p1024.res
  test/diff/diff_reals-dim0-swapvar.sh:test/diff/diff_reals-dim0-swapvar.sh
+ input_files/reals-exact-left-end.ms:input_files/reals-exact-left-end.ms
+ output_files/reals-exact-left-end.p128.res:output_files/reals-exact-left-end.p128.res
+ output_files/reals-exact-left-end.p1024.res:output_files/reals-exact-left-end.p1024.res
+ test/diff/diff_reals-exact-left-end.sh:test/diff/diff_reals-exact-left-end.sh
+ input_files/reals-zero-equal.ms:input_files/reals-zero-equal.ms
+ output_files/reals-zero-equal.p128.res:output_files/reals-zero-equal.p128.res
+ output_files/reals-zero-equal.p1024.res:output_files/reals-zero-equal.p1024.res
+ test/diff/diff_reals-zero-equal.sh:test/diff/diff_reals-zero-equal.sh
  input_files/test-lifting2.ms:input_files/test-lifting2.ms
  output_files/test-lifting2.P2.d0.res:output_files/test-lifting2.P2.d0.res
  test/diff/diff_test-lifting2.sh:test/diff/diff_test-lifting2.sh
@@ -378,13 +406,21 @@ AC_CONFIG_LINKS([
  output_files/univariate-cubic-close-roots.p128.res:output_files/univariate-cubic-close-roots.p128.res
  output_files/univariate-cubic-close-roots.p1024.res:output_files/univariate-cubic-close-roots.p1024.res
  test/diff/diff_univariate-cubic-close-roots.sh:test/diff/diff_univariate-cubic-close-roots.sh
+ input_files/univariate-gcd.ms:input_files/univariate-gcd.ms
+ output_files/univariate-gcd.p128.res:output_files/univariate-gcd.p128.res
+ output_files/univariate-gcd.p1024.res:output_files/univariate-gcd.p1024.res
+ test/diff/diff_univariate-gcd.sh:test/diff/diff_univariate-gcd.sh
+ input_files/univariate-middle-root.ms:input_files/univariate-middle-root.ms
+ output_files/univariate-middle-root.p128.res:output_files/univariate-middle-root.p128.res
+ output_files/univariate-middle-root.p1024.res:output_files/univariate-middle-root.p1024.res
+ test/diff/diff_univariate-middle-root.sh:test/diff/diff_univariate-middle-root.sh
  input_files/univariate-sgn.ms:input_files/univariate-sgn.ms
  output_files/univariate-sgn.p128.res:output_files/univariate-sgn.p128.res
  output_files/univariate-sgn.p1024.res:output_files/univariate-sgn.p1024.res
  test/diff/diff_univariate-sgn.sh:test/diff/diff_univariate-sgn.sh
- input_files/lifting-single-point.ms:input_files/lifting-single-point.ms
- output_files/lifting-single-point.p128.res:output_files/lifting-single-point.p128.res
- output_files/lifting-single-point.p1024.res:output_files/lifting-single-point.p1024.res
- test/diff/diff_lifting-single-point.sh:test/diff/diff_lifting-single-point.sh
+ input_files/univariate-wilkinson-both-signs.ms:input_files/univariate-wilkinson-both-signs.ms
+ output_files/univariate-wilkinson-both-signs.p128.res:output_files/univariate-wilkinson-both-signs.p128.res
+ output_files/univariate-wilkinson-both-signs.p1024.res:output_files/univariate-wilkinson-both-signs.p1024.res
+ test/diff/diff_univariate-wilkinson-both-signs.sh:test/diff/diff_univariate-wilkinson-both-signs.sh
 ])
 AC_OUTPUT

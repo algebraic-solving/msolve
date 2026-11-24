@@ -48,6 +48,14 @@ typedef struct
   int sign_left;
 } interval;
 
+/* statistics of real_roots */
+typedef struct {
+  double isolation, refinement; /* elapsed times */
+  double descartes, shifts;     /* elapsed times of the isolation in Descartes'
+                                   rule of signs and in Taylor shifts */
+  unsigned long nodes, transl, half_splits, skipped;
+} usolve_stats_t;
+
 typedef len_t nelts_t;
 typedef int32_t nvars_t;
 typedef int64_t bits_t;
@@ -156,6 +164,8 @@ typedef struct{
                           * Boolean ring via the common zeros, see
                           * boolean-zeros.c */
   int32_t lex;     /* 1 for LEX instead of DRL, only with boolean_zeros */
+  int32_t elim_drl; /* DRL Groebner basis first for elimination orders,
+                     * see md_t in neogb/data.h */
 } data_gens_ff_t;
 
 typedef uint32_t szmat_t;
@@ -346,6 +356,10 @@ typedef struct{
   char *in_file;
   char *out_file;
   char *verb_file;
+  /* elapsed and cpu time spent writing the output (solutions, Groebner
+   * bases, normal forms), see output_timer_stop() */
+  double output_rtime;
+  double output_ctime;
 } files_gb;
 
 /* data structure for tracing algorithms */

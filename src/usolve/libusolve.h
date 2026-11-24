@@ -18,47 +18,29 @@
  * Christian Eder
  * Mohab Safey El Din */
 
+#include <flint/fmpz_poly.h>
+
+void usolve_refine_root_arb(interval *, const fmpz_poly_t, const fmpz_poly_t,
+                            const slong, slong *);
+
+int usolve_sign_2exp_arb(const fmpz_poly_t, const fmpz_t, const slong,
+                         slong *);
+
+int usolve_sign_right_2exp_arb(const fmpz_poly_t, const fmpz_poly_t,
+                               const fmpz_t, const slong, slong *);
 
 interval *real_roots(mpz_t *, unsigned long,
                      unsigned long int *,
                      unsigned long int *,
                      const int32_t,
                      int,
-                     int);
-
-void display_roots_system(FILE *, interval *, unsigned long int);
-
-void display_root(FILE *, interval *);
+                     int,
+                     usolve_stats_t *);
 
 unsigned long int mpz_poly_max_bsize_coeffs(mpz_t *, unsigned long int);
-
-unsigned long int mpz_poly_min_bsize_coeffs(mpz_t *, unsigned long int);
 
 void mpz_poly_eval_2exp_naive(mpz_t *,
                               long int,
                               mpz_t *, const long int,
                               mpz_t *, mpz_t *);
 
-void mpz_poly_eval_2exp_naive2(mpz_t *,
-                              unsigned long int,
-                              mpz_t, const int,
-                              mpz_t, mpz_t);
-
-void get_values_at_bounds(mpz_t *, unsigned long int, interval *, mpz_t *);
-
-void refine_QIR_positive_root(mpz_t *, long int *, interval *,
-                                     mpz_t *, int, int);
-
-int mpz_scalar_product_interval(mpz_t *, unsigned long int,
-                                mpz_t *, mpz_t *, mpz_t, mpz_t, mpz_t, long);
-
-int mpz_poly_eval_interval(mpz_t *, unsigned long int, long,
-                           mpz_t, mpz_t, mpz_t, mpz_t, mpz_t);
-
-int lazy_mpz_poly_eval_interval(mpz_t *, unsigned long int, long,
-                                mpz_t *, mpz_t *, long, long, long,
-                                mpz_t, mpz_t, mpz_t);
-
-int lazy_mpz_poly_eval_interval_old(mpz_t *, unsigned long int, long,
-                                mpz_t *, mpz_t *, long, long, long,
-                                mpz_t, mpz_t, mpz_t);

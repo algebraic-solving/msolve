@@ -664,6 +664,7 @@ typedef struct {
   nmod_berlekamp_massey_struct *B; /* receives the points */
   szmat_t next;                    /* number of points of the next check */
   szmat_t margin;                  /* points predicted beyond 2 L */
+  double rt_bm, ct_bm;             /* time in Berlekamp-Massey (real|cpu) */
 } fglm_et_t;
 
 /* Margin without fallback. If the full sequence has linear complexity > L,
@@ -671,16 +672,9 @@ typedef struct {
  * a uniform sequence of length N has linear complexity <= L < N / 2 with
  * probability p^(2L - N). So a check with N >= 2 L + m stops wrongly with
  * probability about p^-m (own reasoning, heuristic when N > deg minpoly).
- * m >= 74 / log2(p): with at most 2^10 checks, total probability <= 2^-64;
- * at least 64 (cost: m products). */
-static inline szmat_t fglm_et_margin(const mod_t p){
-  szmat_t b = 1;            /* max(1, floor(log2(p))) */
-  while(b < 31 && ((mod_t)2 << b) <= p){
-    b++;
-  }
-  const szmat_t m = (74 + b - 1) / b;
-  return m > 64 ? m : 64;
-}
+ * With at most 2^10 checks and p >= 2, total probability <= 2^-118
+ * (cost: m products). */
+#define FGLM_ET_MARGIN 128
 
 /* Adds s_i to et->B (npts = i + 1 points); when npts reaches et->next,
  * returns 1 if the linear complexity L of the points is < D and
@@ -695,7 +689,10 @@ static inline int fglm_seq_early_stop(fglm_et_t *et, const CF_t s,
     return 0;
   }
   et->next = npts + (npts / 64 > 16 ? npts / 64 : 16);
+  const double rt = realtime(), ct = cputime();
   nmod_berlekamp_massey_reduce(et->B);
+  et->rt_bm += realtime() - rt;
+  et->ct_bm += cputime() - ct;
   const slong L = nmod_berlekamp_massey_V_poly(et->B)->length - 1;
   return L < (slong)D && (slong)npts >= 2 * L + (slong)et->margin;
 }
@@ -1468,6 +1465,7 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
 
   double st_fglm = realtime();
   double cst_fglm = cputime();
+  double rt_bm = 0.0, ct_bm = 0.0; /* Berlekamp-Massey during the sequence */
 
 #if BLOCKWIED > 0
   fprintf(ERRSTREAM, "Starts computation of matrix sequence\n");
@@ -1487,20 +1485,23 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *matrix, mod_t prime,
   }
   /* Berlekamp-Massey data, also used for the early termination */
   *bdata_bms = allocate_fglm_bms_data(dimquot, prime);
-  fglm_et_t et = {(*bdata_bms)->BMS, 16, fglm_et_margin(prime)};
+  fglm_et_t et = {(*bdata_bms)->BMS, 16, FGLM_ET_MARGIN, 0.0, 0.0};
   generate_sequence_verif(matrix, *bdata, block_size, dimquot,
                           squvars, linvars, nvars, prime, st, &et);
+  rt_bm = et.rt_bm;
+  ct_bm = et.ct_bm;
 #endif
 
+  /* Berlekamp-Massey during the sequence counts as elimination polynomial */
   if(info_level > 1){
-    double rt_fglm = realtime()-st_fglm;
-    double crt_fglm = cputime()-cst_fglm;
+    double rt_fglm = realtime()-st_fglm-rt_bm;
+    double crt_fglm = cputime()-cst_fglm-ct_bm;
     /* fprintf(ERRSTREAM, "Time spent to generate sequence (elapsed): %.2f sec (%.2f Gops/sec)\n", rt_fglm, nops / rt_fglm); */
     fprintf (VERBSTREAM, "%15.2f | %-13.2f\n",rt_fglm,crt_fglm);
   }
 
-  st_fglm = realtime();
-  cst_fglm = cputime();
+  st_fglm = realtime()-rt_bm;
+  cst_fglm = cputime()-ct_bm;
   if (info_level > 1) {
     fprintf(VERBSTREAM,
 	    "elimination polynomial                              ");
@@ -1685,8 +1686,8 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *matrix,
    * if the degree differs here, the usual checks follow (none if
    * degelim = D, as 2 D + margin points are never reached) */
   fglm_bms_data_set_prime(data_bms, prime);
-  const szmat_t margin = fglm_et_margin(prime);
-  fglm_et_t et = {data_bms->BMS, 16, margin};
+  const szmat_t margin = FGLM_ET_MARGIN;
+  fglm_et_t et = {data_bms->BMS, 16, margin, 0.0, 0.0};
   if(degelim > 0){
     et.next = 2 * degelim + margin;
   }

@@ -356,6 +356,10 @@ typedef struct{
   char *in_file;
   char *out_file;
   char *verb_file;
+  /* elapsed and cpu time spent writing the output (solutions, Groebner
+   * bases, normal forms), see output_timer_stop() */
+  double output_rtime;
+  double output_ctime;
 } files_gb;
 
 /* data structure for tracing algorithms */

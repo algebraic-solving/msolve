@@ -373,7 +373,7 @@ static inline void display_modpoly(FILE *file,
     return;
   }
   if(mpz_cmp_ui(modgbs->modpolys[pos]->lm, 1) != 0){
-    mpz_out_str(file, 10, modgbs->modpolys[pos]->lm);
+    mpz_out_str_10(file, modgbs->modpolys[pos]->lm);
     fprintf(file, "*");
   }
   display_monomial_single(file, gens, pos, &modgbs->ldm);
@@ -417,7 +417,7 @@ static inline void display_modpoly(FILE *file,
     int star = 0;
     //coef is neither 1 nor -1
     if(mpz_cmp_ui(cf[i], 1) != 0 && mpz_cmp_si(cf[i], -1) != 0){
-        mpz_out_str(file, 10, cf[i]);
+        mpz_out_str_10(file, cf[i]);
         fprintf(file, "*");
     }
     if(mpz_cmp_ui(cf[i], 0) != 0){
@@ -448,7 +448,7 @@ static inline void display_modpoly(FILE *file,
      deg += ht->ev[hm[len-1]][evi[k]];
   }
   if(deg == 0){
-    mpz_out_str(file, 10, cf[0]);
+    mpz_out_str_10(file, cf[0]);
   }
   else{
     if(mpz_cmp_si(cf[0], -1) == 0){
@@ -457,7 +457,7 @@ static inline void display_modpoly(FILE *file,
     int star = 0;
     //coef is neither 1 nor -1
     if(mpz_cmp_ui(cf[0], 1) != 0 && mpz_cmp_si(cf[0], -1) != 0){
-        mpz_out_str(file, 10, cf[0]);
+        mpz_out_str_10(file, cf[0]);
         fprintf(file, "*");
     }
     fflush(file);
@@ -2057,6 +2057,8 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
 
   modgbsp = groebner_qq(gens, flags);
 
+  output_timer_t ot;
+  output_timer_start(&ot);
   FILE *ofile;
   if (flags->files->out_file != NULL) {
     ofile = fopen(flags->files->out_file, "wb+");
@@ -2114,6 +2116,7 @@ void print_msolve_gbtrace_qq(data_gens_ff_t *gens,
       display_lm_gbmodpoly_cf_qq(OUTSTREAM, (*modgbsp), gens);
     }
   }
+  output_timer_stop(flags->files, &ot);
   gb_modpoly_clear((*modgbsp));
   free(modgbsp);
 }

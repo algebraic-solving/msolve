@@ -693,6 +693,8 @@ int main(int argc, char **argv){
     if(files == NULL) exit(1);
     files->in_file = NULL;
     files->out_file = NULL;
+    files->output_rtime = 0;
+    files->output_ctime = 0;
     getoptions(argc, argv, &initial_hts, &nr_threads, &max_pairs,
                &elim_block_len, &la_option, &use_signatures, &update_ht,
                &reduce_gb, &print_gb, &truncate_lifting, &genericity_handling,
@@ -818,9 +820,12 @@ int main(int argc, char **argv){
                           &param, mpz_paramp, &nb_real_roots, &real_roots,
                           &real_pts);
 
+    output_timer_t ot;
+    output_timer_start(&ot);
     if (crlf_output && convert_to_crlf_line_endings(files->out_file)) {
         fprintf(ERRSTREAM, "Cannot convert line endings of output file\n");
     }
+    output_timer_stop(files, &ot);
 
     /* free parametrization */
     if(param != NULL && gens->field_char){
@@ -840,12 +845,9 @@ int main(int argc, char **argv){
 
     /* timings */
     if (info_level > 0) {
-        double st1 = cputime();
-        double rt1 = realtime();
         fprintf(VERBSTREAM, "\n\n-------------------------------------------------\
 -----------------------------------\n");
-        fprintf(VERBSTREAM, "msolve overall time  %13.2f sec (elapsed) / %5.2f sec (cpu)\n",
-                rt1-rt0, st1-st0);
+        print_overall_times(files, rt0, st0);
         fprintf(VERBSTREAM, "-------------------------------------------------\
 -----------------------------------\n");
     }

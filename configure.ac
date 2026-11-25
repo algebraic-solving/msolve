@@ -70,6 +70,18 @@ AC_TYPE_UINT8_T
 
 
 AX_COUNT_CPUS
+# Probe the compiler target without adding any architecture flags.
+AC_DEFUN([MSOLVE_CHECK_TARGET_FEATURE], [
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#ifndef $1
+#error Target feature is not enabled
+#endif
+]], [[]])], [AC_DEFINE([$2], [1], [$3])])
+])
+
+MSOLVE_CHECK_TARGET_FEATURE([__SSE2__], [HAVE_SSE2], [Enable SSE2 code])
+MSOLVE_CHECK_TARGET_FEATURE([__SSSE3__], [HAVE_SSSE3], [Enable SSSE3 code])
+
 # By default, select SIMD code from the compiler target rather than the build CPU.
 # Let packagers disable either implementation without changing their CFLAGS.
 AC_ARG_ENABLE([avx2],
@@ -88,7 +100,10 @@ AS_IF([test "x$enable_avx2" = xyes], [
   AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <immintrin.h>]], [[
     __m256i value = _mm256_set1_epi64x(1);
     return _mm256_extract_epi64(value, 0);
-  ]])], [AC_DEFINE([HAVE_AVX2], [1], [Enable AVX2 code])],
+  ]])], [
+    AC_DEFINE([HAVE_AVX2], [1], [Enable AVX2 code])
+    MSOLVE_CHECK_TARGET_FEATURE([__FMA__], [HAVE_FMA3], [Enable FMA3 code])
+  ],
       [AC_MSG_ERROR([AVX2 code requires a compiler target supporting AVX2 (for example, -mavx2 in CFLAGS)])])
 ])
 
@@ -109,7 +124,12 @@ AS_IF([test "x$enable_avx512f" = xyes], [
     __m512i value = _mm512_set1_epi16(1);
     value = _mm512_mullo_epi16(value, value);
     return _mm512_cvtsi512_si32(value);
-  ]])], [AC_DEFINE([HAVE_AVX512_F], [1], [Enable AVX512F code])],
+  ]])], [
+    AC_DEFINE([HAVE_AVX512_F], [1], [Enable AVX512F code])
+    AC_DEFINE([HAVE_AVX512_BW], [1], [Enable AVX512BW code])
+    MSOLVE_CHECK_TARGET_FEATURE([__AVX512DQ__], [HAVE_AVX512_DQ], [Enable AVX512DQ code])
+    MSOLVE_CHECK_TARGET_FEATURE([__AVX512IFMA__], [HAVE_AVX512_IFMA], [Enable AVX512IFMA code])
+  ],
       [AC_MSG_ERROR([AVX-512 code requires a compiler target supporting AVX-512F and AVX-512BW (for example, -mavx512f -mavx512bw in CFLAGS)])])
 ])
 AX_GCC_BUILTIN([__builtin_constant_p])

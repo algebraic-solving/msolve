@@ -30,6 +30,23 @@ via github releases)
 4. Run `make install` in order to globally install the library and the binary
    of msolve.
 
+Optimizing a local build
+========================
+
+For a local build on x86-64 with a compiler that supports `-march=native`,
+use:
+
+```shell
+./configure CFLAGS="-O2 -march=native"
+```
+
+This lets the compiler enable instructions supported on the build machine.
+msolve selects its SIMD kernels at configure time from that compiler target.
+The resulting binaries may not run on other machines. For distribution or
+cross builds, use flags for the intended target instead. To disable msolve's
+explicit AVX2 or AVX-512 kernels, use `--disable-avx2` or
+`--disable-avx512f`; these options do not change the compiler's own target.
+
 Note to macOS users
 ===================
 

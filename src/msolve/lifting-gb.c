@@ -1500,7 +1500,10 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
           }
         }
       }
-      dl->check2[k] += 1;
+      /* lifted, not checked yet: a polynomial lifted again after the
+         failed check of a previous one may have been lifted before, but
+         its new lift is unchecked (see verif_lifted_basis) */
+      dl->check2[k] = 1;
     }
     if(dl->check1[k] < 1 && polys[k]->len > 0){
       ret = k;

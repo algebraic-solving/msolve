@@ -138,7 +138,6 @@ AC_CONFIG_LINKS([
  test/diff/diff_bug-2nd-prime-bad.sh:test/diff/diff_bug-2nd-prime-bad.sh
  input_files/bug-68.ms:input_files/bug-68.ms
  output_files/bug-68.res:output_files/bug-68.res
- output_files/bug-68.P2.d0.res:output_files/bug-68.P2.d0.res
  test/diff/diff_bug-68.sh:test/diff/diff_bug-68.sh
  input_files/bug-empty-tracer.ms:input_files/bug-empty-tracer.ms
  output_files/bug-empty-tracer.g2.res:output_files/bug-empty-tracer.g2.res

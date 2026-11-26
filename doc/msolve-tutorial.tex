@@ -394,8 +394,9 @@ the algorithms used therein. All computations performed over the rational number
 probabilistic stopping criterion. Unless explicitly requested by the user (see the
 \verb+-l+ flag in \cref{sec:flags}), all computations of Gr\"obner bases
 in prime fields use deterministic
-algorithms. Change of order algorithms which are used are deterministic
-when the input ideal is radical.
+algorithms. The change of order to the lexicographic order (classical FGLM)
+is deterministic, while the computation of parametrizations (sparse-FGLM)
+relies on random projections and is probabilistic, also over prime fields.
 
 \section{Input file format}\label{sec:input}
 
@@ -1003,7 +1004,10 @@ ideal is radical and the linear form of the parametrization is the last
 variable $x_n$, the lexicographic Gr\"obner basis can be recovered from the
 parametrization $(w, w', v_1, \ldots, v_n)$: it is
 $\{w(x_n), x_i + v_i(x_n)\, w'(x_n)^{-1} \bmod w(x_n), 1 \leq i < n\}$, up to
-a normalization of $w$.
+a normalization of $w$. Note however that \verb+-P 2+ is probabilistic, even
+over prime fields: the parametrization is computed by sparse-FGLM with random
+projections, whereas the computation of the lexicographic Gr\"obner basis
+falls back on classical FGLM when sparse-FGLM does not succeed.
 
 
 \section{Saturation and colon ideals}\label{sec:f4sat}

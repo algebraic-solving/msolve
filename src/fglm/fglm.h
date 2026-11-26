@@ -20,8 +20,9 @@
  * Mohab Safey El Din */
 
 
-/* sparse-FGLM needs primes below this bound (classical FGLM: p < 2^31) */
-#define FGLM_SPARSE_MAX_PRIME 1518500213
+/* sparse-FGLM needs primes below this bound (classical FGLM: p < 2^31):
+ * p <= DOT2_ACC8_MAX_MODULUS = 1515531528 in linalg-fglm.c */
+#define FGLM_SPARSE_MAX_PRIME 1515531528
 
 param_t *nmod_fglm_compute(sp_matfglm_t *, mod_t, nvars_t,
                            szmat_t, nvars_t *, uint32_t *, nvars_t*, int, md_t *);

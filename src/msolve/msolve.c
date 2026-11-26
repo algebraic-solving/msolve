@@ -68,8 +68,11 @@ void free_rrec_data(rrec_data_t recdata);
 
 /* internal values of print_gb for option -x (lex Gb by FGLM):
  * 3, leading ideal only
- * 4, full basis;  */
-#define PRINT_LEX_GB(pg) ((pg) == 3 || (pg) == 4)
+ * 4, full basis;
+ * 5, full basis in the default output format (default call over prime
+ *    fields of characteristic < 2^15) */
+#define PRINT_LEX_DEFAULT 5
+#define PRINT_LEX_GB(pg) ((pg) >= 3 && (pg) <= PRINT_LEX_DEFAULT)
 
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -2206,25 +2209,29 @@ static int32_t *initial_modular_step(
 
     if (empty_solution_set == 1) {
         if (PRINT_LEX_GB(print_gb)) {
-            /* create the lex Gb [1] */
+            /* create the lex Gb [1] (default output: [-1]) */
             output_timer_t ot;
             output_timer_start(&ot);
             FILE *of = (files->out_file != NULL) ?
                 fopen(files->out_file, "ab") : OUTSTREAM;
-            fglm_gb_t *one= malloc(sizeof(fglm_gb_t));
-            const int32_t nv = gens->nvars;
-            one->charac = fc;
-            one->nvars = nv;
-            one->ngens = 1;
-            one->nterms = 1;
-            one->lens = malloc(1 * sizeof(int32_t));
-            one->exps = calloc(1 * nv, sizeof(int32_t)); //all exponents to 0
-            one->cfs  = malloc(1 * sizeof(CF_t));
-            one->lens[0] = 1;
-            one->cfs[0] = 1;
-            print_lex_basis(of, one, gens->vnames,
-                            print_gb == 3);
-            free_fglm_gb(one);
+            if (print_gb == PRINT_LEX_DEFAULT) {
+                fprintf(of, "[-1]:\n");
+            } else {
+                fglm_gb_t *one= malloc(sizeof(fglm_gb_t));
+                const int32_t nv = gens->nvars;
+                one->charac = fc;
+                one->nvars = nv;
+                one->ngens = 1;
+                one->nterms = 1;
+                one->lens = malloc(1 * sizeof(int32_t));
+                one->exps = calloc(1 * nv, sizeof(int32_t)); //all exponents to 0
+                one->cfs  = malloc(1 * sizeof(CF_t));
+                one->lens[0] = 1;
+                one->cfs[0] = 1;
+                print_lex_basis(of, one, gens->vnames,
+                                print_gb == 3);
+                free_fglm_gb(one);
+            }
             if(files->out_file != NULL){
                 fclose(of);
             }
@@ -2279,7 +2286,11 @@ static int32_t *initial_modular_step(
                 output_timer_start(&ot);
                 FILE *of = (files->out_file != NULL) ?
                     fopen(files->out_file, "ab") : OUTSTREAM;
-                print_lex_basis(of, lexgb, gens->vnames, print_gb == 3);
+                if (print_gb == PRINT_LEX_DEFAULT) {
+                    print_lex_basis_default(of, lexgb, gens->vnames, dquot);
+                } else {
+                    print_lex_basis(of, lexgb, gens->vnames, print_gb == 3);
+                }
                 if(files->out_file != NULL){
                     fclose(of);
                 }

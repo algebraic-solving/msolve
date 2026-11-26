@@ -1393,13 +1393,11 @@ static inline void display_gens(FILE *fh, data_gens_ff_t *gens){
   }
 }
 
-/* Same display as print_msolve_polynomials_ff */
-/* Lex Gb computed by FGLM; if lead_ideal_only, only its leading ideal is
- * printed (-x 1), in the format of -g 1 */
-static void print_lex_basis(FILE *file,
-                            const fglm_gb_t *G,
-                            char **vnames,
-                            const int lead_ideal_only){
+/* Header of the lex Gb G (-x 1, -x 2), in the format of -g 1 / -g 2 */
+static void print_lex_basis_header(FILE *file,
+                                   const fglm_gb_t *G,
+                                   char **vnames,
+                                   const int lead_ideal_only){
   const int32_t nv = G->nvars;
   if (lead_ideal_only != 0) {
       fprintf(file, "#Leading ideal data\n");
@@ -1423,6 +1421,15 @@ static void print_lex_basis(FILE *file,
   }
 
   fprintf(file, "#---\n");
+}
+
+/* List [g_1,\n...,\ng_s] of the polynomials of the lex Gb G, or of their
+ * leading monomials if lead_ideal_only */
+static void print_lex_basis_polys(FILE *file,
+                                  const fglm_gb_t *G,
+                                  char **vnames,
+                                  const int lead_ideal_only){
+  const int32_t nv = G->nvars;
   fprintf(file, "[");
   uint64_t pos = 0;
   for(int32_t i = 0; i < G->ngens; i++){
@@ -1458,5 +1465,38 @@ static void print_lex_basis(FILE *file,
           fprintf(file, ",\n");
       }
   }
-  fprintf(file, "]:\n");
+  fprintf(file, "]");
+}
+
+/* Lex Gb computed by FGLM; if lead_ideal_only, only its leading ideal is
+ * printed (-x 1), in the format of -g 1 */
+static void print_lex_basis(FILE *file,
+                            const fglm_gb_t *G,
+                            char **vnames,
+                            const int lead_ideal_only){
+  print_lex_basis_header(file, G, vnames, lead_ideal_only);
+  print_lex_basis_polys(file, G, vnames, lead_ideal_only);
+  fprintf(file, ":\n");
+}
+
+/* Default output over prime fields of characteristic < 2^15 in dimension 0:
+ * as a rational parametrization w.r.t. the last variable (characteristic,
+ * number of variables, degree of the ideal, variables, linear form), with
+ * the lex Gb G instead of the parametrization */
+static void print_lex_basis_default(FILE *file,
+                                    const fglm_gb_t *G,
+                                    char **vnames,
+                                    const long dquot){
+  const int32_t nv = G->nvars;
+  fprintf(file, "[0, [%u, \n%d, \n%ld, \n[", G->charac, nv, dquot);
+  for (int32_t i = 0; i < nv - 1; ++i) {
+      fprintf(file, "'%s', ", vnames[i]);
+  }
+  fprintf(file, "'%s'],\n[", vnames[nv - 1]);
+  for (int32_t i = 0; i < nv - 1; ++i) {
+      fprintf(file, "0,");
+  }
+  fprintf(file, "1],\n");
+  print_lex_basis_polys(file, G, vnames, 0);
+  fprintf(file, "]]:\n");
 }

@@ -374,6 +374,9 @@ AC_CONFIG_LINKS([
  output_files/one-31.g1.res:output_files/one-31.g1.res
  output_files/one-31.x1.res:output_files/one-31.x1.res
  test/diff/diff_one-31.sh:test/diff/diff_one-31.sh
+ input_files/one-8.ms:input_files/one-8.ms
+ output_files/one-8.res:output_files/one-8.res
+ test/diff/diff_one-8.sh:test/diff/diff_one-8.sh
  input_files/one-qq.ms:input_files/one-qq.ms
  output_files/one-qq.res:output_files/one-qq.res
  output_files/one-qq.g2.res:output_files/one-qq.g2.res

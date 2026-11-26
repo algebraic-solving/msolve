@@ -79,15 +79,15 @@ static inline void display_help(char *str){
   fprintf(OUTSTREAM, "    comma after the last polynomial)\n");
     fprintf(OUTSTREAM, "\nDefault output file format (changed by some command line options, see below):\n\n");
   fprintf(OUTSTREAM, "  - When there is no solution in an algebraic closure of the base field:\n");
-  fprintf(OUTSTREAM, "      [1]: over prime fields of characteristic less than 2^15,\n");
-  fprintf(OUTSTREAM, "      [-1]: otherwise.\n");
+  fprintf(OUTSTREAM, "      [-1]:\n");
   fprintf(OUTSTREAM, "  - When there are infinitely many solutions in an algebraic closure of the\n");
   fprintf(OUTSTREAM, "    base field:\n");
   fprintf(OUTSTREAM, "      [1, nvars, -1, []]:\n");
   fprintf(OUTSTREAM, "  - When there are finitely many solutions in an algebraic closure of the base\n");
   fprintf(OUTSTREAM, "    field:\n");
   fprintf(OUTSTREAM, "      - over prime fields of characteristic less than 2^15: the reduced\n");
-  fprintf(OUTSTREAM, "        Groebner basis w.r.t. the lexicographical ordering;\n");
+  fprintf(OUTSTREAM, "        Groebner basis w.r.t. the lexicographical ordering (in the format\n");
+  fprintf(OUTSTREAM, "        of a parametrization w.r.t. the last variable);\n");
   fprintf(OUTSTREAM, "      - over prime fields of characteristic at least 2^15: a rational\n");
   fprintf(OUTSTREAM, "        parametrization of the solutions;\n");
   fprintf(OUTSTREAM, "      - over the rationals: real solutions to the input system (see the -P\n");
@@ -838,9 +838,9 @@ int main(int argc, char **argv){
         if(get_param == 0 && print_gb == 0 && elim_block_len == 0
            && !saturate && !colon && !normal_form && !boolean
            && !boolean_zeros && !is_gf2_ext(field_char)){
-            /* user did not request a specific call,
-             * make -x 2 default */
-            print_gb = 4;
+            /* user did not request a specific call: the lex Gb is
+             * computed (as -x 2) and printed in the default output format */
+            print_gb = PRINT_LEX_DEFAULT;
         }
     }
 

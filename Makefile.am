@@ -95,6 +95,7 @@ checkdiff       = \
 			  test/diff/diff_nonradical-shape-qq.sh \
 			  test/diff/diff_one-16.sh \
 			  test/diff/diff_one-31.sh \
+			  test/diff/diff_one-8.sh \
 			  test/diff/diff_one-qq.sh \
 			  test/diff/diff_quadratic-nonradical-qq.sh \
 			  test/diff/diff_radical-shape-31.sh \

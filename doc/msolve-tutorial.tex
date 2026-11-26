@@ -351,6 +351,10 @@ source files are provided.
   basis via the common zeros of the input polynomials with the
   Buchberger-M\"oller algorithm, also w.r.t.\ the lexicographical order
   with the additional option \verb+--lex+;
+\item compute lexicographic Gr\"obner bases of polynomial systems with
+  finitely many solutions, with coefficients which are either rational numbers
+  or in a prime field $\mathbb{Z}/p\mathbb{Z}$ with $p < 2^{31}$
+  (see~\cref{sec:lexgb});
 \item compute parametrizations of the solutions of polynomial systems with
   coefficients which are either rational numbers or in a prime field
   $\mathbb{Z}/p\mathbb{Z}$ with $p < 2^{31}$ (assuming that the system has
@@ -692,8 +696,9 @@ where we see that only the first polynomial is not in $t$ and $w$.
 Assume that the input polynomials have coefficients in some field $\K$ with
 variables $x_1, \ldots, x_n$. In the case of polynomial systems of dimension
 $0$, \msolve computes by default a zero-dimensional parametrization of the
-solution set. The user can obtain such an encoding using the \verb+-P+ flag
-(see below).
+solution set, except over prime fields of characteristic less than $2^{15}$,
+where it computes the lexicographic Gr\"obner basis (see~\cref{sec:lexgb}).
+The user can obtain such an encoding using the \verb+-P+ flag (see below).
 
 Let us recall what a rational parametrization is.
 This is a couple $(\mathscr{P}, \ell)$ where $\ell$ is a linear form $\lambda_1
@@ -950,9 +955,55 @@ over a prime field, the first prime being chosen randomly.
 For instance, in the above example, one can deduce that the ideal has dimension
 $0$ (finitely many solutions with coordinates in an algebraic closure of
 $\frac{\mathbb{Z}}{1073741827\mathbb{Z}}$) since the basis of leading monomials
-contain pure powers of all variables. The degree of the ideal is also $8$ since
-there are $8$ monomials in $z_1, z_2, z_3$ which are not divisible by the above
+contain pure powers of all variables. The degree of the ideal is $24$ since
+there are $24$ monomials in $z_1, z_2, z_3$ which are not divisible by the above
 leading monomials.
+
+Over prime fields of characteristic less than $2^{15}$, the lexicographic
+Gr\"obner basis is the default output of \msolve, written in the format of a
+rational parametrization w.r.t.\ the last variable (see~\cref{sec:param}).
+For instance, if the file \verb+in.ms+ contains the above polynomials modulo
+$32003$, typing the following command:
+\begin{tcolorbox} % examples/lex_char32003.sh
+  \begin{verbatim}
+    ./msolve -f in.ms -o out.ms
+  \end{verbatim}
+\end{tcolorbox}
+writes in the file \verb+out.ms+:
+\begin{tcolorbox} % examples/lex_char32003.res
+  \begin{lstlisting}
+[0, [32003, 
+3, 
+24, 
+['z1', 'z2', 'z3'],
+[0,0,1],
+[1*z3^10+31998*z3^9+10676*z3^8+21332*z3^7+3552*z3^6+10670*z3^5+30819*z3^4+9482*z3^3+29237*z3^2+12248*z3^1+30686,
+1*z2^1*z3^6+32000*z2^1*z3^5+2*z2^1*z3^4+1*z2^1*z3^3+10667*z2^1*z3^2+21335*z2^1*z3^1+20150*z2^1+17603*z3^9+11194*z3^8+22414*z3^7+28800*z3^6+1589*z3^5+1607*z3^4+24539*z3^3+4621*z3^2+2429*z3^1+3378,
+1*z2^2*z3^4+32001*z2^2*z3^3+10668*z2^2*z3^2+21336*z2^2*z3^1+3556*z2^2+32001*z2^1*z3^5+8*z2^1*z3^4+10659*z2^1*z3^3+14226*z2^1*z3^1+14224*z2^1+4477*z3^9+24981*z3^8+30687*z3^7+29467*z3^6+10883*z3^5+27950*z3^4+15351*z3^3+15789*z3^2+12733*z3^1+12778,
+1*z2^3+25597*z2^2*z3^3+9*z2^2*z3^2+19197*z2^2*z3^1+12806*z2^2+2557*z2^1*z3^5+23067*z2^1*z3^4+19146*z2^1*z3^3+21805*z2^1*z3^2+1268*z2^1*z3^1+10249*z2^1+8607*z3^9+28293*z3^8+22772*z3^7+30548*z3^6+8803*z3^5+10160*z3^4+21046*z3^3+27923*z3^2+6594*z3^1+3510,
+1*z1^1*z3^4+32001*z1^1*z3^3+10668*z1^1*z3^2+21336*z1^1*z3^1+3556*z1^1+29443*z2^2*z3^3+9814*z2^2*z3^2+4267*z2^2*z3^1+29585*z2^2+2560*z2^1*z3^5+14081*z2^1*z3^4+17497*z2^1*z3^3+15787*z2^1*z3^2+24464*z2^1*z3^1+9672*z2^1+14058*z3^9+4418*z3^8+23982*z3^7+22319*z3^6+478*z3^5+24896*z3^4+26496*z3^3+13238*z3^2+16649*z3^1+401,
+1*z1^1*z2^1+19200*z1^1*z3^3+3*z1^1*z3^2+6399*z1^1*z3^1+25604*z1^1+768*z2^2*z3^3+2816*z2^2*z3^2+28803*z2^2*z3^1+4992*z2^2+20483*z2^1*z3^5+27648*z2^1*z3^4+9475*z2^1*z3^3+17152*z2^1*z3^2+12036*z2^1*z3^1+20224*z2^1+21771*z3^9+511*z3^8+611*z3^7+324*z3^6+25729*z3^5+18253*z3^4+19368*z3^3+15384*z3^2+22088*z3^1+17608,
+1*z1^2+6397*z1^1*z3^3+6*z1^1*z3^2+12802*z1^1*z3^1+19201*z1^1+1536*z2^2*z3^3+5632*z2^2*z3^2+25603*z2^2*z3^1+9985*z2^2+8963*z2^1*z3^5+23293*z2^1*z3^4+18950*z2^1*z3^3+2301*z2^1*z3^2+24068*z2^1*z3^1+8449*z2^1+11539*z3^9+1022*z3^8+1222*z3^7+648*z3^6+19455*z3^5+4503*z3^4+6733*z3^3+30772*z3^2+12165*z3^1+3217]]]:
+  \end{lstlisting}
+\end{tcolorbox}
+As for a parametrization, the list starts with the characteristic, the number
+of variables, the degree of the ideal, the variables and the coefficients of the
+linear form, here $z_3$; it ends with the polynomials of the lexicographic
+Gr\"obner basis, as with \verb+-x 2+. When there is no solution or infinitely
+many solutions, the output is the same as over other fields
+(see~\cref{sec:dim}).
+
+Over the rationals, computing a rational parametrization with \verb+-P 2+
+(see~\cref{sec:param}) can be much faster than computing the lexicographic
+Gr\"obner basis with \verb+-x 2+, especially when the ideal (or its radical)
+is in shape position: the coefficients of the lexicographic Gr\"obner basis
+are usually much larger than those of the rational parametrization, so that
+many more primes are needed to lift them. When the
+ideal is radical and the linear form of the parametrization is the last
+variable $x_n$, the lexicographic Gr\"obner basis can be recovered from the
+parametrization $(w, w', v_1, \ldots, v_n)$: it is
+$\{w(x_n), x_i + v_i(x_n)\, w'(x_n)^{-1} \bmod w(x_n), 1 \leq i < n\}$, up to
+a normalization of $w$.
 
 
 \section{Saturation and colon ideals}\label{sec:f4sat}
@@ -1201,9 +1252,9 @@ will display in the \verb+out.ms+ file the following content.
   \hfill \verb+Default value:0+
 
 \item The flag \verb+-x <int>+ or \verb+--lex-groebner-basis+ tells \msolve to output
-  the leading monomial of
+  the leading monomials of the lexicographic Gr\"obner basis of
   the ideal generated by the input polynomials (when \verb+<int>+ is \verb+1+)
-  or the minimal reduced lexicographic
+  or the reduced lexicographic
   Gr\"obner basis (when \verb+<int>+ is \verb+2+).
 
   \hfill \verb+Default value:0+

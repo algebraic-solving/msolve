@@ -329,7 +329,8 @@ typedef struct{
   mp_limb_t *residues;
   fmpz_comb_t comb;
   fmpz_comb_temp_t comb_temp;
-  int32_t mat_lifted;
+  int32_t mat_lifted; /* -1: lifting given up (see check_lifted_data) */
+  int32_t f4_batch; /* current primes ran F4 */
 
   mpz_t *mat_denoms;
   mpz_t *dense_mat;

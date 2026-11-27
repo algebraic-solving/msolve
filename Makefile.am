@@ -37,6 +37,7 @@ checkdiff       = \
 			  test/diff/diff_eco6-31.sh \
 			  test/diff/diff_eco6-qq.sh \
 			  test/diff/diff_elim-31.sh \
+			  test/diff/diff_elim-full-qq.sh \
 			  test/diff/diff_elim-qq.sh \
 			  test/diff/diff_elim-drl-31.sh \
 			  test/diff/diff_elim-drl-qq.sh \

@@ -126,6 +126,11 @@ static inline void display_help(char *str){
   display_option_help_noopt("52 - primes of 52 bits.\n");
   display_option_help_noopt("Default: 52 if msolve is built with AVX-512\n");
   display_option_help_noopt("IFMA, else 31.\n");
+  display_option_help(0, "local-threads", "LTHR", "Number of threads applying the tracer to each\n");
+  display_option_help_noopt("prime with \"-g 2\": the THR threads compute\n");
+  display_option_help_noopt("THR/LTHR primes in parallel, which needs less\n");
+  display_option_help_noopt("memory. LTHR must divide THR.\n");
+  display_option_help_noopt("1 - one thread per prime (default).\n");
   display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
   display_option_help_noopt("blocks of variables, each block using the degree\n");
   display_option_help_noopt("reverse lexicographical monomial order. ELIM has\n");
@@ -311,6 +316,7 @@ static void getoptions(
         double *hensel_cost_scale,
         double *hensel_memory,
         int32_t *gb_prime_bits,
+        int32_t *gb_local_threads,
         int32_t *precision,
         int32_t *generate_pbm_files,
 	int64_t *seed,
@@ -339,6 +345,7 @@ static void getoptions(
     HENSEL_COST_SCALE_OPTION,
     HENSEL_MEMORY_OPTION,
     GB_PRIME_BITS_OPTION,
+    LOCAL_THREADS_OPTION,
     BOOLEAN_OPTION,
     BOOLEAN_ZEROS_OPTION,
     LEX_OPTION,
@@ -362,6 +369,7 @@ static void getoptions(
     {"hensel-cost-scale", required_argument, NULL, HENSEL_COST_SCALE_OPTION},
     {"hensel-memory", required_argument, NULL, HENSEL_MEMORY_OPTION},
     {"gb-prime-bits", required_argument, NULL, GB_PRIME_BITS_OPTION},
+    {"local-threads", required_argument, NULL, LOCAL_THREADS_OPTION},
     {"lifting-mulmat", required_argument, NULL, 'L'},
     {"normal-form", required_argument, NULL, 'n'},
     {"output-file", required_argument, NULL, 'o'},
@@ -513,6 +521,9 @@ static void getoptions(
       if (*gb_prime_bits != 31 && *gb_prime_bits != 52) {
           *gb_prime_bits = 0;
       }
+      break;
+    case LOCAL_THREADS_OPTION:
+      *gb_local_threads = strtol(optarg, NULL, 10);
       break;
     case 't':
       *nthreads = strtol(optarg, NULL, 10);
@@ -698,6 +709,7 @@ int main(int argc, char **argv){
     double hensel_cost_scale      = 1.0;
     double hensel_memory          = 0;
     int32_t gb_prime_bits         = 0;
+    int32_t gb_local_threads      = 0;
     int32_t precision             = 64;
     int64_t seed                  = -1;
     int32_t boolean               = 0;
@@ -718,7 +730,7 @@ int main(int argc, char **argv){
                &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
                &sep_search, &sep_dense, &split_mode,
                &lifting, &hensel_prec, &hensel_cost_scale,
-               &hensel_memory, &gb_prime_bits, &precision, &generate_pbm,
+               &hensel_memory, &gb_prime_bits, &gb_local_threads, &precision, &generate_pbm,
 	       &seed, &boolean, &boolean_zeros, &lex, &elim_drl, &info_level,
                files);
 
@@ -802,6 +814,7 @@ int main(int argc, char **argv){
     gens->hensel_cost_scale = hensel_cost_scale;
     gens->hensel_memory = hensel_memory;
     gens->gb_prime_bits = gb_prime_bits;
+    gens->gb_local_threads = gb_local_threads;
 
     if(0 < field_char && field_char < pow(2, 15) && la_option > 2){
         if(info_level){

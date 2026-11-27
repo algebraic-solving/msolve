@@ -157,6 +157,11 @@ typedef struct{
    * bases over the rationals (-g 2): 31 or 52, 0 for the default of the
    * build (see GB_PRIME_BITS_DEFAULT in lifting-gb.c) */
   int32_t gb_prime_bits;
+  /* number of threads applying the tracer to each prime in the
+   * multi-modular computation of Groebner bases over the rationals
+   * (-g 2), the -t threads being shared by -t / gb_local_threads primes
+   * computed in parallel (0 or 1: one thread per prime) */
+  int32_t gb_local_threads;
   char **vnames;
   int32_t *lens;
   int32_t *exps;

@@ -27,6 +27,7 @@
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
+#include <pthread.h>
 #include "streams.h"
 #include "../neogb/gmp_u64.h"
 
@@ -171,6 +172,7 @@ typedef struct{
   int32_t *lwit; /* indices of the LLL witnesses, LLL_WIT_K per polynomial */
   int *nlwit; /* number of LLL witnesses of each polynomial */
   int nthreads; /* number of threads for the CRT of the coefficients */
+  int batch; /* number of primes of a batch, computed in parallel */
   int32_t lll_next; /* number of primes of the next LLL attempt */
   int32_t lll_fnext; /* same for the full lifting (see lll_full_block) */
   int32_t lll_ntries; /* number of calls to LLL */
@@ -249,6 +251,7 @@ static inline void data_lift_init(data_lift_t dl,
   dl->lwit = calloc((size_t)npol * LLL_WIT_K, sizeof(int32_t));
   dl->nlwit = calloc(npol, sizeof(int));
   dl->nthreads = 1;
+  dl->batch = 1;
   dl->lll_next = LLL_WIT_START;
   dl->lll_fnext = LLL_WIT_START;
   dl->lll_ntries = 0;
@@ -1461,7 +1464,7 @@ static int lll_full_block(gb_modpoly_t modgbs, data_lift_t dl, int32_t k,
   }
   int ok = lll_common_den(modgbs, dl, k, w, kk, np, mod_p, dl->tmp, d, num);
   dl->lll_fnext = ok ? (int32_t)np
-    : lll_next_attempt(np, cost, pcost, dl->nthreads);
+    : lll_next_attempt(np, cost, pcost, dl->batch);
   if(ok){
     mpz_mul(dl->tmp, dl->tmp, d);
     set_recdata_guess(rd1, mod_p, dl->tmp);
@@ -2369,10 +2372,10 @@ static inline int32_t lll_next_attempt(const int32_t nprimes,
    by a single thread while the others wait. */
 static inline int witness_attempt_due(const gb_modpoly_t modgbs,
                                       const data_lift_t dl){
-  if(dl->nthreads <= WIT_BATCH_MIN){
+  if(dl->batch <= WIT_BATCH_MIN){
     return modgbs->nprimes % dl->rr == 0;
   }
-  const int64_t period = MAX(dl->rr, dl->nthreads);
+  const int64_t period = MAX(dl->rr, dl->batch);
   return (dl->nall + WIT_BATCH_SLACK) % period == 0
     && (int32_t)modgbs->nprimes >= dl->rr_next;
 }
@@ -2520,7 +2523,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
             mpz_clear(one);
           }
           dl->lll_next = b ? (int32_t)modgbs->nprimes + 1
-            : lll_next_attempt(modgbs->nprimes, lcost, pcost, dl->nthreads);
+            : lll_next_attempt(modgbs->nprimes, lcost, pcost, dl->batch);
         }
         if(!b){
           dl->check1[i] = 0;
@@ -2532,11 +2535,11 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
         }
       }
     }
-    if(dl->nthreads > WIT_BATCH_MIN){
+    if(dl->batch > WIT_BATCH_MIN){
       dl->rr_next = progress ? 0
         : rr_next_attempt(modgbs->nprimes,
                           rr_attempt_cost(mpz_sizeinbase(mod_p, 2)),
-                          pcost, dl->nthreads);
+                          pcost, dl->batch);
     }
   }
   *st_rrec += realtime()-st;
@@ -2607,6 +2610,31 @@ static void gb_free_batch(bs_t **bbs, uint64_t *bprimes, int *bbad,
   free(bstf4);
 }
 
+/* the application of the tracer to one prime of a batch, by a thread
+ * started with pthread_create (see core_groebner_qq) */
+typedef struct{
+  gb_modpoly_array_struct *modgbs;
+  int32_t num_gb;
+  const int32_t *leadmons_ori;
+  int32_t *leadmons_cur;
+  bs_t *bs;
+  md_t *st;
+  uint64_t prime;
+  int *bad;
+  bs_t **res;
+  double *time;
+} gb_apply_arg_t;
+
+static void *gb_apply_worker(void *p){
+  gb_apply_arg_t *a = (gb_apply_arg_t *)p;
+  const double rt = realtime();
+  *(a->res) = gb_modular_trace_apply(a->modgbs, a->num_gb, a->leadmons_ori,
+                                     a->leadmons_cur, a->bs, a->st,
+                                     a->prime, a->bad);
+  *(a->time) = realtime() - rt;
+  return NULL;
+}
+
 /* default bitsize of the primes of the multi-modular computation of
    core_groebner_qq, 31 or 52 (F4 then computes with 64 bit integers, its
    vectorized kernels need primes below 2^52): with AVX-512 IFMA, F4 costs
@@ -2666,7 +2694,8 @@ gb_modpoly_t *core_groebner_qq(
         int32_t *errp,
         const len_t fc,
         const int print_gb,
-        const int prime_bits
+        const int prime_bits,
+        const int local_threads
         )
 {
 
@@ -2834,17 +2863,39 @@ restart:
      * one thread, so that the primes used and the output do not depend on
      * the number of threads (only the end of the last batch is wasted). */
     const int nthreads = st->nthrds;
-    uint64_t *bprimes = (uint64_t *)malloc(nthreads * sizeof(uint64_t));
-    bs_t **bbs = (bs_t **)calloc(nthreads, sizeof(bs_t *));
-    int *bbad = (int *)calloc(nthreads, sizeof(int));
-    double *bstf4 = (double *)calloc(nthreads, sizeof(double));
-    int bpos = nthreads;
+    /* With lthrds local threads, the batches have nthreads / lthrds primes,
+     * each computed by lthrds threads: the F4 applications in progress, the
+     * bases they return and the images waiting for the next reconstruction
+     * attempt (spaced by the batches) take less memory. The primes used
+     * then depend on lthrds. */
+    int lthrds = 1;
+    if(local_threads > 1){
+      if(nthreads % local_threads == 0){
+        lthrds = local_threads;
+      }
+      else{
+        fprintf(ERRSTREAM, "Warning: %d local threads do not divide %d "
+                "threads, the tracer is applied with one thread per "
+                "prime.\n", local_threads, nthreads);
+      }
+    }
+    if(info_level && lthrds > 1){
+      fprintf(VERBSTREAM, "%d primes in parallel, %d threads each\n",
+              nthreads / lthrds, lthrds);
+    }
+    const int nb = nthreads / lthrds;
+    dlift->batch = nb;
+    uint64_t *bprimes = (uint64_t *)malloc(nb * sizeof(uint64_t));
+    bs_t **bbs = (bs_t **)calloc(nb, sizeof(bs_t *));
+    int *bbad = (int *)calloc(nb, sizeof(int));
+    double *bstf4 = (double *)calloc(nb, sizeof(double));
+    int bpos = nb;
     /* number of polynomials lifted when the free memory was last returned
        to the system (see below) */
     int32_t trimmed = 0;
     while(apply){
 
-      if(bpos == nthreads){
+      if(bpos == nb){
 #ifdef __GLIBC__
         if(dlift->S != trimmed){
           /* the modular images of the polynomials lifted since then have
@@ -2856,25 +2907,65 @@ restart:
         }
 #endif
         /* generate lucky prime numbers */
-        for(int i = 0; i < nthreads; i++){
+        for(int i = 0; i < nb; i++){
           prime = gb_next_prime(prime, pbits);
           while(gb_is_unlucky_prime(prime, bs) || prime==primeinit){
             prime = gb_next_prime(prime, pbits);
           }
           bprimes[i] = prime;
         }
-        /* F4 is run by each thread on a single thread */
+        /* F4 is run on lthrds threads for each prime */
         st->info_level  = 0;
         st->f4_qq_round = 2;
-        st->nthrds = 1;
-#pragma omp parallel for num_threads(nthreads) schedule(static, 1)
-        for(int i = 0; i < nthreads; i++){
-          const double rt = realtime();
-          bbs[i] = gb_modular_trace_apply((*modgbsp), msd->num_gb[i],
-                                          msd->leadmons_ori[i],
-                                          msd->leadmons_current[i],
-                                          bs, st, bprimes[i], bbad + i);
-          bstf4[i] = realtime() - rt;
+        st->nthrds = lthrds;
+        if(lthrds == 1){
+#pragma omp parallel for num_threads(nb) schedule(static, 1)
+          for(int i = 0; i < nb; i++){
+            const double rt = realtime();
+            bbs[i] = gb_modular_trace_apply((*modgbsp), msd->num_gb[i],
+                                            msd->leadmons_ori[i],
+                                            msd->leadmons_current[i],
+                                            bs, st, bprimes[i], bbad + i);
+            bstf4[i] = realtime() - rt;
+          }
+        }
+        else{
+          /* the primes are not applied in a parallel region: the parallel
+             regions of F4 would be nested in it, and libgomp starts new
+             threads for each nested region instead of reusing them. Each
+             prime is applied by a thread of its own (the first one by this
+             thread), whose parallel regions are not nested. */
+          pthread_t *th = (pthread_t *)malloc(nb * sizeof(pthread_t));
+          int *started = (int *)calloc(nb, sizeof(int));
+          gb_apply_arg_t *args = (gb_apply_arg_t *)malloc(nb * sizeof(gb_apply_arg_t));
+          for(int i = 0; i < nb; i++){
+            args[i].modgbs = (*modgbsp);
+            args[i].num_gb = msd->num_gb[i];
+            args[i].leadmons_ori = msd->leadmons_ori[i];
+            args[i].leadmons_cur = msd->leadmons_current[i];
+            args[i].bs = bs;
+            args[i].st = st;
+            args[i].prime = bprimes[i];
+            args[i].bad = bbad + i;
+            args[i].res = bbs + i;
+            args[i].time = bstf4 + i;
+          }
+          for(int i = 1; i < nb; i++){
+            started[i] = pthread_create(th + i, NULL, gb_apply_worker,
+                                        args + i) == 0;
+          }
+          gb_apply_worker(args);
+          for(int i = 1; i < nb; i++){
+            if(started[i]){
+              pthread_join(th[i], NULL);
+            }
+            else{
+              gb_apply_worker(args + i);
+            }
+          }
+          free(th);
+          free(started);
+          free(args);
         }
         st->nthrds = nthreads;
         bpos = 0;
@@ -2972,7 +3063,7 @@ restart:
         free_rrec_data(recdata2);
         /* reset info_level to previous setting */
         st->info_level = info_level;
-        gb_free_batch(bbs, bprimes, bbad, bstf4, nthreads);
+        gb_free_batch(bbs, bprimes, bbad, bstf4, nb);
         /* return core_groebner_qq(modgbsp, bs, msd, st, errp, fc, print_gb); */
         goto restart;
 
@@ -3025,7 +3116,7 @@ restart:
       /* this is where learn could be reset to 1 */
       /* but then duplicated datas and others should be free-ed */
     }
-    gb_free_batch(bbs, bprimes, bbad, bstf4, nthreads);
+    gb_free_batch(bbs, bprimes, bbad, bstf4, nb);
     if (info_level){
       fprintf(VERBSTREAM, " \n-------------------------------------------------\
 -----------------------------------------------------\n");
@@ -3231,7 +3322,7 @@ gb_modpoly_t *groebner_qq(
 
   gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
   modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, print_gb,
-                             gens->gb_prime_bits);
+                             gens->gb_prime_bits, gens->gb_local_threads);
   if (err) {
       fprintf(ERRSTREAM,"Problem with groebner_qq, stopped computation (%d).\n", err);
       exit(1);
@@ -3405,7 +3496,7 @@ int64_t export_groebner_qq(
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
     modgbsp =
     core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
-                     print_gb, 0);
+                     print_gb, 0, 1);
     if (err) {
         fprintf(ERRSTREAM, "Problem with groebner_qq, stopped computation.\n");
         exit(1);

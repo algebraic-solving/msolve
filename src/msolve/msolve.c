@@ -2315,6 +2315,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
 				    data_gens_ff_t *gens,
 				    double *stf4,
 				    const long nbsols,
+				    const long degelim,
 				    uint32_t *bad_primes,
                     trace_det_fglm_mat_t trace_det) {
     st->info_level  = 0;
@@ -2405,7 +2406,9 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
             bad_primes[i] = 1;
             }
      }
-        if(nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
+        /* bmatrix[i] is the one of a previous prime */
+        if(bad_primes[i] == 0
+           && nmod_fglm_compute_apply_trace_data(bmatrix[i], lp->p[i],
                                               nmod_params[i],
                                               bs_qq->ht->nv,
                                               bsz,
@@ -2414,6 +2417,7 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
                                               bdata_fglm[i],
                                               bdata_bms[i],
                                               nbsols,
+                                              degelim,
                                               info_level,
                                               st)){
                 bad_primes[i] = 1;
@@ -3258,6 +3262,9 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
   vec_wit_init(vec_wit, nmod_params[0]->elim, tridx, detidx);
 
   deg_t nsols = (*mpz_paramp)->nsols;
+  /* degree of the minimal polynomial on the first prime: length of the
+   * sequences on the other ones (early termination of sparse-FGLM) */
+  const long degelim0 = nmod_params[0]->degelimpol;
 
   mpz_upoly_t numer;
   mpz_upoly_init2(numer, (nsols + 1), prealloc ? 32 * (nsols + 1) : 0);
@@ -3449,7 +3456,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
 			    bs_qq, st,
 			    field_char, unstable_staircase, 0, /* info_level, */
 			    bs, lmb_ori, *dquot_ptr, lp,
-			    gens, &stf4, nsols, bad_primes,
+			    gens, &stf4, nsols, degelim0, bad_primes,
                 trace_det);
     double ca1 = realtime() - ca0;
     tmm += ca1;

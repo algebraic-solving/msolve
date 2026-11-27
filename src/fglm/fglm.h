@@ -49,6 +49,7 @@ int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *,
                                        fglm_data_t *,
                                        fglm_bms_data_t *,
                                        const long,
+                                       const long,
                                        const int,
                                        md_t *);
 

@@ -222,6 +222,7 @@ static inline void trace_det_initset(trace_det_fglm_mat_t trace_det,
       copy_modular_matrix(trace_det, mod_mat, newalloc, prime);
   }
   trace_det->mat_lifted = 0;
+  trace_det->f4_batch = 1;
   if(lift_matrix){
       trace_det->mat_denoms = (mpz_t *)malloc(nrows * sizeof(mpz_t));
       for(int32_t i = 0; i < nrows; i++){
@@ -595,6 +596,43 @@ static inline int check_trace_det_data(trace_det_fglm_mat_t trace_det,
       return nr;
   }
   return 0;
+}
+
+/* 1 if the lifted linear forms and matrix (those with state 2) agree with
+ * the ones given by F4 modulo prime; coefficients whose denominator
+ * vanishes modulo prime are not checked */
+static inline int check_lifted_data(trace_det_fglm_mat_t trace_det,
+        sp_matfglm_t *mod_mat, uint32_t *modular_linear_forms,
+        uint32_t prime){
+  if(trace_det->nlins && trace_det->lin_lifted == 2){
+    nvars_t sz = trace_det->nv + 1;
+    for(int i = 0; i < trace_det->nlins; i++){
+      mpz_t *lf = trace_det->mpz_linear_forms + i * (sz + 1);
+      if(mpz_fdiv_ui(lf[sz], prime) == 0) continue;
+      for(nvars_t j = 0; j < sz; j++){
+        if(!check_lifted_coeff(lf[j], lf[sz],
+                               modular_linear_forms[i * sz + j], prime)){
+          return 0;
+        }
+      }
+    }
+  }
+  if(trace_det->mat_lifted == 2){
+    int32_t nrows = trace_det->nrows;
+    int32_t ncols = trace_det->ncols;
+    for(int32_t row = 0; row < nrows; row++){
+      if(mpz_fdiv_ui(trace_det->mat_denoms[row], prime) == 0) continue;
+      int64_t sz = (int64_t)row * ncols;
+      for(int32_t col = 0; col < ncols; col++){
+        if(!check_lifted_coeff(trace_det->dense_mat[sz + col],
+                               trace_det->mat_denoms[row],
+                               mod_mat->dense_mat[sz + col], prime)){
+          return 0;
+        }
+      }
+    }
+  }
+  return 1;
 }
 
 static inline void check_matrix(trace_det_fglm_mat_t trace_det,

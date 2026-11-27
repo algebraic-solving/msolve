@@ -1766,7 +1766,24 @@ static inline int rational_reconstruction_param(
 
   uint32_t trace_mod = nmod_param->elim->coeffs[trace_det->trace_idx];
   uint32_t det_mod = nmod_param->elim->coeffs[trace_det->det_idx];
-  if(trace_det->lift_matrix && trace_det->mat_lifted < 2){
+  /* a prime that ran F4 while some data is already lifted must agree with
+   * it: otherwise the lifted data is wrong (its primes may all divide some
+   * coefficient of the input) and the images computed from it would be
+   * mixed with these ones, which may prevent termination; -L is given up,
+   * the images obtained so far all come from F4 */
+  if(trace_det->lift_matrix && trace_det->f4_batch
+     && trace_det->mat_lifted >= 0
+     && (trace_det->mat_lifted == 2
+         || (trace_det->nlins && trace_det->lin_lifted == 2))
+     && !check_lifted_data(trace_det, mat, lineqs, prime)){
+    trace_det->mat_lifted = -1;
+    trace_det->lin_lifted = 2;
+    if(info_level){
+      fprintf(VERBSTREAM, "<-L given up>");
+    }
+  }
+  if(trace_det->lift_matrix && trace_det->mat_lifted >= 0
+     && trace_det->mat_lifted < 2){
       copy_modular_matrix(trace_det, &mat, nthrds * nbdoit, prime);
   }
 
@@ -2332,10 +2349,12 @@ static void secondary_modular_steps(sp_matfglm_t **bmatrix,
     for(nvars_t i = 0; i < st->nprimes; i++){
       bad_primes[i] = 0;
     }
+    trace_det->f4_batch = trace_det->mat_lifted < 2
+      || trace_det->lin_lifted < 2;
 #pragma omp parallel for num_threads(nthrds)  \
     private(i) schedule(static)
     for (i = 0; i < st->nprimes; ++i){
-      if (trace_det->mat_lifted < 2 || trace_det->lin_lifted < 2) {
+      if (trace_det->f4_batch) {
         bs[i] = core_gba(bs_qq, st, &error, lp->p[i]);
         *stf4 = realtime()-rt;
         /* printf("F4 trace timing %13.2f\n", *stf4); */

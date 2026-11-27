@@ -408,6 +408,11 @@ struct md_t
 
     hi_t *hcm;
     ps_t *ps;
+    /* over the integers: for the k-th new element of a round, the basis
+     * indices of the rows of its matrix with its lead monomial are
+     * zz_rbi[zz_roff[k]], ..., zz_rbi[zz_roff[k+1]-1] */
+    len_t *zz_roff;
+    bl_t *zz_rbi;
 
     double round_ctime;
     double select_ctime;
@@ -445,6 +450,7 @@ struct md_t
     int64_t num_rht;
     int64_t num_rowsred;
     int64_t num_zerored;
+    int64_t num_gcdred; /* gcd steps in the linear algebra over ZZ */
     int64_t mat_max_nrows;
     int64_t mat_max_ncols;
     double  mat_max_density;
@@ -494,6 +500,13 @@ struct md_t
     int32_t ff_bits;
     int32_t nf;
     int32_t f4_qq_round;
+    int32_t zz; /* 1 for strong Groebner bases over the integers */
+    int32_t zz_unit; /* 1 if the computation modulo a prime has to be the image
+                        of an integer computation, i.e. all new pivots must
+                        have lead coefficients +-1 */
+    int32_t zz_nonunit; /* set if a lead coefficient other than +-1 occurred */
+    int32_t zz_rd; /* number of F4 rounds done before zz_nonunit was set */
+    int32_t zz_max_rd; /* if > 0, F4 stops after this number of rounds */
     int32_t use_signatures; /* module monomial ordering:
                                0 = off,
                                1=SCHREYER,

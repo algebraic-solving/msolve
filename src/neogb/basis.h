@@ -39,6 +39,10 @@ void remove_content_of_initial_basis(
         bs_t *bs
         );
 
+void make_lead_coefficients_positive(
+        bs_t *bs
+        );
+
 bs_t *initialize_basis(
         md_t *md,
         ht_t *ht

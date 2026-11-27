@@ -376,7 +376,11 @@ static void print_msolve_polynomials_ff(
         if (lead_ideal_only != 0) {
             fprintf(file, "#Leading ideal data\n");
         } else {
-            fprintf(file, "#Reduced Groebner basis data\n");
+            if (st->zz != 0) {
+                fprintf(file, "#Reduced strong Groebner basis data\n");
+            } else {
+                fprintf(file, "#Reduced Groebner basis data\n");
+            }
         }
         fprintf(file, "#---\n");
         if (is_gf2_ext(st->fc)) {
@@ -390,9 +394,13 @@ static void print_msolve_polynomials_ff(
                 fprintf(file, "\n");
             }
         } else {
-            /* gfc only has 32 bits */
-            fprintf(file, "#field characteristic: %" PRIu64 "\n",
-                    st->ff_bits == 64 ? st->fc : (uint64_t)st->gfc);
+            if (st->zz != 0) {
+                fprintf(file, "#coefficient ring:     integers\n");
+            } else {
+                /* gfc only has 32 bits */
+                fprintf(file, "#field characteristic: %" PRIu64 "\n",
+                        st->ff_bits == 64 ? st->fc : (uint64_t)st->gfc);
+            }
         }
         if (st->boolean) {
             fprintf(file, "#boolean ring:         x^2 = x for all variables x\n");
@@ -479,7 +487,11 @@ static void print_msolve_polynomials_ff(
                 len = bs->hm[idx][LENGTH];
                 switch (st->ff_bits) {
                 case 0 :
-                  fprintf(file, "%u", bs->cf_32[bs->hm[idx][COEFFS]][0]);
+                  if (st->zz != 0) {
+                    gmp_fprintf(file, "%Zd", bs->cf_qq[bs->hm[idx][COEFFS]][0]);
+                  } else {
+                    fprintf(file, "%u", bs->cf_32[bs->hm[idx][COEFFS]][0]);
+                  }
                   break;
                 case 8:
                   fprintf(file, hex ? "0x%x" : "%u", bs->cf_8[bs->hm[idx][COEFFS]][0]);
@@ -502,7 +514,12 @@ static void print_msolve_polynomials_ff(
                 for (j = 1; j < len; ++j) {
 		  switch (st->ff_bits) {
 		  case 0:
-		    fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
+		    if (st->zz != 0) {
+		      const mpz_t *c = &(bs->cf_qq[bs->hm[idx][COEFFS]][j]);
+		      gmp_fprintf(file, mpz_sgn(*c) < 0 ? "%Zd" : "+%Zd", *c);
+		    } else {
+		      fprintf(file, "+%u", bs->cf_32[bs->hm[idx][COEFFS]][j]);
+		    }
 		    break;
 		  case 8:
 		    fprintf(file, hex ? "+0x%x" : "+%u", bs->cf_8[bs->hm[idx][COEFFS]][j]);
@@ -757,12 +774,14 @@ static void get_variables(FILE *fh, char * line, int max_line_size,
 
 static void get_characteristic(FILE *fh, char * line, int max_line_size,
                                int64_t *field_char, int32_t *boolean,
-                               char **vnames){
+                               int32_t *zz, char **vnames){
   *field_char = 0;
   *boolean    = 0;
+  *zz         = 0;
 
   if(fgets(line, max_line_size, fh) != NULL){
-    /* the Boolean ring over GF(2) is given as boolean */
+    /* the Boolean ring over GF(2) is given as boolean, strong Groebner
+     * bases over the integers are given by ZZ */
     const char *b = line;
     while (*b == ' ') {
       ++b;
@@ -770,6 +789,10 @@ static void get_characteristic(FILE *fh, char * line, int max_line_size,
     if (strncmp(b, "boolean", 7) == 0) {
       *field_char = 2;
       *boolean    = 1;
+      return;
+    }
+    if (strncmp(b, "ZZ", 2) == 0) {
+      *zz = 1;
       return;
     }
     char *end = NULL;
@@ -1230,6 +1253,7 @@ static inline void initialize_data_gens(int32_t nvars, int32_t ngens, int64_t fi
   gens->change_var_order  = -1;
   gens->linear_form_base_coef = 0;
   gens->rand_linear = 0;
+  gens->zz = 0;
   gens->lens = (int32_t *)malloc(sizeof(int32_t) * ngens);
 }
 
@@ -1277,10 +1301,13 @@ static inline void get_data_from_file(char *fn, int32_t *nr_vars,
       exit(1);
   }
   int32_t boolean = 0;
-  get_characteristic(fh, line, max_line_size, field_char, &boolean, vnames);
+  int32_t zz      = 0;
+  get_characteristic(fh, line, max_line_size, field_char, &boolean, &zz,
+                     vnames);
 
   initialize_data_gens(*nr_vars, *nr_gens, *field_char, gens);
   gens->boolean = boolean;
+  gens->zz      = zz;
 
   nelts_t nterms, all_nterms = 0;
   get_nterms_and_all_nterms(fh, max_line_size, gens, nr_gens,

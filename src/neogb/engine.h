@@ -50,6 +50,32 @@ int initialize_gba_input_data(
         int32_t info_level
         );
 
+int initialize_gba_input_data_zz(
+        bs_t **bsp,
+        ht_t **bhtp,
+        md_t **stp,
+        /* input values */
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *cfs,
+        uint64_t field_char,
+        int32_t mon_order,
+        int32_t elim_block_len,
+        int32_t nr_vars,
+        int32_t nr_gens,
+        int32_t nr_nf,
+        int32_t ht_size,
+        int32_t nr_threads,
+        int32_t max_nr_pairs,
+        int32_t reset_ht,
+        int32_t la_option,
+        int32_t use_signatures,
+        int32_t reduce_gb,
+        int32_t pbm_file,
+        int32_t truncate_lifting,
+        int32_t info_level
+        );
+
 bs_t *core_gba(
         bs_t *bs,
         md_t *md,

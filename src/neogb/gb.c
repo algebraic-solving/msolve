@@ -43,6 +43,7 @@
 #include "la_gf2_ext.c" /* linear algebra over GF(16) and GF(256) */
 #include "la_gf2.c"     /* linear algebra over GF(2) */
 #include "la_qq.c"    /* rational linear algebra */
+#include "la_zz.c"    /* integer linear algebra */
 #include "update.c"   /* update process and pairset handling */
 #include "convert.c"  /* conversion between hashes and column indices*/
 #include "symbol.c"   /* symbolic preprocessing */

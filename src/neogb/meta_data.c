@@ -34,6 +34,9 @@ md_t *copy_meta_data(
     md->application_nr_mult = 0;
     md->application_nr_add  = 0;
     md->application_nr_red  = 0;
+    md->zz_nonunit = 0;
+    md->zz_roff = NULL;
+    md->zz_rbi  = NULL;
 
     if (md->fc < (uint32_t)(1u) << 8) {
         md->ff_bits = 8;
@@ -61,6 +64,8 @@ void free_meta_data(
     }
     free(md->hcm);
     free(md->tcok);
+    free(md->zz_roff);
+    free(md->zz_rbi);
 
     ht_t *ht = md->ht;
     if (ht != NULL) {
@@ -106,7 +111,11 @@ void print_initial_statistics(
         fprintf(file, "#variables             %11d\n", st->nvars);
         fprintf(file, "#equations             %11d\n", st->ngens);
         fprintf(file, "#invalid equations     %11d\n", st->ngens_invalid);
-        fprintf(file, "field characteristic   %11lu\n", (unsigned long)st->fc);
+        if (st->zz != 0) {
+            fprintf(file, "coefficient ring          integers\n");
+        } else {
+            fprintf(file, "field characteristic   %11lu\n", (unsigned long)st->fc);
+        }
         if (st->boolean) {
             fprintf(file, "boolean ring (x^2 = x)         yes\n");
         }

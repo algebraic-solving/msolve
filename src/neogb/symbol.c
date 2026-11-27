@@ -193,6 +193,89 @@ static void select_all_spairs(
 }
 #endif
 
+/* Over the integers: the selected pairs ps[i], ..., ps[j-1] have the same
+ * lcm t. Let h be one of their generators with a smallest lead
+ * coefficient c, up to sign. A pair (f, g) of them with f, g != h is not
+ * needed if c divides a = lc(f) and b = lc(g) and for both f and g the
+ * pair with h is one of them or has an lcm properly dividing t: with
+ * L = lcm(a, b), u * a + v * b = gcd(a, b), f' = t/lm(f) * f and
+ * S(g, h) the S-polynomial of g and h at t, a multiple of the one at
+ * lcm(lm(g), lm(h)),
+ *   S(f, g) = L/a * S(f, h) - L/b * S(g, h),
+ *   G(f, g) = u * S(f, h) + v * S(g, h) + gcd(a, b)/c * t/lm(h) * h,
+ * where S(f, h) = f' - a/c * t/lm(h) * h. The pairs with h are reduced in
+ * this matrix, the ones with a smaller lcm in an earlier one or removed
+ * by a criterion: all pairs of lower degree are done. The chain criterion
+ * of the update misses these pairs, it needs both lcms with h to differ
+ * from t. Removed pairs get degree -1; returns their number. */
+static len_t zz_equal_lcm_criterion(
+        spair_t *ps,
+        const len_t i,
+        const len_t j,
+        const bs_t * const bs,
+        const ht_t * const bht
+        )
+{
+    len_t k, l;
+    bl_t h = ps[i].gen1;
+
+    for (k = i; k < j; ++k) {
+        const bl_t g[2] = {ps[k].gen1, ps[k].gen2};
+        for (l = 0; l < 2; ++l) {
+            const int c = mpz_cmpabs(bs->cf_qq[bs->hm[g[l]][COEFFS]][0],
+                    bs->cf_qq[bs->hm[h][COEFFS]][0]);
+            if (c < 0 || (c == 0 && g[l] < h)) {
+                h = g[l];
+            }
+        }
+    }
+    const mpz_t * const ah = &(bs->cf_qq[bs->hm[h][COEFFS]][0]);
+    const len_t evl = bht->evl;
+    const len_t ebl = bht->ebl;
+    const exp_t * const et = bht->ev[ps[i].lcm];
+    const exp_t * const eh = bht->ev[bs->hm[h][OFFSET]];
+    len_t nrm = 0;
+    for (k = i; k < j; ++k) {
+        if (ps[k].gen1 == h || ps[k].gen2 == h) {
+            continue;
+        }
+        const bl_t g[2] = {ps[k].gen1, ps[k].gen2};
+        if (mpz_divisible_p(bs->cf_qq[bs->hm[g[0]][COEFFS]][0], *ah) == 0
+                || mpz_divisible_p(bs->cf_qq[bs->hm[g[1]][COEFFS]][0], *ah) == 0) {
+            continue;
+        }
+        for (l = 0; l < 2; ++l) {
+            /* is the lcm of lm(g[l]) and lm(h) equal to t? */
+            const exp_t * const eg = bht->ev[bs->hm[g[l]][OFFSET]];
+            len_t v;
+            for (v = 1; v < evl; ++v) {
+                if (v != ebl && (eg[v] > eh[v] ? eg[v] : eh[v]) != et[v]) {
+                    break;
+                }
+            }
+            if (v < evl) {
+                continue;
+            }
+            /* then the pair (g[l], h) must be one of the selected ones */
+            len_t m;
+            for (m = i; m < j; ++m) {
+                if ((ps[m].gen1 == h && ps[m].gen2 == g[l])
+                        || (ps[m].gen2 == h && ps[m].gen1 == g[l])) {
+                    break;
+                }
+            }
+            if (m == j) {
+                break;
+            }
+        }
+        if (l == 2) {
+            ps[k].deg = -1;
+            nrm++;
+        }
+    }
+    return nrm;
+}
+
 /* selection of spairs, at the moment only selection
 by minial degree of the spairs is supported
 
@@ -324,26 +407,47 @@ static int32_t select_spairs_by_minimal_degree(
     while (i < nps) {
         /* the pairs with an lcm are all field pairs or none of them */
         const int fp  = ps[i].type == FIELD_PAIR;
-        /* ncols initially counts number of different lcms, the rows of
-         * field pairs are only rows to be reduced, their lead terms are
-         * not known */
-        if (!fp) {
-            mat->nc++;
-        }
         load  = 0;
         lcm   = ps[i].lcm;
         j = i;
 
         while (j < nps && ps[j].lcm == lcm) {
-            gens[load++] = ps[j].gen1;
-            gens[load++] = ps[j].gen2;
             ++j;
+        }
+        if (md->zz != 0) {
+            const len_t nrm = zz_equal_lcm_criterion(ps, i, j, bs, bht);
+            md->num_gb_crit  += nrm;
+            md->num_pairsred -= nrm;
+        }
+        for (k = i; k < j; ++k) {
+            if (ps[k].deg < 0) {
+                continue;
+            }
+            gens[load++] = ps[k].gen1;
+            gens[load++] = ps[k].gen2;
         }
         /* sort gens set */
         qsort(gens, (unsigned long)load, sizeof(len_t), gens_cmp);
 
         /* first element with given lcm goes into reducer part of matrix,
-         * all remaining ones go to to be reduced part */
+         * all remaining ones go to to be reduced part. Over the integers
+         * this is the first one with lead coefficient +-1, which is the
+         * best reducer. Without one the reducer of the lcm is chosen in
+         * the symbolic preprocessing, by its lead coefficient, and all
+         * rows of the pairs are reduced. ncols initially counts the number
+         * of reducers of the lcms, the rows of field pairs are only rows
+         * to be reduced, their lead terms are not known. */
+        len_t ur = 0;
+        if (md->zz != 0) {
+            for (ur = 0; ur < load; ++ur) {
+                if (mpz_cmpabs_ui(bs->cf_qq[bs->hm[gens[ur]][COEFFS]][0], 1) == 0) {
+                    break;
+                }
+            }
+        }
+        if (!fp && ur < load) {
+            mat->nc++;
+        }
         for (k = 0; k < load; ++k) {
             /* check sorted list for doubles */
             if (k > 0 && gens[k] == gens[k-1]) {
@@ -361,7 +465,7 @@ static int32_t select_spairs_by_minimal_degree(
             hs[nr]    = bht->hd[lcm].val - bht->hd[b[OFFSET]].val;
             polys[nr] = b;
             bis[nr]   = gens[k];
-            isrr[nr]  = fp ? 2 : (k == 0);
+            isrr[nr]  = fp ? 2 : k == ur;
             /* track trace information ? */
             if (md->trace_level == LEARN_TRACER) {
                 if (bs->ht->eld == bs->ht->esz-1) {
@@ -382,8 +486,10 @@ static int32_t select_spairs_by_minimal_degree(
             md->nthrds);
 
     for (k = 0; k < nr; ++k) {
-        if (md->trace_level == LEARN_TRACER) {
+        if (md->trace_level == LEARN_TRACER || md->zz != 0) {
             rows[k][BINDEX] = bis[k];
+        }
+        if (md->trace_level == LEARN_TRACER) {
             rows[k][MULT]   = mhs[k];
         }
         if (isrr[k] == 2) {
@@ -398,8 +504,11 @@ static int32_t select_spairs_by_minimal_degree(
             mat->nr++;
             continue;
         }
-        /* mark lcm column as lead term column */
-        sht->hd[rows[k][OFFSET]].idx = 2;
+        /* mark lcm column as lead term column, over the integers only if
+         * it has a reducer */
+        if (md->zz == 0 || isrr[k]) {
+            sht->hd[rows[k][OFFSET]].idx = 2;
+        }
         if (isrr[k]) {
             rrows[nrr++]  = rows[k];
         } else {
@@ -567,6 +676,7 @@ typedef struct
     len_t *pos;         /* positions of the lead monomials in bs->lm */
     len_t *len;         /* lengths of the corresponding basis elements */
     exp_t *ev;          /* exponent vectors of the lead monomials */
+    mpz_t **lc;         /* lead coefficients over the integers, else NULL */
     red_node_t *nd;     /* nodes of the trie, nd[0] is the root */
     len_t nnd;
     len_t snd;
@@ -628,7 +738,8 @@ static len_t add_reducer_index_node(
 
 static void initialize_reducer_index(
         red_idx_t *ri,
-        const bs_t * const bs
+        const bs_t * const bs,
+        const int zz
         )
 {
     len_t i;
@@ -638,6 +749,7 @@ static void initialize_reducer_index(
     ri->pos = (len_t *)malloc((unsigned long)n * sizeof(len_t));
     ri->len = NULL;
     ri->ev  = NULL;
+    ri->lc  = NULL;
     ri->nnd = 0;
     ri->snd = 64;
     ri->nd  = (red_node_t *)malloc((unsigned long)ri->snd * sizeof(red_node_t));
@@ -652,11 +764,17 @@ static void initialize_reducer_index(
     const len_t evl = bs->ht->evl;
     ri->len = (len_t *)malloc((unsigned long)n * sizeof(len_t));
     ri->ev  = (exp_t *)malloc((unsigned long)n * evl * sizeof(exp_t));
+    if (zz != 0) {
+        ri->lc  = (mpz_t **)malloc((unsigned long)n * sizeof(mpz_t *));
+    }
     for (i = 0; i < n; ++i) {
         ri->sdm[i]      = (sdm_t)(tmp[i] >> 32);
         ri->pos[i]      = (len_t)(tmp[i] & 0xFFFFFFFF);
         const hm_t *b   = bs->hm[bs->lmps[ri->pos[i]]];
         ri->len[i]      = b[LENGTH];
+        if (zz != 0) {
+            ri->lc[i]   = &(bs->cf_qq[b[COEFFS]][0]);
+        }
         memcpy(ri->ev + (unsigned long)i * evl, bs->ht->ev[b[OFFSET]],
                 (unsigned long)evl * sizeof(exp_t));
     }
@@ -673,6 +791,8 @@ static void free_reducer_index(
     free(ri->nd);
     free(ri->len);
     free(ri->ev);
+    free(ri->lc);
+    ri->lc  = NULL;
     ri->len = NULL;
     ri->ev  = NULL;
     ri->sdm = NULL;
@@ -684,8 +804,10 @@ static void free_reducer_index(
 /* Among all reducers of the monomial e with short divisor mask ms we
  * choose the shortest one and among those the newest one, i.e. the
  * result does not depend on the order in which the lead monomials are
- * checked. Returns the position of the reducer in bs->lm + 1, 0 if
- * there is no reducer. */
+ * checked. Over the integers the lead coefficient with the smallest
+ * absolute value comes first: it divides those of the other reducers
+ * in a strong Groebner basis. Returns the position of the reducer in
+ * bs->lm + 1, 0 if there is no reducer. */
 static len_t search_reducer(
         const red_idx_t * const ri,
         const sdm_t ms,
@@ -702,6 +824,7 @@ static len_t search_reducer(
     const red_node_t * const nd = ri->nd;
 
     len_t bi    = 0;
+    len_t bli   = 0;
     len_t blen  = 0;
     len_t ns_   = 0;
     if (ri->nnd > 0) {
@@ -722,7 +845,14 @@ static len_t search_reducer(
                 continue;
             }
             const len_t bl = ri->len[l];
-            if (blen != 0 && bl > blen) {
+            int lcc = 0;
+            if (blen != 0 && ri->lc != NULL) {
+                lcc = mpz_cmpabs(*(ri->lc[l]), *(ri->lc[bli]));
+                if (lcc > 0) {
+                    continue;
+                }
+            }
+            if (blen != 0 && lcc == 0 && bl > blen) {
                 continue;
             }
             const exp_t * const f = ri->ev + (unsigned long)l * evl;
@@ -732,9 +862,10 @@ static len_t search_reducer(
                 }
             }
             i = ri->pos[l];
-            if (k == evl
-                    && (blen == 0 || bl < blen || lmps[i] > lmps[bi])) {
+            if (k == evl && (blen == 0 || lcc < 0 || bl < blen
+                        || lmps[i] > lmps[bi])) {
                 bi    = i;
+                bli   = l;
                 blen  = bl;
             }
         }
@@ -806,7 +937,7 @@ static void symbolic_preprocessing(
     exp_t *ems    = NULL;
 
     red_idx_t ri;
-    initialize_reducer_index(&ri, bs);
+    initialize_reducer_index(&ri, bs, md->zz);
 
     hl_t lo = 1;
     while (lo < sht->eld) {
@@ -880,6 +1011,11 @@ static void symbolic_preprocessing(
         }
         multiplied_polys_to_matrix_rows(mat->rr + nrr, nr, hs, ems, polys,
                 sht, bht, md->nthrds);
+        if (md->zz != 0) {
+            for (j = 0; j < nr; ++j) {
+                mat->rr[nrr+j][BINDEX]  = red[j];
+            }
+        }
         if (md->trace_level == LEARN_TRACER) {
             for (j = 0; j < nr; ++j) {
                 mat->rr[nrr+j][BINDEX]  = red[j];

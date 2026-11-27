@@ -22,7 +22,9 @@
 #include "engine.h"
 #include "../msolve/streams.h"
 
-int initialize_gba_input_data(
+/* zz = 1: strong Groebner bases over the integers, the coefficients are
+ * neither made primitive nor monic, the lead coefficients positive */
+static int initialize_gba_input_data_internal(
         bs_t **bsp,
         ht_t **bhtp,
         md_t **stp,
@@ -45,7 +47,8 @@ int initialize_gba_input_data(
         int32_t reduce_gb,
         int32_t pbm_file,
         int32_t truncate_lifting,
-        int32_t info_level
+        int32_t info_level,
+        const int32_t zz
         )
 {
     bs_t *bs    = *bsp;
@@ -78,6 +81,7 @@ int initialize_gba_input_data(
                 use_signatures, reduce_gb, pbm_file, truncate_lifting, info_level)) {
         return 0;
     }
+    st->zz = zz;
 
 
     /* initialize basis */
@@ -99,8 +103,12 @@ int initialize_gba_input_data(
     if (st->fc > 0) {
         normalize_initial_basis(bs, st->fc);
     } else {
-        if (st->fc == 0) {
+        /* over the integers the content is part of the ideal */
+        if (st->fc == 0 && st->zz == 0) {
             remove_content_of_initial_basis(bs);
+        }
+        if (st->zz != 0) {
+            make_lead_coefficients_positive(bs);
         }
     }
 
@@ -111,6 +119,74 @@ int initialize_gba_input_data(
     free(invalid_gens);
 
     return 1;
+}
+
+int initialize_gba_input_data(
+        bs_t **bsp,
+        ht_t **bhtp,
+        md_t **stp,
+        /* input values */
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *cfs,
+        uint64_t field_char,
+        int32_t mon_order,
+        int32_t elim_block_len,
+        int32_t nr_vars,
+        int32_t nr_gens,
+        int32_t nr_nf,
+        int32_t ht_size,
+        int32_t nr_threads,
+        int32_t max_nr_pairs,
+        int32_t reset_ht,
+        int32_t la_option,
+        int32_t use_signatures,
+        int32_t reduce_gb,
+        int32_t pbm_file,
+        int32_t truncate_lifting,
+        int32_t info_level
+        )
+{
+    return initialize_gba_input_data_internal(bsp, bhtp, stp, lens, exps,
+            cfs, field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+            nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+            use_signatures, reduce_gb, pbm_file, truncate_lifting, info_level,
+            0);
+}
+
+/* as initialize_gba_input_data() for strong Groebner bases over the
+ * integers, the coefficients are given as for the rationals */
+int initialize_gba_input_data_zz(
+        bs_t **bsp,
+        ht_t **bhtp,
+        md_t **stp,
+        /* input values */
+        const int32_t *lens,
+        const int32_t *exps,
+        const void *cfs,
+        uint64_t field_char,
+        int32_t mon_order,
+        int32_t elim_block_len,
+        int32_t nr_vars,
+        int32_t nr_gens,
+        int32_t nr_nf,
+        int32_t ht_size,
+        int32_t nr_threads,
+        int32_t max_nr_pairs,
+        int32_t reset_ht,
+        int32_t la_option,
+        int32_t use_signatures,
+        int32_t reduce_gb,
+        int32_t pbm_file,
+        int32_t truncate_lifting,
+        int32_t info_level
+        )
+{
+    return initialize_gba_input_data_internal(bsp, bhtp, stp, lens, exps,
+            cfs, field_char, mon_order, elim_block_len, nr_vars, nr_gens,
+            nr_nf, ht_size, nr_threads, max_nr_pairs, reset_ht, la_option,
+            use_signatures, reduce_gb, pbm_file, truncate_lifting, info_level,
+            1);
 }
 
 bs_t *core_gba(

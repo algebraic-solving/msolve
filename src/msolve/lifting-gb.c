@@ -23,7 +23,9 @@
 #include<flint/fmpz_mat.h>
 #include<flint/fmpz_lll.h>
 #include "config.h"
+#include <inttypes.h>
 #include "streams.h"
+#include "../neogb/gmp_u64.h"
 
 #define NBCHECK 2
 /* number of bits of slack kept in rational reconstruction bounds */
@@ -435,9 +437,9 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
   fprintf(file, "nprimes = %d\n", modgbs->nprimes);
   fprintf(file, "primes = [");
   for(uint32_t i = 0; i < modgbs->alloc-1; i++){
-    fprintf(file, "%lu, ", (unsigned long)modgbs->primes[i]);
+    fprintf(file, "%" PRIu64 ", ", (uint64_t)modgbs->primes[i]);
   }
-  fprintf(file, "%lu]\n", (unsigned long)modgbs->primes[modgbs->alloc -1]);
+  fprintf(file, "%" PRIu64 "]\n", (uint64_t)modgbs->primes[modgbs->alloc -1]);
   fprintf(file, "numpolys = %d\n", modgbs->ld);
   fprintf(file, "[\n");
   for(uint32_t i = 0; i < modgbs->ld; i++){
@@ -450,13 +452,13 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
     for(uint32_t j = 0; j < len; j++){
       fprintf(file, "[");
       for(uint32_t k = 0; k < modgbs->alloc-1; k++){
-        fprintf(file, "%lu, ", (unsigned long)MODCF(modgbs->modpolys[i], j, k));
+        fprintf(file, "%" PRIu64 ", ", (uint64_t)MODCF(modgbs->modpolys[i], j, k));
       }
       if(j < len - 1){
-        fprintf(file, "%lu], ", (unsigned long)MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
+        fprintf(file, "%" PRIu64 "], ", (uint64_t)MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
       }
       else{
-        fprintf(file, "%lu]\n", (unsigned long)MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
+        fprintf(file, "%" PRIu64 "]\n", (uint64_t)MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
       }
     }
     fprintf(file, "],\n");
@@ -1153,7 +1155,7 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
                                          int thrds){
 
   /* all primes are assumed to be good primes */
-  mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
+  mpz_mul_u64(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
       if(modgbs->modpolys[k]->len){
         uint64_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
@@ -1174,7 +1176,7 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
 
   mp_limb_t newprime = modgbs->primes[modgbs->nprimes - 1 ];
   /* all primes are assumed to be good primes */
-  mpz_mul_ui(prod_p, mod_p, newprime);
+  mpz_mul_u64(prod_p, mod_p, newprime);
   for(int32_t k = dl->S; k < dl->end; k++){
       if(modgbs->modpolys[k]->len){
         uint64_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
@@ -1386,7 +1388,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
            polynomial with the next primes. */
         if(!gvalid){
           for(uint32_t i = 0; i < np; i++){
-            gp[i] = mpz_fdiv_ui(dl->tmp, modgbs->primes[i]);
+            gp[i] = mpz_fdiv_u64(dl->tmp, modgbs->primes[i]);
           }
           gvalid = 1;
         }
@@ -1538,10 +1540,10 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
 /* returns (coef == num / den mod prime) */
 static inline int verif_coef(mpz_t num, mpz_t den, const mp_limb_t prime,
                              const mp_limb_t pinv, const uint64_t coef){
-  mp_limb_t lc = mpz_fdiv_ui(den, prime);
+  mp_limb_t lc = mpz_fdiv_u64(den, prime);
   lc = n_invmod(lc, prime);
 
-  mp_limb_t c = mpz_fdiv_ui(num, prime);
+  mp_limb_t c = mpz_fdiv_u64(num, prime);
   c = n_mulmod2_preinv(c, lc, prime, pinv);
 
   return (c==coef);
@@ -1562,10 +1564,10 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
           const mp_limb_t prime = modgbs->primes[np];
           const mp_limb_t pinv = modgbs->pinvs[np];
           /* all coefficients share the denominator lm */
-          mp_limb_t ilc = mpz_fdiv_ui(pol[0]->lm, prime);
+          mp_limb_t ilc = mpz_fdiv_u64(pol[0]->lm, prime);
           ilc = n_invmod(ilc, prime);
           for(int32_t c = 0; c < pol[0]->len; c++){
-            mp_limb_t v = mpz_fdiv_ui(pol[0]->cf_qq[c], prime);
+            mp_limb_t v = mpz_fdiv_u64(pol[0]->cf_qq[c], prime);
             v = n_mulmod2_preinv(v, ilc, prime, pinv);
             if(v != MODCF(pol[0], c, np)){
               dl->check2[k] = 0;
@@ -2147,7 +2149,7 @@ static int gb_is_unlucky_prime(const uint64_t prime, const bs_t * const bs){
   for(len_t i = 0; i < bs->ld; ++i){
     mpz_t *cf = bs->cf_qq[bs->hm[i][COEFFS]];
     for(len_t j = 0; j < bs->hm[i][LENGTH]; ++j){
-      if(mpz_divisible_ui_p(cf[j], prime) != 0){
+      if(mpz_fdiv_u64(cf[j], prime) == 0){
         return 1;
       }
     }
@@ -2204,7 +2206,7 @@ restart:
     msd->lp->p[0] = primeinit;
   }
   if(info_level){
-      fprintf(VERBSTREAM, "Initial prime = %lu\n", (unsigned long)primeinit);
+      fprintf(VERBSTREAM, "Initial prime = %" PRIu64 "\n", (uint64_t)primeinit);
   }
 
   int success = 1;
@@ -2322,7 +2324,7 @@ restart:
     }
     prime = gb_random_prime(pbits);
     if(info_level){
-        fprintf(VERBSTREAM, "New prime = %lu\n", (unsigned long)prime);
+        fprintf(VERBSTREAM, "New prime = %" PRIu64 "\n", (uint64_t)prime);
     }
     while(apply){
 

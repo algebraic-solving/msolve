@@ -19,6 +19,7 @@
  * Mohab Safey El Din */
 
 
+#include <inttypes.h>
 #include "meta_data.h"
 #include "../msolve/streams.h"
 
@@ -106,7 +107,7 @@ void print_initial_statistics(
         fprintf(file, "#variables             %11d\n", st->nvars);
         fprintf(file, "#equations             %11d\n", st->ngens);
         fprintf(file, "#invalid equations     %11d\n", st->ngens_invalid);
-        fprintf(file, "field characteristic   %11lu\n", (unsigned long)st->fc);
+        fprintf(file, "field characteristic   %11" PRIu64 "\n", st->fc);
         if (st->boolean) {
             fprintf(file, "boolean ring (x^2 = x)         yes\n");
         }

@@ -8,6 +8,7 @@ libneogb_la_LDFLAGS	= -version-info $(LT_VERSION)
 libneogb_la_CFLAGS	= $(SIMD_FLAGS) $(CPUEXT_FLAGS) $(OPENMP_CFLAGS) -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare
 
 EXTRA_DIST	=		basis.h \
+								gmp_u64.h \
 								data.h \
 								engine.h \
 								f4.h \

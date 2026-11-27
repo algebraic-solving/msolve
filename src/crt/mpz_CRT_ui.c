@@ -33,6 +33,7 @@ This implementation is a (very) slight modification of the functions in FLINT.
 #include <flint/ulong_extras.h>
 #include "ulong_extras.h"
 #include "../msolve/streams.h"
+#include "../neogb/gmp_u64.h"
 
 void
 _mpz_CRT_ui_precomp(mpz_t out, const mpz_t r1, const mpz_t m1, uint64_t r2,
@@ -49,10 +50,10 @@ _mpz_CRT_ui_precomp(mpz_t out, const mpz_t r1, const mpz_t m1, uint64_t r2,
   else
     mpz_set(tmp, r1);
 
-  r1mod = mpz_fdiv_ui(tmp, m2);
+  r1mod = mpz_fdiv_u64(tmp, m2);
   s = n_submod(r2, r1mod, m2);
   s = n_mulmod2_preinv(s, c, m2, m2inv);
-  mpz_addmul_ui(tmp, m1, s);
+  mpz_addmul_u64(tmp, m1, s);
 
   if (sign)
     {
@@ -80,7 +81,7 @@ void mpz_CRT_ui(mpz_t out, const mpz_t r1, const mpz_t m1,
 {
   mp_limb_t c;
 
-  c = mpz_fdiv_ui(m1, m2);
+  c = mpz_fdiv_u64(m1, m2);
   c = n_invmod(c, m2);
 
   if (c == 0)

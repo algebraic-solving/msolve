@@ -20,6 +20,7 @@
 
 
 #include "basis.h"
+#include "gmp_u64.h"
 
 static void free_basis_elements(
         bs_t *bs
@@ -437,7 +438,7 @@ bs_t *copy_basis_mod_p(
     len_t i, j, idx;
 
     /* set field characteristic */
-    unsigned long prime = (unsigned long)st->fc;
+    const uint64_t prime = st->fc;
 
     /* initialize basis */
     bs_t *bs        = (bs_t *)calloc(1, sizeof(bs_t));
@@ -513,7 +514,7 @@ bs_t *copy_basis_mod_p(
                 bs->cf_64[idx]  =
                     (cf64_t *)malloc((unsigned long)(gbs->hm[i][LENGTH]) * sizeof(cf64_t));
                 for (j = 0; j < gbs->hm[i][LENGTH]; ++j) {
-                    bs->cf_64[idx][j] = (cf64_t)mpz_fdiv_ui(gbs->cf_qq[idx][j], prime);
+                    bs->cf_64[idx][j] = (cf64_t)mpz_fdiv_u64(gbs->cf_qq[idx][j], prime);
                 }
             }
             break;

@@ -123,7 +123,7 @@ static void select_all_spairs(
         /* track trace information ? */
         if (tht != NULL) {
            rrows[nrr][BINDEX]  = prev;
-            if (tht->eld == tht->esz-1) {
+            if (tht->eld >= tht->esz-1) {
                 enlarge_hash_table(tht);
             }
             rrows[nrr][MULT]    = insert_in_hash_table(etmp, tht);
@@ -159,7 +159,7 @@ static void select_all_spairs(
             /* track trace information ? */
             if (tht != NULL) {
                 trows[ntr][BINDEX]  = prev;
-                if (tht->eld == tht->esz-1) {
+                if (tht->eld >= tht->esz-1) {
                     enlarge_hash_table(tht);
                 }
                 trows[ntr][MULT]    = insert_in_hash_table(etmp, tht);
@@ -364,7 +364,7 @@ static int32_t select_spairs_by_minimal_degree(
             isrr[nr]  = fp ? 2 : (k == 0);
             /* track trace information ? */
             if (md->trace_level == LEARN_TRACER) {
-                if (bs->ht->eld == bs->ht->esz-1) {
+                if (bs->ht->eld >= bs->ht->esz-1) {
                     enlarge_hash_table(bs->ht);
                 }
 #if PARALLEL_HASHING
@@ -866,7 +866,7 @@ static void symbolic_preprocessing(
         if (md->trace_level == LEARN_TRACER) {
             mhs = (hi_t *)malloc((unsigned long)nr * sizeof(hi_t));
             for (j = 0; j < nr; ++j) {
-                if (bht->eld == bht->esz-1) {
+                if (bht->eld >= bht->esz-1) {
                     enlarge_hash_table(bht);
                 }
 #if PARALLEL_HASHING

@@ -232,7 +232,7 @@ static inline void LA_FF(submul_interleaved_rows)(
 #elif LA_ACC_BITS == 16
 #if defined HAVE_AVX512_BW
     const __m512i mod2v = _mm512_set1_epi16((int16_t)mod2);
-#elif defined HAVE_AVX2 || defined HAVE_AVX512_F
+#elif defined HAVE_AVX2
     const __m256i mod2v = _mm256_set1_epi16((int16_t)mod2);
 #elif defined __aarch64__
     const uint16x8_t mod2v = vdupq_n_u16((uint16_t)mod2);
@@ -380,7 +380,7 @@ static inline void LA_FF(submul_interleaved_rows)(
                     _mm512_mask_add_epi16(resv, bv, resv, mod2v));
         }
     }
-#elif LA_ACC_BITS == 16 && (defined HAVE_AVX2 || defined HAVE_AVX512_F)
+#elif LA_ACC_BITS == 16 && defined HAVE_AVX2
     __m256i mulv[LA_NR/16];
     for (r = 0; r < LA_NR/16; ++r) {
         mulv[r] = _mm256_loadu_si256((__m256i *)(mlt+16*r));

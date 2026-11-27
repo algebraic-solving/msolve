@@ -271,7 +271,7 @@ static inline void LA_SMALL(dense_submul)(
         _mm512_storeu_si512((void *)(t+j),
                 _mm512_mask_add_epi16(resv, bv, resv, mod2v));
     }
-#elif LA_DENSE_BITS == 16 && (defined HAVE_AVX2 || defined HAVE_AVX512_F)
+#elif LA_DENSE_BITS == 16 && defined HAVE_AVX2
     const __m256i mv    = _mm256_set1_epi16((int16_t)m);
     const __m256i mod2v = _mm256_set1_epi16((int16_t)mod2);
     for (; j + 16 <= len; j += 16) {

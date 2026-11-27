@@ -21,8 +21,7 @@
 #include "data.h"
 #include "../msolve/streams.h"
 
-/* That's also enough if AVX512 is avaialable on the system */
-#if defined HAVE_AVX2
+#if defined(HAVE_AVX2) || defined(HAVE_AVX512_F)
 #include <immintrin.h>
 #elif defined __aarch64__
 #include <arm_neon.h>
@@ -124,7 +123,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
     } else {
         rba = NULL;
     }
-#if defined HAVE_AVX512_F
+#if defined HAVE_AVX512_BW
     __m512i mask1 = _mm512_set1_epi64(0x000000000000FFFF);
     __m512i mask2 = _mm512_set1_epi64(0x00000000FFFF0000);
     __m512i mask3 = _mm512_set1_epi64(0x0000FFFF00000000);
@@ -173,7 +172,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_8(
             }
         }
         cfs   = mcf[dts[COEFFS]];
-#if defined HAVE_AVX512_F
+#if defined HAVE_AVX512_BW
         const uint16_t mul8 = (uint16_t)(fc - dr[i]);
         mulv  = _mm512_set1_epi16(mul8);
         const len_t len = dts[LENGTH];

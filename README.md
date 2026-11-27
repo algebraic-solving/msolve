@@ -29,6 +29,10 @@ this.
 
 See the INSTALL file. At the moment, `msolve` does not support 32 bit architectures.
 
+For a local build optimized for the build machine, run
+`./configure CFLAGS="-O2 -march=native"`. Omit `-march=native` when building
+binaries for other machines; use the intended compiler target instead.
+
 # Input File Format
 
 More informations are given in the tutorial (see [https://msolve.lip6.fr](https://msolve.lip6.fr))

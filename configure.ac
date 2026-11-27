@@ -70,10 +70,105 @@ AC_TYPE_UINT8_T
 
 
 AX_COUNT_CPUS
-AX_EXT
+# Record the SIMD kernels enabled for this compilation in the configure summary.
+msolve_simd_kernels=
+AC_DEFUN([MSOLVE_CHECK_TARGET_FEATURE], [
+  AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#ifndef $1
+#error Target feature is not enabled
+#endif
+]], [[]])], [
+    m4_ifval([$3], [AC_DEFINE([$3], [1], [Enable $2 code])])
+    msolve_simd_kernels="$msolve_simd_kernels $2"
+  ])
+])
+
+# MSOLVE_AVX_OPTION(option, name, config macro, target condition, intrinsic test,
+#                  requirements for an explicit enable)
+AC_DEFUN([MSOLVE_AVX_OPTION], [
+  AC_ARG_ENABLE([$1],
+      [AS_HELP_STRING([--enable-$1], [enable $2 kernels (default: compiler target)])],
+      [], [enable_$1=auto])
+  AS_CASE([$enable_$1], [yes|no|auto], [],
+      [AC_MSG_ERROR([bad value $enable_$1 for --enable-$1])])
+  AS_IF([test "x$enable_$1" != xno], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#if !($4)
+#error Required kernel features are not enabled
+#endif
+#include <immintrin.h>
+]], [[$5]])], [
+      AC_DEFINE([$3], [1], [Enable $2 code])
+      msolve_simd_kernels="$msolve_simd_kernels $2"
+      enable_$1=yes
+    ], [
+      AS_IF([test "x$enable_$1" = xyes], [AC_MSG_ERROR([--enable-$1 requires $6])])
+      enable_$1=no
+    ])
+  ])
+])
+
+MSOLVE_CHECK_TARGET_FEATURE([__aarch64__], [NEON])
+MSOLVE_CHECK_TARGET_FEATURE([__SSE2__], [SSE2], [HAVE_SSE2])
+MSOLVE_CHECK_TARGET_FEATURE([__SSSE3__], [SSSE3], [HAVE_SSSE3])
+MSOLVE_AVX_OPTION([avx2], [AVX2], [HAVE_AVX2], [defined(__AVX2__)], [
+    __m256i v = _mm256_set1_epi32(1);
+    return _mm256_extract_epi32(_mm256_add_epi32(v, v), 0);
+], [an AVX2 compiler target (for example, -mavx2 in CFLAGS)])
+AS_IF([test "x$enable_avx2" = xyes], [
+  MSOLVE_CHECK_TARGET_FEATURE([__FMA__], [FMA3], [HAVE_FMA3])
+])
+MSOLVE_AVX_OPTION([avx512f], [AVX-512F], [HAVE_AVX512_F], [defined(__AVX512F__)], [
+    __m512i v = _mm512_set1_epi32(1);
+    return _mm512_cvtsi512_si32(_mm512_add_epi32(v, v));
+], [an AVX-512F compiler target (for example, -mavx512f in CFLAGS)])
+MSOLVE_AVX_OPTION([avx512bw], [AVX-512BW], [HAVE_AVX512_BW],
+    [defined(HAVE_AVX512_F) && defined(__AVX512BW__)], [
+    __m512i v = _mm512_set1_epi16(1);
+    return _mm512_cvtsi512_si32(_mm512_mullo_epi16(v, v));
+], [enabled AVX-512F kernels and an AVX-512BW compiler target (for example, -mavx512bw in CFLAGS)])
+AS_IF([test "x$enable_avx512f" = xyes], [
+  MSOLVE_CHECK_TARGET_FEATURE([__AVX512DQ__], [AVX-512DQ], [HAVE_AVX512_DQ])
+  MSOLVE_CHECK_TARGET_FEATURE([__AVX512IFMA__], [AVX-512IFMA], [HAVE_AVX512_IFMA])
+], [test "x$enable_avx2" = xyes], [
+  MSOLVE_CHECK_TARGET_FEATURE([__AVXIFMA__], [AVX-IFMA])
+])
 AX_GCC_BUILTIN([__builtin_constant_p])
 AX_GCC_BUILTIN([__builtin_clzll])
 AX_GCC_BUILTIN([__builtin_clzl])
+
+# FLINT's build configuration does not guarantee that its fft_small headers
+# are usable with our compiler target (for example, AVX2 also needs FMA).
+# Compile the vector operations used by Hensel lifting without adding flags.
+AC_CACHE_CHECK([whether FLINT fft_small is usable with the compiler target],
+    [msolve_cv_flint_fft_small], [
+  AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
+#include <flint/flint.h>
+#if __FLINT_RELEASE < 30200 || !defined(FLINT_HAVE_FFT_SMALL) \
+    || !FLINT_HAVE_FFT_SMALL
+#error FLINT fft_small is unavailable
+#else
+#include <flint/fft_small.h>
+
+/* External inputs and an observable result prevent constant folding from
+   hiding unsupported intrinsics in the inline vector operations. */
+void msolve_check_fft_small(double *out, const double *a, const double *b,
+                           double p, double pinv)
+{
+    vec4d va = vec4d_load_aligned(a), vb = vec4d_load_aligned(b);
+    vec4d vp = vec4d_set_d(p), vi = vec4d_set_d(pinv);
+    vec4d h = vec4d_mul(va, vb), l = vec4d_fmsub(va, vb, h);
+    vec4d r = vec4d_add(vec4d_fnmadd(vec4d_round(vec4d_mul(h, vi)), vp, h), l);
+    vec4d_store_aligned(out,
+        vec4d_fnmadd(vec4d_round(vec4d_mul(r, vi)), vp, r));
+}
+#endif
+  ]])], [msolve_cv_flint_fft_small=yes], [msolve_cv_flint_fft_small=no])
+])
+AS_IF([test "x$msolve_cv_flint_fft_small" = xyes], [
+  AC_DEFINE([HAVE_FLINT_FFT_SMALL], [1],
+      [Define if FLINT fft_small is usable with the compiler target])
+])
 
 # Checks for library functions.
 AC_CHECK_FUNCS([floor getdelim gettimeofday memmove memset malloc realloc pow sqrt strchr strstr strtol])
@@ -466,3 +561,4 @@ AC_CONFIG_LINKS([
  test/diff/diff_univariate-wilkinson-both-signs.sh:test/diff/diff_univariate-wilkinson-both-signs.sh
 ])
 AC_OUTPUT
+AC_MSG_NOTICE([SIMD kernels:${msolve_simd_kernels:- none}])

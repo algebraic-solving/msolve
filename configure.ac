@@ -114,6 +114,9 @@ AC_CONFIG_LINKS([
  test/diff/diff_source-gb-red.sh:test/diff/diff_source-gb-red.sh
  test/diff/diff_source-gb-elim-drl.sh:test/diff/diff_source-gb-elim-drl.sh
  test/diff/diff_source-gb-elim-red.sh:test/diff/diff_source-gb-elim-red.sh
+ test/diff/diff_source-gb-lex-lm.sh:test/diff/diff_source-gb-lex-lm.sh
+ test/diff/diff_source-gb-lex-red.sh:test/diff/diff_source-gb-lex-red.sh
+ test/diff/diff_source-gb-lex-red-qq.sh:test/diff/diff_source-gb-lex-red-qq.sh
  test/diff/diff_source-noarg.sh:test/diff/diff_source-noarg.sh
  test/diff/diff_source-param-fullnf-qq.sh:test/diff/diff_source-param-fullnf-qq.sh
  test/diff/diff_source-param-fullnf.sh:test/diff/diff_source-param-fullnf.sh
@@ -261,6 +264,9 @@ AC_CONFIG_LINKS([
  input_files/kat6-gf256.ms:input_files/kat6-gf256.ms
  output_files/kat6-gf256.g2.res:output_files/kat6-gf256.g2.res
  test/diff/diff_kat6-gf256.sh:test/diff/diff_kat6-gf256.sh
+ input_files/kat6sq-qq.ms:input_files/kat6sq-qq.ms
+ output_files/kat6sq-qq.x2.res:output_files/kat6sq-qq.x2.res
+ test/diff/diff_kat6sq-qq.sh:test/diff/diff_kat6sq-qq.sh
  input_files/kat7-30.ms:input_files/kat7-30.ms
  output_files/kat7-30.P2.d0.res:output_files/kat7-30.P2.d0.res
  test/diff/diff_kat7-30.sh:test/diff/diff_kat7-30.sh
@@ -270,6 +276,33 @@ AC_CONFIG_LINKS([
  input_files/kat8-qq-truncate.ms:input_files/kat8-qq-truncate.ms
  output_files/kat8-qq-truncate.res:output_files/kat8-qq-truncate.res
  test/diff/diff_kat8-qq-truncate.sh:test/diff/diff_kat8-qq-truncate.sh
+ input_files/lexgb-longchain-31.ms:input_files/lexgb-longchain-31.ms
+ output_files/lexgb-longchain-31.x2.res:output_files/lexgb-longchain-31.x2.res
+ test/diff/diff_lexgb-longchain-31.sh:test/diff/diff_lexgb-longchain-31.sh
+ input_files/lexgb-lowerset-31.ms:input_files/lexgb-lowerset-31.ms
+ output_files/lexgb-lowerset-31.x2.res:output_files/lexgb-lowerset-31.x2.res
+ test/diff/diff_lexgb-lowerset-31.sh:test/diff/diff_lexgb-lowerset-31.sh
+ input_files/lexgb-lowerset-qq.ms:input_files/lexgb-lowerset-qq.ms
+ output_files/lexgb-lowerset-qq.x2.res:output_files/lexgb-lowerset-qq.x2.res
+ test/diff/diff_lexgb-lowerset-qq.sh:test/diff/diff_lexgb-lowerset-qq.sh
+ input_files/lexgb-nonradical-31.ms:input_files/lexgb-nonradical-31.ms
+ output_files/lexgb-nonradical-31.x2.res:output_files/lexgb-nonradical-31.x2.res
+ test/diff/diff_lexgb-nonradical-31.sh:test/diff/diff_lexgb-nonradical-31.sh
+ input_files/lexgb-nonradical-qq.ms:input_files/lexgb-nonradical-qq.ms
+ output_files/lexgb-nonradical-qq.x2.res:output_files/lexgb-nonradical-qq.x2.res
+ test/diff/diff_lexgb-nonradical-qq.sh:test/diff/diff_lexgb-nonradical-qq.sh
+ input_files/lexgb-nonshape-31.ms:input_files/lexgb-nonshape-31.ms
+ output_files/lexgb-nonshape-31.x2.res:output_files/lexgb-nonshape-31.x2.res
+ test/diff/diff_lexgb-nonshape-31.sh:test/diff/diff_lexgb-nonshape-31.sh
+ input_files/lexgb-nonshape-qq.ms:input_files/lexgb-nonshape-qq.ms
+ output_files/lexgb-nonshape-qq.x2.res:output_files/lexgb-nonshape-qq.x2.res
+ test/diff/diff_lexgb-nonshape-qq.sh:test/diff/diff_lexgb-nonshape-qq.sh
+ input_files/lexgb-shape-31.ms:input_files/lexgb-shape-31.ms
+ output_files/lexgb-shape-31.x2.res:output_files/lexgb-shape-31.x2.res
+ test/diff/diff_lexgb-shape-31.sh:test/diff/diff_lexgb-shape-31.sh
+ input_files/lexgb-shape-qq.ms:input_files/lexgb-shape-qq.ms
+ output_files/lexgb-shape-qq.x2.res:output_files/lexgb-shape-qq.x2.res
+ test/diff/diff_lexgb-shape-qq.sh:test/diff/diff_lexgb-shape-qq.sh
  input_files/lifting-single-point.ms:input_files/lifting-single-point.ms
  output_files/lifting-single-point.p128.res:output_files/lifting-single-point.p128.res
  output_files/lifting-single-point.p1024.res:output_files/lifting-single-point.p1024.res
@@ -288,6 +321,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_maxbitsize-bug.sh:test/diff/diff_maxbitsize-bug.sh
  input_files/mq-2-1.ms:input_files/mq-2-1.ms
  output_files/mq-2-1.res:output_files/mq-2-1.res
+ output_files/mq-2-1.P2.d0.res:output_files/mq-2-1.P2.d0.res
  test/diff/diff_mq-2-1.sh:test/diff/diff_mq-2-1.sh
  input_files/multy-16.ms:input_files/multy-16.ms
  output_files/multy-16.P2.d0.res:output_files/multy-16.P2.d0.res
@@ -325,6 +359,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_nonradical-radicalshape-qq.sh:test/diff/diff_nonradical-radicalshape-qq.sh
  input_files/nonradical-shape-31.ms:input_files/nonradical-shape-31.ms
  output_files/nonradical-shape-31.P2.d0.res:output_files/nonradical-shape-31.P2.d0.res
+ output_files/nonradical-shape-31.x2.res:output_files/nonradical-shape-31.x2.res
  test/diff/diff_nonradical-shape-31.sh:test/diff/diff_nonradical-shape-31.sh
  input_files/nonradical-shape-qq.ms:input_files/nonradical-shape-qq.ms
  output_files/nonradical-shape-qq.P1.d0.p128.res:output_files/nonradical-shape-qq.P1.d0.p128.res
@@ -336,10 +371,15 @@ AC_CONFIG_LINKS([
  input_files/one-31.ms:input_files/one-31.ms
  output_files/one-31.res:output_files/one-31.res
  output_files/one-31.g1.res:output_files/one-31.g1.res
+ output_files/one-31.x1.res:output_files/one-31.x1.res
  test/diff/diff_one-31.sh:test/diff/diff_one-31.sh
+ input_files/one-8.ms:input_files/one-8.ms
+ output_files/one-8.res:output_files/one-8.res
+ test/diff/diff_one-8.sh:test/diff/diff_one-8.sh
  input_files/one-qq.ms:input_files/one-qq.ms
  output_files/one-qq.res:output_files/one-qq.res
  output_files/one-qq.g2.res:output_files/one-qq.g2.res
+ output_files/one-qq.x2.res:output_files/one-qq.x2.res
  test/diff/diff_one-qq.sh:test/diff/diff_one-qq.sh
  input_files/quadratic-nonradical-qq.ms:input_files/quadratic-nonradical-qq.ms
  output_files/quadratic-nonradical-qq.P2.d0.res:output_files/quadratic-nonradical-qq.P2.d0.res
@@ -348,6 +388,7 @@ AC_CONFIG_LINKS([
  test/diff/diff_quadratic-nonradical-qq.sh:test/diff/diff_quadratic-nonradical-qq.sh
  input_files/radical-shape-31.ms:input_files/radical-shape-31.ms
  output_files/radical-shape-31.P2.d0.res:output_files/radical-shape-31.P2.d0.res
+ output_files/radical-shape-31.x2.res:output_files/radical-shape-31.x2.res
  test/diff/diff_radical-shape-31.sh:test/diff/diff_radical-shape-31.sh
  input_files/radical-shape-qq.ms:input_files/radical-shape-qq.ms
  output_files/radical-shape-qq.P2.d0.res:output_files/radical-shape-qq.P2.d0.res
@@ -417,6 +458,7 @@ AC_CONFIG_LINKS([
  input_files/univariate-sgn.ms:input_files/univariate-sgn.ms
  output_files/univariate-sgn.p128.res:output_files/univariate-sgn.p128.res
  output_files/univariate-sgn.p1024.res:output_files/univariate-sgn.p1024.res
+ output_files/univariate-sgn.x2.res:output_files/univariate-sgn.x2.res
  test/diff/diff_univariate-sgn.sh:test/diff/diff_univariate-sgn.sh
  input_files/univariate-wilkinson-both-signs.ms:input_files/univariate-wilkinson-both-signs.ms
  output_files/univariate-wilkinson-both-signs.p128.res:output_files/univariate-wilkinson-both-signs.p128.res

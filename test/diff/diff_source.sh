@@ -60,6 +60,11 @@ normal_exit() {
 print_exit() {
     local excode=$1
     printf "${colexit}EXIT${std}: $excode\n" >&2
+    # 77 (SKIP) and 99 (hard error) are reserved by automake: the code is
+    # printed above, the test exits with 1 (FAIL)
+    if [ "$excode" -eq 77 ] || [ "$excode" -eq 99 ]; then
+        excode=1
+    fi
     exit "$excode"
 }
 

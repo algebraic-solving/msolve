@@ -20,6 +20,10 @@
  * Mohab Safey El Din */
 
 
+/* sparse-FGLM needs primes below this bound (classical FGLM: p < 2^31):
+ * p <= DOT2_ACC8_MAX_MODULUS = 1515531528 in linalg-fglm.c */
+#define FGLM_SPARSE_MAX_PRIME 1515531528
+
 param_t *nmod_fglm_compute(sp_matfglm_t *, mod_t, nvars_t,
                            szmat_t, nvars_t *, uint32_t *, nvars_t*, int, md_t *);
 param_t *nmod_fglm_guess_colon(sp_matfglmcol_t *, const mod_t,
@@ -32,11 +36,16 @@ param_t *nmod_fglm_compute_trace_data(sp_matfglm_t *, mod_t, szmat_t,
                                       nvars_t *,
                                       uint32_t *,
                                       nvars_t*,
+                                      szmat_t,
                                       int,
                                       fglm_data_t **,
                                       fglm_bms_data_t **,
                                       int *,
 				      md_t *);
+void print_fglm_data(FILE *, const md_t * const, sp_matfglm_t *, param_t *,
+                     const int, const uint64_t, const uint64_t);
+param_t *nmod_fglm_shape(sp_matfglm_t *, mod_t, szmat_t, szmat_t, szmat_t,
+                         nvars_t *, uint32_t *, nvars_t *, int, int, md_t *);
 int nmod_fglm_compute_apply_trace_data(sp_matfglm_t *,
                                        const mod_t,
                                        param_t *,

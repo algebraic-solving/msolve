@@ -40,6 +40,57 @@ static inline void free_sp_mat_fglm(sp_matfglm_t *mat){
   }
 }
 
+static inline void free_sp_multimat_fglm(sp_multimatfglm_t *mat){
+    if(mat!=NULL){
+        posix_memalign_free(mat->dense_mat);
+        free(mat->rowsel);
+        free(mat->border);
+        free(mat->is_lm);
+        free(mat->have_row);
+        free(mat->tn_t);
+        free(mat->tn_rows);
+        free(mat);
+    }
+}
+
+static inline void free_fglm_gb(fglm_gb_t *G){
+    if(G!=NULL) {
+        free(G->lens);
+        free(G->exps);
+        free(G->cfs);
+        free(G);
+    }
+}
+
+/* frees the arrays of lex (not lex itself) */
+static inline void free_fglm_lex_staircase(fglm_lex_staircase_t *lex){
+    if(lex!=NULL) {
+        free(lex->S);
+        free(lex->g_lm);
+        free(lex->g_ntail);
+        free(lex->npols);
+        memset(lex, 0, sizeof(fglm_lex_staircase_t));
+    }
+}
+
+/* frees the arrays of tr (not tr itself) */
+static inline void free_fglm_trace(fglm_trace_t *tr){
+    if(tr!=NULL) {
+        free(tr->rowsel);
+        free(tr->is_lm);
+        free(tr->lm_of);
+        free(tr->exps_nf);
+        free(tr->row_nf);
+        free(tr->have_row);
+        free_fglm_lex_staircase(&tr->lex);
+        free(tr->s_parent);
+        free(tr->s_var);
+        free(tr->g_parent);
+        free(tr->g_var);
+        memset(tr, 0, sizeof(fglm_trace_t));
+    }
+}
+
 static inline fglm_data_t *allocate_fglm_data(szmat_t nrows, szmat_t ncols, szmat_t nvars){
   fglm_data_t * data = malloc(sizeof(fglm_data_t));
 

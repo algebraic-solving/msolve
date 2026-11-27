@@ -63,7 +63,16 @@ void free_rrec_data(rrec_data_t recdata);
 #include "univariate.c"
 #include "hensel.c"
 #include "boolean-zeros.c"
+#include "lifting-lexgb.c"
 #include "streams.h"
+
+/* internal values of print_gb for option -x (lex Gb by FGLM):
+ * 3, leading ideal only
+ * 4, full basis;
+ * 5, full basis in the default output format (default call over prime
+ *    fields of characteristic < 2^15) */
+#define PRINT_LEX_DEFAULT 5
+#define PRINT_LEX_GB(pg) ((pg) >= 3 && (pg) <= PRINT_LEX_DEFAULT)
 
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -2017,7 +2026,7 @@ static inline void print_groebner_basis(files_gb *files,
                                         const data_gens_ff_t *gens,
                                         const bs_t *const bs, md_t *md,
                                         const int32_t fc) {
-  if (md->print_gb) {
+  if (md->print_gb == 1 || md->print_gb == 2) {
     int32_t gfc = md->gfc;
     md->gfc = fc;
     output_timer_t ot;
@@ -2072,6 +2081,81 @@ static int equal_param(param_t *param, param_t *test_param){
   return 1;
 }
 
+/* Lex Gb in shape position from nmod_fglm_shape: f(x_n), then
+ * x_i + coords_i(x_n) for i = n-2, ..., 0 (increasing leading monomials,
+ * terms by decreasing lex order, zero terms skipped). If lead_only, only the
+ * leading terms. */
+static fglm_gb_t *shape_lexgb_from_param(const param_t *par, const int32_t nv,
+                                         const int lead_only){
+    const nmod_poly_struct *f = par->elim;
+    const slong D = f->length - 1;
+    int32_t nterms = 0;
+    for (slong k = 0; k <= D; k++) {
+        nterms += (f->coeffs[k] != 0 && (!lead_only || k == D));
+    }
+    for (int32_t i = 0; i < nv - 1; i++) {
+        nterms++;
+        if (!lead_only) {
+            for (slong k = 0; k < par->coords[i]->length; k++) {
+                nterms += (par->coords[i]->coeffs[k] != 0);
+            }
+        }
+    }
+    fglm_gb_t *G = malloc(sizeof(fglm_gb_t));
+    G->charac = par->charac;
+    G->nvars  = nv;
+    G->ngens  = nv;
+    G->nterms = nterms;
+    G->lens   = malloc(nv * sizeof(int32_t));
+    G->exps   = calloc((uint64_t)nterms * nv, sizeof(int32_t));
+    G->cfs    = malloc((uint64_t)nterms * sizeof(CF_t));
+    int32_t pos = 0;
+    for (slong k = D; k >= 0; k--) {
+        if (f->coeffs[k] != 0 && (!lead_only || k == D)) {
+            G->exps[(uint64_t)pos * nv + nv - 1] = k;
+            G->cfs[pos++] = f->coeffs[k];
+        }
+    }
+    G->lens[0] = pos;
+    for (int32_t i = nv - 2; i >= 0; i--) {
+        const int32_t start = pos;
+        G->exps[(uint64_t)pos * nv + i] = 1;
+        G->cfs[pos++] = 1;
+        const nmod_poly_struct *c = par->coords[i];
+        for (slong k = lead_only ? -1 : c->length - 1; k >= 0; k--) {
+            if (c->coeffs[k] != 0) {
+                G->exps[(uint64_t)pos * nv + nv - 1] = k;
+                G->cfs[pos++] = c->coeffs[k];
+            }
+        }
+        G->lens[nv - 1 - i] = pos - start;
+    }
+    return G;
+}
+
+/* Lex Gb by sparse-FGLM if the ideal is in shape position, NULL otherwise
+ * (classical FGLM is used then). T_n is taken from the matrices mm. */
+static fglm_gb_t *shape_lexgb(const sp_multimatfglm_t *mm, int32_t *lmb,
+                              const long dquot, md_t *md, const uint32_t fc,
+                              const nvars_t nlins, nvars_t *linvars,
+                              uint32_t *lineqs, nvars_t *squvars,
+                              const int lead_only){
+    const int nv = mm->nvars;
+    sp_matfglm_t *mat = matrixn_from_multimat(mm);
+    check_and_set_vars_squared_in_monomial_basis(squvars, lmb, dquot, nv);
+    param_t *par = nmod_fglm_shape(mat, fc, nv, nv - nlins, nlins, linvars,
+                                   lineqs, squvars, lead_only,
+                                   md->info_level, md);
+    fglm_gb_t *G = NULL;
+    if (par != NULL) {
+        G = shape_lexgb_from_param(par, nv, lead_only);
+        print_fglm_data(VERBSTREAM, md, mat, par, 0, G->ngens, G->nterms);
+        free_fglm_param(par);
+    }
+    free_sp_mat_fglm(mat);
+    return G;
+}
+
 static int32_t *initial_modular_step(
                                      sp_matfglm_t **bmatrix,
                                      int32_t **bdiv_xn,
@@ -2124,6 +2208,35 @@ static int32_t *initial_modular_step(
                                                                  md);
 
     if (empty_solution_set == 1) {
+        if (PRINT_LEX_GB(print_gb)) {
+            /* create the lex Gb [1] (default output: [-1]) */
+            output_timer_t ot;
+            output_timer_start(&ot);
+            FILE *of = (files->out_file != NULL) ?
+                fopen(files->out_file, "ab") : OUTSTREAM;
+            if (print_gb == PRINT_LEX_DEFAULT) {
+                fprintf(of, "[-1]:\n");
+            } else {
+                fglm_gb_t *one= malloc(sizeof(fglm_gb_t));
+                const int32_t nv = gens->nvars;
+                one->charac = fc;
+                one->nvars = nv;
+                one->ngens = 1;
+                one->nterms = 1;
+                one->lens = malloc(1 * sizeof(int32_t));
+                one->exps = calloc(1 * nv, sizeof(int32_t)); //all exponents to 0
+                one->cfs  = malloc(1 * sizeof(CF_t));
+                one->lens[0] = 1;
+                one->cfs[0] = 1;
+                print_lex_basis(of, one, gens->vnames,
+                                print_gb == 3);
+                free_fglm_gb(one);
+            }
+            if(files->out_file != NULL){
+                fclose(of);
+            }
+            output_timer_stop(files, &ot);
+        }
         free_basis_without_hash_table(&(bs));
         free(bs);
         return NULL;
@@ -2139,6 +2252,53 @@ static int32_t *initial_modular_step(
         /* if(md->info_level){ */
         /*     fprintf(ERRSTREAM, "Dimension of quotient: %ld\n", dquot); */
         /* } */
+        if(PRINT_LEX_GB(print_gb)){
+            md->fglm_rtime = realtime();
+            md->fglm_ctime = cputime();
+            print_fglm_header(VERBSTREAM,md);
+            /* LEX basis by sparse-FGLM in shape position, else by
+             * classical FGLM */
+            fglmc_rows_t rp;
+            memset(&rp, 0, sizeof(rp));
+            szmat_t dmin = 0;
+            sp_multimatfglm_t *mm =
+                build_multiplication_matrices_from_bs(lmb, dquot, bs, bs->ht,
+                                                      leadmons[0], md,
+                                                      bs->ht->nv, fc,
+                                                      md->info_level, NULL, &rp,
+                                                      &dmin);
+            /* if(md->info_level){ */
+            /*     fprintf(VERBSTREAM, "Mul Mat    %.2f sec\n", realtime() - rt_fglm); */
+            /* } */
+            mm->nthreads = md->nthrds;   /* all threads are used */
+            fglm_gb_t *lexgb = shape_lexgb(mm, lmb, dquot, md, fc, *nlins_ptr,
+                                           linvars, lineqs_ptr[0], squvars,
+                                           print_gb == 3);
+            if (lexgb == NULL) {
+                lexgb = fglm_classic(mm, FGLM_ORDER_LEX, &rp, dmin, md);
+            }
+            mm_rows_clear(&rp);
+            if(lexgb == NULL){
+                fprintf(ERRSTREAM, "FGLM failed.\n");
+                *success = 0;
+            } else {
+                output_timer_t ot;
+                output_timer_start(&ot);
+                FILE *of = (files->out_file != NULL) ?
+                    fopen(files->out_file, "ab") : OUTSTREAM;
+                if (print_gb == PRINT_LEX_DEFAULT) {
+                    print_lex_basis_default(of, lexgb, gens->vnames, dquot);
+                } else {
+                    print_lex_basis(of, lexgb, gens->vnames, print_gb == 3);
+                }
+                if(files->out_file != NULL){
+                    fclose(of);
+                }
+                output_timer_stop(files, &ot);
+            }
+            free_fglm_gb(lexgb);
+            free_sp_multimat_fglm(mm);
+        }
         if(print_gb==0){
             /* *bmatrix = build_matrixn_from_bs_trace(bdiv_xn, */
             /* 					 blen_gb_xn, */
@@ -2149,7 +2309,8 @@ static int32_t *initial_modular_step(
             /* 					 md->info_level); */
             md->fglm_rtime = realtime();
             md->fglm_ctime = cputime();
-            print_fglm_header (VERBSTREAM,md);
+            print_fglm_header(VERBSTREAM,md);
+            szmat_t dmin = 0;
             *bmatrix = build_matrixn_unstable_from_bs_trace(bdiv_xn,
                                                             blen_gb_xn,
                                                             bstart_cf_gb_xn,
@@ -2162,7 +2323,7 @@ static int32_t *initial_modular_step(
                                                             bs->ht->nv,
                                                             fc, unstable_staircase,
                                                             md->info_level,
-                                                            files);
+                                                            files, &dmin);
 
             if(*bmatrix == NULL){
                 *success = 0;
@@ -2184,7 +2345,7 @@ static int32_t *initial_modular_step(
             *bparam = nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
                                                    *bsz, *nlins_ptr, linvars,
                                                    lineqs_ptr[0], squvars,
-                                                   md->info_level, bdata_fglm,
+                                                   dmin, md->info_level, bdata_fglm,
                                                    bdata_bms, success, md);
             if (*bparam == NULL) {
                 *success = 0;
@@ -2211,7 +2372,7 @@ static int32_t *initial_modular_step(
                     nmod_fglm_compute_trace_data(*bmatrix, fc, bs->ht->nv,
                                                  *bsz, *nlins_ptr, linvars,
                                                  lineqs_ptr[0], squvars,
-                                                 0, bdata_fglm, bdata_bms,
+                                                 dmin, 0, bdata_fglm, bdata_bms,
                                                  success, md);
                 if(*test_nmod_param == NULL){
                     *success = 0;
@@ -2268,6 +2429,18 @@ static int32_t *initial_modular_step(
         return lmb;
     }
     else{
+        if(PRINT_LEX_GB(print_gb)){
+            /* positive dimension: same output as the default call */
+            output_timer_t ot;
+            output_timer_start(&ot);
+            FILE *of = (files->out_file != NULL) ?
+                fopen(files->out_file, "ab") : OUTSTREAM;
+            fprintf(of, "[1, %d, -1, []]:\n", gens->nvars);
+            if(files->out_file != NULL){
+                fclose(of);
+            }
+            output_timer_stop(files, &ot);
+        }
         *dim  = 1;
         *dquot_ori = -1;
         free_basis_without_hash_table(&(bs));
@@ -3733,7 +3906,7 @@ int msolve_trace_qq(mpz_param_t *mpz_paramp,
         (nbdoit != 1 && (nprimes % (lpow2 + 1) == 0))) {
       if (info_level) {
         fprintf(VERBSTREAM, "{%d}", nprimes);
-	fflush(VERBSTREAM);
+        fflush(VERBSTREAM);
       }
       clog++;
       lpow2 = 2 * lpow2;
@@ -5148,8 +5321,10 @@ restart:
          * computed, F4 works with 64 bit coefficients then. The same
          * holds for GF(16) and GF(256) given by the field characteristics
          * 16 and 256, and for the Boolean ring over GF(2). */
-        if (print_gb == 0 || use_signatures > 0 || saturate > 0
-                || colon > 0 || normal_form > 0) {
+        /* no change of order (-g 3) either: FGLM needs a prime field of
+         * characteristic < 2^31 */
+        if (print_gb == 0 || PRINT_LEX_GB(print_gb) || use_signatures > 0
+                || saturate > 0 || colon > 0 || normal_form > 0) {
             if (gens->boolean) {
                 fprintf(ERRSTREAM, "In the boolean ring msolve ");
             } else if (is_gf2_ext(gens->field_char)) {
@@ -5157,7 +5332,7 @@ restart:
             } else {
                 fprintf(ERRSTREAM, "For field characteristics >= 2^31 msolve ");
             }
-            fprintf(ERRSTREAM, "only computes Groebner bases (option -g).\n");
+            fprintf(ERRSTREAM, "only computes Groebner bases (option -g 1 or -g 2).\n");
             free(bld);
             free(blen);
             free(bexp);
@@ -5540,7 +5715,7 @@ restart:
 
             /* compute normal form of last element in tbr */
 
-            tbr = core_nf(tbr, st, mul, bs, &err);
+            tbr = core_nf(tbr, st, mul, bs, &err, 0);
 
             if (err) {
                 fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
@@ -5740,10 +5915,15 @@ restart:
 	  int dim = - 2;
 	  long dquot = -1;
 
-      if(elim_block_len > 0 && print_gb == 0){
-          fprintf(ERRSTREAM, "Warning: elim order not available for rational parametrizations\n");
+      if(elim_block_len && (print_gb == 0 || PRINT_LEX_GB(print_gb))){
+          fprintf(ERRSTREAM, "Warning: elim order not available for ");
+          if(print_gb == 0){
+              fprintf(ERRSTREAM, "rational parametrizations\n");
+          } else {
+              fprintf(ERRSTREAM, "lexicographic Groebner basis\n");
+          }
           fprintf(ERRSTREAM, "Computing Groebner basis\n");
-          print_gb=2;
+          print_gb = (print_gb == 3) ? 1 : 2;
       }
 	  b = real_msolve_qq(mpz_paramp,
                        paramp,
@@ -5933,7 +6113,7 @@ restart:
              * to be reduced by basis */
             exp_t *mul  = (exp_t *)calloc(bht->evl, sizeof(exp_t));
             /* compute normal form of last element in tbr */
-            tbr = core_nf(tbr, st, mul, bs, &err);
+            tbr = core_nf(tbr, st, mul, bs, &err, 1);
 
             if (err) {
                 fprintf(ERRSTREAM,"Problem with normalform, stopped computation.\n");
@@ -6425,10 +6605,15 @@ restart:
             int dim = - 2;
             long dquot = -1;
 
-            if(elim_block_len && print_gb == 0){
-                fprintf(ERRSTREAM, "Warning: elim order not available for rational parametrizations\n");
+            if(elim_block_len && (print_gb == 0 || PRINT_LEX_GB(print_gb))){
+                fprintf(ERRSTREAM, "Warning: elim order not available for ");
+                if(print_gb == 0){
+                    fprintf(ERRSTREAM, "rational parametrizations\n");
+                } else {
+                    fprintf(ERRSTREAM, "lexicographic Groebner basis\n");
+                }
                 fprintf(ERRSTREAM, "Computing Groebner basis\n");
-                print_gb=2;
+                print_gb = (print_gb == 3) ? 1 : 2;
             }
 
             if(print_gb){
@@ -6446,16 +6631,24 @@ restart:
               flags->info_level = info_level;
               flags->pbm_file = generate_pbm;
               flags->print_gb = print_gb;
+              flags->lift_matrix = lift_matrix;
               flags->files = files;
 
-              print_msolve_gbtrace_qq(gens, flags);
+              int ret_gb = 0;
+              if(PRINT_LEX_GB(print_gb)){
+                  /* lex Gb by multi-modular FGLM (-x 1: leading ideal
+                   * computed on one prime, as -g 1) */
+                  ret_gb = print_msolve_lexgb_qq(gens, flags);
+              } else {
+                  print_msolve_gbtrace_qq(gens, flags);
+              }
 
               free(bld);
               free(blen);
               free(bexp);
               free(bcf);
 
-              return 0;
+              return ret_gb;
             }
 
             b = real_msolve_qq(mpz_paramp,
@@ -6582,7 +6775,7 @@ restart:
 		  } else if (oldminpolydeg == minpolydeg) {
 		    /* same degree for both random linear forms */
 		    if (info_level > 0) {
-		      printf ("\nRestarting with a non-random linear form");
+		        fprintf (VERBSTREAM,"\nRestarting with a non-random linear form");
 		    }
 		    /* set back the base coefficient to its previous form
 		       before introducing the random linear form.
@@ -6608,7 +6801,7 @@ restart:
 		       another 2nd time */
 		  minpolydeg = -1;
 		  if (info_level > 0) {
-		    printf ("\nRestarting with another random linear form");
+		      fprintf (VERBSTREAM,"\nRestarting with another random linear form");
 		  }
 		  /* set back the base coefficient to its previous form
 		     before introducing the random linear form.

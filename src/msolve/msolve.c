@@ -363,6 +363,7 @@ data_gens_ff_t *allocate_data_gens() {
   gens->hensel_prec = 0;
   gens->hensel_cost_scale = 1.0;
   gens->hensel_memory = 0;
+  gens->gb_prime_bits = 0;
   gens->boolean = 0;
   gens->boolean_zeros = 0;
   gens->lex = 0;

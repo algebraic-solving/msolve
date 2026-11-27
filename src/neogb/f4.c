@@ -20,6 +20,7 @@
 
 
 #include "f4.h"
+#include "gmp_u64.h"
 #include "../msolve/streams.h"
 
 static void final_remove_redundant_elements(
@@ -965,7 +966,7 @@ static int copy_basis_to_other_order(
                     } else if (src->cf_8 != NULL) {
                         mpz_init_set_ui(dst->cf_qq[i][j], src->cf_8[s[COEFFS]][j]);
                     } else {
-                        mpz_init_set_ui(dst->cf_qq[i][j], src->cf_64[s[COEFFS]][j]);
+                        mpz_init_set_u64(dst->cf_qq[i][j], src->cf_64[s[COEFFS]][j]);
                     }
                 }
                 sort_terms_qq(&(dst->cf_qq[i]), &(dst->hm[i]), dht);

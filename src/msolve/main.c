@@ -120,6 +120,12 @@ static inline void display_help(char *str){
   display_option_help_noopt("    system.\n");
   display_option_help_noopt("2 - output is the full reduced Groebner basis of\n");
   display_option_help_noopt("    the input system.\n");
+  display_option_help(0, "gb-prime-bits", "BITS", "Bitsize of the primes used to compute the\n");
+  display_option_help_noopt("Groebner basis over the rationals with \"-g 2\".\n");
+  display_option_help_noopt("31 - primes of 31 bits.\n");
+  display_option_help_noopt("52 - primes of 52 bits.\n");
+  display_option_help_noopt("Default: 52 if msolve is built with AVX-512\n");
+  display_option_help_noopt("IFMA, else 31.\n");
   display_option_help('e', "elimination", "ELIM", "Define an elimination order: msolve supports two\n");
   display_option_help_noopt("blocks of variables, each block using the degree\n");
   display_option_help_noopt("reverse lexicographical monomial order. ELIM has\n");
@@ -304,6 +310,7 @@ static void getoptions(
         int32_t *hensel_prec,
         double *hensel_cost_scale,
         double *hensel_memory,
+        int32_t *gb_prime_bits,
         int32_t *precision,
         int32_t *generate_pbm_files,
 	int64_t *seed,
@@ -331,6 +338,7 @@ static void getoptions(
     HENSEL_PRECISION_OPTION,
     HENSEL_COST_SCALE_OPTION,
     HENSEL_MEMORY_OPTION,
+    GB_PRIME_BITS_OPTION,
     BOOLEAN_OPTION,
     BOOLEAN_ZEROS_OPTION,
     LEX_OPTION,
@@ -353,6 +361,7 @@ static void getoptions(
     {"hensel-precision", required_argument, NULL, HENSEL_PRECISION_OPTION},
     {"hensel-cost-scale", required_argument, NULL, HENSEL_COST_SCALE_OPTION},
     {"hensel-memory", required_argument, NULL, HENSEL_MEMORY_OPTION},
+    {"gb-prime-bits", required_argument, NULL, GB_PRIME_BITS_OPTION},
     {"lifting-mulmat", required_argument, NULL, 'L'},
     {"normal-form", required_argument, NULL, 'n'},
     {"output-file", required_argument, NULL, 'o'},
@@ -497,6 +506,12 @@ static void getoptions(
       *hensel_memory = strtod(optarg, NULL);
       if (*hensel_memory < 0) {
           *hensel_memory = 0;
+      }
+      break;
+    case GB_PRIME_BITS_OPTION:
+      *gb_prime_bits = strtol(optarg, NULL, 10);
+      if (*gb_prime_bits != 31 && *gb_prime_bits != 52) {
+          *gb_prime_bits = 0;
       }
       break;
     case 't':
@@ -682,6 +697,7 @@ int main(int argc, char **argv){
     int32_t hensel_prec           = 0;
     double hensel_cost_scale      = 1.0;
     double hensel_memory          = 0;
+    int32_t gb_prime_bits         = 0;
     int32_t precision             = 64;
     int64_t seed                  = -1;
     int32_t boolean               = 0;
@@ -702,7 +718,7 @@ int main(int argc, char **argv){
                &normal_form, &normal_form_matrix, &is_gb, &lift_matrix, &get_param,
                &sep_search, &sep_dense, &split_mode,
                &lifting, &hensel_prec, &hensel_cost_scale,
-               &hensel_memory, &precision, &generate_pbm,
+               &hensel_memory, &gb_prime_bits, &precision, &generate_pbm,
 	       &seed, &boolean, &boolean_zeros, &lex, &elim_drl, &info_level,
                files);
 
@@ -785,6 +801,7 @@ int main(int argc, char **argv){
     gens->hensel_prec = hensel_prec;
     gens->hensel_cost_scale = hensel_cost_scale;
     gens->hensel_memory = hensel_memory;
+    gens->gb_prime_bits = gb_prime_bits;
 
     if(0 < field_char && field_char < pow(2, 15) && la_option > 2){
         if(info_level){

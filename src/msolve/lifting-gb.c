@@ -19,7 +19,13 @@
  * Mohab Safey El Din */
 
 #include<flint/fmpz.h>
+#include<flint/fmpz_vec.h>
+#include<flint/fmpz_mat.h>
+#include<flint/fmpz_lll.h>
+#include "config.h"
+#include <inttypes.h>
 #include "streams.h"
+#include "../neogb/gmp_u64.h"
 
 #define NBCHECK 2
 /* number of bits of slack kept in rational reconstruction bounds */
@@ -27,6 +33,26 @@
 /* witnesses are reconstructed every rr primes, rr being the largest
    power of 2 <= nprimes / RR_PERIOD_DIV */
 #define RR_PERIOD_DIV 128
+/* Witness coefficients of a polynomial reconstructed simultaneously by LLL
+   (see lll_witnesses): at most LLL_WIT_K of them, attempts are made once
+   at least LLL_WIT_START primes are used, then each time the number of
+   primes has grown by LLL_WIT_GROWTH percent */
+#define LLL_WIT_K 8
+#define LLL_WIT_START 8
+#define LLL_WIT_GROWTH 5
+/* number of witnesses when no denominator is guessed: LLL is much more
+   expensive on these lattices, whose first column is not scaled */
+#define LLL_WIT_K1 4
+/* LLL without guess is only tried when, for some lifted polynomial, at
+   least this share of the bits of the denominator of the previous one does
+   not divide its own */
+#define LLL_WIT_INFL 0.125
+/* the estimated cost of the calls to LLL is kept below LLL_WIT_BUDGET
+   percent of the estimated cost of the primes used */
+#define LLL_WIT_BUDGET 10
+/* bits kept below the guessed denominator in the lattices of
+   lll_common_den */
+#define LLL_TRUNC_SLACK 64
 #ifndef MIN
 #define MIN(x, y) ((x) > (y) ? (y) : (x))
 #endif
@@ -44,6 +70,8 @@ typedef struct{
    * Warning: this is free-ed dynamically (and set to NULL) as soon as the
    * polynomial has been lifted and checked. */
   uint32_t *cf_32;
+  /* same, used instead of cf_32 when the primes have more than 32 bits */
+  uint64_t *cf_u64;
   /* len integer numerators of the lifted coefficients; they all share the
    * common denominator lm (hence the polynomial is lm * LM + sum cf_qq[j]*m_j
    * up to the order of the terms). */
@@ -54,13 +82,20 @@ typedef struct{
 typedef modpolys_struct modpolys_t[1];
 
 /* coefficient of index j of polynomial p modulo the k-th prime */
-#define MODCF(p, j, k) ((p)->cf_32[(size_t)(k) * (p)->len + (j)])
+#define MODCF_IDX(p, j, k) ((size_t)(k) * (p)->len + (j))
+#define MODCF(p, j, k) ((p)->cf_u64 != NULL                         \
+                        ? (p)->cf_u64[MODCF_IDX(p, j, k)]            \
+                        : (uint64_t)(p)->cf_32[MODCF_IDX(p, j, k)])
+/* nonzero while the modular images of polynomial p are stored */
+#define HAS_MODCF(p) ((p)->cf_32 != NULL || (p)->cf_u64 != NULL)
 
 typedef struct {
   uint32_t alloc; /* alloc -> max number of primes */
   uint32_t nprimes; /* number of primes */
   mp_limb_t *primes; /* array of prime numbers encoded with uint64_t to ensure
                        compatibility with flint */
+  mp_limb_t *pinvs; /* their inverses for n_mulmod2_preinv */
+  int wide; /* 1 if the primes have more than 32 bits (images in cf_u64) */
   mp_limb_t *cf_64; /* array of length equal to number of primes which will be used
                     to copy coefficients (hence ensuring compatibility with
                     flint) */
@@ -76,6 +111,10 @@ typedef struct {
 typedef gb_modpoly_array_struct gb_modpoly_t[1];
 
 #define NEWGBLIFT 1
+
+/* F4 computes with 64 bit integers modulo primes of at least 31 bits (see
+   set_ff_bits), the modular images are then stored in cf_u64 */
+#define GB_PRIME_IS_WIDE(p) ((uint64_t)(p) >= ((uint64_t)1 << 31))
 
 
 typedef struct{
@@ -113,6 +152,18 @@ typedef struct{
   mpz_t *crt3;
   mpz_t *num3;
   mpz_t *den3;
+  int32_t *lwit; /* indices of the LLL witnesses, LLL_WIT_K per polynomial */
+  int *nlwit; /* number of LLL witnesses of each polynomial */
+  int32_t lll_next; /* number of primes of the next LLL attempt */
+  int32_t lll_fnext; /* same for the full lifting (see lll_full_block) */
+  int32_t lll_ntries; /* number of calls to LLL */
+  int32_t lll_nsucc; /* number of candidates found by LLL */
+  double lll_time; /* elapsed time spent in lll_witnesses */
+  double lll_cost; /* estimated cost of the calls to LLL (see
+                      lll_witnesses_cost) */
+  double infl; /* largest share of the bits of the denominator of a lifted
+                  polynomial which do not divide the denominator of the
+                  next one (see lll_update_inflation) */
 } data_lift_struct;
 
 typedef data_lift_struct data_lift_t[1];
@@ -175,7 +226,15 @@ static inline void data_lift_init(data_lift_t dl,
     mpz_init(dl->num3[i]);
     mpz_init(dl->den3[i]);
   }
-
+  dl->lwit = calloc((size_t)npol * LLL_WIT_K, sizeof(int32_t));
+  dl->nlwit = calloc(npol, sizeof(int));
+  dl->lll_next = LLL_WIT_START;
+  dl->lll_fnext = LLL_WIT_START;
+  dl->lll_ntries = 0;
+  dl->lll_nsucc = 0;
+  dl->lll_time = 0;
+  dl->lll_cost = 0;
+  dl->infl = 0;
 }
 
 static inline void data_lift_clear(data_lift_t dl){
@@ -220,6 +279,8 @@ static inline void data_lift_clear(data_lift_t dl){
   free(dl->num3);
   free(dl->den3);
   free(dl->coef3);
+  free(dl->lwit);
+  free(dl->nlwit);
 
 }
 
@@ -229,10 +290,12 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
                                    bs_t *bs,
                                    int nv, uint32_t ld,
                                    int32_t *lm,
-                                   md_t *st){
+                                   md_t *st, const int wide){
   modgbs->alloc = alloc;
   modgbs->nprimes = 0;
+  modgbs->wide = wide;
   modgbs->primes = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
+  modgbs->pinvs = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
   modgbs->cf_64 = (mp_limb_t *)calloc(alloc, sizeof(mp_limb_t));
   modgbs->ld = ld;
   modgbs->nv = nv;
@@ -261,14 +324,19 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
   }
   for(uint32_t i = 0; i < ld; i++){
     modgbs->modpolys[i]->len = lens[i];
+    modgbs->modpolys[i]->cf_32 = NULL;
+    modgbs->modpolys[i]->cf_u64 = NULL;
+    modgbs->modpolys[i]->cf_qq = NULL;
     if(lens[i] > 0){
-      modgbs->modpolys[i]->cf_32 = (uint32_t *)calloc((size_t)lens[i] * alloc,
-                                                      sizeof(uint32_t));
+      if(wide){
+        modgbs->modpolys[i]->cf_u64 = (uint64_t *)calloc((size_t)lens[i] * alloc,
+                                                         sizeof(uint64_t));
+      }
+      else{
+        modgbs->modpolys[i]->cf_32 = (uint32_t *)calloc((size_t)lens[i] * alloc,
+                                                        sizeof(uint32_t));
+      }
       modgbs->modpolys[i]->cf_qq = (mpz_t *)malloc(sizeof(mpz_t)*lens[i]);
-    }
-    else{
-      modgbs->modpolys[i]->cf_32 = NULL;
-      modgbs->modpolys[i]->cf_qq = NULL;
     }
     for(uint32_t j = 0; j < lens[i]; j++){
       mpz_init(modgbs->modpolys[i]->cf_qq[j]);
@@ -280,7 +348,7 @@ static inline void gb_modpoly_init(gb_modpoly_t modgbs,
 
 
 /* Makes room for newalloc more primes. Polynomials whose modular data have
- * already been free-ed (cf_32 == NULL) are skipped. */
+ * already been free-ed (see HAS_MODCF) are skipped. */
 static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
                                       uint32_t newalloc){
 
@@ -298,6 +366,13 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   for(uint32_t i = oldalloc; i < modgbs->alloc; i++){
     modgbs->primes[i] = 0;
   }
+  mp_limb_t *newpinvs = (mp_limb_t *)realloc(modgbs->pinvs,
+                                           modgbs->alloc * sizeof(mp_limb_t));
+  if(newpinvs == NULL){
+    fprintf(ERRSTREAM, "Problem when reallocating modgbs (primes)\n");
+    exit(1);
+  }
+  modgbs->pinvs = newpinvs;
 
   mp_limb_t *ncf_64 = (mp_limb_t *)realloc(modgbs->cf_64,
                                          modgbs->alloc * sizeof(mp_limb_t));
@@ -311,22 +386,50 @@ static inline void gb_modpoly_realloc(gb_modpoly_t modgbs,
   }
   for(uint32_t i = 0; i < modgbs->ld; i++){
     const size_t len = modgbs->modpolys[i]->len;
-    if(modgbs->modpolys[i]->cf_32 == NULL || len == 0){
+    if(!HAS_MODCF(modgbs->modpolys[i]) || len == 0){
       continue;
     }
-    uint32_t *newcfs_pol = (uint32_t *)realloc(modgbs->modpolys[i]->cf_32,
-                                               len * modgbs->alloc * sizeof(uint32_t));
+    const size_t sz = modgbs->wide ? sizeof(uint64_t) : sizeof(uint32_t);
+    void *old = modgbs->wide ? (void *)modgbs->modpolys[i]->cf_u64
+      : (void *)modgbs->modpolys[i]->cf_32;
+    char *newcfs_pol = (char *)realloc(old, len * modgbs->alloc * sz);
     if(newcfs_pol == NULL){
       fprintf(ERRSTREAM, "Problem when reallocating modgbs (cfs_pol)\n");
       exit(1);
     }
     /* prime-major storage: the new primes are appended at the end */
-    memset(newcfs_pol + len * oldalloc, 0,
-           len * (modgbs->alloc - oldalloc) * sizeof(uint32_t));
-    modgbs->modpolys[i]->cf_32 = newcfs_pol;
+    memset(newcfs_pol + len * oldalloc * sz, 0,
+           len * (modgbs->alloc - oldalloc) * sz);
+    if(modgbs->wide){
+      modgbs->modpolys[i]->cf_u64 = (uint64_t *)newcfs_pol;
+    }
+    else{
+      modgbs->modpolys[i]->cf_32 = (uint32_t *)newcfs_pol;
+    }
   }
 }
 
+/* stores the modular images on 64 bits, so that primes of more than 32
+   bits can be used for the next images */
+static inline void gb_modpoly_widen(gb_modpoly_t modgbs){
+  if(modgbs->wide){
+    return;
+  }
+  for(uint32_t i = 0; i < modgbs->ld; i++){
+    modpolys_t *pol = modgbs->modpolys + i;
+    if(pol[0]->cf_32 == NULL){
+      continue;
+    }
+    const size_t sz = (size_t)pol[0]->len * modgbs->alloc;
+    pol[0]->cf_u64 = (uint64_t *)malloc(sz * sizeof(uint64_t));
+    for(size_t j = 0; j < sz; j++){
+      pol[0]->cf_u64[j] = pol[0]->cf_32[j];
+    }
+    free(pol[0]->cf_32);
+    pol[0]->cf_32 = NULL;
+  }
+  modgbs->wide = 1;
+}
 
 static inline void display_gbmodpoly_cf_32(FILE *file,
                                      gb_modpoly_t modgbs){
@@ -334,28 +437,28 @@ static inline void display_gbmodpoly_cf_32(FILE *file,
   fprintf(file, "nprimes = %d\n", modgbs->nprimes);
   fprintf(file, "primes = [");
   for(uint32_t i = 0; i < modgbs->alloc-1; i++){
-    fprintf(file, "%lu, ", (unsigned long)modgbs->primes[i]);
+    fprintf(file, "%" PRIu64 ", ", (uint64_t)modgbs->primes[i]);
   }
-  fprintf(file, "%lu]\n", (unsigned long)modgbs->primes[modgbs->alloc -1]);
+  fprintf(file, "%" PRIu64 "]\n", (uint64_t)modgbs->primes[modgbs->alloc -1]);
   fprintf(file, "numpolys = %d\n", modgbs->ld);
   fprintf(file, "[\n");
   for(uint32_t i = 0; i < modgbs->ld; i++){
     uint32_t len = modgbs->modpolys[i]->len;
     fprintf(file, "[%d, ", len);
-    if(modgbs->modpolys[i]->cf_32 == NULL){
+    if(!HAS_MODCF(modgbs->modpolys[i])){
       fprintf(file, "(lifted)],\n");
       continue;
     }
     for(uint32_t j = 0; j < len; j++){
       fprintf(file, "[");
       for(uint32_t k = 0; k < modgbs->alloc-1; k++){
-        fprintf(file, "%d, ", MODCF(modgbs->modpolys[i], j, k));
+        fprintf(file, "%" PRIu64 ", ", (uint64_t)MODCF(modgbs->modpolys[i], j, k));
       }
       if(j < len - 1){
-        fprintf(file, "%d], ", MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
+        fprintf(file, "%" PRIu64 "], ", (uint64_t)MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
       }
       else{
-        fprintf(file, "%d]\n", MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
+        fprintf(file, "%" PRIu64 "]\n", (uint64_t)MODCF(modgbs->modpolys[i], j, modgbs->alloc-1));
       }
     }
     fprintf(file, "],\n");
@@ -524,14 +627,18 @@ static inline void display_lm_gbmodpoly_cf_qq(FILE *file,
 static inline void gb_modpoly_without_hash_table_clear(gb_modpoly_t modgbs){
   free(modgbs->primes);
   modgbs->primes = NULL;
+  free(modgbs->pinvs);
+  modgbs->pinvs = NULL;
   free(modgbs->cf_64);
   modgbs->cf_64 = NULL;
   free(modgbs->ldm);
   modgbs->ldm = NULL;
   for(uint32_t i = 0; i < modgbs->ld; i++){
-    /* cf_32 is NULL if already free-ed after lifting */
+    /* cf_32 and cf_u64 are NULL if already free-ed after lifting */
     free(modgbs->modpolys[i]->cf_32);
     modgbs->modpolys[i]->cf_32 = NULL;
+    free(modgbs->modpolys[i]->cf_u64);
+    modgbs->modpolys[i]->cf_u64 = NULL;
     for(uint32_t j = 0; j < modgbs->modpolys[i]->len; j++){
       mpz_clear(modgbs->modpolys[i]->cf_qq[j]);
     }
@@ -654,13 +761,14 @@ static inline int32_t *array_of_lengths(int32_t *bexp_lm, len_t len,
 /* returns 0 in case of failure else returns 1 */
 static inline int modpgbs_set(gb_modpoly_t modgbs,
                               const bs_t *bs, const ht_t * const ht,
-                              const int32_t fc,
+                              const uint64_t fc,
                               int32_t start, const long elim){
   if(modgbs->nprimes >= modgbs->alloc-1){
     fprintf(ERRSTREAM, "Not enough space in modgbs\n");
     exit(1);
   }
   modgbs->primes[modgbs->nprimes] = fc;
+  modgbs->pinvs[modgbs->nprimes] = n_preinvert_limb(fc);
 
   len_t i, j, idx;
 
@@ -681,16 +789,28 @@ static inline int modpgbs_set(gb_modpoly_t modgbs,
       /* hm  = bs->hm[idx]+OFFSET; */
       len = bs->hm[idx][LENGTH];
     }
-    if(modgbs->modpolys[i]->cf_32 == NULL){
+    if(!HAS_MODCF(modgbs->modpolys[i])){
       /* already lifted, modular data are no longer needed */
       continue;
     }
     int32_t bc = modgbs->modpolys[i]->len - 1;
-    const uint32_t * const cfs = bs->cf_32[bs->hm[idx][COEFFS]];
-    for (j = 1; j < len; ++j) {
-      MODCF(modgbs->modpolys[i], bc, modgbs->nprimes) = cfs[j];
-      bc--;
-   }
+    const size_t off = MODCF_IDX(modgbs->modpolys[i], 0, modgbs->nprimes);
+    if(modgbs->wide){
+      const uint64_t * const cfs = bs->cf_64[bs->hm[idx][COEFFS]];
+      uint64_t *dst = modgbs->modpolys[i]->cf_u64 + off;
+      for (j = 1; j < len; ++j) {
+        dst[bc] = cfs[j];
+        bc--;
+      }
+    }
+    else{
+      const uint32_t * const cfs = bs->cf_32[bs->hm[idx][COEFFS]];
+      uint32_t *dst = modgbs->modpolys[i]->cf_32 + off;
+      for (j = 1; j < len; ++j) {
+        dst[bc] = cfs[j];
+        bc--;
+      }
+    }
   }
 
   modgbs->nprimes++;
@@ -754,7 +874,7 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
                                            trace_t *trace,
                                            bs_t *bs_qq,
                                            md_t *st,
-                                           const int32_t fc,
+                                           const uint64_t fc,
                                            int info_level,
                                            int print_gb,
                                            int truncate_lifting,
@@ -814,10 +934,12 @@ static int32_t gb_modular_trace_learning(gb_modpoly_t modgbs,
     int32_t *lens = array_of_lengths(leadmons[0], num_gb[0], bs, bht->nv - st->nev);
 
     if(truncate_lifting != 0 && truncate_lifting < num_gb[0]){
-      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, truncate_lifting, leadmons[0], st);
+      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, truncate_lifting, leadmons[0], st,
+                      GB_PRIME_IS_WIDE(fc));
     }
     else{
-      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, num_gb[0], leadmons[0], st);
+      gb_modpoly_init(modgbs, 2, lens, bs, bht->nv - st->nev, num_gb[0], leadmons[0], st,
+                      GB_PRIME_IS_WIDE(fc));
     }
     free(lens);
     modpgbs_set(modgbs, bs, bht, fc, start, st->nev);
@@ -861,7 +983,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
                                          bs_t *bs_qq,
                                          md_t *st,
                                          int info_level,
-                                         primes_t *lp,
+                                         const uint64_t prime,
                                          int32_t start,
                                          double *stf4,
                                          int *bad_primes)
@@ -881,7 +1003,7 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
   /* hl_t eld = bs_qq->ht->eld; */
   bs_t *bs = NULL;
   int32_t error = 0;
-  bs = core_gba(bs_qq, st, &error, lp->p[0]);
+  bs = core_gba(bs_qq, st, &error, prime);
   *stf4 = realtime()-rt;
   /* core_gba returns NULL (and has already free-ed its data) when the
    * prime has been detected as bad while applying the tracer */
@@ -939,13 +1061,59 @@ static void gb_modular_trace_application(gb_modpoly_t modgbs,
 
   if(!bad_primes[0] && bs != NULL){
     /* copy of data for multi-mod computation */
-    modpgbs_set(modgbs, bs, bht[0], lp->p[0], start, st->nev);
+    modpgbs_set(modgbs, bs, bht[0], prime, start, st->nev);
   }
 
   if (bs != NULL) {
     free_basis_and_only_local_hash_table_data(&bs);
   }
 
+}
+
+/* LLL witnesses of the i-th polynomial: the three witnesses used for
+   rational reconstruction (so that the candidates found by LLL are checked
+   as the reconstructed ones), then nonzero coefficients spread over the
+   polynomial, all distinct and nonzero modulo the first prime */
+static inline void choose_lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl,
+                                        int32_t i){
+  int32_t *w = dl->lwit + (size_t)i * LLL_WIT_K;
+  const int32_t len = modgbs->modpolys[i]->len;
+  int n = 0;
+  int32_t nnz = 0;
+  for(int32_t l = 0; l < len; l++){
+    nnz += (MODCF(modgbs->modpolys[i], l, 0) != 0);
+  }
+  /* the j-th candidate is the first coefficient of the j-th group of
+     nonzero coefficients, the three first ones are the RR witnesses */
+  for(int32_t j = 0; j < LLL_WIT_K + 3 && n < LLL_WIT_K && nnz > 0; j++){
+    int32_t c;
+    if(j < 3){
+      c = (j == 0) ? dl->coef[i] : ((j == 1) ? dl->coef2[i] : dl->coef3[i]);
+      if(!MODCF(modgbs->modpolys[i], c, 0)){
+        continue;
+      }
+    }
+    else{
+      const int32_t target = ((int64_t)nnz * (j - 3)) / LLL_WIT_K;
+      int32_t cnt = -1;
+      c = -1;
+      for(int32_t l = 0; l < len; l++){
+        cnt += (MODCF(modgbs->modpolys[i], l, 0) != 0);
+        if(cnt == target){
+          c = l;
+          break;
+        }
+      }
+    }
+    int dup = (c < 0);
+    for(int m = 0; m < n && !dup; m++){
+      dup = (w[m] == c);
+    }
+    if(!dup){
+      w[n++] = c;
+    }
+  }
+  dl->nlwit[i] = n;
 }
 
 /* three witness coefficients are chosen per polynomial: the last nonzero
@@ -975,6 +1143,7 @@ static inline void choose_coef_to_lift(gb_modpoly_t modgbs, data_lift_t dlift){
       d3--;
     }
     dlift->coef3[i] = d3;
+    choose_lll_witnesses(modgbs, dlift, i);
   }
 }
 
@@ -986,10 +1155,10 @@ static inline void incremental_dlift_crt(gb_modpoly_t modgbs, data_lift_t dlift,
                                          int thrds){
 
   /* all primes are assumed to be good primes */
-  mpz_mul_ui(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
+  mpz_mul_u64(prod_p[0], mod_p[0], modgbs->primes[modgbs->nprimes - 1 ]);
   for(int32_t k = dlift->lstart; k <= dlift->lend; k++){
       if(modgbs->modpolys[k]->len){
-        uint32_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
+        uint64_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
         mpz_CRT_ui(dlift->crt[k], dlift->crt[k], mod_p[0],
                    c, modgbs->primes[modgbs->nprimes - 1 ],
                    prod_p[0], dlift->tmp, 1);
@@ -1007,7 +1176,7 @@ static inline void incremental_dlift_crt_full(gb_modpoly_t modgbs, data_lift_t d
 
   mp_limb_t newprime = modgbs->primes[modgbs->nprimes - 1 ];
   /* all primes are assumed to be good primes */
-  mpz_mul_ui(prod_p, mod_p, (uint32_t)newprime);
+  mpz_mul_u64(prod_p, mod_p, newprime);
   for(int32_t k = dl->S; k < dl->end; k++){
       if(modgbs->modpolys[k]->len){
         uint64_t c = MODCF(modgbs->modpolys[k], coef[k], modgbs->nprimes  - 1);
@@ -1064,10 +1233,85 @@ static inline void set_recdata_guess(rrec_data_t rd, const mpz_t mod_p,
   returns the index of the poly if some of its coeff could not be lifted
   else returns end
  */
+static int lll_common_den(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
+                          const int32_t *w, const int k, const uint32_t np,
+                          const mpz_t mod_p, const mpz_t guess,
+                          mpz_t den, mpz_t *num);
+static inline double lll_guess_cost(const int k, const double bits);
+static inline int32_t lll_next_attempt(const int32_t nprimes,
+                                       const double cost, const double pcost);
+
+/*
+  Coefficients of the k-th polynomial whose rational reconstruction failed
+  with the guessed denominator dl->tmp (at most LLL_WIT_K of them, of
+  indices fail[0], .., fail[nfail-1], with CRT images zf[0], ..): they are
+  reconstructed simultaneously by LLL (see lll_common_den) with this guess,
+  together with already reconstructed coefficients (indices in done[0],
+  .., done[ndone-1]) when there are less than LLL_WIT_K failing ones. On
+  success the guess is multiplied by the common factor found and they are
+  reconstructed again with it, else 0 is returned.
+
+  The guess is wrong if LLL returned a spurious vector: the lifted
+  polynomial is then rejected by verif_lifted_basis.
+ */
+static int lll_full_block(gb_modpoly_t modgbs, data_lift_t dl, int32_t k,
+                          int32_t *fail, int nfail, mpz_t *zf,
+                          const int32_t *done, int32_t ndone,
+                          mpz_t mod_p, rrec_data_t rd1, mpz_t rden,
+                          mpz_t *dens, const double pcost){
+  modpolys_t *polys = modgbs->modpolys;
+  const uint32_t np = modgbs->nprimes - 1;
+  const double bits = mpz_sizeinbase(mod_p, 2);
+  int32_t w[LLL_WIT_K];
+  int kk = 0;
+  for(int j = 0; j < nfail; j++){
+    w[kk++] = fail[j];
+  }
+  for(int32_t j = ndone - 1; j >= 0 && kk < LLL_WIT_K; j--){
+    w[kk++] = done[j];
+  }
+  const double cost = lll_guess_cost(kk, bits);
+  if(kk < 2 || (int32_t)np < dl->lll_fnext
+     || (pcost > 0 && dl->lll_cost + cost
+         > LLL_WIT_BUDGET / 100.0 * modgbs->nprimes * pcost)){
+    return 0;
+  }
+  dl->lll_cost += cost;
+  mpz_t d, num[LLL_WIT_K];
+  mpz_init(d);
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_init(num[j]);
+  }
+  int ok = lll_common_den(modgbs, dl, k, w, kk, np, mod_p, dl->tmp, d, num);
+  dl->lll_fnext = ok ? (int32_t)np : lll_next_attempt(np, cost, pcost);
+  if(ok){
+    mpz_mul(dl->tmp, dl->tmp, d);
+    set_recdata_guess(rd1, mod_p, dl->tmp);
+    for(int j = 0; j < nfail && ok; j++){
+      const int32_t l = fail[j];
+      ok = lift_ratreconwden(polys[k]->cf_qq[l], rden, zf[j], mod_p,
+                             dl->tmp, rd1);
+      if(ok){
+        mpz_mul(dens[l], rden, dl->tmp);
+        if(mpz_cmp_ui(rden, 1)){
+          mpz_mul(dl->tmp, dl->tmp, rden);
+          set_recdata_guess(rd1, mod_p, dl->tmp);
+        }
+      }
+    }
+  }
+  mpz_clear(d);
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_clear(num[j]);
+  }
+  return ok;
+}
+
 static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
                                            int32_t start, int32_t end,
                                            mpz_t mod_p, rrec_data_t rd1, rrec_data_t rd2,
-                                           double *st_crt, double *st_rrec){
+                                           double *st_crt, double *st_rrec,
+                                           const double pcost){
 
   modpolys_t *polys = modgbs->modpolys;
 
@@ -1082,21 +1326,36 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   mpz_init(rden);
   mpz_init(zz);
   mpz_t *dens = NULL;
+  int32_t *done = NULL;
   if(maxlen > 0){
     dens = (mpz_t *)malloc(sizeof(mpz_t) * maxlen);
     for(uint32_t l = 0; l < maxlen; l++){
       mpz_init(dens[l]);
     }
+    done = (int32_t *)malloc(sizeof(int32_t) * maxlen);
+  }
+  /* coefficients whose reconstruction failed, see lll_full_block */
+  int32_t fail[LLL_WIT_K];
+  mpz_t zf[LLL_WIT_K];
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_init(zf[j]);
   }
 
-  /* Data needed by multi CRT functions */
+  /* Data needed by multi CRT functions, mod_p is the product of the
+     np first primes (the last one is used for checking) */
+  const uint32_t np = modgbs->nprimes - 1;
   fmpz_comb_t comb;
   fmpz_comb_temp_t comb_temp;
   fmpz_t y;
+  /* the guess dl->tmp modulo the np first primes, see below */
+  mp_limb_t *gp = NULL;
+  int gvalid = 0;
+  const size_t mbits = mpz_sizeinbase(mod_p, 2);
   if(maxlen > 0){
-    fmpz_comb_init(comb, modgbs->primes, modgbs->nprimes);
+    fmpz_comb_init(comb, modgbs->primes, np);
     fmpz_comb_temp_init(comb_temp, comb);
     fmpz_init(y);
+    gp = (mp_limb_t *)malloc(sizeof(mp_limb_t) * np);
   }
 
   set_recdata(rd2, mod_p);
@@ -1111,27 +1370,94 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
          coefficient, so that only the missing factor is reconstructed */
       mpz_set(dl->tmp, dl->cden[k]);
       set_recdata_guess(rd1, mod_p, dl->tmp);
+      gvalid = 0;
       int ok = 1;
+      int nfail = 0;
+      int32_t ndone = 0;
+      int used_lll = 0;
       for(int32_t l = 0; l < polys[k]->len; l++){
         rt = realtime();
-        for(uint32_t i = 0; i < modgbs->nprimes-1; i++){
-          modgbs->cf_64[i] = MODCF(polys[k], l, i);
+        /* When the denominator of the coefficient u divides the guess g,
+           u g is an integer, given by the CRT of the residues of u g
+           modulo the primes (symmetric remainder modulo mod_p): it is
+           accepted when it has RR_MARGIN bits less than mod_p, which
+           avoids both the product u g and a rational reconstruction for
+           most coefficients. Else u is lifted by CRT and rationally
+           reconstructed with the guess g. A wrong integer (probability
+           about 2^(-RR_MARGIN)) is rejected when checking the lifted
+           polynomial with the next primes. */
+        if(!gvalid){
+          for(uint32_t i = 0; i < np; i++){
+            gp[i] = mpz_fdiv_u64(dl->tmp, modgbs->primes[i]);
+          }
+          gvalid = 1;
         }
-        fmpz_multi_CRT_ui(y, modgbs->cf_64,
-                          comb, comb_temp, 1);
-        fmpz_get_mpz(zz, y);
+        if(modgbs->wide){
+          const uint64_t *cf = polys[k]->cf_u64 + MODCF_IDX(polys[k], l, 0);
+          const size_t len = polys[k]->len;
+          for(uint32_t i = 0; i < np; i++){
+            modgbs->cf_64[i] = n_mulmod2_preinv(cf[(size_t)i * len], gp[i],
+                                                modgbs->primes[i],
+                                                modgbs->pinvs[i]);
+          }
+        }
+        else{
+          for(uint32_t i = 0; i < np; i++){
+            modgbs->cf_64[i] = ((uint64_t)MODCF(polys[k], l, i) * gp[i])
+              % modgbs->primes[i];
+          }
+        }
+        fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 1);
+        int b = (fmpz_bits(y) + 1 + RR_MARGIN <= mbits);
+        if(b){
+          fmpz_get_mpz(polys[k]->cf_qq[l], y);
+          mpz_set_ui(rden, 1);
+        }
+        else{
+          for(uint32_t i = 0; i < np; i++){
+            modgbs->cf_64[i] = MODCF(polys[k], l, i);
+          }
+          fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 1);
+          fmpz_get_mpz(zz, y);
+        }
         *st_crt += realtime() - rt;
         rt = realtime();
-        if(lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p, dl->tmp, rd1)){
+        if(!b){
+          b = lift_ratreconwden(polys[k]->cf_qq[l], rden, zz, mod_p,
+                                dl->tmp, rd1);
+        }
+        if(b){
           mpz_mul(dens[l], rden, dl->tmp);
           if(mpz_cmp_ui(rden, 1)){
             mpz_mul(dl->tmp, dl->tmp, rden);
             set_recdata_guess(rd1, mod_p, dl->tmp);
+            gvalid = 0;
           }
-          *st_rrec += realtime() - rt;
+          if(mpz_sgn(polys[k]->cf_qq[l])){
+            done[ndone++] = l;
+          }
         }
         else{
-          *st_rrec += realtime() - rt;
+          /* kept for a simultaneous reconstruction by LLL */
+          mpz_set(zf[nfail], zz);
+          fail[nfail++] = l;
+          b = 1;
+        }
+        if(nfail == LLL_WIT_K
+           || (nfail > 0 && l == (int32_t)polys[k]->len - 1)){
+          b = lll_full_block(modgbs, dl, k, fail, nfail, zf, done, ndone,
+                             mod_p, rd1, rden, dens, pcost);
+          used_lll = 1;
+          gvalid = 0;
+          for(int j = 0; j < nfail && b; j++){
+            if(mpz_sgn(polys[k]->cf_qq[fail[j]])){
+              done[ndone++] = fail[j];
+            }
+          }
+          nfail = 0;
+        }
+        *st_rrec += realtime() - rt;
+        if(!b){
           /* the witnesses of this poly are still valid: their common
              denominator remains the best guess for reconstructing them */
           mpz_set(dl->gden, dl->cden[k]);
@@ -1154,7 +1480,32 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
         mpz_divexact(dens[l], dl->tmp, dens[l]);
         mpz_mul(polys[k]->cf_qq[l], polys[k]->cf_qq[l], dens[l]);
       }
-      dl->check2[k] += 1;
+      if(k > 0 && polys[k - 1]->len > 0 && mpz_cmp_ui(polys[k - 1]->lm, 1)){
+        /* share of the denominator of the previous polynomial, which is
+           the guess for this one, not dividing its denominator */
+        mpz_gcd(rden, polys[k - 1]->lm, dl->tmp);
+        const double b = mpz_sizeinbase(polys[k - 1]->lm, 2);
+        const double f = (b - mpz_sizeinbase(rden, 2)) / b;
+        dl->infl = MAX(dl->infl, f);
+      }
+      if(used_lll){
+        /* the factor found by LLL may be a multiple of the missing part of
+           the denominator: the content is removed */
+        mpz_set(rden, polys[k]->lm);
+        for(int32_t l = 0; l < polys[k]->len && mpz_cmp_ui(rden, 1); l++){
+          mpz_gcd(rden, rden, polys[k]->cf_qq[l]);
+        }
+        if(mpz_cmp_ui(rden, 1)){
+          mpz_divexact(polys[k]->lm, polys[k]->lm, rden);
+          for(int32_t l = 0; l < polys[k]->len; l++){
+            mpz_divexact(polys[k]->cf_qq[l], polys[k]->cf_qq[l], rden);
+          }
+        }
+      }
+      /* lifted, not checked yet: a polynomial lifted again after the
+         failed check of a previous one may have been lifted before, but
+         its new lift is unchecked (see verif_lifted_basis) */
+      dl->check2[k] = 1;
     }
     if(dl->check1[k] < 1 && polys[k]->len > 0){
       ret = k;
@@ -1166,6 +1517,7 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
   }
 
   if(maxlen > 0){
+    free(gp);
     fmpz_clear(y);
     fmpz_comb_temp_clear(comb_temp);
     fmpz_comb_clear(comb);
@@ -1173,6 +1525,10 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
       mpz_clear(dens[l]);
     }
     free(dens);
+    free(done);
+  }
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_clear(zf[j]);
   }
   mpz_clear(zz);
   mpz_clear(rden);
@@ -1182,13 +1538,13 @@ static inline int crt_ratrecon_lift_modgbs(gb_modpoly_t modgbs, data_lift_t dl,
 
 
 /* returns (coef == num / den mod prime) */
-static inline int verif_coef(mpz_t num, mpz_t den, uint32_t prime, uint32_t coef){
-  uint32_t lc = mpz_fdiv_ui(den, prime);
-  lc = mod_p_inverse_32(lc, prime);
+static inline int verif_coef(mpz_t num, mpz_t den, const mp_limb_t prime,
+                             const mp_limb_t pinv, const uint64_t coef){
+  mp_limb_t lc = mpz_fdiv_u64(den, prime);
+  lc = n_invmod(lc, prime);
 
-  uint64_t c = mpz_fdiv_ui(num, prime);
-  c *= lc;
-  c = c % prime;
+  mp_limb_t c = mpz_fdiv_u64(num, prime);
+  c = n_mulmod2_preinv(c, lc, prime, pinv);
 
   return (c==coef);
 }
@@ -1206,12 +1562,13 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
         for(int i = 0; i < thrds; i++){
           const uint32_t np = modgbs->nprimes - (thrds - i);
           const mp_limb_t prime = modgbs->primes[np];
+          const mp_limb_t pinv = modgbs->pinvs[np];
           /* all coefficients share the denominator lm */
-          uint64_t ilc = mpz_fdiv_ui(pol[0]->lm, prime);
-          ilc = mod_p_inverse_32(ilc, prime);
+          mp_limb_t ilc = mpz_fdiv_u64(pol[0]->lm, prime);
+          ilc = n_invmod(ilc, prime);
           for(int32_t c = 0; c < pol[0]->len; c++){
-            uint64_t v = mpz_fdiv_ui(pol[0]->cf_qq[c], prime);
-            v = (v * ilc) % prime;
+            mp_limb_t v = mpz_fdiv_u64(pol[0]->cf_qq[c], prime);
+            v = n_mulmod2_preinv(v, ilc, prime, pinv);
             if(v != MODCF(pol[0], c, np)){
               dl->check2[k] = 0;
               return 0;
@@ -1224,6 +1581,8 @@ static inline int verif_lifted_basis(gb_modpoly_t modgbs, data_lift_t dl,
             /* modular images are no longer needed */
             free(pol[0]->cf_32);
             pol[0]->cf_32 = NULL;
+            free(pol[0]->cf_u64);
+            pol[0]->cf_u64 = NULL;
             break;
           }
         }
@@ -1248,15 +1607,16 @@ static inline int verif_lifted_rational_wcoef(gb_modpoly_t modgbs, data_lift_t d
       for(int i = 0; i < thrds; i++){
 
         mp_limb_t prime = modgbs->primes[modgbs->nprimes - (thrds - i) ];
-        uint32_t coef = MODCF(modgbs->modpolys[k], dl->coef[k], modgbs->nprimes  - (thrds - i));
-        int boo = verif_coef(dl->num[k], dl->den[k], prime, coef);
+        mp_limb_t pinv = modgbs->pinvs[modgbs->nprimes - (thrds - i) ];
+        uint64_t coef = MODCF(modgbs->modpolys[k], dl->coef[k], modgbs->nprimes  - (thrds - i));
+        int boo = verif_coef(dl->num[k], dl->den[k], prime, pinv, coef);
         if(boo){
           coef = MODCF(modgbs->modpolys[k], dl->coef2[k], modgbs->nprimes  - (thrds - i));
-          boo = verif_coef(dl->num2[k], dl->den2[k], prime, coef);
+          boo = verif_coef(dl->num2[k], dl->den2[k], prime, pinv, coef);
         }
         if(boo){
           coef = MODCF(modgbs->modpolys[k], dl->coef3[k], modgbs->nprimes  - (thrds - i));
-          boo = verif_coef(dl->num3[k], dl->den3[k], prime, coef);
+          boo = verif_coef(dl->num3[k], dl->den3[k], prime, pinv, coef);
         }
 
         if(!boo){
@@ -1351,10 +1711,237 @@ static inline int reconstructcoeff3(data_lift_t dl, int32_t i, mpz_t mod_p,
   return 1;
 }
 
+/* sets num / den to the reduced fraction n / d */
+static inline void set_reduced_fraction(mpz_t num, mpz_t den,
+                                        const mpz_t n, const mpz_t d,
+                                        mpz_t tmp){
+  mpz_gcd(tmp, n, d);
+  mpz_divexact(num, n, tmp);
+  mpz_divexact(den, d, tmp);
+}
+
+/*
+  Reconstructs simultaneously the k coefficients of index w[0], .., w[k-1]
+  of the i-th polynomial, which share the denominator g * d, where g is a
+  guessed denominator and d is unknown, from their images modulo the np
+  first primes, whose product is mod_p.
+
+  With u_1, .., u_k the CRT images of the coefficients modulo m, the vector
+  (2^s d, n_1, .., n_k) with n_j = g d u_j mod m is a short vector of the
+  lattice spanned by (2^s, g u_1, .., g u_k) and m e_1, .., m e_k. Since
+  n_j / (g d) is a coefficient of the polynomial, n_j has about the bitsize
+  of g d times the size of the coefficient: the first column is scaled by
+  2^s, s = bits(g) - 1, so that all entries have about the same size. LLL
+  then finds this vector, heuristically, once bits(m) exceeds about
+  bits(n) + bits(d) / k, instead of bits(n) + 2 bits(d) when a single
+  coefficient is reconstructed with the guess g.
+
+  Since n_j has about s + bits(d) bits, the t = s - LLL_TRUNC_SLACK lowest
+  bits of the entries are irrelevant: LLL is run on the lattice spanned by
+  (2^(s-t), x_1, .., x_k) and m' e_1, .., m' e_k, with x_j and m' the
+  entries g u_j mod m and m shifted right by t bits. It contains
+  (2^(s-t) d, n_1 / 2^t + e_1, ..), with |e_j| <= 2 d + 1, which is still the
+  short vector, while its entries have bits(m) - t bits instead of bits(m):
+  this makes LLL several times faster for a large guess.
+
+  The n_j are then recomputed from d as g d u_j mod m (symmetric remainder)
+  and a candidate is accepted when 2^s d and all the n_j are at most
+  2^((s + k bits(m)) / (k + 1) - RR_MARGIN); d (positive) and the n_j are
+  then stored in den and num[0], .., num[k-1], so that the j-th coefficient
+  is num[j] / (g den).
+
+  returns 1 if a candidate has been found, else 0.
+ */
+static int lll_common_den(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
+                          const int32_t *w, const int k, const uint32_t np,
+                          const mpz_t mod_p, const mpz_t guess,
+                          mpz_t den, mpz_t *num){
+  if(k < 2){
+    return 0;
+  }
+  double rt = realtime();
+  modpolys_t *pol = modgbs->modpolys + i;
+
+  fmpz_comb_t comb;
+  fmpz_comb_temp_t comb_temp;
+  fmpz_comb_init(comb, modgbs->primes, np);
+  fmpz_comb_temp_init(comb_temp, comb);
+  fmpz_t y, m, g;
+  fmpz_init(y);
+  fmpz_init(m);
+  fmpz_init(g);
+  fmpz_set_mpz(m, mod_p);
+  fmpz_set_mpz(g, guess);
+  const slong s = fmpz_bits(g) > 1 ? fmpz_bits(g) - 1 : 0;
+  const slong t = s > LLL_TRUNC_SLACK ? s - LLL_TRUNC_SLACK : 0;
+
+  /* x_j = g u_j mod m */
+  fmpz *x = _fmpz_vec_init(k);
+  fmpz_mat_t B;
+  fmpz_mat_init(B, k + 1, k + 1);
+  fmpz_one(fmpz_mat_entry(B, 0, 0));
+  fmpz_mul_2exp(fmpz_mat_entry(B, 0, 0), fmpz_mat_entry(B, 0, 0), s - t);
+  for(int j = 0; j < k; j++){
+    for(uint32_t l = 0; l < np; l++){
+      modgbs->cf_64[l] = MODCF(pol[0], w[j], l);
+    }
+    fmpz_multi_CRT_ui(y, modgbs->cf_64, comb, comb_temp, 0);
+    fmpz_mul(y, y, g);
+    fmpz_mod(x + j, y, m);
+    fmpz_fdiv_q_2exp(fmpz_mat_entry(B, 0, j + 1), x + j, t);
+    fmpz_fdiv_q_2exp(fmpz_mat_entry(B, j + 1, j + 1), m, t);
+  }
+  fmpz_lll_t fl;
+  fmpz_lll_context_init_default(fl);
+  /* the reduction is not certified: on these small lattices, fmpz_lll
+     spends most of its time beyond the floating-point reduction (up to 10
+     times more with FLINT 3.1), while the candidates found are checked
+     anyway, by their sizes below and then with new primes */
+  if(fmpz_lll_d_heuristic(B, NULL, fl) == -1){
+    fmpz_lll(B, NULL, fl);
+  }
+
+  const slong bits = (s + (slong)k * (slong)fmpz_bits(m)) / (k + 1) - RR_MARGIN;
+  fmpz *d = fmpz_mat_entry(B, 0, 0);
+  int ok = bits > 0 && !fmpz_is_zero(d)
+    && (slong)fmpz_val2(d) >= s - t;
+  if(ok){
+    fmpz_fdiv_q_2exp(d, d, s - t);
+    fmpz_abs(d, d);
+    ok = ((slong)fmpz_bits(d) + s <= bits);
+  }
+  for(int j = 0; j < k && ok; j++){
+    fmpz_mul(y, d, x + j);
+    fmpz_smod(x + j, y, m);
+    ok = ((slong)fmpz_bits(x + j) <= bits);
+  }
+  if(ok){
+    fmpz_get_mpz(den, d);
+    for(int j = 0; j < k; j++){
+      fmpz_get_mpz(num[j], x + j);
+    }
+    dl->lll_nsucc++;
+  }
+
+  _fmpz_vec_clear(x, k);
+  fmpz_mat_clear(B);
+  fmpz_clear(y);
+  fmpz_clear(m);
+  fmpz_clear(g);
+  fmpz_comb_temp_clear(comb_temp);
+  fmpz_comb_clear(comb);
+  dl->lll_ntries++;
+  dl->lll_time += realtime() - rt;
+  return ok;
+}
+
+/*
+  Reconstructs simultaneously (see lll_common_den) the LLL witnesses of the
+  i-th polynomial, at most kmax of them, with the guessed denominator
+  guess. This matters for the polynomials whose denominator has a large
+  factor which is not in the previous ones (e.g. the first polynomial, for
+  which no denominator is guessed).
+
+  The candidate is stored as the reconstructed values of the three RR
+  witnesses (and their lcm in cden), so that it is checked with the next
+  prime as these.
+
+  returns 1 if a candidate has been found, else 0.
+ */
+static int lll_witnesses(gb_modpoly_t modgbs, data_lift_t dl, int32_t i,
+                         const mpz_t mod_p, const mpz_t guess, const int kmax){
+  const int k = MIN(dl->nlwit[i], kmax);
+  const int32_t *w = dl->lwit + (size_t)i * LLL_WIT_K;
+  mpz_t den, gd, num[LLL_WIT_K];
+  mpz_init(den);
+  mpz_init(gd);
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_init(num[j]);
+  }
+  const int ok = lll_common_den(modgbs, dl, i, w, k, modgbs->nprimes,
+                                mod_p, guess, den, num);
+  if(ok){
+    mpz_mul(gd, den, guess);
+    mpz_set_ui(dl->cden[i], 1);
+    for(int j = 0; j < k; j++){
+      /* stores the witnesses used by rational reconstruction */
+      if(w[j] == dl->coef[i]){
+        set_reduced_fraction(dl->num[i], dl->den[i], num[j], gd, dl->tmp);
+      }
+      if(w[j] == dl->coef2[i]){
+        set_reduced_fraction(dl->num2[i], dl->den2[i], num[j], gd, dl->tmp);
+      }
+      if(w[j] == dl->coef3[i]){
+        set_reduced_fraction(dl->num3[i], dl->den3[i], num[j], gd, dl->tmp);
+      }
+      /* the denominator of num[j] / (g d) */
+      mpz_gcd(dl->tmp, num[j], gd);
+      mpz_divexact(dl->tmp, gd, dl->tmp);
+      mpz_lcm(dl->cden[i], dl->cden[i], dl->tmp);
+    }
+    mpz_set(dl->gden, dl->cden[i]);
+  }
+  mpz_clear(den);
+  mpz_clear(gd);
+  for(int j = 0; j < LLL_WIT_K; j++){
+    mpz_clear(num[j]);
+  }
+  return ok;
+}
+
+/* estimated elapsed time of a call to lll_common_den with k coefficients
+   and a guessed denominator, modulo an integer of the given bitsize
+   (fitted with FLINT's fmpz_lll on random2_7_7, random2_8_8 and
+   minrank_d_2_p_3_q_7_r_3, 3000 to 72000 bits; the cost grows about as
+   (k + 1)^2.37). It was fitted before the lattices were truncated (see
+   lll_common_den), which makes LLL 2 to 4 times faster for a large guess:
+   it is kept as an upper bound, so that the attempts, hence the number of
+   primes, do not change. */
+static inline double lll_guess_cost(const int k, const double bits){
+  return 7.6e-10 * pow(k + 1, 2.37) * pow(bits, 1.3);
+}
+
+/* same for an attempt of reconstructing the witnesses: LLL_WIT_K of them
+   with the guessed denominator, then, if noguess is nonzero, LLL_WIT_K1 of
+   them without guess, a lattice on which LLL is much slower */
+static inline double lll_witnesses_cost(const double bits, const int noguess){
+  return lll_guess_cost(LLL_WIT_K, bits)
+    + (noguess ? 5.0e-11 * pow(LLL_WIT_K1 + 1, 2.37) * pow(bits, 1.63) : 0);
+}
+
+/* estimated elapsed time of the application of the trace for one prime,
+   from the operations recorded in the trace, with the weights of the cost
+   model of hensel.c (see HENSEL_KAPPA_F4); 0 if no trace is learned */
+static inline double lll_prime_cost(const md_t *st){
+  if(st == NULL || st->tr == NULL){
+    return 0;
+  }
+  return 1.5e-10 * (double)st->tr->nmadd + 2.6e-10 * (double)st->tr->nmadd_new
+    + 2.2e-9 * (double)st->tr->nterms;
+}
+
+/* number of primes of the next attempt of LLL after a failed one with
+   nprimes primes: LLL costs about A primes (A is the ratio of the cost of
+   the attempt to the cost of a prime), and trying again after a growth of
+   g percent of the number of primes loses up to g * nprimes primes when
+   LLL succeeds, hence the growth is about sqrt(2 A / nprimes), at least
+   LLL_WIT_GROWTH percent. It only depends on the trace and on the number
+   of primes, so that the number of primes used is reproducible. */
+static inline int32_t lll_next_attempt(const int32_t nprimes,
+                                       const double cost, const double pcost){
+  double g = LLL_WIT_GROWTH / 100.0;
+  if(pcost > 0){
+    const double A = cost / pcost;
+    g = MAX(g, sqrt(2 * A / nprimes));
+  }
+  return MAX(nprimes + 1, (int32_t)(nprimes * (1 + g)));
+}
+
 static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
                         mpz_t mod_p, mpz_t prod_p,
                         rrec_data_t recdata1, rrec_data_t recdata2,
-                        int thrds, double *st_crt, double *st_rrec, double *st_wit){
+                        int thrds, double *st_crt, double *st_rrec, double *st_wit,
+                        const double pcost){
 
   double st = realtime();
   verif_lifted_rational_wcoef(modgbs, dl, thrds);
@@ -1381,7 +1968,7 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
   if(dl->lstart != dl->start){
     dl->start = crt_ratrecon_lift_modgbs(modgbs, dl, dl->lstart, dl->start,
                                          mod_p, recdata1, recdata2,
-                                         st_crt, st_rrec);
+                                         st_crt, st_rrec, pcost);
   }
   dl->lstart = dl->start;
 
@@ -1428,6 +2015,33 @@ static void ratrecon_gb(gb_modpoly_t modgbs, data_lift_t dl,
         }
         if(b){
           b = reconstructcoeff3(dl, i, mod_p, recdata1, recdata2);
+        }
+        /* the numerators found by LLL are multiples of the guess times
+           the coefficients, hence LLL is not tried before the modulus has
+           the bitsize of the guess */
+        const double lcost = lll_witnesses_cost(mpz_sizeinbase(mod_p, 2),
+                                                dl->infl >= LLL_WIT_INFL);
+        if(!b && (int32_t)modgbs->nprimes >= dl->lll_next
+           && mpz_sizeinbase(mod_p, 2) >= mpz_sizeinbase(dl->pgden, 2) + RR_MARGIN
+           && (pcost == 0 || dl->lll_cost + lcost
+               <= LLL_WIT_BUDGET / 100.0 * modgbs->nprimes * pcost)){
+          dl->lll_cost += lcost;
+          /* with the guessed denominator, then without it, since the
+             guess inflates the numerators when it shares little with the
+             denominator of this polynomial */
+          b = lll_witnesses(modgbs, dl, i, mod_p, dl->pgden, LLL_WIT_K);
+          /* the attempt without guess only pays when the guess carries
+             factors foreign to the denominator, which has not been seen
+             so far on many systems (all denominators then divide about
+             the same integer) */
+          if(!b && mpz_cmp_ui(dl->pgden, 1) && dl->infl >= LLL_WIT_INFL){
+            mpz_t one;
+            mpz_init_set_ui(one, 1);
+            b = lll_witnesses(modgbs, dl, i, mod_p, one, LLL_WIT_K1);
+            mpz_clear(one);
+          }
+          dl->lll_next = b ? (int32_t)modgbs->nprimes + 1
+            : lll_next_attempt(modgbs->nprimes, lcost, pcost);
         }
         if(!b){
           dl->check1[i] = 0;
@@ -1492,6 +2106,57 @@ static void reset_learning_data(mstrace_t msd, md_t *st){
   free_elim_drl_data(st);
 }
 
+/* default bitsize of the primes of the multi-modular computation of
+   core_groebner_qq, 31 or 52 (F4 then computes with 64 bit integers, its
+   vectorized kernels need primes below 2^52): with AVX-512 IFMA, F4 costs
+   less per bit of the modulus with primes of 52 bits */
+#if defined HAVE_AVX512_IFMA
+#define GB_PRIME_BITS_DEFAULT 52
+#else
+#define GB_PRIME_BITS_DEFAULT 31
+#endif
+
+/* a random prime of pbits bits */
+static uint64_t gb_random_prime(const int pbits){
+  if(pbits == 52){
+    const uint64_t r = (((uint64_t)rand() << 31) ^ (uint64_t)rand())
+      & (((uint64_t)1 << 50) - 1);
+    return n_nextprime(((uint64_t)1 << 51) + r, 1);
+  }
+  return next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+}
+
+/* the prime following prime among the primes of pbits bits, cyclically */
+static uint64_t gb_next_prime(const uint64_t prime, const int pbits){
+  if(pbits == 52){
+    uint64_t p = n_nextprime(prime, 1);
+    if(p >= ((uint64_t)1 << 52) - ((uint64_t)1 << 32)){
+      p = n_nextprime((uint64_t)1 << 51, 1);
+    }
+    return p;
+  }
+  const uint32_t lprime = 1303905299;
+  uint64_t p = next_prime(prime);
+  if(p >= lprime){
+    p = next_prime(1<<30);
+  }
+  return p;
+}
+
+/* returns 1 if prime divides a coefficient of the input, i.e. it is not
+   a lucky prime (same as is_lucky_prime_ui, for primes of 64 bits) */
+static int gb_is_unlucky_prime(const uint64_t prime, const bs_t * const bs){
+  for(len_t i = 0; i < bs->ld; ++i){
+    mpz_t *cf = bs->cf_qq[bs->hm[i][COEFFS]];
+    for(len_t j = 0; j < bs->hm[i][LENGTH]; ++j){
+      if(mpz_fdiv_u64(cf[j], prime) == 0){
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
 gb_modpoly_t *core_groebner_qq(
         gb_modpoly_t *modgbsp,
         bs_t *bs,
@@ -1499,7 +2164,8 @@ gb_modpoly_t *core_groebner_qq(
         md_t *st,
         int32_t *errp,
         const len_t fc,
-        const int print_gb
+        const int print_gb,
+        const int prime_bits
         )
 {
 
@@ -1521,23 +2187,26 @@ restart:
     normalize_initial_basis(bs, st->gfc);
   }
 
-  uint32_t prime = 0;
-  uint32_t primeinit = 0;
-  uint32_t lprime = 1303905299;
+  /* the trace is learned modulo a prime of 31 bits, the size of the
+     next ones is chosen afterwards */
+  int pbits = 31;
+  uint64_t prime = 0;
+  uint64_t primeinit = 0;
 
-  prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
-  while(fc == 0 && is_lucky_prime_ui(prime, bs)){
-    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+  prime = gb_random_prime(pbits);
+  while(fc == 0 && gb_is_unlucky_prime(prime, bs)){
+    prime = gb_random_prime(pbits);
   }
 
   primeinit = prime;
-  msd->lp->p[0] = primeinit;
   if(fc){
-    msd->lp->p[0] = fc;
     primeinit = fc;
   }
+  if(!GB_PRIME_IS_WIDE(primeinit)){
+    msd->lp->p[0] = primeinit;
+  }
   if(info_level){
-      fprintf(VERBSTREAM, "Initial prime = %d\n", msd->lp->p[0]);
+      fprintf(VERBSTREAM, "Initial prime = %" PRIu64 "\n", (uint64_t)primeinit);
   }
 
   int success = 1;
@@ -1569,7 +2238,7 @@ restart:
                                                  msd->num_gb, msd->leadmons_ori,
                                                  msd->btrace[0],
                                                  bs, st,
-                                                 msd->lp->p[0],
+                                                 primeinit,
                                                  info_level,
                                                  print_gb,
                                                  truncate_lifting,
@@ -1643,41 +2312,28 @@ restart:
 
 
     learn = 0;
-    prime = next_prime(rand() % (1303905301 - (1<<30) + 1) + (1<<30));
+    if(fc == 0){
+      pbits = (prime_bits == 31 || prime_bits == 52) ? prime_bits
+        : GB_PRIME_BITS_DEFAULT;
+    }
+    if(pbits == 52){
+      gb_modpoly_widen((*modgbsp));
+    }
     if(info_level){
-        fprintf(VERBSTREAM, "New prime = %d\n", prime);
+      fprintf(VERBSTREAM, "Primes of %d bits\n", pbits);
+    }
+    prime = gb_random_prime(pbits);
+    if(info_level){
+        fprintf(VERBSTREAM, "New prime = %" PRIu64 "\n", (uint64_t)prime);
     }
     while(apply){
 
-      prime = next_prime(prime);
-      if(prime >= lprime){
-        prime = next_prime(1<<30);
-      }
       /* generate lucky prime numbers */
-      msd->lp->p[0] = prime;
-      while(is_lucky_prime_ui(prime, bs) || prime==primeinit){
-        prime = next_prime(prime);
-        if(prime >= lprime){
-          prime = next_prime(1<<30);
-        }
-        msd->lp->p[0] = prime;
+      prime = gb_next_prime(prime, pbits);
+      while(gb_is_unlucky_prime(prime, bs) || prime==primeinit){
+        prime = gb_next_prime(prime, pbits);
       }
       int nthrds = 1; /* mono-threaded mult-mid comp */
-      for(len_t i = 1; i < nthrds/* st->nthrds */; i++){
-        prime = next_prime(prime);
-        if(prime >= lprime){
-          prime = next_prime(1<<30);
-        }
-        msd->lp->p[i] = prime;
-        while(is_lucky_prime_ui(prime, bs) || prime==primeinit){
-          prime = next_prime(prime);
-          if(prime >= lprime){
-            prime = next_prime(1<<30);
-          }
-          msd->lp->p[i] = prime;
-        }
-      }
-      prime = msd->lp->p[nthrds /* st->nthrds */ - 1];
 
       if((*modgbsp)->alloc <= nprimes + 2){
         /* Room for the images modulo the next primes. The multi-modular
@@ -1697,7 +2353,7 @@ restart:
                                    msd->btrace,
                                    bs,  st,
                                    0, /* info_level, */
-                                   msd->lp,
+                                   prime,
                                    dlift->S, &stf4, msd->bad_primes);
 
       /* nprimes += st->nthrds; */
@@ -1779,7 +2435,8 @@ restart:
 
       if(!bad){
         ratrecon_gb((*modgbsp), dlift, msd->mod_p, msd->prod_p, recdata1, recdata2,
-                    nthrds/* st->nthrds */, &st_crt, &st_rrec, &st_wit);
+                    nthrds/* st->nthrds */, &st_crt, &st_rrec, &st_wit,
+                    lll_prime_cost(st));
       }
       /* the period depends only on the number of primes (not on timings)
          so that the number of primes used is reproducible */
@@ -1835,6 +2492,10 @@ restart:
     fprintf(VERBSTREAM, "\n---------------- TIMINGS ----------------\n");
     fprintf(VERBSTREAM, "CRT     (elapsed)         %10.2f sec\n", st_crt);
     fprintf(VERBSTREAM, "ratrecon(elapsed)         %10.2f sec\n", st_rrec);
+    if(dlinit && dlift->lll_ntries > 0){
+      fprintf(VERBSTREAM, "  incl. LLL, %4d calls (%d found) %6.2f sec\n",
+              dlift->lll_ntries, dlift->lll_nsucc, dlift->lll_time);
+    }
     fprintf(VERBSTREAM, "-----------------------------------------\n");
   }
 
@@ -2020,7 +2681,8 @@ gb_modpoly_t *groebner_qq(
   int err = 0;
 
   gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
-  modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, print_gb);
+  modgbsp = core_groebner_qq(modgbsp, bs, msd, md, &err, field_char, print_gb,
+                             gens->gb_prime_bits);
   if (err) {
       fprintf(ERRSTREAM,"Problem with groebner_qq, stopped computation (%d).\n", err);
       exit(1);
@@ -2194,7 +2856,7 @@ int64_t export_groebner_qq(
     gb_modpoly_t *modgbsp = malloc(sizeof(gb_modpoly_t));
     modgbsp =
     core_groebner_qq(modgbsp, bs, msd, md, &err, field_char,
-                     print_gb);
+                     print_gb, 0);
     if (err) {
         fprintf(ERRSTREAM, "Problem with groebner_qq, stopped computation.\n");
         exit(1);

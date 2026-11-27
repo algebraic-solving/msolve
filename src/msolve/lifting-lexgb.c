@@ -340,9 +340,31 @@ static void lexgb_matlift_finalize(lexgb_matlift_t *ML){
   ML->lifted = 1;
 }
 
-/* Rows of dm (full dense_mat modulo p) for the lifting; returns 1 once the
- * rows are lifted and checked (as for the lex Gb: NBCHECK primes) */
+/* 1 if the rows of dm (full dense_mat modulo p) agree with the lifted rows
+ * (those whose residues are freed); rows whose denominator vanishes modulo
+ * p are not checked */
+static int lexgb_matlift_check(const lexgb_matlift_t *ML, const CF_t *dm,
+                               uint32_t p){
+  for(szmat_t i = 0; i < ML->nrows; i++){
+    const modpolys_struct *P = ML->mod->modpolys[i];
+    if(P->cf_32 != NULL) continue;
+    const uint64_t d = mpz_fdiv_ui(P->lm, p);
+    if(d == 0) continue;
+    const uint64_t inv = n_invmod(d, p);
+    const CF_t *row = dm + (uint64_t)ML->rows[i] * ML->D;
+    for(szmat_t k = 0; k < ML->D; k++){
+      if((mpz_fdiv_ui(P->cf_qq[k], p) * inv) % p != row[k]) return 0;
+    }
+  }
+  return 1;
+}
+
+/* Rows of dm (full dense_mat modulo p, given by F4) for the lifting; returns
+ * 1 once the rows are lifted and checked (as for the lex Gb: NBCHECK
+ * primes), -1 if dm disagrees with rows already lifted (then these are
+ * wrong, e.g. all their primes divide some coefficient of the input) */
 static int lexgb_matlift_add(lexgb_matlift_t *ML, const CF_t *dm, uint32_t p){
+  if(!lexgb_matlift_check(ML, dm, p)) return -1;
   if(ML->lifted) return 1;
   gb_modpoly_array_struct *m = ML->mod;
   const uint32_t np = m->nprimes;
@@ -752,6 +774,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
     }
     /* -L: the rows of dense_mat computed on p0 are lifted too */
     const int use_ml = flags->lift_matrix && ok;
+    int ml_on = use_ml;   // 0 once -L is given up
     lexgb_matlift_t ML;
     if(use_ml){
       lexgb_matlift_init(&ML, &tr);
@@ -812,7 +835,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
      * parametrizations (msolve_trace_qq) */
     int32_t lstart = dl->lstart;
     while(ok && !done && consec_bad < LEXGB_MAX_BAD){
-      const int lifted = use_ml && ML.lifted;
+      const int lifted = ml_on && ML.lifted;
       const int K = lifted ? Kmax : nthr;
       for(int i = 0; i < K; i++){
         prime = lexgb_next_prime(prime, bs, p0);
@@ -869,7 +892,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
               build_multiplication_matrices_from_trace(&tr, lmb, bsq, bsq->ht,
                                                          md, bprimes[i]);
             if(lexgb_apply(ri, Mq, &tr, lmb, shape, md, bprimes[i])) bad = 1;
-            if(use_ml && !bad){
+            if(ml_on && !bad){
               /* rows for the lifting of the matrices */
               CF_t *bm = bmat + (uint64_t)i * mstride;
               for(szmat_t q = 0; q < ML.nrows; q++){
@@ -917,9 +940,23 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
           continue;
         }
         consec_bad = 0;
-        if(use_ml && !lifted && !ML.lifted){
-          if(lexgb_matlift_add(&ML, bmat + (uint64_t)i * mstride, bprimes[i])
-             && info_level > 1){
+        /* every F4 prime is checked against the lifted rows, including
+         * the primes of the batch in which the lifting completes: otherwise
+         * their residues would be mixed with the images computed from wrong
+         * lifted matrices, and the lifting might never terminate; on a
+         * mismatch, -L is given up (all residues so far come from F4) */
+        if(ml_on && !lifted){
+          const int was_lifted = ML.lifted;
+          const int s = lexgb_matlift_add(&ML, bmat + (uint64_t)i * mstride,
+                                          bprimes[i]);
+          if(s < 0){
+            lexgb_matlift_clear(&ML);
+            ml_on = 0;
+            if(info_level){
+              fprintf(VERBSTREAM, "<-L given up>");
+              fflush(VERBSTREAM);
+            }
+          } else if(s && !was_lifted && info_level > 1){
             fprintf(VERBSTREAM, "[L]");
             fflush(VERBSTREAM);
           }
@@ -976,7 +1013,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
         fprintf(VERBSTREAM, "#bad primes        %16lu\n", (unsigned long) nbad);
         if(use_ml){
           fprintf(VERBSTREAM, "#primes with F4    %16lu\n", (unsigned long) nf4 + 1);
-          if(ML.lifted){
+          if(ml_on && ML.lifted){
             fprintf(VERBSTREAM, "#primes matrices   %16lu\n",
                     (unsigned long) ML.nprimes);
             fprintf(VERBSTREAM, "matrices bitsize   %16lu\n",
@@ -1001,7 +1038,7 @@ static int print_msolve_lexgb_qq(data_gens_ff_t *gens, msflags_t flags){
               "unlucky), computation restarts.\n", p0);
     }
     data_lift_clear(dl);
-    if(use_ml){
+    if(ml_on){
       lexgb_matlift_clear(&ML);
     }
     gb_modpoly_without_hash_table_clear(modgbs);

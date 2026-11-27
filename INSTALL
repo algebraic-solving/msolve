@@ -41,11 +41,16 @@ use:
 ```
 
 This lets the compiler enable instructions supported on the build machine.
-msolve selects its SIMD kernels at configure time from that compiler target.
+Configure lists the SIMD kernels it selects for that compiler target.
 The resulting binaries may not run on other machines. For distribution or
-cross builds, use flags for the intended target instead. To disable msolve's
-explicit AVX2 or AVX-512 kernels, use `--disable-avx2` or
-`--disable-avx512f`; these options do not change the compiler's own target.
+cross builds, use flags for the intended target instead.
+
+A target with AVX-512F can use the foundation kernels even when it lacks
+AVX-512BW. Use `--disable-avx512bw` to omit the byte and word kernels,
+`--disable-avx512f` to omit all AVX-512 kernels, or `--disable-avx2` to
+omit the AVX2 kernels. To require one of these features, pass its
+`--enable` option. Configure will report an error if it cannot build the
+requested kernels with your target flags.
 
 Note to macOS users
 ===================

@@ -123,7 +123,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
     } else {
         rba = NULL;
     }
-#if defined HAVE_AVX512_F
+#if defined HAVE_AVX512_BW
     uint32_t mone32   = (uint32_t)0xFFFFFFFF;
     uint16_t mone16   = (uint16_t)0xFFFF;
     uint32_t mone16h  = (uint32_t)0xFFFF0000;
@@ -175,7 +175,7 @@ static hm_t *reduce_dense_row_by_known_pivots_sparse_ff_16(
             }
         }
         cfs   = mcf[dts[COEFFS]];
-#if defined HAVE_AVX512_F
+#if defined HAVE_AVX512_BW
         const uint16_t mul16 = (uint16_t)(fc - dr[i]);
         mulv  = _mm512_set1_epi16(mul16);
         const len_t len = dts[LENGTH];

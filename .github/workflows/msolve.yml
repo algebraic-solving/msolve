@@ -7,6 +7,67 @@ on:
     branches: [ "master" ]
 
 jobs:
+  simd:
+    name: SIMD (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: AVX-512F without BW
+            flags: -mavx2 -mfma -mavx512f
+            options: ''
+            features: AVX2 FMA3 AVX512_F
+          - target: AVX-512 extensions with AVX2 kernels disabled
+            flags: -mavx512f -mavx512bw -mavx512dq -mavx512ifma
+            options: --disable-avx2
+            features: AVX512_F AVX512_BW AVX512_DQ AVX512_IFMA
+          - target: BW and AVX2 kernels disabled
+            flags: -mavx2 -mfma -mavx512f -mavx512bw
+            options: --disable-avx512bw --disable-avx2
+            features: AVX512_F
+    env:
+      CFLAGS: -O2 -march=x86-64 ${{ matrix.flags }}
+    steps:
+      - uses: actions/checkout@v6
+      - run: sudo apt-get install -y libgmp-dev libflint-dev libmpfr-dev
+      - run: ./autogen.sh
+      - name: Check kernel selection
+        env:
+          OPTIONS: ${{ matrix.options }}
+          FEATURES: ${{ matrix.features }}
+        run: |
+          read -ra options <<< "$OPTIONS"
+          ./configure "${options[@]}"
+          for feature in AVX2 FMA3 AVX512_F AVX512_BW AVX512_DQ AVX512_IFMA; do
+            if [[ " $FEATURES " == *" $feature "* ]]; then
+              grep -Fx "#define HAVE_$feature 1" config.h
+            else
+              grep -Fx "/* #undef HAVE_$feature */" config.h
+            fi
+          done
+      - run: make -j2
+      - name: Run tests if the CPU supports the target
+        env:
+          TARGET_FLAGS: ${{ matrix.flags }}
+        run: |
+          for flag in $TARGET_FLAGS; do
+            if ! grep -qw "${flag#-m}" /proc/cpuinfo; then
+              echo "Build passed. Skipping execution because the CPU lacks ${flag#-m}."
+              exit 0
+            fi
+          done
+          SEED=1617753600 make -j2 check
+      - name: Reject explicitly requested BW on an F-only target
+        if: matrix.target == 'AVX-512F without BW'
+        run: |
+          if ./configure --enable-avx512bw > explicit-bw.log 2>&1; then
+            echo "Unexpectedly enabled AVX-512BW"
+            exit 1
+          fi
+          grep -F -- '--enable-avx512bw requires' explicit-bw.log
+
   build:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -98,6 +159,9 @@ jobs:
       run:
         shell: ${{ matrix.shell }} {0}
     steps:
+      - name: Exercise the native SIMD kernels on Linux
+        if: runner.os == 'Linux'
+        run: echo 'CFLAGS=-O2 -march=native' >> "$GITHUB_ENV"
       - name: Disable CRLF conversion on Windows
         if: runner.os == 'Windows'
         shell: pwsh

@@ -217,6 +217,11 @@ static inline int store_exponent(const char *term, data_gens_ff_t *gens, int64_t
                         break;
                     }
                 }
+                if (gens->field_char > 0 ? mpz_sgn(tmp_z) == 0 : mpq_sgn(tmp_q) == 0) {
+                    fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0)\n", term);
+                    res = 1;
+                    break;
+                }
                 if (has_exponent) {
                     fprintf(stderr, "Error when parsing term %s (coefficient cannot have an exponent)\n", term);
                     res = 1;
@@ -935,11 +940,14 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
   if(term != NULL){
     int64_t iv_tmp;
     if (is_gf2_ext(field_char)) {
-      /* zero coefficients are possible, e.g. for even integers, neogb
-       * removes these terms */
       iv_tmp = coefficient_gf2x(term, field_char);
       if (iv_tmp < 0) {
         fprintf(stderr, "Error when parsing term %s (coefficient is not an element of GF(%" PRId64 ")).\n", term, field_char);
+        free(term);
+        return 1;
+      }
+      if (iv_tmp == 0) {
+        fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 in GF(%" PRId64 ")).\n", term, field_char);
         free(term);
         return 1;
       }
@@ -990,6 +998,11 @@ static int get_coefficient_ff_and_term_from_line(char *line, int32_t nterms,
           cf_tmp = coefficient_gf2x(term, field_char);
           if (cf_tmp < 0) {
             fprintf(stderr, "Error when parsing term %s (coefficient is not an element of GF(%" PRId64 ")).\n", term, field_char);
+            free(term);
+            return 1;
+          }
+          if (cf_tmp == 0) {
+            fprintf(stderr, "Error when parsing term %s (coefficient cannot be 0 in GF(%" PRId64 ")).\n", term, field_char);
             free(term);
             return 1;
           }
